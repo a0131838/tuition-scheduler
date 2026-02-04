@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum UserLanguage {
+  BILINGUAL
+  ZH
+  EN
+}
+
+enum PackageType {
+  HOURS // 课时包（按分钟扣）
+  MONTHLY // 月卡（有效期内不扣分钟）
+}
+
+enum PackageStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+enum AttendanceStatus {
+  UNMARKED
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum AppointmentMode {
+  ONLINE
+  OFFLINE
+}
+
+enum TeachingLanguage {
+  CHINESE
+  ENGLISH
+  BILINGUAL
+}
+
+model Campus {
+  id      String  @id @default(uuid())
+  name    String
+  isOnline Boolean @default(false)
+  rooms   Room[]
+  classes Class[]
+}
+
+model Room {
+  id       String @id @default(uuid())
+  name     String
+  capacity Int
+
+  campusId String
+  campus   Campus @relation(fields: [campusId], references: [id])
+
+  classes Class[]
+}
+
+model Teacher {
+  id   String @id @default(uuid())
+  name String
+
+  nationality     String?
+  almaMater       String?
+  yearsExperience Int?
+  teachingLanguage TeachingLanguage?
+
+  subjectCourseId String?
+  subjectCourse   Subject? @relation("SubjectCourse", fields: [subjectCourseId], references: [id])
+  subjects        Subject[] @relation("TeacherSubjects")
+
+  availabilities TeacherAvailability[]
+  dateAvailabilities TeacherAvailabilityDate[]
+  oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateTeacher")
+  classes        Class[]
+  appointments   Appointment[]
+  sessionOverrides Session[] @relation("SessionTeacherOverride")
+  sessionTeacherChangesFrom SessionTeacherChange[] @relation("SessionTeacherChangeFrom")
+  sessionTeacherChangesTo SessionTeacherChange[] @relation("SessionTeacherChangeTo")
+}
+
+model TeacherAvailability {
+  id        String @id @default(uuid())
+  teacherId String
+  weekday   Int // 0-6 (Sun-Sat)
+  startMin  Int // minutes from 00:00
+  endMin    Int
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+}
+
+model TeacherAvailabilityDate {
+  id        String   @id @default(uuid())
+  teacherId String
+  date      DateTime // date-only (local), time in startMin/endMin
+  startMin  Int      // minutes from 00:00
+  endMin    Int
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@index([teacherId, date])
+}
+
+model TeacherOneOnOneTemplate {
+  id          String   @id @default(uuid())
+  teacherId   String
+  studentId   String
+  classId     String
+  weekday     Int // 0-6 (Sun-Sat)
+  startMin    Int // minutes from 00:00
+  durationMin Int
+  createdAt   DateTime @default(now())
+
+  teacher Teacher @relation("TeacherOneOnOneTemplateTeacher", fields: [teacherId], references: [id])
+  student Student @relation("TeacherOneOnOneTemplateStudent", fields: [studentId], references: [id])
+  class   Class   @relation("TeacherOneOnOneTemplateClass", fields: [classId], references: [id])
+
+  @@index([teacherId])
+  @@index([studentId])
+}
+
+model Course {
+  id    String @id @default(uuid())
+  name  String
+
+  subjects Subject[]
+  classes  Class[]
+  packages CoursePackage[]
+}
+
+model Subject {
+  id       String @id @default(uuid())
+  name     String
+  courseId String
+
+  course Course @relation(fields: [courseId], references: [id])
+  levels Level[]
+  classes Class[]
+
+  subjectTeachers Teacher[] @relation("SubjectCourse")
+  subjectTeachersMulti Teacher[] @relation("TeacherSubjects")
+
+  @@unique([courseId, name])
+  @@index([courseId])
+}
+
+model Level {
+  id        String @id @default(uuid())
+  name      String
+  subjectId String
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  classes Class[]
+
+  @@unique([subjectId, name])
+  @@index([subjectId])
+}
+
+model Class {
+  id String @id @default(uuid())
+
+  courseId  String
+  subjectId String?
+  levelId   String?
+  teacherId String
+  campusId  String
+  roomId    String?
+
+  capacity Int
+
+  course  Course  @relation(fields: [courseId], references: [id])
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  level   Level? @relation(fields: [levelId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  campus  Campus  @relation(fields: [campusId], references: [id])
+  room    Room?   @relation(fields: [roomId], references: [id])
+
+  sessions    Session[]
+  enrollments Enrollment[]
+  oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateClass")
+
+  @@index([subjectId])
+  @@index([levelId])
+}
+
+model Session {
+  id      String   @id @default(uuid())
+  classId String
+  startAt DateTime
+  endAt   DateTime
+  teacherId String?
+
+  class       Class        @relation(fields: [classId], references: [id])
+  teacher     Teacher?     @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  attendances Attendance[]
+  teacherChanges SessionTeacherChange[]
+}
+
+model SessionTeacherChange {
+  id            String   @id @default(uuid())
+  sessionId     String
+  fromTeacherId String
+  toTeacherId   String
+  reason        String?
+  changedBy     String?
+  changedAt     DateTime @default(now())
+
+  session     Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  fromTeacher Teacher @relation("SessionTeacherChangeFrom", fields: [fromTeacherId], references: [id])
+  toTeacher   Teacher @relation("SessionTeacherChangeTo", fields: [toTeacherId], references: [id])
+
+  @@index([sessionId])
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  name      String
+  school    String?
+  birthDate DateTime?
+  grade     String?
+  note      String?
+  sourceChannelId String?
+  studentTypeId   String?
+
+  enrollments  Enrollment[]
+  appointments Appointment[]
+  packages     CoursePackage[]
+  attendances  Attendance[]
+  oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateStudent")
+  sourceChannel StudentSourceChannel? @relation(fields: [sourceChannelId], references: [id])
+  studentType   StudentType? @relation(fields: [studentTypeId], references: [id])
+
+  @@index([sourceChannelId])
+  @@index([studentTypeId])
+}
+
+model StudentSourceChannel {
+  id        String   @id @default(uuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students Student[]
+
+  @@unique([name])
+}
+
+model StudentType {
+  id        String   @id @default(uuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students Student[]
+
+  @@unique([name])
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String
+  role         UserRole     @default(ADMIN)
+  language     UserLanguage @default(BILINGUAL)
+  passwordHash String
+  passwordSalt String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  sessions AuthSession[]
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Enrollment {
+  id        String @id @default(uuid())
+  classId   String
+  studentId String
+
+  class   Class   @relation(fields: [classId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([classId, studentId])
+}
+
+model Appointment {
+  id        String          @id @default(uuid())
+  teacherId String
+  studentId String
+  startAt   DateTime
+  endAt     DateTime
+  mode      AppointmentMode
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model CoursePackage {
+  id        String        @id @default(uuid())
+  studentId String
+  courseId  String
+  type      PackageType
+  status    PackageStatus @default(ACTIVE)
+
+  // HOURS 用：按分钟
+  totalMinutes     Int?
+  remainingMinutes Int?
+
+  // MONTHLY 用：有效期
+  validFrom DateTime
+  validTo   DateTime?
+
+  paid      Boolean  @default(false)
+  paidAt    DateTime?
+  paidAmount Int?
+  paidNote  String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student     Student      @relation(fields: [studentId], references: [id])
+  course      Course       @relation(fields: [courseId], references: [id])
+  txns        PackageTxn[]
+  attendances Attendance[]
+
+  @@index([studentId, courseId])
+}
+
+model PackageTxn {
+  id           String   @id @default(uuid())
+  packageId    String
+  kind         String // PURCHASE / DEDUCT / ROLLBACK / ADJUST
+  deltaMinutes Int
+  sessionId    String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  package CoursePackage @relation(fields: [packageId], references: [id])
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  sessionId String
+  studentId String
+  status    AttendanceStatus @default(UNMARKED)
+
+  deductedCount   Int @default(0)
+  deductedMinutes Int @default(0)
+
+  packageId String?
+  note      String?
+  excusedCharge Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package CoursePackage? @relation(fields: [packageId], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+}
