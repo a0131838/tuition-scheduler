@@ -12,6 +12,7 @@ type AuthUser = {
   name: string;
   role: "ADMIN" | "TEACHER" | "STUDENT";
   language: "BILINGUAL" | "ZH" | "EN";
+  teacherId: string | null;
 };
 
 function hashPassword(password: string, salt: string) {
@@ -27,7 +28,10 @@ export function createPasswordHash(password: string) {
 
 export async function verifyPassword(password: string, salt: string, hash: string) {
   const calc = hashPassword(password, salt);
-  return crypto.timingSafeEqual(Buffer.from(calc), Buffer.from(hash));
+  const calcBuf = Buffer.from(calc, "utf8");
+  const hashBuf = Buffer.from(hash, "utf8");
+  if (calcBuf.length !== hashBuf.length) return false;
+  return crypto.timingSafeEqual(calcBuf, hashBuf);
 }
 
 export async function createSession(userId: string) {
@@ -41,7 +45,7 @@ export async function createSession(userId: string) {
   cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     expires: expiresAt,
   });
@@ -77,6 +81,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     name: u.name,
     role: u.role as AuthUser["role"],
     language: u.language as AuthUser["language"],
+    teacherId: u.teacherId ?? null,
   };
 }
 
@@ -85,4 +90,31 @@ export async function requireAdmin() {
   if (!user) redirect("/admin/login");
   if (user.role !== "ADMIN") redirect("/admin/login");
   return user;
+}
+
+export async function requireTeacher() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/admin/login");
+  if (user.role !== "TEACHER") redirect("/admin/login");
+  return user;
+}
+
+export async function requireTeacherProfile() {
+  const user = await requireTeacher();
+  if (user.teacherId) {
+    const teacher = await prisma.teacher.findUnique({ where: { id: user.teacherId } });
+    if (teacher) return { user, teacher };
+  }
+
+  // Transitional fallback: existing accounts that were created before User.teacherId.
+  const teacherByName = await prisma.teacher.findFirst({ where: { name: user.name } });
+  if (teacherByName) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { teacherId: teacherByName.id },
+    });
+    return { user: { ...user, teacherId: teacherByName.id }, teacher: teacherByName };
+  }
+
+  return { user, teacher: null };
 }

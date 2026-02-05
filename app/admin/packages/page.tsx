@@ -6,6 +6,8 @@ import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 
 const LOW_MINUTES = 120;
+const FORECAST_WINDOW_DAYS = 30;
+const LOW_DAYS = 7;
 
 function parseDateStart(s: string) {
   const [Y, M, D] = s.split("-").map(Number);
@@ -64,7 +66,7 @@ async function createPackage(formData: FormData) {
   if (paid && !paidAtStr && paidAmount == null) {
     redirect(`/admin/packages?err=Paid+requires+paidAt+or+paidAmount`);
   }
-  if (paidAtStr && Number.isNaN(paidAt.getTime())) {
+  if (paidAtStr && (!paidAt || Number.isNaN(paidAt.getTime()))) {
     redirect(`/admin/packages?err=Invalid+paidAt`);
   }
 
@@ -211,7 +213,7 @@ async function deletePackage(formData: FormData) {
 export default async function AdminPackagesPage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string; q?: string; courseId?: string; paid?: string };
+  searchParams?: { msg?: string; err?: string; q?: string; courseId?: string; paid?: string; warn?: string };
 }) {
   const lang = await getLang();
   const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
@@ -219,6 +221,7 @@ export default async function AdminPackagesPage({
   const q = (searchParams?.q ?? "").trim();
   const filterCourseId = searchParams?.courseId ?? "";
   const filterPaid = searchParams?.paid ?? "";
+  const filterWarn = searchParams?.warn ?? "";
 
   const wherePackages: any = {};
   if (q) wherePackages.student = { name: { contains: q, mode: "insensitive" } };
@@ -236,6 +239,40 @@ export default async function AdminPackagesPage({
       take: 200,
     }),
   ]);
+
+  const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const packageIds = packages.map((p) => p.id);
+  const deductedRows = packageIds.length
+    ? await prisma.packageTxn.groupBy({
+        by: ["packageId"],
+        where: {
+          packageId: { in: packageIds },
+          kind: "DEDUCT",
+          createdAt: { gte: usageSince },
+        },
+        _sum: { deltaMinutes: true },
+      })
+    : [];
+  const deducted30Map = new Map(
+    deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
+  );
+
+  const packageRiskMap = new Map(
+    packages.map((p) => {
+      const remaining = p.remainingMinutes ?? 0;
+      const deducted30 = deducted30Map.get(p.id) ?? 0;
+      const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+      const estDays =
+        p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
+          ? Math.ceil(remaining / avgPerDay)
+          : null;
+      const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= LOW_MINUTES;
+      const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
+      const isAlert = p.type === "HOURS" && p.status === "ACTIVE" && (remaining <= 0 || lowMinutes || lowDays);
+      return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert }] as const;
+    })
+  );
+  const filteredPackages = filterWarn === "alert" ? packages.filter((p) => packageRiskMap.get(p.id)?.isAlert) : packages;
 
   const today = new Date();
   const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -365,16 +402,20 @@ export default async function AdminPackagesPage({
           <option value="paid">{t(lang, "Paid", "已付款")}</option>
           <option value="unpaid">{t(lang, "Unpaid", "未付款")}</option>
         </select>
+        <select name="warn" defaultValue={filterWarn}>
+          <option value="">{t(lang, "All Alerts", "全部预警")}</option>
+          <option value="alert">{t(lang, "Alert Only", "仅预警")}</option>
+        </select>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
         <a href="/admin/packages" style={{ color: "#666" }}>
           {t(lang, "Clear", "清除")}
         </a>
         <span style={{ color: "#666" }}>
-          {t(lang, "Showing", "显示")} {packages.length}
+          {t(lang, "Showing", "显示")} {filteredPackages.length}
         </span>
       </form>
 
-      {packages.length === 0 ? (
+      {filteredPackages.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No packages yet.", "暂无课包")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -384,6 +425,9 @@ export default async function AdminPackagesPage({
               <th align="left">{t(lang, "Course", "课程")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
               <th align="left">{t(lang, "Remaining", "剩余")}</th>
+              <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
+              <th align="left">{t(lang, "Forecast", "预计用完")}</th>
+              <th align="left">{t(lang, "Alert", "预警")}</th>
               <th align="left">{t(lang, "Valid", "有效期")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Paid", "已付款")}</th>
@@ -397,8 +441,17 @@ export default async function AdminPackagesPage({
             </tr>
           </thead>
           <tbody>
-            {packages.map((p) => (
+            {filteredPackages.map((p) => (
               <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+                {(() => {
+                  const remaining = p.remainingMinutes ?? 0;
+                  const risk = packageRiskMap.get(p.id);
+                  const deducted30 = risk?.deducted30 ?? 0;
+                  const estDays = risk?.estDays ?? null;
+                  const lowMinutes = risk?.lowMinutes ?? false;
+                  const lowDays = risk?.lowDays ?? false;
+                  return (
+                    <>
                 <td>{p.student?.name ?? "-"}</td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>{p.type}</td>
@@ -414,6 +467,37 @@ export default async function AdminPackagesPage({
                     </span>
                   ) : (
                     "-"
+                  )}
+                </td>
+                <td>
+                  {p.type === "HOURS" ? `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d` : "-"}
+                </td>
+                <td>
+                  {p.type !== "HOURS"
+                    ? "-"
+                    : p.status !== "ACTIVE"
+                    ? t(lang, "Inactive", "未生效")
+                    : remaining <= 0
+                    ? t(lang, "Depleted", "已用完")
+                    : estDays == null
+                    ? t(lang, "No usage (30d)", "近30天无消耗")
+                    : `${estDays} ${t(lang, "days", "天")}`}
+                </td>
+                <td>
+                  {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
+                    "-"
+                  ) : remaining <= 0 ? (
+                    <span style={{ color: "#b00", fontWeight: 700 }}>{t(lang, "Urgent", "紧急")}</span>
+                  ) : lowMinutes || lowDays ? (
+                    <span style={{ color: "#b00", fontWeight: 700 }}>
+                      {lowMinutes && lowDays
+                        ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
+                        : lowMinutes
+                        ? t(lang, "Low balance", "余额低")
+                        : t(lang, "Likely to run out soon", "即将用完")}
+                    </span>
+                  ) : (
+                    <span style={{ color: "#0a7" }}>{t(lang, "Normal", "正常")}</span>
                   )}
                 </td>
                 <td>
@@ -456,6 +540,9 @@ export default async function AdminPackagesPage({
                 <td>
                   <a href={`/admin/packages/${p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
                 </td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>

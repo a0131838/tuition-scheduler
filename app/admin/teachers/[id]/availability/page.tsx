@@ -284,8 +284,8 @@ export default async function AvailabilityPage({
                       <input type="hidden" name="date" value={key} />
                       <input type="hidden" name="month" value={month} />
                       <div style={{ display: "flex", gap: 6 }}>
-                        <input name="start" type="time" step={60} defaultValue="18:00" />
-                        <input name="end" type="time" step={60} defaultValue="20:00" />
+                        <input name="start" type="time" step={900} defaultValue="18:00" />
+                        <input name="end" type="time" step={900} defaultValue="20:00" />
                       </div>
                       <button type="submit">Add</button>
                     </form>
@@ -305,8 +305,8 @@ export default async function AvailabilityPage({
             <option key={i} value={i}>{w}({i})</option>
           ))}
         </select>
-        <input name="start" type="time" step={60} defaultValue="18:00" />
-        <input name="end" type="time" step={60} defaultValue="20:00" />
+        <input name="start" type="time" step={900} defaultValue="18:00" />
+        <input name="end" type="time" step={900} defaultValue="20:00" />
         <button type="submit">Add Weekly</button>
       </form>
 

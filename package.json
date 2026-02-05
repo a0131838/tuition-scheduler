@@ -4,7 +4,9 @@
     "version":  "0.1.0",
     "scripts":  {
                     "dev":  "next dev",
+                    "dev:reset":  "powershell -ExecutionPolicy Bypass -File ./scripts/dev-reset.ps1",
                     "build":  "next build",
+                    "test:auth":  "tsx --test tests/route-guards.test.ts",
                     "start":  "next start",
                     "db:up":  "docker compose up -d",
                     "db:down":  "docker compose down",

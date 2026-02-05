@@ -88,17 +88,18 @@ export default async function CoursesPage({
   });
 
   const filtered = q
-    ? courses
-        .map((c) => {
-          const subjects = c.subjects.filter((s) => {
-            if (s.name.toLowerCase().includes(q)) return true;
-            return s.levels.some((l) => l.name.toLowerCase().includes(q));
-          });
-          if (c.name.toLowerCase().includes(q)) return { ...c, subjects: c.subjects };
-          if (subjects.length > 0) return { ...c, subjects };
-          return null;
-        })
-        .filter(Boolean)
+    ? courses.reduce<typeof courses>((acc, c) => {
+        const subjects = c.subjects.filter((s) => {
+          if (s.name.toLowerCase().includes(q)) return true;
+          return s.levels.some((l) => l.name.toLowerCase().includes(q));
+        });
+        if (c.name.toLowerCase().includes(q)) {
+          acc.push({ ...c, subjects: c.subjects });
+        } else if (subjects.length > 0) {
+          acc.push({ ...c, subjects });
+        }
+        return acc;
+      }, [])
     : courses;
 
   return (

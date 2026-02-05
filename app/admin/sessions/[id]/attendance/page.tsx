@@ -104,7 +104,7 @@ async function applyOneStudentAttendanceAndDeduct(
       throw new Error(`Student ${studentId} has no active HOURS package to deduct minutes.`);
     }
 
-    const pkgMatch = await tx.coursePackage.findFirst({
+    const pkg = await tx.coursePackage.findFirst({
       where: {
         id: packageId,
         studentId,
@@ -348,6 +348,7 @@ async function markAllPresent(sessionId: string) {
             deductedMinutes: dm,
             note: null,
             packageId: null,
+            excusedCharge: false,
           },
           existing: existingMap.get(studentId),
         });

@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, type Lang } from "@/lib/i18n";
+import { requireAdmin } from "@/lib/auth";
 
 function parseMonth(s?: string) {
   if (!s) return null;
@@ -32,6 +33,7 @@ function choose(lang: Lang, en: string, zh: string) {
 }
 
 export async function GET(req: Request) {
+  await requireAdmin();
   const url = new URL(req.url);
   const month = url.searchParams.get("month") ?? "";
   const sourceChannelId = url.searchParams.get("sourceChannelId") ?? "";

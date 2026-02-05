@@ -16,12 +16,15 @@ const GRADE_OPTIONS = [
   "G10",
   "G11",
   "G12",
-  "初一",
-  "初二",
-  "初三",
-  "高一",
-  "高二",
-  "高三",
+  "G13",
+  "UG1",
+  "UG2",
+  "UG3",
+  "UG4",
+  "大一",
+  "大二",
+  "大三",
+  "大四",
 ];
 
 async function createStudent(formData: FormData) {

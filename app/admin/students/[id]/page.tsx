@@ -1,5 +1,6 @@
 ﻿﻿import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
@@ -75,6 +76,7 @@ const zhMap: Record<string, string> = {
   "Date Range": "\u65e5\u671f\u8303\u56f4",
   "From": "\u5f00\u59cb",
   "To": "\u7ed3\u675f",
+  "Download by Date Range": "\u6309\u65e5\u671f\u8303\u56f4\u4e0b\u8f7d",
   "Download": "\u4e0b\u8f7d",
   "Source": "\u6765\u6e90",
   "Start": "\u5f00\u59cb",
@@ -85,12 +87,23 @@ const zhMap: Record<string, string> = {
   "Teacher": "\u8001\u5e08",
   "Type": "\u7c7b\u578b",
   "Unpaid packages": "\u672a\u4ed8\u6b3e\u8bfe\u5305",
+  "Usage 30d": "\u8fd130\u5929\u6d88\u8017",
+  "Forecast": "\u9884\u8ba1\u7528\u5b8c",
+  "Alert": "\u9884\u8b66",
+  "No usage (30d)": "\u8fd130\u5929\u65e0\u6d88\u8017",
+  "Depleted": "\u5df2\u7528\u5b8c",
+  "Low balance": "\u4f59\u989d\u4f4e",
+  "Likely to run out soon": "\u5373\u5c06\u7528\u5b8c",
+  "Normal": "\u6b63\u5e38",
+  "Inactive": "\u672a\u751f\u6548",
+  "Urgent": "\u7d27\u6025",
+  "days": "\u5929",
   "Upcoming Sessions": "\u5373\u5c06\u4e0a\u8bfe",
   "Valid": "\u6709\u6548\u671f",
   "Yes": "\u662f"
 };
 
-function tl(lang: string, en: string) {
+function tl(lang: Lang, en: string) {
   return t(lang, en, zhMap[en] ?? en);
 }
 
@@ -107,16 +120,21 @@ const GRADE_OPTIONS = [
   "G10",
   "G11",
   "G12",
-  "初一",
-  "初二",
-  "初三",
-  "高一",
-  "高二",
-  "高三",
+  "G13",
+  "UG1",
+  "UG2",
+  "UG3",
+  "UG4",
+  "大一",
+  "大二",
+  "大三",
+  "大四",
 ];
 
 const ATTENDANCE_DEFAULT_LIMIT = 200;
 const LOW_MINUTES = 120;
+const FORECAST_WINDOW_DAYS = 30;
+const LOW_DAYS = 7;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function fmtDateInput(d: Date | null) {
@@ -223,6 +241,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   let slots = await prisma.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
+    select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
   });
 
@@ -230,6 +249,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     const weekday = startAt.getDay();
     slots = await prisma.teacherAvailability.findMany({
       where: { teacherId, weekday },
+      select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
     });
 
@@ -339,7 +359,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     !campusId ||
     !startAtStr ||
     !Number.isFinite(durationMin) ||
-    durationMin <= 0
+    durationMin < 15
   ) {
     redirect(`/admin/students/${studentId}?err=Invalid+input`);
   }
@@ -504,7 +524,6 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     quickLevelId: levelId,
     quickStartAt: startAtStr,
     quickDurationMin: String(durationMin),
-    quickOpen: "1",
   });
   if (month) params.set("month", month);
   redirect(`/admin/students/${studentId}?${params.toString()}`);
@@ -725,7 +744,7 @@ export default async function StudentDetailPage({
   const quickSubjectId = searchParams?.quickSubjectId ?? "";
   const quickLevelId = searchParams?.quickLevelId ?? "";
   const quickStartAt = searchParams?.quickStartAt ?? "";
-  const quickDurationMin = toInt(searchParams?.quickDurationMin, 60);
+  const quickDurationMin = Math.max(15, toInt(searchParams?.quickDurationMin, 60));
   const quickCampusId = searchParams?.quickCampusId ?? "";
   const quickRoomId = searchParams?.quickRoomId ?? "";
   const monthParam = searchParams?.month ?? "";
@@ -866,6 +885,23 @@ export default async function StudentDetailPage({
     : [];
   const monthAttendanceMap = new Map(monthAttendance.map((a) => [a.sessionId, a]));
 
+  const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const packageIds = packages.map((p) => p.id);
+  const deductedRows = packageIds.length
+    ? await prisma.packageTxn.groupBy({
+        by: ["packageId"],
+        where: {
+          packageId: { in: packageIds },
+          kind: "DEDUCT",
+          createdAt: { gte: usageSince },
+        },
+        _sum: { deltaMinutes: true },
+      })
+    : [];
+  const deducted30Map = new Map(
+    deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
+  );
+
   const appointmentsByDay = new Map<string, typeof monthAppointments>();
   for (const appt of monthAppointments) {
     const key = fmtYMD(new Date(appt.startAt));
@@ -926,7 +962,7 @@ export default async function StudentDetailPage({
         quickPackageWarn = t(
           lang,
           "No active package for this course. Please create a package before scheduling.",
-          "??��???��??????????????????????"
+          "该课程没有可用的有效课包，请先创建课包后再排课。"
         );
       }
     }
@@ -1075,7 +1111,7 @@ export default async function StudentDetailPage({
             {tl(lang, "To")}
             <input name="end" type="date" defaultValue={fmtDateInput(new Date(monthEnd.getTime() - 1))} />
           </label>
-          <button type="submit">{tl(lang, "Download")}</button>
+          <button type="submit">{tl(lang, "Download by Date Range")}</button>
         </form>
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -1139,12 +1175,12 @@ export default async function StudentDetailPage({
                         ? `${sess.class.campus.name}${sess.class.room ? ` / ${sess.class.room.name}` : ""}`
                         : "";
                       return (
-                        <div key={a.id} style={{ fontSize: 12, color: "#0a7", lineHeight: 1.3 }}>
-                          <div style={{ fontWeight: 700, color: "#d97706" }}>
+                        <div key={a.id} style={{ fontSize: 12, lineHeight: 1.3, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
                             {tl(lang, "Appt")} {fmtHHMM(new Date(a.startAt))}-{fmtHHMM(new Date(a.endAt))}{" "}
                             {courseText}
                           </div>
-                          <div style={{ color: "#087" }}>
+                          <div style={{ color: "#2563eb" }}>
                             {a.teacher?.name ?? ""} {placeText}
                           </div>
                         </div>
@@ -1303,6 +1339,9 @@ export default async function StudentDetailPage({
               <th align="left">{tl(lang, "Course")}</th>
               <th align="left">{tl(lang, "Type")}</th>
               <th align="left">{tl(lang, "Remaining")}</th>
+              <th align="left">{tl(lang, "Usage 30d")}</th>
+              <th align="left">{tl(lang, "Forecast")}</th>
+              <th align="left">{tl(lang, "Alert")}</th>
               <th align="left">{tl(lang, "Valid")}</th>
               <th align="left">{tl(lang, "Status")}</th>
               <th align="left">{tl(lang, "Paid")}</th>
@@ -1313,6 +1352,18 @@ export default async function StudentDetailPage({
           <tbody>
             {packages.map((p) => (
               <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+                {(() => {
+                  const remaining = p.remainingMinutes ?? 0;
+                  const deducted30 = deducted30Map.get(p.id) ?? 0;
+                  const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+                  const estDays =
+                    p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
+                      ? Math.ceil(remaining / avgPerDay)
+                      : null;
+                  const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= LOW_MINUTES;
+                  const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
+                  return (
+                    <>
                 <td>
                   {p.course?.name ?? "-"}
                 </td>
@@ -1331,6 +1382,35 @@ export default async function StudentDetailPage({
                     "-"
                   )}
                 </td>
+                <td>{p.type === "HOURS" ? `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d` : "-"}</td>
+                <td>
+                  {p.type !== "HOURS"
+                    ? "-"
+                    : p.status !== "ACTIVE"
+                    ? tl(lang, "Inactive")
+                    : remaining <= 0
+                    ? tl(lang, "Depleted")
+                    : estDays == null
+                    ? tl(lang, "No usage (30d)")
+                    : `${estDays} ${tl(lang, "days")}`}
+                </td>
+                <td>
+                  {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
+                    "-"
+                  ) : remaining <= 0 ? (
+                    <span style={{ color: "#b00", fontWeight: 700 }}>{tl(lang, "Urgent")}</span>
+                  ) : lowMinutes || lowDays ? (
+                    <span style={{ color: "#b00", fontWeight: 700 }}>
+                      {lowMinutes && lowDays
+                        ? `${tl(lang, "Low balance")} + ${tl(lang, "Likely to run out soon")}`
+                        : lowMinutes
+                        ? tl(lang, "Low balance")
+                        : tl(lang, "Likely to run out soon")}
+                    </span>
+                  ) : (
+                    <span style={{ color: "#0a7" }}>{tl(lang, "Normal")}</span>
+                  )}
+                </td>
                 <td>
                   {new Date(p.validFrom).toLocaleDateString()} ~{" "}
                   {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
@@ -1346,6 +1426,9 @@ export default async function StudentDetailPage({
                 <td>{p.paid ? tl(lang, "Yes") : tl(lang, "No")}</td>
                 <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
                 <td>{p.paidAmount ?? "-"}</td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>

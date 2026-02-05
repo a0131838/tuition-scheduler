@@ -220,8 +220,8 @@ export default function QuickScheduleModal({
             <input
               name="quickDurationMin"
               type="number"
-              min={30}
-              step={30}
+              min={15}
+              step={15}
               defaultValue={String(quickDurationMin)}
               style={{ marginLeft: 6, width: 120 }}
             />

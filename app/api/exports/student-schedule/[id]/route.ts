@@ -1,5 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, type Lang } from "@/lib/i18n";
+import { requireAdmin } from "@/lib/auth";
+
+type PDFDoc = InstanceType<typeof PDFDocument>;
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import fs from "fs";
@@ -17,7 +20,7 @@ const ORANGE = "#d97706";
 const EN_BOLD_FONT = "C:\\Windows\\Fonts\\arialbd.ttf";
 const CH_FONT = "C:\\Windows\\Fonts\\simhei.ttf";
 
-function setupFont(doc: PDFDocument) {
+function setupFont(doc: PDFDoc) {
   const candidates = [
     "C:\\Windows\\Fonts\\simhei.ttf",
     "C:\\Windows\\Fonts\\simsunb.ttf",
@@ -31,7 +34,7 @@ function setupFont(doc: PDFDocument) {
   doc.font("Helvetica");
 }
 
-function setEnglishBoldFont(doc: PDFDocument) {
+function setEnglishBoldFont(doc: PDFDoc) {
   if (fs.existsSync(EN_BOLD_FONT)) {
     doc.font(EN_BOLD_FONT);
     return;
@@ -39,7 +42,7 @@ function setEnglishBoldFont(doc: PDFDocument) {
   doc.font("Helvetica");
 }
 
-function setChineseFont(doc: PDFDocument) {
+function setChineseFont(doc: PDFDoc) {
   if (fs.existsSync(CH_FONT)) {
     doc.font(CH_FONT);
     return;
@@ -47,7 +50,7 @@ function setChineseFont(doc: PDFDocument) {
   setupFont(doc);
 }
 
-function streamPdf(doc: PDFDocument) {
+function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
   doc.pipe(stream);
   doc.end();
@@ -62,6 +65,13 @@ function choose(lang: Lang, en: string, zh: string) {
   if (lang === "EN") return en;
   if (lang === "ZH") return zh;
   return `${en} / ${zh}`;
+}
+
+function shouldShowLogoByStudentTypeName(typeName?: string | null) {
+  if (!typeName) return false;
+  const normalized = typeName.toLowerCase();
+  if (normalized.includes("\u81ea\u5df1\u5b66\u751f")) return true;
+  return /(^|\s|-|_)(own|self)\s*student(s)?($|\s|-|_)/i.test(typeName);
 }
 
 function formatDate(d: Date) {
@@ -109,24 +119,28 @@ function buildCalendarDays(monthDate: Date) {
   return days;
 }
 
-function drawCompanyHeader(doc: PDFDocument, showLogo: boolean) {
+function drawCompanyHeader(doc: PDFDoc, showLogo: boolean) {
   if (!showLogo) return;
   const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  let logoH = 0;
+  let logoH = 90;
   const logoW = 320;
   try {
-    const img = doc.openImage(LOGO_PATH);
-    const scale = logoW / img.width;
-    logoH = img.height * scale;
-    doc.image(img, left, top, { width: logoW });
+    const img = (doc as any).openImage(LOGO_PATH);
+    if (img?.width && img?.height) {
+      logoH = Math.round((logoW * img.height) / img.width);
+    }
+    doc.image(LOGO_PATH, left, top, { width: logoW });
   } catch {}
 
-  doc.y = top + logoH + 10;
+  doc.y = top + logoH + 8;
+  doc.moveTo(left, doc.y).lineTo(right, doc.y).stroke();
+  doc.moveDown(0.3);
 }
 
-function drawPrintedTimeHeader(doc: PDFDocument, lang: Lang) {
+function drawPrintedTimeHeader(doc: PDFDoc, lang: Lang) {
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
   doc.fontSize(8);
@@ -137,14 +151,14 @@ function drawPrintedTimeHeader(doc: PDFDocument, lang: Lang) {
   doc.moveDown(0.4);
 }
 
-function drawHeader(doc: PDFDocument, lang: Lang, titleEn: string, titleZh: string, showLogo: boolean) {
+function drawHeader(doc: PDFDoc, lang: Lang, titleEn: string, titleZh: string, showLogo: boolean) {
   drawCompanyHeader(doc, showLogo);
   setupFont(doc);
   drawPrintedTimeHeader(doc, lang);
 }
 
 function drawMonthCalendar(
-  doc: PDFDocument,
+  doc: PDFDoc,
   lang: Lang,
   sessions: {
     id: string;
@@ -226,9 +240,9 @@ function drawMonthCalendar(
         ).padStart(2, "0")}-${String(new Date(s.endAt).getHours()).padStart(2, "0")}:${String(
           new Date(s.endAt).getMinutes()
         ).padStart(2, "0")}`;
-        const courseText = s.class.course.name ?? "";
-        const courseInitial = courseText ? courseText.trim().charAt(0) : "";
-        return { s, line: `${time} ${courseInitial} ${s.class.teacher.name}` };
+        const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
+        const subjectInitial = subjectText ? subjectText.trim().charAt(0) : "";
+        return { s, line: `${time} ${subjectInitial} ${s.class.teacher.name}` };
       });
 
       const visible = entries.slice(0, maxLines);
@@ -264,6 +278,7 @@ function parseMonthParam(month?: string | null) {
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  await requireAdmin();
   const url = new URL(req.url);
   const monthParam = url.searchParams.get("month");
   const startParam = url.searchParams.get("start");
@@ -299,7 +314,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     include: { studentType: true },
   });
   if (!student) return new Response("Student not found", { status: 404 });
-  const hideLogo = student.studentType?.name === "B";
+  const showLogo = shouldShowLogoByStudentTypeName(student.studentType?.name);
 
   if (!monthStart || !monthEnd) {
     return new Response("Invalid date range", { status: 400 });
@@ -337,7 +352,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   setupFont(doc);
   doc.lineGap(2);
 
-  drawHeader(doc, lang, "Monthly Schedule", "\u6708\u8bfe\u8868", !hideLogo);
+  drawHeader(doc, lang, "Monthly Schedule", "\u6708\u8bfe\u8868", showLogo);
   doc.fontSize(10);
   doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
   if (year && month) {
@@ -357,7 +372,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       if (overflow && overflow.size > 0) {
         doc.addPage();
         setupFont(doc);
-        drawHeader(doc, lang, "Schedule (Overflow)", "\u8bfe\u8868\uff08\u7ee7\u7eed\uff09", !hideLogo);
+        drawHeader(doc, lang, "Schedule (Overflow)", "\u8bfe\u8868\uff08\u7ee7\u7eed\uff09", showLogo);
         doc.moveDown(0.4);
         doc
           .fontSize(10)
@@ -375,9 +390,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           if (list.length === 0) continue;
           doc.fontSize(10).text(`${key}`);
           for (const s of list) {
-            const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${
-              s.class.course.name
-            }${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
+            const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
+            const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${subjectText}`;
             const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
             doc.fontSize(9).text(line1);
             doc.fontSize(8).text(line2);
@@ -395,7 +409,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         if (doc.y > 740) {
         doc.addPage();
         setupFont(doc);
-          drawHeader(doc, lang, "Schedule", "\u8bfe\u8868", !hideLogo);
+          drawHeader(doc, lang, "Schedule", "\u8bfe\u8868", showLogo);
         doc.moveDown(0.4);
         }
         const att = attendanceMap.get(s.id);
@@ -404,9 +418,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           ? choose(lang, "Cancelled", "\u5df2\u53d6\u6d88")
           : choose(lang, "Scheduled", "\u5df2\u6392\u8bfe");
         const chargeText = att?.excusedCharge ? ` (${choose(lang, "Charged", "\u6263\u8d39")})` : "";
-        const courseText = `${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${
-          s.class.level ? ` / ${s.class.level.name}` : ""
-        }`;
+        const courseText = s.class.subject?.name ?? s.class.course.name ?? "";
         const placeText = `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
         const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${courseText}`;
         const line2 = `${s.class.teacher.name} | ${placeText} | ${statusText}${chargeText}`;
@@ -439,3 +451,4 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     },
   });
 }
+

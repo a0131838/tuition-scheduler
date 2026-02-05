@@ -18,6 +18,8 @@ async function main() {
   await prisma.student.deleteMany();
   await prisma.room.deleteMany();
   await prisma.campus.deleteMany();
+  await prisma.level.deleteMany();
+  await prisma.subject.deleteMany();
   await prisma.course.deleteMany();
 
   const campus1 = await prisma.campus.create({ data: { name: "Bishan Campus" } });
@@ -53,8 +55,8 @@ async function main() {
     ],
   });
 
-  const course1 = await prisma.course.create({ data: { name: "English Writing", level: "P4-P6" } });
-  const course2 = await prisma.course.create({ data: { name: "A-Level Math", level: "H2" } });
+  const course1 = await prisma.course.create({ data: { name: "English Writing" } });
+  const course2 = await prisma.course.create({ data: { name: "A-Level Math" } });
 
   // Group Class
   const class1 = await prisma.class.create({

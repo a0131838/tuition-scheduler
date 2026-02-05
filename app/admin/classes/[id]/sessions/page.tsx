@@ -52,6 +52,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   let slots = await prisma.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
+    select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
   });
 
@@ -59,6 +60,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     const weekday = startAt.getDay();
     slots = await prisma.teacherAvailability.findMany({
       where: { teacherId, weekday },
+      select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
     });
 
@@ -188,7 +190,7 @@ async function createOneSession(classId: string, formData: FormData) {
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
 
-  if (!startAtStr || !Number.isFinite(durationMin) || durationMin <= 0) {
+  if (!startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     redirect(buildRedirect(classId, { err: "Invalid input" }));
   }
 
@@ -239,7 +241,7 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
     weeks <= 0 ||
     weeks > 52 ||
     !Number.isFinite(durationMin) ||
-    durationMin <= 0
+    durationMin < 15
   ) {
     redirect(buildRedirect(classId, { err: "Invalid input" }));
   }
@@ -500,7 +502,7 @@ export default async function ClassSessionsPage({
         </label>
         <label>
           {t(lang, "Duration (minutes)", "时长(分钟)")}:
-          <input name="durationMin" type="number" min={30} step={30} defaultValue={60} style={{ marginLeft: 8 }} />
+          <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
         </label>
         <button type="submit">{t(lang, "Create (reject on conflict)", "创建(冲突则拒绝)")}</button>
       </form>
@@ -532,7 +534,7 @@ export default async function ClassSessionsPage({
 
         <label>
           {t(lang, "Duration (minutes)", "时长(分钟)")}:
-          <input name="durationMin" type="number" min={30} step={30} defaultValue={60} style={{ marginLeft: 8 }} />
+          <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
         </label>
 
         <label>

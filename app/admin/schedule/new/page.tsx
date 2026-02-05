@@ -1,7 +1,7 @@
 ﻿﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
-import StudentSearchSelect from "../_components/StudentSearchSelect";
+import StudentSearchSelect from "../../_components/StudentSearchSelect";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -59,6 +59,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   let slots = await prisma.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
+    select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
   });
 
@@ -66,6 +67,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     const weekday = startAt.getDay();
     slots = await prisma.teacherAvailability.findMany({
       where: { teacherId, weekday },
+      select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
     });
 
@@ -101,7 +103,7 @@ async function createSingleSession(formData: FormData) {
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
 
-  if (!classId || !startAtStr || !Number.isFinite(durationMin) || durationMin <= 0) {
+  if (!classId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     const p = new URLSearchParams({ tab: "session", err: "Invalid input" });
     redirect(`/admin/schedule/new?${p.toString()}`);
   }
@@ -203,7 +205,7 @@ async function createSingleAppointment(formData: FormData) {
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
 
-  if (!teacherId || !studentId || !startAtStr || !Number.isFinite(durationMin) || durationMin <= 0) {
+  if (!teacherId || !studentId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     const p = new URLSearchParams({ tab: "appt", err: "Invalid input" });
     redirect(`/admin/schedule/new?${p.toString()}`);
   }
@@ -250,7 +252,7 @@ async function createSingleAppointment(formData: FormData) {
   }
 
   await prisma.appointment.create({
-    data: { teacherId, studentId, startAt, endAt },
+    data: { teacherId, studentId, startAt, endAt, mode: "OFFLINE" },
   });
 
   redirect(buildRedirectToTeacherWeek(teacherId, startAt));
@@ -290,39 +292,39 @@ export default async function NewSinglePage({
 
   return (
     <div>
-      <h2>{t(lang, "New (Single)", "鏂板缓鍗曟")}</h2>
+      <h2>{t(lang, "New (Single)", "新建(单次)")}</h2>
       <p>
-        <a href="/admin/schedule">鈫?{t(lang, "Back to Schedule", "杩斿洖鍛ㄨ琛?)}</a>
+        <a href="/admin/schedule">→ {t(lang, "Back to Schedule", "返回课表")}</a>
       </p>
 
       {err && (
         <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 16 }}>
-          <b>{t(lang, "Rejected", "宸叉嫆缁濆垱寤?)}:</b> {err}
+          <b>{t(lang, "Rejected", "已拒绝创建")}:</b> {err}
         </div>
       )}
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <a href={tabSessionHref}>{t(lang, "Create Session", "鏂板缓鐝")}</a>
-        <a href={tabApptHref}>{t(lang, "Create Appointment", "鏂板缓1瀵?")}</a>
+        <a href={tabSessionHref}>{t(lang, "Create Session", "新建班课")}</a>
+        <a href={tabApptHref}>{t(lang, "Create Appointment", "新建1对1")}</a>
       </div>
 
       {tab === "session" ? (
         <>
-          <h3>{t(lang, "Create Session (Class Lesson)", "鏂板缓鐝")}</h3>
+          <h3>{t(lang, "Create Session (Class Lesson)", "新建班课")}</h3>
 
           {classes.length === 0 ? (
             <div style={{ color: "#999", marginBottom: 16 }}>
-              {t(lang, "No classes yet. Please create a class first in /admin/classes.", "鏆傛棤鐝骇锛岃鍏堝埌 /admin/classes 鍒涘缓鐝骇銆?)}
+              {t(lang, "No classes yet. Please create a class first in /admin/classes.", "暂无班级，请先到 /admin/classes 创建班级。")}
             </div>
           ) : (
             <form action={createSingleSession} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
               <label>
-                {t(lang, "Class", "鐝骇")}:
+                {t(lang, "Class", "班级")}:
                 <select name="classId" defaultValue={defaultClassId} style={{ marginLeft: 8, minWidth: 520 }}>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "鑰佸笀")}:{" "}
-                      {c.teacher.name} | {t(lang, "Campus", "鏍″尯")}: {c.campus.name} | {t(lang, "Room", "鏁欏")}:{" "}
+                      {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "老师")}:{" "}
+                      {c.teacher.name} | {t(lang, "Campus", "校区")}: {c.campus.name} | {t(lang, "Room", "教室")}:{" "}
                       {c.room?.name ?? "(none)"} | classId: {c.id.slice(0, 8)}...
                     </option>
                   ))}
@@ -330,29 +332,29 @@ export default async function NewSinglePage({
               </label>
 
               <label>
-                {t(lang, "Start", "寮€濮?)}:
+                {t(lang, "Start", "开始")}:
                 <input name="startAt" type="datetime-local" required style={{ marginLeft: 8 }} />
               </label>
 
               <label>
-                {t(lang, "Duration (minutes)", "鏃堕暱(鍒嗛挓)")}:
-                <input name="durationMin" type="number" min={30} step={30} defaultValue={60} style={{ marginLeft: 8 }} />
+                {t(lang, "Duration (minutes)", "时长(分钟)")}:
+                <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
               </label>
 
-              <button type="submit">{t(lang, "Create (reject on conflict)", "鍒涘缓(鍐茬獊鍒欐嫆缁?")}</button>
+              <button type="submit">{t(lang, "Create (reject on conflict)", "创建(冲突则拒绝)")}</button>
 
               <p style={{ color: "#666", margin: 0 }}>
-                {t(lang, "Conflict rule: same teacher (session/appointment overlap) or same room (session overlap).", "鍐茬獊瑙勫垯锛氬悓鑰佸笀锛堣娆?棰勭害閲嶅彔锛夋垨鍚屾暀瀹わ紙璇炬閲嶅彔锛夈€?)}
+                {t(lang, "Conflict rule: same teacher (session/appointment overlap) or same room (session overlap).", "冲突规则：同老师（课次/预约重叠）或同教室（课次重叠）。")}
               </p>
             </form>
           )}
         </>
       ) : (
         <>
-          <h3>{t(lang, "Create Appointment (1-1)", "鏂板缓1瀵?棰勭害")}</h3>
+          <h3>{t(lang, "Create Appointment (1-1)", "新建1对1预约")}</h3>
           <form action={createSingleAppointment} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
             <label>
-              {t(lang, "Teacher", "鑰佸笀")}:
+              {t(lang, "Teacher", "老师")}:
               <select name="teacherId" defaultValue={teachers[0]?.id ?? ""} style={{ marginLeft: 8, minWidth: 320 }}>
                 {teachers.map((tch) => (
                   <option key={tch.id} value={tch.id}>
@@ -374,19 +376,19 @@ export default async function NewSinglePage({
             </label>
 
             <label>
-              {t(lang, "Start", "寮€濮?)}:
+              {t(lang, "Start", "开始")}:
               <input name="startAt" type="datetime-local" required style={{ marginLeft: 8 }} />
             </label>
 
             <label>
-              {t(lang, "Duration (minutes)", "鏃堕暱(鍒嗛挓)")}:
-              <input name="durationMin" type="number" min={30} step={30} defaultValue={60} style={{ marginLeft: 8 }} />
+              {t(lang, "Duration (minutes)", "时长(分钟)")}:
+              <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
             </label>
 
-            <button type="submit">{t(lang, "Create (reject on conflict)", "鍒涘缓(鍐茬獊鍒欐嫆缁?")}</button>
+            <button type="submit">{t(lang, "Create (reject on conflict)", "创建(冲突则拒绝)")}</button>
 
             <p style={{ color: "#666", margin: 0 }}>
-              {t(lang, "Conflict rule: same teacher (session/appointment overlap).", "鍐茬獊瑙勫垯锛氬悓鑰佸笀锛堣娆?棰勭害閲嶅彔锛変細鍐茬獊銆?)}
+              {t(lang, "Conflict rule: same teacher (session/appointment overlap).", "冲突规则：同老师（课次/预约重叠）会冲突。")}
             </p>
           </form>
         </>

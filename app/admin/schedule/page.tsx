@@ -82,6 +82,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   let slots = await prisma.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
+    select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
   });
 
@@ -89,6 +90,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     const weekday = startAt.getDay();
     slots = await prisma.teacherAvailability.findMany({
       where: { teacherId, weekday },
+      select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
     });
 

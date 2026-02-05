@@ -13,12 +13,15 @@ export default async function AdminHome() {
         )}
       </p>
       <ol>
+        <li><a href="/admin/todos">{t(lang, "Todo Center", "待办中心")}</a></li>
         <li><a href="/admin/campuses">{t(lang, "Create campus", "创建校区")}</a></li>
         <li><a href="/admin/rooms">{t(lang, "Create room", "创建教室")}</a></li>
         <li><a href="/admin/teachers">{t(lang, "Create teacher + set availability", "创建老师 + 设置可用时间")}</a></li>
         <li><a href="/admin/courses">{t(lang, "Create course", "创建课程")}</a></li>
         <li><a href="/admin/classes">{t(lang, "Create class", "创建班级")}</a></li>
         <li>{t(lang, "Open class detail to generate sessions", "进入班级详情生成课次")}</li>
+        <li><a href="/admin/booking-links">{t(lang, "Create student booking links", "创建学生选课链接")}</a></li>
+        <li><a href="/admin/reports/monthly-schedule">{t(lang, "Monthly Schedule Calendar", "月课表总览")}</a></li>
       </ol>
     </div>
   );

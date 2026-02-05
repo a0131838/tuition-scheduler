@@ -1,0 +1,2 @@
+ALTER TABLE "StudentBookingLink"
+  ADD COLUMN "slotStepMin" INTEGER NOT NULL DEFAULT 15;

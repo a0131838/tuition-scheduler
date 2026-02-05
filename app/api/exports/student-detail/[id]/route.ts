@@ -4,6 +4,9 @@ import { PassThrough } from "stream";
 import fs from "fs";
 import path from "path";
 import { getLang, type Lang } from "@/lib/i18n";
+import { requireAdmin } from "@/lib/auth";
+
+type PDFDoc = InstanceType<typeof PDFDocument>;
 
 const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
 const COMPANY_LINES = [
@@ -41,7 +44,7 @@ function formatDateTime(d: Date) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-function setupFont(doc: PDFDocument) {
+function setupFont(doc: PDFDoc) {
   const candidates = [
     "C:\\Windows\\Fonts\\simhei.ttf",
     "C:\\Windows\\Fonts\\simsunb.ttf",
@@ -55,7 +58,7 @@ function setupFont(doc: PDFDocument) {
   doc.font("Helvetica");
 }
 
-function setEnglishBoldFont(doc: PDFDocument) {
+function setEnglishBoldFont(doc: PDFDoc) {
   if (fs.existsSync(EN_BOLD_FONT)) {
     doc.font(EN_BOLD_FONT);
     return;
@@ -63,7 +66,7 @@ function setEnglishBoldFont(doc: PDFDocument) {
   doc.font("Helvetica");
 }
 
-function setChineseFont(doc: PDFDocument) {
+function setChineseFont(doc: PDFDoc) {
   if (fs.existsSync(CH_FONT)) {
     doc.font(CH_FONT);
     return;
@@ -71,7 +74,7 @@ function setChineseFont(doc: PDFDocument) {
   setupFont(doc);
 }
 
-function streamPdf(doc: PDFDocument) {
+function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
   doc.pipe(stream);
   doc.end();
@@ -100,7 +103,14 @@ function labelLines(lang: Lang, en: string, zh: string) {
   return `${en}\n${zh}`;
 }
 
-function drawCompanyHeader(doc: PDFDocument, showBrand: boolean) {
+function shouldShowLogoByStudentTypeName(typeName?: string | null) {
+  if (!typeName) return false;
+  const normalized = typeName.toLowerCase();
+  if (normalized.includes("\u81ea\u5df1\u5b66\u751f")) return true;
+  return /(^|\s|-|_)(own|self)\s*student(s)?($|\s|-|_)/i.test(typeName);
+}
+
+function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   if (!showBrand) return;
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
@@ -109,10 +119,7 @@ function drawCompanyHeader(doc: PDFDocument, showBrand: boolean) {
   let logoH = 0;
   const logoW = 255;
   try {
-    const img = doc.openImage(LOGO_PATH);
-    const scale = logoW / img.width;
-    logoH = img.height * scale;
-    doc.image(img, left, top, { width: logoW });
+    doc.image(LOGO_PATH, left, top, { width: logoW });
   } catch {}
 
   const textX = left;
@@ -131,7 +138,7 @@ function drawCompanyHeader(doc: PDFDocument, showBrand: boolean) {
 }
 
 function drawHeader(
-  doc: PDFDocument,
+  doc: PDFDoc,
   lang: Lang,
   titleEn: string,
   titleZh: string,
@@ -165,7 +172,7 @@ function drawFooter() {
   // No footer (per request)
 }
 
-function drawSectionTitle(doc: PDFDocument, lang: Lang, en: string, zh: string) {
+function drawSectionTitle(doc: PDFDoc, lang: Lang, en: string, zh: string) {
   doc.fillColor(ORANGE);
   if (lang === "EN") {
     setEnglishBoldFont(doc);
@@ -184,7 +191,7 @@ function drawSectionTitle(doc: PDFDocument, lang: Lang, en: string, zh: string) 
 }
 
 function drawLabelValue(
-  doc: PDFDocument,
+  doc: PDFDoc,
   lang: Lang,
   labelEn: string,
   labelZh: string,
@@ -205,6 +212,7 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  await requireAdmin();
   const studentId = params.id;
   const lang = await getLang();
 
@@ -213,15 +221,14 @@ export async function GET(
     include: { studentType: true },
   });
   if (!student) return new Response("Student not found", { status: 404 });
-  const hideLogo = student.studentType?.name === "B";
-  const showBrand = !hideLogo;
-  const showTitle = !hideLogo;
+  const showBrand = shouldShowLogoByStudentTypeName(student.studentType?.name);
+  const showTitle = showBrand;
 
   const [enrollments, packages, attendances] = await Promise.all([
     prisma.enrollment.findMany({
       where: { studentId },
       include: {
-        class: { include: { course: true, teacher: true, campus: true, room: true } },
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
       },
       orderBy: { id: "asc" },
     }),
@@ -369,3 +376,4 @@ export async function GET(
     },
   });
 }
+

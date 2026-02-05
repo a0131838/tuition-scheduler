@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { requireAdmin } from "@/lib/auth";
 
 function parseMonth(s?: string) {
   if (!s) return null;
@@ -30,6 +31,7 @@ export default async function MonthlyHoursReportPage({
 }: {
   searchParams?: { month?: string; sourceChannelId?: string };
 }) {
+  await requireAdmin();
   const lang = await getLang();
   const now = new Date();
   const month = searchParams?.month ?? monthKey(now);

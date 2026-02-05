@@ -1,7 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
-import { getCurrentUser, requireAdmin } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 async function updateLanguage(formData: FormData) {
   "use server";
@@ -15,8 +16,18 @@ async function updateLanguage(formData: FormData) {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = headers().get("x-pathname") ?? "";
+  const isPublicAdminAuthPath =
+    pathname === "/admin/login" || pathname === "/admin/setup" || pathname === "/admin/logout";
+
+  // Avoid redirect loops for auth pages that live under /admin.
+  if (isPublicAdminAuthPath) {
+    return <>{children}</>;
+  }
+
+  const user = await requireAdmin();
   const lang = await getLang();
-  const user = await getCurrentUser();
+
   return (
     <div style={{ fontFamily: "system-ui", margin: 0 }}>
       <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -32,6 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
           <nav style={{ display: "grid", gap: 8 }}>
             <a href="/admin">{t(lang, "Dashboard", "总览")}</a>
+            <a href="/admin/todos">{t(lang, "Todo Center", "待办中心")}</a>
             <a href="/admin/schedule">{t(lang, "Schedule", "周课表")}</a>
 
             <hr style={{ margin: "8px 0", border: "none", borderTop: "1px solid #eee" }} />
@@ -48,6 +60,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <a href="/admin/courses">{t(lang, "Courses", "课程")}</a>
             <a href="/admin/classes">{t(lang, "Classes", "班级")}</a>
             <a href="/admin/packages">{t(lang, "Packages", "课时包")}</a>
+            <a href="/admin/booking-links">{t(lang, "Booking Links", "学生选课链接")}</a>
+            <a href="/admin/feedbacks">{t(lang, "Teacher Feedbacks", "老师课后反馈")}</a>
             <a href="/admin/enrollments">{t(lang, "Enrollments", "报名")}</a>
 
             <hr style={{ margin: "8px 0", border: "none", borderTop: "1px solid #eee" }} />
@@ -61,30 +75,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <main style={{ flex: 1, padding: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ color: "#666" }}>
-              {user ? (
-                <>
-                  {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
-                </>
-              ) : (
-                <span>{t(lang, "Not logged in", "未登录")}</span>
-              )}
+              {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
             </div>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              {user ? (
-                <>
-                  <form action={updateLanguage}>
-                    <select name="lang" defaultValue={user.language} style={{ minWidth: 160 }}>
-                      <option value="BILINGUAL">Bilingual / 双语</option>
-                      <option value="ZH">中文</option>
-                      <option value="EN">English</option>
-                    </select>
-                    <button type="submit" style={{ marginLeft: 8 }}>Apply</button>
-                  </form>
-                  <a href="/admin/logout">Logout</a>
-                </>
-              ) : (
-                <a href="/admin/login">{t(lang, "Login", "登录")}</a>
-              )}
+              <form action={updateLanguage}>
+                <select name="lang" defaultValue={user.language} style={{ minWidth: 160 }}>
+                  <option value="BILINGUAL">Bilingual / 双语</option>
+                  <option value="ZH">中文</option>
+                  <option value="EN">English</option>
+                </select>
+                <button type="submit" style={{ marginLeft: 8 }}>
+                  Apply
+                </button>
+              </form>
+              <a href="/admin/logout">Logout</a>
             </div>
           </div>
           {children}
