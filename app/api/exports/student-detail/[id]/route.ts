@@ -116,10 +116,13 @@ function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  let logoH = 0;
   const logoW = 255;
+  let logoH = 0;
   try {
-    doc.image(LOGO_PATH, left, top, { width: logoW });
+    const logo = doc.openImage(LOGO_PATH);
+    const scale = logoW / logo.width;
+    logoH = logo.height * scale;
+    doc.image(logo, left, top, { width: logoW });
   } catch {}
 
   const textX = left;

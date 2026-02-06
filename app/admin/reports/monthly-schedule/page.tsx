@@ -1,4 +1,4 @@
-import { getLang } from "@/lib/i18n";
+﻿import { getLang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import {
   buildCalendarDays,
@@ -38,7 +38,9 @@ export default async function MonthlyScheduleReportPage({
     return (
       <div>
         <h2>{choose(lang, "Monthly Schedule Calendar", "月课表总览")}</h2>
-        <div style={{ color: "#b00" }}>{choose(lang, "Invalid month format. Use YYYY-MM.", "月份格式错误，请使用 YYYY-MM。")}</div>
+        <div style={{ color: "#b00" }}>
+          {choose(lang, "Invalid month format. Use YYYY-MM.", "月份格式错误，请使用 YYYY-MM。")}
+        </div>
       </div>
     );
   }
@@ -61,14 +63,13 @@ export default async function MonthlyScheduleReportPage({
     teacherSet.add(teacherName);
     for (const studentName of students) studentSet.add(studentName);
 
+    const courseText = [s.class.course.name, s.class.subject?.name, s.class.level?.name].filter(Boolean).join(" / ");
     const item: CalendarItem = {
       id: s.id,
       startAt: s.startAt,
       endAt: s.endAt,
       teacherName,
-      courseText: `${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${
-        s.class.level ? ` / ${s.class.level.name}` : ""
-      }`,
+      courseText,
       placeText: `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`,
       students,
       classId: s.classId,
@@ -102,39 +103,41 @@ export default async function MonthlyScheduleReportPage({
         )}
       </div>
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-        <label>
-          {choose(lang, "Month", "月份")}:
-          <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
-        </label>
-        <label>
-          {choose(lang, "Teacher", "老师")}:
-          <select name="teacherId" defaultValue={teacherId} style={{ marginLeft: 6 }}>
-            <option value="">{choose(lang, "All", "全部")}</option>
-            {teachers.map((it) => (
-              <option key={it.id} value={it.id}>
-                {it.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {choose(lang, "Campus", "校区")}:
-          <select name="campusId" defaultValue={campusId} style={{ marginLeft: 6 }}>
-            <option value="">{choose(lang, "All", "全部")}</option>
-            {campuses.map((it) => (
-              <option key={it.id} value={it.id}>
-                {it.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit">{choose(lang, "Apply", "应用")}</button>
-        <a href={csvHref}>{choose(lang, "Export CSV", "导出CSV")}</a>
-        <a href={pdfHref}>{choose(lang, "Export PDF", "导出PDF")}</a>
-      </form>
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 10 }}>
+        <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <label>
+            {choose(lang, "Month", "月份")}:
+            <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
+          </label>
+          <label>
+            {choose(lang, "Teacher", "老师")}:
+            <select name="teacherId" defaultValue={teacherId} style={{ marginLeft: 6 }}>
+              <option value="">{choose(lang, "All", "全部")}</option>
+              {teachers.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {choose(lang, "Campus", "校区")}:
+            <select name="campusId" defaultValue={campusId} style={{ marginLeft: 6 }}>
+              <option value="">{choose(lang, "All", "全部")}</option>
+              {campuses.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">{choose(lang, "Apply", "应用")}</button>
+          <a href={csvHref}>{choose(lang, "Export CSV", "导出CSV")}</a>
+          <a href={pdfHref}>{choose(lang, "Export PDF", "导出PDF")}</a>
+        </form>
+      </div>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <a href={`/admin/reports/monthly-schedule?${prevParams.toString()}`}>
           &lt;&lt; {choose(lang, "Prev Month", "上月")}
         </a>
@@ -198,7 +201,6 @@ export default async function MonthlyScheduleReportPage({
                             borderRadius: 6,
                             background: "#fcfcfc",
                             color: "#222",
-                            textDecoration: "none",
                           }}
                         >
                           <div style={{ fontWeight: 700 }}>
@@ -231,7 +233,6 @@ export default async function MonthlyScheduleReportPage({
                                   borderRadius: 6,
                                   background: "#fcfcfc",
                                   color: "#222",
-                                  textDecoration: "none",
                                 }}
                               >
                                 <div style={{ fontWeight: 700 }}>

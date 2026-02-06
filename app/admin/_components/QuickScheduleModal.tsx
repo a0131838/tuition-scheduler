@@ -1,6 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import NoticeBanner from "@/app/admin/_components/NoticeBanner";
+
+type CourseOption = { id: string; name: string };
 
 type SubjectOption = {
   id: string;
@@ -32,6 +35,7 @@ type RoomOption = {
 type Labels = {
   title: string;
   open: string;
+  course: string;
   subject: string;
   level: string;
   campus: string;
@@ -88,6 +92,12 @@ export default function QuickScheduleModal({
   warning?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const courses = useMemo<CourseOption[]>(() => {
+    const map = new Map<string, string>();
+    for (const s of subjects) map.set(s.courseId, s.courseName);
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [subjects]);
+  const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState(quickSubjectId || "");
   const [levelId, setLevelId] = useState(quickLevelId || "");
   const [campusId, setCampusId] = useState(quickCampusId || "");
@@ -114,11 +124,27 @@ export default function QuickScheduleModal({
   }, [openOnLoad]);
 
   useEffect(() => {
+    if (!courseId) return;
+    const first = subjects.find((s) => s.courseId === courseId);
+    if (first && first.id !== subjectId) setSubjectId(first.id);
+    if (!first) setSubjectId("");
+  }, [courseId, subjects, subjectId]);
+
+  useEffect(() => {
+    if (levelId && !levelOptions.some((l) => l.id === levelId)) {
+      setLevelId("");
+    }
+  }, [levelId, levelOptions]);
+
+  useEffect(() => {
     setSubjectId(quickSubjectId || "");
     setLevelId(quickLevelId || "");
     setCampusId(quickCampusId || "");
     setRoomId(quickRoomId || "");
-  }, [quickSubjectId, quickLevelId, quickCampusId, quickRoomId]);
+    const quickCourseId = subjects.find((s) => s.id === quickSubjectId)?.courseId;
+    const first = subjects.find((s) => s.courseId === (quickCourseId ?? courses[0]?.id ?? ""));
+    setCourseId(first?.courseId ?? quickCourseId ?? courses[0]?.id ?? "");
+  }, [quickSubjectId, quickLevelId, quickCampusId, quickRoomId, subjects, courses]);
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -130,6 +156,21 @@ export default function QuickScheduleModal({
         <form method="GET" action={`/admin/students/${studentId}`} style={{ display: "grid", gap: 10 }}>
           <input type="hidden" name="month" value={month} />
           <input type="hidden" name="quickOpen" value="1" />
+          <label>
+            {labels.course}:
+            <select
+              name="quickCourseId"
+              value={courseId}
+              onChange={(e) => setCourseId(e.target.value)}
+              style={{ marginLeft: 6, minWidth: 260 }}
+            >
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             {labels.subject}:
             <select
@@ -145,7 +186,9 @@ export default function QuickScheduleModal({
               style={{ marginLeft: 6, minWidth: 260 }}
             >
               <option value="">{labels.subject}</option>
-              {subjects.map((s) => (
+              {subjects
+                .filter((s) => !courseId || s.courseId === courseId)
+                .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.courseName} - {s.name}
                 </option>
@@ -240,8 +283,8 @@ export default function QuickScheduleModal({
         </form>
         <div style={{ marginTop: 12 }}>
           {warning ? (
-            <div style={{ padding: 10, border: "1px solid #f3c2c2", background: "#fff5f5" }}>{warning}</div>
-          ) : subjectId && levelId && campusId && (roomId || campusIsOnline) && quickStartAt ? (
+            <NoticeBanner type="warn" title={labels.status} message={warning} />
+          ) : subjectId && campusId && (roomId || campusIsOnline) && quickStartAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
             ) : (

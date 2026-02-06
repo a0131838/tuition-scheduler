@@ -1,10 +1,12 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const FORECAST_WINDOW_DAYS = 30;
 const DEFAULT_WARN_DAYS = 14;
 const DEFAULT_WARN_MINUTES = 120;
+const MAX_LIST_ITEMS = 6;
 
 function fmtMinutes(m?: number | null) {
   if (m == null) return "-";
@@ -20,19 +22,84 @@ function toInt(v: string | undefined, def: number) {
   return Number.isFinite(n) ? n : def;
 }
 
+function fmtDateRange(startAt: Date, endAt: Date) {
+  return `${startAt.toLocaleString()} - ${endAt.toLocaleTimeString()}`;
+}
+
+function courseLabel(cls: any) {
+  if (!cls?.course) return "-";
+  const parts = [cls.course?.name, cls.subject?.name, cls.level?.name].filter(Boolean);
+  return parts.join(" / ");
+}
+
+function formatSessionBrief(s: any) {
+  return `${fmtDateRange(new Date(s.startAt), new Date(s.endAt))} | ${courseLabel(s.class)}`;
+}
+
+function listWithLimit(items: string[], limit = MAX_LIST_ITEMS) {
+  if (items.length <= limit) return items.join("; ");
+  const shown = items.slice(0, limit).join("; ");
+  return `${shown}; +${items.length - limit} more`;
+}
+
+function toDateOnly(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+
+async function confirmReminder(kind: "teacher" | "student", formData: FormData) {
+  "use server";
+  const dateStr = String(formData.get("date") ?? "");
+  const targetIdsRaw = String(formData.get("targetIds") ?? "");
+  const warnDays = String(formData.get("warnDays") ?? "");
+  const warnMinutes = String(formData.get("warnMinutes") ?? "");
+
+  if (!dateStr) redirect("/admin/todos");
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) redirect("/admin/todos");
+
+  const type = kind === "teacher" ? "TEACHER_TOMORROW" : "STUDENT_TOMORROW";
+  const targetIds = targetIdsRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (targetIds.length) {
+    await prisma.todoReminderConfirm.createMany({
+      data: targetIds.map((targetId) => ({ type, targetId, date })),
+      skipDuplicates: true,
+    });
+  }
+
+  const params = new URLSearchParams();
+  if (warnDays) params.set("warnDays", warnDays);
+  if (warnMinutes) params.set("warnMinutes", warnMinutes);
+  const qs = params.toString();
+  redirect(qs ? `/admin/todos?${qs}` : "/admin/todos");
+}
+
 export default async function AdminTodosPage({
   searchParams,
 }: {
-  searchParams?: { warnDays?: string; warnMinutes?: string };
+  searchParams?: { warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string };
 }) {
   await requireAdmin();
   const lang = await getLang();
   const warnDays = Math.max(1, toInt(searchParams?.warnDays, DEFAULT_WARN_DAYS));
   const warnMinutes = Math.max(1, toInt(searchParams?.warnMinutes, DEFAULT_WARN_MINUTES));
+  const pastDays = Math.min(365, Math.max(7, toInt(searchParams?.pastDays, 30)));
+  const pastPage = Math.max(1, toInt(searchParams?.pastPage, 1));
+  const pastPageSize = 50;
+  const showConfirmed = searchParams?.showConfirmed === "1";
 
   const now = new Date();
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const tomorrowStart = new Date(dayStart);
+  tomorrowStart.setDate(dayStart.getDate() + 1);
+  const tomorrowEnd = new Date(dayEnd);
+  tomorrowEnd.setDate(dayEnd.getDate() + 1);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
 
   const unmarkedGrouped = await prisma.attendance.groupBy({
     by: ["sessionId"],
@@ -55,6 +122,129 @@ export default async function AdminTodosPage({
       })
     : [];
   const unmarkedMap = new Map(unmarkedGrouped.map((x) => [x.sessionId, x._count._all]));
+  const sessionsTodayAll = await prisma.session.findMany({
+    where: { startAt: { gte: dayStart, lte: dayEnd } },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+
+  const pastSince = new Date(dayStart);
+  pastSince.setDate(dayStart.getDate() - pastDays);
+
+  const pastWhere = {
+    startAt: { lt: dayStart, gte: pastSince },
+    attendances: { some: { status: "UNMARKED" as const } },
+  };
+  const pastTotal = await prisma.session.count({ where: pastWhere });
+  const pastSessions = pastTotal
+    ? await prisma.session.findMany({
+        where: pastWhere,
+        include: {
+          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        },
+        orderBy: { startAt: "desc" },
+        skip: (pastPage - 1) * pastPageSize,
+        take: pastPageSize,
+      })
+    : [];
+  const pastUnmarkedGrouped = pastSessions.length
+    ? await prisma.attendance.groupBy({
+        by: ["sessionId"],
+        where: {
+          status: "UNMARKED",
+          sessionId: { in: pastSessions.map((s) => s.id) },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const pastUnmarkedMap = new Map(pastUnmarkedGrouped.map((x) => [x.sessionId, x._count._all]));
+  const pastTotalPages = Math.max(1, Math.ceil(pastTotal / pastPageSize));
+
+  const sessionsTomorrow = await prisma.session.findMany({
+    where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
+    include: {
+      teacher: true,
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+  const sessionsTomorrowAll = await prisma.session.findMany({
+    where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+  const tomorrowClassIds = Array.from(new Set(sessionsTomorrow.map((s) => s.classId)));
+  const tomorrowEnrollments = tomorrowClassIds.length
+    ? await prisma.enrollment.findMany({
+        where: { classId: { in: tomorrowClassIds } },
+        include: { student: true, class: { include: { teacher: true } } },
+      })
+    : [];
+  const enrollmentsByClass = new Map<string, typeof tomorrowEnrollments>();
+  for (const e of tomorrowEnrollments) {
+    const arr = enrollmentsByClass.get(e.classId) ?? [];
+    arr.push(e);
+    enrollmentsByClass.set(e.classId, arr);
+  }
+
+  const teacherRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
+  for (const s of sessionsTomorrow) {
+    const tid = s.teacherId ?? s.class.teacherId;
+    const tname = s.teacher?.name ?? s.class.teacher.name;
+    const entry = teacherRemindersMap.get(tid) ?? { id: tid, name: tname, sessions: [] };
+    entry.sessions.push(s);
+    teacherRemindersMap.set(tid, entry);
+  }
+  const teacherReminders = Array.from(teacherRemindersMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const studentRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
+  for (const s of sessionsTomorrow) {
+    const list = enrollmentsByClass.get(s.classId) ?? [];
+    for (const e of list) {
+      const sid = e.studentId;
+      const sname = e.student?.name ?? "-";
+      const entry = studentRemindersMap.get(sid) ?? { id: sid, name: sname, sessions: [] };
+      entry.sessions.push(s);
+      studentRemindersMap.set(sid, entry);
+    }
+  }
+  const studentReminders = Array.from(studentRemindersMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const confirmDate = toDateOnly(tomorrowStart);
+  const teacherConfirmations = teacherReminders.length
+    ? await prisma.todoReminderConfirm.findMany({
+        where: {
+          type: "TEACHER_TOMORROW",
+          date: confirmDate,
+          targetId: { in: teacherReminders.map((r) => r.id) },
+        },
+        select: { targetId: true },
+      })
+    : [];
+  const studentConfirmations = studentReminders.length
+    ? await prisma.todoReminderConfirm.findMany({
+        where: {
+          type: "STUDENT_TOMORROW",
+          date: confirmDate,
+          targetId: { in: studentReminders.map((r) => r.id) },
+        },
+        select: { targetId: true },
+      })
+    : [];
+  const teacherConfirmed = new Set(teacherConfirmations.map((x) => x.targetId));
+  const studentConfirmed = new Set(studentConfirmations.map((x) => x.targetId));
+  const teacherRemindersPending = teacherReminders.filter((r) => !teacherConfirmed.has(r.id));
+  const studentRemindersPending = studentReminders.filter((r) => !studentConfirmed.has(r.id));
+  const teacherRemindersConfirmed = teacherReminders.filter((r) => teacherConfirmed.has(r.id));
+  const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packages = await prisma.coursePackage.findMany({
@@ -100,6 +290,185 @@ export default async function AdminTodosPage({
       return a.remaining - b.remaining;
     });
 
+  const monthSessions = await prisma.session.findMany({
+    where: { startAt: { gte: monthStart, lt: monthEnd } },
+    include: {
+      teacher: true,
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+  const monthAppointments = await prisma.appointment.findMany({
+    where: { startAt: { gte: monthStart, lt: monthEnd } },
+    include: { teacher: true, student: true },
+    orderBy: { startAt: "asc" },
+  });
+
+  const conflicts: Array<{
+    type: string;
+    time: string;
+    entity: string;
+    detail: string;
+  }> = [];
+
+  const sessionsByTeacher = new Map<string, typeof monthSessions>();
+  const sessionsByRoom = new Map<string, typeof monthSessions>();
+  for (const s of monthSessions) {
+    const tid = s.teacherId ?? s.class.teacherId;
+    const tArr = sessionsByTeacher.get(tid) ?? [];
+    tArr.push(s);
+    sessionsByTeacher.set(tid, tArr);
+
+    const roomId = s.class.roomId;
+    if (roomId) {
+      const rArr = sessionsByRoom.get(roomId) ?? [];
+      rArr.push(s);
+      sessionsByRoom.set(roomId, rArr);
+    }
+  }
+
+  for (const list of sessionsByTeacher.values()) {
+    const sorted = list.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    for (let i = 0; i < sorted.length - 1; i += 1) {
+      const a = sorted[i];
+      const b = sorted[i + 1];
+      if (new Date(b.startAt) < new Date(a.endAt)) {
+        const teacherName = a.teacher?.name ?? a.class.teacher.name;
+        conflicts.push({
+          type: "Teacher Session Overlap",
+          time: `${fmtDateRange(new Date(a.startAt), new Date(a.endAt))} & ${fmtDateRange(
+            new Date(b.startAt),
+            new Date(b.endAt)
+          )}`,
+          entity: teacherName,
+          detail: `${courseLabel(a.class)} | ${courseLabel(b.class)}`,
+        });
+      }
+    }
+  }
+
+  for (const list of sessionsByRoom.values()) {
+    const sorted = list.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    for (let i = 0; i < sorted.length - 1; i += 1) {
+      const a = sorted[i];
+      const b = sorted[i + 1];
+      if (new Date(b.startAt) < new Date(a.endAt)) {
+        const roomName = a.class.room?.name ?? "Room";
+        conflicts.push({
+          type: "Room Session Overlap",
+          time: `${fmtDateRange(new Date(a.startAt), new Date(a.endAt))} & ${fmtDateRange(
+            new Date(b.startAt),
+            new Date(b.endAt)
+          )}`,
+          entity: roomName,
+          detail: `${courseLabel(a.class)} | ${courseLabel(b.class)}`,
+        });
+      }
+    }
+  }
+
+  const apptsByTeacher = new Map<string, typeof monthAppointments>();
+  for (const a of monthAppointments) {
+    const arr = apptsByTeacher.get(a.teacherId) ?? [];
+    arr.push(a);
+    apptsByTeacher.set(a.teacherId, arr);
+  }
+  for (const [tid, appts] of apptsByTeacher.entries()) {
+    const sessions = (sessionsByTeacher.get(tid) ?? []).sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+    const sortedAppts = appts.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    let i = 0;
+    let j = 0;
+    while (i < sessions.length && j < sortedAppts.length) {
+      const s = sessions[i];
+      const a = sortedAppts[j];
+      const sStart = new Date(s.startAt);
+      const sEnd = new Date(s.endAt);
+      const aStart = new Date(a.startAt);
+      const aEnd = new Date(a.endAt);
+      if (aEnd <= sStart) {
+        j += 1;
+        continue;
+      }
+      if (sEnd <= aStart) {
+        i += 1;
+        continue;
+      }
+      const teacherName = s.teacher?.name ?? s.class.teacher.name;
+      conflicts.push({
+        type: "Teacher Appointment Overlap",
+        time: `${fmtDateRange(sStart, sEnd)} & ${fmtDateRange(aStart, aEnd)}`,
+        entity: teacherName,
+        detail: `${courseLabel(s.class)} | ${a.student?.name ?? "Appointment"}`,
+      });
+      if (sEnd <= aEnd) i += 1;
+      else j += 1;
+    }
+  }
+
+  const conflictList = conflicts.slice(0, 200);
+  const confirmDateStr = `${confirmDate.getFullYear()}-${String(confirmDate.getMonth() + 1).padStart(2, "0")}-${String(
+    confirmDate.getDate()
+  ).padStart(2, "0")}`;
+  const teacherIds = teacherRemindersPending.map((r) => r.id).join(",");
+  const studentIds = studentRemindersPending.map((r) => r.id).join(",");
+
+  const sectionStyle = {
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    padding: 14,
+    background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)",
+    marginBottom: 16,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+  } as const;
+  const reminderStyle = {
+    border: "2px solid #bfdbfe",
+    borderRadius: 12,
+    padding: 14,
+    background: "linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)",
+    marginBottom: 16,
+    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.08)",
+  } as const;
+  const heroStyle = {
+    border: "2px solid #f59e0b",
+    borderRadius: 14,
+    padding: 16,
+    background: "linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%)",
+    boxShadow: "0 2px 6px rgba(245, 158, 11, 0.15)",
+  } as const;
+  const sectionHeaderStyle = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 10,
+    flexWrap: "wrap",
+  } as const;
+  const detailLineStyle = {
+    fontSize: 12,
+    color: "#334155",
+    lineHeight: 1.4,
+  } as const;
+  const pageWrapStyle = {
+    display: "grid",
+    gap: 16,
+  } as const;
+  const tableStyle = { borderCollapse: "collapse", width: "100%" } as const;
+  const todoHref = (extra: Record<string, string | number | null | undefined>) => {
+    const p = new URLSearchParams();
+    p.set("warnDays", String(warnDays));
+    p.set("warnMinutes", String(warnMinutes));
+    p.set("pastDays", String(pastDays));
+    if (pastPage) p.set("pastPage", String(pastPage));
+    if (showConfirmed) p.set("showConfirmed", "1");
+    Object.entries(extra).forEach(([k, v]) => {
+      if (v == null || v === "") p.delete(k);
+      else p.set(k, String(v));
+    });
+    return `/admin/todos?${p.toString()}`;
+  };
+
   return (
     <div>
       <h2>{t(lang, "Todo Center", "待办中心")}</h2>
@@ -111,109 +480,581 @@ export default async function AdminTodosPage({
         )}
       </p>
 
-      <h3>{t(lang, "Today's Attendance Tasks", "今日点名任务")}</h3>
-      {sessionsToday.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No unmarked sessions today.", "今天没有未点名课次。")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Session Time", "课次时间")}</th>
-              <th align="left">{t(lang, "Class", "班级")}</th>
-              <th align="left">{t(lang, "Teacher", "老师")}</th>
-              <th align="left">{t(lang, "Campus", "校区")}</th>
-              <th align="left">{t(lang, "Unmarked", "未点名")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessionsToday.map((s) => (
-              <tr key={s.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>
-                  {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
-                </td>
-                <td>
-                  {s.class.course.name}
-                  {s.class.subject ? ` / ${s.class.subject.name}` : ""}
-                  {s.class.level ? ` / ${s.class.level.name}` : ""}
-                </td>
-                <td>{s.class.teacher.name}</td>
-                <td>
-                  {s.class.campus.name}
-                  {s.class.room ? ` / ${s.class.room.name}` : ""}
-                </td>
-                <td>
-                  <span style={{ color: "#b00", fontWeight: 700 }}>{unmarkedMap.get(s.id) ?? 0}</span>
-                </td>
-                <td>
-                  <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div style={heroStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>{t(lang, "Today Focus", "今日重点")}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>
+              {t(lang, "Unmarked Sessions", "未点名课次")}: {sessionsToday.length}
+            </div>
+          </div>
+          <div style={{ color: "#92400e", fontSize: 12 }}>
+            {t(lang, "Date", "日期")}: {new Date().toLocaleDateString()}
+          </div>
+        </div>
 
-      <h3>{t(lang, "Renewal Alerts", "续费预警")}</h3>
-      <form method="GET" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-        <label>
-          {t(lang, "Warn Days", "预警天数")}:
-          <input name="warnDays" type="number" min={1} defaultValue={String(warnDays)} style={{ marginLeft: 6, width: 90 }} />
-        </label>
-        <label>
-          {t(lang, "Warn Minutes", "预警分钟")}:
-          <input
-            name="warnMinutes"
-            type="number"
-            min={1}
-            defaultValue={String(warnMinutes)}
-            style={{ marginLeft: 6, width: 100 }}
-          />
-        </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
-      </form>
+        {sessionsToday.length === 0 ? (
+          <div style={{ marginTop: 10, color: "#b45309" }}>
+            {t(lang, "No unmarked sessions today.", "今天没有未点名课次。")}
+          </div>
+        ) : (
+          <div style={{ marginTop: 10 }}>
+            <table cellPadding={8} style={tableStyle}>
+              <thead>
+                <tr style={{ background: "#fde68a" }}>
+                  <th align="left">{t(lang, "Session Time", "课次时间")}</th>
+                  <th align="left">{t(lang, "Class", "班级")}</th>
+                  <th align="left">{t(lang, "Teacher", "老师")}</th>
+                  <th align="left">{t(lang, "Campus", "校区")}</th>
+                  <th align="left">{t(lang, "Unmarked", "未点名")}</th>
+                  <th align="left">{t(lang, "Action", "操作")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessionsToday.map((s) => (
+                  <tr key={s.id} style={{ borderTop: "1px solid #fcd34d" }}>
+                    <td>
+                      {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    </td>
+                    <td>
+                      {s.class.course.name}
+                      {s.class.subject ? ` / ${s.class.subject.name}` : ""}
+                      {s.class.level ? ` / ${s.class.level.name}` : ""}
+                    </td>
+                    <td>{s.class.teacher.name}</td>
+                    <td>
+                      {s.class.campus.name}
+                      {s.class.room ? ` / ${s.class.room.name}` : ""}
+                    </td>
+                    <td>
+                      <span style={{ color: "#b00", fontWeight: 700 }}>{unmarkedMap.get(s.id) ?? 0}</span>
+                    </td>
+                    <td>
+                      <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {renewAlerts.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No renewal alerts.", "暂无续费预警。")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Course", "课程")}</th>
-              <th align="left">{t(lang, "Remaining", "剩余")}</th>
-              <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
-              <th align="left">{t(lang, "Forecast", "预计用完")}</th>
-              <th align="left">{t(lang, "Alert", "预警")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {renewAlerts.map((x) => (
-              <tr key={x.p.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{x.p.student?.name ?? "-"}</td>
-                <td>{x.p.course?.name ?? "-"}</td>
-                <td style={{ color: x.lowMinutes ? "#b00" : undefined, fontWeight: x.lowMinutes ? 700 : 400 }}>
-                  {fmtMinutes(x.remaining)}
-                </td>
-                <td>{fmtMinutes(x.deducted30)} / {FORECAST_WINDOW_DAYS}d</td>
-                <td>{x.estDays == null ? t(lang, "No usage (30d)", "近30天无消耗") : `${x.estDays} ${t(lang, "days", "天")}`}</td>
-                <td style={{ color: "#b00", fontWeight: 700 }}>
-                  {x.lowMinutes && x.lowDays
-                    ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
-                    : x.lowMinutes
-                    ? t(lang, "Low balance", "余额低")
-                    : t(lang, "Likely to run out soon", "即将用完")}
-                </td>
-                <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <a href={`/admin/students/${x.p.studentId}`}>{t(lang, "Student Detail", "学生详情")}</a>
-                  <a href={`/admin/packages/${x.p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
-                </td>
+      <div style={pageWrapStyle}>
+        <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: 12, letterSpacing: 0.5 }}>
+          {t(lang, "Reminders", "重点提醒")}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+        <div style={reminderStyle}>
+          <div style={sectionHeaderStyle}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: "#1d4ed8", display: "inline-block" }} />
+              <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow Reminders (Teachers)", "明天上课提醒(老师)")}</h3>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: "#666", fontSize: 12 }}>
+                {t(lang, "Count", "数量")}: {teacherRemindersPending.length}
+              </span>
+              <a href={todoHref({ showConfirmed: showConfirmed ? null : 1 })} style={{ fontSize: 12 }}>
+                {showConfirmed ? t(lang, "Hide Confirmed", "隐藏已确认") : t(lang, "Show Confirmed", "显示已确认")}
+              </a>
+              {teacherRemindersPending.length > 0 ? (
+                <form action={confirmReminder.bind(null, "teacher")}>
+                  <input type="hidden" name="date" value={confirmDateStr} />
+                  <input type="hidden" name="targetIds" value={teacherIds} />
+                  <input type="hidden" name="warnDays" value={String(warnDays)} />
+                  <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+                  <button type="submit">
+                    {t(lang, "Confirm All", "批量确认已提醒")}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          </div>
+        {teacherRemindersPending.length === 0 ? (
+          <div style={{ color: "#999" }}>
+            {t(lang, "No sessions tomorrow.", "明天没有课次。")}
+          </div>
+        ) : (
+          <table cellPadding={8} style={tableStyle}>
+            <thead>
+              <tr style={{ background: "#f5f5f5" }}>
+                <th align="left">{t(lang, "Teacher", "老师")}</th>
+                <th align="left">{t(lang, "Sessions", "课次")}</th>
+                <th align="left">{t(lang, "Detail", "详情")}</th>
+                <th align="left">{t(lang, "Action", "操作")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {teacherRemindersPending.map((x) => (
+                <tr key={x.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>{x.name}</td>
+                  <td>{x.sessions.length}</td>
+                  <td>
+                    {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
+                      .split("; ")
+                      .map((line, idx) => (
+                        <div key={`${x.id}-t-${idx}`} style={detailLineStyle}>
+                          {line}
+                        </div>
+                      ))}
+                  </td>
+                  <td>
+                    <form action={confirmReminder.bind(null, "teacher")}>
+                      <input type="hidden" name="date" value={confirmDateStr} />
+                      <input type="hidden" name="targetIds" value={x.id} />
+                      <input type="hidden" name="warnDays" value={String(warnDays)} />
+                      <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+                      <button type="submit">
+                        {t(lang, "Confirm", "确认已提醒")}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {showConfirmed && teacherRemindersConfirmed.length > 0 ? (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+              {t(lang, "Confirmed", "已确认")}: {teacherRemindersConfirmed.length}
+            </div>
+            <table cellPadding={8} style={tableStyle}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th align="left">{t(lang, "Teacher", "老师")}</th>
+                  <th align="left">{t(lang, "Sessions", "课次")}</th>
+                  <th align="left">{t(lang, "Detail", "详情")}</th>
+                  <th align="left">{t(lang, "Status", "状态")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teacherRemindersConfirmed.map((x) => (
+                  <tr key={`tc-${x.id}`} style={{ borderTop: "1px solid #eee" }}>
+                    <td>{x.name}</td>
+                    <td>{x.sessions.length}</td>
+                    <td>
+                      {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
+                        .split("; ")
+                        .map((line, idx) => (
+                          <div key={`${x.id}-tc-${idx}`} style={detailLineStyle}>
+                            {line}
+                          </div>
+                        ))}
+                    </td>
+                    <td>{t(lang, "Confirmed", "已确认")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        </div>
+
+        <div style={reminderStyle}>
+          <div style={sectionHeaderStyle}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: "#2563eb", display: "inline-block" }} />
+              <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow Reminders (Students)", "明天上课提醒(学生)")}</h3>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: "#666", fontSize: 12 }}>
+                {t(lang, "Count", "数量")}: {studentRemindersPending.length}
+              </span>
+              <a href={todoHref({ showConfirmed: showConfirmed ? null : 1 })} style={{ fontSize: 12 }}>
+                {showConfirmed ? t(lang, "Hide Confirmed", "隐藏已确认") : t(lang, "Show Confirmed", "显示已确认")}
+              </a>
+              {studentRemindersPending.length > 0 ? (
+                <form action={confirmReminder.bind(null, "student")}>
+                  <input type="hidden" name="date" value={confirmDateStr} />
+                  <input type="hidden" name="targetIds" value={studentIds} />
+                  <input type="hidden" name="warnDays" value={String(warnDays)} />
+                  <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+                  <button type="submit">
+                    {t(lang, "Confirm All", "批量确认已提醒")}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          </div>
+        {studentRemindersPending.length === 0 ? (
+          <div style={{ color: "#999" }}>
+            {t(lang, "No students to remind tomorrow.", "明天没有需要提醒的学生。")}
+          </div>
+        ) : (
+          <table cellPadding={8} style={tableStyle}>
+            <thead>
+              <tr style={{ background: "#f5f5f5" }}>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Sessions", "课次")}</th>
+                <th align="left">{t(lang, "Detail", "详情")}</th>
+                <th align="left">{t(lang, "Action", "操作")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentRemindersPending.map((x) => (
+                <tr key={x.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>{x.name}</td>
+                  <td>{x.sessions.length}</td>
+                  <td>
+                    {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
+                      .split("; ")
+                      .map((line, idx) => (
+                        <div key={`${x.id}-s-${idx}`} style={detailLineStyle}>
+                          {line}
+                        </div>
+                      ))}
+                  </td>
+                  <td>
+                    <form action={confirmReminder.bind(null, "student")}>
+                      <input type="hidden" name="date" value={confirmDateStr} />
+                      <input type="hidden" name="targetIds" value={x.id} />
+                      <input type="hidden" name="warnDays" value={String(warnDays)} />
+                      <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+                      <button type="submit">
+                        {t(lang, "Confirm", "确认已提醒")}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {showConfirmed && studentRemindersConfirmed.length > 0 ? (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+              {t(lang, "Confirmed", "已确认")}: {studentRemindersConfirmed.length}
+            </div>
+            <table cellPadding={8} style={tableStyle}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th align="left">{t(lang, "Student", "学生")}</th>
+                  <th align="left">{t(lang, "Sessions", "课次")}</th>
+                  <th align="left">{t(lang, "Detail", "详情")}</th>
+                  <th align="left">{t(lang, "Status", "状态")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentRemindersConfirmed.map((x) => (
+                  <tr key={`sc-${x.id}`} style={{ borderTop: "1px solid #eee" }}>
+                    <td>{x.name}</td>
+                    <td>{x.sessions.length}</td>
+                    <td>
+                      {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
+                        .split("; ")
+                        .map((line, idx) => (
+                          <div key={`${x.id}-sc-${idx}`} style={detailLineStyle}>
+                            {line}
+                          </div>
+                        ))}
+                    </td>
+                    <td>{t(lang, "Confirmed", "已确认")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        </div>
+        </div>
+
+        <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 12, letterSpacing: 0.5 }}>
+          {t(lang, "Other Tasks", "其他事项")}
+        </div>
+
+        <div style={{ ...sectionStyle, borderColor: "#fde68a" }}>
+          <div style={sectionHeaderStyle}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")}</h3>
+            <span style={{ color: "#666", fontSize: 12 }}>
+              {t(lang, "Count", "数量")}: {sessionsTodayAll.length}
+            </span>
+          </div>
+          {sessionsTodayAll.length === 0 ? (
+            <div style={{ color: "#999" }}>{t(lang, "No sessions today.", "今天没有课程。")}</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+              {sessionsTodayAll.map((s) => (
+                <div
+                  key={s.id}
+                  style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 10, background: "#fffdf3" }}
+                >
+                  <div style={{ fontWeight: 700 }}>
+                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                    {s.class.course.name}
+                    {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                    {t(lang, "Teacher", "老师")}: {s.class.teacher.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                    {t(lang, "Campus", "校区")}: {s.class.campus.name}
+                    {s.class.room ? ` / ${s.class.room.name}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ ...sectionStyle, borderColor: "#bfdbfe" }}>
+          <div style={sectionHeaderStyle}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow's Courses", "明日课程")}</h3>
+            <span style={{ color: "#666", fontSize: 12 }}>
+              {t(lang, "Count", "数量")}: {sessionsTomorrowAll.length}
+            </span>
+          </div>
+          {sessionsTomorrowAll.length === 0 ? (
+            <div style={{ color: "#999" }}>{t(lang, "No sessions tomorrow.", "明天没有课程。")}</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+              {sessionsTomorrowAll.map((s) => (
+                <div
+                  key={s.id}
+                  style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 10, background: "#f8fbff" }}
+                >
+                  <div style={{ fontWeight: 700 }}>
+                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                    {s.class.course.name}
+                    {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                    {t(lang, "Teacher", "老师")}: {s.class.teacher.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                    {t(lang, "Campus", "校区")}: {s.class.campus.name}
+                    {s.class.room ? ` / ${s.class.room.name}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={sectionStyle}>
+          <div style={sectionHeaderStyle}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Past Unmarked Sessions", "历史未点名课次")}</h3>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: "#666", fontSize: 12 }}>
+                {t(lang, "Count", "数量")}: {pastTotal}
+              </span>
+            <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input type="hidden" name="warnDays" value={String(warnDays)} />
+              <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+              <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
+              <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                {t(lang, "Recent days", "最近天数")}
+                <select name="pastDays" defaultValue={String(pastDays)}>
+                    <option value="7">7</option>
+                    <option value="14">14</option>
+                    <option value="30">30</option>
+                    <option value="90">90</option>
+                    <option value="365">365</option>
+                  </select>
+                </label>
+                <button type="submit">
+                  {t(lang, "Apply", "应用")}
+                </button>
+              </form>
+            </div>
+          </div>
+        {pastSessions.length === 0 ? (
+          <div style={{ color: "#999" }}>{t(lang, "No past unmarked sessions.", "没有历史未点名课次。")}</div>
+        ) : (
+          <table cellPadding={8} style={tableStyle}>
+            <thead>
+              <tr style={{ background: "#f5f5f5" }}>
+                <th align="left">{t(lang, "Session Time", "课次时间")}</th>
+                <th align="left">{t(lang, "Class", "班级")}</th>
+                <th align="left">{t(lang, "Teacher", "老师")}</th>
+                <th align="left">{t(lang, "Campus", "校区")}</th>
+                <th align="left">{t(lang, "Unmarked", "未点名")}</th>
+                <th align="left">{t(lang, "Action", "操作")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pastSessions.map((s) => (
+                <tr key={s.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>
+                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                  </td>
+                  <td>
+                    {s.class.course.name}
+                    {s.class.subject ? ` / ${s.class.subject.name}` : ""}
+                    {s.class.level ? ` / ${s.class.level.name}` : ""}
+                  </td>
+                  <td>{s.class.teacher.name}</td>
+                  <td>
+                    {s.class.campus.name}
+                    {s.class.room ? ` / ${s.class.room.name}` : ""}
+                  </td>
+                  <td>
+                    <span style={{ color: "#b00", fontWeight: 700 }}>{pastUnmarkedMap.get(s.id) ?? 0}</span>
+                  </td>
+                  <td>
+                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {pastTotalPages > 1 ? (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+            <span style={{ color: "#666", fontSize: 12 }}>
+              {t(lang, "Page", "页")}: {pastPage} / {pastTotalPages}
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+            {pastPage > 1 ? (
+              <a
+                href={todoHref({ pastPage: pastPage - 1 })}
+              >
+                {t(lang, "Prev", "上一页")}
+              </a>
+            ) : null}
+            {pastPage < pastTotalPages ? (
+              <a
+                href={todoHref({ pastPage: pastPage + 1 })}
+              >
+                {t(lang, "Next", "下一页")}
+              </a>
+            ) : null}
+            </div>
+          </div>
+        ) : null}
+        </div>
+
+        <div style={sectionStyle}>
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+              {t(lang, "This Month Conflict Details", "本月冲突明细")} ({t(lang, "Count", "数量")}: {conflictList.length})
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              {conflictList.length === 0 ? (
+                <div style={{ color: "#999" }}>
+                  {t(lang, "No conflicts found this month.", "本月未发现冲突。")}
+                </div>
+              ) : (
+                <table cellPadding={8} style={tableStyle}>
+                  <thead>
+                    <tr style={{ background: "#f5f5f5" }}>
+                      <th align="left">{t(lang, "Type", "类型")}</th>
+                      <th align="left">{t(lang, "Time", "时间")}</th>
+                      <th align="left">{t(lang, "Teacher/Room", "老师/教室")}</th>
+                      <th align="left">{t(lang, "Detail", "详情")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {conflictList.map((c, idx) => (
+                      <tr key={`${c.type}-${idx}`} style={{ borderTop: "1px solid #eee" }}>
+                        <td>{c.type}</td>
+                        <td>{c.time}</td>
+                        <td>{c.entity}</td>
+                        <td>{c.detail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </details>
+        </div>
+
+        <div style={sectionStyle}>
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+              {t(lang, "Renewal Alerts", "续费预警")}
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              <div style={sectionHeaderStyle}>
+                <h3 style={{ margin: 0 }}>{t(lang, "Renewal Alerts", "续费预警")}</h3>
+              </div>
+              <form method="GET" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+                <label>
+                  {t(lang, "Warn Days", "预警天数")}:
+                  <input name="warnDays" type="number" min={1} defaultValue={String(warnDays)} style={{ marginLeft: 6, width: 90 }} />
+                </label>
+                <label>
+                  {t(lang, "Warn Minutes", "预警分钟")}:
+                  <input
+                    name="warnMinutes"
+                    type="number"
+                    min={1}
+                    defaultValue={String(warnMinutes)}
+                    style={{ marginLeft: 6, width: 100 }}
+                  />
+                </label>
+                <input type="hidden" name="pastDays" value={String(pastDays)} />
+                <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
+                <button type="submit">{t(lang, "Apply", "应用")}</button>
+              </form>
+
+              {renewAlerts.length === 0 ? (
+                <div style={{ color: "#999" }}>{t(lang, "No renewal alerts.", "暂无续费预警。")}</div>
+              ) : (
+                <table cellPadding={8} style={tableStyle}>
+                  <thead>
+                    <tr style={{ background: "#f5f5f5" }}>
+                      <th align="left">{t(lang, "Student", "学生")}</th>
+                      <th align="left">{t(lang, "Course", "课程")}</th>
+                      <th align="left">{t(lang, "Remaining", "剩余")}</th>
+                      <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
+                      <th align="left">{t(lang, "Forecast", "预计用完")}</th>
+                      <th align="left">{t(lang, "Alert", "预警")}</th>
+                      <th align="left">{t(lang, "Action", "操作")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {renewAlerts.map((x) => (
+                      <tr key={x.p.id} style={{ borderTop: "1px solid #eee" }}>
+                        <td>{x.p.student?.name ?? "-"}</td>
+                        <td>{x.p.course?.name ?? "-"}</td>
+                        <td style={{ color: x.lowMinutes ? "#b00" : undefined, fontWeight: x.lowMinutes ? 700 : 400 }}>
+                          {fmtMinutes(x.remaining)}
+                        </td>
+                        <td>{fmtMinutes(x.deducted30)} / {FORECAST_WINDOW_DAYS}d</td>
+                        <td>
+                          {x.estDays == null
+                            ? t(lang, "No usage (30d)", "近30天无消耗")
+                            : `${x.estDays} ${t(lang, "days", "天")}`}
+                        </td>
+                        <td style={{ color: "#b00", fontWeight: 700 }}>
+                          {x.lowMinutes && x.lowDays
+                            ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
+                            : x.lowMinutes
+                            ? t(lang, "Low balance", "余额低")
+                            : t(lang, "Likely to run out soon", "即将用完")}
+                        </td>
+                        <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <a href={`/admin/students/${x.p.studentId}`}>{t(lang, "Student Detail", "学生详情")}</a>
+                          <a href={`/admin/packages/${x.p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </details>
+        </div>
+      </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+

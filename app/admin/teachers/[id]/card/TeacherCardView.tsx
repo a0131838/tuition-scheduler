@@ -10,6 +10,8 @@ type Props = {
   nationality: string;
   almaMater: string;
   intro: string;
+  offlineShanghai?: boolean;
+  offlineSingapore?: boolean;
   autoPrint?: boolean;
 };
 
@@ -41,6 +43,14 @@ export default function TeacherCardView(props: Props) {
   }, [props.autoPrint]);
 
   const lines = introLines(props.intro);
+  const offlineMark = (() => {
+    const sh = !!props.offlineShanghai;
+    const sg = !!props.offlineSingapore;
+    if (sh && sg) return "both";
+    if (sh) return "sh";
+    if (sg) return "sg";
+    return "none";
+  })();
 
   return (
     <div
@@ -72,6 +82,7 @@ export default function TeacherCardView(props: Props) {
           boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
           border: "1px solid #e6e6e6",
           background: "#efefef",
+          position: "relative",
         }}
       >
         <aside
@@ -175,6 +186,61 @@ export default function TeacherCardView(props: Props) {
             )}
           </div>
         </main>
+
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            right: 16,
+            top: 16,
+            width: 32,
+            height: 32,
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 12px)",
+            gridTemplateRows: "repeat(2, 12px)",
+            gap: 6,
+            padding: 4,
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.7)",
+          }}
+        >
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              background: "#9ca3af",
+              opacity: 0.15,
+            }}
+          />
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              background: "#60a5fa",
+              opacity: offlineMark === "sh" ? 1 : 0.15,
+            }}
+          />
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              background: "#34d399",
+              opacity: offlineMark === "sg" ? 1 : 0.15,
+            }}
+          />
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              background: "#f59e0b",
+              opacity: offlineMark === "both" ? 1 : 0.15,
+            }}
+          />
+        </div>
       </div>
     </div>
   );

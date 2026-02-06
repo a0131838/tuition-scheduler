@@ -4,6 +4,8 @@ import { PackageStatus, PackageType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
+import NoticeBanner from "../_components/NoticeBanner";
+import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 
 type ViewMode = "teacher" | "room" | "campus";
 
@@ -209,6 +211,8 @@ export default async function SchedulePage({
     teacherId?: string;
     roomId?: string;
     campusId?: string;
+    courseId?: string;
+    subjectId?: string;
     weekStart?: string;
     msg?: string;
     err?: string;
@@ -225,10 +229,12 @@ export default async function SchedulePage({
   const weekStart = startOfWeekMonday(base);
   const weekEnd = addDays(weekStart, 7);
 
-  const [teachers, rooms, campuses] = await Promise.all([
+  const [teachers, rooms, campuses, courses, subjects] = await Promise.all([
     prisma.teacher.findMany({ orderBy: { name: "asc" }, include: { subjects: true } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
+    prisma.course.findMany({ orderBy: { name: "asc" } }),
+    prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
   ]);
 
   const teacherBySubject = new Map<string, typeof teachers>();
@@ -248,6 +254,8 @@ export default async function SchedulePage({
   const teacherId = searchParams?.teacherId || teachers[0]?.id || "";
   const roomId = searchParams?.roomId || rooms[0]?.id || "";
   const campusId = searchParams?.campusId || campuses[0]?.id || "";
+  const filterCourseId = (searchParams?.courseId ?? "").trim();
+  const filterSubjectId = (searchParams?.subjectId ?? "").trim();
 
   let events: EventItem[] = [];
 
@@ -262,6 +270,7 @@ export default async function SchedulePage({
         },
         include: {
           teacher: true,
+          student: true,
           class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
         },
         orderBy: { startAt: "asc" },
@@ -280,7 +289,7 @@ export default async function SchedulePage({
         kind: "session" as const,
         startAt: s.startAt,
         endAt: s.endAt,
-        title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`,
+        title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
         teacherName: s.teacher?.name ?? s.class.teacher.name,
         campusName: s.class.campus.name,
         roomName: s.class.room?.name ?? "(no room)",
@@ -295,7 +304,7 @@ export default async function SchedulePage({
         kind: "appointment" as const,
         startAt: a.startAt,
         endAt: a.endAt,
-        title: `1-1 Appointment (student ${a.studentId.slice(0, 8)}...)`,
+        title: `1-1 Appointment (STU-${a.studentId.slice(0, 4)}…${a.studentId.slice(-4)})`,
         teacherName,
         campusName: "(n/a)",
         roomName: "(n/a)",
@@ -313,7 +322,7 @@ export default async function SchedulePage({
         startAt: { lt: weekEnd },
         endAt: { gt: weekStart },
       },
-      include: { teacher: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+      include: { teacher: true, student: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
       orderBy: { startAt: "asc" },
     });
 
@@ -322,7 +331,7 @@ export default async function SchedulePage({
       kind: "session" as const,
       startAt: s.startAt,
       endAt: s.endAt,
-      title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`,
+      title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
       teacherName: s.teacher?.name ?? s.class.teacher.name,
       campusName: s.class.campus.name,
       roomName: s.class.room?.name ?? "(no room)",
@@ -342,7 +351,7 @@ export default async function SchedulePage({
         startAt: { lt: weekEnd },
         endAt: { gt: weekStart },
       },
-      include: { teacher: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+      include: { teacher: true, student: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
       orderBy: { startAt: "asc" },
     });
 
@@ -351,7 +360,7 @@ export default async function SchedulePage({
       kind: "session" as const,
       startAt: s.startAt,
       endAt: s.endAt,
-      title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`,
+      title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
       teacherName: s.teacher?.name ?? s.class.teacher.name,
       campusName: s.class.campus.name,
       roomName: s.class.room?.name ?? "(no room)",
@@ -364,9 +373,17 @@ export default async function SchedulePage({
     }));
   }
 
-  events.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  const filteredEvents = events.filter((e) => {
+    if (!filterCourseId && !filterSubjectId) return true;
+    if (e.kind === "appointment") return true;
+    if (filterCourseId && e.courseId !== filterCourseId) return false;
+    if (filterSubjectId && e.subjectId !== filterSubjectId) return false;
+    return true;
+  });
 
-  const sessionEvents = events.filter((e) => e.kind === "session" && e.classId && e.courseId);
+  filteredEvents.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+
+  const sessionEvents = filteredEvents.filter((e) => e.kind === "session" && e.classId && e.courseId);
   const classIds = Array.from(new Set(sessionEvents.map((e) => e.classId!)));
   const courseIds = Array.from(new Set(sessionEvents.map((e) => e.courseId!)));
 
@@ -434,8 +451,8 @@ export default async function SchedulePage({
 
   const conflictMap =
     view === "campus"
-      ? buildConflictMapByRoom(events)
-      : buildConflictMapSingleTrack(events);
+      ? buildConflictMapByRoom(filteredEvents)
+      : buildConflictMapSingleTrack(filteredEvents);
 
   const conflictSet = new Set<string>(Array.from(conflictMap.keys()));
   const reasonLabel = conflictReasonLabel(view);
@@ -446,7 +463,7 @@ export default async function SchedulePage({
     const dayStart = new Date(d);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = addDays(dayStart, 1);
-    const items = events.filter((e) => e.startAt < dayEnd && e.endAt > dayStart);
+    const items = filteredEvents.filter((e) => e.startAt < dayEnd && e.endAt > dayStart);
     return { day: d, items };
   });
 
@@ -458,6 +475,8 @@ export default async function SchedulePage({
   if (view === "teacher") paramsBase.teacherId = teacherId;
   if (view === "room") paramsBase.roomId = roomId;
   if (view === "campus") paramsBase.campusId = campusId;
+  if (filterCourseId) paramsBase.courseId = filterCourseId;
+  if (filterSubjectId) paramsBase.subjectId = filterSubjectId;
 
   function buildHref(extra: Record<string, string>) {
     const p = new URLSearchParams({ ...paramsBase, ...extra });
@@ -540,14 +559,17 @@ export default async function SchedulePage({
 
       const teacherApptConflict = await prisma.appointment.findFirst({
         where: { teacherId: newTeacherId, startAt: { lt: s.endAt }, endAt: { gt: s.startAt } },
-        select: { id: true },
+        select: { id: true, startAt: true, endAt: true },
       });
       if (teacherApptConflict) {
+        const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtTime(teacherApptConflict.startAt)}-${fmtTime(
+          teacherApptConflict.endAt
+        )}`;
         redirect(
           `${returnTo}&err=${encodeURIComponent(
             `Time conflict on ${ymd(s.startAt)} ${fmtTime(s.startAt)}-${fmtTime(
               s.endAt
-            )}: Teacher conflict with appointment ${teacherApptConflict.id}`
+            )}: Teacher conflict with appointment ${timeLabel}`
           )}`
         );
       }
@@ -695,10 +717,13 @@ export default async function SchedulePage({
         startAt: { lt: appt.endAt },
         endAt: { gt: appt.startAt },
       },
-      select: { id: true },
+      select: { id: true, startAt: true, endAt: true },
     });
     if (teacherApptConflict) {
-      redirect(`${returnTo}&err=${encodeURIComponent(`Teacher conflict with appointment ${teacherApptConflict.id}`)}`);
+      const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtTime(teacherApptConflict.startAt)}-${fmtTime(
+        teacherApptConflict.endAt
+      )}`;
+      redirect(`${returnTo}&err=${encodeURIComponent(`Teacher conflict with appointment ${timeLabel}`)}`);
     }
 
     await prisma.$transaction(async (tx) => {
@@ -731,107 +756,172 @@ export default async function SchedulePage({
   return (
     <div>
       <h2>{t(lang, "Schedule (Week View)", "周课表")}</h2>
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Error", "错误")}:</b> {err}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      <div
+        style={{
+          border: "1px solid #eee",
+          borderRadius: 10,
+          padding: 12,
+          marginBottom: 14,
+          background: "#fafafa",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ color: "#666" }}>
+            {t(lang, "Week", "周")}: <b>{ymd(weekStart)}</b> ~ <b>{ymd(addDays(weekStart, 6))}</b>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <a
+              href={buildHref({ weekStart: prevWeek })}
+              title={t(lang, "Prev", "上一周")}
+              aria-label={t(lang, "Prev", "上一周")}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "1px solid #ddd", borderRadius: 6 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+            <a
+              href={buildHref({ weekStart: thisWeek })}
+              title={t(lang, "Today", "本周")}
+              aria-label={t(lang, "Today", "本周")}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "1px solid #ddd", borderRadius: 6 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path d="M3 9h18" stroke="currentColor" strokeWidth="2" />
+                <circle cx="12" cy="14" r="2.5" fill="currentColor" />
+              </svg>
+            </a>
+            <a
+              href={buildHref({ weekStart: nextWeek })}
+              title={t(lang, "Next", "下一周")}
+              aria-label={t(lang, "Next", "下一周")}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "1px solid #ddd", borderRadius: 6 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+            <a
+              href="/admin/schedule/new"
+              title={t(lang, "New (Single)", "新建单次")}
+              aria-label={t(lang, "New (Single)", "新建单次")}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "1px solid #ddd", borderRadius: 6 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </a>
+            <a
+              href={`/admin/schedule/all?weekStart=${ymd(weekStart)}`}
+              title={t(lang, "All Schedule (Week)", "全周总览")}
+              aria-label={t(lang, "All Schedule (Week)", "全周总览")}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "1px solid #ddd", borderRadius: 6 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="4" y="4" width="6" height="6" fill="none" stroke="currentColor" strokeWidth="2" />
+                <rect x="14" y="4" width="6" height="6" fill="none" stroke="currentColor" strokeWidth="2" />
+                <rect x="4" y="14" width="6" height="6" fill="none" stroke="currentColor" strokeWidth="2" />
+                <rect x="14" y="14" width="6" height="6" fill="none" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </a>
+            <a
+              href={`/admin/schedule/all?weekStart=${ymd(weekStart)}`}
+              style={{
+                padding: "6px 10px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {t(lang, "All Week", "全周总览")}
+            </a>
+          </div>
         </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
-      )}
-      <p style={{ color: "#666" }}>
-        {t(lang, "Week", "周")}: <b>{ymd(weekStart)}</b> ~ <b>{ymd(addDays(weekStart, 6))}</b>
-      </p>
 
-      <form method="GET" style={{ display: "grid", gap: 8, maxWidth: 860, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <label>
-            {t(lang, "View", "视图")}:
-            <select name="view" defaultValue={view} style={{ marginLeft: 6 }}>
-              <option value="teacher">{t(lang, "Teacher", "老师")}</option>
-              <option value="room">{t(lang, "Room", "教室")}</option>
-              <option value="campus">{t(lang, "Campus", "校区")}</option>
-            </select>
-          </label>
+        <form method="GET" style={{ display: "grid", gap: 10, marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: "#666" }}>{t(lang, "View", "视图")}</span>
+              <select name="view" defaultValue={view}>
+                <option value="teacher">{t(lang, "Teacher", "老师")}</option>
+                <option value="room">{t(lang, "Room", "教室")}</option>
+                <option value="campus">{t(lang, "Campus", "校区")}</option>
+              </select>
+            </label>
 
-          <label>
-            {t(lang, "Week start (Mon)", "周开始(周一)") }:
-            <input
-              type="date"
-              name="weekStart"
-              defaultValue={ymd(weekStart)}
-              style={{ marginLeft: 6 }}
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: "#666" }}>{t(lang, "Week start (Mon)", "周开始(周一)")}</span>
+              <input type="date" name="weekStart" defaultValue={ymd(weekStart)} />
+            </label>
+
+            {view === "teacher" ? (
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#666" }}>{t(lang, "Teacher", "老师")}</span>
+                <select name="teacherId" defaultValue={teacherId} style={{ minWidth: 220 }}>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {view === "room" ? (
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#666" }}>{t(lang, "Room", "教室")}</span>
+                <select name="roomId" defaultValue={roomId} style={{ minWidth: 260 }}>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} - {r.campus.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {view === "campus" ? (
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#666" }}>{t(lang, "Campus", "校区")}</span>
+                <select name="campusId" defaultValue={campusId} style={{ minWidth: 200 }}>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <ScheduleCourseFilter
+              courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+              subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
+              initialCourseId={filterCourseId}
+              initialSubjectId={filterSubjectId}
+              labels={{
+                course: t(lang, "Course", "课程"),
+                subject: t(lang, "Subject", "科目"),
+                courseAll: t(lang, "Course (all)", "课程（全部）"),
+                subjectAll: t(lang, "Subject (all)", "科目（全部）"),
+              }}
             />
-          </label>
 
-          <button type="submit">{t(lang, "Apply", "应用")}</button>
+            <button type="submit">{t(lang, "Apply", "应用")}</button>
+          </div>
 
-          <a href={buildHref({ weekStart: prevWeek })}>← {t(lang, "Prev", "上一周")}</a>
-          <a href={buildHref({ weekStart: thisWeek })}>{t(lang, "Today", "本周")}</a>
-          <a href={buildHref({ weekStart: nextWeek })}>{t(lang, "Next", "下一周")} →</a>
-
-          <a href="/admin/schedule/new" style={{ marginLeft: 12 }}>
-            + {t(lang, "New (Single)", "新建单次")}
-          </a>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <label>
-            {t(lang, "Teacher", "老师")}:
-            <select
-              name="teacherId"
-              defaultValue={teacherId}
-              style={{ marginLeft: 6, minWidth: 260 }}
-            >
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            {t(lang, "Room", "教室")}:
-            <select
-              name="roomId"
-              defaultValue={roomId}
-              style={{ marginLeft: 6, minWidth: 320 }}
-            >
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} - {r.campus.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            {t(lang, "Campus", "校区")}:
-            <select
-              name="campusId"
-              defaultValue={campusId}
-              style={{ marginLeft: 6, minWidth: 240 }}
-            >
-              {campuses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <p style={{ color: "#666", margin: 0 }}>
-          {t(lang, "Conflict rows show details", "冲突行会显示详情")}；{t(lang, "Type", "类型")}：
-          {reasonLabel}。{t(lang, "Go", "跳转")}：Class → Sessions，Appointment → Availability。
-        </p>
-      </form>
+          <div style={{ color: "#777", fontSize: 12 }}>
+            {t(lang, "Conflict rows show details", "冲突行会显示详情")} · {t(lang, "Type", "类型")}：
+            {reasonLabel} · {t(lang, "Go", "跳转")}：Class → Sessions，Appointment → Availability。
+          </div>
+        </form>
+      </div>
 
       <div style={{ marginBottom: 12 }}>
-        <b>{t(lang, "Total events", "总事件")}:</b> {events.length}{" "}
+        <b>{t(lang, "Total events", "总事件")}:</b> {filteredEvents.length}{" "}
         <span style={{ marginLeft: 12 }}>
           <b>{t(lang, "Conflict events", "冲突事件")}:</b> {conflictSet.size}
         </span>
@@ -875,28 +965,53 @@ export default async function SchedulePage({
                       <tr
                         style={{
                           borderTop: "1px solid #eee",
-                          background: isConflict ? "#fff5f5" : undefined,
+                          background: isConflict ? "#fff5f5" : e.kind === "appointment" ? "#f7fbff" : undefined,
                         }}
                       >
                         <td>
-                          {fmtTime(e.startAt)} - {fmtTime(e.endAt)}
+                          <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                            {fmtTime(e.startAt)} - {fmtTime(e.endAt)}
+                          </span>
                         </td>
-                        <td>{e.kind === "session" ? t(lang, "Class", "班课") : t(lang, "1-1", "一对一")}</td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              background: e.kind === "session" ? "#eaf2ff" : "#fff3e5",
+                              color: e.kind === "session" ? "#1b4dd7" : "#a25900",
+                            }}
+                          >
+                            {e.kind === "session" ? t(lang, "Class", "班课") : t(lang, "1-1", "一对一")}
+                          </span>
+                        </td>
 
                         <td>
                           {e.href ? (
                             <a href={e.href} target="_blank" rel="noreferrer">
-                              {e.title}
+                              <span style={{ fontWeight: 700 }}>{e.title}</span>
                             </a>
                           ) : (
-                            e.title
+                            <span style={{ fontWeight: 700 }}>{e.title}</span>
                           )}
                         </td>
 
                         <td>
                           {e.href ? (
                             <a href={e.href} target="_blank" rel="noreferrer">
-                              {e.goLabel ?? "Open"}
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  padding: "3px 8px",
+                                  border: "1px solid #ddd",
+                                  borderRadius: 6,
+                                }}
+                              >
+                                {e.goLabel ?? "Open"}
+                              </span>
                             </a>
                           ) : (
                             "-"

@@ -1,5 +1,5 @@
-﻿﻿import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+﻿?import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";`r`nimport NoticeBanner from "../../_components/NoticeBanner";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -227,21 +227,13 @@ export default async function AvailabilityPage({
       <h2>Availability - {teacher.name}</h2>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>← Prev</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>�� Prev</a>
         <div style={{ fontWeight: 700 }}>{month}</div>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>Next →</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>Next ��</a>
       </div>
 
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginTop: 12 }}>
-          <b>Error:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginTop: 12 }}>
-          <b>OK:</b> {msg}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title="OK" message={msg} /> : null}
 
       <h3 style={{ marginTop: 18 }}>Monthly Availability (by date)</h3>
 
@@ -349,3 +341,4 @@ export default async function AvailabilityPage({
     </div>
   );
 }
+

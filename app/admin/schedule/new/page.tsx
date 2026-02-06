@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import StudentSearchSelect from "../../_components/StudentSearchSelect";
+import NoticeBanner from "../_components/NoticeBanner";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -102,6 +103,7 @@ async function createSingleSession(formData: FormData) {
   const classId = String(formData.get("classId") ?? "");
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
+  const studentId = String(formData.get("studentId") ?? "");
 
   if (!classId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     const p = new URLSearchParams({ tab: "session", err: "Invalid input" });
@@ -119,6 +121,21 @@ async function createSingleSession(formData: FormData) {
   if (!cls) {
     const p = new URLSearchParams({ tab: "session", err: "Class not found" });
     redirect(`/admin/schedule/new?${p.toString()}`);
+  }
+
+  if (cls.capacity === 1) {
+    if (!studentId) {
+      const p = new URLSearchParams({ tab: "session", err: "Please select a student for 1-on-1 class" });
+      redirect(`/admin/schedule/new?${p.toString()}`);
+    }
+    const enrolled = await prisma.enrollment.findFirst({
+      where: { classId, studentId },
+      select: { id: true },
+    });
+    if (!enrolled) {
+      const p = new URLSearchParams({ tab: "session", err: "Student not enrolled in this class" });
+      redirect(`/admin/schedule/new?${p.toString()}`);
+    }
   }
 
   const availErr = await checkTeacherAvailability(cls.teacherId, startAt, endAt);
@@ -161,12 +178,15 @@ async function createSingleSession(formData: FormData) {
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
-    select: { id: true },
+    select: { id: true, startAt: true, endAt: true },
   });
   if (teacherApptConflict) {
+    const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+      teacherApptConflict.endAt
+    )}`;
     const p = new URLSearchParams({
       tab: "session",
-      err: `Teacher conflict with appointment ${teacherApptConflict.id}`,
+      err: `Teacher conflict with appointment ${timeLabel}`,
     });
     redirect(`/admin/schedule/new?${p.toString()}`);
   }
@@ -191,7 +211,7 @@ async function createSingleSession(formData: FormData) {
   }
 
   await prisma.session.create({
-    data: { classId, startAt, endAt },
+    data: { classId, startAt, endAt, studentId: cls.capacity === 1 ? studentId : null },
   });
 
   redirect(buildRedirectToTeacherWeek(cls.teacherId, startAt));
@@ -241,12 +261,15 @@ async function createSingleAppointment(formData: FormData) {
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
-    select: { id: true },
+    select: { id: true, startAt: true, endAt: true },
   });
   if (teacherApptConflict) {
+    const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+      teacherApptConflict.endAt
+    )}`;
     const p = new URLSearchParams({
       tab: "appt",
-      err: `Teacher conflict with appointment ${teacherApptConflict.id}`,
+      err: `Teacher conflict with appointment ${timeLabel}`,
     });
     redirect(`/admin/schedule/new?${p.toString()}`);
   }
@@ -297,11 +320,7 @@ export default async function NewSinglePage({
         <a href="/admin/schedule">→ {t(lang, "Back to Schedule", "返回课表")}</a>
       </p>
 
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 16 }}>
-          <b>{t(lang, "Rejected", "已拒绝创建")}:</b> {err}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title={t(lang, "Rejected", "已拒绝创建")} message={err} /> : null}
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         <a href={tabSessionHref}>{t(lang, "Create Session", "新建班课")}</a>
@@ -325,7 +344,18 @@ export default async function NewSinglePage({
                     <option key={c.id} value={c.id}>
                       {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "老师")}:{" "}
                       {c.teacher.name} | {t(lang, "Campus", "校区")}: {c.campus.name} | {t(lang, "Room", "教室")}:{" "}
-                      {c.room?.name ?? "(none)"} | classId: {c.id.slice(0, 8)}...
+                      {c.room?.name ?? "(none)"} | CLS-{c.id.slice(0, 4)}…{c.id.slice(-4)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t(lang, "Student (for 1-on-1 only)", "学生（仅一对一）")}:
+                <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 260 }}>
+                  <option value="">{t(lang, "Select student", "选择学生")}</option>
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>

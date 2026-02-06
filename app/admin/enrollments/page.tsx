@@ -1,7 +1,42 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
-import StudentSearchSelect from "../_components/StudentSearchSelect";
+import SimpleModal from "../_components/SimpleModal";
+import EnrollmentCreateForm from "../_components/EnrollmentCreateForm";
+import EnrollmentExpandCollapse from "../_components/EnrollmentExpandCollapse";
+import EnrollmentFilterForm from "../_components/EnrollmentFilterForm";
+import NoticeBanner from "../_components/NoticeBanner";
+
+function classLabel(cls: {
+  course: { name: string };
+  subject?: { name: string } | null;
+  level?: { name: string } | null;
+}) {
+  return `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+}
+
+type OneOnOneEntry = {
+  classId: string;
+  studentId: string | null;
+  studentName: string;
+  cls: {
+    id: string;
+    courseId: string;
+    subjectId: string | null;
+    levelId: string | null;
+    teacherId: string;
+    campusId: string;
+    roomId: string | null;
+    oneOnOneGroupId: string | null;
+    course: { name: string };
+    subject?: { name: string } | null;
+    level?: { name: string } | null;
+    teacher: { name: string };
+    campus: { name: string };
+    room?: { name: string } | null;
+  };
+  fromEnrollment: boolean;
+};
 
 async function addEnrollment(formData: FormData) {
   "use server";
@@ -9,7 +44,31 @@ async function addEnrollment(formData: FormData) {
   const studentId = String(formData.get("studentId") ?? "");
 
   if (!classId || !studentId) {
-    redirect("/admin/enrollments?err=Missing+classId+or+studentId");
+    redirect("/admin/enrollments?err=Missing+classId+or+studentId&keep=1");
+  }
+
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { id: true, courseId: true },
+  });
+  if (!cls) {
+    redirect("/admin/enrollments?err=Class+not+found&keep=1");
+  }
+
+  const now = new Date();
+  const activePkg = await prisma.coursePackage.findFirst({
+    where: {
+      studentId,
+      courseId: cls.courseId,
+      status: "ACTIVE",
+      validFrom: { lte: now },
+      OR: [{ validTo: null }, { validTo: { gte: now } }],
+      AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+    },
+    select: { id: true },
+  });
+  if (!activePkg) {
+    redirect("/admin/enrollments?err=Student+has+no+active+package+for+this+course&keep=1");
   }
 
   const exists = await prisma.enrollment.findFirst({
@@ -18,7 +77,7 @@ async function addEnrollment(formData: FormData) {
   });
 
   if (exists) {
-    redirect("/admin/enrollments?err=Already+enrolled");
+    redirect("/admin/enrollments?err=Already+enrolled&keep=1");
   }
 
   await prisma.enrollment.create({
@@ -41,17 +100,67 @@ async function removeEnrollment(formData: FormData) {
     where: { classId, studentId },
   });
 
-  redirect("/admin/enrollments?msg=Enrollment+removed");
+  redirect(
+    `/admin/enrollments?msg=Enrollment+removed&undoClassId=${encodeURIComponent(
+      classId
+    )}&undoStudentId=${encodeURIComponent(studentId)}&keep=1`
+  );
+}
+
+async function restoreEnrollment(formData: FormData) {
+  "use server";
+  const classId = String(formData.get("classId") ?? "");
+  const studentId = String(formData.get("studentId") ?? "");
+
+  if (!classId || !studentId) {
+    redirect("/admin/enrollments?err=Missing+classId+or+studentId&keep=1");
+  }
+
+  const exists = await prisma.enrollment.findFirst({
+    where: { classId, studentId },
+    select: { id: true },
+  });
+  if (!exists) {
+    await prisma.enrollment.create({
+      data: { classId, studentId },
+    });
+  }
+
+  redirect("/admin/enrollments?msg=Enrollment+restored&keep=1");
 }
 
 export default async function AdminEnrollmentsPage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string };
+  searchParams?: {
+    msg?: string;
+    err?: string;
+    q?: string;
+    courseId?: string;
+    subjectId?: string;
+    levelId?: string;
+    teacherId?: string;
+    campusId?: string;
+    classType?: string;
+    undoClassId?: string;
+    undoStudentId?: string;
+  };
 }) {
   const lang = await getLang();
+  const formatId = (prefix: string, id: string) =>
+    `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
   const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const q = (searchParams?.q ?? "").trim().toLowerCase();
+  const courseId = (searchParams?.courseId ?? "").trim();
+  const subjectId = (searchParams?.subjectId ?? "").trim();
+  const levelId = (searchParams?.levelId ?? "").trim();
+  const teacherId = (searchParams?.teacherId ?? "").trim();
+  const campusId = (searchParams?.campusId ?? "").trim();
+  const classType = (searchParams?.classType ?? "").trim();
+  const undoClassId = (searchParams?.undoClassId ?? "").trim();
+  const undoStudentId = (searchParams?.undoStudentId ?? "").trim();
+  const isFiltered = !!(q || courseId || subjectId || levelId || teacherId || campusId || classType);
 
   const [classes, students, enrollments] = await Promise.all([
     prisma.class.findMany({
@@ -68,116 +177,429 @@ export default async function AdminEnrollmentsPage({
     }),
   ]);
 
+  const courseOptions = Array.from(new Map(classes.map((c) => [c.courseId, c.course]))).map(([id, c]) => ({
+    id,
+    name: c.name,
+  }));
+  const subjectOptions = Array.from(
+    new Map(
+      classes
+        .filter((c) => c.subjectId && c.subject)
+        .map((c) => [c.subjectId!, { id: c.subjectId!, name: c.subject!.name, courseId: c.courseId, courseName: c.course.name }])
+    ).values()
+  );
+  const levelOptions = Array.from(
+    new Map(
+      classes
+        .filter((c) => c.levelId && c.level && c.subjectId && c.subject)
+        .map((c) => [
+          c.levelId!,
+          {
+            id: c.levelId!,
+            name: c.level!.name,
+            subjectId: c.subjectId!,
+            subjectName: c.subject!.name,
+            courseName: c.course.name,
+          },
+        ])
+    ).values()
+  );
+  const teacherOptions = Array.from(new Map(classes.map((c) => [c.teacherId, c.teacher]))).map(([id, t]) => ({
+    id,
+    name: t.name,
+  }));
+  const campusOptions = Array.from(new Map(classes.map((c) => [c.campusId, c.campus]))).map(([id, c]) => ({
+    id,
+    name: c.name,
+  }));
+
+  const activePackages = students.length
+    ? await prisma.coursePackage.findMany({
+        where: {
+          studentId: { in: students.map((s) => s.id) },
+          status: "ACTIVE",
+          validFrom: { lte: new Date() },
+          OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+          AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+        },
+        select: { studentId: true, courseId: true, course: { select: { name: true } } },
+      })
+    : [];
+
+  const studentCourseMap = new Map<string, Set<string>>();
+  const studentCourseIdMap = new Map<string, Set<string>>();
+  for (const p of activePackages) {
+    if (!studentCourseMap.has(p.studentId)) studentCourseMap.set(p.studentId, new Set());
+    studentCourseMap.get(p.studentId)!.add(p.course.name);
+    if (!studentCourseIdMap.has(p.studentId)) studentCourseIdMap.set(p.studentId, new Set());
+    studentCourseIdMap.get(p.studentId)!.add(p.courseId);
+  }
+
+  const enrollmentsByClass = new Map<string, typeof enrollments>();
+  for (const e of enrollments) {
+    if (!enrollmentsByClass.has(e.classId)) enrollmentsByClass.set(e.classId, []);
+    enrollmentsByClass.get(e.classId)!.push(e);
+  }
+
+  const classMatchesFilters = (cls: (typeof classes)[number]) => {
+    if (courseId && cls.courseId !== courseId) return false;
+    if (subjectId && cls.subjectId !== subjectId) return false;
+    if (levelId && cls.levelId !== levelId) return false;
+    if (teacherId && cls.teacherId !== teacherId) return false;
+    if (campusId && cls.campusId !== campusId) return false;
+    return true;
+  };
+
+  const entryMatchesQuery = (cls: (typeof classes)[number], studentName = "") => {
+    if (!q) return true;
+    const hay = [
+      cls.course.name,
+      cls.subject?.name ?? "",
+      cls.level?.name ?? "",
+      cls.teacher.name,
+      cls.campus.name,
+      cls.room?.name ?? "",
+      studentName,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  };
+
+  const filteredGroupEnrollments = enrollments.filter((e) => {
+    if (e.class.capacity === 1) return false;
+    if (classType === "one") return false;
+    if (!classMatchesFilters(e.class)) return false;
+    if (!entryMatchesQuery(e.class, e.student?.name ?? "")) return false;
+    return true;
+  });
+
+  const oneOnOneEntries: OneOnOneEntry[] = [];
+
+  for (const cls of classes.filter((c) => c.capacity === 1)) {
+    if (classType === "group") continue;
+    if (!classMatchesFilters(cls)) continue;
+
+    const rows = enrollmentsByClass.get(cls.id) ?? [];
+    if (rows.length > 0) {
+      for (const e of rows) {
+        const name = e.student?.name ?? "-";
+        if (!entryMatchesQuery(cls, name)) continue;
+        oneOnOneEntries.push({
+          classId: cls.id,
+          studentId: e.studentId,
+          studentName: name,
+          cls,
+          fromEnrollment: true,
+        });
+      }
+      continue;
+    }
+
+    if (cls.oneOnOneStudent?.name) {
+      const name = cls.oneOnOneStudent.name;
+      if (!entryMatchesQuery(cls, name)) continue;
+      oneOnOneEntries.push({
+        classId: cls.id,
+        studentId: cls.oneOnOneStudentId ?? null,
+        studentName: name,
+        cls,
+        fromEnrollment: false,
+      });
+      continue;
+    }
+
+    if (entryMatchesQuery(cls, "")) {
+      oneOnOneEntries.push({
+        classId: cls.id,
+        studentId: null,
+        studentName: "-",
+        cls,
+        fromEnrollment: false,
+      });
+    }
+  }
+
+  const oneOnOneRows = oneOnOneEntries;
+  const groupRows = filteredGroupEnrollments;
+
+  const undoClass = undoClassId ? classes.find((c) => c.id === undoClassId) : null;
+  const undoStudent = undoStudentId ? students.find((s) => s.id === undoStudentId) : null;
+
   return (
     <div>
       <h2>{t(lang, "Enrollments", "报名管理")}</h2>
 
       <p>
-        <a href="/admin/schedule">← {t(lang, "Back to Schedule", "返回周课表")}</a>
+        <a
+          href="/admin/schedule"
+          style={{ display: "inline-block", padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6 }}
+        >
+          ← {t(lang, "Back to Schedule", "返回周课表")}
+        </a>
       </p>
 
-      {err && (
-        <div
-          style={{
-            padding: 12,
-            border: "1px solid #f2b3b3",
-            background: "#fff5f5",
-            marginBottom: 12,
-          }}
-        >
-          <b>{t(lang, "Error", "错误")}:</b> {err}
-        </div>
+      {err ? (
+        <NoticeBanner
+          type="error"
+          title={t(lang, "Error", "错误")}
+          message={
+            err === "Missing classId or studentId"
+              ? t(lang, "Missing class or student.", "请先选择班级和学生。")
+              : err === "Class not found"
+              ? t(lang, "Class not found.", "班级不存在。")
+              : err === "Student has no active package for this course"
+              ? t(lang, "Student has no active package for this course.", "学生没有该课程的有效课包。")
+              : err === "Already enrolled"
+              ? t(lang, "Already enrolled.", "该学生已报名该班级。")
+              : err
+          }
+        />
+      ) : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      {undoClassId && undoStudentId && (
+        <NoticeBanner
+          type="warn"
+          title={t(lang, "Enrollment removed.", "已取消报名")}
+          message={`${undoStudent?.name ?? "-"} ${t(lang, "in", "在")} ${undoClass ? classLabel(undoClass) : undoClassId}`}
+        />
       )}
-      {msg && (
-        <div
-          style={{
-            padding: 12,
-            border: "1px solid #b9e6c3",
-            background: "#f2fff5",
-            marginBottom: 12,
-          }}
-        >
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
+      {undoClassId && undoStudentId && (
+        <form action={restoreEnrollment} style={{ marginBottom: 12 }}>
+          <input type="hidden" name="classId" value={undoClassId} />
+          <input type="hidden" name="studentId" value={undoStudentId} />
+          <button type="submit">{t(lang, "Undo", "撤销")}</button>
+        </form>
       )}
 
-      <h3>{t(lang, "Add Enrollment", "新增报名")}</h3>
-      <form action={addEnrollment} style={{ display: "grid", gap: 10, maxWidth: 900, marginBottom: 18 }}>
-        <label>
-          {t(lang, "Class", "班级")}:
-          <select name="classId" defaultValue={classes[0]?.id ?? ""} style={{ marginLeft: 8, minWidth: 680 }}>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "老师")}:
-                {c.teacher.name} | {t(lang, "Campus", "校区")}: {c.campus.name} | {t(lang, "Room", "教室")}: {c.room?.name ?? "(none)"} | classId:{" "}
-                {c.id.slice(0, 8)}...
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Student", "学生")}:
-          <div style={{ marginLeft: 8 }}>
-            <StudentSearchSelect
-              name="studentId"
-              placeholder={t(lang, "Search student name", "搜索学生姓名")}
-              students={students.map((s) => ({ id: s.id, name: s.name }))}
-            />
-          </div>
-        </label>
-
-        <button type="submit">{t(lang, "Enroll", "确认报名")}</button>
-
-        <p style={{ color: "#666", margin: 0 }}>
-          {t(
-            lang,
-            "Rule: a student can enroll in the same class only once.",
-            "规则：同一学生对同一班级只能报名一次。"
-          )}
-        </p>
-      </form>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+        <SimpleModal buttonLabel={t(lang, "Add Enrollment", "新增报名")} title={t(lang, "Add Enrollment", "新增报名")} closeOnSubmit>
+          <EnrollmentCreateForm
+            action={addEnrollment}
+            classes={classes.map((c) => ({
+              id: c.id,
+              courseId: c.courseId,
+              courseName: c.course.name,
+              subjectName: c.subject?.name ?? null,
+              levelName: c.level?.name ?? null,
+              teacherName: c.teacher.name,
+              campusName: c.campus.name,
+              roomName: c.room?.name ?? null,
+            }))}
+            students={students.map((s) => ({
+              id: s.id,
+              name: s.name,
+              courseNames: Array.from(studentCourseMap.get(s.id) ?? []),
+              courseIds: Array.from(studentCourseIdMap.get(s.id) ?? []),
+            }))}
+            labels={{
+              classLabel: t(lang, "Class", "班级"),
+              studentLabel: t(lang, "Student", "学生"),
+              searchStudent: t(lang, "Search student name", "搜索学生姓名"),
+              noActivePackage: t(lang, "No active package", "无有效课包"),
+              mismatchWarn: t(lang, "Course mismatch: student has no package for this course.", "课程不匹配：学生没有该课程课包。"),
+              confirm: t(lang, "Confirm Enrollment", "确认报名"),
+            }}
+          />
+          <p style={{ color: "#666", marginTop: 10 }}>
+            {t(
+              lang,
+              "Rule: a student can enroll in the same class only once.",
+              "规则：同一学生对同一班级只能报名一次。"
+            )}
+          </p>
+        </SimpleModal>
+      </div>
 
       <h3>{t(lang, "Enrollment List", "报名列表")}</h3>
-      {enrollments.length === 0 ? (
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
+        <EnrollmentFilterForm
+          courses={courseOptions}
+          subjects={subjectOptions}
+          levels={levelOptions}
+          teachers={teacherOptions}
+          campuses={campusOptions}
+          initial={{
+            q: searchParams?.q ?? "",
+            courseId,
+            subjectId,
+            levelId,
+            teacherId,
+            campusId,
+            classType,
+          }}
+          labels={{
+            searchPlaceholder: t(lang, "Search by class/student/teacher/campus...", "搜索班级/学生/老师/校区..."),
+            courseAll: t(lang, "Course (all)", "课程（全部）"),
+            subjectAll: t(lang, "Subject (all)", "科目（全部）"),
+            levelAll: t(lang, "Level (all)", "级别（全部）"),
+            teacherAll: t(lang, "Teacher (all)", "老师（全部）"),
+            campusAll: t(lang, "Campus (all)", "校区（全部）"),
+            classTypeAll: t(lang, "Class Type (all)", "班级类型（全部）"),
+            classTypeOne: t(lang, "1-on-1", "一对一"),
+            classTypeGroup: t(lang, "Group", "班课"),
+            apply: t(lang, "Apply", "应用"),
+            clear: t(lang, "Clear", "清除"),
+            exportPdf: t(lang, "Export PDF", "导出PDF"),
+          }}
+        />
+        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#555", marginTop: 6 }}>
+          <div>
+            {t(lang, "Total", "总数")}: <b>{oneOnOneRows.length + groupRows.length}</b>
+          </div>
+          <div>
+            {t(lang, "1-on-1", "一对一")}: <b>{oneOnOneRows.length}</b>
+          </div>
+          <div>
+            {t(lang, "Group", "班课")}: <b>{groupRows.length}</b>
+          </div>
+        </div>
+      </div>
+      <EnrollmentExpandCollapse />
+
+      {filteredEnrollments.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No enrollments yet.", "暂无报名")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Class", "班级")}</th>
-              <th align="left">{t(lang, "Teacher", "老师")}</th>
-              <th align="left">{t(lang, "Campus", "校区")}</th>
-              <th align="left">{t(lang, "Room", "教室")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((e) => (
-              <tr key={e.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>
-                  {e.student?.name ?? "-"} <span style={{ color: "#999" }}>({e.studentId.slice(0, 8)}...)</span>
-                </td>
-                <td>
-                  {e.class.course.name} / {e.class.subject?.name ?? "-"} / {e.class.level?.name ?? "-"}{" "}
-                  <span style={{ color: "#999" }}>(classId {e.classId.slice(0, 8)}...)</span>
-                </td>
-                <td>{e.class.teacher.name}</td>
-                <td>{e.class.campus.name}</td>
-                <td>{e.class.room?.name ?? "(none)"}</td>
-                <td>
-                  <form action={removeEnrollment}>
-                    <input type="hidden" name="classId" value={e.classId} />
-                    <input type="hidden" name="studentId" value={e.studentId} />
-                    <button type="submit">{t(lang, "Remove", "取消报名")}</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ display: "grid", gap: 16 }}>
+          {oneOnOneRows.length > 0 && (
+            <div>
+              <h3 style={{ marginBottom: 8 }}>{t(lang, "1-on-1 Templates", "一对一模板")}</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+                {Array.from(
+                  oneOnOneRows.reduce((map, e) => {
+                    const key =
+                      e.cls.oneOnOneGroupId ??
+                      `${e.cls.teacherId}|${e.cls.courseId}|${e.cls.subjectId ?? ""}|${e.cls.levelId ?? ""}|${e.cls.campusId}|${e.cls.roomId ?? ""}`;
+                    if (!map.has(key)) {
+                      map.set(key, {
+                        cls: e.cls,
+                        rows: [] as OneOnOneEntry[],
+                      });
+                    }
+                    map.get(key)!.rows.push(e);
+                    return map;
+                  }, new Map<string, { cls: OneOnOneEntry["cls"]; rows: OneOnOneEntry[] }>())
+                ).map(([key, group]) => (
+                  <details key={key} open data-enroll-card style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
+                    <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {group.cls.course.name} / {group.cls.subject?.name ?? "-"} / {group.cls.level?.name ?? "-"}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <span
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: "#fef3c7",
+                            color: "#92400e",
+                          }}
+                        >
+                          {t(lang, "1-on-1", "一对一")}
+                        </span>
+                      </div>
+                      <div style={{ color: "#666", fontSize: 12 }}>
+                        {t(lang, "Teacher", "老师")}: {group.cls.teacher.name} | {t(lang, "Campus", "校区")}: {group.cls.campus.name}{" "}
+                        | {t(lang, "Room", "教室")}: {group.cls.room?.name ?? "(none)"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#475569" }}>
+                        {t(lang, "Students", "学生")}:{" "}
+                        <b>{Array.from(new Set(group.rows.map((r) => r.studentId ?? r.studentName))).filter((v) => v && v !== "-").length || 0}</b>
+                      </div>
+                    </summary>
+
+                    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                      {group.rows.map((e) => (
+                        <div key={`${e.classId}-${e.studentId ?? e.studentName}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <div>
+                            {e.studentName || "-"}{" "}
+                            {e.studentId ? <span style={{ color: "#999", fontSize: 12 }}>({formatId("STU", e.studentId)})</span> : null}
+                          </div>
+                          {e.fromEnrollment && e.studentId ? (
+                            <form action={removeEnrollment}>
+                              <input type="hidden" name="classId" value={e.classId} />
+                              <input type="hidden" name="studentId" value={e.studentId} />
+                              <button type="submit">{t(lang, "Remove", "取消报名")}</button>
+                            </form>
+                          ) : (
+                            <div style={{ color: "#999", fontSize: 12 }}>
+                              {t(lang, "Not enrolled", "未报名")} ·{" "}
+                              <a href={`/admin/classes/${e.classId}`}>{t(lang, "View class", "查看班级")}</a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {groupRows.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+              {Array.from(
+                groupRows.reduce((map, e) => {
+                  const key = e.classId;
+                  if (!map.has(key)) map.set(key, { cls: e.class, rows: [] as typeof enrollments });
+                  map.get(key)!.rows.push(e);
+                  return map;
+                }, new Map<string, { cls: (typeof enrollments)[number]["class"]; rows: typeof enrollments }>())
+              ).map(([classId, group]) => (
+                <details key={classId} open data-enroll-card style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
+                  <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                    <div style={{ fontWeight: 700 }}>
+                      {group.cls.course.name} / {group.cls.subject?.name ?? "-"} / {group.cls.level?.name ?? "-"}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: "#dbeafe",
+                          color: "#1e3a8a",
+                        }}
+                      >
+                        {t(lang, "Group Class", "班课")}
+                      </span>
+                    </div>
+                    <div style={{ color: "#666", fontSize: 12 }}>
+                      {t(lang, "Teacher", "老师")}: {group.cls.teacher.name} | {t(lang, "Campus", "校区")}: {group.cls.campus.name}{" "}
+                      | {t(lang, "Room", "教室")}: {group.cls.room?.name ?? "(none)"} | {formatId("CLS", classId)}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#475569" }}>
+                      {t(lang, "Enrollments", "报名")}: <b>{group.rows.length}</b>
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <a href={`/admin/enrollments/export/pdf?classId=${classId}`}>{t(lang, "Export PDF", "导出PDF")}</a>
+                    </div>
+                  </summary>
+
+                  <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                    {group.rows.map((e) => (
+                      <div key={e.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div>
+                          {e.student?.name ?? "-"}{" "}
+                          <span style={{ color: "#999", fontSize: 12 }}>({formatId("STU", e.studentId)})</span>
+                        </div>
+                        <form action={removeEnrollment}>
+                          <input type="hidden" name="classId" value={e.classId} />
+                          <input type="hidden" name="studentId" value={e.studentId} />
+                          <button type="submit">{t(lang, "Remove", "取消报名")}</button>
+                        </form>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
+

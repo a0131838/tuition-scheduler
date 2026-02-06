@@ -50,6 +50,34 @@ async function submitBookingRequest(token: string, formData: FormData) {
   });
   if (apptConflict) redirect(`/booking/${token}?err=Time+already+taken`);
 
+  const studentApptConflict = await prisma.appointment.findFirst({
+    where: { studentId: link.studentId, startAt: { lt: endAt }, endAt: { gt: startAt } },
+  });
+  if (studentApptConflict) redirect(`/booking/${token}?err=Time+conflicts+with+your+existing+appointment`);
+
+  const studentSessionConflict = await prisma.session.findFirst({
+    where: {
+      startAt: { lt: endAt },
+      endAt: { gt: startAt },
+      OR: [
+        { studentId: link.studentId },
+        { class: { enrollments: { some: { studentId: link.studentId } } } },
+      ],
+    },
+  });
+  if (studentSessionConflict) redirect(`/booking/${token}?err=Time+conflicts+with+your+existing+class`);
+
+  const overlapExisting = await prisma.studentBookingRequest.findFirst({
+    where: {
+      linkId: link.id,
+      status: { in: ["PENDING", "APPROVED"] },
+      startAt: { lt: endAt },
+      endAt: { gt: startAt },
+    },
+    select: { id: true },
+  });
+  if (overlapExisting) redirect(`/booking/${token}?err=Time+conflicts+with+your+existing+request`);
+
   const existing = await prisma.studentBookingRequest.findFirst({
     where: { teacherId, startAt, endAt, status: { in: ["PENDING", "APPROVED"] } },
   });
@@ -151,6 +179,10 @@ function buildCalendarDays(monthDate: Date) {
   });
 }
 
+function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
 export default async function BookingPage({
   params,
   searchParams,
@@ -229,12 +261,37 @@ export default async function BookingPage({
   }
   const days = buildCalendarDays(monthDate);
 
+  const rangeStart = new Date(link.startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(link.endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
   const existingRequests = await prisma.studentBookingRequest.findMany({
     where: { linkId: link.id, status: { in: ["PENDING", "APPROVED"] } },
     include: { teacher: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
+  const studentAppointments = await prisma.appointment.findMany({
+    where: { studentId: link.studentId, startAt: { lt: rangeEnd }, endAt: { gt: rangeStart } },
+    select: { startAt: true, endAt: true },
+  });
+  const studentSessions = await prisma.session.findMany({
+    where: {
+      startAt: { lt: rangeEnd },
+      endAt: { gt: rangeStart },
+      OR: [
+        { studentId: link.studentId },
+        { class: { enrollments: { some: { studentId: link.studentId } } } },
+      ],
+    },
+    select: { startAt: true, endAt: true },
+  });
+  const existingRanges = [
+    ...existingRequests.map((r) => ({ startAt: r.startAt, endAt: r.endAt, label: "request" })),
+    ...studentAppointments.map((r) => ({ startAt: r.startAt, endAt: r.endAt, label: "appointment" })),
+    ...studentSessions.map((r) => ({ startAt: r.startAt, endAt: r.endAt, label: "session" })),
+  ];
 
   return (
     <div style={{ maxWidth: 1100, margin: "20px auto", padding: "0 12px", fontFamily: "system-ui" }}>
@@ -308,14 +365,20 @@ export default async function BookingPage({
                           {s.teacherSubjectLabel ? (
                             <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{s.teacherSubjectLabel}</div>
                           ) : null}
-                          <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
-                            <input type="hidden" name="teacherId" value={s.teacherId} />
-                            <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
-                            <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
-                            <input name="coursePref" placeholder="Course preference (optional)" />
-                            <textarea name="note" rows={2} placeholder="Message to admin (optional)" />
-                            <button type="submit">Request This Slot</button>
-                          </form>
+                          {existingRanges.some((r) => overlaps(r.startAt, r.endAt, s.startAt, s.endAt)) ? (
+                            <div style={{ fontSize: 12, color: "#b00", marginTop: 6 }}>
+                              This time conflicts with an existing request/class/appointment.
+                            </div>
+                          ) : (
+                            <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
+                              <input type="hidden" name="teacherId" value={s.teacherId} />
+                              <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
+                              <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
+                              <input name="coursePref" placeholder="Course preference (optional)" />
+                              <textarea name="note" rows={2} placeholder="Message to admin (optional)" />
+                              <button type="submit">Request This Slot</button>
+                            </form>
+                          )}
                         </details>
                       ))}
                       {items.length > 5 ? (
@@ -330,14 +393,20 @@ export default async function BookingPage({
                                 {s.teacherSubjectLabel ? (
                                   <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{s.teacherSubjectLabel}</div>
                                 ) : null}
-                                <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
-                                  <input type="hidden" name="teacherId" value={s.teacherId} />
-                                  <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
-                                  <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
-                                  <input name="coursePref" placeholder="Course preference (optional)" />
-                                  <textarea name="note" rows={2} placeholder="Message to admin (optional)" />
-                                  <button type="submit">Request This Slot</button>
-                                </form>
+                                {existingRanges.some((r) => overlaps(r.startAt, r.endAt, s.startAt, s.endAt)) ? (
+                                  <div style={{ fontSize: 12, color: "#b00", marginTop: 6 }}>
+                                    This time conflicts with an existing request/class/appointment.
+                                  </div>
+                                ) : (
+                                  <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
+                                    <input type="hidden" name="teacherId" value={s.teacherId} />
+                                    <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
+                                    <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
+                                    <input name="coursePref" placeholder="Course preference (optional)" />
+                                    <textarea name="note" rows={2} placeholder="Message to admin (optional)" />
+                                    <button type="submit">Request This Slot</button>
+                                  </form>
+                                )}
                               </details>
                             ))}
                           </div>

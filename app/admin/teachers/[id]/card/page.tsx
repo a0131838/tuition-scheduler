@@ -38,6 +38,8 @@ export default async function TeacherCardPage({ params }: { params: { id: string
       nationality={teacher.nationality || "-"}
       almaMater={teacher.almaMater || "-"}
       intro={teacher.intro || "暂无"}
+      offlineShanghai={teacher.offlineShanghai}
+      offlineSingapore={teacher.offlineSingapore}
     />
   );
 }

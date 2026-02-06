@@ -62,6 +62,7 @@ model Campus {
   isOnline Boolean @default(false)
   rooms   Room[]
   classes Class[]
+  oneOnOneGroups OneOnOneGroup[]
 }
 
 model Room {
@@ -73,6 +74,7 @@ model Room {
   campus   Campus @relation(fields: [campusId], references: [id])
 
   classes Class[]
+  oneOnOneGroups OneOnOneGroup[]
 }
 
 model Teacher {
@@ -85,6 +87,8 @@ model Teacher {
   yearsExperience Int?
   teachingLanguage TeachingLanguage?
   teachingLanguageOther String?
+  offlineShanghai Boolean @default(false)
+  offlineSingapore Boolean @default(false)
 
   subjectCourseId String?
   subjectCourse   Subject? @relation("SubjectCourse", fields: [subjectCourseId], references: [id])
@@ -93,6 +97,7 @@ model Teacher {
   availabilities TeacherAvailability[]
   dateAvailabilities TeacherAvailabilityDate[]
   oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateTeacher")
+  oneOnOneGroups OneOnOneGroup[]
   classes        Class[]
   appointments   Appointment[]
   sessionOverrides Session[] @relation("SessionTeacherOverride")
@@ -104,6 +109,30 @@ model Teacher {
   bookingRequests StudentBookingRequest[]
   selectedBookingSlots StudentBookingLinkSelectedSlot[]
   bookingRequestSlotLocks StudentBookingRequestSlotLock[]
+}
+
+model OneOnOneGroup {
+  id        String   @id @default(uuid())
+  teacherId String
+  courseId  String
+  subjectId String?
+  levelId   String?
+  campusId  String
+  roomId    String?
+  createdAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  course  Course  @relation(fields: [courseId], references: [id])
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  level   Level?   @relation(fields: [levelId], references: [id])
+  campus  Campus  @relation(fields: [campusId], references: [id])
+  room    Room?   @relation(fields: [roomId], references: [id])
+
+  classes Class[]
+
+  @@index([teacherId])
+  @@index([courseId])
+  @@index([campusId])
 }
 
 model TeacherAvailability {
@@ -153,6 +182,7 @@ model Course {
   subjects Subject[]
   classes  Class[]
   packages CoursePackage[]
+  oneOnOneGroups OneOnOneGroup[]
 }
 
 model Subject {
@@ -163,6 +193,7 @@ model Subject {
   course Course @relation(fields: [courseId], references: [id])
   levels Level[]
   classes Class[]
+  oneOnOneGroups OneOnOneGroup[]
 
   subjectTeachers Teacher[] @relation("SubjectCourse")
   subjectTeachersMulti Teacher[] @relation("TeacherSubjects")
@@ -178,6 +209,7 @@ model Level {
 
   subject Subject @relation(fields: [subjectId], references: [id])
   classes Class[]
+  oneOnOneGroups OneOnOneGroup[]
 
   @@unique([subjectId, name])
   @@index([subjectId])
@@ -194,6 +226,8 @@ model Class {
   roomId    String?
 
   capacity Int
+  oneOnOneGroupId   String?
+  oneOnOneStudentId String?
 
   course  Course  @relation(fields: [courseId], references: [id])
   subject Subject? @relation(fields: [subjectId], references: [id])
@@ -201,6 +235,8 @@ model Class {
   teacher Teacher @relation(fields: [teacherId], references: [id])
   campus  Campus  @relation(fields: [campusId], references: [id])
   room    Room?   @relation(fields: [roomId], references: [id])
+  oneOnOneGroup OneOnOneGroup? @relation(fields: [oneOnOneGroupId], references: [id])
+  oneOnOneStudent Student? @relation("OneOnOneStudentClass", fields: [oneOnOneStudentId], references: [id])
 
   sessions    Session[]
   enrollments Enrollment[]
@@ -208,6 +244,8 @@ model Class {
 
   @@index([subjectId])
   @@index([levelId])
+  @@index([oneOnOneGroupId])
+  @@index([oneOnOneStudentId])
 }
 
 model Session {
@@ -216,13 +254,17 @@ model Session {
   startAt DateTime
   endAt   DateTime
   teacherId String?
+  studentId String?
 
   class       Class        @relation(fields: [classId], references: [id])
   teacher     Teacher?     @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  student     Student?     @relation("SessionStudent", fields: [studentId], references: [id])
   attendances Attendance[]
   feedbacks   SessionFeedback[]
   teacherChanges SessionTeacherChange[]
   bookingRequests StudentBookingRequest[]
+
+  @@index([studentId])
 }
 
 model SessionFeedback {
@@ -281,6 +323,8 @@ model Student {
   packages     CoursePackage[]
   attendances  Attendance[]
   oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateStudent")
+  oneOnOneClasses Class[] @relation("OneOnOneStudentClass")
+  sessions Session[] @relation("SessionStudent")
   sourceChannel StudentSourceChannel? @relation(fields: [sourceChannelId], references: [id])
   studentType   StudentType? @relation(fields: [studentTypeId], references: [id])
   bookingLinks StudentBookingLink[]
@@ -419,6 +463,18 @@ model StudentBookingLinkTeacher {
 
   @@unique([linkId, teacherId])
   @@index([teacherId])
+}
+
+model TodoReminderConfirm {
+  id        String   @id @default(uuid())
+  type      String
+  targetId  String
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([type, targetId, date])
+  @@index([type, date])
+  @@index([targetId, date])
 }
 
 model StudentBookingRequest {

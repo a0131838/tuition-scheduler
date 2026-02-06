@@ -331,6 +331,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         where: {
           classId: { in: classIds },
           startAt: { gte: monthStart, lt: monthEnd },
+          OR: [{ studentId: null }, { studentId }],
         },
         include: {
           class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
@@ -352,19 +353,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   setupFont(doc);
   doc.lineGap(2);
 
-  drawHeader(doc, lang, "Monthly Schedule", "\u6708\u8bfe\u8868", showLogo);
-  doc.fontSize(10);
-  doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
   if (year && month) {
+    drawHeader(doc, lang, "Monthly Schedule", "\u6708\u8bfe\u8868", showLogo);
+    doc.fontSize(10);
+    doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
     doc.text(`${choose(lang, "Month", "\u6708\u4efd")}: ${year}-${String(month).padStart(2, "0")}`);
-  } else {
-    doc.text(
-      `${choose(lang, "Range", "\u65e5\u671f\u8303\u56f4")}: ${formatDate(monthStart)} ~ ${formatDate(monthEnd)}`
-    );
-  }
-  doc.moveDown(0.6);
-
-  if (year && month) {
+    doc.moveDown(0.6);
     if (sessions.length === 0) {
       doc.fontSize(10).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
     } else {
@@ -402,31 +396,76 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
     }
   } else {
-    if (sessions.length === 0) {
-      doc.fontSize(10).text(choose(lang, "No sessions in this range.", "\u6b64\u65e5\u671f\u8303\u56f4\u5185\u65e0\u8bfe\u6b21"));
-    } else {
-      for (const s of sessions) {
-        if (doc.y > 740) {
+    const rangeMonths: { year: number; month: number }[] = [];
+    const cursor = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+    const endCursor = new Date(monthEnd.getFullYear(), monthEnd.getMonth(), 1);
+    while (cursor <= endCursor) {
+      rangeMonths.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    let firstPage = true;
+    for (const m of rangeMonths) {
+      if (!firstPage) {
         doc.addPage();
         setupFont(doc);
-          drawHeader(doc, lang, "Schedule", "\u8bfe\u8868", showLogo);
-        doc.moveDown(0.4);
-        }
-        const att = attendanceMap.get(s.id);
-        const cancelled = att?.status === "EXCUSED";
-        const statusText = cancelled
-          ? choose(lang, "Cancelled", "\u5df2\u53d6\u6d88")
-          : choose(lang, "Scheduled", "\u5df2\u6392\u8bfe");
-        const chargeText = att?.excusedCharge ? ` (${choose(lang, "Charged", "\u6263\u8d39")})` : "";
-        const courseText = s.class.subject?.name ?? s.class.course.name ?? "";
-        const placeText = `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
-        const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${courseText}`;
-        const line2 = `${s.class.teacher.name} | ${placeText} | ${statusText}${chargeText}`;
-        doc.fontSize(10).text(line1);
-        doc.fontSize(9).fillColor(cancelled ? "#888888" : "black").text(line2);
-        doc.fillColor("black");
-        doc.moveDown(0.3);
       }
+      drawHeader(doc, lang, "Schedule", "\u8bfe\u8868", showLogo);
+      doc.fontSize(10);
+      doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
+      doc.text(
+        `${choose(lang, "Range", "\u65e5\u671f\u8303\u56f4")}: ${formatDate(monthStart)} ~ ${formatDate(monthEnd)}`
+      );
+      doc.text(`${choose(lang, "Month", "\u6708\u4efd")}: ${m.year}-${String(m.month).padStart(2, "0")}`);
+      doc.moveDown(0.6);
+
+      const monthStartAt = new Date(m.year, m.month - 1, 1, 0, 0, 0, 0);
+      const monthEndAt = new Date(m.year, m.month, 1, 0, 0, 0, 0);
+      const monthSessions = sessions.filter(
+        (s) => new Date(s.startAt) >= monthStartAt && new Date(s.startAt) < monthEndAt
+      );
+
+      if (monthSessions.length === 0) {
+        doc.fontSize(10).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
+        firstPage = false;
+        continue;
+      }
+
+      const overflow = drawMonthCalendar(doc, lang, monthSessions, attendanceMap, m.year, m.month);
+      if (overflow && overflow.size > 0) {
+        doc.addPage();
+        setupFont(doc);
+        drawHeader(doc, lang, "Schedule (Overflow)", "\u8bfe\u8868\uff08\u7ee7\u7eed\uff09", showLogo);
+        doc.moveDown(0.2);
+        doc.fontSize(10).text(`${choose(lang, "Month", "\u6708\u4efd")}: ${m.year}-${String(m.month).padStart(2, "0")}`);
+        doc
+          .fontSize(10)
+          .text(
+            choose(
+              lang,
+              "Too many sessions for calendar cells. Extra list:",
+              "\u5f53\u65e5\u8bfe\u6b21\u8d85\u51fa\u683c\u5b50\uff0c\u5176\u4ed6\u8bfe\u6b21\u5217\u8868\uff1a"
+            )
+          );
+        doc.moveDown(0.4);
+        const keys = Array.from(overflow.keys()).sort();
+        for (const key of keys) {
+          const list = overflow.get(key) ?? [];
+          if (list.length === 0) continue;
+          doc.fontSize(10).text(`${key}`);
+          for (const s of list) {
+            const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
+            const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${subjectText}`;
+            const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
+            doc.fontSize(9).text(line1);
+            doc.fontSize(8).text(line2);
+            doc.moveDown(0.2);
+          }
+          doc.moveDown(0.4);
+        }
+      }
+
+      firstPage = false;
     }
   }
 

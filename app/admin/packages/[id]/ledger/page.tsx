@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
+import NoticeBanner from "../../_components/NoticeBanner";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(min / 60);
@@ -110,16 +111,8 @@ export default async function PackageLedgerPage({
         <a href={`/api/exports/package-ledger/${packageId}`}>{t(lang, "Download PDF", "导出PDF")}</a>
       </p>
 
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Error", "错误")}:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
         <div>

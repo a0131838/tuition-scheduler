@@ -1,6 +1,7 @@
 ﻿﻿"use client";
 
 import React, { useMemo, useState } from "react";
+import NoticeBanner from "../../_components/NoticeBanner";
 
 export type AttendanceRow = {
   studentId: string;
@@ -77,12 +78,13 @@ export default function AttendanceEditor({ rows, lang }: Props) {
 
   return (
     <>
-      {hasInsufficient && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Insufficient balance", "余额不足")}：</b>
-          {t(lang, "Please adjust deducted minutes or select another package.", "请调整扣分钟或选择其他课包。")}
-        </div>
-      )}
+      {hasInsufficient ? (
+        <NoticeBanner
+          type="warn"
+          title={t(lang, "Insufficient balance", "余额不足")}
+          message={t(lang, "Please adjust deducted minutes or select another package.", "请调整扣分钟或选择其他课包。")}
+        />
+      ) : null}
 
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>

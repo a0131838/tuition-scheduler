@@ -38,6 +38,8 @@ async function deleteCampus(formData: FormData) {
 
 export default async function CampusesPage() {
   const lang = await getLang();
+  const formatId = (prefix: string, id: string) =>
+    `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const campuses = await prisma.campus.findMany({ orderBy: { name: "asc" } });
 
   return (
@@ -67,7 +69,9 @@ export default async function CampusesPage() {
             <tr key={c.id} style={{ borderTop: "1px solid #eee" }}>
               <td>{c.name}</td>
               <td>{c.isOnline ? t(lang, "Online", "线上") : t(lang, "Offline", "线下")}</td>
-              <td style={{ fontFamily: "monospace" }}>{c.id}</td>
+              <td style={{ fontFamily: "monospace", fontSize: 11, color: "#475569" }} title={c.id}>
+                {formatId("CMP", c.id)}
+              </td>
               <td>
                 <form action={deleteCampus}>
                   <input type="hidden" name="id" value={c.id} />

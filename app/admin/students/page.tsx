@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import { getLang, t } from "@/lib/i18n";
+import SimpleModal from "../_components/SimpleModal";
 
 const GRADE_OPTIONS = [
   "G1",
@@ -89,6 +90,8 @@ export default async function StudentsPage({
   searchParams?: { sourceChannelId?: string; studentTypeId?: string };
 }) {
   const lang = await getLang();
+  const formatId = (prefix: string, id: string) =>
+    `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const sourceChannelId = searchParams?.sourceChannelId ?? "";
   const studentTypeId = searchParams?.studentTypeId ?? "";
 
@@ -119,41 +122,45 @@ export default async function StudentsPage({
     <div>
       <h2>{t(lang, "Students", "学生")}</h2>
 
-      <form action={createStudent} style={{ display: "grid", gap: 8, marginBottom: 16, maxWidth: 720 }}>
-        <input name="name" placeholder={t(lang, "Name", "学生姓名")} />
-        <input name="school" placeholder={t(lang, "School", "学校")} />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input name="birthDate" type="date" />
-          <select name="grade" defaultValue="">
-            <option value="">{t(lang, "Grade", "年级")}</option>
-            {GRADE_OPTIONS.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select name="sourceChannelId" defaultValue="">
-            <option value="">{t(lang, "Source", "来源渠道")}</option>
-            {sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select name="studentTypeId" defaultValue="">
-            <option value="">{t(lang, "Type", "学生类型")}</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <textarea name="note" placeholder={t(lang, "Notes", "注意事项")} rows={3} />
-        <button type="submit">{t(lang, "Add", "新增")}</button>
-      </form>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+        <SimpleModal buttonLabel={t(lang, "Add", "新增")} title={t(lang, "Add Student", "新增学生")} closeOnSubmit>
+          <form action={createStudent} style={{ display: "grid", gap: 8, maxWidth: 720 }}>
+            <input name="name" placeholder={t(lang, "Name", "学生姓名")} />
+            <input name="school" placeholder={t(lang, "School", "学校")} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input name="birthDate" type="date" />
+              <select name="grade" defaultValue="">
+                <option value="">{t(lang, "Grade", "年级")}</option>
+                {GRADE_OPTIONS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <select name="sourceChannelId" defaultValue="">
+                <option value="">{t(lang, "Source", "来源渠道")}</option>
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <select name="studentTypeId" defaultValue="">
+                <option value="">{t(lang, "Type", "学生类型")}</option>
+                {types.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea name="note" placeholder={t(lang, "Notes", "注意事项")} rows={3} />
+            <button type="submit">{t(lang, "Add", "新增")}</button>
+          </form>
+        </SimpleModal>
+      </div>
 
       <h3>{t(lang, "Filter", "筛选")}</h3>
       <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -211,7 +218,18 @@ export default async function StudentsPage({
                 )}
               </td>
               <td>{s.note ?? "-"}</td>
-              <td style={{ fontFamily: "monospace" }}>{s.id}</td>
+              <td
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: 11,
+                  color: "#475569",
+                  maxWidth: 120,
+                  whiteSpace: "nowrap",
+                }}
+                title={s.id}
+              >
+                {formatId("STU", s.id)}
+              </td>
               <td>
                 <a href={`/admin/students/${s.id}`}>{t(lang, "Edit", "编辑")}</a>{" "}
                 <form action={deleteStudent}>
@@ -233,3 +251,5 @@ export default async function StudentsPage({
     </div>
   );
 }
+
+

@@ -1,6 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
+import NoticeBanner from "../_components/NoticeBanner";
 
 async function createCourse(formData: FormData) {
   "use server";
@@ -48,8 +50,11 @@ async function createLevel(formData: FormData) {
 async function deleteCourse(formData: FormData) {
   "use server";
   const id = String(formData.get("id"));
+  if (!id) return;
   const count = await prisma.class.count({ where: { courseId: id } });
-  if (count > 0) return;
+  if (count > 0) redirect("/admin/courses?err=Course+has+classes&keep=1");
+  const subjectCount = await prisma.subject.count({ where: { courseId: id } });
+  if (subjectCount > 0) redirect("/admin/courses?err=Course+has+subjects&keep=1");
 
   await prisma.course.delete({ where: { id } });
   revalidatePath("/admin/courses");
@@ -82,6 +87,7 @@ export default async function CoursesPage({
 }) {
   const lang = await getLang();
   const q = (searchParams?.q ?? "").trim().toLowerCase();
+  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
   const courses = await prisma.course.findMany({
     include: { subjects: { include: { levels: true } } },
     orderBy: { name: "asc" },
@@ -105,13 +111,26 @@ export default async function CoursesPage({
   return (
     <div>
       <h2>{t(lang, "Courses", "课程")}</h2>
+      {err ? (
+        <NoticeBanner
+          type="error"
+          title={t(lang, "Error", "错误")}
+          message={
+            err === "Course has classes"
+              ? t(lang, "Course has classes. Please delete classes first.", "课程下已有班级，请先删除班级。")
+              : err === "Course has subjects"
+              ? t(lang, "Course has subjects. Please delete subjects first.", "课程下已有科目，请先删除科目。")
+              : err
+          }
+        />
+      ) : null}
 
-      <div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-        <form action={createCourse} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 16 }}>
+        <form action={createCourse} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input name="name" placeholder={t(lang, "Course category", "课程大类")} />
           <button type="submit">{t(lang, "Add Course", "新增课程大类")}</button>
         </form>
-        <form method="get" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
           <input
             name="q"
             defaultValue={searchParams?.q ?? ""}
@@ -120,7 +139,7 @@ export default async function CoursesPage({
           />
           <button type="submit">{t(lang, "Search", "搜索")}</button>
           {q && (
-            <a href="/admin/courses" style={{ color: "#666", textDecoration: "underline" }}>
+            <a href="/admin/courses" style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
               {t(lang, "Clear", "清除")}
             </a>
           )}
@@ -153,7 +172,7 @@ export default async function CoursesPage({
               </summary>
 
               <div style={{ marginTop: 10, paddingLeft: 8 }}>
-                <form action={createSubject} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <form action={createSubject} style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                   <input type="hidden" name="courseId" value={c.id} />
                   <input name="name" placeholder={t(lang, "Add subject (comma separated)", "新增科目(逗号分隔)")} />
                   <button type="submit">{t(lang, "Add Subject", "新增科目")}</button>
@@ -208,7 +227,7 @@ export default async function CoursesPage({
                               ))
                             )}
                           </div>
-                          <form action={createLevel} style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <form action={createLevel} style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                             <input type="hidden" name="subjectId" value={s.id} />
                             <input name="name" placeholder={t(lang, "Add level (comma separated)", "新增级别(逗号分隔)")} />
                             <button type="submit">{t(lang, "Add Level", "新增级别")}</button>

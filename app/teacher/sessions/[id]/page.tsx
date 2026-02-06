@@ -36,7 +36,11 @@ async function saveAttendanceForTeacher(sessionId: string, teacherId: string, fo
   if (!allowed) redirect("/teacher/sessions?err=No+permission");
 
   const enrollments = await prisma.enrollment.findMany({ where: { classId: session.classId } });
-  for (const e of enrollments) {
+  const attendanceEnrollments =
+    session.class.capacity === 1 && session.studentId
+      ? enrollments.filter((e) => e.studentId === session.studentId)
+      : enrollments;
+  for (const e of attendanceEnrollments) {
     const statusRaw = String(formData.get(`status:${e.studentId}`) ?? "UNMARKED");
     const note = String(formData.get(`note:${e.studentId}`) ?? "").trim() || null;
     const status = (Object.values(AttendanceStatus) as string[]).includes(statusRaw)
@@ -167,6 +171,7 @@ export default async function TeacherSessionDetailPage({
   const session = await prisma.session.findUnique({
     where: { id: params.id },
     include: {
+      student: true,
       class: { include: { course: true, subject: true, level: true, campus: true, room: true } },
       attendances: true,
       feedbacks: { where: { teacherId: teacher.id } },
@@ -181,6 +186,10 @@ export default async function TeacherSessionDetailPage({
     include: { student: true },
     orderBy: { student: { name: "asc" } },
   });
+  const attendanceEnrollments =
+    session.class.capacity === 1 && session.studentId
+      ? enrollments.filter((e) => e.studentId === session.studentId)
+      : enrollments;
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
 
@@ -205,6 +214,11 @@ export default async function TeacherSessionDetailPage({
           {session.class.subject ? ` / ${session.class.subject.name}` : ""}
           {session.class.level ? ` / ${session.class.level.name}` : ""}
         </div>
+        {session.class.capacity === 1 && (
+          <div>
+            {t(lang, "Student", "学生")}: {session.student?.name ?? t(lang, "Not assigned", "未选择学生")}
+          </div>
+        )}
         <div>
           {session.class.campus.name}
           {session.class.room ? ` / ${session.class.room.name}` : ""}
@@ -222,7 +236,7 @@ export default async function TeacherSessionDetailPage({
             </tr>
           </thead>
           <tbody>
-            {enrollments.map((e) => {
+            {attendanceEnrollments.map((e) => {
               const a = attMap.get(e.studentId);
               return (
                 <tr key={e.id} style={{ borderTop: "1px solid #eee" }}>

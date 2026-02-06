@@ -6,6 +6,10 @@ import { TeachingLanguage } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
 import StudentSearchSelect from "../../_components/StudentSearchSelect";
 import { createPasswordHash } from "@/lib/auth";
+import TeacherCreateForm from "../../_components/TeacherCreateForm";
+import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
+import OneOnOneTemplateForm from "../../_components/OneOnOneTemplateForm";
+import NoticeBanner from "../../_components/NoticeBanner";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -57,47 +61,6 @@ type Occurrence = {
   startAt: Date;
   endAt: Date;
 };
-
-async function getOrCreateOneOnOneClass(opts: {
-  teacherId: string;
-  studentId: string;
-  subjectId: string;
-  levelId: string;
-  campusId: string;
-  roomId: string | null;
-}) {
-  const { teacherId, studentId, subjectId, levelId, campusId, roomId } = opts;
-  const level = await prisma.level.findUnique({
-    where: { id: levelId },
-    include: { subject: { include: { course: true } } },
-  });
-  if (!level || level.subjectId !== subjectId) {
-    return null;
-  }
-  const courseId = level.subject.courseId;
-  const candidates = await prisma.class.findMany({
-    where: { teacherId, courseId, subjectId, levelId, campusId, roomId: roomId ?? null },
-    include: { enrollments: true },
-  });
-  const match = candidates.find(
-    (c) => c.enrollments.length === 1 && c.enrollments[0]?.studentId === studentId
-  );
-  if (match) return match.id;
-
-  const created = await prisma.class.create({
-    data: {
-      teacherId,
-      courseId,
-      subjectId,
-      levelId,
-      campusId,
-      roomId: roomId ?? null,
-      capacity: 1,
-      enrollments: { create: { studentId } },
-    },
-  });
-  return created.id;
-}
 
 async function computeGenerationPlan(teacherId: string, startDate: string, endDate: string) {
   const start = parseDateOnly(startDate);
@@ -173,7 +136,11 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
 
   for (const occ of occurrences) {
     const dup = teacherSessions.find(
-      (s) => s.classId === occ.classId && s.startAt.getTime() === occ.startAt.getTime()
+      (s) =>
+        s.classId === occ.classId &&
+        s.startAt.getTime() === occ.startAt.getTime() &&
+        s.endAt.getTime() === occ.endAt.getTime() &&
+        (s.studentId ?? null) === (occ.studentId ?? null)
     );
     if (dup) {
       conflicts.push({ occ, reason: "Duplicate session", existing: dup });
@@ -220,6 +187,8 @@ async function updateTeacher(teacherId: string, formData: FormData) {
   const yearsExperienceRaw = String(formData.get("yearsExperience") ?? "").trim();
   const teachingLanguageRaw = String(formData.get("teachingLanguage") ?? "").trim();
   const teachingLanguageOther = String(formData.get("teachingLanguageOther") ?? "").trim();
+  const offlineShanghai = String(formData.get("offlineShanghai") ?? "") === "on";
+  const offlineSingapore = String(formData.get("offlineSingapore") ?? "") === "on";
   const subjectIds = formData.getAll("subjectIds").map((v) => String(v)).filter(Boolean);
 
   if (!name) {
@@ -236,6 +205,9 @@ async function updateTeacher(teacherId: string, formData: FormData) {
     teachingLanguageRaw === "CHINESE" || teachingLanguageRaw === "ENGLISH" || teachingLanguageRaw === "BILINGUAL"
       ? (teachingLanguageRaw as TeachingLanguage)
       : null;
+  if (teachingLanguageRaw === "OTHER" && !teachingLanguageOther) {
+    redirect(`/admin/teachers/${teacherId}?err=Other+language+is+required`);
+  }
 
   await prisma.teacher.update({
     where: { id: teacherId },
@@ -247,6 +219,8 @@ async function updateTeacher(teacherId: string, formData: FormData) {
       yearsExperience,
       teachingLanguage,
       teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
+      offlineShanghai,
+      offlineSingapore,
       subjects: { set: subjectIds.map((id) => ({ id })) },
     },
   });
@@ -258,14 +232,14 @@ async function createTemplate(teacherId: string, formData: FormData) {
   "use server";
   const studentId = String(formData.get("studentId") ?? "");
   const subjectId = String(formData.get("subjectId") ?? "");
-  const levelId = String(formData.get("levelId") ?? "");
+  const levelIdRaw = String(formData.get("levelId") ?? "");
   const campusId = String(formData.get("campusId") ?? "");
   const roomIdRaw = String(formData.get("roomId") ?? "");
   const weekdayRaw = String(formData.get("weekday") ?? "");
   const startTime = String(formData.get("startTime") ?? "");
   const durationRaw = String(formData.get("durationMin") ?? "");
 
-  if (!studentId || !subjectId || !levelId || !campusId || !weekdayRaw || !startTime || !durationRaw) {
+  if (!studentId || !subjectId || !campusId || !weekdayRaw || !startTime || !durationRaw) {
     redirect(`/admin/teachers/${teacherId}?err=Missing+template+fields`);
   }
 
@@ -276,15 +250,23 @@ async function createTemplate(teacherId: string, formData: FormData) {
     redirect(`/admin/teachers/${teacherId}?err=Invalid+template+fields`);
   }
 
-  const classId = await getOrCreateOneOnOneClass({
+  const levelId = levelIdRaw || null;
+  if (roomIdRaw) {
+    const room = await prisma.room.findUnique({ where: { id: roomIdRaw } });
+    if (!room || room.campusId !== campusId) {
+      redirect(`/admin/teachers/${teacherId}?err=Room+not+in+this+campus`);
+    }
+  }
+  const cls = await getOrCreateOneOnOneClassForStudent({
     teacherId,
     studentId,
     subjectId,
     levelId,
     campusId,
     roomId: roomIdRaw || null,
+    ensureEnrollment: true,
   });
-  if (!classId) {
+  if (!cls) {
     redirect(`/admin/teachers/${teacherId}?err=Invalid+subject+or+level`);
   }
 
@@ -292,7 +274,7 @@ async function createTemplate(teacherId: string, formData: FormData) {
     data: {
       teacherId,
       studentId,
-      classId,
+      classId: cls.id,
       weekday,
       startMin,
       durationMin,
@@ -321,7 +303,12 @@ async function generateSessionsFromTemplates(teacherId: string, formData: FormDa
   const { toCreate, conflicts } = await computeGenerationPlan(teacherId, startDate, endDate);
   if (toCreate.length > 0) {
     await prisma.session.createMany({
-      data: toCreate.map((o) => ({ classId: o.classId, startAt: o.startAt, endAt: o.endAt })),
+      data: toCreate.map((o) => ({
+        classId: o.classId,
+        startAt: o.startAt,
+        endAt: o.endAt,
+        studentId: o.studentId,
+      })),
     });
   }
 
@@ -346,6 +333,7 @@ async function deleteTeacher(teacherId: string) {
     await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
   }
   await prisma.class.deleteMany({ where: { teacherId } });
+  await prisma.oneOnOneGroup.deleteMany({ where: { teacherId } });
   await prisma.teacher.delete({ where: { id: teacherId } });
   redirect("/admin/teachers");
 }
@@ -470,7 +458,8 @@ export default async function TeacherDetailPage({
     );
   }
 
-  const [subjects, levels, students, campuses, rooms, templates, linkedUser] = await Promise.all([
+  const [courses, subjects, levels, students, campuses, rooms, templates, linkedUser] = await Promise.all([
+    prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
     prisma.level.findMany({ include: { subject: { include: { course: true } } }, orderBy: [{ subjectId: "asc" }, { name: "asc" }] }),
     prisma.student.findMany({ orderBy: { name: "asc" } }),
@@ -493,8 +482,6 @@ export default async function TeacherDetailPage({
   const endDate = searchParams?.endDate ?? "";
   const preview = searchParams?.preview === "1";
 
-  const selectedIds = teacher.subjects.map((s) => s.id);
-
   const plan = preview && startDate && endDate ? await computeGenerationPlan(teacherId, startDate, endDate) : null;
 
   return (
@@ -502,19 +489,11 @@ export default async function TeacherDetailPage({
       <h2>{t(lang, "Teacher Detail", "老师详情")}</h2>
       <p style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <a href="/admin/teachers">← {t(lang, "Back to Teachers", "返回老师列表")}</a>
-        <span style={{ color: "#999" }}>(teacherId {teacher.id})</span>
+        <span style={{ color: "#999" }}>(TCH-{teacher.id.slice(0, 4)}…{teacher.id.slice(-4)})</span>
       </p>
 
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Error", "错误")}:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <h3>{t(lang, "Edit Teacher", "编辑老师")}</h3>
       <p>
@@ -522,50 +501,52 @@ export default async function TeacherDetailPage({
           {t(lang, "Generate Teacher Card", "生成老师名片")}
         </a>
       </p>
-      <form action={updateTeacher.bind(null, teacherId)} style={{ display: "grid", gap: 8, marginBottom: 16, maxWidth: 860 }}>
-        <input name="name" defaultValue={teacher.name} placeholder={t(lang, "Teacher name", "老师姓名")} />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input name="nationality" defaultValue={teacher.nationality ?? ""} placeholder={t(lang, "Nationality", "国籍")} />
-          <input name="almaMater" defaultValue={teacher.almaMater ?? ""} placeholder={t(lang, "Alma Mater", "毕业学校")} />
-        </div>
-        <textarea name="intro" rows={4} defaultValue={teacher.intro ?? ""} placeholder={t(lang, "Teacher Intro", "老师介绍")} />
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select name="subjectIds" multiple size={4} defaultValue={selectedIds} style={{ minWidth: 280 }}>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.course.name} - {s.name}
-              </option>
-            ))}
-          </select>
-          <span style={{ color: "#666" }}>{t(lang, "Subject (multi-select)", "教授科目（多选）")}</span>
-
-          <input
-            name="yearsExperience"
-            type="number"
-            min={0}
-            defaultValue={teacher.yearsExperience ?? ""}
-            placeholder={t(lang, "Years Experience", "教学经验(年)")}
-            style={{ width: 220 }}
-          />
-
-          <select name="teachingLanguage" defaultValue={teacher.teachingLanguage ?? (teacher.teachingLanguageOther ? "OTHER" : "")}>
-            <option value="">{t(lang, "Teaching Language", "教学语言")}</option>
-            <option value={TeachingLanguage.CHINESE}>{t(lang, "Chinese", "中文")}</option>
-            <option value={TeachingLanguage.ENGLISH}>{t(lang, "English", "英文")}</option>
-            <option value={TeachingLanguage.BILINGUAL}>{t(lang, "Bilingual", "双语")}</option>
-            <option value="OTHER">{t(lang, "Other", "其他")}</option>
-          </select>
-          <input
-            name="teachingLanguageOther"
-            defaultValue={teacher.teachingLanguageOther ?? ""}
-            placeholder={t(lang, "Input language manually (if Other)", "手动输入语言（选择其他时填写）")}
-            style={{ minWidth: 240 }}
-          />
-        </div>
-
-        <button type="submit">{t(lang, "Save", "保存")}</button>
-      </form>
+      <div style={{ marginBottom: 16 }}>
+        <TeacherCreateForm
+          action={updateTeacher.bind(null, teacherId)}
+          courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+          subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
+          labels={{
+            teacherName: t(lang, "Teacher name", "老师姓名"),
+            nationality: t(lang, "Nationality", "国籍"),
+            almaMater: t(lang, "Alma Mater", "毕业学校"),
+            almaMaterRule: t(
+              lang,
+              "Alma Mater rule: you can input multiple schools separated by commas. They will be displayed one per line.",
+              "毕业学校规则：可填写多个学校，用逗号分隔；展示时会按竖排逐行显示。"
+            ),
+            teacherIntro: t(lang, "Teacher Intro", "老师介绍"),
+            subjectsMulti: t(lang, "Subject (multi-select)", "教授科目（多选）"),
+            subjectSearch: t(lang, "Search subject", "搜索科目"),
+            subjectCourseFilter: t(lang, "Filter by course", "按课程筛选"),
+            allCourses: t(lang, "All courses", "全部课程"),
+            noSubjects: t(lang, "No subjects", "无科目"),
+            yearsExp: t(lang, "Years Experience", "教学经验(年)"),
+            teachingLanguage: t(lang, "Teaching Language", "教学语言"),
+            chinese: t(lang, "Chinese", "中文"),
+            english: t(lang, "English", "英文"),
+            bilingual: t(lang, "Bilingual", "双语"),
+            otherLang: t(lang, "Other", "其他"),
+            otherLangInput: t(lang, "Input language manually", "手动输入语言"),
+            offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
+            offlineShanghai: t(lang, "Shanghai", "上海线下"),
+            offlineSingapore: t(lang, "Singapore", "新加坡线下"),
+            add: t(lang, "Save", "保存"),
+          }}
+          initial={{
+            name: teacher.name,
+            nationality: teacher.nationality ?? "",
+            almaMater: teacher.almaMater ?? "",
+            intro: teacher.intro ?? "",
+            yearsExperience: teacher.yearsExperience ?? null,
+            teachingLanguage: teacher.teachingLanguage ?? "",
+            teachingLanguageOther: teacher.teachingLanguageOther ?? "",
+            subjectIds: teacher.subjects.map((s) => s.id),
+            offlineShanghai: teacher.offlineShanghai ?? false,
+            offlineSingapore: teacher.offlineSingapore ?? false,
+          }}
+        />
+      </div>
 
       <div style={{ marginBottom: 24 }}>
         <form action={deleteTeacher.bind(null, teacherId)}>
@@ -636,70 +617,35 @@ export default async function TeacherDetailPage({
       )}
 
       <h3>{t(lang, "1-1 Templates", "一对一模版")}</h3>
-      <form action={createTemplate.bind(null, teacherId)} style={{ display: "grid", gap: 8, maxWidth: 900 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select name="studentId" defaultValue="">
-            <option value="">{t(lang, "Student", "学生")}</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select name="subjectId" defaultValue="">
-            <option value="">{t(lang, "Subject", "科目")}</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.course.name} - {s.name}
-              </option>
-            ))}
-          </select>
-          <select name="levelId" defaultValue="">
-            <option value="">{t(lang, "Level", "级别")}</option>
-            {levels.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.subject.course.name} - {l.subject.name} - {l.name}
-              </option>
-            ))}
-          </select>
-          <select name="campusId" defaultValue="">
-            <option value="">{t(lang, "Campus", "校区")}</option>
-            {campuses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select name="roomId" defaultValue="">
-            <option value="">{t(lang, "Room (optional)", "教室(可选)")}</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} ({r.campus.name})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select name="weekday" defaultValue="1">
-            {WEEKDAYS.map((w, i) => (
-              <option key={w} value={i}>
-                {w}
-              </option>
-            ))}
-          </select>
-          <input name="startTime" type="time" defaultValue="16:00" />
-          <input
-            name="durationMin"
-            type="number"
-            min={15}
-            step={15}
-            defaultValue={60}
-            style={{ width: 120 }}
-          />
-          <span style={{ color: "#666" }}>{t(lang, "Duration (min)", "时长(分钟)")}</span>
-          <button type="submit">{t(lang, "Add Template", "新增模版")}</button>
-        </div>
-      </form>
+      <OneOnOneTemplateForm
+        action={createTemplate.bind(null, teacherId)}
+        courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
+        levels={levels.map((l) => ({
+          id: l.id,
+          name: l.name,
+          subjectId: l.subjectId,
+          courseName: l.subject.course.name,
+          subjectName: l.subject.name,
+        }))}
+        students={students.map((s) => ({ id: s.id, name: s.name }))}
+        campuses={campuses.map((c) => ({ id: c.id, name: c.name }))}
+        rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name }))}
+        labels={{
+          student: t(lang, "Student", "学生"),
+          course: t(lang, "Course", "课程"),
+          subject: t(lang, "Subject", "科目"),
+          levelOptional: t(lang, "Level (optional)", "级别(可选)"),
+          campus: t(lang, "Campus", "校区"),
+          roomOptional: t(lang, "Room (optional)", "教室(可选)"),
+          weekday: t(lang, "Weekday", "星期"),
+          startTime: t(lang, "Start", "开始"),
+          durationMin: t(lang, "Duration (min)", "时长(分钟)"),
+          add: t(lang, "Add Template", "新增模版"),
+          none: t(lang, "(none)", "(无)"),
+        }}
+        weekdays={WEEKDAYS}
+      />
 
       <div style={{ marginTop: 12 }}>
         {templates.length === 0 ? (

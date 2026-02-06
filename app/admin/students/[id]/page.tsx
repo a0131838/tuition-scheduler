@@ -4,6 +4,9 @@ import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
+import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
+import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
+import NoticeBanner from "../../_components/NoticeBanner";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -20,7 +23,12 @@ const zhMap: Record<string, string> = {
   "Cancelled": "\u5df2\u53d6\u6d88",
   "Charge": "\u6263\u8d39",
   "Charged": "\u6263\u8d39",
-  "Choose subject, level, campus, room and time to match teachers.": "\u9009\u62e9\u79d1\u76ee\u3001\u7ea7\u522b\u3001\u6821\u533a\u3001\u6559\u5ba4\u548c\u65f6\u95f4\u540e\u5339\u914d\u8001\u5e08",
+  "Choose subject, campus, room and time to match teachers.": "\u9009\u62e9\u79d1\u76ee\u3001\u6821\u533a\u3001\u6559\u5ba4\u548c\u65f6\u95f4\u540e\u5339\u914d\u8001\u5e08",
+  "Change Teacher": "\u6362\u8001\u5e08",
+  "Change Course": "\u6362\u8bfe\u7a0b",
+  "Replace Teacher": "\u66ff\u6362\u8001\u5e08",
+  "Reason (optional)": "\u539f\u56e0(\u53ef\u9009)",
+  "Select teacher": "\u9009\u62e9\u8001\u5e08",
   "Class": "\u73ed\u7ea7",
   "Clear": "\u6e05\u9664",
   "Close": "\u5173\u95ed",
@@ -30,6 +38,7 @@ const zhMap: Record<string, string> = {
   "Delete student? This also deletes enrollments/appointments/packages.": "\u5220\u9664\u5b66\u751f\uff1f\u5c06\u540c\u65f6\u5220\u9664\u62a5\u540d/\u9884\u7ea6/\u8bfe\u5305\u3002",
   "Detail": "\u8be6\u60c5",
   "Download PDF": "\u5bfc\u51faPDF",
+  "Export Student Report": "\u5bfc\u51fa\u5b66\u751f\u62a5\u544a",
   "Duration (minutes)": "\u65f6\u957f(\u5206\u949f)",
   "Edit Student": "\u7f16\u8f91\u5b66\u751f",
   "Enrollments": "\u62a5\u540d",
@@ -39,6 +48,7 @@ const zhMap: Record<string, string> = {
   "Grade": "\u5e74\u7ea7",
   "Invalid subject/level selected.": "\u79d1\u76ee/\u7ea7\u522b\u4e0d\u5339\u914d",
   "Level": "\u7ea7\u522b",
+  "Level (optional)": "\u7ea7\u522b(\u53ef\u9009)",
   "Limit": "\u6761\u6570",
   "Name": "\u59d3\u540d",
   "Next Month": "\u4e0b\u6708",
@@ -184,11 +194,37 @@ function fmtSlotRange(startMin: number, endMin: number) {
   return `${sh}:${sm}-${eh}:${em}`;
 }
 
+function canTeachSubject(teacher: any, subjectId?: string | null) {
+  if (!subjectId) return true;
+  if (teacher?.subjectCourseId === subjectId) return true;
+  if (Array.isArray(teacher?.subjects)) {
+    return teacher.subjects.some((s: any) => s?.id === subjectId);
+  }
+  return false;
+}
+
+function formatSessionConflictLabel(s: any) {
+  const cls = s.class;
+  const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+  const roomLabel = cls.room?.name ?? "(none)";
+  const timeLabel = `${fmtDateInput(s.startAt)} ${fmtHHMM(s.startAt)}-${fmtHHMM(s.endAt)}`;
+  return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
+}
+
 function fmtYMD(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
+}
+
+function fmtDatetimeLocal(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${dd}T${hh}:${mm}`;
 }
 
 function parseMonth(s?: string) {
@@ -345,7 +381,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   "use server";
   const teacherId = String(formData.get("teacherId") ?? "");
   const subjectId = String(formData.get("subjectId") ?? "");
-  const levelId = String(formData.get("levelId") ?? "");
+  const levelIdRaw = String(formData.get("levelId") ?? "");
   const campusId = String(formData.get("campusId") ?? "");
   const roomIdRaw = String(formData.get("roomId") ?? "");
   const startAtStr = String(formData.get("startAt") ?? "");
@@ -355,7 +391,6 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   if (
     !teacherId ||
     !subjectId ||
-    !levelId ||
     !campusId ||
     !startAtStr ||
     !Number.isFinite(durationMin) ||
@@ -405,12 +440,18 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
-    select: { id: true, classId: true },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
   });
   if (teacherSessionConflict) {
+    const cls = teacherSessionConflict.class;
+    const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+    const roomLabel = cls.room?.name ?? "(none)";
+    const timeLabel = `${fmtDateInput(teacherSessionConflict.startAt)} ${fmtHHMM(teacherSessionConflict.startAt)}-${fmtHHMM(teacherSessionConflict.endAt)}`;
     redirect(
       `/admin/students/${studentId}?err=${encodeURIComponent(
-        `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`
+        `Teacher conflict: ${cls.teacher.name} | ${classLabel} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`
       )}`
     );
   }
@@ -421,12 +462,15 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
-    select: { id: true },
+    select: { id: true, startAt: true, endAt: true },
   });
   if (teacherApptConflict) {
+    const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+      teacherApptConflict.endAt
+    )}`;
     redirect(
       `/admin/students/${studentId}?err=${encodeURIComponent(
-        `Teacher conflict with appointment ${teacherApptConflict.id}`
+        `Teacher conflict with appointment ${timeLabel}`
       )}`
     );
   }
@@ -438,26 +482,40 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
-      select: { id: true, classId: true },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
     });
     if (roomConflict) {
+      const cls = roomConflict.class;
+      const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+      const roomLabel = cls.room?.name ?? "(none)";
+      const timeLabel = `${fmtDateInput(roomConflict.startAt)} ${fmtHHMM(roomConflict.startAt)}-${fmtHHMM(roomConflict.endAt)}`;
       redirect(
         `/admin/students/${studentId}?err=${encodeURIComponent(
-          `Room conflict with session ${roomConflict.id} (class ${roomConflict.classId})`
+          `Room conflict: ${roomLabel} | ${classLabel} | ${cls.teacher.name} | ${timeLabel}`
         )}`
       );
     }
   }
 
-  const level = await prisma.level.findUnique({
-    where: { id: levelId },
-    include: { subject: true },
+  const subject = await prisma.subject.findUnique({
+    where: { id: subjectId },
+    select: { id: true, courseId: true },
   });
-  if (!level || level.subjectId !== subjectId) {
-    redirect(`/admin/students/${studentId}?err=Invalid+subject+or+level`);
+  if (!subject) {
+    redirect(`/admin/students/${studentId}?err=Invalid+subject`);
+  }
+  let levelId: string | null = null;
+  if (levelIdRaw) {
+    const level = await prisma.level.findUnique({ where: { id: levelIdRaw } });
+    if (!level || level.subjectId !== subjectId) {
+      redirect(`/admin/students/${studentId}?err=Invalid+subject+or+level`);
+    }
+    levelId = levelIdRaw;
   }
 
-  const courseId = level.subject.courseId;
+  const courseId = subject.courseId;
   const activePkg = await prisma.coursePackage.findFirst({
     where: {
       studentId,
@@ -473,29 +531,18 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     redirect(`/admin/students/${studentId}?err=No+active+package+for+this+course`);
   }
 
-  let cls = await prisma.class.findFirst({
-    where: {
-      teacherId,
-      courseId,
-      subjectId,
-      levelId,
-      campusId,
-      roomId,
-      capacity: 1,
-    },
+  const cls = await getOrCreateOneOnOneClassForStudent({
+    teacherId,
+    studentId,
+    courseId,
+    subjectId,
+    levelId,
+    campusId,
+    roomId,
+    ensureEnrollment: true,
   });
   if (!cls) {
-    cls = await prisma.class.create({
-      data: {
-        teacherId,
-        courseId,
-        subjectId,
-        levelId,
-        campusId,
-        roomId,
-        capacity: 1,
-      },
-    });
+    redirect(`/admin/students/${studentId}?err=Invalid+subject+or+level`);
   }
 
   const dupSession = await prisma.session.findFirst({
@@ -504,29 +551,110 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   });
   if (!dupSession) {
     await prisma.session.create({
-      data: { classId: cls.id, startAt, endAt },
+      data: { classId: cls.id, startAt, endAt, studentId },
     });
   }
 
-  const existingEnroll = await prisma.enrollment.findFirst({
-    where: { studentId, classId: cls.id },
-    select: { id: true },
-  });
-  if (!existingEnroll) {
-    await prisma.enrollment.create({
-      data: { studentId, classId: cls.id },
-    });
-  }
+  // enrollment ensured by helper
 
   const params = new URLSearchParams({
     msg: "Scheduled",
     quickSubjectId: subjectId,
-    quickLevelId: levelId,
+    quickLevelId: levelId ?? "",
     quickStartAt: startAtStr,
     quickDurationMin: String(durationMin),
   });
   if (month) params.set("month", month);
   redirect(`/admin/students/${studentId}?${params.toString()}`);
+}
+
+async function replaceSessionTeacherForStudent(studentId: string, formData: FormData) {
+  "use server";
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const newTeacherId = String(formData.get("newTeacherId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim() || null;
+  const returnTo = String(formData.get("returnTo") ?? `/admin/students/${studentId}`);
+
+  if (!sessionId || !newTeacherId) {
+    redirect(`${returnTo}&err=Missing+sessionId+or+newTeacherId`);
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: { class: true },
+  });
+  if (!session) {
+    redirect(`${returnTo}&err=Session+not+found`);
+  }
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: newTeacherId },
+    include: { subjects: true },
+  });
+  if (!teacher) {
+    redirect(`${returnTo}&err=Teacher+not+found`);
+  }
+  if (!canTeachSubject(teacher, session.class.subjectId)) {
+    redirect(`${returnTo}&err=Teacher+cannot+teach+this+course`);
+  }
+
+  const availErr = await checkTeacherAvailability(newTeacherId, session.startAt, session.endAt);
+  if (availErr) {
+    redirect(`${returnTo}&err=${encodeURIComponent(availErr)}`);
+  }
+
+  const teacherSessionConflict = await prisma.session.findFirst({
+    where: {
+      id: { not: session.id },
+      startAt: { lt: session.endAt },
+      endAt: { gt: session.startAt },
+      OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
+    },
+    select: { id: true, classId: true },
+  });
+  if (teacherSessionConflict) {
+    redirect(
+      `${returnTo}&err=${encodeURIComponent(
+        `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`
+      )}`
+    );
+  }
+
+  const teacherApptConflict = await prisma.appointment.findFirst({
+    where: {
+      teacherId: newTeacherId,
+      startAt: { lt: session.endAt },
+      endAt: { gt: session.startAt },
+    },
+    select: { id: true, startAt: true, endAt: true },
+  });
+  if (teacherApptConflict) {
+    const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+      teacherApptConflict.endAt
+    )}`;
+    redirect(`${returnTo}&err=${encodeURIComponent(`Teacher conflict with appointment ${timeLabel}`)}`);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const fromTeacherId = session.teacherId ?? session.class.teacherId;
+    const toTeacherId = newTeacherId;
+    if (fromTeacherId !== toTeacherId) {
+      await tx.session.update({
+        where: { id: session.id },
+        data: { teacherId: toTeacherId === session.class.teacherId ? null : toTeacherId },
+      });
+      await tx.sessionTeacherChange.create({
+        data: {
+          sessionId: session.id,
+          fromTeacherId,
+          toTeacherId,
+          reason,
+        },
+      });
+    }
+  });
+
+  redirect(`${returnTo}&msg=Replaced`);
 }
 
 async function cancelStudentSession(studentId: string, formData: FormData) {
@@ -736,6 +864,8 @@ export default async function StudentDetailPage({
   const studentId = params.id;
 
   const courseId = searchParams?.courseId ?? "";
+  const subjectId = searchParams?.subjectId ?? "";
+  const levelIdFilter = searchParams?.levelId ?? "";
   const teacherId = searchParams?.teacherId ?? "";
   const status = searchParams?.status ?? "";
   const days = toInt(searchParams?.days, 0);
@@ -763,6 +893,8 @@ export default async function StudentDetailPage({
   }
   const classWhere: any = {};
   if (courseId) classWhere.courseId = courseId;
+  if (subjectId) classWhere.subjectId = subjectId;
+  if (levelIdFilter) classWhere.levelId = levelIdFilter;
   if (teacherId) classWhere.teacherId = teacherId;
   if (Object.keys(classWhere).length > 0) {
     sessionWhere.class = classWhere;
@@ -852,7 +984,11 @@ export default async function StudentDetailPage({
   upcomingRangeEnd.setDate(upcomingRangeEnd.getDate() + 60);
   const upcomingSessions = classIds.length
     ? await prisma.session.findMany({
-        where: { classId: { in: classIds }, startAt: { gte: new Date(), lt: upcomingRangeEnd } },
+        where: {
+          classId: { in: classIds },
+          startAt: { gte: new Date(), lt: upcomingRangeEnd },
+          OR: [{ studentId: null }, { studentId }],
+        },
         include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
         orderBy: { startAt: "asc" },
       })
@@ -871,6 +1007,7 @@ export default async function StudentDetailPage({
         where: {
           classId: { in: classIds },
           startAt: { gte: monthStart, lt: monthEnd },
+          OR: [{ studentId: null }, { studentId }],
         },
         include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
         orderBy: { startAt: "asc" },
@@ -927,6 +1064,7 @@ export default async function StudentDetailPage({
 
   const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
   const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const returnTo = `/admin/students/${studentId}?month=${monthLabel(monthDate)}`;
 
   const quickCandidates: {
     id: string;
@@ -936,21 +1074,31 @@ export default async function StudentDetailPage({
   }[] = [];
   let quickPackageWarn = "";
   const quickCampusIsOnline = campuses.some((c) => c.id === quickCampusId && c.isOnline);
-  if (quickSubjectId && quickLevelId && quickStartAt && quickCampusId && (quickRoomId || quickCampusIsOnline)) {
+  if (quickSubjectId && quickStartAt && quickCampusId && (quickRoomId || quickCampusIsOnline)) {
     const startAt = parseDatetimeLocal(quickStartAt);
     const endAt = new Date(startAt.getTime() + quickDurationMin * 60 * 1000);
-    const quickLevel = await prisma.level.findUnique({
-      where: { id: quickLevelId },
-      include: { subject: true },
+    const quickSubject = await prisma.subject.findUnique({
+      where: { id: quickSubjectId },
+      select: { id: true, courseId: true },
     });
-    if (!quickLevel || quickLevel.subjectId !== quickSubjectId) {
+    if (!quickSubject) {
       quickPackageWarn = tl(lang, "Invalid subject/level selected.");
     } else {
-      const quickCourseId = quickLevel.subject.courseId;
+      if (quickLevelId) {
+        const quickLevel = await prisma.level.findUnique({
+          where: { id: quickLevelId },
+          select: { id: true, subjectId: true },
+        });
+        if (!quickLevel || quickLevel.subjectId !== quickSubjectId) {
+          quickPackageWarn = tl(lang, "Invalid subject/level selected.");
+        }
+      }
+    }
+    if (!quickPackageWarn) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
           studentId,
-          courseId: quickCourseId,
+          courseId: quickSubject?.courseId ?? "",
           status: "ACTIVE",
           validFrom: { lte: startAt },
           OR: [{ validTo: null }, { validTo: { gte: startAt } }],
@@ -974,62 +1122,67 @@ export default async function StudentDetailPage({
               startAt: { lt: endAt },
               endAt: { gt: startAt },
             },
-            select: { id: true, classId: true },
+            include: {
+              class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+            },
           })
         : null;
       const eligible = teachers.filter(
         (tch) => tch.subjectCourseId === quickSubjectId || tch.subjects.some((s) => s.id === quickSubjectId)
       );
       for (const tch of eligible) {
-      if (roomConflict) {
-        quickCandidates.push({
-          id: tch.id,
-          name: tch.name,
-          ok: false,
-          reason: `Room conflict with session ${roomConflict.id} (class ${roomConflict.classId})`,
+        if (roomConflict) {
+          quickCandidates.push({
+            id: tch.id,
+            name: tch.name,
+            ok: false,
+            reason: `Room conflict: ${formatSessionConflictLabel(roomConflict)}`,
+          });
+          continue;
+        }
+        const availErr = await checkTeacherAvailability(tch.id, startAt, endAt);
+        if (availErr) {
+          quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availErr });
+          continue;
+        }
+        const sessionConflict = await prisma.session.findFirst({
+          where: {
+            class: { teacherId: tch.id },
+            startAt: { lt: endAt },
+            endAt: { gt: startAt },
+          },
+          include: {
+            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+          },
         });
-        continue;
-      }
-      const availErr = await checkTeacherAvailability(tch.id, startAt, endAt);
-      if (availErr) {
-        quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availErr });
-        continue;
-      }
-      const sessionConflict = await prisma.session.findFirst({
-        where: {
-          class: { teacherId: tch.id },
-          startAt: { lt: endAt },
-          endAt: { gt: startAt },
-        },
-        select: { id: true, classId: true },
-      });
-      if (sessionConflict) {
-        quickCandidates.push({
-          id: tch.id,
-          name: tch.name,
-          ok: false,
-          reason: `Teacher conflict with session ${sessionConflict.id} (class ${sessionConflict.classId})`,
+        if (sessionConflict) {
+          quickCandidates.push({
+            id: tch.id,
+            name: tch.name,
+            ok: false,
+            reason: `Teacher conflict: ${formatSessionConflictLabel(sessionConflict)}`,
+          });
+          continue;
+        }
+        const apptConflict = await prisma.appointment.findFirst({
+          where: {
+            teacherId: tch.id,
+            startAt: { lt: endAt },
+            endAt: { gt: startAt },
+          },
+          select: { id: true },
         });
-        continue;
-      }
-      const apptConflict = await prisma.appointment.findFirst({
-        where: {
-          teacherId: tch.id,
-          startAt: { lt: endAt },
-          endAt: { gt: startAt },
-        },
-        select: { id: true },
-      });
-      if (apptConflict) {
-        quickCandidates.push({
-          id: tch.id,
-          name: tch.name,
-          ok: false,
-          reason: `Teacher conflict with appointment ${apptConflict.id}`,
-        });
-        continue;
-      }
-      quickCandidates.push({ id: tch.id, name: tch.name, ok: true });
+        if (apptConflict) {
+          const timeLabel = `${fmtDateInput(apptConflict.startAt)} ${fmtHHMM(apptConflict.startAt)}-${fmtHHMM(apptConflict.endAt)}`;
+          quickCandidates.push({
+            id: tch.id,
+            name: tch.name,
+            ok: false,
+            reason: `Teacher conflict: appointment ${timeLabel}`,
+          });
+          continue;
+        }
+        quickCandidates.push({ id: tch.id, name: tch.name, ok: true });
       }
     }
   }
@@ -1046,74 +1199,156 @@ export default async function StudentDetailPage({
   if (quickRoomId) baseParams.set("quickRoomId", quickRoomId);
   return (
     <div>
-      <h2>{tl(lang, "Student Detail")}</h2>
-      <p style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <a href="/admin/students">&lt;&lt; {tl(lang, "Back to Students")}</a>
-        <span style={{ color: "#999" }}>(studentId {student.id})</span>
-      </p>
-      <p>
-        <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Download PDF")}</a>
-      </p>
-
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{tl(lang, "Error")}:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{tl(lang, "OK")}:</b> {msg}
-        </div>
-      )}
-
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <b>{tl(lang, "Enrollments")}:</b> {enrollCount}
-        </div>
-        <div>
-          <b>{tl(lang, "Packages")}:</b> {packageCount}
-        </div>
-        {unpaidPackageCount > 0 && (
-          <div style={{ color: "#b00", fontWeight: 700 }}>
-            {tl(lang, "Unpaid packages")}: {unpaidPackageCount}
+          <h2 style={{ marginBottom: 6 }}>{tl(lang, "Student Detail")}</h2>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", color: "#666" }}>
+            <a href="/admin/students" style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+              &lt;&lt; {tl(lang, "Back to Students")}
+            </a>
+            <span style={{ fontSize: 11, color: "#64748b" }} title={student.id}>
+              ID: STU-{student.id.length > 10 ? `${student.id.slice(0, 4)}…${student.id.slice(-4)}` : student.id}
+            </span>
           </div>
-        )}
-        <div>
-          <b>{tl(lang, "Excused Count")}:</b> {excusedCount}
         </div>
-        <div>
-          <b>{tl(lang, "Source")}:</b> {student.sourceChannel?.name ?? "-"}
-        </div>
-        <div>
-          <b>{tl(lang, "Type")}:</b> {student.studentType?.name ?? "-"}
-        </div>
-        <div>
-          <b>{tl(lang, "Recent Attendance")}:</b> {attendances.length}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a
+            href={`/api/exports/student-detail/${studentId}`}
+            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f9fafb" }}
+          >
+            {tl(lang, "Export Student Report")}
+          </a>
+          <a
+            href={`/api/exports/student-schedule/${studentId}?month=${monthLabel(monthDate)}`}
+            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f9fafb" }}
+          >
+            {tl(lang, "Download Schedule PDF")}
+          </a>
         </div>
       </div>
 
-      <h3>{tl(lang, "Quick Schedule Calendar")}</h3>
-      <div style={{ margin: "6px 0 10px", display: "grid", gap: 6 }}>
-        <a href={`/api/exports/student-schedule/${studentId}?month=${monthLabel(monthDate)}`}>
-          {tl(lang, "Download Schedule PDF")}
-        </a>
-        <form
-          method="GET"
-          action={`/api/exports/student-schedule/${studentId}`}
-          style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+      {err ? <NoticeBanner type="error" title={tl(lang, "Error")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
+
+      <div style={{ display: "grid", gap: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 10,
+            padding: 12,
+            border: "1px solid #eee",
+            borderRadius: 8,
+            background: "#fafafa",
+          }}
         >
-          <span style={{ fontWeight: 700 }}>{tl(lang, "Date Range")}:</span>
-          <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-            {tl(lang, "From")}
-            <input name="start" type="date" defaultValue={fmtDateInput(monthStart)} />
-          </label>
-          <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-            {tl(lang, "To")}
-            <input name="end" type="date" defaultValue={fmtDateInput(new Date(monthEnd.getTime() - 1))} />
-          </label>
-          <button type="submit">{tl(lang, "Download by Date Range")}</button>
-        </form>
-      </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Name")}</div>
+              <div style={{ fontWeight: 700 }}>{student.name}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "School")}</div>
+              <div style={{ fontWeight: 700 }}>{student.school ?? "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Grade")}</div>
+              <div style={{ fontWeight: 700 }}>{student.grade ?? "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Source")}</div>
+              <div style={{ fontWeight: 700 }}>{student.sourceChannel?.name ?? "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Type")}</div>
+              <div style={{ fontWeight: 700 }}>{student.studentType?.name ?? "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Enrollments")}</div>
+              <div style={{ fontWeight: 700 }}>{enrollCount}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Packages")}</div>
+              <div style={{ fontWeight: 700 }}>{packageCount}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Unpaid packages")}</div>
+              <div style={{ fontWeight: 700, color: unpaidPackageCount > 0 ? "#b00" : undefined }}>
+                {unpaidPackageCount}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
+              <div style={{ fontWeight: 700 }}>{excusedCount}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Recent Attendance")}</div>
+              <div style={{ fontWeight: 700 }}>{attendances.length}</div>
+            </div>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 10,
+            padding: 12,
+            background: "#fafafa",
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>{tl(lang, "Actions")}</div>
+          <a
+            href="#quick-schedule"
+            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#fff" }}
+          >
+            {tl(lang, "Quick Schedule")}
+          </a>
+          <a
+            href="#edit-student"
+            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#fff" }}
+          >
+            {tl(lang, "Edit Student")}
+          </a>
+          {unpaidPackageCount > 0 ? (
+            <div style={{ color: "#b00", fontWeight: 700 }}>
+              {tl(lang, "Unpaid packages")}: {unpaidPackageCount}
+            </div>
+          ) : null}
+        </div>
+
+        <details open style={{ marginBottom: 14 }}>
+            <summary style={{ fontWeight: 700 }}>{tl(lang, "Quick Schedule Calendar")}</summary>
+            <div
+              style={{
+                margin: "6px 0 10px",
+                border: "1px solid #eee",
+                borderRadius: 10,
+                padding: 10,
+                background: "#fafafa",
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{tl(lang, "Download Schedule PDF")}</div>
+              <form
+                method="GET"
+                action={`/api/exports/student-schedule/${studentId}`}
+                style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+              >
+                <span style={{ fontWeight: 700 }}>{tl(lang, "Date Range")}:</span>
+                <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                  {tl(lang, "From")}
+                  <input name="start" type="date" defaultValue={fmtDateInput(monthStart)} />
+                </label>
+                <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                  {tl(lang, "To")}
+                  <input name="end" type="date" defaultValue={fmtDateInput(new Date(monthEnd.getTime() - 1))} />
+                </label>
+                <button type="submit">{tl(lang, "Download by Date Range")}</button>
+              </form>
+            </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
         <a href={`/admin/students/${studentId}?month=${monthLabel(prevMonth)}`}>
           &lt;&lt; {tl(lang, "Prev Month")}
@@ -1293,97 +1528,137 @@ export default async function StudentDetailPage({
           ))}
         </tbody>
       </table>
+            </details>
 
-      <h3>{tl(lang, "Enrollments")}</h3>
+      <details style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Enrollments")}</summary>
       {enrollments.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No enrollments.")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{tl(lang, "Class")}</th>
-              <th align="left">{tl(lang, "Teacher")}</th>
-              <th align="left">{tl(lang, "Campus")}</th>
-              <th align="left">{tl(lang, "Room")}</th>
-              <th align="left">{tl(lang, "Actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((e) => (
-              <tr key={e.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>
-                  {e.class.course.name}
-                  {e.class.subject ? ` / ${e.class.subject.name}` : ""} {e.class.level ? ` / ${e.class.level.name}` : ""}
-                  <div style={{ color: "#999", fontSize: 12 }}>classId {e.classId.slice(0, 8)}...</div>
-                </td>
-                <td>{e.class.teacher.name}</td>
-                <td>{e.class.campus.name}</td>
-                <td>{e.class.room?.name ?? "(none)"}</td>
-                <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <a href={`/admin/classes/${e.classId}`}>{tl(lang, "Detail")}</a>
-                  <a href={`/admin/classes/${e.classId}/sessions`}>{tl(lang, "Sessions")}</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
+          {enrollments.map((e) => (
+            <div key={e.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+              <div style={{ fontWeight: 700 }}>
+                {e.class.course.name}
+                {e.class.subject ? ` / ${e.class.subject.name}` : ""} {e.class.level ? ` / ${e.class.level.name}` : ""}
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: "#eef2ff",
+                    color: "#1d4ed8",
+                  }}
+                >
+                  {tl(lang, "Enrollments")}
+                </span>
+              </div>
+              <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                {tl(lang, "Teacher")}: {e.class.teacher.name} | {tl(lang, "Campus")}: {e.class.campus.name} | {tl(lang, "Room")}: {e.class.room?.name ?? "(none)"}
+              </div>
+              <div style={{ color: "#999", fontSize: 12, marginTop: 4 }}>CLS-{e.classId.slice(0, 4)}…{e.classId.slice(-4)}</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+                <a href={`/admin/classes/${e.classId}`}>{tl(lang, "Detail")}</a>
+                <a href={`/admin/classes/${e.classId}/sessions`}>{tl(lang, "Sessions")}</a>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+      </details>
 
-      <h3>{tl(lang, "Packages")}</h3>
+      <details style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")}</summary>
       {packages.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No packages.")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{tl(lang, "Course")}</th>
-              <th align="left">{tl(lang, "Type")}</th>
-              <th align="left">{tl(lang, "Remaining")}</th>
-              <th align="left">{tl(lang, "Usage 30d")}</th>
-              <th align="left">{tl(lang, "Forecast")}</th>
-              <th align="left">{tl(lang, "Alert")}</th>
-              <th align="left">{tl(lang, "Valid")}</th>
-              <th align="left">{tl(lang, "Status")}</th>
-              <th align="left">{tl(lang, "Paid")}</th>
-              <th align="left">{tl(lang, "Paid At")}</th>
-              <th align="left">{tl(lang, "Amount")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {packages.map((p) => (
-              <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
-                {(() => {
-                  const remaining = p.remainingMinutes ?? 0;
-                  const deducted30 = deducted30Map.get(p.id) ?? 0;
-                  const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
-                  const estDays =
-                    p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
-                      ? Math.ceil(remaining / avgPerDay)
-                      : null;
-                  const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= LOW_MINUTES;
-                  const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
-                  return (
-                    <>
-                <td>
-                  {p.course?.name ?? "-"}
-                </td>
-                <td>{p.type}</td>
-                <td>
-                  {p.type === "HOURS" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
+          {packages.map((p) => {
+            const remaining = p.remainingMinutes ?? 0;
+            const deducted30 = deducted30Map.get(p.id) ?? 0;
+            const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+            const estDays =
+              p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
+                ? Math.ceil(remaining / avgPerDay)
+                : null;
+            const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= LOW_MINUTES;
+            const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
+            const alertText =
+              p.type !== "HOURS" || p.status !== "ACTIVE"
+                ? "-"
+                : remaining <= 0
+                ? tl(lang, "Urgent")
+                : lowMinutes || lowDays
+                ? lowMinutes && lowDays
+                  ? `${tl(lang, "Low balance")} + ${tl(lang, "Likely to run out soon")}`
+                  : lowMinutes
+                  ? tl(lang, "Low balance")
+                  : tl(lang, "Likely to run out soon")
+                : tl(lang, "Normal");
+            return (
+              <div key={p.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+                <div style={{ fontWeight: 700 }}>{p.course?.name ?? "-"}</div>
+                <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: p.status === "ACTIVE" ? "#ecfdf3" : "#fef2f2",
+                      color: p.status === "ACTIVE" ? "#027a48" : "#b42318",
+                    }}
+                  >
+                    {p.status}
+                  </span>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: p.paid ? "#ecfdf3" : "#fff7ed",
+                      color: p.paid ? "#027a48" : "#b45309",
+                    }}
+                  >
+                    {p.paid ? tl(lang, "Paid") : tl(lang, "Unpaid packages")}
+                  </span>
+                  {alertText !== "-" ? (
                     <span
                       style={{
-                        fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400,
-                        color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined,
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: alertText === tl(lang, "Normal") ? "#ecfdf3" : "#fef2f2",
+                        color: alertText === tl(lang, "Normal") ? "#027a48" : "#b42318",
                       }}
                     >
-                      {fmtMinutes(p.remainingMinutes)}
+                      {alertText}
                     </span>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>{p.type === "HOURS" ? `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d` : "-"}</td>
-                <td>
+                  ) : null}
+                </div>
+                <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                  {tl(lang, "Type")}: {p.type} | {tl(lang, "Status")}: {p.status}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  {tl(lang, "Remaining")}:{" "}
+                  <span style={{ fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400, color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined }}>
+                    {p.type === "HOURS" ? fmtMinutes(p.remainingMinutes) : "-"}
+                  </span>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Usage 30d")}: {p.type === "HOURS" ? `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d` : "-"}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Forecast")}:{" "}
                   {p.type !== "HOURS"
                     ? "-"
                     : p.status !== "ACTIVE"
@@ -1393,236 +1668,35 @@ export default async function StudentDetailPage({
                     : estDays == null
                     ? tl(lang, "No usage (30d)")
                     : `${estDays} ${tl(lang, "days")}`}
-                </td>
-                <td>
-                  {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
-                    "-"
-                  ) : remaining <= 0 ? (
-                    <span style={{ color: "#b00", fontWeight: 700 }}>{tl(lang, "Urgent")}</span>
-                  ) : lowMinutes || lowDays ? (
-                    <span style={{ color: "#b00", fontWeight: 700 }}>
-                      {lowMinutes && lowDays
-                        ? `${tl(lang, "Low balance")} + ${tl(lang, "Likely to run out soon")}`
-                        : lowMinutes
-                        ? tl(lang, "Low balance")
-                        : tl(lang, "Likely to run out soon")}
-                    </span>
-                  ) : (
-                    <span style={{ color: "#0a7" }}>{tl(lang, "Normal")}</span>
-                  )}
-                </td>
-                <td>
-                  {new Date(p.validFrom).toLocaleDateString()} ~{" "}
-                  {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
-                </td>
-                <td
-                  style={{
-                    fontWeight: p.status !== "ACTIVE" ? 700 : 400,
-                    color: p.status !== "ACTIVE" ? "#b00" : undefined,
-                  }}
-                >
-                  {p.status}
-                </td>
-                <td>{p.paid ? tl(lang, "Yes") : tl(lang, "No")}</td>
-                <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
-                <td>{p.paidAmount ?? "-"}</td>
-                    </>
-                  );
-                })()}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <h3>{tl(lang, "Attendance")}</h3>
-      <form method="GET" style={{ display: "grid", gap: 8, maxWidth: 720, marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <label>
-            {tl(lang, "Course")}:
-            <select name="courseId" defaultValue={courseId} style={{ marginLeft: 6, minWidth: 220 }}>
-              <option value="">{tl(lang, "All")}</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            {tl(lang, "Teacher")}:
-            <select name="teacherId" defaultValue={teacherId} style={{ marginLeft: 6, minWidth: 200 }}>
-              <option value="">{tl(lang, "All")}</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            {tl(lang, "Status")}:
-            <select name="status" defaultValue={status} style={{ marginLeft: 6 }}>
-              <option value="">{tl(lang, "All")}</option>
-              <option value="UNMARKED">UNMARKED</option>
-              <option value="PRESENT">PRESENT</option>
-              <option value="ABSENT">ABSENT</option>
-              <option value="LATE">LATE</option>
-              <option value="EXCUSED">EXCUSED</option>
-            </select>
-          </label>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Alert")}:{" "}
+                  <span style={{ color: alertText === tl(lang, "Normal") ? "#0a7" : alertText === "-" ? "#666" : "#b00", fontWeight: alertText === tl(lang, "Normal") ? 400 : 700 }}>
+                    {alertText}
+                  </span>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Valid")}: {new Date(p.validFrom).toLocaleDateString()} ~ {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Paid")}: {p.paid ? tl(lang, "Yes") : tl(lang, "No")} | {tl(lang, "Paid At")}: {p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {tl(lang, "Amount")}: {p.paidAmount ?? "-"}
+                </div>
+              </div>
+            );
+          })}
         </div>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <label>
-            {tl(lang, "Recent days")}:
-            <input
-              name="days"
-              type="number"
-              min={0}
-              defaultValue={days ? String(days) : ""}
-              placeholder="e.g. 30"
-              style={{ marginLeft: 6, width: 120 }}
-            />
-          </label>
-          <label>
-            {tl(lang, "Limit")}:
-            <input
-              name="limit"
-              type="number"
-              min={1}
-              max={500}
-              defaultValue={String(limit)}
-              style={{ marginLeft: 6, width: 120 }}
-            />
-          </label>
-          <button type="submit">{tl(lang, "Apply")}</button>
-          <a href={`/admin/students/${studentId}`}>{tl(lang, "Clear")}</a>
-        </div>
-      </form>
-
-      {attendances.length === 0 ? (
-        <div style={{ color: "#999" }}>{tl(lang, "No attendance records.")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{tl(lang, "Session")}</th>
-              <th align="left">{tl(lang, "Status")}</th>
-              <th align="left">{tl(lang, "Deduct")}</th>
-              <th align="left">{tl(lang, "Note")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendances.map((a) => (
-              <tr key={a.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>
-                  <a href={`/admin/sessions/${a.sessionId}/attendance`}>
-                    {new Date(a.session.startAt).toLocaleString()} -{" "}
-                    {new Date(a.session.endAt).toLocaleTimeString()}
-                  </a>
-                  <div style={{ color: "#999", fontSize: 12 }}>
-                    {a.session.class.course.name}
-                    {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
-                    {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} |{" "}
-                    {a.session.class.teacher.name}
-                  </div>
-                </td>
-                <td>{a.status}</td>
-                <td>
-                  {a.deductedCount} / {a.deductedMinutes} min
-                </td>
-                <td>{a.note ?? "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       )}
+      </details>
 
-      <h3>{tl(lang, "Upcoming Sessions")}</h3>
-      {upcomingSessions.length === 0 ? (
-        <div style={{ color: "#999" }}>{tl(lang, "No upcoming sessions.")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{tl(lang, "Session")}</th>
-              <th align="left">{tl(lang, "Status")}</th>
-              <th align="left">{tl(lang, "Cancel")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {upcomingSessions.map((s) => {
-              const att = upcomingAttendanceMap.get(s.id);
-              const cancelled = att?.status === "EXCUSED";
-              return (
-                <tr key={s.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>
-                    <div>
-                      {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
-                    </div>
-                    <div style={{ color: "#999", fontSize: 12 }}>
-                      {s.class.course.name}
-                      {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
-                      {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.class.teacher.name} |{" "}
-                      {s.class.campus.name}
-                      {s.class.room ? ` / ${s.class.room.name}` : ""}
-                    </div>
-                  </td>
-                  <td style={{ color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
-                    {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
-                    {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
-                  </td>
-                  <td>
-                    {cancelled ? (
-                      <form action={restoreStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <input type="hidden" name="sessionId" value={s.id} />
-                        <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                        <ConfirmSubmitButton message={tl(lang, "Restore this session?")}>
-                          {tl(lang, "Restore")}
-                        </ConfirmSubmitButton>
-                      </form>
-                    ) : (
-                      <form action={cancelStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <input type="hidden" name="sessionId" value={s.id} />
-                        <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                        <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                          <input type="checkbox" name="charge" defaultChecked={false} />
-                          {tl(lang, "Charge")}
-                        </label>
-                        <input name="note" placeholder={tl(lang, "Note")} style={{ minWidth: 160 }} />
-                        <button type="submit">{tl(lang, "Cancel")}</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-
-      <div id="quick-schedule">
-        <h3>{tl(lang, "Quick Schedule (by Student Time)")}</h3>
-      </div>
-      <QuickScheduleModal
+      <details style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")}</summary>
+      <StudentAttendanceFilterForm
         studentId={studentId}
-        month={monthLabel(monthDate)}
-        quickSubjectId={quickSubjectId}
-        quickLevelId={quickLevelId}
-        quickStartAt={quickStartAt}
-        quickDurationMin={quickDurationMin}
-        quickCampusId={quickCampusId}
-        quickRoomId={quickRoomId}
-        openOnLoad={quickOpen}
-        subjects={subjects.map((s) => ({
-          id: s.id,
-          name: s.name,
-          courseName: s.course.name,
-          courseId: s.courseId,
-        }))}
+        courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
         levels={levels.map((l) => ({
           id: l.id,
           name: l.name,
@@ -1630,79 +1704,302 @@ export default async function StudentDetailPage({
           subjectName: l.subject.name,
           courseName: l.subject.course.name,
         }))}
-        campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
-        rooms={rooms.map((r) => ({ id: r.id, name: `${r.name} (${r.campus.name})`, campusId: r.campusId }))}
-        candidates={quickCandidates}
-        onSchedule={createQuickAppointment.bind(null, studentId)}
-        warning={quickPackageWarn}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
+        initial={{
+          courseId,
+          subjectId,
+          levelId: levelIdFilter,
+          teacherId,
+          status,
+          days: days ? String(days) : "",
+          limit: String(limit),
+        }}
         labels={{
-          title: tl(lang, "Quick Schedule"),
-          open: tl(lang, "Open Modal"),
+          course: tl(lang, "Course"),
           subject: tl(lang, "Subject"),
-          level: tl(lang, "Level"),
-          campus: tl(lang, "Campus"),
-          room: tl(lang, "Room"),
-          roomOptional: tl(lang, "optional"),
-          start: tl(lang, "Start"),
-          duration: tl(lang, "Duration (minutes)"),
-          find: tl(lang, "Find Available Teachers"),
-          close: tl(lang, "Close"),
+          level: tl(lang, "Level (optional)"),
+          courseAll: tl(lang, "All"),
+          subjectAll: tl(lang, "All"),
+          levelAll: tl(lang, "All"),
           teacher: tl(lang, "Teacher"),
+          teacherAll: tl(lang, "All"),
           status: tl(lang, "Status"),
-          action: tl(lang, "Action"),
-          available: tl(lang, "Available"),
-          noTeachers: tl(lang, "No eligible teachers found."),
-          chooseHint: tl(lang, "Choose subject, level, campus, room and time to match teachers."),
-          schedule: tl(lang, "Schedule"),
+          statusAll: tl(lang, "All"),
+          recentDays: tl(lang, "Recent days"),
+          limit: tl(lang, "Limit"),
+          apply: tl(lang, "Apply"),
+          clear: tl(lang, "Clear"),
         }}
       />
 
-      
-
-      <h3>{tl(lang, "Edit Student")}</h3>
-      <form action={updateStudent.bind(null, studentId)} style={{ display: "grid", gap: 8, maxWidth: 720 }}>
-        <input name="name" defaultValue={student.name} placeholder={tl(lang, "Name")} />
-        <input name="school" defaultValue={student.school ?? ""} placeholder={tl(lang, "School")} />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input name="birthDate" type="date" defaultValue={fmtDateInput(student.birthDate)} />
-          <select name="grade" defaultValue={student.grade ?? ""}>
-            <option value="">{tl(lang, "Grade")}</option>
-            {GRADE_OPTIONS.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
+      {attendances.length === 0 ? (
+        <div style={{ color: "#999" }}>{tl(lang, "No attendance records.")}</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
+          {attendances.map((a) => (
+            <div key={a.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+              <div style={{ fontWeight: 700 }}>
+                <a href={`/admin/sessions/${a.sessionId}/attendance`}>
+                  {new Date(a.session.startAt).toLocaleString()} - {new Date(a.session.endAt).toLocaleTimeString()}
+                </a>
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background:
+                      a.status === "PRESENT"
+                        ? "#ecfdf3"
+                        : a.status === "ABSENT"
+                        ? "#fef2f2"
+                        : a.status === "LATE"
+                        ? "#fff7ed"
+                        : a.status === "EXCUSED"
+                        ? "#f3f4f6"
+                        : "#eef2ff",
+                    color:
+                      a.status === "PRESENT"
+                        ? "#027a48"
+                        : a.status === "ABSENT"
+                        ? "#b42318"
+                        : a.status === "LATE"
+                        ? "#b45309"
+                        : a.status === "EXCUSED"
+                        ? "#6b7280"
+                        : "#1d4ed8",
+                  }}
+                >
+                  {a.status}
+                </span>
+              </div>
+              <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                {a.session.class.course.name}
+                {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
+                {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} | {a.session.class.teacher.name}
+              </div>
+              <div style={{ marginTop: 6 }}>
+                {tl(lang, "Status")}: {a.status}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {tl(lang, "Deduct")}: {a.deductedCount} / {a.deductedMinutes} min
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {tl(lang, "Note")}: {a.note ?? "-"}
+              </div>
+            </div>
+          ))}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select name="sourceChannelId" defaultValue={student.sourceChannelId ?? ""}>
-            <option value="">{tl(lang, "Source")}</option>
-            {sources.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select name="studentTypeId" defaultValue={student.studentTypeId ?? ""}>
-            <option value="">{tl(lang, "Type")}</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <textarea name="note" defaultValue={student.note ?? ""} placeholder={tl(lang, "Notes")} rows={4} />
-        <button type="submit">{tl(lang, "Save")}</button>
-      </form>
+      )}
+      </details>
 
-      <div style={{ marginTop: 16 }}>
-        <form action={deleteStudent.bind(null, studentId)}>
-          <ConfirmSubmitButton message={tl(lang, "Delete student? This also deletes enrollments/appointments/packages.")}>
-            {tl(lang, "Delete Student")}
-          </ConfirmSubmitButton>
+      <details open style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")}</summary>
+      {upcomingSessions.length === 0 ? (
+        <div style={{ color: "#999" }}>{tl(lang, "No upcoming sessions.")}</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
+          {upcomingSessions.map((s) => {
+            const att = upcomingAttendanceMap.get(s.id);
+            const cancelled = att?.status === "EXCUSED";
+            return (
+              <div key={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+                <div style={{ fontWeight: 700 }}>
+                  {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: cancelled ? "#fef2f2" : "#ecfdf3",
+                      color: cancelled ? "#b42318" : "#027a48",
+                    }}
+                  >
+                    {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                  </span>
+                </div>
+                <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                  {s.class.course.name}
+                  {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
+                  {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.class.teacher.name} |{" "}
+                  {s.class.campus.name}
+                  {s.class.room ? ` / ${s.class.room.name}` : ""}
+                </div>
+                <div style={{ marginTop: 6, color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
+                  {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                  {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  <details>
+                    <summary style={{ cursor: "pointer" }}>{tl(lang, "Change Teacher")}</summary>
+                    <form action={replaceSessionTeacherForStudent.bind(null, studentId)} style={{ display: "grid", gap: 6, marginTop: 6 }}>
+                      <input type="hidden" name="sessionId" value={s.id} />
+                      <input type="hidden" name="returnTo" value={returnTo} />
+                      <select name="newTeacherId" defaultValue="" style={{ minWidth: 200 }}>
+                        <option value="" disabled>
+                          {tl(lang, "Select teacher")}
+                        </option>
+                        {teachers.filter((tch) => canTeachSubject(tch, s.class.subjectId)).map((tch) => (
+                          <option key={tch.id} value={tch.id}>
+                            {tch.name}
+                          </option>
+                        ))}
+                      </select>
+                      <input name="reason" type="text" placeholder={tl(lang, "Reason (optional)")} />
+                      <button type="submit">{tl(lang, "Replace Teacher")}</button>
+                    </form>
+                  </details>
+                  <a
+                    href={`/admin/students/${studentId}?month=${monthLabel(monthDate)}&quickOpen=1&quickStartAt=${encodeURIComponent(
+                      fmtDatetimeLocal(new Date(s.startAt))
+                    )}&quickDurationMin=${Math.max(15, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000))}&quickCampusId=${encodeURIComponent(
+                      s.class.campusId
+                    )}&quickRoomId=${encodeURIComponent(s.class.roomId ?? "")}&quickSubjectId=${encodeURIComponent(
+                      s.class.subjectId ?? ""
+                    )}&quickLevelId=${encodeURIComponent(s.class.levelId ?? "")}`}
+                  >
+                    {tl(lang, "Change Course")}
+                  </a>
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  {cancelled ? (
+                    <form action={restoreStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <input type="hidden" name="sessionId" value={s.id} />
+                      <input type="hidden" name="month" value={monthLabel(monthDate)} />
+                      <ConfirmSubmitButton message={tl(lang, "Restore this session?")}>
+                        {tl(lang, "Restore")}
+                      </ConfirmSubmitButton>
+                    </form>
+                  ) : (
+                    <form action={cancelStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <input type="hidden" name="sessionId" value={s.id} />
+                      <input type="hidden" name="month" value={monthLabel(monthDate)} />
+                      <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                        <input type="checkbox" name="charge" defaultChecked={false} />
+                        {tl(lang, "Charge")}
+                      </label>
+                      <input name="note" placeholder={tl(lang, "Note")} style={{ minWidth: 160 }} />
+                      <button type="submit">{tl(lang, "Cancel")}</button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      </details>
+
+      <details open id="quick-schedule" style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Quick Schedule (by Student Time)")}</summary>
+        <QuickScheduleModal
+          studentId={studentId}
+          month={monthLabel(monthDate)}
+          quickSubjectId={quickSubjectId}
+          quickLevelId={quickLevelId}
+          quickStartAt={quickStartAt}
+          quickDurationMin={quickDurationMin}
+          quickCampusId={quickCampusId}
+          quickRoomId={quickRoomId}
+          openOnLoad={quickOpen}
+          subjects={subjects.map((s) => ({
+            id: s.id,
+            name: s.name,
+            courseName: s.course.name,
+            courseId: s.courseId,
+          }))}
+          levels={levels.map((l) => ({
+            id: l.id,
+            name: l.name,
+            subjectId: l.subjectId,
+            subjectName: l.subject.name,
+            courseName: l.subject.course.name,
+          }))}
+          campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
+          rooms={rooms.map((r) => ({ id: r.id, name: `${r.name} (${r.campus.name})`, campusId: r.campusId }))}
+          candidates={quickCandidates}
+          onSchedule={createQuickAppointment.bind(null, studentId)}
+          warning={quickPackageWarn}
+          labels={{
+            title: tl(lang, "Quick Schedule"),
+            open: tl(lang, "Open Modal"),
+            course: tl(lang, "Course"),
+            subject: tl(lang, "Subject"),
+            level: tl(lang, "Level (optional)"),
+            campus: tl(lang, "Campus"),
+            room: tl(lang, "Room"),
+            roomOptional: tl(lang, "optional"),
+            start: tl(lang, "Start"),
+            duration: tl(lang, "Duration (minutes)"),
+            find: tl(lang, "Find Available Teachers"),
+            close: tl(lang, "Close"),
+            teacher: tl(lang, "Teacher"),
+            status: tl(lang, "Status"),
+            action: tl(lang, "Action"),
+            available: tl(lang, "Available"),
+            noTeachers: tl(lang, "No eligible teachers found."),
+            chooseHint: tl(lang, "Choose subject, campus, room and time to match teachers."),
+            schedule: tl(lang, "Schedule"),
+          }}
+        />
+      </details>
+
+      <details id="edit-student" style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Edit Student")}</summary>
+        <form action={updateStudent.bind(null, studentId)} style={{ display: "grid", gap: 8, maxWidth: 720, marginTop: 8 }}>
+          <input name="name" defaultValue={student.name} placeholder={tl(lang, "Name")} />
+          <input name="school" defaultValue={student.school ?? ""} placeholder={tl(lang, "School")} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input name="birthDate" type="date" defaultValue={fmtDateInput(student.birthDate)} />
+            <select name="grade" defaultValue={student.grade ?? ""}>
+              <option value="">{tl(lang, "Grade")}</option>
+              {GRADE_OPTIONS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <select name="sourceChannelId" defaultValue={student.sourceChannelId ?? ""}>
+              <option value="">{tl(lang, "Source")}</option>
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <select name="studentTypeId" defaultValue={student.studentTypeId ?? ""}>
+              <option value="">{tl(lang, "Type")}</option>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <textarea name="note" defaultValue={student.note ?? ""} placeholder={tl(lang, "Notes")} rows={4} />
+          <button type="submit">{tl(lang, "Save")}</button>
         </form>
+
+        <div style={{ marginTop: 12 }}>
+          <form action={deleteStudent.bind(null, studentId)}>
+            <ConfirmSubmitButton message={tl(lang, "Delete student? This also deletes enrollments/appointments/packages.")}>
+              {tl(lang, "Delete Student")}
+            </ConfirmSubmitButton>
+          </form>
+        </div>
+      </details>
       </div>
     </div>
   );
 }
+
+

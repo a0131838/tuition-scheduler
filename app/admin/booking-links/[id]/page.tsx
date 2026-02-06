@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
+import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
 
 async function setLinkActive(linkId: string, active: boolean) {
@@ -123,7 +124,7 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
   if (teacherAppt) {
     redirect(
       `/admin/booking-links/${linkId}?err=${encodeURIComponent(
-        `Teacher conflict with appointment ${teacherAppt.id} ${fmt(teacherAppt.startAt)} - ${fmt(teacherAppt.endAt)}`
+        `Teacher conflict with appointment ${fmt(teacherAppt.startAt)} - ${fmt(teacherAppt.endAt)}`
       )}`
     );
   }
@@ -135,7 +136,7 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
   if (studentAppt) {
     redirect(
       `/admin/booking-links/${linkId}?err=${encodeURIComponent(
-        `Student conflict with appointment ${studentAppt.id} ${fmt(studentAppt.startAt)} - ${fmt(studentAppt.endAt)}`
+        `Student conflict with appointment ${fmt(studentAppt.startAt)} - ${fmt(studentAppt.endAt)}`
       )}`
     );
   }
@@ -218,16 +219,24 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
       redirect(`/admin/booking-links/${linkId}?err=No+campus+found+for+auto+class+creation`);
     }
 
-    oneOnOneClass = await prisma.class.create({
-      data: {
-        teacherId: req.teacherId,
-        courseId,
-        campusId,
-        roomId: null,
-        capacity: 1,
-      },
+    const created = await getOrCreateOneOnOneClassForStudent({
+      teacherId: req.teacherId,
+      studentId: req.studentId,
+      courseId,
+      campusId,
+      roomId: null,
+      ensureEnrollment: true,
+    });
+    if (!created) {
+      redirect(`/admin/booking-links/${linkId}?err=Failed+to+create+1-on-1+class`);
+    }
+    oneOnOneClass = await prisma.class.findUnique({
+      where: { id: created.id },
       include: { enrollments: { select: { studentId: true } } },
     });
+    if (!oneOnOneClass) {
+      redirect(`/admin/booking-links/${linkId}?err=Failed+to+load+1-on-1+class`);
+    }
   }
 
   await prisma.enrollment.upsert({
@@ -257,6 +266,7 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
           classId: oneOnOneClass.id,
           startAt: req.startAt,
           endAt: req.endAt,
+          studentId: req.studentId,
           teacherId: req.teacherId === oneOnOneClass.teacherId ? null : req.teacherId,
         },
         select: { id: true },

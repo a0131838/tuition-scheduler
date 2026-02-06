@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
+import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 type Props = {
   emailInputId: string;
@@ -16,6 +17,7 @@ export default function CopyTeacherCredentialsButton({
   label = "Copy login info / 复制登录信息",
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
   async function copyNow() {
     const emailEl = document.getElementById(emailInputId) as HTMLInputElement | null;
@@ -26,9 +28,11 @@ export default function CopyTeacherCredentialsButton({
     const name = nameEl?.value?.trim() ?? "";
     const password = passwordEl?.value ?? "";
     if (!email || !name || !password) {
-      alert("Please fill email, name, and password first.");
+      setError("Please fill email, name, and password first.");
+      setTimeout(() => setError(""), 2500);
       return;
     }
+    setError("");
 
     const text = [
       "Teacher account info",
@@ -43,9 +47,11 @@ export default function CopyTeacherCredentialsButton({
   }
 
   return (
-    <button type="button" onClick={copyNow}>
-      {copied ? "Copied / 已复制" : label}
-    </button>
+    <span style={{ display: "inline-grid", gap: 6 }}>
+      <button type="button" onClick={copyNow}>
+        {copied ? "Copied / 已复制" : label}
+      </button>
+      {error ? <NoticeBanner type="warn" title="Notice" message={error} /> : null}
+    </span>
   );
 }
-

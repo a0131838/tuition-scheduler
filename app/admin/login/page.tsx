@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { createSession, verifyPassword } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { sanitizeNextPath } from "@/lib/route-guards";
+import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 async function login(formData: FormData) {
   "use server";
@@ -49,25 +50,90 @@ export default async function AdminLoginPage({
   }
 
   return (
-    <div style={{ maxWidth: 420 }}>
-      <h2>Login / 登录</h2>
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>Error:</b> {err}
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        fontFamily: "system-ui",
+        background: "#f8fafc",
+      }}
+    >
+      <section
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          padding: "24px 26px",
+          borderRadius: 14,
+          border: "1px solid #e5e7eb",
+          background: "#fff",
+          boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <img
+            src="/logo.png"
+            alt="Company Logo"
+            style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 10 }}
+          />
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Tuition Scheduler</div>
+          <div style={{ marginTop: 4, color: "#64748b", fontSize: 12 }}>教学排课与运营管理系统</div>
+          <div style={{ marginTop: 10, fontSize: 20, fontWeight: 700 }}>Login / 登录</div>
+          <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+            请输入管理员或老师账号
+          </div>
         </div>
-      )}
-      <form action={login} style={{ display: "grid", gap: 10 }}>
-        {next ? <input type="hidden" name="next" value={next} /> : null}
-        <label>
-          Email:
-          <input name="email" type="email" required style={{ marginLeft: 6, width: "100%" }} />
-        </label>
-        <label>
-          Password:
-          <input name="password" type="password" required style={{ marginLeft: 6, width: "100%" }} />
-        </label>
-        <button type="submit">Login</button>
-      </form>
-    </div>
+
+        {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
+
+        <form action={login} style={{ display: "grid", gap: 12 }}>
+          {next ? <input type="hidden" name="next" value={next} /> : null}
+          <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+            <span>Email</span>
+            <input
+              name="email"
+              type="email"
+              required
+              style={{
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                fontSize: 13,
+              }}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+            <span>Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              style={{
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                fontSize: 13,
+              }}
+            />
+          </label>
+          <button
+            type="submit"
+            style={{
+              marginTop: 4,
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              background: "#eef2ff",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            登录 / Login
+          </button>
+        </form>
+      </section>
+    </main>
   );
 }

@@ -2,30 +2,41 @@
 import { redirect } from "next/navigation";
 import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import { getLang, t } from "@/lib/i18n";
+import ClassEditForm from "../../_components/ClassEditForm";
+import NoticeBanner from "../../_components/NoticeBanner";
 
 async function updateClass(classId: string, formData: FormData) {
   "use server";
   const subjectId = String(formData.get("subjectId") ?? "");
-  const levelId = String(formData.get("levelId") ?? "");
+  const levelIdRaw = String(formData.get("levelId") ?? "");
   const teacherId = String(formData.get("teacherId") ?? "");
   const campusId = String(formData.get("campusId") ?? "");
   const roomIdRaw = String(formData.get("roomId") ?? "");
   const capacity = Number(formData.get("capacity") ?? 0);
 
-  if (!subjectId || !levelId || !teacherId || !campusId || !Number.isFinite(capacity) || capacity <= 0) {
+  if (!subjectId || !teacherId || !campusId || !Number.isFinite(capacity) || capacity <= 0) {
     redirect(`/admin/classes/${classId}?err=Invalid+input`);
   }
 
-  const level = await prisma.level.findUnique({
-    where: { id: levelId },
-    include: { subject: true },
+  const subject = await prisma.subject.findUnique({
+    where: { id: subjectId },
+    include: { course: true },
   });
-  if (!level || level.subjectId !== subjectId) {
-    redirect(`/admin/classes/${classId}?err=Invalid+subject+or+level`);
+  if (!subject) {
+    redirect(`/admin/classes/${classId}?err=Invalid+subject`);
+  }
+
+  let levelId: string | null = null;
+  if (levelIdRaw) {
+    const level = await prisma.level.findUnique({ where: { id: levelIdRaw } });
+    if (!level || level.subjectId !== subjectId) {
+      redirect(`/admin/classes/${classId}?err=Invalid+subject+or+level`);
+    }
+    levelId = levelIdRaw;
   }
 
   const roomId = roomIdRaw ? roomIdRaw : null;
-  const courseId = level.subject.courseId;
+  const courseId = subject.courseId;
 
   await prisma.class.update({
     where: { id: classId },
@@ -117,22 +128,19 @@ export default async function ClassDetailPage({
     <div>
       <h2>{t(lang, "Class Detail", "班级详情")}</h2>
       <p>
-        <a href="/admin/classes">← {t(lang, "Back to Classes", "返回班级列表")}</a>{" "}
+        <a
+          href="/admin/classes"
+          style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
+        >
+          ← {t(lang, "Back to Classes", "返回班级列表")}
+        </a>{" "}
         <span style={{ color: "#999" }}>(classId {cls.id})</span>
       </p>
 
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Error", "错误")}:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
+      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 10, marginBottom: 16, background: "#fafafa" }}>
         <div>
           <b>{t(lang, "Course", "课程")}:</b> {cls.course.name}
           {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
@@ -153,70 +161,41 @@ export default async function ClassDetailPage({
       </div>
 
       <h3>{t(lang, "Edit Class", "编辑班级")}</h3>
-      <form action={updateClass.bind(null, classId)} style={{ display: "grid", gap: 8, maxWidth: 860, marginBottom: 16 }}>
-        <label>
-          {t(lang, "Subject", "科目")}:
-          <select name="subjectId" defaultValue={cls.subjectId ?? ""} style={{ marginLeft: 8, minWidth: 360 }}>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.course.name} - {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Level", "级别")}:
-          <select name="levelId" defaultValue={cls.levelId ?? ""} style={{ marginLeft: 8, minWidth: 360 }}>
-            {levels.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.subject.course.name} - {l.subject.name} - {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Teacher", "老师")}:
-          <select name="teacherId" defaultValue={cls.teacherId} style={{ marginLeft: 8, minWidth: 320 }}>
-            {teachers.map((tch) => (
-              <option key={tch.id} value={tch.id}>
-                {tch.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Campus", "校区")}:
-          <select name="campusId" defaultValue={cls.campusId} style={{ marginLeft: 8, minWidth: 320 }}>
-            {campuses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Room (optional)", "教室(可选)")}:
-          <select name="roomId" defaultValue={cls.roomId ?? ""} style={{ marginLeft: 8, minWidth: 420 }}>
-            <option value="">{t(lang, "(none)", "(无)")}</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} - {r.campus.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          {t(lang, "Capacity", "容量")}:
-          <input name="capacity" type="number" min={1} defaultValue={cls.capacity} style={{ marginLeft: 8, width: 120 }} />
-        </label>
-
-        <button type="submit">{t(lang, "Save", "保存")}</button>
-      </form>
+      <ClassEditForm
+        action={updateClass.bind(null, classId)}
+        courses={subjects.length ? Array.from(new Map(subjects.map((s) => [s.courseId, s.course]))).map(([id, c]) => ({ id, name: c.name })) : []}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
+        levels={levels.map((l) => ({
+          id: l.id,
+          name: l.name,
+          subjectId: l.subjectId,
+          courseName: l.subject.course.name,
+          subjectName: l.subject.name,
+        }))}
+        teachers={teachers.map((tch) => ({ id: tch.id, name: tch.name }))}
+        campuses={campuses.map((c) => ({ id: c.id, name: c.name }))}
+        rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name }))}
+        initial={{
+          courseId: cls.courseId,
+          subjectId: cls.subjectId ?? subjects[0]?.id ?? "",
+          levelId: cls.levelId ?? null,
+          teacherId: cls.teacherId,
+          campusId: cls.campusId,
+          roomId: cls.roomId ?? null,
+          capacity: cls.capacity,
+        }}
+        labels={{
+          course: t(lang, "Course", "课程"),
+          subject: t(lang, "Subject", "科目"),
+          level: t(lang, "Level", "级别"),
+          teacher: t(lang, "Teacher", "老师"),
+          campus: t(lang, "Campus", "校区"),
+          roomOptional: t(lang, "Room (optional)", "教室(可选)"),
+          capacity: t(lang, "Capacity", "容量"),
+          save: t(lang, "Save", "保存"),
+          none: t(lang, "(none)", "(无)"),
+        }}
+      />
 
       <div style={{ marginBottom: 24 }}>
         <form action={deleteClass.bind(null, classId)}>
@@ -227,43 +206,35 @@ export default async function ClassDetailPage({
       </div>
 
       <h3>{t(lang, "Enrollments", "报名")}</h3>
-      <form action={addEnrollment.bind(null, classId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <select name="studentId" defaultValue="">
-          <option value="">{t(lang, "Select student", "选择学生")}</option>
-          {availableStudents.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit">{t(lang, "Add", "添加")}</button>
-      </form>
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10, background: "#fafafa", marginBottom: 8 }}>
+        <form action={addEnrollment.bind(null, classId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select name="studentId" defaultValue="">
+            <option value="">{t(lang, "Select student", "选择学生")}</option>
+            {availableStudents.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <button type="submit">{t(lang, "Add", "添加")}</button>
+        </form>
+      </div>
 
       <div style={{ marginTop: 12 }}>
         {enrollments.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No enrollments yet.", "暂无报名")}</div>
         ) : (
-          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr style={{ background: "#f5f5f5" }}>
-                <th align="left">{t(lang, "Student", "学生")}</th>
-                <th align="left">{t(lang, "Action", "操作")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {enrollments.map((e) => (
-                <tr key={e.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{e.student.name}</td>
-                  <td>
-                    <form action={removeEnrollment.bind(null, classId)}>
-                      <input type="hidden" name="studentId" value={e.studentId} />
-                      <button type="submit">{t(lang, "Remove", "移除")}</button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+            {enrollments.map((e) => (
+              <div key={e.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+                <div style={{ fontWeight: 700 }}>{e.student.name}</div>
+                <form action={removeEnrollment.bind(null, classId)} style={{ marginTop: 6 }}>
+                  <input type="hidden" name="studentId" value={e.studentId} />
+                  <button type="submit">{t(lang, "Remove", "移除")}</button>
+                </form>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { createPasswordHash, createSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 async function setupAdmin(formData: FormData) {
   "use server";
@@ -48,11 +49,7 @@ export default async function AdminSetupPage({
   return (
     <div style={{ maxWidth: 480 }}>
       <h2>Setup Admin / 初始化管理员</h2>
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>Error:</b> {err}
-        </div>
-      )}
+      {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
       <form action={setupAdmin} style={{ display: "grid", gap: 10 }}>
         <label>
           Email:

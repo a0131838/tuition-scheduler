@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import BookingLinkCreateForm from "./_components/BookingLinkCreateForm";
+import SimpleModal from "../_components/SimpleModal";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -179,8 +180,11 @@ export default async function AdminBookingLinksPage({
       <h2>{t(lang, "Student Booking Links", "学生选课链接")}</h2>
       {err ? <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div> : null}
 
-      <h3>{t(lang, "Create Link", "创建链接")}</h3>
-      <BookingLinkCreateForm action={createBookingLink} students={studentOptions} teachers={teacherOptions} />
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+        <SimpleModal buttonLabel={t(lang, "Create Link", "创建链接")} title={t(lang, "Create Link", "创建链接")} closeOnSubmit>
+          <BookingLinkCreateForm action={createBookingLink} students={studentOptions} teachers={teacherOptions} />
+        </SimpleModal>
+      </div>
 
       <h3>{t(lang, "Recent Links", "最近链接")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>

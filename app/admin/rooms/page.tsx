@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import { getLang, t } from "@/lib/i18n";
+import SimpleModal from "../_components/SimpleModal";
 
 async function createRoom(formData: FormData) {
   "use server";
@@ -37,24 +38,28 @@ export default async function RoomsPage() {
     <div>
       <h2>{t(lang, "Rooms", "教室")}</h2>
 
-      <form action={createRoom} style={{ display: "grid", gap: 8, maxWidth: 520, marginBottom: 16 }}>
-        <input name="name" placeholder={t(lang, "Room name", "教室名称")} />
-        <input name="capacity" type="number" min={1} placeholder={t(lang, "Capacity", "容量")} />
-        <select name="campusId" defaultValue="">
-          <option value="" disabled>
-            {t(lang, "Select campus", "选择校区")}
-          </option>
-          {campuses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={campuses.length === 0}>
-          {t(lang, "Add Room", "新增教室")}
-        </button>
-        {campuses.length === 0 && <p style={{ color: "#b00" }}>{t(lang, "Please create a campus first.", "请先创建校区。")}</p>}
-      </form>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+        <SimpleModal buttonLabel={t(lang, "Add Room", "新增教室")} title={t(lang, "Add Room", "新增教室")} closeOnSubmit>
+          <form action={createRoom} style={{ display: "grid", gap: 8, maxWidth: 520 }}>
+            <input name="name" placeholder={t(lang, "Room name", "教室名称")} />
+            <input name="capacity" type="number" min={1} placeholder={t(lang, "Capacity", "容量")} />
+            <select name="campusId" defaultValue="">
+              <option value="" disabled>
+                {t(lang, "Select campus", "选择校区")}
+              </option>
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={campuses.length === 0}>
+              {t(lang, "Add Room", "新增教室")}
+            </button>
+            {campuses.length === 0 && <p style={{ color: "#b00" }}>{t(lang, "Please create a campus first.", "请先创建校区。")}</p>}
+          </form>
+        </SimpleModal>
+      </div>
 
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
@@ -91,3 +96,5 @@ export default async function RoomsPage() {
     </div>
   );
 }
+
+

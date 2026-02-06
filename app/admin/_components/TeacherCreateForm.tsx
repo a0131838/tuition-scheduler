@@ -19,6 +19,7 @@ export default function TeacherCreateForm({
   subjects,
   courses,
   labels,
+  initial,
 }: {
   action: (formData: FormData) => Promise<void>;
   subjects: SubjectOpt[];
@@ -33,6 +34,7 @@ export default function TeacherCreateForm({
     subjectSearch: string;
     subjectCourseFilter: string;
     allCourses: string;
+    noSubjects: string;
     yearsExp: string;
     teachingLanguage: string;
     chinese: string;
@@ -40,13 +42,30 @@ export default function TeacherCreateForm({
     bilingual: string;
     otherLang: string;
     otherLangInput: string;
+    offlineTeaching: string;
+    offlineShanghai: string;
+    offlineSingapore: string;
     add: string;
+  };
+  initial?: {
+    name?: string;
+    nationality?: string;
+    almaMater?: string;
+    intro?: string;
+    yearsExperience?: number | null;
+    teachingLanguage?: string | null;
+    teachingLanguageOther?: string | null;
+    subjectIds?: string[];
+    offlineShanghai?: boolean | null;
+    offlineSingapore?: boolean | null;
   };
 }) {
   const [courseId, setCourseId] = useState("");
   const [subjectQ, setSubjectQ] = useState("");
-  const [lang, setLang] = useState("");
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [lang, setLang] = useState(initial?.teachingLanguageOther ? "OTHER" : initial?.teachingLanguage ?? "");
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>(
+    initial?.subjectIds ? Array.from(new Set(initial.subjectIds)) : []
+  );
 
   const shownSubjects = useMemo(() => {
     const q = subjectQ.trim().toLowerCase();
@@ -70,13 +89,13 @@ export default function TeacherCreateForm({
 
   return (
     <form action={action} style={{ display: "grid", gap: 8, maxWidth: 860 }}>
-      <input name="name" placeholder={labels.teacherName} />
+      <input name="name" placeholder={labels.teacherName} defaultValue={initial?.name ?? ""} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input name="nationality" placeholder={labels.nationality} />
-        <input name="almaMater" placeholder={labels.almaMater} />
+        <input name="nationality" placeholder={labels.nationality} defaultValue={initial?.nationality ?? ""} />
+        <input name="almaMater" placeholder={labels.almaMater} defaultValue={initial?.almaMater ?? ""} />
       </div>
       <div style={{ color: "#666", fontSize: 12 }}>{labels.almaMaterRule}</div>
-      <textarea name="intro" rows={3} placeholder={labels.teacherIntro} />
+      <textarea name="intro" rows={3} placeholder={labels.teacherIntro} defaultValue={initial?.intro ?? ""} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
         <label style={{ display: "grid", gap: 4 }}>
@@ -106,10 +125,12 @@ export default function TeacherCreateForm({
                   checked={selectedSubjectIds.includes(s.id)}
                   onChange={() => toggleSubject(s.id)}
                 />
-                <span>{s.courseName} - {s.name}</span>
+                <span>
+                  {s.courseName} - {s.name}
+                </span>
               </label>
             ))}
-            {shownSubjects.length === 0 ? <div style={{ color: "#999" }}>No subjects</div> : null}
+            {shownSubjects.length === 0 ? <div style={{ color: "#999" }}>{labels.noSubjects}</div> : null}
           </div>
         </div>
         <span style={{ color: "#666" }}>{labels.subjectsMulti}</span>
@@ -119,6 +140,7 @@ export default function TeacherCreateForm({
           type="number"
           min={0}
           placeholder={labels.yearsExp}
+          defaultValue={initial?.yearsExperience ?? ""}
           style={{ width: 220 }}
         />
 
@@ -133,6 +155,18 @@ export default function TeacherCreateForm({
           <option value="BILINGUAL">{labels.bilingual}</option>
           <option value="OTHER">{labels.otherLang}</option>
         </select>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ color: "#666", fontSize: 12 }}>{labels.offlineTeaching}</span>
+        <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <input type="checkbox" name="offlineShanghai" defaultChecked={!!initial?.offlineShanghai} />
+          {labels.offlineShanghai}
+        </label>
+        <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <input type="checkbox" name="offlineSingapore" defaultChecked={!!initial?.offlineSingapore} />
+          {labels.offlineSingapore}
+        </label>
       </div>
 
       {selectedSubjects.length > 0 ? (
@@ -151,8 +185,13 @@ export default function TeacherCreateForm({
               }}
             >
               {s.courseName} - {s.name}
-              <button type="button" onClick={() => toggleSubject(s.id)} style={{ border: 0, background: "transparent", cursor: "pointer" }}>
-                ×
+              <button
+                type="button"
+                aria-label="Remove subject"
+                onClick={() => toggleSubject(s.id)}
+                style={{ border: 0, background: "transparent", cursor: "pointer" }}
+              >
+                x
               </button>
             </span>
           ))}
@@ -164,10 +203,16 @@ export default function TeacherCreateForm({
       ))}
 
       {lang === "OTHER" ? (
-        <input name="teachingLanguageOther" placeholder={labels.otherLangInput} />
+        <input
+          name="teachingLanguageOther"
+          placeholder={labels.otherLangInput}
+          defaultValue={initial?.teachingLanguageOther ?? ""}
+          required
+        />
       ) : null}
 
       <button type="submit">{labels.add}</button>
     </form>
   );
 }
+

@@ -7,6 +7,9 @@ import { Fragment } from "react";
 import SimpleModal from "../_components/SimpleModal";
 import { redirect } from "next/navigation";
 import TeacherCreateForm from "../_components/TeacherCreateForm";
+import TeacherCardExportForm from "../_components/TeacherCardExportForm";
+import TeacherFilterForm from "../_components/TeacherFilterForm";
+import NoticeBanner from "../_components/NoticeBanner";
 
 async function createTeacher(formData: FormData) {
   "use server";
@@ -17,6 +20,8 @@ async function createTeacher(formData: FormData) {
   const yearsExperienceRaw = String(formData.get("yearsExperience") ?? "").trim();
   const teachingLanguageRaw = String(formData.get("teachingLanguage") ?? "").trim();
   const teachingLanguageOther = String(formData.get("teachingLanguageOther") ?? "").trim();
+  const offlineShanghai = String(formData.get("offlineShanghai") ?? "") === "on";
+  const offlineSingapore = String(formData.get("offlineSingapore") ?? "") === "on";
   const subjectIds = formData.getAll("subjectIds").map((v) => String(v)).filter(Boolean);
 
   if (!name) {
@@ -33,6 +38,9 @@ async function createTeacher(formData: FormData) {
     teachingLanguageRaw === "CHINESE" || teachingLanguageRaw === "ENGLISH" || teachingLanguageRaw === "BILINGUAL"
       ? (teachingLanguageRaw as TeachingLanguage)
       : null;
+  if (teachingLanguageRaw === "OTHER" && !teachingLanguageOther) {
+    redirect("/admin/teachers?err=Other+language+is+required");
+  }
 
   await prisma.teacher.create({
     data: {
@@ -43,6 +51,8 @@ async function createTeacher(formData: FormData) {
       yearsExperience,
       teachingLanguage,
       teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
+      offlineShanghai,
+      offlineSingapore,
       subjects: { connect: subjectIds.map((id) => ({ id })) },
     },
   });
@@ -70,6 +80,7 @@ async function deleteTeacher(formData: FormData) {
     await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
   }
   await prisma.class.deleteMany({ where: { teacherId: id } });
+  await prisma.oneOnOneGroup.deleteMany({ where: { teacherId: id } });
   await prisma.teacher.delete({ where: { id } });
 
   revalidatePath("/admin/teachers");
@@ -81,6 +92,15 @@ function languageLabel(lang: string, v?: string | null, other?: string | null) {
   if (v === TeachingLanguage.BILINGUAL) return lang === "EN" ? "Bilingual" : "双语";
   if (other) return other;
   return "-";
+}
+
+function offlineLabel(lang: string, sh?: boolean | null, sg?: boolean | null) {
+  const hasSh = !!sh;
+  const hasSg = !!sg;
+  if (hasSh && hasSg) return lang === "EN" ? "Shanghai + Singapore" : "上海 + 新加坡";
+  if (hasSh) return lang === "EN" ? "Shanghai Offline" : "上海线下";
+  if (hasSg) return lang === "EN" ? "Singapore Offline" : "新加坡线下";
+  return lang === "EN" ? "Online" : "线上";
 }
 
 function formatAlmaMater(text?: string | null) {
@@ -135,7 +155,7 @@ export default async function TeachersPage({
   function groupLabelOf(tch: (typeof teachers)[number], groupBy: string) {
     if (groupBy === "course") return courseNamesOf(tch).join(" / ") || t(lang, "No Course", "未设置课程");
     if (groupBy === "subject") return subjectNamesOf(tch).join(" / ") || t(lang, "No Subject", "未设置科目");
-    if (groupBy === "language") return languageLabel(lang, tch.teachingLanguage);
+    if (groupBy === "language") return languageLabel(lang, tch.teachingLanguage, tch.teachingLanguageOther);
     if (groupBy === "linked") return tch.users[0]?.email ? t(lang, "Linked", "已绑定") : t(lang, "Not linked", "未绑定");
     return "";
   }
@@ -148,6 +168,7 @@ export default async function TeachersPage({
   const filterCourseId = getParam("courseId");
   const filterSubjectId = getParam("subjectId");
   const filterLanguage = getParam("teachingLanguage");
+  const filterOffline = getParam("offlineMode");
   const filterLinked = getParam("linked");
   const groupBy = getParam("groupBy");
   const msg = getParam("msg");
@@ -182,8 +203,20 @@ export default async function TeachersPage({
       if (!ok) return false;
     }
 
-    if (filterLanguage && tch.teachingLanguage !== (filterLanguage as TeachingLanguage)) {
-      return false;
+    if (filterLanguage) {
+      if (filterLanguage === "OTHER") {
+        if (tch.teachingLanguage || !tch.teachingLanguageOther) return false;
+      } else if (tch.teachingLanguage !== (filterLanguage as TeachingLanguage)) {
+        return false;
+      }
+    }
+
+    if (filterOffline) {
+      if (filterOffline === "ONLINE_ONLY" && (tch.offlineShanghai || tch.offlineSingapore)) return false;
+      if (filterOffline === "OFFLINE_SH" && !tch.offlineShanghai) return false;
+      if (filterOffline === "OFFLINE_SG" && !tch.offlineSingapore) return false;
+      if (filterOffline === "OFFLINE_BOTH" && !(tch.offlineShanghai && tch.offlineSingapore)) return false;
+      if (filterOffline === "OFFLINE_ANY" && !(tch.offlineShanghai || tch.offlineSingapore)) return false;
     }
 
     if (filterLinked === "linked" && !tch.users[0]?.email) return false;
@@ -206,18 +239,10 @@ export default async function TeachersPage({
   return (
     <div>
       <h2>{t(lang, "Teachers", "老师")}</h2>
-      {err ? (
-        <div style={{ marginBottom: 10, padding: 10, border: "1px solid #f2b3b3", background: "#fff5f5" }}>
-          <b>{t(lang, "Error", "错误")}:</b> {decodeURIComponent(err)}
-        </div>
-      ) : null}
-      {msg ? (
-        <div style={{ marginBottom: 10, padding: 10, border: "1px solid #b9e6c3", background: "#f2fff5" }}>
-          <b>{t(lang, "Success", "成功")}:</b> {decodeURIComponent(msg)}
-        </div>
-      ) : null}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={decodeURIComponent(err)} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={decodeURIComponent(msg)} /> : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Add Teacher", "新增老师")} title={t(lang, "Add Teacher", "新增老师")} closeOnSubmit>
           <TeacherCreateForm
             action={createTeacher}
@@ -237,6 +262,7 @@ export default async function TeachersPage({
               subjectSearch: t(lang, "Search subject", "搜索科目"),
               subjectCourseFilter: t(lang, "Filter by course", "按课程筛选"),
               allCourses: t(lang, "All courses", "全部课程"),
+              noSubjects: t(lang, "No subjects", "无科目"),
               yearsExp: t(lang, "Years Experience", "教学经验(年)"),
               teachingLanguage: t(lang, "Teaching Language", "教学语言"),
               chinese: t(lang, "Chinese", "中文"),
@@ -244,85 +270,100 @@ export default async function TeachersPage({
               bilingual: t(lang, "Bilingual", "双语"),
               otherLang: t(lang, "Other", "其他"),
               otherLangInput: t(lang, "Input language manually", "手动输入语言"),
+              offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
+              offlineShanghai: t(lang, "Shanghai", "上海线下"),
+              offlineSingapore: t(lang, "Singapore", "新加坡线下"),
               add: t(lang, "Add", "新增"),
             }}
           />
         </SimpleModal>
 
         <SimpleModal buttonLabel={t(lang, "Export Teacher Cards", "导出老师名片")} title={t(lang, "Teacher Card Export", "老师名片导出")} closeOnSubmit>
-          <form action="/admin/teachers/cards/export/pdf" method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <select name="courseId" defaultValue="">
-              <option value="">{t(lang, "Course (optional)", "课程（可选）")}</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <select name="subjectId" defaultValue="">
-              <option value="">{t(lang, "Subject (optional)", "科目（可选）")}</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.course.name} - {s.name}
-                </option>
-              ))}
-            </select>
-            <select name="levelId" defaultValue="">
-              <option value="">{t(lang, "Level (optional)", "等级（可选）")}</option>
-              {levels.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.subject.course.name} - {l.subject.name} - {l.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit">{t(lang, "Export Cards by Filter", "按筛选导出名片")}</button>
-            <a href="/admin/teachers/cards/export/pdf">{t(lang, "Export All Teachers", "导出全部老师名片")}</a>
-          </form>
+          <TeacherCardExportForm
+            actionUrl="/admin/teachers/cards/export/pdf"
+            courses={courses.map((c) => ({ id: c.id, label: c.name }))}
+            subjects={subjects.map((s) => ({ id: s.id, courseId: s.courseId, label: `${s.course.name} - ${s.name}` }))}
+            levels={levels.map((l) => ({ id: l.id, subjectId: l.subjectId, label: `${l.subject.course.name} - ${l.subject.name} - ${l.name}` }))}
+            labels={{
+              courseOptional: t(lang, "Course (optional)", "课程（可选）"),
+              subjectOptional: t(lang, "Subject (optional)", "科目（可选）"),
+              levelOptional: t(lang, "Level (optional)", "等级（可选）"),
+              languageOptional: t(lang, "Language (optional)", "语言（可选）"),
+              chinese: t(lang, "Chinese", "中文"),
+              english: t(lang, "English", "英文"),
+              bilingual: t(lang, "Bilingual", "双语"),
+              other: t(lang, "Other", "其他"),
+              offlineOptional: t(lang, "Offline (optional)", "线下（可选）"),
+              offlineOnlineOnly: t(lang, "Online only", "仅线上"),
+              offlineShanghai: t(lang, "Shanghai offline", "上海线下"),
+              offlineSingapore: t(lang, "Singapore offline", "新加坡线下"),
+              offlineBoth: t(lang, "Shanghai + Singapore", "上海 + 新加坡"),
+              offlineAny: t(lang, "Any offline", "任意线下"),
+              exportByFilter: t(lang, "Export Cards by Filter", "按筛选导出名片"),
+              exportAll: t(lang, "Export All Teachers", "导出全部老师名片"),
+              emptyResult: t(lang, "No teachers found for export.", "没有符合条件的老师"),
+            }}
+          />
+          <div style={{ marginTop: 10, fontSize: 12, color: "#666" }}>
+            {t(lang, "Card marker (top-right dots):", "名片标记（右上角圆点）:")}{" "}
+            {t(lang, "default = online, SH = top-right, SG = bottom-left, SH+SG = bottom-right.", "默认线上不点亮；上海线下=右上点；新加坡线下=左下点；上海+新加坡=右下点。")}
+          </div>
         </SimpleModal>
       </div>
 
-      <form method="get" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Search & Category View", "检索与类目展示")}</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <input name="q" defaultValue={filterQ} placeholder={t(lang, "Search name/intro/email...", "搜索姓名/介绍/邮箱...")} style={{ minWidth: 280 }} />
-          <select name="courseId" defaultValue={filterCourseId}>
-            <option value="">{t(lang, "Course (all)", "课程（全部）")}</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select name="subjectId" defaultValue={filterSubjectId}>
-            <option value="">{t(lang, "Subject (all)", "科目（全部）")}</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.course.name} - {s.name}
-              </option>
-            ))}
-          </select>
-          <select name="teachingLanguage" defaultValue={filterLanguage}>
-            <option value="">{t(lang, "Language (all)", "语言（全部）")}</option>
-            <option value={TeachingLanguage.CHINESE}>{t(lang, "Chinese", "中文")}</option>
-            <option value={TeachingLanguage.ENGLISH}>{t(lang, "English", "英文")}</option>
-            <option value={TeachingLanguage.BILINGUAL}>{t(lang, "Bilingual", "双语")}</option>
-          </select>
-          <select name="linked" defaultValue={filterLinked}>
-            <option value="">{t(lang, "Link Status (all)", "绑定状态（全部）")}</option>
-            <option value="linked">{t(lang, "Linked", "已绑定")}</option>
-            <option value="unlinked">{t(lang, "Not linked", "未绑定")}</option>
-          </select>
-          <select name="groupBy" defaultValue={groupBy}>
-            <option value="">{t(lang, "Group: None", "分组：不分组")}</option>
-            <option value="course">{t(lang, "Group: Course", "分组：课程")}</option>
-            <option value="subject">{t(lang, "Group: Subject", "分组：科目")}</option>
-            <option value="language">{t(lang, "Group: Language", "分组：语言")}</option>
-            <option value="linked">{t(lang, "Group: Link Status", "分组：绑定状态")}</option>
-          </select>
-          <button type="submit">{t(lang, "Apply", "应用")}</button>
-          <a href="/admin/teachers">{t(lang, "Reset", "重置")}</a>
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
+        <TeacherFilterForm
+          courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+          subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
+          initial={{
+            q: filterQ,
+            courseId: filterCourseId,
+            subjectId: filterSubjectId,
+            teachingLanguage: filterLanguage,
+            offlineMode: filterOffline,
+            linked: filterLinked,
+            groupBy,
+          }}
+          labels={{
+            title: t(lang, "Search & Category View", "检索与类目展示"),
+            searchPlaceholder: t(lang, "Search name/intro/email...", "搜索姓名/介绍/邮箱..."),
+            courseAll: t(lang, "Course (all)", "课程（全部）"),
+            subjectAll: t(lang, "Subject (all)", "科目（全部）"),
+            languageAll: t(lang, "Language (all)", "语言（全部）"),
+            offlineAll: t(lang, "Offline (all)", "线下（全部）"),
+            linkedAll: t(lang, "Link Status (all)", "绑定状态（全部）"),
+            groupNone: t(lang, "Group: None", "分组：不分组"),
+            groupCourse: t(lang, "Group: Course", "分组：课程"),
+            groupSubject: t(lang, "Group: Subject", "分组：科目"),
+            groupLanguage: t(lang, "Group: Language", "分组：语言"),
+            groupLinked: t(lang, "Group: Link Status", "分组：绑定状态"),
+            apply: t(lang, "Apply", "应用"),
+            reset: t(lang, "Reset", "重置"),
+            chinese: t(lang, "Chinese", "中文"),
+            english: t(lang, "English", "英文"),
+            bilingual: t(lang, "Bilingual", "双语"),
+            other: t(lang, "Other", "其他"),
+            onlineOnly: t(lang, "Online only", "仅线上"),
+            offlineSh: t(lang, "Shanghai offline", "上海线下"),
+            offlineSg: t(lang, "Singapore offline", "新加坡线下"),
+            offlineBoth: t(lang, "Shanghai + Singapore", "上海 + 新加坡"),
+            offlineAny: t(lang, "Any offline", "任意线下"),
+            linked: t(lang, "Linked", "已绑定"),
+            unlinked: t(lang, "Not linked", "未绑定"),
+          }}
+        />
+        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#555", marginTop: 6 }}>
+          <div>
+            {t(lang, "Total", "总数")}: <b>{sortedTeachers.length}</b>
+          </div>
+          <div>
+            {t(lang, "Linked", "已绑定")}: <b>{sortedTeachers.filter((tch) => !!tch.users[0]?.email).length}</b>
+          </div>
+          <div>
+            {t(lang, "Not linked", "未绑定")}: <b>{sortedTeachers.filter((tch) => !tch.users[0]?.email).length}</b>
+          </div>
         </div>
-      </form>
+      </div>
 
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
@@ -330,6 +371,7 @@ export default async function TeachersPage({
             <th align="left">{t(lang, "Name", "姓名")}</th>
             <th align="left">{t(lang, "Subject", "科目")}</th>
             <th align="left">{t(lang, "Language", "语言")}</th>
+            <th align="left">{t(lang, "Location", "上课地点")}</th>
             <th align="left">{t(lang, "Years", "年限")}</th>
             <th align="left">{t(lang, "Nationality", "国籍")}</th>
             <th align="left">{t(lang, "Alma Mater", "毕业学校")}</th>
@@ -363,11 +405,17 @@ export default async function TeachersPage({
                       : "-"}
                   </td>
                   <td>{languageLabel(lang, tch.teachingLanguage, tch.teachingLanguageOther)}</td>
+                  <td>{offlineLabel(lang, tch.offlineShanghai, tch.offlineSingapore)}</td>
                   <td>{tch.yearsExperience ?? "-"}</td>
                   <td>{tch.nationality ?? "-"}</td>
                   <td style={{ whiteSpace: "pre-line" }}>{formatAlmaMater(tch.almaMater)}</td>
                   <td>
-                    <a href={`/admin/teachers/${tch.id}/availability`}>{t(lang, "Set / View", "设置 / 查看")}</a>
+                    <a
+                      href={`/admin/teachers/${tch.id}/availability`}
+                      style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
+                    >
+                      {t(lang, "Set / View", "设置 / 查看")}
+                    </a>
                   </td>
                   <td>
                     {tch.users[0]?.email ? (
@@ -378,12 +426,24 @@ export default async function TeachersPage({
                       <span style={{ color: "#b00" }}>{t(lang, "Not linked", "未绑定")}</span>
                     )}
                     <div>
-                      <a href={`/admin/teachers/${tch.id}`}>{t(lang, "Manage link", "去绑定")}</a>
+                      <a
+                        href={`/admin/teachers/${tch.id}`}
+                        style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6, display: "inline-block", marginTop: 4 }}
+                      >
+                        {t(lang, "Manage link", "去绑定")}
+                      </a>
                     </div>
                   </td>
                   <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={`/admin/teachers/${tch.id}`}>{t(lang, "Edit", "编辑")}</a>
-                    <a href={`/admin/teachers/cards/export/pdf?teacherId=${tch.id}`}>{t(lang, "Export Card", "导出名片")}</a>
+                    <a href={`/admin/teachers/${tch.id}`} style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+                      {t(lang, "Edit", "编辑")}
+                    </a>
+                    <a
+                      href={`/admin/teachers/cards/export/pdf?teacherId=${tch.id}`}
+                      style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
+                    >
+                      {t(lang, "Export Card", "导出名片")}
+                    </a>
                     <form action={deleteTeacher}>
                       <input type="hidden" name="id" value={tch.id} />
                       <ConfirmSubmitButton message={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}>

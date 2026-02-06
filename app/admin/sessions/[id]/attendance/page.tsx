@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AttendanceStatus, PackageType, PackageStatus, Prisma } from "@prisma/client";
 import AttendanceEditor, { AttendanceRow } from "./AttendanceEditor";
 import { getLang, t } from "@/lib/i18n";
+import NoticeBanner from "../../_components/NoticeBanner";
 
 function buildRedirect(sessionId: string, params: Record<string, string>) {
   const p = new URLSearchParams(params);
@@ -22,6 +23,12 @@ const DEDUCTABLE_STATUS = new Set<AttendanceStatus>([
 
 function durationMinutes(startAt: Date, endAt: Date) {
   return Math.max(0, Math.round((endAt.getTime() - startAt.getTime()) / 60000));
+}
+
+function fmtRange(startAt: Date, endAt: Date) {
+  const start = new Date(startAt).toLocaleString();
+  const end = new Date(endAt).toLocaleString();
+  return `${start} → ${end}`;
 }
 
 function isNextRedirectError(e: any) {
@@ -200,7 +207,8 @@ async function saveAttendance(sessionId: string, formData: FormData) {
         classId: true,
         startAt: true,
         endAt: true,
-        class: { select: { courseId: true } },
+        studentId: true,
+        class: { select: { courseId: true, capacity: true } },
       },
     });
     if (!session) redirect(buildRedirect(sessionId, { err: "Session not found" }));
@@ -209,7 +217,10 @@ async function saveAttendance(sessionId: string, formData: FormData) {
       where: { classId: session.classId },
       select: { studentId: true },
     });
-    const studentIds = enrollments.map((e) => e.studentId);
+    const studentIds =
+      session.class.capacity === 1 && session.studentId
+        ? [session.studentId]
+        : enrollments.map((e) => e.studentId);
 
     const existingList = await prisma.attendance.findMany({
       where: { sessionId, studentId: { in: studentIds } },
@@ -316,7 +327,8 @@ async function markAllPresent(sessionId: string) {
         classId: true,
         startAt: true,
         endAt: true,
-        class: { select: { courseId: true } },
+        studentId: true,
+        class: { select: { courseId: true, capacity: true } },
       },
     });
     if (!session) redirect(buildRedirect(sessionId, { err: "Session not found" }));
@@ -325,7 +337,10 @@ async function markAllPresent(sessionId: string) {
       where: { classId: session.classId },
       select: { studentId: true },
     });
-    const studentIds = enrollments.map((e) => e.studentId);
+    const studentIds =
+      session.class.capacity === 1 && session.studentId
+        ? [session.studentId]
+        : enrollments.map((e) => e.studentId);
 
     const dm = durationMinutes(session.startAt, session.endAt);
 
@@ -413,7 +428,11 @@ export default async function AttendancePage({
 
   const map = new Map(existing.map((a) => [a.studentId, a]));
 
-  const studentIds = enrollments.map((e) => e.studentId);
+  const attendanceEnrollments =
+    session.class.capacity === 1 && session.studentId
+      ? enrollments.filter((e) => e.studentId === session.studentId)
+      : enrollments;
+  const studentIds = attendanceEnrollments.map((e) => e.studentId);
   const packages = await prisma.coursePackage.findMany({
     where: {
       studentId: { in: studentIds },
@@ -446,64 +465,74 @@ export default async function AttendancePage({
   );
 
   return (
-    <div>
-      <h2>{t(lang, "Attendance", "点名")}</h2>
-
-      <p style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <a href={`/admin/classes/${session.classId}/sessions`}>← {t(lang, "Back to Sessions", "返回课次")}</a>
-        <a href={`/admin/classes/${session.classId}`}>← {t(lang, "Back to Class Detail", "返回班级详情")}</a>
-        <span style={{ color: "#999" }}>(sessionId {session.id})</span>
-      </p>
-
-      {err && (
-        <div style={{ padding: 12, border: "1px solid #f2b3b3", background: "#fff5f5", marginBottom: 12 }}>
-          <b>{t(lang, "Error", "错误")}:</b> {err}
-        </div>
-      )}
-      {msg && (
-        <div style={{ padding: 12, border: "1px solid #b9e6c3", background: "#f2fff5", marginBottom: 12 }}>
-          <b>{t(lang, "OK", "成功")}:</b> {msg}
-        </div>
-      )}
-
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <b>{t(lang, "Course", "课程")}:</b> {session.class.course.name} / {session.class.subject?.name ?? "-"} /{" "}
-          {session.class.level?.name ?? "-"}
+          <h2 style={{ marginBottom: 6 }}>{t(lang, "Attendance", "点名")}</h2>
+          <div style={{ color: "#666" }}>{fmtRange(session.startAt, session.endAt)}</div>
+          <div style={{ color: "#999", fontSize: 12 }}>(sessionId {session.id})</div>
         </div>
-        <div>
-          <b>{t(lang, "Teacher", "老师")}:</b> {session.teacher?.name ?? session.class.teacher.name}
-        </div>
-        <div>
-          <b>{t(lang, "Campus", "校区")}:</b> {session.class.campus.name}
-        </div>
-        <div>
-          <b>{t(lang, "Room", "教室")}:</b> {session.class.room?.name ?? "(none)"}
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <b>{t(lang, "Session time", "上课时间")}:</b> {new Date(session.startAt).toLocaleString()} → {new Date(session.endAt).toLocaleString()}
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <b>{t(lang, "Enrolled Students", "报名人数")}:</b> {enrollments.length}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <a href={`/admin/classes/${session.classId}/sessions`}>← {t(lang, "Back to Sessions", "返回课次")}</a>
+          <a href={`/admin/classes/${session.classId}`}>← {t(lang, "Back to Class Detail", "返回班级详情")}</a>
         </div>
       </div>
 
-      {enrollments.length === 0 ? (
-        <div style={{ color: "#999" }}>
-          {t(lang, "No enrolled students in this class yet.", "本班暂无报名学生。")} {t(lang, "Please add students in class detail.", "请先在班级详情页添加学生。")}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Course", "课程")}</div>
+          <div style={{ fontWeight: 700 }}>
+            {session.class.course.name} / {session.class.subject?.name ?? "-"} / {session.class.level?.name ?? "-"}
+          </div>
         </div>
-      ) : (
-        <>
-          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Teacher", "老师")}</div>
+          <div style={{ fontWeight: 700 }}>{session.teacher?.name ?? session.class.teacher.name}</div>
+        </div>
+        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Campus / Room", "校区 / 教室")}</div>
+          <div style={{ fontWeight: 700 }}>
+            {session.class.campus.name} / {session.class.room?.name ?? "(none)"}
+          </div>
+        </div>
+        <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+          <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Enrolled Students", "报名人数")}</div>
+          <div style={{ fontWeight: 700 }}>{attendanceEnrollments.length}</div>
+        </div>
+      </div>
+      {session.class.capacity === 1 && !session.studentId && (
+        <div style={{ padding: 10, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8 }}>
+          {t(
+            lang,
+            "This is a 1-on-1 session without a student assigned. Please assign the student in class sessions page.",
+            "这是一个未选择学生的一对一课次，请先在班级课次页面选择学生。"
+          )}
+        </div>
+      )}
+
+      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700 }}>{t(lang, "Attendance Editor", "点名编辑")}</div>
+          {attendanceEnrollments.length > 0 && (
             <form action={markAllPresent.bind(null, sessionId)}>
               <button type="submit">{t(lang, "Mark All Present (deductCount=1)", "全部标记到课(扣1次)")}</button>
             </form>
-          </div>
+          )}
+        </div>
 
+        {attendanceEnrollments.length === 0 ? (
+          <div style={{ color: "#999" }}>
+            {t(lang, "No enrolled students in this class yet.", "本班暂无报名学生。")}{" "}
+            {t(lang, "Please add students in class detail.", "请先在班级详情页添加学生。")}
+          </div>
+        ) : (
           <form action={saveAttendance.bind(null, sessionId)}>
             <AttendanceEditor
               lang={lang}
-              rows={enrollments.map((e) => {
+              rows={attendanceEnrollments.map((e) => {
                 const a = map.get(e.studentId);
                 const prevExcused = excusedCountMap.get(e.studentId) ?? 0;
                 const opts = (pkgMap.get(e.studentId) ?? []).map((p) => ({
@@ -526,9 +555,9 @@ export default async function AttendancePage({
                 } as AttendanceRow;
               })}
             />
-</form>
-        </>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }

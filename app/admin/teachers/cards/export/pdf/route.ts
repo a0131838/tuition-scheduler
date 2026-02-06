@@ -40,6 +40,10 @@ function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
+function asciiName(s: string) {
+  return safeName(s).replace(/[^\x20-\x7E]/g, "_");
+}
+
 function teachingLanguageLabel(v?: "CHINESE" | "ENGLISH" | "BILINGUAL" | null, other?: string | null) {
   if (v === "CHINESE") return "中文";
   if (v === "ENGLISH") return "英文";
@@ -130,6 +134,28 @@ function drawTeacherCardPage(doc: PDFDoc, teacher: any) {
       if (y > pageH - 60) break;
     }
   }
+
+  const sh = !!teacher.offlineShanghai;
+  const sg = !!teacher.offlineSingapore;
+  const mark = sh && sg ? "both" : sh ? "sh" : sg ? "sg" : "none";
+  const baseX = pageW - 34;
+  const baseY = 24;
+  const dot = (x: number, y: number, color: string, active: boolean) => {
+    doc.save();
+    doc.fillColor(color).opacity(active ? 1 : 0.15);
+    doc.circle(x, y, 5).fill();
+    doc.restore();
+  };
+  // light background plate
+  doc.save();
+  doc.fillColor("#ffffff").opacity(0.7);
+  doc.roundedRect(baseX - 18, baseY - 16, 32, 32, 6).fill();
+  doc.restore();
+  // 2x2 matrix: right-top=SH, left-bottom=SG, right-bottom=both; online is default (no highlight)
+  dot(baseX - 10, baseY - 8, "#9ca3af", false);
+  dot(baseX + 4, baseY - 8, "#60a5fa", mark === "sh");
+  dot(baseX - 10, baseY + 6, "#34d399", mark === "sg");
+  dot(baseX + 4, baseY + 6, "#f59e0b", mark === "both");
 }
 
 export async function GET(req: Request) {
@@ -139,6 +165,8 @@ export async function GET(req: Request) {
   const courseId = (url.searchParams.get("courseId") || "").trim();
   const subjectId = (url.searchParams.get("subjectId") || "").trim();
   const levelId = (url.searchParams.get("levelId") || "").trim();
+  const teachingLanguage = (url.searchParams.get("teachingLanguage") || "").trim();
+  const offlineMode = (url.searchParams.get("offlineMode") || "").trim();
 
   const where = (() => {
     if (teacherId) return { id: teacherId };
@@ -169,6 +197,31 @@ export async function GET(req: Request) {
       andClauses.push({ classes: { some: { levelId } } });
     }
 
+    if (teachingLanguage) {
+      if (teachingLanguage === "OTHER") {
+        andClauses.push({
+          teachingLanguage: null,
+          teachingLanguageOther: { not: null },
+        });
+      } else if (teachingLanguage === "CHINESE" || teachingLanguage === "ENGLISH" || teachingLanguage === "BILINGUAL") {
+        andClauses.push({ teachingLanguage });
+      }
+    }
+
+    if (offlineMode) {
+      if (offlineMode === "ONLINE_ONLY") {
+        andClauses.push({ offlineShanghai: false, offlineSingapore: false });
+      } else if (offlineMode === "OFFLINE_SH") {
+        andClauses.push({ offlineShanghai: true });
+      } else if (offlineMode === "OFFLINE_SG") {
+        andClauses.push({ offlineSingapore: true });
+      } else if (offlineMode === "OFFLINE_BOTH") {
+        andClauses.push({ offlineShanghai: true, offlineSingapore: true });
+      } else if (offlineMode === "OFFLINE_ANY") {
+        andClauses.push({ OR: [{ offlineShanghai: true }, { offlineSingapore: true }] });
+      }
+    }
+
     if (andClauses.length === 0) return {};
     return { AND: andClauses };
   })();
@@ -186,6 +239,25 @@ export async function GET(req: Request) {
     return new Response("No teachers found for export.", { status: 404 });
   }
 
+  const [course, subject, level] = await Promise.all([
+    courseId ? prisma.course.findUnique({ where: { id: courseId }, select: { name: true } }) : Promise.resolve(null),
+    subjectId
+      ? prisma.subject.findUnique({ where: { id: subjectId }, select: { name: true } })
+      : Promise.resolve(null),
+    levelId ? prisma.level.findUnique({ where: { id: levelId }, select: { name: true } }) : Promise.resolve(null),
+  ]);
+
+  const langLabel =
+    teachingLanguage === "CHINESE"
+      ? "中文"
+      : teachingLanguage === "ENGLISH"
+      ? "英文"
+      : teachingLanguage === "BILINGUAL"
+      ? "双语"
+      : teachingLanguage === "OTHER"
+      ? "其他"
+      : "全部";
+
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 0 });
   drawTeacherCardPage(doc, teachers[0]);
   for (let i = 1; i < teachers.length; i += 1) {
@@ -194,10 +266,27 @@ export async function GET(req: Request) {
   }
 
   const stream = streamPdf(doc);
+  const courseNameUpper = course?.name ? course.name.toUpperCase() : "";
+  const isSimpleCourseOnly = courseNameUpper && !subject && !level && !teachingLanguage;
+  const parts = [
+    courseNameUpper || "",
+    subject?.name || "",
+    level?.name || "",
+    langLabel === "全部" ? "" : langLabel,
+  ].filter(Boolean);
+  const nameSuffix = parts.length ? `-${safeName(parts.join("-"))}` : "";
+  const today = new Date();
+  const dateTag = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
   const fileName = teacherId
-    ? `teacher-card-${safeName(teachers[0].name)}.pdf`
-    : `teacher-cards-${safeName(courseId || "all-courses")}-${safeName(subjectId || "all-subjects")}-${safeName(levelId || "all-levels")}.pdf`;
-  const fileNameAscii = fileName.replace(/[^\x20-\x7E]/g, "_");
+    ? `名片-Card-${safeName(teachers[0].name)}-${dateTag}.pdf`
+    : isSimpleCourseOnly
+    ? `名片-Card-${safeName(courseNameUpper)}-${dateTag}.pdf`
+    : `名片-Card${nameSuffix}-${dateTag}.pdf`;
+  const fileNameAscii = teacherId
+    ? `MingPian-Card-${asciiName(teachers[0].name)}-${dateTag}.pdf`
+    : isSimpleCourseOnly
+    ? `MingPian-Card-${asciiName(courseNameUpper)}-${dateTag}.pdf`
+    : `MingPian-Card${asciiName(nameSuffix)}-${dateTag}.pdf`;
   const fileNameUtf8 = encodeURIComponent(fileName);
   return new Response(stream as any, {
     headers: {
