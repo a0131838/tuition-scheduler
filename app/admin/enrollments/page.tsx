@@ -322,6 +322,7 @@ export default async function AdminEnrollmentsPage({
 
   const oneOnOneRows = oneOnOneEntries;
   const groupRows = filteredGroupEnrollments;
+  const filteredEnrollments = [...oneOnOneRows, ...groupRows];
 
   const undoClass = undoClassId ? classes.find((c) => c.id === undoClassId) : null;
   const undoStudent = undoStudentId ? students.find((s) => s.id === undoStudentId) : null;
