@@ -56,6 +56,12 @@ enum BookingRequestStatus {
   CANCELLED
 }
 
+enum FeedbackStatus {
+  ON_TIME
+  LATE
+  PROXY_DRAFT
+}
+
 model Campus {
   id      String  @id @default(uuid())
   name    String
@@ -263,8 +269,38 @@ model Session {
   feedbacks   SessionFeedback[]
   teacherChanges SessionTeacherChange[]
   bookingRequests StudentBookingRequest[]
+  signInAlerts SignInAlert[]
 
   @@index([studentId])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SignInAlert {
+  id             String   @id @default(uuid())
+  sessionId      String
+  alertType      String
+  targetRole     String
+  targetUserId   String?
+  studentId      String?
+  scopeKey       String
+  thresholdMin   Int
+  firstTriggeredAt DateTime @default(now())
+  lastTriggeredAt  DateTime @default(now())
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, alertType, targetRole, scopeKey])
+  @@index([targetRole, targetUserId, resolvedAt, lastTriggeredAt])
+  @@index([sessionId, resolvedAt])
 }
 
 model SessionFeedback {
@@ -282,6 +318,12 @@ model SessionFeedback {
   forwardedBy String?
   forwardChannel String?
   forwardNote String?
+  status      FeedbackStatus @default(ON_TIME)
+  dueAt       DateTime?
+  submittedByRole String?
+  submittedByUserId String?
+  isProxyDraft Boolean @default(false)
+  proxyNote   String?
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -290,6 +332,7 @@ model SessionFeedback {
 
   @@unique([sessionId, teacherId])
   @@index([teacherId, submittedAt])
+  @@index([status, dueAt])
 }
 
 model SessionTeacherChange {
@@ -372,6 +415,15 @@ model User {
 
   teacher  Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   sessions AuthSession[]
+}
+
+model ManagerAcl {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AuthSession {

@@ -6,6 +6,7 @@ import EnrollmentCreateForm from "../_components/EnrollmentCreateForm";
 import EnrollmentExpandCollapse from "../_components/EnrollmentExpandCollapse";
 import EnrollmentFilterForm from "../_components/EnrollmentFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
+import { isGroupPackNote } from "@/lib/package-mode";
 
 function classLabel(cls: {
   course: { name: string };
@@ -14,6 +15,20 @@ function classLabel(cls: {
 }) {
   return `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
 }
+
+type FilterableClass = {
+  courseId: string;
+  subjectId: string | null;
+  levelId: string | null;
+  teacherId: string;
+  campusId: string;
+  course: { name: string };
+  subject?: { name: string } | null;
+  level?: { name: string } | null;
+  teacher: { name: string };
+  campus: { name: string };
+  room?: { name: string } | null;
+};
 
 type OneOnOneEntry = {
   classId: string;
@@ -49,23 +64,28 @@ async function addEnrollment(formData: FormData) {
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { id: true, courseId: true },
+    select: { id: true, courseId: true, capacity: true },
   });
   if (!cls) {
     redirect("/admin/enrollments?err=Class+not+found&keep=1");
   }
 
   const now = new Date();
-  const activePkg = await prisma.coursePackage.findFirst({
+  const candidatePkgs = await prisma.coursePackage.findMany({
     where: {
       studentId,
       courseId: cls.courseId,
       status: "ACTIVE",
       validFrom: { lte: now },
       OR: [{ validTo: null }, { validTo: { gte: now } }],
-      AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
     },
-    select: { id: true },
+    select: { id: true, type: true, remainingMinutes: true, note: true },
+  });
+  const activePkg = candidatePkgs.find((p) => {
+    if (p.type === "MONTHLY") return true;
+    if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
+    if (cls.capacity === 1) return !isGroupPackNote(p.note);
+    return true;
   });
   if (!activePkg) {
     redirect("/admin/enrollments?err=Student+has+no+active+package+for+this+course&keep=1");
@@ -164,7 +184,7 @@ export default async function AdminEnrollmentsPage({
 
   const [classes, students, enrollments] = await Promise.all([
     prisma.class.findMany({
-      include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+      include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent: true },
       orderBy: { id: "asc" },
     }),
     prisma.student.findMany({ orderBy: { name: "asc" } }),
@@ -241,7 +261,7 @@ export default async function AdminEnrollmentsPage({
     enrollmentsByClass.get(e.classId)!.push(e);
   }
 
-  const classMatchesFilters = (cls: (typeof classes)[number]) => {
+  const classMatchesFilters = (cls: FilterableClass) => {
     if (courseId && cls.courseId !== courseId) return false;
     if (subjectId && cls.subjectId !== subjectId) return false;
     if (levelId && cls.levelId !== levelId) return false;
@@ -250,7 +270,7 @@ export default async function AdminEnrollmentsPage({
     return true;
   };
 
-  const entryMatchesQuery = (cls: (typeof classes)[number], studentName = "") => {
+  const entryMatchesQuery = (cls: FilterableClass, studentName = "") => {
     if (!q) return true;
     const hay = [
       cls.course.name,
@@ -323,6 +343,18 @@ export default async function AdminEnrollmentsPage({
   const oneOnOneRows = oneOnOneEntries;
   const groupRows = filteredGroupEnrollments;
   const filteredEnrollments = [...oneOnOneRows, ...groupRows];
+  const oneCardStyle = {
+    border: "2px solid #fdba74",
+    borderRadius: 10,
+    padding: 12,
+    background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)",
+  } as const;
+  const groupCardStyle = {
+    border: "2px solid #93c5fd",
+    borderRadius: 10,
+    padding: 12,
+    background: "linear-gradient(180deg, #eff6ff 0%, #fff 100%)",
+  } as const;
 
   const undoClass = undoClassId ? classes.find((c) => c.id === undoClassId) : null;
   const undoStudent = undoStudentId ? students.find((s) => s.id === undoStudentId) : null;
@@ -455,6 +487,14 @@ export default async function AdminEnrollmentsPage({
             {t(lang, "Group", "班课")}: <b>{groupRows.length}</b>
           </div>
         </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+          <span style={{ padding: "4px 10px", borderRadius: 999, border: "2px solid #fdba74", background: "#fff7ed", color: "#9a3412", fontWeight: 700 }}>
+            {t(lang, "1-on-1 Area", "一对一区域")}
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, border: "2px solid #93c5fd", background: "#eff6ff", color: "#1e3a8a", fontWeight: 700 }}>
+            {t(lang, "Group Class Area", "班课区域")}
+          </span>
+        </div>
       </div>
       <EnrollmentExpandCollapse />
 
@@ -481,8 +521,8 @@ export default async function AdminEnrollmentsPage({
                     return map;
                   }, new Map<string, { cls: OneOnOneEntry["cls"]; rows: OneOnOneEntry[] }>())
                 ).map(([key, group]) => (
-                  <details key={key} open data-enroll-card style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
-                    <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                  <details key={key} open data-enroll-card style={oneCardStyle}>
+                    <summary style={{ cursor: "pointer", display: "grid", gap: 4, background: "#ffedd5", borderRadius: 8, padding: 8 }}>
                       <div style={{ fontWeight: 700 }}>
                         {group.cls.course.name} / {group.cls.subject?.name ?? "-"} / {group.cls.level?.name ?? "-"}
                       </div>
@@ -548,8 +588,8 @@ export default async function AdminEnrollmentsPage({
                   return map;
                 }, new Map<string, { cls: (typeof enrollments)[number]["class"]; rows: typeof enrollments }>())
               ).map(([classId, group]) => (
-                <details key={classId} open data-enroll-card style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
-                  <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                <details key={classId} open data-enroll-card style={groupCardStyle}>
+                  <summary style={{ cursor: "pointer", display: "grid", gap: 4, background: "#dbeafe", borderRadius: 8, padding: 8 }}>
                     <div style={{ fontWeight: 700 }}>
                       {group.cls.course.name} / {group.cls.subject?.name ?? "-"} / {group.cls.level?.name ?? "-"}
                     </div>

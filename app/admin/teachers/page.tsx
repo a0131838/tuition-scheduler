@@ -123,7 +123,7 @@ export default async function TeachersPage({
       include: {
         subjects: { include: { course: true } },
         subjectCourse: { include: { course: true } },
-        users: { select: { id: true, email: true }, where: { role: "TEACHER" }, take: 1 },
+        users: { select: { id: true, email: true }, where: { role: { in: ["TEACHER", "ADMIN"] } }, take: 1 },
       },
     }),
     prisma.course.findMany({ orderBy: { name: "asc" } }),

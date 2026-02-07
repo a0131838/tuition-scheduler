@@ -1,5 +1,7 @@
-﻿?import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";`r`nimport NoticeBanner from "../../_components/NoticeBanner";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import NoticeBanner from "../../../_components/NoticeBanner";
+import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -227,9 +229,9 @@ export default async function AvailabilityPage({
       <h2>Availability - {teacher.name}</h2>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>�� Prev</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>?? Prev</a>
         <div style={{ fontWeight: 700 }}>{month}</div>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>Next ��</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>Next ??</a>
       </div>
 
       {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
@@ -276,8 +278,8 @@ export default async function AvailabilityPage({
                       <input type="hidden" name="date" value={key} />
                       <input type="hidden" name="month" value={month} />
                       <div style={{ display: "flex", gap: 6 }}>
-                        <input name="start" type="time" step={900} defaultValue="18:00" />
-                        <input name="end" type="time" step={900} defaultValue="20:00" />
+                        <BlurTimeInput name="start" step={900} defaultValue="18:00" />
+                        <BlurTimeInput name="end" step={900} defaultValue="20:00" />
                       </div>
                       <button type="submit">Add</button>
                     </form>
@@ -297,8 +299,8 @@ export default async function AvailabilityPage({
             <option key={i} value={i}>{w}({i})</option>
           ))}
         </select>
-        <input name="start" type="time" step={900} defaultValue="18:00" />
-        <input name="end" type="time" step={900} defaultValue="20:00" />
+        <BlurTimeInput name="start" step={900} defaultValue="18:00" />
+        <BlurTimeInput name="end" step={900} defaultValue="20:00" />
         <button type="submit">Add Weekly</button>
       </form>
 
@@ -341,4 +343,5 @@ export default async function AvailabilityPage({
     </div>
   );
 }
+
 

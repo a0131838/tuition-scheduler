@@ -6,8 +6,10 @@ import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
+import { composePackageNote, packageModeFromNote, stripGroupPackTag } from "@/lib/package-mode";
 
 const LOW_MINUTES = 120;
+const LOW_COUNTS = 3;
 const FORECAST_WINDOW_DAYS = 30;
 const LOW_DAYS = 7;
 
@@ -27,6 +29,10 @@ function fmtMinutes(m?: number | null) {
   if (mm === 0) return `${h}h`;
   return `${h}h ${mm}m`;
 }
+function fmtCount(v?: number | null) {
+  if (v == null) return "-";
+  return `${v}`;
+}
 function fmtDateInput(d: Date | null) {
   if (!d) return "";
   const y = d.getFullYear();
@@ -39,12 +45,13 @@ async function createPackage(formData: FormData) {
   "use server";
   const studentId = String(formData.get("studentId") ?? "");
   const courseId = String(formData.get("courseId") ?? "");
-  const type = String(formData.get("type") ?? "HOURS");
+  const typeRaw = String(formData.get("type") ?? "HOURS");
+  const type = typeRaw === "GROUP_COUNT" ? "HOURS" : typeRaw;
   const status = String(formData.get("status") ?? "PAUSED");
 
   const validFromStr = String(formData.get("validFrom") ?? "");
   const validToStr = String(formData.get("validTo") ?? "");
-  const note = String(formData.get("note") ?? "");
+  const noteRaw = String(formData.get("note") ?? "");
   const paid = String(formData.get("paid") ?? "") === "on";
   const paidAtStr = String(formData.get("paidAt") ?? "");
   const paidAmountRaw = String(formData.get("paidAmount") ?? "");
@@ -87,6 +94,8 @@ async function createPackage(formData: FormData) {
     redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists`);
   }
 
+  const packageNote = composePackageNote(typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES", noteRaw);
+
   if (type === "HOURS") {
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
       redirect(`/admin/packages?err=HOURS+package+needs+totalMinutes`);
@@ -105,9 +114,9 @@ async function createPackage(formData: FormData) {
         paidAt,
         paidAmount,
         paidNote: paidNote || null,
-        note: note || null,
+        note: packageNote || null,
         txns: {
-          create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: note || null },
+          create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: packageNote || null },
         },
       },
     });
@@ -124,9 +133,9 @@ async function createPackage(formData: FormData) {
         paidAt,
         paidAmount,
         paidNote: paidNote || null,
-        note: note || null,
+        note: packageNote || null,
         txns: {
-          create: { kind: "PURCHASE", deltaMinutes: 0, note: note || null },
+          create: { kind: "PURCHASE", deltaMinutes: 0, note: packageNote || null },
         },
       },
     });
@@ -142,7 +151,7 @@ async function updatePackage(formData: FormData) {
   const remainingMinutesRaw = String(formData.get("remainingMinutes") ?? "");
   const validFromStr = String(formData.get("validFrom") ?? "");
   const validToStr = String(formData.get("validTo") ?? "");
-  const note = String(formData.get("note") ?? "");
+  const noteRaw = String(formData.get("note") ?? "");
   const paid = String(formData.get("paid") ?? "") === "on";
   const paidAtStr = String(formData.get("paidAt") ?? "");
   const paidAmountRaw = String(formData.get("paidAmount") ?? "");
@@ -152,7 +161,7 @@ async function updatePackage(formData: FormData) {
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id },
-    select: { remainingMinutes: true },
+    select: { remainingMinutes: true, note: true },
   });
 
   const validFrom = parseDateStart(validFromStr);
@@ -169,6 +178,11 @@ async function updatePackage(formData: FormData) {
     const n = Number(remainingMinutesRaw);
     if (Number.isFinite(n) && n >= 0) remainingMinutes = n;
   }
+
+  const note = composePackageNote(
+    packageModeFromNote(pkg?.note ?? null) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES",
+    noteRaw
+  );
 
   await prisma.coursePackage.update({
     where: { id },
@@ -264,14 +278,16 @@ export default async function AdminPackagesPage({
       const remaining = p.remainingMinutes ?? 0;
       const deducted30 = deducted30Map.get(p.id) ?? 0;
       const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+      const isGroupPack = p.type === "HOURS" && packageModeFromNote(p.note) === "GROUP_COUNT";
+      const lowBalanceThreshold = isGroupPack ? LOW_COUNTS : LOW_MINUTES;
       const estDays =
         p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
           ? Math.ceil(remaining / avgPerDay)
           : null;
-      const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= LOW_MINUTES;
+      const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= lowBalanceThreshold;
       const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
       const isAlert = p.type === "HOURS" && p.status === "ACTIVE" && (remaining <= 0 || lowMinutes || lowDays);
-      return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert }] as const;
+      return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert, isGroupPack }] as const;
     })
   );
   const filteredPackages = filterWarn === "alert" ? packages.filter((p) => packageRiskMap.get(p.id)?.isAlert) : packages;
@@ -315,15 +331,16 @@ export default async function AdminPackagesPage({
               {t(lang, "Type", "类型")}:
               <select name="type" defaultValue="HOURS" style={{ marginLeft: 8, minWidth: 220 }}>
                 <option value="HOURS">{t(lang, "HOURS (minutes)", "课时包(按分钟)")}</option>
+                <option value="GROUP_COUNT">{t(lang, "GROUP (per class)", "班课包(按次)")}</option>
                 <option value="MONTHLY">{t(lang, "MONTHLY (valid period)", "月卡(按有效期)")}</option>
               </select>
             </label>
 
             <label>
-              {t(lang, "totalMinutes (HOURS only)", "总分钟数(仅课时包)")}:
-              <input name="totalMinutes" type="number" min={30} step={30} defaultValue={600} style={{ marginLeft: 8 }} />
+              {t(lang, "totalMinutes / count (HOURS/GROUP)", "总分钟数/次数(课时包/班课包)")}:
+              <input name="totalMinutes" type="number" min={1} step={1} defaultValue={20} style={{ marginLeft: 8 }} />
               <span style={{ color: "#666", marginLeft: 8 }}>
-                {t(lang, "e.g. 600 = 10 hours, step 30 minutes", "例如 600=10小时，步进30分钟")}
+                {t(lang, "HOURS: minutes (e.g. 600=10h). GROUP: class count (e.g. 20=20 classes).", "课时包按分钟（例如600=10小时）；班课包按次数（例如20=20次）。")}
               </span>
             </label>
 
@@ -453,23 +470,35 @@ export default async function AdminPackagesPage({
                     <>
                 <td>{p.student?.name ?? "-"}</td>
                 <td>{p.course?.name ?? "-"}</td>
-                <td>{p.type}</td>
+                <td>
+                  {p.type === "HOURS"
+                    ? packageModeFromNote(p.note) === "GROUP_COUNT"
+                      ? t(lang, "GROUP", "班课包")
+                      : "HOURS"
+                    : p.type}
+                </td>
                 <td>
                   {p.type === "HOURS" ? (
                     <span
                       style={{
-                        fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400,
-                        color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined,
+                        fontWeight: lowMinutes ? 700 : 400,
+                        color: lowMinutes ? "#b00" : undefined,
                       }}
                     >
-                      {fmtMinutes(p.remainingMinutes)}
+                      {packageModeFromNote(p.note) === "GROUP_COUNT"
+                        ? `${fmtCount(p.remainingMinutes)} cls`
+                        : fmtMinutes(p.remainingMinutes)}
                     </span>
                   ) : (
                     "-"
                   )}
                 </td>
                 <td>
-                  {p.type === "HOURS" ? `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d` : "-"}
+                  {p.type === "HOURS"
+                    ? packageModeFromNote(p.note) === "GROUP_COUNT"
+                      ? `${deducted30} cls / ${FORECAST_WINDOW_DAYS}d`
+                      : `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d`
+                    : "-"}
                 </td>
                 <td>
                   {p.type !== "HOURS"
@@ -507,7 +536,7 @@ export default async function AdminPackagesPage({
                 <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
                 <td>{p.paidAmount ?? "-"}</td>
                 <td>{p.paidNote ?? "-"}</td>
-                <td>{p.note ?? "-"}</td>
+                <td>{stripGroupPackTag(p.note) || "-"}</td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
                 <td>
                   <PackageEditModal

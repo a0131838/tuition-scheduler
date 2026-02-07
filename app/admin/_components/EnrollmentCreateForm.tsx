@@ -40,9 +40,38 @@ export default function EnrollmentCreateForm({
   };
 }) {
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
-  const [studentId, setStudentId] = useState(students[0]?.id ?? "");
+  const [studentId, setStudentId] = useState("");
+  const [classQuery, setClassQuery] = useState("");
 
-  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
+  const filteredClasses = useMemo(() => {
+    const q = classQuery.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter((c) => {
+      const hay = [
+        c.courseName,
+        c.subjectName ?? "",
+        c.levelName ?? "",
+        c.teacherName,
+        c.campusName,
+        c.roomName ?? "",
+        c.id,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [classes, classQuery]);
+
+  const effectiveClassId = useMemo(() => {
+    if (filteredClasses.some((c) => c.id === classId)) return classId;
+    return filteredClasses[0]?.id ?? "";
+  }, [filteredClasses, classId]);
+
+  const selectedClass = useMemo(() => classes.find((c) => c.id === effectiveClassId), [classes, effectiveClassId]);
+  const selectableStudents = useMemo(() => {
+    if (!selectedClass) return students;
+    return students.filter((s) => s.courseIds.includes(selectedClass.courseId));
+  }, [students, selectedClass]);
   const selectedStudent = useMemo(() => students.find((s) => s.id === studentId), [students, studentId]);
   const hasCourse =
     selectedClass && selectedStudent
@@ -53,13 +82,23 @@ export default function EnrollmentCreateForm({
     <form action={action} style={{ display: "grid", gap: 10, maxWidth: 900 }}>
       <label>
         {labels.classLabel}:
+        <div style={{ margin: "6px 0 6px 8px", color: "#666", fontSize: 12 }}>
+          {filteredClasses.length}/{classes.length}
+        </div>
+        <input
+          type="text"
+          value={classQuery}
+          onChange={(e) => setClassQuery(e.target.value)}
+          placeholder="Search class/course/teacher/campus..."
+          style={{ marginLeft: 8, minWidth: 680, marginBottom: 6 }}
+        />
         <select
           name="classId"
-          value={classId}
+          value={effectiveClassId}
           onChange={(e) => setClassId(e.target.value)}
           style={{ marginLeft: 8, minWidth: 680 }}
         >
-          {classes.map((c) => (
+          {filteredClasses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.courseName} / {c.subjectName ?? "-"} / {c.levelName ?? "-"} | {c.teacherName} |{" "}
               {c.campusName} / {c.roomName ?? "(none)"}
@@ -77,15 +116,17 @@ export default function EnrollmentCreateForm({
             emptyCourseLabel={labels.noActivePackage}
             showEmptyWarning
             onChangeId={setStudentId}
-            students={students}
+            students={selectableStudents}
           />
-          {!hasCourse ? (
+          {selectableStudents.length === 0 ? (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#b00" }}>{labels.noActivePackage}</div>
+          ) : !hasCourse ? (
             <div style={{ marginTop: 6, fontSize: 12, color: "#b00" }}>{labels.mismatchWarn}</div>
           ) : null}
         </div>
       </label>
 
-      <button type="submit">{labels.confirm}</button>
+      <button type="submit" disabled={selectableStudents.length === 0}>{labels.confirm}</button>
     </form>
   );
 }

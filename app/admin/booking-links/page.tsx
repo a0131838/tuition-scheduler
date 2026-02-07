@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import BookingLinkCreateForm from "./_components/BookingLinkCreateForm";
 import SimpleModal from "../_components/SimpleModal";
+import CopyTextButton from "../_components/CopyTextButton";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -216,7 +217,14 @@ export default async function AdminBookingLinksPage({
                   <a href={`/booking/${l.token}`} target="_blank" rel="noreferrer">{url}</a>
                 </td>
                 <td>
-                  <a href={`/admin/booking-links/${l.id}`}>{t(lang, "Manage", "管理")}</a>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <a href={`/admin/booking-links/${l.id}`}>{t(lang, "Manage", "管理")}</a>
+                    <CopyTextButton
+                      text={url}
+                      label={t(lang, "Copy Link", "复制链接")}
+                      copiedLabel={t(lang, "Copied", "已复制")}
+                    />
+                  </div>
                 </td>
               </tr>
             );

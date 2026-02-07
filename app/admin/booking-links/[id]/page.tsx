@@ -4,6 +4,11 @@ import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
+import CopyTextButton from "../../_components/CopyTextButton";
+
+function appBaseUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
+}
 
 async function setLinkActive(linkId: string, active: boolean) {
   "use server";
@@ -230,10 +235,11 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
     if (!created) {
       redirect(`/admin/booking-links/${linkId}?err=Failed+to+create+1-on-1+class`);
     }
-    oneOnOneClass = await prisma.class.findUnique({
-      where: { id: created.id },
-      include: { enrollments: { select: { studentId: true } } },
-    });
+    oneOnOneClass =
+      (await prisma.class.findUnique({
+        where: { id: created.id },
+        include: { enrollments: { select: { studentId: true } } },
+      })) ?? undefined;
     if (!oneOnOneClass) {
       redirect(`/admin/booking-links/${linkId}?err=Failed+to+load+1-on-1+class`);
     }
@@ -356,6 +362,8 @@ export default async function AdminBookingLinkDetailPage({
     dayMap.set(s.dateKey, arr);
   }
   const days = buildCalendarDays(monthDate);
+  const base = appBaseUrl();
+  const publicUrl = `${base}/booking/${link.token}`;
 
   return (
     <div>
@@ -371,7 +379,15 @@ export default async function AdminBookingLinkDetailPage({
         <div><b>{t(lang, "Duration", "时长")}:</b> {link.durationMin} min</div>
         <div><b>{t(lang, "Selected Slots", "已勾选时段")}:</b> {link.selectedSlots.length}</div>
         <div><b>{t(lang, "Student Visible Mode", "学生展示模式")}:</b> {link.onlySelectedSlots ? t(lang, "Only selected slots", "仅展示已选时段") : t(lang, "All generated slots", "展示所有生成时段")}</div>
-        <div><b>{t(lang, "Public Link", "公开链接")}:</b> <a href={`/booking/${link.token}`} target="_blank" rel="noreferrer">/booking/{link.token}</a></div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <b>{t(lang, "Public Link", "公开链接")}:</b>
+          <a href={`/booking/${link.token}`} target="_blank" rel="noreferrer">{publicUrl}</a>
+          <CopyTextButton
+            text={publicUrl}
+            label={t(lang, "Copy Link", "复制链接")}
+            copiedLabel={t(lang, "Copied", "已复制")}
+          />
+        </div>
         <div><a href={`/admin/booking-links/${link.id}/export/pdf?month=${currentMonth}`}>{t(lang, "Export PDF", "导出PDF")}</a></div>
       </div>
 

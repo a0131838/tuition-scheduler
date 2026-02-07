@@ -10,6 +10,7 @@ import TeacherCreateForm from "../../_components/TeacherCreateForm";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import OneOnOneTemplateForm from "../../_components/OneOnOneTemplateForm";
 import NoticeBanner from "../../_components/NoticeBanner";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -345,7 +346,9 @@ async function bindTeacherUser(teacherId: string, formData: FormData) {
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) redirect(`/admin/teachers/${teacherId}?err=User+not+found`);
-  if (user.role !== "TEACHER") redirect(`/admin/teachers/${teacherId}?err=User+role+must+be+TEACHER`);
+  if (user.role !== "TEACHER" && user.role !== "ADMIN") {
+    redirect(`/admin/teachers/${teacherId}?err=User+role+must+be+TEACHER+or+ADMIN`);
+  }
   if (user.teacherId && user.teacherId !== teacherId) {
     redirect(`/admin/teachers/${teacherId}?err=This+user+is+already+linked+to+another+teacher`);
   }
@@ -630,7 +633,7 @@ export default async function TeacherDetailPage({
         }))}
         students={students.map((s) => ({ id: s.id, name: s.name }))}
         campuses={campuses.map((c) => ({ id: c.id, name: c.name }))}
-        rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name }))}
+        rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name, campusId: r.campusId }))}
         labels={{
           student: t(lang, "Student", "学生"),
           course: t(lang, "Course", "课程"),
@@ -673,7 +676,12 @@ export default async function TeacherDetailPage({
                   <td>{tpl.durationMin} min</td>
                   <td>{tpl.student.name}</td>
                   <td>
-                    {tpl.class.course.name} / {tpl.class.subject?.name ?? "-"} / {tpl.class.level?.name ?? "-"}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <ClassTypeBadge capacity={tpl.class.capacity} compact />
+                      <span>
+                        {tpl.class.course.name} / {tpl.class.subject?.name ?? "-"} / {tpl.class.level?.name ?? "-"}
+                      </span>
+                    </div>
                   </td>
                   <td>{tpl.class.campus.name}</td>
                   <td>{tpl.class.room?.name ?? "-"}</td>
@@ -739,7 +747,12 @@ export default async function TeacherDetailPage({
                         </td>
                         <td>{tpl?.student.name ?? "-"}</td>
                         <td>
-                          {tpl?.class.course.name ?? "-"} / {tpl?.class.subject?.name ?? "-"} / {tpl?.class.level?.name ?? "-"}
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <ClassTypeBadge capacity={tpl?.class.capacity} compact />
+                            <span>
+                              {tpl?.class.course.name ?? "-"} / {tpl?.class.subject?.name ?? "-"} / {tpl?.class.level?.name ?? "-"}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     );

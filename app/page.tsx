@@ -31,11 +31,11 @@
           src="/logo.png"
           alt="Company Logo"
           style={{
-            width: 850,
-            height: 850,
+            width: 720,
+            height: "auto",
             maxWidth: "90vw",
-            maxHeight: "60vh",
             objectFit: "contain",
+            display: "block",
           }}
         />
         <div>
@@ -96,3 +96,5 @@
     </main>
   );
 }
+
+

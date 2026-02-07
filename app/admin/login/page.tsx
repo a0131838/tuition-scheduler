@@ -10,6 +10,7 @@ async function login(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "").trim();
+  const portal = String(formData.get("portal") ?? "").trim().toLowerCase();
 
   if (!email || !password) {
     redirect("/admin/login?err=Missing+email+or+password");
@@ -29,6 +30,15 @@ async function login(formData: FormData) {
   const safeNext = sanitizeNextPath(next);
   if (safeNext) {
     redirect(safeNext);
+  }
+  if (portal === "teacher") {
+    if (user.role === "TEACHER") {
+      redirect("/teacher");
+    }
+    if (user.role === "ADMIN" && user.teacherId) {
+      redirect("/teacher");
+    }
+    redirect("/admin/login?err=This+account+cannot+enter+Teacher+Portal");
   }
   if (user.role === "TEACHER") {
     redirect("/teacher");
@@ -76,7 +86,16 @@ export default async function AdminLoginPage({
           <img
             src="/logo.png"
             alt="Company Logo"
-            style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 10 }}
+            style={{
+              width: 280,
+              maxWidth: "100%",
+              height: "auto",
+              objectFit: "contain",
+              marginBottom: 6,
+              display: "block",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
           />
           <div style={{ fontSize: 18, fontWeight: 700 }}>Tuition Scheduler</div>
           <div style={{ marginTop: 4, color: "#64748b", fontSize: 12 }}>教学排课与运营管理系统</div>
@@ -120,6 +139,8 @@ export default async function AdminLoginPage({
           </label>
           <button
             type="submit"
+            name="portal"
+            value="admin"
             style={{
               marginTop: 4,
               padding: "8px 12px",
@@ -130,10 +151,27 @@ export default async function AdminLoginPage({
               cursor: "pointer",
             }}
           >
-            登录 / Login
+            进入管理端 / Admin
+          </button>
+          <button
+            type="submit"
+            name="portal"
+            value="teacher"
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: "#f8fafc",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            进入老师端 / Teacher
           </button>
         </form>
       </section>
     </main>
   );
 }
+
+

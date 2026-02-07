@@ -1,9 +1,11 @@
-﻿﻿import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AttendanceStatus, PackageType, PackageStatus, Prisma } from "@prisma/client";
 import AttendanceEditor, { AttendanceRow } from "./AttendanceEditor";
 import { getLang, t } from "@/lib/i18n";
-import NoticeBanner from "../../_components/NoticeBanner";
+import NoticeBanner from "../../../_components/NoticeBanner";
+import { isGroupPackNote, packageModeFromNote } from "@/lib/package-mode";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function buildRedirect(sessionId: string, params: Record<string, string>) {
   const p = new URLSearchParams(params);
@@ -28,7 +30,7 @@ function durationMinutes(startAt: Date, endAt: Date) {
 function fmtRange(startAt: Date, endAt: Date) {
   const start = new Date(startAt).toLocaleString();
   const end = new Date(endAt).toLocaleString();
-  return `${start} → ${end}`;
+  return `${start} 鈫?${end}`;
 }
 
 function isNextRedirectError(e: any) {
@@ -38,7 +40,7 @@ function isNextRedirectError(e: any) {
 async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentId: string; courseId: string; at: Date }) {
   const { studentId, courseId, at } = opts;
 
-  const pkgMatch = await tx.coursePackage.findFirst({
+  const pkgMatches = await tx.coursePackage.findMany({
     where: {
       studentId,
       courseId,
@@ -48,10 +50,29 @@ async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentI
       OR: [{ validTo: null }, { validTo: { gte: at } }],
     },
     orderBy: [{ createdAt: "asc" }],
-    select: { id: true },
+    select: { id: true, note: true },
   });
+  const picked = pkgMatches.find((p) => !isGroupPackNote(p.note));
+  return picked?.id ?? null;
+}
 
-  return pkgMatch?.id ?? null;
+async function pickGroupPackPackageId(tx: Prisma.TransactionClient, opts: { studentId: string; courseId: string; at: Date }) {
+  const { studentId, courseId, at } = opts;
+  const pkgMatches = await tx.coursePackage.findMany({
+    where: {
+      studentId,
+      courseId,
+      type: PackageType.HOURS,
+      status: PackageStatus.ACTIVE,
+      remainingMinutes: { gt: 0 },
+      validFrom: { lte: at },
+      OR: [{ validTo: null }, { validTo: { gte: at } }],
+    },
+    orderBy: [{ createdAt: "asc" }],
+    select: { id: true, note: true },
+  });
+  const picked = pkgMatches.find((p) => isGroupPackNote(p.note));
+  return picked?.id ?? null;
 }
 
 type ExistingAttendance = {
@@ -81,12 +102,14 @@ async function applyOneStudentAttendanceAndDeduct(
     studentId: string;
     desired: DesiredAttendance;
     existing?: ExistingAttendance;
+    isGroupClass: boolean;
   }
 ) {
-  const { sessionId, courseId, at, studentId, desired, existing } = opts;
+  const { sessionId, courseId, at, studentId, desired, existing, isGroupClass } = opts;
 
   const prevDm = existing?.deductedMinutes ?? 0;
-  const nextDm = desired.deductedMinutes;
+  const prevDc = existing?.deductedCount ?? 0;
+  const nextDmRaw = desired.deductedMinutes;
 
   // Only deduct when status is eligible; EXCUSED needs excusedCharge=true
   const excusedCharge = desired.status === AttendanceStatus.EXCUSED ? desired.excusedCharge : false;
@@ -94,21 +117,26 @@ async function applyOneStudentAttendanceAndDeduct(
     desired.status === AttendanceStatus.EXCUSED
       ? excusedCharge
       : DEDUCTABLE_STATUS.has(desired.status);
-  const normalizedNextDm = canDeduct ? nextDm : 0;
-
-  // Roll back minutes
-  const delta = normalizedNextDm - prevDm;
+  const normalizedNextDm = canDeduct ? nextDmRaw : 0;
+  const normalizedNextDc = canDeduct ? (isGroupClass ? 1 : Math.max(0, desired.deductedCount)) : 0;
+  const delta = isGroupClass ? normalizedNextDc - prevDc : normalizedNextDm - prevDm;
 
   // Prefer previously used packageId to keep consistency
   let packageId: string | null = desired.packageId ?? existing?.packageId ?? null;
 
   if (delta !== 0) {
     if (!packageId && delta > 0) {
-      packageId = await pickHoursPackageId(tx, { studentId, courseId, at });
+      packageId = isGroupClass
+        ? await pickGroupPackPackageId(tx, { studentId, courseId, at })
+        : await pickHoursPackageId(tx, { studentId, courseId, at });
     }
 
     if (!packageId) {
-      throw new Error(`Student ${studentId} has no active HOURS package to deduct minutes.`);
+      throw new Error(
+        isGroupClass
+          ? `Student ${studentId} has no active GROUP package for this course.`
+          : `Student ${studentId} has no active HOURS package to deduct minutes.`
+      );
     }
 
     const pkg = await tx.coursePackage.findFirst({
@@ -120,18 +148,20 @@ async function applyOneStudentAttendanceAndDeduct(
         validFrom: { lte: at },
         OR: [{ validTo: null }, { validTo: { gte: at } }],
       },
-      select: { id: true, type: true, status: true, remainingMinutes: true },
+      select: { id: true, type: true, status: true, remainingMinutes: true, note: true },
     });
 
     if (!pkg) throw new Error(`Package not found: ${packageId}`);
     if (pkg.type !== PackageType.HOURS) throw new Error(`Selected package is not HOURS: ${packageId}`);
     if (pkg.status !== PackageStatus.ACTIVE) throw new Error(`Package is not ACTIVE: ${packageId}`);
     if (pkg.remainingMinutes == null) throw new Error(`Package remainingMinutes is null (please set it): ${packageId}`);
+    const groupPack = isGroupPackNote(pkg.note);
+    if (isGroupClass && !groupPack) throw new Error(`Selected package is not GROUP package: ${packageId}`);
+    if (!isGroupClass && groupPack) throw new Error(`Selected package is GROUP package and cannot be used for 1-on-1: ${packageId}`);
 
     if (delta > 0) {
-      // Deduct minutes
       if (pkg.remainingMinutes < delta) {
-        throw new Error(`Not enough remaining minutes. package=${packageId}, remaining=${pkg.remainingMinutes}, need=${delta}`);
+        throw new Error(`Not enough balance. package=${packageId}, remaining=${pkg.remainingMinutes}, need=${delta}`);
       }
 
       await tx.coursePackage.update({
@@ -143,13 +173,14 @@ async function applyOneStudentAttendanceAndDeduct(
         data: {
           packageId,
           kind: "DEDUCT",
-          deltaMinutes: -delta, // Use negative minutes for deduction
+          deltaMinutes: -delta,
           sessionId,
-          note: `Auto deduct by attendance save. studentId=${studentId}`,
+          note: isGroupClass
+            ? `Auto deduct by attendance save (group count). studentId=${studentId}`
+            : `Auto deduct by attendance save (minutes). studentId=${studentId}`,
         },
       });
     } else {
-      // Roll back minutes
       const refund = -delta;
 
       await tx.coursePackage.update({
@@ -161,17 +192,21 @@ async function applyOneStudentAttendanceAndDeduct(
         data: {
           packageId,
           kind: "ROLLBACK",
-          deltaMinutes: refund, // Use positive minutes for rollback
+          deltaMinutes: refund,
           sessionId,
-          note: `Auto rollback by attendance change. studentId=${studentId}`,
+          note: isGroupClass
+            ? `Auto rollback by attendance change (group count). studentId=${studentId}`
+            : `Auto rollback by attendance change (minutes). studentId=${studentId}`,
         },
       });
     }
   }
 
   // Prefer previously used packageId to keep consistency
-  const finalDeductedMinutes = normalizedNextDm;
-  const finalPackageId = finalDeductedMinutes > 0 ? packageId : null;
+  const finalDeductedMinutes = isGroupClass ? 0 : normalizedNextDm;
+  const finalDeductedCount = isGroupClass ? normalizedNextDc : desired.deductedCount;
+  const finalPackageId =
+    (isGroupClass ? finalDeductedCount > 0 : finalDeductedMinutes > 0) ? packageId : null;
 
   await tx.attendance.upsert({
     where: { sessionId_studentId: { sessionId, studentId } },
@@ -179,7 +214,7 @@ async function applyOneStudentAttendanceAndDeduct(
       sessionId,
       studentId,
       status: desired.status,
-      deductedCount: desired.deductedCount,
+      deductedCount: finalDeductedCount,
       deductedMinutes: finalDeductedMinutes,
       packageId: finalPackageId,
       note: desired.note,
@@ -187,7 +222,7 @@ async function applyOneStudentAttendanceAndDeduct(
     },
     update: {
       status: desired.status,
-      deductedCount: desired.deductedCount,
+      deductedCount: finalDeductedCount,
       deductedMinutes: finalDeductedMinutes,
       packageId: finalPackageId,
       note: desired.note,
@@ -249,6 +284,7 @@ async function saveAttendance(sessionId: string, formData: FormData) {
     );
 
     const desiredMap = new Map<string, DesiredAttendance>();
+    const isGroupClass = session.class.capacity !== 1;
     for (const studentId of studentIds) {
       const statusRaw = String(formData.get(`status:${studentId}`) ?? "UNMARKED");
       const status = (Object.values(AttendanceStatus) as string[]).includes(statusRaw)
@@ -280,16 +316,13 @@ async function saveAttendance(sessionId: string, formData: FormData) {
     for (const studentId of studentIds) {
       const desired = desiredMap.get(studentId)!;
       const existing = existingMap.get(studentId);
-      const prevDm = existing?.deductedMinutes ?? 0;
-      const normalizedNextDm =
+      const canDeduct =
         desired.status === AttendanceStatus.EXCUSED
           ? desired.excusedCharge
-            ? desired.deductedMinutes
-            : 0
-          : DEDUCTABLE_STATUS.has(desired.status)
-          ? desired.deductedMinutes
-          : 0;
-      const delta = normalizedNextDm - prevDm;
+          : DEDUCTABLE_STATUS.has(desired.status);
+      const prevUnits = isGroupClass ? existing?.deductedCount ?? 0 : existing?.deductedMinutes ?? 0;
+      const nextUnits = canDeduct ? (isGroupClass ? 1 : desired.deductedMinutes) : 0;
+      const delta = nextUnits - prevUnits;
       if (delta > 0) totalDeducted += delta;
     }
 
@@ -305,11 +338,18 @@ async function saveAttendance(sessionId: string, formData: FormData) {
           studentId,
           desired,
           existing,
+          isGroupClass,
         });
       }
     });
 
-    redirect(buildRedirect(sessionId, { msg: `Saved. Deducted ${totalDeducted} minutes. Remaining shown in table.` }));
+    redirect(
+      buildRedirect(sessionId, {
+        msg: isGroupClass
+          ? `Saved. Deducted ${totalDeducted} class count(s). Remaining shown in table.`
+          : `Saved. Deducted ${totalDeducted} minutes. Remaining shown in table.`,
+      })
+    );
   } catch (e: any) {
     if (isNextRedirectError(e)) throw e;
     redirect(buildRedirect(sessionId, { err: e?.message ?? "Save failed" }));
@@ -342,7 +382,8 @@ async function markAllPresent(sessionId: string) {
         ? [session.studentId]
         : enrollments.map((e) => e.studentId);
 
-    const dm = durationMinutes(session.startAt, session.endAt);
+    const isGroupClass = session.class.capacity !== 1;
+    const dm = isGroupClass ? 0 : durationMinutes(session.startAt, session.endAt);
 
     const existingList = await prisma.attendance.findMany({
       where: { sessionId, studentId: { in: studentIds } },
@@ -359,18 +400,25 @@ async function markAllPresent(sessionId: string) {
           studentId,
           desired: {
             status: AttendanceStatus.PRESENT,
-            deductedCount: 1,
+            deductedCount: isGroupClass ? 1 : 0,
             deductedMinutes: dm,
             note: null,
             packageId: null,
             excusedCharge: false,
           },
           existing: existingMap.get(studentId),
+          isGroupClass,
         });
       }
     });
 
-    redirect(buildRedirect(sessionId, { msg: `Marked all PRESENT + deducted minutes (${studentIds.length})` }));
+    redirect(
+      buildRedirect(sessionId, {
+        msg: isGroupClass
+          ? `Marked all PRESENT + deducted class count (${studentIds.length})`
+          : `Marked all PRESENT + deducted minutes (${studentIds.length})`,
+      })
+    );
   } catch (e: any) {
     if (isNextRedirectError(e)) throw e;
     redirect(buildRedirect(sessionId, { err: e?.message ?? "Mark all failed" }));
@@ -401,7 +449,7 @@ export default async function AttendancePage({
     return (
       <div>
         <h2>{t(lang, "Session Not Found", "课次不存在")}</h2>
-        <a href="/admin/classes">← {t(lang, "Back", "返回")}</a>
+        <a href="/admin/classes">→ {t(lang, "Back", "返回")}</a>
       </div>
     );
   }
@@ -433,6 +481,7 @@ export default async function AttendancePage({
       ? enrollments.filter((e) => e.studentId === session.studentId)
       : enrollments;
   const studentIds = attendanceEnrollments.map((e) => e.studentId);
+  const classIsGroup = session.class.capacity !== 1;
   const packages = await prisma.coursePackage.findMany({
     where: {
       studentId: { in: studentIds },
@@ -473,8 +522,8 @@ export default async function AttendancePage({
           <div style={{ color: "#999", fontSize: 12 }}>(sessionId {session.id})</div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <a href={`/admin/classes/${session.classId}/sessions`}>← {t(lang, "Back to Sessions", "返回课次")}</a>
-          <a href={`/admin/classes/${session.classId}`}>← {t(lang, "Back to Class Detail", "返回班级详情")}</a>
+          <a href={`/admin/classes/${session.classId}/sessions`}>→ {t(lang, "Back to Sessions", "返回课次")}</a>
+          <a href={`/admin/classes/${session.classId}`}>→ {t(lang, "Back to Class Detail", "返回班级详情")}</a>
         </div>
       </div>
 
@@ -484,8 +533,8 @@ export default async function AttendancePage({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
           <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Course", "课程")}</div>
-          <div style={{ fontWeight: 700 }}>
-            {session.class.course.name} / {session.class.subject?.name ?? "-"} / {session.class.level?.name ?? "-"}
+          <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <ClassTypeBadge capacity={session.class.capacity} compact /><span>{session.class.course.name} / {session.class.subject?.name ?? "-"} / {session.class.level?.name ?? "-"}</span>
           </div>
         </div>
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
@@ -535,12 +584,22 @@ export default async function AttendancePage({
               rows={attendanceEnrollments.map((e) => {
                 const a = map.get(e.studentId);
                 const prevExcused = excusedCountMap.get(e.studentId) ?? 0;
-                const opts = (pkgMap.get(e.studentId) ?? []).map((p) => ({
-                  id: p.id,
-                  label: `${p.type}${p.remainingMinutes != null ? ` (${p.remainingMinutes}m)` : ""}`,
-                  remainingMinutes: p.remainingMinutes,
-                  validToLabel: p.validTo ? new Date(p.validTo).toLocaleDateString() : null,
-                }));
+                const opts = (pkgMap.get(e.studentId) ?? [])
+                  .filter((p) => {
+                    if (p.type !== "HOURS") return false;
+                    const isGroupPack = packageModeFromNote(p.note) === "GROUP_COUNT";
+                    return classIsGroup ? isGroupPack : !isGroupPack;
+                  })
+                  .map((p) => ({
+                    id: p.id,
+                    label:
+                      packageModeFromNote(p.note) === "GROUP_COUNT"
+                        ? `GROUP (${p.remainingMinutes ?? 0} cls)`
+                        : `HOURS (${p.remainingMinutes ?? 0}m)`,
+                    remainingMinutes: p.remainingMinutes,
+                    billingMode: packageModeFromNote(p.note) === "GROUP_COUNT" ? "COUNT" : "MINUTES",
+                    validToLabel: p.validTo ? new Date(p.validTo).toLocaleDateString() : null,
+                  }));
                 return {
                   studentId: e.studentId,
                   studentName: e.student?.name ?? "-",
@@ -561,6 +620,7 @@ export default async function AttendancePage({
     </div>
   );
 }
+
 
 
 

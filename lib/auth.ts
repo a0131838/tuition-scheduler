@@ -5,6 +5,7 @@ import crypto from "crypto";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
+const DEFAULT_OWNER_MANAGER_EMAIL = "zhaohongwei0880@gmail.com";
 
 type AuthUser = {
   id: string;
@@ -14,6 +15,41 @@ type AuthUser = {
   language: "BILINGUAL" | "ZH" | "EN";
   teacherId: string | null;
 };
+
+function managerEmailSet() {
+  const raw = process.env.MANAGER_EMAILS ?? "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+export function managerEmailsFromEnv() {
+  return Array.from(managerEmailSet());
+}
+
+export async function getManagerEmailSet() {
+  const set = managerEmailSet();
+  try {
+    const rows = await prisma.managerAcl.findMany({
+      where: { isActive: true },
+      select: { email: true },
+    });
+    for (const row of rows) set.add(row.email.trim().toLowerCase());
+  } catch {
+    // Fallback to env-only when table is not available yet.
+  }
+  return set;
+}
+
+export async function isManagerUser(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
+  if (!user || user.role !== "ADMIN") return false;
+  const set = await getManagerEmailSet();
+  if (set.size === 0) return true;
+  return set.has(user.email.toLowerCase());
+}
 
 function hashPassword(password: string, salt: string) {
   const hash = crypto.pbkdf2Sync(password, salt, 100_000, 32, "sha256");
@@ -92,11 +128,34 @@ export async function requireAdmin() {
   return user;
 }
 
-export async function requireTeacher() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/admin/login");
-  if (user.role !== "TEACHER") redirect("/admin/login");
+export async function requireManager() {
+  const user = await requireAdmin();
+  if (!(await isManagerUser(user))) redirect("/admin");
   return user;
+}
+
+export function isOwnerManager(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
+  if (!user || user.role !== "ADMIN") return false;
+  const owner = (process.env.OWNER_MANAGER_EMAIL ?? DEFAULT_OWNER_MANAGER_EMAIL).trim().toLowerCase();
+  if (!owner) return false;
+  return user.email.toLowerCase() === owner;
+}
+
+export async function requireOwnerManager() {
+  const user = await requireManager();
+  if (!isOwnerManager(user)) redirect("/admin/manager/users?err=Only+owner+manager+can+edit");
+  return user;
+}
+
+export async function requireTeacher(): Promise<AuthUser> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/admin/login");
+  }
+  if (user.role === "TEACHER") return user;
+  // Allow admin accounts that are linked to a teacher profile to use teacher portal.
+  if (user.role === "ADMIN" && user.teacherId) return user;
+  redirect("/admin/login");
 }
 
 export async function requireTeacherProfile() {

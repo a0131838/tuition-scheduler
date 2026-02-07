@@ -4,6 +4,14 @@ import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import { getLang, t } from "@/lib/i18n";
 import ClassEditForm from "../../_components/ClassEditForm";
 import NoticeBanner from "../../_components/NoticeBanner";
+import { isGroupPackNote } from "@/lib/package-mode";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+
+function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
+  if (!subjectId) return true;
+  if (teacher?.subjectCourseId === subjectId) return true;
+  return Array.isArray(teacher?.subjects) ? teacher.subjects.some((s) => s.id === subjectId) : false;
+}
 
 async function updateClass(classId: string, formData: FormData) {
   "use server";
@@ -25,6 +33,13 @@ async function updateClass(classId: string, formData: FormData) {
   if (!subject) {
     redirect(`/admin/classes/${classId}?err=Invalid+subject`);
   }
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: { subjects: { select: { id: true } } },
+  });
+  if (!teacher || !canTeachSubject(teacher as any, subjectId)) {
+    redirect(`/admin/classes/${classId}?err=Teacher+cannot+teach+this+subject`);
+  }
 
   let levelId: string | null = null;
   if (levelIdRaw) {
@@ -37,6 +52,15 @@ async function updateClass(classId: string, formData: FormData) {
 
   const roomId = roomIdRaw ? roomIdRaw : null;
   const courseId = subject.courseId;
+  if (roomId) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { campusId: true, capacity: true } });
+    if (!room || room.campusId !== campusId) {
+      redirect(`/admin/classes/${classId}?err=Room+does+not+match+campus`);
+    }
+    if (capacity > room.capacity) {
+      redirect(`/admin/classes/${classId}?err=Class+capacity+exceeds+room+capacity`);
+    }
+  }
 
   await prisma.class.update({
     where: { id: classId },
@@ -60,6 +84,30 @@ async function addEnrollment(classId: string, formData: FormData) {
   "use server";
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) redirect(`/admin/classes/${classId}?err=Missing+studentId`);
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { courseId: true, capacity: true },
+  });
+  if (!cls) redirect(`/admin/classes/${classId}?err=Class+not+found`);
+
+  const now = new Date();
+  const pkgs = await prisma.coursePackage.findMany({
+    where: {
+      studentId,
+      courseId: cls.courseId,
+      status: "ACTIVE",
+      validFrom: { lte: now },
+      OR: [{ validTo: null }, { validTo: { gte: now } }],
+    },
+    select: { type: true, remainingMinutes: true, note: true },
+  });
+  const hasValidPackage = pkgs.some((p) => {
+    if (p.type === "MONTHLY") return true;
+    if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
+    if (cls.capacity === 1) return !isGroupPackNote(p.note);
+    return true;
+  });
+  if (!hasValidPackage) redirect(`/admin/classes/${classId}?err=No+active+package+for+this+course`);
 
   const exists = await prisma.enrollment.findFirst({
     where: { classId, studentId },
@@ -116,13 +164,34 @@ export default async function ClassDetailPage({
     }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
     prisma.level.findMany({ include: { subject: { include: { course: true } } }, orderBy: [{ subjectId: "asc" }, { name: "asc" }] }),
-    prisma.teacher.findMany({ orderBy: { name: "asc" } }),
+    prisma.teacher.findMany({ orderBy: { name: "asc" }, include: { subjects: { select: { id: true } } } }),
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
 
+  const activePkgs = await prisma.coursePackage.findMany({
+    where: {
+      studentId: { in: students.map((s) => s.id) },
+      courseId: cls.courseId,
+      status: "ACTIVE",
+      validFrom: { lte: new Date() },
+      OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+    },
+    select: { studentId: true, type: true, remainingMinutes: true, note: true },
+  });
+  const eligibleStudentSet = new Set(
+    activePkgs
+      .filter((p) => {
+        if (p.type === "MONTHLY") return true;
+        if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
+        if (cls.capacity === 1) return !isGroupPackNote(p.note);
+        return true;
+      })
+      .map((p) => p.studentId)
+  );
+
   const enrolledSet = new Set(enrollments.map((e) => e.studentId));
-  const availableStudents = students.filter((s) => !enrolledSet.has(s.id));
+  const availableStudents = students.filter((s) => !enrolledSet.has(s.id) && eligibleStudentSet.has(s.id));
 
   return (
     <div>
@@ -141,9 +210,13 @@ export default async function ClassDetailPage({
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 10, marginBottom: 16, background: "#fafafa" }}>
-        <div>
-          <b>{t(lang, "Course", "课程")}:</b> {cls.course.name}
-          {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <b>{t(lang, "Course", "课程")}:</b>
+          <ClassTypeBadge capacity={cls.capacity} compact />
+          <span>
+            {cls.course.name}
+            {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
+          </span>
         </div>
         <div>
           <b>{t(lang, "Teacher", "老师")}:</b> {cls.teacher.name}
@@ -172,9 +245,20 @@ export default async function ClassDetailPage({
           courseName: l.subject.course.name,
           subjectName: l.subject.name,
         }))}
-        teachers={teachers.map((tch) => ({ id: tch.id, name: tch.name }))}
+        teachers={teachers.map((tch) => ({
+          id: tch.id,
+          name: tch.name,
+          subjectCourseId: tch.subjectCourseId,
+          subjectIds: tch.subjects.map((s) => s.id),
+        }))}
         campuses={campuses.map((c) => ({ id: c.id, name: c.name }))}
-        rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name }))}
+        rooms={rooms.map((r) => ({
+          id: r.id,
+          name: r.name,
+          campusName: r.campus.name,
+          campusId: r.campusId,
+          capacity: r.capacity,
+        }))}
         initial={{
           courseId: cls.courseId,
           subjectId: cls.subjectId ?? subjects[0]?.id ?? "",

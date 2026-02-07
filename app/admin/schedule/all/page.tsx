@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -112,7 +113,7 @@ export default async function ScheduleAllPage({
                     <div style={{ fontWeight: 700 }}>
                       {fmtTime(s.startAt)} - {fmtTime(s.endAt)}
                     </div>
-                    <div style={{ marginTop: 4, fontWeight: 700 }}>{title}</div>
+                    <div style={{ marginTop: 4, fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><ClassTypeBadge capacity={s.class.capacity} compact /><span>{title}</span></div>
                     <div style={{ marginTop: 4, color: "#666", fontSize: 12 }}>
                       {t(lang, "Teacher", "老师")}: {teacherName}
                     </div>
@@ -132,3 +133,4 @@ export default async function ScheduleAllPage({
     </div>
   );
 }
+

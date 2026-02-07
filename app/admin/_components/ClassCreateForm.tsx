@@ -5,9 +5,9 @@ import { useMemo, useState, useEffect } from "react";
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
 type LevelOption = { id: string; name: string; subjectId: string; courseName: string; subjectName: string };
-type TeacherOption = { id: string; name: string };
+type TeacherOption = { id: string; name: string; subjectCourseId?: string | null; subjectIds: string[] };
 type CampusOption = { id: string; name: string };
-type RoomOption = { id: string; name: string; campusName: string };
+type RoomOption = { id: string; name: string; campusName: string; campusId: string; capacity: number };
 
 export default function ClassCreateForm(props: {
   action: (formData: FormData) => void;
@@ -35,12 +35,21 @@ export default function ClassCreateForm(props: {
     subjects.find((s) => s.courseId === (courses[0]?.id ?? ""))?.id ?? subjects[0]?.id ?? ""
   );
   const [levelId, setLevelId] = useState("");
+  const eligibleTeachers = useMemo(() => {
+    if (!subjectId) return teachers;
+    return teachers.filter((t) => t.subjectCourseId === subjectId || t.subjectIds.includes(subjectId));
+  }, [teachers, subjectId]);
+  const [teacherId, setTeacherId] = useState(eligibleTeachers[0]?.id ?? "");
+  const [campusId, setCampusId] = useState(campuses[0]?.id ?? "");
+  const [roomId, setRoomId] = useState("");
+  const [capacity, setCapacity] = useState("6");
   useEffect(() => {
     if (!courseId) return;
+    const currentInCourse = subjects.some((s) => s.courseId === courseId && s.id === subjectId);
+    if (currentInCourse) return;
     const first = subjects.find((s) => s.courseId === courseId);
-    if (first && first.id !== subjectId) setSubjectId(first.id);
-    if (!first) setSubjectId("");
-  }, [courseId, subjects, subjectId]);
+    setSubjectId(first?.id ?? "");
+  }, [courseId, subjects]);
   const filteredLevels = useMemo(
     () => levels.filter((l) => l.subjectId === subjectId),
     [levels, subjectId]
@@ -50,6 +59,23 @@ export default function ClassCreateForm(props: {
       setLevelId("");
     }
   }, [levelId, filteredLevels]);
+  useEffect(() => {
+    if (teacherId && eligibleTeachers.some((t) => t.id === teacherId)) return;
+    setTeacherId(eligibleTeachers[0]?.id ?? "");
+  }, [eligibleTeachers, teacherId]);
+  const filteredRooms = useMemo(() => {
+    if (!campusId) return rooms;
+    return rooms.filter((r) => r.campusId === campusId);
+  }, [rooms, campusId]);
+  useEffect(() => {
+    if (roomId && !filteredRooms.some((r) => r.id === roomId)) {
+      setRoomId("");
+    }
+  }, [roomId, filteredRooms]);
+  const selectedRoom = useMemo(() => filteredRooms.find((r) => r.id === roomId) ?? null, [filteredRooms, roomId]);
+  const capacityNum = Number(capacity);
+  const overCapacity =
+    Boolean(selectedRoom) && Number.isFinite(capacityNum) && capacityNum > 0 && capacityNum > (selectedRoom?.capacity ?? 0);
 
   return (
     <form action={action} style={{ display: "grid", gap: 8, maxWidth: 860 }}>
@@ -106,8 +132,13 @@ export default function ClassCreateForm(props: {
 
       <label>
         {labels.teacher}:
-        <select name="teacherId" defaultValue={teachers[0]?.id ?? ""} style={{ marginLeft: 8, minWidth: 320 }}>
-          {teachers.map((tch) => (
+        <select
+          name="teacherId"
+          value={teacherId}
+          onChange={(e) => setTeacherId(e.target.value)}
+          style={{ marginLeft: 8, minWidth: 320 }}
+        >
+          {eligibleTeachers.map((tch) => (
             <option key={tch.id} value={tch.id}>
               {tch.name}
             </option>
@@ -117,7 +148,12 @@ export default function ClassCreateForm(props: {
 
       <label>
         {labels.campus}:
-        <select name="campusId" defaultValue={campuses[0]?.id ?? ""} style={{ marginLeft: 8, minWidth: 320 }}>
+        <select
+          name="campusId"
+          value={campusId}
+          onChange={(e) => setCampusId(e.target.value)}
+          style={{ marginLeft: 8, minWidth: 320 }}
+        >
           {campuses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -128,9 +164,14 @@ export default function ClassCreateForm(props: {
 
       <label>
         {labels.roomOptional}:
-        <select name="roomId" defaultValue="" style={{ marginLeft: 8, minWidth: 420 }}>
+        <select
+          name="roomId"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+          style={{ marginLeft: 8, minWidth: 420 }}
+        >
           <option value="">{labels.none}</option>
-          {rooms.map((r) => (
+          {filteredRooms.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name} - {r.campusName}
             </option>
@@ -140,12 +181,40 @@ export default function ClassCreateForm(props: {
 
       <label>
         {labels.capacity}:
-        <input name="capacity" type="number" min={1} defaultValue={6} style={{ marginLeft: 8, width: 120 }} />
+        <input
+          name="capacity"
+          type="number"
+          min={1}
+          max={selectedRoom?.capacity}
+          value={capacity}
+          onChange={(e) => setCapacity(e.target.value)}
+          style={{ marginLeft: 8, width: 120 }}
+        />
       </label>
+      {selectedRoom ? (
+        <div style={{ fontSize: 12, color: overCapacity ? "#b00" : "#666" }}>
+          Room capacity limit / 教室容量上限: {selectedRoom.capacity}
+          {overCapacity ? " (Current class capacity exceeds room limit / 当前班级容量超出教室上限)" : ""}
+        </div>
+      ) : null}
 
-      <button type="submit" disabled={subjects.length === 0 || teachers.length === 0 || campuses.length === 0}>
+      <button
+        type="submit"
+        disabled={
+          subjects.length === 0 ||
+          teachers.length === 0 ||
+          campuses.length === 0 ||
+          eligibleTeachers.length === 0 ||
+          overCapacity
+        }
+      >
         {labels.create}
       </button>
+      {eligibleTeachers.length === 0 ? (
+        <div style={{ color: "#b00", fontSize: 12 }}>
+          No eligible teachers for selected subject / 当前科目没有可授课老师
+        </div>
+      ) : null}
     </form>
   );
 }

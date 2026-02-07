@@ -2,11 +2,21 @@
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import {
+  autoResolveTeacherConflicts,
+  getLatestAutoFixResult,
+  getOrRunDailyConflictAudit,
+  refreshDailyConflictAudit,
+  saveAutoFixResult,
+} from "@/lib/conflict-audit";
 
 const FORECAST_WINDOW_DAYS = 30;
-const DEFAULT_WARN_DAYS = 14;
-const DEFAULT_WARN_MINUTES = 120;
+const DEFAULT_WARN_DAYS = 3;
+const DEFAULT_WARN_MINUTES = 240;
 const MAX_LIST_ITEMS = 6;
+const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
+const TEACHER_SELF_CONFIRM_TOMORROW = "TEACHER_SELF_CONFIRM_TOMORROW";
 
 function fmtMinutes(m?: number | null) {
   if (m == null) return "-";
@@ -77,6 +87,42 @@ async function confirmReminder(kind: "teacher" | "student", formData: FormData) 
   redirect(qs ? `/admin/todos?${qs}` : "/admin/todos");
 }
 
+async function rerunConflictAudit(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  await refreshDailyConflictAudit(new Date());
+
+  const warnDays = String(formData.get("warnDays") ?? "");
+  const warnMinutes = String(formData.get("warnMinutes") ?? "");
+  const pastDays = String(formData.get("pastDays") ?? "");
+  const showConfirmed = String(formData.get("showConfirmed") ?? "");
+  const p = new URLSearchParams();
+  if (warnDays) p.set("warnDays", warnDays);
+  if (warnMinutes) p.set("warnMinutes", warnMinutes);
+  if (pastDays) p.set("pastDays", pastDays);
+  if (showConfirmed === "1") p.set("showConfirmed", "1");
+  redirect(`/admin/todos?${p.toString()}`);
+}
+
+async function runAutoFixNow(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const result = await autoResolveTeacherConflicts(new Date());
+  await saveAutoFixResult(result, new Date());
+  await refreshDailyConflictAudit(new Date());
+
+  const warnDays = String(formData.get("warnDays") ?? "");
+  const warnMinutes = String(formData.get("warnMinutes") ?? "");
+  const pastDays = String(formData.get("pastDays") ?? "");
+  const showConfirmed = String(formData.get("showConfirmed") ?? "");
+  const p = new URLSearchParams();
+  if (warnDays) p.set("warnDays", warnDays);
+  if (warnMinutes) p.set("warnMinutes", warnMinutes);
+  if (pastDays) p.set("pastDays", pastDays);
+  if (showConfirmed === "1") p.set("showConfirmed", "1");
+  redirect(`/admin/todos?${p.toString()}`);
+}
+
 export default async function AdminTodosPage({
   searchParams,
 }: {
@@ -92,8 +138,13 @@ export default async function AdminTodosPage({
   const showConfirmed = searchParams?.showConfirmed === "1";
 
   const now = new Date();
+  const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const yesterdayStart = new Date(dayStart);
+  yesterdayStart.setDate(dayStart.getDate() - 1);
+  const yesterdayEnd = new Date(dayEnd);
+  yesterdayEnd.setDate(dayEnd.getDate() - 1);
   const tomorrowStart = new Date(dayStart);
   tomorrowStart.setDate(dayStart.getDate() + 1);
   const tomorrowEnd = new Date(dayEnd);
@@ -101,27 +152,6 @@ export default async function AdminTodosPage({
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
 
-  const unmarkedGrouped = await prisma.attendance.groupBy({
-    by: ["sessionId"],
-    where: {
-      status: "UNMARKED",
-      session: {
-        startAt: { gte: dayStart, lte: dayEnd },
-      },
-    },
-    _count: { _all: true },
-  });
-  const todaySessionIds = unmarkedGrouped.map((x) => x.sessionId);
-  const sessionsToday = todaySessionIds.length
-    ? await prisma.session.findMany({
-        where: { id: { in: todaySessionIds } },
-        include: {
-          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-        },
-        orderBy: { startAt: "asc" },
-      })
-    : [];
-  const unmarkedMap = new Map(unmarkedGrouped.map((x) => [x.sessionId, x._count._all]));
   const sessionsTodayAll = await prisma.session.findMany({
     where: { startAt: { gte: dayStart, lte: dayEnd } },
     include: {
@@ -129,38 +159,164 @@ export default async function AdminTodosPage({
     },
     orderBy: { startAt: "asc" },
   });
+  const todayClassIds = Array.from(new Set(sessionsTodayAll.map((s) => s.classId)));
+  const todayEnrollments = todayClassIds.length
+    ? await prisma.enrollment.findMany({
+        where: { classId: { in: todayClassIds } },
+        select: { classId: true, studentId: true },
+      })
+    : [];
+  const todayEnrollmentsByClass = new Map<string, typeof todayEnrollments>();
+  for (const e of todayEnrollments) {
+    const arr = todayEnrollmentsByClass.get(e.classId) ?? [];
+    arr.push(e);
+    todayEnrollmentsByClass.set(e.classId, arr);
+  }
+  const todayAttendances = sessionsTodayAll.length
+    ? await prisma.attendance.findMany({
+        where: { sessionId: { in: sessionsTodayAll.map((s) => s.id) } },
+        select: { sessionId: true, studentId: true, status: true },
+      })
+    : [];
+  const todayAttendanceBySession = new Map<string, typeof todayAttendances>();
+  for (const a of todayAttendances) {
+    const arr = todayAttendanceBySession.get(a.sessionId) ?? [];
+    arr.push(a);
+    todayAttendanceBySession.set(a.sessionId, arr);
+  }
+  const unmarkedMap = new Map<string, number>();
+  const sessionsToday = sessionsTodayAll.filter((s) => {
+    const enrolledStudentIds = (todayEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
+    const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+    if (expectedStudentIds.length === 0) return false;
+
+    const expectedSet = new Set(expectedStudentIds);
+    const rows = (todayAttendanceBySession.get(s.id) ?? []).filter((a) => expectedSet.has(a.studentId));
+    const markedSet = new Set(rows.map((a) => a.studentId));
+    const unmarkedRows = rows.filter((a) => a.status === "UNMARKED").length;
+    let missingRows = 0;
+    for (const sid of expectedSet) {
+      if (!markedSet.has(sid)) missingRows += 1;
+    }
+
+    const unmarkedCount = unmarkedRows + missingRows;
+    if (unmarkedCount <= 0) return false;
+    unmarkedMap.set(s.id, unmarkedCount);
+    return true;
+  });
+  const sessionsYesterdayAll = await prisma.session.findMany({
+    where: { startAt: { gte: yesterdayStart, lte: yesterdayEnd } },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "asc" },
+  });
+  const yesterdayClassIds = Array.from(new Set(sessionsYesterdayAll.map((s) => s.classId)));
+  const yesterdayEnrollments = yesterdayClassIds.length
+    ? await prisma.enrollment.findMany({
+        where: { classId: { in: yesterdayClassIds } },
+        select: { classId: true, studentId: true },
+      })
+    : [];
+  const yesterdayEnrollmentsByClass = new Map<string, typeof yesterdayEnrollments>();
+  for (const e of yesterdayEnrollments) {
+    const arr = yesterdayEnrollmentsByClass.get(e.classId) ?? [];
+    arr.push(e);
+    yesterdayEnrollmentsByClass.set(e.classId, arr);
+  }
+  const yesterdayAttendances = sessionsYesterdayAll.length
+    ? await prisma.attendance.findMany({
+        where: { sessionId: { in: sessionsYesterdayAll.map((s) => s.id) } },
+        select: { sessionId: true, studentId: true, status: true },
+      })
+    : [];
+  const yesterdayAttendanceBySession = new Map<string, typeof yesterdayAttendances>();
+  for (const a of yesterdayAttendances) {
+    const arr = yesterdayAttendanceBySession.get(a.sessionId) ?? [];
+    arr.push(a);
+    yesterdayAttendanceBySession.set(a.sessionId, arr);
+  }
+  const unmarkedYesterdayMap = new Map<string, number>();
+  const sessionsYesterday = sessionsYesterdayAll.filter((s) => {
+    const enrolledStudentIds = (yesterdayEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
+    const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+    if (expectedStudentIds.length === 0) return false;
+
+    const expectedSet = new Set(expectedStudentIds);
+    const rows = (yesterdayAttendanceBySession.get(s.id) ?? []).filter((a) => expectedSet.has(a.studentId));
+    const markedSet = new Set(rows.map((a) => a.studentId));
+    const unmarkedRows = rows.filter((a) => a.status === "UNMARKED").length;
+    let missingRows = 0;
+    for (const sid of expectedSet) {
+      if (!markedSet.has(sid)) missingRows += 1;
+    }
+
+    const unmarkedCount = unmarkedRows + missingRows;
+    if (unmarkedCount <= 0) return false;
+    unmarkedYesterdayMap.set(s.id, unmarkedCount);
+    return true;
+  });
 
   const pastSince = new Date(dayStart);
   pastSince.setDate(dayStart.getDate() - pastDays);
 
-  const pastWhere = {
-    startAt: { lt: dayStart, gte: pastSince },
-    attendances: { some: { status: "UNMARKED" as const } },
-  };
-  const pastTotal = await prisma.session.count({ where: pastWhere });
-  const pastSessions = pastTotal
-    ? await prisma.session.findMany({
-        where: pastWhere,
-        include: {
-          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-        },
-        orderBy: { startAt: "desc" },
-        skip: (pastPage - 1) * pastPageSize,
-        take: pastPageSize,
+  const pastSessionsAll = await prisma.session.findMany({
+    where: { startAt: { lt: dayStart, gte: pastSince } },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
+    orderBy: { startAt: "desc" },
+  });
+  const pastClassIds = Array.from(new Set(pastSessionsAll.map((s) => s.classId)));
+  const pastEnrollments = pastClassIds.length
+    ? await prisma.enrollment.findMany({
+        where: { classId: { in: pastClassIds } },
+        select: { classId: true, studentId: true },
       })
     : [];
-  const pastUnmarkedGrouped = pastSessions.length
-    ? await prisma.attendance.groupBy({
-        by: ["sessionId"],
-        where: {
-          status: "UNMARKED",
-          sessionId: { in: pastSessions.map((s) => s.id) },
-        },
-        _count: { _all: true },
+  const pastEnrollmentsByClass = new Map<string, typeof pastEnrollments>();
+  for (const e of pastEnrollments) {
+    const arr = pastEnrollmentsByClass.get(e.classId) ?? [];
+    arr.push(e);
+    pastEnrollmentsByClass.set(e.classId, arr);
+  }
+  const pastAttendances = pastSessionsAll.length
+    ? await prisma.attendance.findMany({
+        where: { sessionId: { in: pastSessionsAll.map((s) => s.id) } },
+        select: { sessionId: true, studentId: true, status: true },
       })
     : [];
-  const pastUnmarkedMap = new Map(pastUnmarkedGrouped.map((x) => [x.sessionId, x._count._all]));
+  const pastAttendanceBySession = new Map<string, typeof pastAttendances>();
+  for (const a of pastAttendances) {
+    const arr = pastAttendanceBySession.get(a.sessionId) ?? [];
+    arr.push(a);
+    pastAttendanceBySession.set(a.sessionId, arr);
+  }
+  const pastCalculated = pastSessionsAll
+    .map((s) => {
+      const enrolledStudentIds = (pastEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
+      const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+      if (expectedStudentIds.length === 0) return null;
+
+      const expectedSet = new Set(expectedStudentIds);
+      const rows = (pastAttendanceBySession.get(s.id) ?? []).filter((a) => expectedSet.has(a.studentId));
+      const markedSet = new Set(rows.map((a) => a.studentId));
+      const unmarkedRows = rows.filter((a) => a.status === "UNMARKED").length;
+      let missingRows = 0;
+      for (const sid of expectedSet) {
+        if (!markedSet.has(sid)) missingRows += 1;
+      }
+
+      const unmarkedCount = unmarkedRows + missingRows;
+      if (unmarkedCount <= 0) return null;
+      return { session: s, unmarkedCount };
+    })
+    .filter((x): x is { session: (typeof pastSessionsAll)[number]; unmarkedCount: number } => !!x);
+  const pastTotal = pastCalculated.length;
   const pastTotalPages = Math.max(1, Math.ceil(pastTotal / pastPageSize));
+  const pastSlice = pastCalculated.slice((pastPage - 1) * pastPageSize, pastPage * pastPageSize);
+  const pastSessions = pastSlice.map((x) => x.session);
+  const pastUnmarkedMap = new Map(pastSlice.map((x) => [x.session.id, x.unmarkedCount]));
 
   const sessionsTomorrow = await prisma.session.findMany({
     where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
@@ -203,6 +359,18 @@ export default async function AdminTodosPage({
     a.name.localeCompare(b.name)
   );
 
+  const teacherTodayMap = new Map<string, { id: string; name: string; sessions: any[] }>();
+  for (const s of sessionsTodayAll) {
+    const tid = s.teacherId ?? s.class.teacherId;
+    const tname = s.class.teacher.name;
+    const entry = teacherTodayMap.get(tid) ?? { id: tid, name: tname, sessions: [] };
+    entry.sessions.push(s);
+    teacherTodayMap.set(tid, entry);
+  }
+  const teacherTodayReminders = Array.from(teacherTodayMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
   const studentRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
   for (const s of sessionsTomorrow) {
     const list = enrollmentsByClass.get(s.classId) ?? [];
@@ -219,6 +387,7 @@ export default async function AdminTodosPage({
   );
 
   const confirmDate = toDateOnly(tomorrowStart);
+  const todayConfirmDate = toDateOnly(dayStart);
   const teacherConfirmations = teacherReminders.length
     ? await prisma.todoReminderConfirm.findMany({
         where: {
@@ -227,6 +396,26 @@ export default async function AdminTodosPage({
           targetId: { in: teacherReminders.map((r) => r.id) },
         },
         select: { targetId: true },
+      })
+    : [];
+  const teacherSelfTodayConfirmations = teacherTodayReminders.length
+    ? await prisma.todoReminderConfirm.findMany({
+        where: {
+          type: TEACHER_SELF_CONFIRM_TODAY,
+          date: todayConfirmDate,
+          targetId: { in: teacherTodayReminders.map((r) => r.id) },
+        },
+        select: { targetId: true, createdAt: true },
+      })
+    : [];
+  const teacherSelfTomorrowConfirmations = teacherReminders.length
+    ? await prisma.todoReminderConfirm.findMany({
+        where: {
+          type: TEACHER_SELF_CONFIRM_TOMORROW,
+          date: confirmDate,
+          targetId: { in: teacherReminders.map((r) => r.id) },
+        },
+        select: { targetId: true, createdAt: true },
       })
     : [];
   const studentConfirmations = studentReminders.length
@@ -240,6 +429,8 @@ export default async function AdminTodosPage({
       })
     : [];
   const teacherConfirmed = new Set(teacherConfirmations.map((x) => x.targetId));
+  const teacherSelfTodayMap = new Map(teacherSelfTodayConfirmations.map((x) => [x.targetId, x.createdAt]));
+  const teacherSelfTomorrowMap = new Map(teacherSelfTomorrowConfirmations.map((x) => [x.targetId, x.createdAt]));
   const studentConfirmed = new Set(studentConfirmations.map((x) => x.targetId));
   const teacherRemindersPending = teacherReminders.filter((r) => !teacherConfirmed.has(r.id));
   const studentRemindersPending = studentReminders.filter((r) => !studentConfirmed.has(r.id));
@@ -247,6 +438,8 @@ export default async function AdminTodosPage({
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const dailyConflictAudit = await getOrRunDailyConflictAudit(now);
+  const lastAutoFix = await getLatestAutoFixResult();
   const packages = await prisma.coursePackage.findMany({
     where: {
       type: "HOURS",
@@ -480,6 +673,109 @@ export default async function AdminTodosPage({
         )}
       </p>
 
+      <div
+        style={{
+          border: dailyConflictAudit.totalIssues > 0 ? "2px solid #ef4444" : "2px solid #22c55e",
+          borderRadius: 12,
+          padding: 12,
+          background: dailyConflictAudit.totalIssues > 0 ? "#fff1f2" : "#f0fdf4",
+          marginBottom: 14,
+          boxShadow:
+            dailyConflictAudit.totalIssues > 0
+              ? "0 2px 6px rgba(239, 68, 68, 0.15)"
+              : "0 2px 6px rgba(34, 197, 94, 0.12)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
+              {t(lang, "Daily Conflict Audit", "每日冲突巡检")}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
+              {dailyConflictAudit.totalIssues > 0
+                ? t(lang, `${dailyConflictAudit.totalIssues} issues found`, `发现${dailyConflictAudit.totalIssues}个问题`)
+                : t(lang, "No issues found", "未发现问题")}
+            </div>
+            <div style={{ color: "#64748b", fontSize: 12 }}>
+              {t(lang, "Range", "范围")}: {dailyConflictAudit.scannedFrom} ~ {dailyConflictAudit.scannedTo}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <a
+              href="/admin/conflicts"
+              style={{
+                display: "inline-block",
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: dailyConflictAudit.totalIssues > 0 ? "1px solid #ef4444" : "1px solid #16a34a",
+                background: "#fff",
+                color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              {t(lang, "Open Conflict Desk", "去冲突处理")}
+            </a>
+            <form action={rerunConflictAudit}>
+              <input type="hidden" name="warnDays" value={String(warnDays)} />
+              <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+              <input type="hidden" name="pastDays" value={String(pastDays)} />
+              <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
+              <button type="submit">{t(lang, "Recheck Now", "立即复检")}</button>
+            </form>
+          </div>
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, color: "#334155" }}>
+          {dailyConflictAudit.sample.join(" | ")}
+        </div>
+      </div>
+
+      <div
+        style={{
+          border: "1px solid #cbd5e1",
+          borderRadius: 12,
+          padding: 12,
+          background: "#f8fafc",
+          marginBottom: 14,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
+              {t(lang, "Teacher Conflict Auto-fix Log", "老师冲突自动修复日志")}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+              {lastAutoFix?.day === todayYmd
+                ? t(lang, "Auto-fix ran today", "今日已执行自动修复")
+                : t(lang, "Auto-fix not run today", "今日未执行自动修复")}
+            </div>
+          </div>
+          <form action={runAutoFixNow}>
+            <input type="hidden" name="warnDays" value={String(warnDays)} />
+            <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
+            <input type="hidden" name="pastDays" value={String(pastDays)} />
+            <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
+            <button type="submit">{t(lang, "Run Now", "立即执行")}</button>
+          </form>
+        </div>
+        {lastAutoFix?.result ? (
+          <div style={{ marginTop: 8, fontSize: 12, color: "#334155", display: "grid", gap: 2 }}>
+            <div>
+              {t(lang, "Last run date", "最近执行日期")}: {lastAutoFix.day ?? "-"}
+            </div>
+            <div>
+              {t(lang, "Detected pairs", "检测冲突对")}: {lastAutoFix.result.detectedPairs} | {t(lang, "Fixed sessions", "已修复课次")}:{" "}
+              {lastAutoFix.result.fixedSessions} | {t(lang, "Skipped pairs", "跳过冲突对")}: {lastAutoFix.result.skippedPairs}
+            </div>
+            <div>{lastAutoFix.result.notes.slice(0, 3).join(" | ") || t(lang, "No notes", "无备注")}</div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
+            {t(lang, "No auto-fix run record yet.", "暂无自动修复执行记录。")}
+          </div>
+        )}
+      </div>
+
       <div style={heroStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
@@ -517,9 +813,14 @@ export default async function AdminTodosPage({
                       {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
                     </td>
                     <td>
-                      {s.class.course.name}
-                      {s.class.subject ? ` / ${s.class.subject.name}` : ""}
-                      {s.class.level ? ` / ${s.class.level.name}` : ""}
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <ClassTypeBadge capacity={s.class.capacity} compact />
+                        <span>
+                          {s.class.course.name}
+                          {s.class.subject ? ` / ${s.class.subject.name}` : ""}
+                          {s.class.level ? ` / ${s.class.level.name}` : ""}
+                        </span>
+                      </div>
                     </td>
                     <td>{s.class.teacher.name}</td>
                     <td>
@@ -540,9 +841,111 @@ export default async function AdminTodosPage({
         )}
       </div>
 
+      <div style={{ ...sectionStyle, borderColor: "#fca5a5", background: "linear-gradient(180deg, #fff5f5 0%, #fff 100%)" }}>
+        <div style={sectionHeaderStyle}>
+          <h3 style={{ margin: 0 }}>{t(lang, "Yesterday Unmarked Details", "昨日未点名明细")}</h3>
+          <span style={{ color: "#666", fontSize: 12 }}>
+            {t(lang, "Unmarked Session Count", "未点名课次数")}: {sessionsYesterday.length}
+          </span>
+        </div>
+        {sessionsYesterday.length === 0 ? (
+          <div style={{ color: "#999" }}>{t(lang, "No unmarked sessions yesterday.", "昨天没有未点名课次。")}</div>
+        ) : (
+          <table cellPadding={8} style={tableStyle}>
+            <thead>
+              <tr style={{ background: "#fee2e2" }}>
+                <th align="left">{t(lang, "Session Time", "课次时间")}</th>
+                <th align="left">{t(lang, "Class", "班级")}</th>
+                <th align="left">{t(lang, "Teacher", "老师")}</th>
+                <th align="left">{t(lang, "Campus", "校区")}</th>
+                <th align="left">{t(lang, "Unmarked", "未点名")}</th>
+                <th align="left">{t(lang, "Action", "操作")}</th>
+              </tr>
+            </thead>
+            <tbody>
+                {sessionsYesterday.map((s) => (
+                  <tr key={`y-${s.id}`} style={{ borderTop: "1px solid #fecaca" }}>
+                  <td>
+                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <ClassTypeBadge capacity={s.class.capacity} compact />
+                      <span>
+                        {s.class.course.name}
+                        {s.class.subject ? ` / ${s.class.subject.name}` : ""}
+                        {s.class.level ? ` / ${s.class.level.name}` : ""}
+                      </span>
+                    </div>
+                  </td>
+                  <td>{s.class.teacher.name}</td>
+                  <td>
+                    {s.class.campus.name}
+                    {s.class.room ? ` / ${s.class.room.name}` : ""}
+                  </td>
+                  <td>
+                    <span style={{ color: "#b00", fontWeight: 700 }}>{unmarkedYesterdayMap.get(s.id) ?? 0}</span>
+                  </td>
+                  <td>
+                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <div style={pageWrapStyle}>
         <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: 12, letterSpacing: 0.5 }}>
           {t(lang, "Reminders", "重点提醒")}
+        </div>
+
+        <div style={{ ...reminderStyle, borderColor: "#93c5fd", background: "#f0f9ff" }}>
+          <div style={sectionHeaderStyle}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Teacher Course Confirm Status", "老师课程确认状态")}</h3>
+            <span style={{ color: "#666", fontSize: 12 }}>
+              {t(lang, "Today", "今日")}: {teacherTodayReminders.length} / {t(lang, "Tomorrow", "明日")}: {teacherReminders.length}
+            </span>
+          </div>
+          {teacherTodayReminders.length === 0 && teacherReminders.length === 0 ? (
+            <div style={{ color: "#999" }}>{t(lang, "No teacher courses today/tomorrow.", "今日和明日没有老师课次。")}</div>
+          ) : (
+            <table cellPadding={8} style={tableStyle}>
+              <thead>
+                <tr style={{ background: "#e0f2fe" }}>
+                  <th align="left">{t(lang, "Teacher", "老师")}</th>
+                  <th align="left">{t(lang, "Today Confirm", "今日确认")}</th>
+                  <th align="left">{t(lang, "Tomorrow Confirm", "明日确认")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from(
+                  new Map(
+                    [...teacherTodayReminders, ...teacherReminders].map((r) => [r.id, { id: r.id, name: r.name }])
+                  ).values()
+                ).map((r) => {
+                  const todayAt = teacherSelfTodayMap.get(r.id);
+                  const tomorrowAt = teacherSelfTomorrowMap.get(r.id);
+                  return (
+                    <tr key={`self-${r.id}`} style={{ borderTop: "1px solid #bae6fd" }}>
+                      <td>{r.name}</td>
+                      <td style={{ color: todayAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+                        {todayAt
+                          ? `${t(lang, "Confirmed", "已确认")} ${new Date(todayAt).toLocaleTimeString()}`
+                          : t(lang, "Not confirmed", "未确认")}
+                      </td>
+                      <td style={{ color: tomorrowAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+                        {tomorrowAt
+                          ? `${t(lang, "Confirmed", "已确认")} ${new Date(tomorrowAt).toLocaleTimeString()}`
+                          : t(lang, "Not confirmed", "未确认")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
@@ -583,6 +986,7 @@ export default async function AdminTodosPage({
                 <th align="left">{t(lang, "Teacher", "老师")}</th>
                 <th align="left">{t(lang, "Sessions", "课次")}</th>
                 <th align="left">{t(lang, "Detail", "详情")}</th>
+                <th align="left">{t(lang, "Teacher Confirm", "老师确认")}</th>
                 <th align="left">{t(lang, "Action", "操作")}</th>
               </tr>
             </thead>
@@ -595,10 +999,15 @@ export default async function AdminTodosPage({
                     {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
                       .split("; ")
                       .map((line, idx) => (
-                        <div key={`${x.id}-t-${idx}`} style={detailLineStyle}>
+                      <div key={`${x.id}-t-${idx}`} style={detailLineStyle}>
                           {line}
                         </div>
                       ))}
+                  </td>
+                  <td style={{ color: teacherSelfTomorrowMap.get(x.id) ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+                    {teacherSelfTomorrowMap.get(x.id)
+                      ? `${t(lang, "Confirmed", "已确认")} ${new Date(teacherSelfTomorrowMap.get(x.id) as Date).toLocaleTimeString()}`
+                      : t(lang, "Not confirmed", "未确认")}
                   </td>
                   <td>
                     <form action={confirmReminder.bind(null, "teacher")}>
@@ -627,6 +1036,7 @@ export default async function AdminTodosPage({
                   <th align="left">{t(lang, "Teacher", "老师")}</th>
                   <th align="left">{t(lang, "Sessions", "课次")}</th>
                   <th align="left">{t(lang, "Detail", "详情")}</th>
+                  <th align="left">{t(lang, "Teacher Confirm", "老师确认")}</th>
                   <th align="left">{t(lang, "Status", "状态")}</th>
                 </tr>
               </thead>
@@ -639,14 +1049,19 @@ export default async function AdminTodosPage({
                       {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
                         .split("; ")
                         .map((line, idx) => (
-                          <div key={`${x.id}-tc-${idx}`} style={detailLineStyle}>
-                            {line}
-                          </div>
-                        ))}
-                    </td>
-                    <td>{t(lang, "Confirmed", "已确认")}</td>
-                  </tr>
-                ))}
+                        <div key={`${x.id}-tc-${idx}`} style={detailLineStyle}>
+                          {line}
+                        </div>
+                      ))}
+                  </td>
+                  <td style={{ color: teacherSelfTomorrowMap.get(x.id) ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+                    {teacherSelfTomorrowMap.get(x.id)
+                      ? `${t(lang, "Confirmed", "已确认")} ${new Date(teacherSelfTomorrowMap.get(x.id) as Date).toLocaleTimeString()}`
+                      : t(lang, "Not confirmed", "未确认")}
+                  </td>
+                  <td>{t(lang, "Confirmed", "已确认")}</td>
+                </tr>
+              ))}
               </tbody>
             </table>
           </div>
@@ -785,8 +1200,13 @@ export default async function AdminTodosPage({
                     {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
                   </div>
                   <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-                    {s.class.course.name}
-                    {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <ClassTypeBadge capacity={s.class.capacity} compact />
+                      <span>
+                        {s.class.course.name}
+                        {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                     {t(lang, "Teacher", "老师")}: {s.class.teacher.name}
@@ -821,8 +1241,13 @@ export default async function AdminTodosPage({
                     {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
                   </div>
                   <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-                    {s.class.course.name}
-                    {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <ClassTypeBadge capacity={s.class.capacity} compact />
+                      <span>
+                        {s.class.course.name}
+                        {s.class.subject ? ` / ${s.class.subject.name}` : ""} {s.class.level ? ` / ${s.class.level.name}` : ""}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                     {t(lang, "Teacher", "老师")}: {s.class.teacher.name}
@@ -885,9 +1310,14 @@ export default async function AdminTodosPage({
                     {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
                   </td>
                   <td>
-                    {s.class.course.name}
-                    {s.class.subject ? ` / ${s.class.subject.name}` : ""}
-                    {s.class.level ? ` / ${s.class.level.name}` : ""}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <ClassTypeBadge capacity={s.class.capacity} compact />
+                      <span>
+                        {s.class.course.name}
+                        {s.class.subject ? ` / ${s.class.subject.name}` : ""}
+                        {s.class.level ? ` / ${s.class.level.name}` : ""}
+                      </span>
+                    </div>
                   </td>
                   <td>{s.class.teacher.name}</td>
                   <td>
@@ -1047,6 +1477,11 @@ export default async function AdminTodosPage({
     </div>
   );
 }
+
+
+
+
+
 
 
 

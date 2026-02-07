@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function StudentSearchSelect({
   students,
@@ -20,6 +20,18 @@ export default function StudentSearchSelect({
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(students[0]?.id ?? "");
   const selectedStudent = students.find((s) => s.id === selectedId);
+  useEffect(() => {
+    if (students.length === 0) {
+      setSelectedId("");
+      onChangeId?.("");
+      return;
+    }
+    if (!students.some((s) => s.id === selectedId)) {
+      const next = students[0]?.id ?? "";
+      setSelectedId(next);
+      onChangeId?.(next);
+    }
+  }, [students, selectedId, onChangeId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

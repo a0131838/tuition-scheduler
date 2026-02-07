@@ -8,6 +8,7 @@ import {
   loadMonthlyScheduleData,
   monthKey,
 } from "./_lib";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -17,6 +18,7 @@ type CalendarItem = {
   endAt: Date;
   teacherName: string;
   courseText: string;
+  capacity: number;
   placeText: string;
   students: string[];
   classId: string;
@@ -70,6 +72,7 @@ export default async function MonthlyScheduleReportPage({
       endAt: s.endAt,
       teacherName,
       courseText,
+      capacity: s.class.capacity,
       placeText: `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`,
       students,
       classId: s.classId,
@@ -207,7 +210,10 @@ export default async function MonthlyScheduleReportPage({
                             {fmtHHMM(new Date(it.startAt))}-{fmtHHMM(new Date(it.endAt))}
                           </div>
                           <div>{it.teacherName}</div>
-                          <div style={{ color: "#444" }}>{it.courseText}</div>
+                          <div style={{ color: "#444", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <ClassTypeBadge capacity={it.capacity} compact />
+                            <span>{it.courseText}</span>
+                          </div>
                           <div style={{ color: "#666" }}>{it.placeText}</div>
                           <div style={{ color: "#0a7" }}>
                             {choose(lang, "Students", "学生")}: {it.students.length > 0 ? it.students.join(", ") : "-"}
@@ -239,7 +245,10 @@ export default async function MonthlyScheduleReportPage({
                                   {fmtHHMM(new Date(it.startAt))}-{fmtHHMM(new Date(it.endAt))}
                                 </div>
                                 <div>{it.teacherName}</div>
-                                <div style={{ color: "#444" }}>{it.courseText}</div>
+                                <div style={{ color: "#444", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                  <ClassTypeBadge capacity={it.capacity} compact />
+                                  <span>{it.courseText}</span>
+                                </div>
                                 <div style={{ color: "#666" }}>{it.placeText}</div>
                                 <div style={{ color: "#0a7" }}>
                                   {choose(lang, "Students", "学生")}: {it.students.length > 0 ? it.students.join(", ") : "-"}

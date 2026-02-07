@@ -83,7 +83,7 @@ async function deleteLevel(formData: FormData) {
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams?: { q?: string };
+  searchParams?: { q?: string; err?: string };
 }) {
   const lang = await getLang();
   const q = (searchParams?.q ?? "").trim().toLowerCase();

@@ -3,6 +3,13 @@ import { revalidatePath } from "next/cache";
 import { getLang, t } from "@/lib/i18n";
 import SimpleModal from "../_components/SimpleModal";
 import ClassCreateForm from "../_components/ClassCreateForm";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+
+function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
+  if (!subjectId) return true;
+  if (teacher?.subjectCourseId === subjectId) return true;
+  return Array.isArray(teacher?.subjects) ? teacher.subjects.some((s) => s.id === subjectId) : false;
+}
 
 async function createClass(formData: FormData) {
   "use server";
@@ -20,6 +27,11 @@ async function createClass(formData: FormData) {
     include: { course: true },
   });
   if (!subject) return;
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: { subjects: { select: { id: true } } },
+  });
+  if (!teacher || !canTeachSubject(teacher as any, subjectId)) return;
 
   let levelId: string | null = null;
   if (levelIdRaw) {
@@ -30,6 +42,11 @@ async function createClass(formData: FormData) {
 
   const courseId = subject.courseId;
   const roomId = roomIdRaw ? roomIdRaw : null;
+  if (roomId) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { campusId: true, capacity: true } });
+    if (!room || room.campusId !== campusId) return;
+    if (capacity > room.capacity) return;
+  }
 
   await prisma.class.create({
     data: {
@@ -71,7 +88,7 @@ export default async function ClassesPage() {
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
     prisma.level.findMany({ include: { subject: { include: { course: true } } }, orderBy: [{ subjectId: "asc" }, { name: "asc" }] }),
-    prisma.teacher.findMany({ orderBy: { name: "asc" } }),
+    prisma.teacher.findMany({ orderBy: { name: "asc" }, include: { subjects: { select: { id: true } } } }),
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
@@ -109,9 +126,20 @@ export default async function ClassesPage() {
               courseName: l.subject.course.name,
               subjectName: l.subject.name,
             }))}
-            teachers={teachers.map((tch) => ({ id: tch.id, name: tch.name }))}
+            teachers={teachers.map((tch) => ({
+              id: tch.id,
+              name: tch.name,
+              subjectCourseId: tch.subjectCourseId,
+              subjectIds: tch.subjects.map((s) => s.id),
+            }))}
             campuses={campuses.map((c) => ({ id: c.id, name: c.name }))}
-            rooms={rooms.map((r) => ({ id: r.id, name: r.name, campusName: r.campus.name }))}
+            rooms={rooms.map((r) => ({
+              id: r.id,
+              name: r.name,
+              campusName: r.campus.name,
+              campusId: r.campusId,
+              capacity: r.capacity,
+            }))}
             labels={{
               course: t(lang, "Course", "课程"),
               subject: t(lang, "Subject", "科目"),
@@ -215,7 +243,10 @@ export default async function ClassesPage() {
                       {Array.from(grouped.values()).map((g) => (
                         <details key={g.key} open style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
                           <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
-                            <div style={{ fontWeight: 700 }}>{g.groupLabel}</div>
+                            <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                              <ClassTypeBadge capacity={1} compact />
+                              <a href={`/admin/classes/${g.classes[0]?.id ?? ""}`}>{g.groupLabel}</a>
+                            </div>
                             <div style={{ color: "#666", fontSize: 12 }}>
                               {t(lang, "Teacher", "老师")}: {g.teacherLabel} | {t(lang, "Campus", "校区")}: {g.campusLabel} |{" "}
                               {t(lang, "Room", "教室")}: {g.roomLabel}
@@ -263,7 +294,8 @@ export default async function ClassesPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
                     {groupClasses.map((c) => (
                       <div key={c.id} style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
-                        <div style={{ fontWeight: 700 }}>
+                        <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                          <ClassTypeBadge capacity={c.capacity} compact />
                           <a href={`/admin/classes/${c.id}`}>
                             {c.course.name}
                             {c.subject ? ` / ${c.subject.name}` : ""}
@@ -308,3 +340,6 @@ export default async function ClassesPage() {
     </div>
   );
 }
+
+
+

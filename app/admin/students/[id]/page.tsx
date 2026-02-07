@@ -7,6 +7,7 @@ import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
 import NoticeBanner from "../../_components/NoticeBanner";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1170,7 +1171,7 @@ export default async function StudentDetailPage({
             startAt: { lt: endAt },
             endAt: { gt: startAt },
           },
-          select: { id: true },
+          select: { id: true, startAt: true, endAt: true },
         });
         if (apptConflict) {
           const timeLabel = `${fmtDateInput(apptConflict.startAt)} ${fmtHHMM(apptConflict.startAt)}-${fmtHHMM(apptConflict.endAt)}`;
@@ -1443,6 +1444,7 @@ export default async function StudentDetailPage({
                             }}
                           >
                             {tl(lang, "Class")} {fmtHHMM(new Date(s.startAt))}-{fmtHHMM(new Date(s.endAt))}{" "}
+                            <ClassTypeBadge capacity={s.class.capacity} compact />{" "}
                             {s.class.course.name}
                             {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
                             {s.class.level ? ` / ${s.class.level.name}` : ""}
@@ -1538,9 +1540,12 @@ export default async function StudentDetailPage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
           {enrollments.map((e) => (
             <div key={e.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
-              <div style={{ fontWeight: 700 }}>
-                {e.class.course.name}
-                {e.class.subject ? ` / ${e.class.subject.name}` : ""} {e.class.level ? ` / ${e.class.level.name}` : ""}
+              <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <ClassTypeBadge capacity={e.class.capacity} compact />
+                <span>
+                  {e.class.course.name}
+                  {e.class.subject ? ` / ${e.class.subject.name}` : ""} {e.class.level ? ` / ${e.class.level.name}` : ""}
+                </span>
               </div>
               <div style={{ marginTop: 6 }}>
                 <span
@@ -1777,9 +1782,14 @@ export default async function StudentDetailPage({
                 </span>
               </div>
               <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
-                {a.session.class.course.name}
-                {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
-                {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} | {a.session.class.teacher.name}
+                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <ClassTypeBadge capacity={a.session.class.capacity} compact />
+                  <span>
+                    {a.session.class.course.name}
+                    {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
+                    {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} | {a.session.class.teacher.name}
+                  </span>
+                </span>
               </div>
               <div style={{ marginTop: 6 }}>
                 {tl(lang, "Status")}: {a.status}
@@ -1826,11 +1836,16 @@ export default async function StudentDetailPage({
                   </span>
                 </div>
                 <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
-                  {s.class.course.name}
-                  {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
-                  {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.class.teacher.name} |{" "}
-                  {s.class.campus.name}
-                  {s.class.room ? ` / ${s.class.room.name}` : ""}
+                  <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <ClassTypeBadge capacity={s.class.capacity} compact />
+                    <span>
+                      {s.class.course.name}
+                      {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
+                      {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.class.teacher.name} |{" "}
+                      {s.class.campus.name}
+                      {s.class.room ? ` / ${s.class.room.name}` : ""}
+                    </span>
+                  </span>
                 </div>
                 <div style={{ marginTop: 6, color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
                   {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}

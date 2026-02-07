@@ -2,7 +2,8 @@
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import StudentSearchSelect from "../../_components/StudentSearchSelect";
-import NoticeBanner from "../_components/NoticeBanner";
+import NoticeBanner from "../../_components/NoticeBanner";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -337,12 +338,16 @@ export default async function NewSinglePage({
             </div>
           ) : (
             <form action={createSingleSession} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                <ClassTypeBadge capacity={2} compact />
+                <ClassTypeBadge capacity={1} compact />
+              </div>
               <label>
                 {t(lang, "Class", "班级")}:
                 <select name="classId" defaultValue={defaultClassId} style={{ marginLeft: 8, minWidth: 520 }}>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "老师")}:{" "}
+                      [{c.capacity === 1 ? "1-on-1/一对一" : "Group/班课"}] {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | {t(lang, "Teacher", "老师")}:{" "}
                       {c.teacher.name} | {t(lang, "Campus", "校区")}: {c.campus.name} | {t(lang, "Room", "教室")}:{" "}
                       {c.room?.name ?? "(none)"} | CLS-{c.id.slice(0, 4)}…{c.id.slice(-4)}
                     </option>
@@ -426,6 +431,7 @@ export default async function NewSinglePage({
     </div>
   );
 }
+
 
 
 

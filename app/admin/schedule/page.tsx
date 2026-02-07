@@ -6,6 +6,7 @@ import { getLang, t } from "@/lib/i18n";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import NoticeBanner from "../_components/NoticeBanner";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 type ViewMode = "teacher" | "room" | "campus";
 
@@ -130,6 +131,7 @@ type EventItem = {
   startAt: Date;
   endAt: Date;
   title: string;
+  classCapacity?: number | null;
 
   teacherName?: string;
   campusName?: string;
@@ -290,6 +292,7 @@ export default async function SchedulePage({
         startAt: s.startAt,
         endAt: s.endAt,
         title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
+        classCapacity: s.class.capacity,
         teacherName: s.teacher?.name ?? s.class.teacher.name,
         campusName: s.class.campus.name,
         roomName: s.class.room?.name ?? "(no room)",
@@ -332,6 +335,7 @@ export default async function SchedulePage({
       startAt: s.startAt,
       endAt: s.endAt,
       title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
+      classCapacity: s.class.capacity,
       teacherName: s.teacher?.name ?? s.class.teacher.name,
       campusName: s.class.campus.name,
       roomName: s.class.room?.name ?? "(no room)",
@@ -361,6 +365,7 @@ export default async function SchedulePage({
       startAt: s.startAt,
       endAt: s.endAt,
       title: `Class: ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}${s.class.capacity === 1 && s.student ? ` | ${s.student.name}` : ""}`,
+      classCapacity: s.class.capacity,
       teacherName: s.teacher?.name ?? s.class.teacher.name,
       campusName: s.class.campus.name,
       roomName: s.class.room?.name ?? "(no room)",
@@ -974,19 +979,23 @@ export default async function SchedulePage({
                           </span>
                         </td>
                         <td>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              borderRadius: 999,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              background: e.kind === "session" ? "#eaf2ff" : "#fff3e5",
-                              color: e.kind === "session" ? "#1b4dd7" : "#a25900",
-                            }}
-                          >
-                            {e.kind === "session" ? t(lang, "Class", "班课") : t(lang, "1-1", "一对一")}
-                          </span>
+                          {e.kind === "session" ? (
+                            <ClassTypeBadge capacity={e.classCapacity} compact />
+                          ) : (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: "#fff3e5",
+                                color: "#a25900",
+                              }}
+                            >
+                              {t(lang, "1-1", "一对一")}
+                            </span>
+                          )}
                         </td>
 
                         <td>

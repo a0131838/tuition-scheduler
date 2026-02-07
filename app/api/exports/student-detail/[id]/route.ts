@@ -119,7 +119,7 @@ function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   const logoW = 255;
   let logoH = 0;
   try {
-    const logo = doc.openImage(LOGO_PATH);
+    const logo = (doc as any).openImage(LOGO_PATH);
     const scale = logoW / logo.width;
     logoH = logo.height * scale;
     doc.image(logo, left, top, { width: logoW });

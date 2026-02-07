@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
 type LevelOption = { id: string; name: string; subjectId: string; courseName: string; subjectName: string };
 type StudentOption = { id: string; name: string };
 type CampusOption = { id: string; name: string };
-type RoomOption = { id: string; name: string; campusName: string };
+type RoomOption = { id: string; name: string; campusName: string; campusId: string };
 
 export default function OneOnOneTemplateForm(props: {
   action: (formData: FormData) => void;
@@ -38,6 +39,8 @@ export default function OneOnOneTemplateForm(props: {
     subjects.find((s) => s.courseId === (courses[0]?.id ?? ""))?.id ?? subjects[0]?.id ?? ""
   );
   const [levelId, setLevelId] = useState("");
+  const [campusId, setCampusId] = useState(campuses[0]?.id ?? "");
+  const [roomId, setRoomId] = useState("");
 
   useEffect(() => {
     if (!courseId) return;
@@ -56,6 +59,15 @@ export default function OneOnOneTemplateForm(props: {
       setLevelId("");
     }
   }, [filteredLevels, levelId]);
+  const filteredRooms = useMemo(() => {
+    if (!campusId) return rooms;
+    return rooms.filter((r) => r.campusId === campusId);
+  }, [rooms, campusId]);
+  useEffect(() => {
+    if (roomId && !filteredRooms.some((r) => r.id === roomId)) {
+      setRoomId("");
+    }
+  }, [roomId, filteredRooms]);
 
   return (
     <form action={action} style={{ display: "grid", gap: 8, maxWidth: 900 }}>
@@ -92,7 +104,7 @@ export default function OneOnOneTemplateForm(props: {
             </option>
           ))}
         </select>
-        <select name="campusId" defaultValue="">
+        <select name="campusId" value={campusId} onChange={(e) => setCampusId(e.target.value)}>
           <option value="">{labels.campus}</option>
           {campuses.map((c) => (
             <option key={c.id} value={c.id}>
@@ -100,9 +112,9 @@ export default function OneOnOneTemplateForm(props: {
             </option>
           ))}
         </select>
-        <select name="roomId" defaultValue="">
+        <select name="roomId" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
           <option value="">{labels.roomOptional}</option>
-          {rooms.map((r) => (
+          {filteredRooms.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name} ({r.campusName})
             </option>
@@ -117,7 +129,7 @@ export default function OneOnOneTemplateForm(props: {
             </option>
           ))}
         </select>
-        <input name="startTime" type="time" defaultValue="16:00" />
+        <BlurTimeInput name="startTime" defaultValue="16:00" />
         <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ width: 120 }} />
         <span style={{ color: "#666" }}>{labels.durationMin}</span>
         <button type="submit">{labels.add}</button>

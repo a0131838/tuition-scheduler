@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import { AttendanceStatus } from "@prisma/client";
+import { AttendanceStatus, FeedbackStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
@@ -32,6 +33,7 @@ async function saveAttendanceForTeacher(sessionId: string, teacherId: string, fo
     include: { class: true, attendances: true },
   });
   if (!session) redirect("/teacher/sessions?err=Session+not+found");
+
   const allowed = session.teacherId === teacherId || (!session.teacherId && session.class.teacherId === teacherId);
   if (!allowed) redirect("/teacher/sessions?err=No+permission");
 
@@ -40,6 +42,7 @@ async function saveAttendanceForTeacher(sessionId: string, teacherId: string, fo
     session.class.capacity === 1 && session.studentId
       ? enrollments.filter((e) => e.studentId === session.studentId)
       : enrollments;
+
   for (const e of attendanceEnrollments) {
     const statusRaw = String(formData.get(`status:${e.studentId}`) ?? "UNMARKED");
     const note = String(formData.get(`note:${e.studentId}`) ?? "").trim() || null;
@@ -47,6 +50,7 @@ async function saveAttendanceForTeacher(sessionId: string, teacherId: string, fo
       ? (statusRaw as AttendanceStatus)
       : "UNMARKED";
     const existing = session.attendances.find((a) => a.studentId === e.studentId);
+
     await prisma.attendance.upsert({
       where: { sessionId_studentId: { sessionId, studentId: e.studentId } },
       update: {
@@ -70,7 +74,7 @@ async function saveAttendanceForTeacher(sessionId: string, teacherId: string, fo
   redirect(`/teacher/sessions/${sessionId}?msg=Attendance+saved`);
 }
 
-async function saveSessionFeedback(sessionId: string, teacherId: string, formData: FormData) {
+async function saveSessionFeedback(sessionId: string, teacherId: string, submittedByUserId: string, formData: FormData) {
   "use server";
   const focusStudentName = String(formData.get("focusStudentName") ?? "").trim() || null;
   const actualStartRaw = String(formData.get("actualStartAt") ?? "").trim();
@@ -89,13 +93,13 @@ async function saveSessionFeedback(sessionId: string, teacherId: string, formDat
     include: { class: { include: { course: true, subject: true } } },
   });
   if (!session) redirect("/teacher/sessions?err=Session+not+found");
+
   const allowed = session.teacherId === teacherId || (!session.teacherId && session.class.teacherId === teacherId);
   if (!allowed) redirect("/teacher/sessions?err=No+permission");
 
   const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
-  if (new Date() > deadline) {
-    redirect(`/teacher/sessions/${sessionId}?err=Feedback+window+closed`);
-  }
+  const now = new Date();
+  const status: FeedbackStatus = now <= deadline ? "ON_TIME" : "LATE";
 
   const actualStartAt = actualStartRaw ? new Date(actualStartRaw) : null;
   const actualEndAt = actualEndRaw ? new Date(actualEndRaw) : null;
@@ -118,16 +122,17 @@ async function saveSessionFeedback(sessionId: string, teacherId: string, formDat
       : actualStartAt
       ? `${formatDateTime(actualStartAt)} - Not set`
       : "Not set";
+
   const previousHomeworkText =
     previousHomeworkDone === true ? "yes" : previousHomeworkDone === false ? "no" : "not set";
   const feedbackTitle = focusStudentName || "Whole Class";
   const content = [
-    `[Class Feedback - ${feedbackTitle}]`,
-    `1. Subject: ${subjectName}`,
-    `2. Time: Planned ${plannedStart} - ${plannedEnd}; Actual ${actualTimeLine}`,
-    `3. Class performance: ${classPerformance}`,
-    `4. Homework: ${homework}`,
-    `5. Previous homework done: ${previousHomeworkText}`,
+    `[Class Feedback / 课堂反馈 - ${feedbackTitle}]`,
+    `1. Subject / 科目: ${subjectName}`,
+    `2. Time / 时间: Planned / 计划 ${plannedStart} - ${plannedEnd}; Actual / 实际 ${actualTimeLine}`,
+    `3. Class performance / 课堂表现: ${classPerformance}`,
+    `4. Homework / 作业: ${homework}`,
+    `5. Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
   await prisma.sessionFeedback.upsert({
@@ -140,6 +145,13 @@ async function saveSessionFeedback(sessionId: string, teacherId: string, formDat
       classPerformance,
       homework,
       previousHomeworkDone,
+      status,
+      dueAt: deadline,
+      submittedByRole: "TEACHER",
+      submittedByUserId,
+      isProxyDraft: false,
+      proxyNote: null,
+      submittedAt: now,
     },
     create: {
       sessionId,
@@ -151,10 +163,17 @@ async function saveSessionFeedback(sessionId: string, teacherId: string, formDat
       classPerformance,
       homework,
       previousHomeworkDone,
+      status,
+      dueAt: deadline,
+      submittedByRole: "TEACHER",
+      submittedByUserId,
+      isProxyDraft: false,
+      proxyNote: null,
+      submittedAt: now,
     },
   });
 
-  redirect(`/teacher/sessions/${sessionId}?msg=Feedback+saved`);
+  redirect(`/teacher/sessions/${sessionId}?msg=${status === "LATE" ? "Feedback+saved+(late)" : "Feedback+saved"}`);
 }
 
 export default async function TeacherSessionDetailPage({
@@ -165,8 +184,10 @@ export default async function TeacherSessionDetailPage({
   searchParams?: { msg?: string; err?: string };
 }) {
   const lang = await getLang();
-  const { teacher } = await requireTeacherProfile();
-  if (!teacher) return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
+  const { user, teacher } = await requireTeacherProfile();
+  if (!teacher || !user) {
+    return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
+  }
 
   const session = await prisma.session.findUnique({
     where: { id: params.id },
@@ -178,8 +199,9 @@ export default async function TeacherSessionDetailPage({
     },
   });
   if (!session) return <div>{t(lang, "Session not found.", "课次不存在。")}</div>;
+
   const allowed = session.teacherId === teacher.id || (!session.teacherId && session.class.teacherId === teacher.id);
-  if (!allowed) return <div style={{ color: "#b00" }}>{t(lang, "No permission.", "无权限访问此课次。")}</div>;
+  if (!allowed) return <div style={{ color: "#b00" }}>{t(lang, "No permission.", "无权访问此课次。")}</div>;
 
   const enrollments = await prisma.enrollment.findMany({
     where: { classId: session.classId },
@@ -190,11 +212,16 @@ export default async function TeacherSessionDetailPage({
     session.class.capacity === 1 && session.studentId
       ? enrollments.filter((e) => e.studentId === session.studentId)
       : enrollments;
+
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
-
   const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
-  const feedbackOpen = new Date() <= deadline;
+  const feedbackOverdue = new Date() > deadline;
+  const lastAttendanceSavedAt =
+    session.attendances.length > 0
+      ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
+      : null;
+
   const msg = decode(searchParams?.msg);
   const err = decode(searchParams?.err);
 
@@ -202,17 +229,38 @@ export default async function TeacherSessionDetailPage({
     <div>
       <h2>{t(lang, "Session Detail", "课次详情")}</h2>
       <p>
-        <a href="/teacher/sessions">← {t(lang, "Back", "返回")}</a>
+        <a href="/teacher/sessions">{t(lang, "Back", "返回")}</a>
       </p>
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
+      {feedback ? (
+        <div style={{ color: "#087", marginBottom: 10 }}>
+          {t(lang, "Last saved", "最近保存")}: {new Date(feedback.submittedAt).toLocaleString()} (
+          {feedback.status === "ON_TIME"
+            ? t(lang, "On time", "准时")
+            : feedback.status === "LATE"
+            ? t(lang, "Late", "迟交")
+            : t(lang, "Proxy draft", "代填草稿")}
+          )
+        </div>
+      ) : null}
+      {lastAttendanceSavedAt ? (
+        <div style={{ color: "#087", marginBottom: 10 }}>
+          {t(lang, "Last attendance save", "最近点名保存")}: {lastAttendanceSavedAt.toLocaleString()}
+        </div>
+      ) : null}
 
       <div style={{ marginBottom: 12 }}>
-        <b>{new Date(session.startAt).toLocaleString()} - {new Date(session.endAt).toLocaleTimeString()}</b>
-        <div>
-          {session.class.course.name}
-          {session.class.subject ? ` / ${session.class.subject.name}` : ""}
-          {session.class.level ? ` / ${session.class.level.name}` : ""}
+        <b>
+          {new Date(session.startAt).toLocaleString()} - {new Date(session.endAt).toLocaleTimeString()}
+        </b>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <ClassTypeBadge capacity={session.class.capacity} compact />
+          <span>
+            {session.class.course.name}
+            {session.class.subject ? ` / ${session.class.subject.name}` : ""}
+            {session.class.level ? ` / ${session.class.level.name}` : ""}
+          </span>
         </div>
         {session.class.capacity === 1 && (
           <div>
@@ -262,27 +310,32 @@ export default async function TeacherSessionDetailPage({
       </form>
 
       <h3 style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
-      <div style={{ color: feedbackOpen ? "#666" : "#b00", marginBottom: 6 }}>
-        {feedbackOpen
-          ? `${t(lang, "Deadline", "截止")}: ${deadline.toLocaleString()}`
-          : t(lang, "Feedback window closed (12h after class).", "反馈窗口已关闭（课后12小时）。")}
+      <div style={{ color: feedbackOverdue ? "#b00" : "#666", marginBottom: 6 }}>
+        {feedbackOverdue
+          ? t(
+              lang,
+              "Overdue: please submit now. This feedback will be marked as Late.",
+              "已超时：请尽快补交，提交后会标记为迟交。"
+            )
+          : `${t(lang, "Deadline", "截止")}: ${deadline.toLocaleString()}`}
       </div>
-      <form action={saveSessionFeedback.bind(null, session.id, teacher.id)}>
+      {feedback?.isProxyDraft ? (
+        <div style={{ color: "#92400e", background: "#fff7ed", border: "1px solid #fed7aa", padding: 8, borderRadius: 6, marginBottom: 8 }}>
+          {t(lang, "Admin created a temporary draft. Please complete and resubmit.", "教务已代填临时草稿，请补全后重新提交。")}
+        </div>
+      ) : null}
+      <form action={saveSessionFeedback.bind(null, session.id, teacher.id, user.id)}>
         <div style={{ display: "grid", gap: 10, maxWidth: 760 }}>
           <div style={{ color: "#666", fontSize: 13 }}>
-            {t(lang, "Planned time", "计划上课时间")}:
-            {" "}
-            {new Date(session.startAt).toLocaleString()}
-            {" - "}
+            {t(lang, "Planned time", "计划上课时间")}: {new Date(session.startAt).toLocaleString()} - {" "}
             {new Date(session.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </div>
           <label>
-            {t(lang, "Focus student (optional)", "重点学生（选填）")}
+            {t(lang, "Focus student (optional)", "重点学生(选填)")}
             <input
               name="focusStudentName"
               defaultValue={feedback?.focusStudentName ?? ""}
               style={{ width: "100%" }}
-              disabled={!feedbackOpen}
               placeholder={t(lang, "e.g. Wang Xiaoming", "例如：王小明")}
             />
           </label>
@@ -294,7 +347,6 @@ export default async function TeacherSessionDetailPage({
                 name="actualStartAt"
                 defaultValue={toInputDateTimeValue(feedback?.actualStartAt)}
                 style={{ width: "100%" }}
-                disabled={!feedbackOpen}
               />
             </label>
             <label>
@@ -304,7 +356,6 @@ export default async function TeacherSessionDetailPage({
                 name="actualEndAt"
                 defaultValue={toInputDateTimeValue(feedback?.actualEndAt)}
                 style={{ width: "100%" }}
-                disabled={!feedbackOpen}
               />
             </label>
           </div>
@@ -315,7 +366,6 @@ export default async function TeacherSessionDetailPage({
               defaultValue={feedback?.classPerformance ?? ""}
               rows={4}
               style={{ width: "100%" }}
-              disabled={!feedbackOpen}
               placeholder={t(lang, "What was covered and how the student performed", "本节课内容和学生表现")}
             />
           </label>
@@ -326,7 +376,6 @@ export default async function TeacherSessionDetailPage({
               defaultValue={feedback?.homework ?? ""}
               rows={3}
               style={{ width: "100%" }}
-              disabled={!feedbackOpen}
               placeholder={t(lang, "Homework assigned after class", "课后作业")}
             />
           </label>
@@ -341,7 +390,6 @@ export default async function TeacherSessionDetailPage({
                   ? "no"
                   : ""
               }
-              disabled={!feedbackOpen}
             >
               <option value="">{t(lang, "Not set", "未填写")}</option>
               <option value="yes">{t(lang, "Yes", "是")}</option>
@@ -350,9 +398,13 @@ export default async function TeacherSessionDetailPage({
           </label>
         </div>
         <div style={{ marginTop: 8 }}>
-          <button type="submit" disabled={!feedbackOpen}>{t(lang, "Submit Feedback", "提交反馈")}</button>
+          <button type="submit">{t(lang, "Submit Feedback", "提交反馈")}</button>
         </div>
       </form>
     </div>
   );
 }
+
+
+
+

@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function parseMonth(s?: string) {
   if (!s) return null;
@@ -136,7 +137,7 @@ export default async function MonthlyHoursReportPage({
                   {new Date(r.session.endAt).toLocaleTimeString()}
                 </td>
                 <td>
-                  {r.session.class.course.name} / {r.session.class.subject?.name ?? "-"} / {r.session.class.level?.name ?? "-"}
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><ClassTypeBadge capacity={r.session.class.capacity} compact /><span>{r.session.class.course.name} / {r.session.class.subject?.name ?? "-"} / {r.session.class.level?.name ?? "-"}</span></div>
                 </td>
                 <td>{r.session.class.teacher.name}</td>
                 <td>{r.session.class.campus.name}</td>
@@ -153,3 +154,4 @@ export default async function MonthlyHoursReportPage({
     </div>
   );
 }
+

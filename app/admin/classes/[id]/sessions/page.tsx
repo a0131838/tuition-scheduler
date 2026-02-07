@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import SimpleModal from "../../../_components/SimpleModal";
+import BlurTimeInput from "@/app/_components/BlurTimeInput";
+import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function ymd(d: Date) {
   const y = d.getFullYear();
@@ -578,9 +580,13 @@ export default async function ClassSessionsPage({
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
-        <div>
-          <b>{t(lang, "Course", "课程")}:</b> {cls.course.name}
-          {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <b>{t(lang, "Course", "课程")}:</b>
+          <ClassTypeBadge capacity={cls.capacity} compact />
+          <span>
+            {cls.course.name}
+            {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
+          </span>
         </div>
         <div>
           <b>{t(lang, "Teacher", "老师")}:</b> {cls.teacher.name}
@@ -659,7 +665,7 @@ export default async function ClassSessionsPage({
 
             <label>
               {t(lang, "Time", "时间")}:
-              <input name="time" type="time" defaultValue="19:00" style={{ marginLeft: 8 }} />
+              <BlurTimeInput name="time" defaultValue="19:00" style={{ marginLeft: 8 }} />
             </label>
 
             <label>
@@ -698,6 +704,9 @@ export default async function ClassSessionsPage({
             <div key={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, background: "#fff" }}>
               <div style={{ fontWeight: 700 }}>
                 {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <ClassTypeBadge capacity={cls.capacity} compact />
               </div>
               {cls.capacity === 1 && (
                 <div style={{ marginTop: 4, color: s.student ? "#0f172a" : "#b91c1c", fontSize: 12 }}>
@@ -776,4 +785,7 @@ export default async function ClassSessionsPage({
     </div>
   );
 }
+
+
+
 
