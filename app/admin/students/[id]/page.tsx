@@ -204,6 +204,12 @@ function canTeachSubject(teacher: any, subjectId?: string | null) {
   return false;
 }
 
+function isNextRedirectError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const digest = (error as { digest?: unknown }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+}
+
 function formatSessionConflictLabel(s: any) {
   const cls = s.class;
   const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
@@ -389,97 +395,72 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   const durationMin = Number(formData.get("durationMin") ?? 60);
   const month = String(formData.get("month") ?? "").trim();
 
-  if (
-    !teacherId ||
-    !subjectId ||
-    !campusId ||
-    !startAtStr ||
-    !Number.isFinite(durationMin) ||
-    durationMin < 15
-  ) {
-    redirect(`/admin/students/${studentId}?err=Invalid+input`);
-  }
-
-  const roomId = roomIdRaw || null;
-  const campus = await prisma.campus.findUnique({ where: { id: campusId } });
-  if (!campus) {
-    redirect(`/admin/students/${studentId}?err=Campus+not+found`);
-  }
-  if (!roomId && !campus.isOnline) {
-    redirect(`/admin/students/${studentId}?err=Room+is+required`);
-  }
-  if (roomId) {
-    const room = await prisma.room.findUnique({ where: { id: roomId } });
-    if (!room || room.campusId !== campusId) {
-      redirect(`/admin/students/${studentId}?err=Invalid+room`);
+  const backWithQuickParams = (extra: Record<string, string>) => {
+    const params = new URLSearchParams();
+    if (month) params.set("month", month);
+    params.set("quickOpen", "1");
+    if (subjectId) params.set("quickSubjectId", subjectId);
+    if (levelIdRaw) params.set("quickLevelId", levelIdRaw);
+    if (campusId) params.set("quickCampusId", campusId);
+    if (roomIdRaw) params.set("quickRoomId", roomIdRaw);
+    if (startAtStr) params.set("quickStartAt", startAtStr);
+    if (Number.isFinite(durationMin) && durationMin > 0) params.set("quickDurationMin", String(durationMin));
+    for (const [k, v] of Object.entries(extra)) {
+      params.set(k, v);
     }
-  }
-  const startAt = parseDatetimeLocal(startAtStr);
-  const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
+    return `/admin/students/${studentId}?${params.toString()}`;
+  };
 
-  const teacher = await prisma.teacher.findUnique({
-    where: { id: teacherId },
-    include: { subjects: true },
-  });
-  if (!teacher) {
-    redirect(`/admin/students/${studentId}?err=Teacher+not+found`);
-  }
-  const canTeach =
-    teacher.subjectCourseId === subjectId || teacher.subjects.some((s) => s.id === subjectId);
-  if (!canTeach) {
-    redirect(`/admin/students/${studentId}?err=Teacher+cannot+teach+this+course`);
-  }
+  try {
+    if (
+      !teacherId ||
+      !subjectId ||
+      !campusId ||
+      !startAtStr ||
+      !Number.isFinite(durationMin) ||
+      durationMin < 15
+    ) {
+      redirect(backWithQuickParams({ err: "Invalid input" }));
+    }
 
-  const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
-  if (availErr) {
-    redirect(`/admin/students/${studentId}?err=${encodeURIComponent(availErr)}`);
-  }
+    const roomId = roomIdRaw || null;
+    const campus = await prisma.campus.findUnique({ where: { id: campusId } });
+    if (!campus) {
+      redirect(backWithQuickParams({ err: "Campus not found" }));
+    }
+    if (!roomId && !campus.isOnline) {
+      redirect(backWithQuickParams({ err: "Room is required" }));
+    }
+    if (roomId) {
+      const room = await prisma.room.findUnique({ where: { id: roomId } });
+      if (!room || room.campusId !== campusId) {
+        redirect(backWithQuickParams({ err: "Invalid room" }));
+      }
+    }
+    const startAt = parseDatetimeLocal(startAtStr);
+    const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
 
-  const teacherSessionConflict = await prisma.session.findFirst({
-    where: {
-      class: { teacherId },
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-    },
-    include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-  });
-  if (teacherSessionConflict) {
-    const cls = teacherSessionConflict.class;
-    const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
-    const roomLabel = cls.room?.name ?? "(none)";
-    const timeLabel = `${fmtDateInput(teacherSessionConflict.startAt)} ${fmtHHMM(teacherSessionConflict.startAt)}-${fmtHHMM(teacherSessionConflict.endAt)}`;
-    redirect(
-      `/admin/students/${studentId}?err=${encodeURIComponent(
-        `Teacher conflict: ${cls.teacher.name} | ${classLabel} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`
-      )}`
-    );
-  }
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      include: { subjects: true },
+    });
+    if (!teacher) {
+      redirect(backWithQuickParams({ err: "Teacher not found" }));
+    }
+    const canTeach =
+      teacher.subjectCourseId === subjectId || teacher.subjects.some((s) => s.id === subjectId);
+    if (!canTeach) {
+      redirect(backWithQuickParams({ err: "Teacher cannot teach this course" }));
+    }
 
-  const teacherApptConflict = await prisma.appointment.findFirst({
-    where: {
-      teacherId,
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-    },
-    select: { id: true, startAt: true, endAt: true },
-  });
-  if (teacherApptConflict) {
-    const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
-      teacherApptConflict.endAt
-    )}`;
-    redirect(
-      `/admin/students/${studentId}?err=${encodeURIComponent(
-        `Teacher conflict with appointment ${timeLabel}`
-      )}`
-    );
-  }
+    const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
+    if (availErr) {
+      redirect(backWithQuickParams({ err: availErr }));
+    }
 
-  if (roomId) {
-    const roomConflict = await prisma.session.findFirst({
+    const teacherSessionConflict = await prisma.session.findFirst({
       where: {
-        class: { roomId },
+        class: { teacherId },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
@@ -487,86 +468,139 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
         class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
       },
     });
-    if (roomConflict) {
-      const cls = roomConflict.class;
+    if (teacherSessionConflict) {
+      const cls = teacherSessionConflict.class;
       const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
       const roomLabel = cls.room?.name ?? "(none)";
-      const timeLabel = `${fmtDateInput(roomConflict.startAt)} ${fmtHHMM(roomConflict.startAt)}-${fmtHHMM(roomConflict.endAt)}`;
+      const timeLabel = `${fmtDateInput(teacherSessionConflict.startAt)} ${fmtHHMM(teacherSessionConflict.startAt)}-${fmtHHMM(teacherSessionConflict.endAt)}`;
       redirect(
-        `/admin/students/${studentId}?err=${encodeURIComponent(
-          `Room conflict: ${roomLabel} | ${classLabel} | ${cls.teacher.name} | ${timeLabel}`
-        )}`
+        backWithQuickParams({
+          err: `Teacher conflict: ${cls.teacher.name} | ${classLabel} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`,
+        })
       );
     }
-  }
 
-  const subject = await prisma.subject.findUnique({
-    where: { id: subjectId },
-    select: { id: true, courseId: true },
-  });
-  if (!subject) {
-    redirect(`/admin/students/${studentId}?err=Invalid+subject`);
-  }
-  let levelId: string | null = null;
-  if (levelIdRaw) {
-    const level = await prisma.level.findUnique({ where: { id: levelIdRaw } });
-    if (!level || level.subjectId !== subjectId) {
-      redirect(`/admin/students/${studentId}?err=Invalid+subject+or+level`);
+    const teacherApptConflict = await prisma.appointment.findFirst({
+      where: {
+        teacherId,
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      select: { id: true, startAt: true, endAt: true },
+    });
+    if (teacherApptConflict) {
+      const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+        teacherApptConflict.endAt
+      )}`;
+      redirect(backWithQuickParams({ err: `Teacher conflict with appointment ${timeLabel}` }));
     }
-    levelId = levelIdRaw;
-  }
 
-  const courseId = subject.courseId;
-  const activePkg = await prisma.coursePackage.findFirst({
-    where: {
+    if (roomId) {
+      const roomConflict = await prisma.session.findFirst({
+        where: {
+          class: { roomId },
+          startAt: { lt: endAt },
+          endAt: { gt: startAt },
+        },
+        include: {
+          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        },
+      });
+      if (roomConflict) {
+        const cls = roomConflict.class;
+        const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+        const roomLabel = cls.room?.name ?? "(none)";
+        const timeLabel = `${fmtDateInput(roomConflict.startAt)} ${fmtHHMM(roomConflict.startAt)}-${fmtHHMM(roomConflict.endAt)}`;
+        redirect(
+          backWithQuickParams({
+            err: `Room conflict: ${roomLabel} | ${classLabel} | ${cls.teacher.name} | ${timeLabel}`,
+          })
+        );
+      }
+    }
+
+    const subject = await prisma.subject.findUnique({
+      where: { id: subjectId },
+      select: { id: true, courseId: true },
+    });
+    if (!subject) {
+      redirect(backWithQuickParams({ err: "Invalid subject" }));
+    }
+    let levelId: string | null = null;
+    if (levelIdRaw) {
+      const level = await prisma.level.findUnique({ where: { id: levelIdRaw } });
+      if (!level || level.subjectId !== subjectId) {
+        redirect(backWithQuickParams({ err: "Invalid subject or level" }));
+      }
+      levelId = levelIdRaw;
+    }
+
+    const courseId = subject.courseId;
+    const activePkg = await prisma.coursePackage.findFirst({
+      where: {
+        studentId,
+        courseId,
+        status: "ACTIVE",
+        validFrom: { lte: startAt },
+        OR: [{ validTo: null }, { validTo: { gte: startAt } }],
+        AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+      },
+      select: { id: true },
+    });
+    if (!activePkg) {
+      redirect(backWithQuickParams({ err: "No active package for this course" }));
+    }
+
+    const cls = await getOrCreateOneOnOneClassForStudent({
+      teacherId,
       studentId,
       courseId,
-      status: "ACTIVE",
-      validFrom: { lte: startAt },
-      OR: [{ validTo: null }, { validTo: { gte: startAt } }],
-      AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
-    },
-    select: { id: true },
-  });
-  if (!activePkg) {
-    redirect(`/admin/students/${studentId}?err=No+active+package+for+this+course`);
-  }
-
-  const cls = await getOrCreateOneOnOneClassForStudent({
-    teacherId,
-    studentId,
-    courseId,
-    subjectId,
-    levelId,
-    campusId,
-    roomId,
-    ensureEnrollment: true,
-  });
-  if (!cls) {
-    redirect(`/admin/students/${studentId}?err=Invalid+subject+or+level`);
-  }
-
-  const dupSession = await prisma.session.findFirst({
-    where: { classId: cls.id, startAt, endAt },
-    select: { id: true },
-  });
-  if (!dupSession) {
-    await prisma.session.create({
-      data: { classId: cls.id, startAt, endAt, studentId },
+      subjectId,
+      levelId,
+      campusId,
+      roomId,
+      ensureEnrollment: true,
     });
+    if (!cls) {
+      redirect(backWithQuickParams({ err: "Invalid subject or level" }));
+    }
+
+    const dupSession = await prisma.session.findFirst({
+      where: { classId: cls.id, startAt, endAt },
+      select: { id: true },
+    });
+    if (!dupSession) {
+      await prisma.session.create({
+        data: { classId: cls.id, startAt, endAt, studentId },
+      });
+    }
+
+    // enrollment ensured by helper
+    const params = new URLSearchParams({
+      msg: "Scheduled",
+      quickSubjectId: subjectId,
+      quickLevelId: levelId ?? "",
+      quickStartAt: startAtStr,
+      quickDurationMin: String(durationMin),
+    });
+    if (month) params.set("month", month);
+    redirect(`/admin/students/${studentId}?${params.toString()}`);
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    console.error("Quick schedule failed", {
+      studentId,
+      teacherId,
+      subjectId,
+      levelIdRaw,
+      campusId,
+      roomIdRaw,
+      startAtStr,
+      durationMin,
+      error,
+    });
+    const message = error instanceof Error ? error.message : "Quick schedule failed";
+    redirect(backWithQuickParams({ err: message }));
   }
-
-  // enrollment ensured by helper
-
-  const params = new URLSearchParams({
-    msg: "Scheduled",
-    quickSubjectId: subjectId,
-    quickLevelId: levelId ?? "",
-    quickStartAt: startAtStr,
-    quickDurationMin: String(durationMin),
-  });
-  if (month) params.set("month", month);
-  redirect(`/admin/students/${studentId}?${params.toString()}`);
 }
 
 async function replaceSessionTeacherForStudent(studentId: string, formData: FormData) {
