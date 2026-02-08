@@ -130,9 +130,15 @@ export default function QuickScheduleModal({
 
   useEffect(() => {
     if (!courseId) return;
-    const first = subjects.find((s) => s.courseId === courseId);
-    if (first && first.id !== subjectId) setSubjectId(first.id);
-    if (!first) setSubjectId("");
+    const options = subjects.filter((s) => s.courseId === courseId);
+    if (options.length === 0) {
+      setSubjectId("");
+      return;
+    }
+    const existsInCourse = options.some((s) => s.id === subjectId);
+    if (!existsInCourse) {
+      setSubjectId(options[0]!.id);
+    }
   }, [courseId, subjects, subjectId]);
 
   useEffect(() => {
