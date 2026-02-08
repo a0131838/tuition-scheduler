@@ -5,6 +5,7 @@
     "scripts":  {
                     "dev":  "next dev",
                     "dev:reset":  "powershell -ExecutionPolicy Bypass -File ./scripts/dev-reset.ps1",
+                    "postinstall":  "prisma generate",
                     "build":  "next build",
                     "test:auth":  "tsx --test tests/route-guards.test.ts",
                     "start":  "next start",
