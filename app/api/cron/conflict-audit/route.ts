@@ -8,7 +8,9 @@ function isAuthorized(req: Request) {
   const url = new URL(req.url);
   const q = url.searchParams.get("secret") ?? "";
   const h = req.headers.get("x-cron-secret") ?? "";
-  return q === secret || h === secret;
+  const authorization = req.headers.get("authorization") ?? "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  return q === secret || h === secret || bearer === secret;
 }
 
 export async function GET(req: Request) {

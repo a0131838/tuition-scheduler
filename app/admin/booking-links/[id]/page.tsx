@@ -388,7 +388,7 @@ export default async function AdminBookingLinkDetailPage({
             copiedLabel={t(lang, "Copied", "已复制")}
           />
         </div>
-        <div><a href={`/admin/booking-links/${link.id}/export/pdf?month=${currentMonth}`}>{t(lang, "Export PDF", "导出PDF")}</a></div>
+        <div><a href={`/api/booking-links/${link.id}/export/pdf?month=${currentMonth}`}>{t(lang, "Export PDF", "导出PDF")}</a></div>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
