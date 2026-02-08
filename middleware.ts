@@ -19,12 +19,9 @@ function buildNextPath(pathname: string, search: string) {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-pathname", pathname);
-  const nextWithPath = () => NextResponse.next({ request: { headers: requestHeaders } });
 
-  if (!isProtectedPath(pathname)) return nextWithPath();
-  if (isPublicAuthPath(pathname)) return nextWithPath();
+  if (!isProtectedPath(pathname)) return NextResponse.next();
+  if (isPublicAuthPath(pathname)) return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (!token) {
@@ -34,7 +31,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return nextWithPath();
+  return NextResponse.next();
 }
 
 export const config = {
