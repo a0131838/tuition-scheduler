@@ -43,6 +43,9 @@ async function updateLanguage(formData: FormData) {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = resolvePathnameFromHeaders();
+  if (!pathname) {
+    return <>{children}</>;
+  }
   const isPublicAdminAuthPath =
     pathname === "/admin/login" || pathname === "/admin/setup" || pathname === "/admin/logout";
 
