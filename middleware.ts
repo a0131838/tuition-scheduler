@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { buildNextPath, isProtectedPath, isPublicAuthPath } from "./lib/route-guards";
 
 const SESSION_COOKIE = "ts_admin_session";
+const ADMIN_PREFIX = "/admin";
+const TEACHER_PREFIX = "/teacher";
+
+function isProtectedPath(pathname: string) {
+  return pathname.startsWith(ADMIN_PREFIX) || pathname.startsWith(TEACHER_PREFIX);
+}
+
+function isPublicAuthPath(pathname: string) {
+  return pathname === "/admin/login" || pathname === "/admin/setup" || pathname === "/admin/logout";
+}
+
+function buildNextPath(pathname: string, search: string) {
+  return `${pathname}${search || ""}`;
+}
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
