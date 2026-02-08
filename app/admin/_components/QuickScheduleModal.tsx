@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 type CourseOption = { id: string; name: string };
@@ -91,6 +92,8 @@ export default function QuickScheduleModal({
   openOnLoad: boolean;
   warning?: string;
 }) {
+  const router = useRouter();
+  const [isFinding, startFinding] = useTransition();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const courses = useMemo<CourseOption[]>(() => {
     const map = new Map<string, string>();
@@ -102,6 +105,8 @@ export default function QuickScheduleModal({
   const [levelId, setLevelId] = useState(quickLevelId || "");
   const [campusId, setCampusId] = useState(quickCampusId || "");
   const [roomId, setRoomId] = useState(quickRoomId || "");
+  const [startAt, setStartAt] = useState(quickStartAt || "");
+  const [durationMin, setDurationMin] = useState(String(quickDurationMin || 60));
   const campusIsOnline = useMemo(() => {
     if (!campusId) return false;
     return campuses.find((c) => c.id === campusId)?.isOnline ?? false;
@@ -141,10 +146,29 @@ export default function QuickScheduleModal({
     setLevelId(quickLevelId || "");
     setCampusId(quickCampusId || "");
     setRoomId(quickRoomId || "");
+    setStartAt(quickStartAt || "");
+    setDurationMin(String(quickDurationMin || 60));
     const quickCourseId = subjects.find((s) => s.id === quickSubjectId)?.courseId;
     const first = subjects.find((s) => s.courseId === (quickCourseId ?? courses[0]?.id ?? ""));
     setCourseId(first?.courseId ?? quickCourseId ?? courses[0]?.id ?? "");
-  }, [quickSubjectId, quickLevelId, quickCampusId, quickRoomId, subjects, courses]);
+  }, [quickSubjectId, quickLevelId, quickCampusId, quickRoomId, quickStartAt, quickDurationMin, subjects, courses]);
+
+  function submitFind(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    params.set("month", month);
+    params.set("quickOpen", "1");
+    if (courseId) params.set("quickCourseId", courseId);
+    if (subjectId) params.set("quickSubjectId", subjectId);
+    if (levelId) params.set("quickLevelId", levelId);
+    if (campusId) params.set("quickCampusId", campusId);
+    if (roomId) params.set("quickRoomId", roomId);
+    if (startAt) params.set("quickStartAt", startAt);
+    if (durationMin) params.set("quickDurationMin", durationMin);
+    startFinding(() => {
+      router.replace(`/admin/students/${studentId}?${params.toString()}`);
+    });
+  }
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -153,9 +177,7 @@ export default function QuickScheduleModal({
       </button>
       <dialog ref={dialogRef} style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd" }}>
         <h3 style={{ marginTop: 0 }}>{labels.title}</h3>
-        <form method="GET" action={`/admin/students/${studentId}`} style={{ display: "grid", gap: 10 }}>
-          <input type="hidden" name="month" value={month} />
-          <input type="hidden" name="quickOpen" value="1" />
+        <form onSubmit={submitFind} style={{ display: "grid", gap: 10 }}>
           <label>
             {labels.course}:
             <select
@@ -252,20 +274,20 @@ export default function QuickScheduleModal({
           <label>
             {labels.start}:
             <input
-              name="quickStartAt"
               type="datetime-local"
-              defaultValue={quickStartAt}
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
               style={{ marginLeft: 6 }}
             />
           </label>
           <label>
             {labels.duration}:
             <input
-              name="quickDurationMin"
               type="number"
               min={15}
               step={15}
-              defaultValue={String(quickDurationMin)}
+              value={durationMin}
+              onChange={(e) => setDurationMin(e.target.value)}
               style={{ marginLeft: 6, width: 120 }}
             />
           </label>
@@ -278,13 +300,15 @@ export default function QuickScheduleModal({
             >
               {labels.close}
             </button>
-            <button type="submit">{labels.find}</button>
+            <button type="submit" disabled={isFinding}>
+              {isFinding ? `${labels.find}...` : labels.find}
+            </button>
           </div>
         </form>
         <div style={{ marginTop: 12 }}>
           {warning ? (
             <NoticeBanner type="warn" title={labels.status} message={warning} />
-          ) : subjectId && campusId && (roomId || campusIsOnline) && quickStartAt ? (
+          ) : subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
             ) : (
@@ -313,8 +337,8 @@ export default function QuickScheduleModal({
                             <input type="hidden" name="levelId" value={levelId} />
                             <input type="hidden" name="campusId" value={campusId} />
                             <input type="hidden" name="roomId" value={roomId} />
-                            <input type="hidden" name="startAt" value={quickStartAt} />
-                            <input type="hidden" name="durationMin" value={String(quickDurationMin)} />
+                            <input type="hidden" name="startAt" value={startAt} />
+                            <input type="hidden" name="durationMin" value={durationMin} />
                             <button type="submit">{labels.schedule}</button>
                           </form>
                         ) : (
