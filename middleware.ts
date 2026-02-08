@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { buildNextPath, isProtectedPath, isPublicAuthPath } from "@/lib/route-guards";
+import { buildNextPath, isProtectedPath, isPublicAuthPath } from "./lib/route-guards";
 
 const SESSION_COOKIE = "ts_admin_session";
 
