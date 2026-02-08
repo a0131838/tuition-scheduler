@@ -4,6 +4,32 @@ import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
+function resolvePathnameFromHeaders() {
+  const h = headers();
+  const candidates = [
+    h.get("x-pathname"),
+    h.get("x-invoke-path"),
+    h.get("x-matched-path"),
+    h.get("next-url"),
+    h.get("x-url"),
+    h.get("referer"),
+  ].filter(Boolean) as string[];
+
+  for (const value of candidates) {
+    const raw = value.trim();
+    if (!raw) continue;
+    if (raw.startsWith("/")) {
+      return raw.split("?")[0];
+    }
+    try {
+      return new URL(raw).pathname;
+    } catch {
+      continue;
+    }
+  }
+  return "";
+}
+
 async function updateLanguage(formData: FormData) {
   "use server";
   const lang = String(formData.get("lang") ?? "BILINGUAL");
@@ -16,7 +42,7 @@ async function updateLanguage(formData: FormData) {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = headers().get("x-pathname") ?? "";
+  const pathname = resolvePathnameFromHeaders();
   const isPublicAdminAuthPath =
     pathname === "/admin/login" || pathname === "/admin/setup" || pathname === "/admin/logout";
 
