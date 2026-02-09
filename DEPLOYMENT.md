@@ -1,5 +1,13 @@
 # Tuition Scheduler Deployment Guide (Vercel + Neon)
 
+## Self-host Option (Your Own Server)
+- Chinese runbook: `docs/自有服务器部署指南.md`
+- Automation files:
+  - `ops/server/.deploy.env.example`
+  - `ops/server/run_remote.ps1`
+  - `ops/server/scripts/*.sh`
+  - `ops/server/templates/nginx.tuition-scheduler.conf`
+
 ## 1. Tech Stack (Current Project)
 - Frontend/Web: Next.js 14
 - ORM: Prisma
