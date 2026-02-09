@@ -6,7 +6,12 @@ import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
-import { composePackageNote, packageModeFromNote, stripGroupPackTag } from "@/lib/package-mode";
+import {
+  GROUP_PACK_TAG,
+  composePackageNote,
+  packageModeFromNote,
+  stripGroupPackTag,
+} from "@/lib/package-mode";
 
 const LOW_MINUTES = 120;
 const LOW_COUNTS = 3;
@@ -39,6 +44,29 @@ function fmtDateInput(d: Date | null) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
+}
+
+type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
+
+function modeKeyFromCreateType(typeRaw: string, type: string): PackageModeKey {
+  if (type === "MONTHLY") return "MONTHLY";
+  return typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
+}
+
+function modeKeyFromSaved(type: string, note: string | null): PackageModeKey {
+  if (type === "MONTHLY") return "MONTHLY";
+  return packageModeFromNote(note) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
+}
+
+function sameModeWhere(mode: PackageModeKey) {
+  if (mode === "MONTHLY") return { type: "MONTHLY" as const };
+  if (mode === "GROUP_COUNT") {
+    return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_TAG } };
+  }
+  return {
+    type: "HOURS" as const,
+    OR: [{ note: null }, { NOT: { note: { startsWith: GROUP_PACK_TAG } } }],
+  };
 }
 
 async function createPackage(formData: FormData) {
@@ -80,10 +108,12 @@ async function createPackage(formData: FormData) {
   }
 
   const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
+  const createMode = modeKeyFromCreateType(typeRaw, type);
   const overlap = await prisma.coursePackage.findFirst({
     where: {
       studentId,
       courseId,
+      ...sameModeWhere(createMode),
       status: "ACTIVE",
       validFrom: { lte: overlapCheckTo },
       OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
@@ -161,8 +191,9 @@ async function updatePackage(formData: FormData) {
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id },
-    select: { remainingMinutes: true, note: true },
+    select: { remainingMinutes: true, note: true, type: true, studentId: true, courseId: true },
   });
+  if (!pkg) redirect(`/admin/packages?err=Package+not+found`);
 
   const validFrom = parseDateStart(validFromStr);
   const validTo = validToStr ? parseDateEnd(validToStr) : null;
@@ -183,6 +214,25 @@ async function updatePackage(formData: FormData) {
     packageModeFromNote(pkg?.note ?? null) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES",
     noteRaw
   );
+  const updateMode = modeKeyFromSaved(pkg.type, note);
+  const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
+  if (status === "ACTIVE") {
+    const overlap = await prisma.coursePackage.findFirst({
+      where: {
+        id: { not: id },
+        studentId: pkg.studentId,
+        courseId: pkg.courseId,
+        ...sameModeWhere(updateMode),
+        status: "ACTIVE",
+        validFrom: { lte: overlapCheckTo },
+        OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
+      },
+      select: { id: true },
+    });
+    if (overlap) {
+      redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists+for+same+mode`);
+    }
+  }
 
   await prisma.coursePackage.update({
     where: { id },
