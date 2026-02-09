@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 ENV_FILE="${1:-ops/server/.deploy.env}"
@@ -50,3 +50,4 @@ pm2 start npm --name "$APP_NAME" -- start -- -p "$APP_PORT"
 pm2 save
 
 echo "Deploy done: $APP_NAME on port $APP_PORT"
+
