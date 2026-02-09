@@ -1,5 +1,5 @@
 ﻿import { prisma } from "@/lib/prisma";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { createSession, isManagerUser, verifyPassword } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { sanitizeNextPath } from "@/lib/route-guards";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
@@ -26,11 +26,14 @@ async function login(formData: FormData) {
     redirect("/admin/login?err=Invalid+credentials");
   }
 
+  const canEnterAdmin = user.role === "ADMIN" || (await isManagerUser({ role: user.role as any, email: user.email }));
+
   await createSession(user.id);
   const safeNext = sanitizeNextPath(next);
   if (safeNext) {
     redirect(safeNext);
   }
+
   if (portal === "teacher") {
     if (user.role === "TEACHER") {
       redirect("/teacher");
@@ -40,7 +43,18 @@ async function login(formData: FormData) {
     }
     redirect("/admin/login?err=This+account+cannot+enter+Teacher+Portal");
   }
-  if (user.role === "TEACHER") {
+
+  if (portal === "admin") {
+    if (canEnterAdmin) {
+      redirect("/admin");
+    }
+    if (user.role === "TEACHER") {
+      redirect("/teacher");
+    }
+    redirect("/admin/login?err=This+account+cannot+enter+Admin+Portal");
+  }
+
+  if (user.role === "TEACHER" && !canEnterAdmin) {
     redirect("/teacher");
   }
   redirect("/admin");
@@ -173,5 +187,3 @@ export default async function AdminLoginPage({
     </main>
   );
 }
-
-

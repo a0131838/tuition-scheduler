@@ -45,9 +45,10 @@ export async function getManagerEmailSet() {
 }
 
 export async function isManagerUser(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
-  if (!user || user.role !== "ADMIN") return false;
+  if (!user) return false;
+  if (user.role !== "ADMIN" && user.role !== "TEACHER") return false;
   const set = await getManagerEmailSet();
-  if (set.size === 0) return true;
+  if (set.size === 0) return user.role === "ADMIN";
   return set.has(user.email.toLowerCase());
 }
 
@@ -123,9 +124,14 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 export async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user) redirect("/admin/login");
-  if (user.role !== "ADMIN") redirect("/admin/login");
-  return user;
+  if (!user) {
+    redirect("/admin/login");
+    throw new Error("unreachable");
+  }
+  if (user.role === "ADMIN") return user;
+  if (await isManagerUser(user)) return user;
+  redirect("/admin/login");
+  throw new Error("unreachable");
 }
 
 export async function requireManager() {
