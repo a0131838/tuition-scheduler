@@ -23,6 +23,8 @@ fi
 cd "$APP_DIR"
 git fetch origin
 git checkout "$BRANCH"
+# Servers sometimes end up with CRLF/local edits. Reset to the remote branch to keep deploys repeatable.
+git reset --hard "origin/$BRANCH"
 git pull origin "$BRANCH"
 
 cat > .env <<EOF
