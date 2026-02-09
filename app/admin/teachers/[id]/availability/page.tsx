@@ -2,8 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
+import { getLang, t } from "@/lib/i18n";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = [
+  { en: "Sun", zh: "周日" },
+  { en: "Mon", zh: "周一" },
+  { en: "Tue", zh: "周二" },
+  { en: "Wed", zh: "周三" },
+  { en: "Thu", zh: "周四" },
+  { en: "Fri", zh: "周五" },
+  { en: "Sat", zh: "周六" },
+];
+const AVAIL_MIN_TIME = "08:00";
+const AVAIL_MAX_TIME = "22:50";
+const AVAIL_MIN_MIN = 8 * 60;
+const AVAIL_MAX_MIN = 22 * 60 + 50;
 
 function toMin(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -35,6 +48,10 @@ function monthKey(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
+}
+
+function inAllowedWindow(startMin: number, endMin: number) {
+  return startMin >= AVAIL_MIN_MIN && endMin <= AVAIL_MAX_MIN;
 }
 
 function buildMonthGrid(year: number, monthIndex: number) {
@@ -81,6 +98,9 @@ async function addDateAvailability(teacherId: string, formData: FormData) {
   if (endMin <= startMin) {
     redirect(`/admin/teachers/${teacherId}/availability?month=${month}&err=End+must+be+after+start`);
   }
+  if (!inAllowedWindow(startMin, endMin)) {
+    redirect(`/admin/teachers/${teacherId}/availability?month=${month}&err=Time+must+be+between+${AVAIL_MIN_TIME}+and+${AVAIL_MAX_TIME}`);
+  }
 
   await prisma.teacherAvailabilityDate.create({
     data: { teacherId, date, startMin, endMin },
@@ -112,6 +132,9 @@ async function addWeeklyAvailability(teacherId: string, formData: FormData) {
   const endMin = toMin(end);
   if (endMin <= startMin) {
     redirect(`/admin/teachers/${teacherId}/availability?month=${month}&err=End+must+be+after+start`);
+  }
+  if (!inAllowedWindow(startMin, endMin)) {
+    redirect(`/admin/teachers/${teacherId}/availability?month=${month}&err=Time+must+be+between+${AVAIL_MIN_TIME}+and+${AVAIL_MAX_TIME}`);
   }
 
   await prisma.teacherAvailability.create({
@@ -189,9 +212,10 @@ export default async function AvailabilityPage({
   params: { id: string };
   searchParams?: { month?: string; err?: string; msg?: string };
 }) {
+  const lang = await getLang();
   const teacherId = params.id;
   const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } });
-  if (!teacher) return <div>Teacher not found.</div>;
+  if (!teacher) return <div>{t(lang, "Teacher not found.", "未找到老师。")}</div>;
 
   const now = new Date();
   const parsed = parseMonth(searchParams?.month) ?? { year: now.getFullYear(), monthIndex: now.getMonth() };
@@ -226,24 +250,24 @@ export default async function AvailabilityPage({
 
   return (
     <div>
-      <h2>Availability - {teacher.name}</h2>
+      <h2>{t(lang, "Availability", "可用时间")} - {teacher.name}</h2>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>?? Prev</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${prevMonth}`}>{t(lang, "Prev", "上个月")}</a>
         <div style={{ fontWeight: 700 }}>{month}</div>
-        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>Next ??</a>
+        <a href={`/admin/teachers/${teacherId}/availability?month=${nextMonth}`}>{t(lang, "Next", "下个月")}</a>
       </div>
 
-      {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
-      {msg ? <NoticeBanner type="success" title="OK" message={msg} /> : null}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <h3 style={{ marginTop: 18 }}>Monthly Availability (by date)</h3>
+      <h3 style={{ marginTop: 18 }}>{t(lang, "Monthly Availability (by date)", "月度可用时间（按日期）")}</h3>
 
       <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
-            {WEEKDAYS.map((d) => (
-              <th key={d} align="left">{d}</th>
+            {WEEKDAYS.map((d, i) => (
+              <th key={i} align="left">{t(lang, d.en, d.zh)}</th>
             ))}
           </tr>
         </thead>
@@ -260,7 +284,7 @@ export default async function AvailabilityPage({
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
 
                     {list.length === 0 ? (
-                      <div style={{ color: "#999", fontSize: 12 }}>No slots</div>
+                      <div style={{ color: "#999", fontSize: 12 }}>{t(lang, "No slots", "无时段")}</div>
                     ) : (
                       <div style={{ display: "grid", gap: 4, marginBottom: 6 }}>
                         {list.map((a) => (
@@ -268,7 +292,7 @@ export default async function AvailabilityPage({
                             <span style={{ fontFamily: "monospace" }}>{fromMin(a.startMin)}-{fromMin(a.endMin)}</span>
                             <input type="hidden" name="id" value={a.id} />
                             <input type="hidden" name="month" value={month} />
-                            <button type="submit">Delete</button>
+                            <button type="submit">{t(lang, "Delete", "删除")}</button>
                           </form>
                         ))}
                       </div>
@@ -278,10 +302,10 @@ export default async function AvailabilityPage({
                       <input type="hidden" name="date" value={key} />
                       <input type="hidden" name="month" value={month} />
                       <div style={{ display: "flex", gap: 6 }}>
-                        <BlurTimeInput name="start" step={900} defaultValue="18:00" />
-                        <BlurTimeInput name="end" step={900} defaultValue="20:00" />
+                        <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={900} defaultValue="18:00" />
+                        <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={900} defaultValue="20:00" />
                       </div>
-                      <button type="submit">Add</button>
+                      <button type="submit">{t(lang, "Add", "添加")}</button>
                     </form>
                   </td>
                 );
@@ -291,46 +315,46 @@ export default async function AvailabilityPage({
         </tbody>
       </table>
 
-      <h3 style={{ marginTop: 24 }}>Weekly Template (for bulk month generation)</h3>
+      <h3 style={{ marginTop: 24 }}>{t(lang, "Weekly Template (for bulk month generation)", "每周模板（用于批量生成整月）")}</h3>
       <form action={addWeeklyAvailability.bind(null, teacherId)} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <input type="hidden" name="month" value={month} />
         <select name="weekday" defaultValue="1">
           {WEEKDAYS.map((w, i) => (
-            <option key={i} value={i}>{w}({i})</option>
+            <option key={i} value={i}>{t(lang, w.en, w.zh)}({i})</option>
           ))}
         </select>
-        <BlurTimeInput name="start" step={900} defaultValue="18:00" />
-        <BlurTimeInput name="end" step={900} defaultValue="20:00" />
-        <button type="submit">Add Weekly</button>
+        <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={900} defaultValue="18:00" />
+        <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={900} defaultValue="20:00" />
+        <button type="submit">{t(lang, "Add Weekly", "添加每周模板")}</button>
       </form>
 
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
-            <th align="left">Weekday</th>
-            <th align="left">Start</th>
-            <th align="left">End</th>
-            <th align="left">Action</th>
+            <th align="left">{t(lang, "Weekday", "星期")}</th>
+            <th align="left">{t(lang, "Start", "开始")}</th>
+            <th align="left">{t(lang, "End", "结束")}</th>
+            <th align="left">{t(lang, "Action", "操作")}</th>
           </tr>
         </thead>
         <tbody>
           {weeklyAvails.map((a) => (
             <tr key={a.id} style={{ borderTop: "1px solid #eee" }}>
-              <td>{WEEKDAYS[a.weekday] ?? a.weekday}</td>
+              <td>{WEEKDAYS[a.weekday] ? t(lang, WEEKDAYS[a.weekday].en, WEEKDAYS[a.weekday].zh) : a.weekday}</td>
               <td>{fromMin(a.startMin)}</td>
               <td>{fromMin(a.endMin)}</td>
               <td>
                 <form action={deleteWeeklyAvailability.bind(null, teacherId)}>
                   <input type="hidden" name="id" value={a.id} />
                   <input type="hidden" name="month" value={month} />
-                  <button type="submit">Delete</button>
+                  <button type="submit">{t(lang, "Delete", "删除")}</button>
                 </form>
               </td>
             </tr>
           ))}
           {weeklyAvails.length === 0 && (
             <tr>
-              <td colSpan={4}>No weekly template yet.</td>
+              <td colSpan={4}>{t(lang, "No weekly template yet.", "暂无每周模板。")}</td>
             </tr>
           )}
         </tbody>
@@ -338,7 +362,7 @@ export default async function AvailabilityPage({
 
       <form action={generateMonthFromWeekly.bind(null, teacherId)}>
         <input type="hidden" name="month" value={month} />
-        <button type="submit">Generate This Month From Weekly Template</button>
+        <button type="submit">{t(lang, "Generate This Month From Weekly Template", "按每周模板生成本月")}</button>
       </form>
     </div>
   );

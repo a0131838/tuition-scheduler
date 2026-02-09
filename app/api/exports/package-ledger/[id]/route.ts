@@ -1,10 +1,10 @@
 ﻿import { prisma } from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
-import fs from "fs";
 import path from "path";
 import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -17,8 +17,6 @@ const COMPANY_LINES = [
   "Company Reg No. 202303312G",
 ];
 const ORANGE = "#d97706";
-const EN_BOLD_FONT = "C:\\Windows\\Fonts\\arialbd.ttf";
-const CH_FONT = "C:\\Windows\\Fonts\\simhei.ttf";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(min / 60);
@@ -44,35 +42,9 @@ function formatDateTime(d: Date) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-function setupFont(doc: PDFDoc) {
-  const candidates = [
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "C:\\Windows\\Fonts\\simsunb.ttf",
-    "C:\\Windows\\Fonts\\arial.ttf",
-  ];
-  const found = candidates.find((p) => fs.existsSync(p));
-  if (found) {
-    doc.font(found);
-    return;
-  }
-  doc.font("Helvetica");
-}
-
-function setEnglishBoldFont(doc: PDFDoc) {
-  if (fs.existsSync(EN_BOLD_FONT)) {
-    doc.font(EN_BOLD_FONT);
-    return;
-  }
-  doc.font("Helvetica");
-}
-
-function setChineseFont(doc: PDFDoc) {
-  if (fs.existsSync(CH_FONT)) {
-    doc.font(CH_FONT);
-    return;
-  }
-  setupFont(doc);
-}
+const setupFont = setPdfFont;
+const setEnglishBoldFont = setPdfBoldFont;
+const setChineseFont = setPdfFont;
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();

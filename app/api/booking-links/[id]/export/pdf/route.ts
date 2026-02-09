@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { setPdfFont } from "@/lib/pdf-font";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
@@ -68,6 +69,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 28 });
+  setPdfFont(doc);
   doc.fontSize(14).text(link.title || "Student Booking Availability Calendar");
   doc.moveDown(0.2);
   doc.fontSize(9).text(`Student: ${link.student.name}`);

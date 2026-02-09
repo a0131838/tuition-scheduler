@@ -8,6 +8,7 @@ import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
 import NoticeBanner from "../../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -578,10 +579,6 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     // enrollment ensured by helper
     const params = new URLSearchParams({
       msg: "Scheduled",
-      quickSubjectId: subjectId,
-      quickLevelId: levelId ?? "",
-      quickStartAt: startAtStr,
-      quickDurationMin: String(durationMin),
     });
     if (month) params.set("month", month);
     redirect(`/admin/students/${studentId}?${params.toString()}`);
@@ -598,7 +595,11 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       durationMin,
       error,
     });
-    const message = error instanceof Error ? error.message : "Quick schedule failed";
+    const raw = error instanceof Error ? error.message : "Quick schedule failed";
+    const message =
+      raw === "COURSE_ENROLLMENT_CONFLICT"
+        ? courseEnrollmentConflictMessage(await getLang())
+        : raw;
     redirect(backWithQuickParams({ err: message }));
   }
 }
@@ -1073,6 +1074,14 @@ export default async function StudentDetailPage({
   const deducted30Map = new Map(
     deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
   );
+  const purchasedCourseIds = new Set(
+    packages
+      .map((p) => p.courseId)
+      .filter((id): id is string => Boolean(id))
+  );
+  const quickSubjects = subjects.filter((s) => purchasedCourseIds.has(s.courseId));
+  const quickSubjectIds = new Set(quickSubjects.map((s) => s.id));
+  const quickLevels = levels.filter((l) => quickSubjectIds.has(l.subjectId));
 
   const appointmentsByDay = new Map<string, typeof monthAppointments>();
   for (const appt of monthAppointments) {
@@ -1958,13 +1967,13 @@ export default async function StudentDetailPage({
           quickCampusId={quickCampusId}
           quickRoomId={quickRoomId}
           openOnLoad={quickOpen}
-          subjects={subjects.map((s) => ({
+          subjects={quickSubjects.map((s) => ({
             id: s.id,
             name: s.name,
             courseName: s.course.name,
             courseId: s.courseId,
           }))}
-          levels={levels.map((l) => ({
+          levels={quickLevels.map((l) => ({
             id: l.id,
             name: l.name,
             subjectId: l.subjectId,

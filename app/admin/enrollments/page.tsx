@@ -7,6 +7,11 @@ import EnrollmentExpandCollapse from "../_components/EnrollmentExpandCollapse";
 import EnrollmentFilterForm from "../_components/EnrollmentFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
 import { isGroupPackNote } from "@/lib/package-mode";
+import {
+  courseEnrollmentConflictMessage,
+  findStudentCourseEnrollment,
+  formatEnrollmentConflict,
+} from "@/lib/enrollment-conflict";
 
 function classLabel(cls: {
   course: { name: string };
@@ -100,6 +105,16 @@ async function addEnrollment(formData: FormData) {
     redirect("/admin/enrollments?err=Already+enrolled&keep=1");
   }
 
+  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId);
+  if (courseConflict) {
+    const lang = await getLang();
+    redirect(
+      `/admin/enrollments?err=${encodeURIComponent(
+        courseEnrollmentConflictMessage(lang, formatEnrollmentConflict(courseConflict))
+      )}&keep=1`
+    );
+  }
+
   await prisma.enrollment.create({
     data: { classId, studentId },
   });
@@ -136,11 +151,28 @@ async function restoreEnrollment(formData: FormData) {
     redirect("/admin/enrollments?err=Missing+classId+or+studentId&keep=1");
   }
 
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { courseId: true },
+  });
+  if (!cls) {
+    redirect("/admin/enrollments?err=Class+not+found&keep=1");
+  }
+
   const exists = await prisma.enrollment.findFirst({
     where: { classId, studentId },
     select: { id: true },
   });
   if (!exists) {
+    const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId);
+    if (courseConflict) {
+      const lang = await getLang();
+      redirect(
+        `/admin/enrollments?err=${encodeURIComponent(
+          courseEnrollmentConflictMessage(lang, formatEnrollmentConflict(courseConflict))
+        )}&keep=1`
+      );
+    }
     await prisma.enrollment.create({
       data: { classId, studentId },
     });

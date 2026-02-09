@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { findStudentCourseEnrollment } from "@/lib/enrollment-conflict";
 
 type OneOnOneClassInput = {
   teacherId: string;
@@ -73,6 +74,23 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
       courseId = subject.courseId;
     } else {
       return null;
+    }
+  }
+
+  if (ensureEnrollment) {
+    const existingCourseEnrollment = await findStudentCourseEnrollment(studentId, courseId);
+    if (existingCourseEnrollment) {
+      const existingClass = await prisma.class.findUnique({
+        where: { id: existingCourseEnrollment.classId },
+      });
+      if (existingClass) {
+        const subjectMismatch = subjectId != null && existingClass.subjectId !== subjectId;
+        const levelMismatch = levelId != null && existingClass.levelId !== levelId;
+        if (existingClass.capacity !== 1 || subjectMismatch || levelMismatch) {
+          throw new Error("COURSE_ENROLLMENT_CONFLICT");
+        }
+        return existingClass;
+      }
     }
   }
 

@@ -107,6 +107,30 @@ export default function QuickScheduleModal({
   const [roomId, setRoomId] = useState(quickRoomId || "");
   const [startAt, setStartAt] = useState(quickStartAt || "");
   const [durationMin, setDurationMin] = useState(String(quickDurationMin || 60));
+  const baseHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (month) params.set("month", month);
+    const q = params.toString();
+    return q ? `/admin/students/${studentId}?${q}` : `/admin/students/${studentId}`;
+  }, [studentId, month]);
+  const resetFormState = () => {
+    const firstCourseId = courses[0]?.id ?? "";
+    const firstSubjectId = subjects.find((s) => !firstCourseId || s.courseId === firstCourseId)?.id ?? "";
+    setCourseId(firstCourseId);
+    setSubjectId(firstSubjectId);
+    setLevelId("");
+    setCampusId("");
+    setRoomId("");
+    setStartAt("");
+    setDurationMin("60");
+  };
+  const closeAndClear = () => {
+    dialogRef.current?.close();
+    resetFormState();
+    startFinding(() => {
+      router.replace(baseHref);
+    });
+  };
   const campusIsOnline = useMemo(() => {
     if (!campusId) return false;
     return campuses.find((c) => c.id === campusId)?.isOnline ?? false;
@@ -301,7 +325,7 @@ export default function QuickScheduleModal({
             <button
               type="button"
               onClick={() => {
-                dialogRef.current?.close();
+                closeAndClear();
               }}
             >
               {labels.close}
@@ -345,7 +369,14 @@ export default function QuickScheduleModal({
                             <input type="hidden" name="roomId" value={roomId} />
                             <input type="hidden" name="startAt" value={startAt} />
                             <input type="hidden" name="durationMin" value={durationMin} />
-                            <button type="submit">{labels.schedule}</button>
+                            <button
+                              type="submit"
+                              onClick={() => {
+                                dialogRef.current?.close();
+                              }}
+                            >
+                              {labels.schedule}
+                            </button>
                           </form>
                         ) : (
                           "-"

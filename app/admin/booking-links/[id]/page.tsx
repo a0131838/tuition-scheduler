@@ -5,6 +5,7 @@ import { getLang, t } from "@/lib/i18n";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
 import CopyTextButton from "../../_components/CopyTextButton";
+import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -224,14 +225,24 @@ async function approveRequest(linkId: string, requestId: string, formData: FormD
       redirect(`/admin/booking-links/${linkId}?err=No+campus+found+for+auto+class+creation`);
     }
 
-    const created = await getOrCreateOneOnOneClassForStudent({
-      teacherId: req.teacherId,
-      studentId: req.studentId,
-      courseId,
-      campusId,
-      roomId: null,
-      ensureEnrollment: true,
-    });
+    let created = null;
+    try {
+      created = await getOrCreateOneOnOneClassForStudent({
+        teacherId: req.teacherId,
+        studentId: req.studentId,
+        courseId,
+        campusId,
+        roomId: null,
+        ensureEnrollment: true,
+      });
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : "Failed to create 1-on-1 class";
+      const message =
+        raw === "COURSE_ENROLLMENT_CONFLICT"
+          ? courseEnrollmentConflictMessage(await getLang())
+          : raw;
+      redirect(`/admin/booking-links/${linkId}?err=${encodeURIComponent(message)}`);
+    }
     if (!created) {
       redirect(`/admin/booking-links/${linkId}?err=Failed+to+create+1-on-1+class`);
     }

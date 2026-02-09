@@ -1,26 +1,11 @@
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
-import fs from "fs";
+import { setPdfFont } from "@/lib/pdf-font";
 import { getLang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { choose, fmtYMD, loadMonthlyScheduleData, safeName } from "../../_lib";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
-
-function setupFont(doc: PDFDoc) {
-  const candidates = [
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "C:\\Windows\\Fonts\\simsun.ttc",
-    "C:\\Windows\\Fonts\\msyh.ttc",
-    "C:\\Windows\\Fonts\\arial.ttf",
-  ];
-  const found = candidates.find((p) => fs.existsSync(p));
-  if (found) {
-    doc.font(found);
-    return;
-  }
-  doc.font("Helvetica");
-}
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -45,7 +30,7 @@ export async function GET(req: Request) {
   if (!data) return new Response("Invalid month format. Use YYYY-MM.", { status: 400 });
 
   const doc = new PDFDocument({ size: "A4", margin: 36 });
-  setupFont(doc);
+  setPdfFont(doc);
   doc.fontSize(14).text(choose(lang, "Monthly Schedule Calendar", "\u6708\u8bfe\u8868\u603b\u89c8"));
   doc.moveDown(0.3);
   doc.fontSize(10).text(`${choose(lang, "Month", "\u6708\u4efd")}: ${month}`);
@@ -67,7 +52,7 @@ export async function GET(req: Request) {
     for (const day of keys) {
       if (doc.y > 760) {
         doc.addPage();
-        setupFont(doc);
+        setPdfFont(doc);
       }
       doc.fontSize(11).fillColor("#111111").text(day);
       doc.moveDown(0.2);
@@ -75,7 +60,7 @@ export async function GET(req: Request) {
       for (const s of list) {
         if (doc.y > 780) {
           doc.addPage();
-          setupFont(doc);
+          setPdfFont(doc);
         }
         const teacherName = s.teacher?.name ?? s.class.teacher.name;
         const students = s.class.enrollments.map((e) => e.student.name).filter(Boolean).join(", ");

@@ -1,33 +1,10 @@
 ﻿import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { setPdfFont } from "@/lib/pdf-font";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
-import fs from "fs";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
-
-function setupFont(doc: PDFDoc) {
-  const candidates = [
-    "C:\\Windows\\Fonts\\msyh.ttf",
-    "C:\\Windows\\Fonts\\msyhbd.ttf",
-    "C:\\Windows\\Fonts\\msyh.ttc",
-    "C:\\Windows\\Fonts\\msyhbd.ttc",
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "C:\\Windows\\Fonts\\simsun.ttf",
-    "C:\\Windows\\Fonts\\simsun.ttc",
-    "C:\\Windows\\Fonts\\arial.ttf",
-  ];
-  for (const p of candidates) {
-    if (!fs.existsSync(p)) continue;
-    try {
-      doc.font(p);
-      return;
-    } catch {
-      // continue
-    }
-  }
-  doc.font("Helvetica");
-}
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -78,7 +55,7 @@ function drawBadge(doc: PDFDoc, text: string, x: number, y: number) {
 }
 
 function drawTeacherCardPage(doc: PDFDoc, teacher: any) {
-  setupFont(doc);
+  setPdfFont(doc);
   const pageW = doc.page.width;
   const pageH = doc.page.height;
   const leftW = 248;

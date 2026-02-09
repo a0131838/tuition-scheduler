@@ -1,8 +1,8 @@
 ﻿import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { setPdfFont } from "@/lib/pdf-font";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
-import fs from "fs";
 import path from "path";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
@@ -16,29 +16,6 @@ const COMPANY_LINES = [
   "Company Reg No. 202303312G",
 ];
 const ORANGE = "#d97706";
-
-function setupFont(doc: PDFDoc) {
-  const candidates = [
-    "C:\\Windows\\Fonts\\msyh.ttf",
-    "C:\\Windows\\Fonts\\msyhbd.ttf",
-    "C:\\Windows\\Fonts\\msyh.ttc",
-    "C:\\Windows\\Fonts\\msyhbd.ttc",
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "C:\\Windows\\Fonts\\simsun.ttf",
-    "C:\\Windows\\Fonts\\simsun.ttc",
-    "C:\\Windows\\Fonts\\arial.ttf",
-  ];
-  for (const p of candidates) {
-    if (!fs.existsSync(p)) continue;
-    try {
-      doc.font(p);
-      return;
-    } catch {
-      // continue
-    }
-  }
-  doc.font("Helvetica");
-}
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -104,7 +81,7 @@ function drawCompanyHeader(doc: PDFDoc) {
 }
 
 function drawHeader(doc: PDFDoc, title: string) {
-  setupFont(doc);
+  setPdfFont(doc);
   drawCompanyHeader(doc);
   doc.fillColor(ORANGE).fontSize(16).text(title);
   doc.fillColor("#666").fontSize(9);
@@ -133,7 +110,7 @@ function drawClassSection(doc: PDFDoc, cls: any, students: string[]) {
   doc.rect(startX, doc.y, colNo + colName, rowH).fill("#f3f4f6");
   doc.fillColor("#111").fontSize(10);
   doc.text("#", startX + 6, doc.y + 4, { width: colNo - 8 });
-  doc.text("Student / 瀛︾敓", startX + colNo, doc.y + 4, { width: colName - 8 });
+  doc.text("Student / 学生", startX + colNo, doc.y + 4, { width: colName - 8 });
   doc.moveDown();
 
   if (students.length === 0) {

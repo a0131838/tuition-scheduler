@@ -2,6 +2,9 @@
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["pdfkit"],
+    outputFileTracingIncludes: {
+      "/*": ["./fonts/**/*"],
+    },
   },
 };
 

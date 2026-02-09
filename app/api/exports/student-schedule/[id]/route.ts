@@ -1,11 +1,11 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
-import fs from "fs";
 import path from "path";
 
 const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
@@ -17,38 +17,10 @@ const COMPANY_LINES = [
   "Company Reg No. 202303312G",
 ];
 const ORANGE = "#d97706";
-const EN_BOLD_FONT = "C:\\Windows\\Fonts\\arialbd.ttf";
-const CH_FONT = "C:\\Windows\\Fonts\\simhei.ttf";
 
-function setupFont(doc: PDFDoc) {
-  const candidates = [
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "C:\\Windows\\Fonts\\simsunb.ttf",
-    "C:\\Windows\\Fonts\\arial.ttf",
-  ];
-  const found = candidates.find((p) => fs.existsSync(p));
-  if (found) {
-    doc.font(found);
-    return;
-  }
-  doc.font("Helvetica");
-}
-
-function setEnglishBoldFont(doc: PDFDoc) {
-  if (fs.existsSync(EN_BOLD_FONT)) {
-    doc.font(EN_BOLD_FONT);
-    return;
-  }
-  doc.font("Helvetica");
-}
-
-function setChineseFont(doc: PDFDoc) {
-  if (fs.existsSync(CH_FONT)) {
-    doc.font(CH_FONT);
-    return;
-  }
-  setupFont(doc);
-}
+const setupFont = setPdfFont;
+const setEnglishBoldFont = setPdfBoldFont;
+const setChineseFont = setPdfFont;
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -307,7 +279,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return new Response("Invalid month", { status: 400 });
   }
   const studentId = params.id;
-  const lang = await getLang();
+  let lang = await getLang();
 
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -351,6 +323,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
   setupFont(doc);
+  try {
+    // If current font cannot encode Chinese, force EN output to keep export usable.
+    doc.widthOfString("课");
+  } catch {
+    lang = "EN";
+    setupFont(doc);
+  }
   doc.lineGap(2);
 
   if (year && month) {

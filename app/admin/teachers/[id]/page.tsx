@@ -11,6 +11,7 @@ import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import OneOnOneTemplateForm from "../../_components/OneOnOneTemplateForm";
 import NoticeBanner from "../../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -258,15 +259,25 @@ async function createTemplate(teacherId: string, formData: FormData) {
       redirect(`/admin/teachers/${teacherId}?err=Room+not+in+this+campus`);
     }
   }
-  const cls = await getOrCreateOneOnOneClassForStudent({
-    teacherId,
-    studentId,
-    subjectId,
-    levelId,
-    campusId,
-    roomId: roomIdRaw || null,
-    ensureEnrollment: true,
-  });
+  let cls = null;
+  try {
+    cls = await getOrCreateOneOnOneClassForStudent({
+      teacherId,
+      studentId,
+      subjectId,
+      levelId,
+      campusId,
+      roomId: roomIdRaw || null,
+      ensureEnrollment: true,
+    });
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : "Failed to create one-on-one class";
+    const message =
+      raw === "COURSE_ENROLLMENT_CONFLICT"
+        ? courseEnrollmentConflictMessage(await getLang())
+        : raw;
+    redirect(`/admin/teachers/${teacherId}?err=${encodeURIComponent(message)}`);
+  }
   if (!cls) {
     redirect(`/admin/teachers/${teacherId}?err=Invalid+subject+or+level`);
   }
