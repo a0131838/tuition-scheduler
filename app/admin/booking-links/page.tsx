@@ -183,7 +183,38 @@ export default async function AdminBookingLinksPage({
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Create Link", "创建链接")} title={t(lang, "Create Link", "创建链接")} closeOnSubmit>
-          <BookingLinkCreateForm action={createBookingLink} students={studentOptions} teachers={teacherOptions} />
+          <BookingLinkCreateForm
+            action={createBookingLink}
+            students={studentOptions}
+            teachers={teacherOptions}
+            labels={{
+              student: t(lang, "Student", "学生"),
+              startDate: t(lang, "Start Date", "开始日期"),
+              endDate: t(lang, "End Date", "结束日期"),
+              durationMin: t(lang, "Duration (min)", "时长(分钟)"),
+              slotStepMin: t(lang, "Slot Step (min)", "起始间隔(分钟)"),
+              expiresAt: t(lang, "Expires At", "失效时间"),
+              titleOptional: t(lang, "Title (optional)", "标题(可选)"),
+              noteOptional: t(lang, "Note (optional)", "备注(可选)"),
+              teacherHint: t(
+                lang,
+                "Teachers (only those matching student's purchased courses)",
+                "老师（仅显示可教该学生已购课程）"
+              ),
+              studentCoursePrefix: t(lang, "Student purchased courses", "学生已购课程"),
+              none: t(lang, "None", "无"),
+              pickStudentFirst: t(lang, "Please select student first, then matching teachers will appear", "先选择学生，再显示可匹配老师"),
+              searchTeacherOrCourse: t(lang, "Search teacher or course", "搜索老师或课程"),
+              selectFiltered: t(lang, "Select filtered", "勾选当前筛选"),
+              clearFiltered: t(lang, "Clear filtered", "取消当前筛选"),
+              candidateStats: t(lang, "Available", "可选"),
+              matchedStats: t(lang, "Matched", "匹配"),
+              selectedStats: t(lang, "Selected", "已选"),
+              pleasePickStudent: t(lang, "Please select student first", "请先选择学生"),
+              noMatchedTeachers: t(lang, "No matched teachers", "没有可匹配老师"),
+              createLink: t(lang, "Create Link", "创建链接"),
+            }}
+          />
         </SimpleModal>
       </div>
 

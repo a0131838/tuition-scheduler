@@ -20,10 +20,56 @@ export default function BookingLinkCreateForm({
   action,
   students,
   teachers,
+  labels = {
+    student: "Student / 学生",
+    startDate: "Start Date / 开始日期",
+    endDate: "End Date / 结束日期",
+    durationMin: "Duration (min) / 时长(分钟)",
+    slotStepMin: "Slot Step (min) / 起始间隔(分钟)",
+    expiresAt: "Expires At / 失效时间",
+    titleOptional: "Title (optional) / 标题(可选)",
+    noteOptional: "Note (optional) / 备注(可选)",
+    teacherHint: "Teachers (only those matching student's purchased courses) / 老师（仅显示可教该学生已购课程）",
+    studentCoursePrefix: "Student purchased courses / 学生已购课程",
+    none: "None / 无",
+    pickStudentFirst: "Please select student first, then matching teachers will appear / 先选择学生，再显示可匹配老师",
+    searchTeacherOrCourse: "Search teacher or course / 搜索老师或课程",
+    selectFiltered: "Select filtered / 勾选当前筛选",
+    clearFiltered: "Clear filtered / 取消当前筛选",
+    candidateStats: "Available",
+    matchedStats: "Matched",
+    selectedStats: "Selected",
+    pleasePickStudent: "Please select student first / 请先选择学生",
+    noMatchedTeachers: "No matched teachers / 没有可匹配老师",
+    createLink: "Create Link / 创建链接",
+  },
 }: {
   action: (formData: FormData) => Promise<void>;
   students: StudentOption[];
   teachers: TeacherOption[];
+  labels?: {
+    student: string;
+    startDate: string;
+    endDate: string;
+    durationMin: string;
+    slotStepMin: string;
+    expiresAt: string;
+    titleOptional: string;
+    noteOptional: string;
+    teacherHint: string;
+    studentCoursePrefix: string;
+    none: string;
+    pickStudentFirst: string;
+    searchTeacherOrCourse: string;
+    selectFiltered: string;
+    clearFiltered: string;
+    candidateStats: string;
+    matchedStats: string;
+    selectedStats: string;
+    pleasePickStudent: string;
+    noMatchedTeachers: string;
+    createLink: string;
+  };
 }) {
   const [studentId, setStudentId] = useState("");
   const [query, setQuery] = useState("");
@@ -77,7 +123,7 @@ export default function BookingLinkCreateForm({
     <form action={action} style={{ display: "grid", gap: 8, maxWidth: 960, marginBottom: 20 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <select name="studentId" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-          <option value="">学生</option>
+          <option value="">{labels.student}</option>
           {students.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -85,53 +131,53 @@ export default function BookingLinkCreateForm({
           ))}
         </select>
         <label>
-          开始日期:
+          {labels.startDate}:
           <input type="date" name="startDate" style={{ marginLeft: 6 }} />
         </label>
         <label>
-          结束日期:
+          {labels.endDate}:
           <input type="date" name="endDate" style={{ marginLeft: 6 }} />
         </label>
         <label>
-          时长(分钟):
+          {labels.durationMin}:
           <input type="number" name="durationMin" min={15} step={15} defaultValue={60} style={{ marginLeft: 6, width: 90 }} />
         </label>
         <label>
-          起始间隔(分钟):
+          {labels.slotStepMin}:
           <input type="number" name="slotStepMin" min={5} step={5} defaultValue={15} style={{ marginLeft: 6, width: 90 }} />
         </label>
         <label>
-          失效时间:
+          {labels.expiresAt}:
           <input type="datetime-local" name="expiresAt" style={{ marginLeft: 6 }} />
         </label>
       </div>
 
-      <input name="title" placeholder="标题（可选）" />
-      <textarea name="note" rows={3} placeholder="备注（可选）" />
+      <input name="title" placeholder={labels.titleOptional} />
+      <textarea name="note" rows={3} placeholder={labels.noteOptional} />
 
       <div style={{ border: "1px solid #e8e8e8", borderRadius: 8, padding: 10 }}>
-        <div style={{ marginBottom: 6, fontWeight: 600 }}>老师（仅显示可教该学生已购课程）</div>
+        <div style={{ marginBottom: 6, fontWeight: 600 }}>{labels.teacherHint}</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
           {selectedStudent
-            ? `学生已购课程：${selectedStudent.courseNames.join(", ") || "无"}`
-            : "先选择学生，再显示可匹配老师"}
+            ? `${labels.studentCoursePrefix}: ${selectedStudent.courseNames.join(", ") || labels.none}`
+            : labels.pickStudentFirst}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索老师或课程"
+            placeholder={labels.searchTeacherOrCourse}
             style={{ minWidth: 240 }}
             disabled={!selectedStudent}
           />
           <button type="button" onClick={selectAllFiltered} disabled={filteredTeachers.length === 0}>
-            勾选当前筛选
+            {labels.selectFiltered}
           </button>
           <button type="button" onClick={clearFiltered} disabled={filteredTeachers.length === 0}>
-            取消当前筛选
+            {labels.clearFiltered}
           </button>
           <span style={{ fontSize: 12, color: "#666" }}>
-            可选 {filteredTeachers.length} / 匹配 {eligibleTeachers.length} / 已选 {selectedTeacherIds.length}
+            {labels.candidateStats} {filteredTeachers.length} / {labels.matchedStats} {eligibleTeachers.length} / {labels.selectedStats} {selectedTeacherIds.length}
           </span>
         </div>
         <div
@@ -147,9 +193,9 @@ export default function BookingLinkCreateForm({
           }}
         >
           {!selectedStudent ? (
-            <div style={{ color: "#999" }}>请先选择学生</div>
+            <div style={{ color: "#999" }}>{labels.pleasePickStudent}</div>
           ) : filteredTeachers.length === 0 ? (
-            <div style={{ color: "#999" }}>没有可匹配老师</div>
+            <div style={{ color: "#999" }}>{labels.noMatchedTeachers}</div>
           ) : (
             filteredTeachers.map((t) => (
               <label key={t.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -173,9 +219,8 @@ export default function BookingLinkCreateForm({
       ))}
 
       <button type="submit" style={{ width: 160 }}>
-        创建链接
+        {labels.createLink}
       </button>
     </form>
   );
 }
-

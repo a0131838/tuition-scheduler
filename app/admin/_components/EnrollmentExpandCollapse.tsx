@@ -1,6 +1,8 @@
 "use client";
 
 export default function EnrollmentExpandCollapse() {
+  const expandLabel = "Expand all / 全部展开";
+  const collapseLabel = "Collapse all / 全部收起";
   return (
     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
       <button
@@ -11,7 +13,7 @@ export default function EnrollmentExpandCollapse() {
           });
         }}
       >
-        全部展开
+        {expandLabel}
       </button>
       <button
         type="button"
@@ -21,7 +23,7 @@ export default function EnrollmentExpandCollapse() {
           });
         }}
       >
-        全部收起
+        {collapseLabel}
       </button>
     </div>
   );

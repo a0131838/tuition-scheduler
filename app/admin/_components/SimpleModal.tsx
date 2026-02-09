@@ -7,11 +7,13 @@ export default function SimpleModal({
   title,
   children,
   closeOnSubmit = false,
+  closeLabel = "Close / 关闭",
 }: {
   buttonLabel: string;
   title: string;
   children: React.ReactNode;
   closeOnSubmit?: boolean;
+  closeLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement | null>(null);
 
@@ -43,7 +45,7 @@ export default function SimpleModal({
         >
           <b>{title}</b>
           <button type="button" onClick={() => ref.current?.close()}>
-            关闭
+            {closeLabel}
           </button>
         </div>
         <div style={{ padding: 16 }}>{children}</div>

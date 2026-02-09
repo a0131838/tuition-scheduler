@@ -30,7 +30,7 @@ function durationMinutes(startAt: Date, endAt: Date) {
 function fmtRange(startAt: Date, endAt: Date) {
   const start = new Date(startAt).toLocaleString();
   const end = new Date(endAt).toLocaleString();
-  return `${start} 鈫?${end}`;
+  return `${start} -> ${end}`;
 }
 
 function isNextRedirectError(e: any) {
