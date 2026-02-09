@@ -14,14 +14,6 @@ BASE_URL="${NEXT_PUBLIC_APP_URL%/}"
 
 echo "Health check: $BASE_URL"
 
-curl_one() {
-  local url="$1"
-  local code
-  code="$(curl -k -sS -o /dev/null -w '%{http_code}' -m 10 -I "$url" || true)"
-  echo "  $code  $url"
-  echo "$code"
-}
-
 ok_code() {
   case "$1" in
     200|301|302|303|307|308) return 0 ;;
@@ -41,7 +33,9 @@ for path in \
   "/teacher" \
   "/teacher/availability"
 do
-  code="$(curl_one "$BASE_URL$path")"
+  url="$BASE_URL$path"
+  code="$(curl -k -sS -o /dev/null -w '%{http_code}' -m 10 -I "$url" || true)"
+  echo "  $code  $url"
   if ! ok_code "$code"; then
     FAIL=1
   fi
@@ -53,4 +47,3 @@ if [[ "$FAIL" == "1" ]]; then
 fi
 
 echo "Health check OK."
-
