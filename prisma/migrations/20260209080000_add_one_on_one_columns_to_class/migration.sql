@@ -1,18 +1,6 @@
--- Add missing optional columns used by 1:1 / group linking.
-ALTER TABLE "Class" ADD COLUMN "oneOnOneGroupId" TEXT;
-ALTER TABLE "Class" ADD COLUMN "oneOnOneStudentId" TEXT;
-
--- Keep relations consistent with the Prisma schema.
-ALTER TABLE "Class"
-  ADD CONSTRAINT "Class_oneOnOneGroupId_fkey"
-  FOREIGN KEY ("oneOnOneGroupId") REFERENCES "OneOnOneGroup"("id")
-  ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "Class"
-  ADD CONSTRAINT "Class_oneOnOneStudentId_fkey"
-  FOREIGN KEY ("oneOnOneStudentId") REFERENCES "Student"("id")
-  ON DELETE SET NULL ON UPDATE CASCADE;
-
-CREATE INDEX "Class_oneOnOneGroupId_idx" ON "Class"("oneOnOneGroupId");
-CREATE INDEX "Class_oneOnOneStudentId_idx" ON "Class"("oneOnOneStudentId");
-
+-- NOTE:
+-- This migration was created during an early deployment and ended up being replaced by a later migration
+-- (20260209093000_create_one_on_one_group_and_link_class) that creates the OneOnOneGroup table and links Class.
+--
+-- We intentionally keep this migration as a no-op to preserve migration history while avoiding dependency ordering
+-- issues on fresh databases.
