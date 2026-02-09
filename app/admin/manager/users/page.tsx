@@ -1,4 +1,4 @@
-import {
+﻿import {
   createPasswordHash,
   getManagerEmailSet,
   isOwnerManager,
@@ -24,9 +24,51 @@ function editRedirect(query: string) {
   redirect(`/admin/manager/users?mode=edit&${query}`);
 }
 
+type BasicUser = { id: string; email: string; role: "ADMIN" | "TEACHER" | "STUDENT" };
+
+function canEditTargetUser(
+  actor: BasicUser,
+  target: BasicUser,
+  managerSet: Set<string>
+): { ok: true } | { ok: false; reason: string } {
+  const actorIsOwner = isOwnerManager(actor);
+  const targetIsOwner = isOwnerManager(target);
+  const targetIsManagerAdmin = target.role === "ADMIN" && managerSet.has(target.email.toLowerCase());
+
+  if (!actorIsOwner && targetIsOwner) {
+    return { ok: false, reason: "Only owner manager can edit zhao hongwei account" };
+  }
+  if (targetIsManagerAdmin) {
+    return { ok: false, reason: "Manager-admin accounts are protected and cannot be edited" };
+  }
+  return { ok: true };
+}
+
+async function requireEditableTarget(actor: BasicUser, id: string) {
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, role: true },
+  });
+  if (!target) {
+    editRedirect("err=User+not+found");
+    throw new Error("unreachable");
+  }
+  const targetUser: BasicUser = {
+    id: target.id,
+    email: target.email,
+    role: target.role as BasicUser["role"],
+  };
+
+  const managerSet = await getManagerEmailSet();
+  const check = canEditTargetUser(actor, targetUser, managerSet);
+  if (!check.ok) editRedirect(`err=${encodeURIComponent(check.reason)}`);
+
+  return targetUser;
+}
+
 async function createSystemUser(formData: FormData) {
   "use server";
-  await requireOwnerManager();
+  await requireManager();
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
@@ -67,7 +109,7 @@ async function createSystemUser(formData: FormData) {
 
 async function updateSystemUser(formData: FormData) {
   "use server";
-  const manager = await requireOwnerManager();
+  const manager = await requireManager();
 
   const id = String(formData.get("id") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -77,6 +119,7 @@ async function updateSystemUser(formData: FormData) {
   const teacherIdRaw = String(formData.get("teacherId") ?? "").trim();
 
   if (!id || !email || !name) editRedirect("err=Missing+required+fields");
+  await requireEditableTarget(manager, id);
   if (id === manager.id && role !== "ADMIN") editRedirect("err=You+cannot+change+your+own+role+from+ADMIN");
 
   const teacherId = role === "TEACHER" || role === "ADMIN" ? teacherIdRaw || null : null;
@@ -101,12 +144,13 @@ async function updateSystemUser(formData: FormData) {
 
 async function resetSystemUserPassword(formData: FormData) {
   "use server";
-  await requireOwnerManager();
+  const manager = await requireManager();
 
   const id = String(formData.get("id") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!id || !password) editRedirect("err=Missing+user+or+password");
   if (password.length < 8) editRedirect("err=Password+must+be+at+least+8+characters");
+  await requireEditableTarget(manager, id);
 
   const { salt, hash } = createPasswordHash(password);
   await prisma.user.update({
@@ -120,9 +164,10 @@ async function resetSystemUserPassword(formData: FormData) {
 
 async function deleteSystemUser(formData: FormData) {
   "use server";
-  const manager = await requireOwnerManager();
+  const manager = await requireManager();
   const id = String(formData.get("id") ?? "").trim();
   if (!id) editRedirect("err=Missing+user+id");
+  await requireEditableTarget(manager, id);
   if (id === manager.id) editRedirect("err=You+cannot+delete+your+own+account");
 
   await prisma.authSession.deleteMany({ where: { userId: id } });
@@ -165,7 +210,7 @@ export default async function ManagerUsersPage({
   const currentUser = await requireManager();
   const lang = await getLang();
   const now = new Date();
-  const canEdit = isOwnerManager(currentUser);
+  const canEdit = true;
   const isEditMode = canEdit && (searchParams?.mode ?? "").toLowerCase() === "edit";
 
   const [users, teachers, sessions, managerAclRows, managerSet] = await Promise.all([
@@ -216,7 +261,7 @@ export default async function ManagerUsersPage({
         <div>
           <h2 style={{ margin: 0 }}>{t(lang, "System User Admin", "系统使用者管理")}</h2>
           <div style={{ color: "#64748b", marginTop: 6 }}>
-            {t(lang, "Default is read-only monitor mode.", "默认只读监控模式。")}
+            {t(lang, "Default is read-only monitor mode.", "默认是只读监控模式。")}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -229,11 +274,15 @@ export default async function ManagerUsersPage({
         </div>
       </div>
 
-      {!canEdit ? (
+      {!isOwnerManager(currentUser) ? (
         <NoticeBanner
           type="info"
-          title={t(lang, "Read-only", "只读")}
-          message={t(lang, "Only zhao hongwei account can edit on this page.", "该页面仅 zhao hongwei 账号可编辑，其他管理者只读。")}
+          title={t(lang, "Scoped edit permissions", "受限编辑权限")}
+          message={t(
+            lang,
+            "Managers can edit users except protected manager-admin accounts. Non-owner managers cannot edit zhao hongwei.",
+            "管理者可编辑用户，但不能编辑受保护的管理者账号；非 owner 管理者不能编辑 zhao hongwei。"
+          )}
         />
       ) : null}
 
@@ -265,7 +314,7 @@ export default async function ManagerUsersPage({
           <b>MANAGER_EMAILS (.env)</b>: {envManagerEmails.length ? envManagerEmails.join(", ") : "(empty)"}
         </div>
 
-        {isEditMode ? (
+        {isEditMode && isOwnerManager(currentUser) ? (
           <form action={addManagerEmail} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end", marginBottom: 10 }}>
             <label style={{ display: "grid", gap: 4 }}>
               <span style={{ fontSize: 12 }}>{t(lang, "Manager Email", "管理者邮箱")}</span>
@@ -285,7 +334,7 @@ export default async function ManagerUsersPage({
               <th align="left">Email</th>
               <th align="left">{t(lang, "Note", "备注")}</th>
               <th align="left">{t(lang, "Created", "创建")}</th>
-              {isEditMode ? <th align="left">{t(lang, "Action", "操作")}</th> : null}
+              {isEditMode && isOwnerManager(currentUser) ? <th align="left">{t(lang, "Action", "操作")}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -294,7 +343,7 @@ export default async function ManagerUsersPage({
                 <td>{row.email}</td>
                 <td>{row.note || "-"}</td>
                 <td>{row.createdAt.toLocaleString()}</td>
-                {isEditMode ? (
+                {isEditMode && isOwnerManager(currentUser) ? (
                   <td>
                     <form action={removeManagerEmail}>
                       <input type="hidden" name="id" value={row.id} />
@@ -308,7 +357,7 @@ export default async function ManagerUsersPage({
             ))}
             {managerAclRows.length === 0 ? (
               <tr>
-                <td colSpan={isEditMode ? 4 : 3}>{t(lang, "No DB manager emails.", "数据库中暂无管理者邮箱。")}</td>
+                <td colSpan={isEditMode && isOwnerManager(currentUser) ? 4 : 3}>{t(lang, "No DB manager emails.", "数据库中暂无管理者邮箱。")}</td>
               </tr>
             ) : null}
           </tbody>
@@ -379,6 +428,7 @@ export default async function ManagerUsersPage({
             {users.map((u) => {
               const sess = sessionInfo.get(u.id);
               const isManager = managerSet.has(u.email.toLowerCase()) && u.role === "ADMIN";
+              const rowEditable = canEditTargetUser(currentUser, u as BasicUser, managerSet).ok;
               return (
                 <tr key={u.id} style={{ borderTop: "1px solid #f1f5f9", verticalAlign: "top" }}>
                   <td>
@@ -390,7 +440,7 @@ export default async function ManagerUsersPage({
                     </div>
                   </td>
                   <td>
-                    {isEditMode ? (
+                    {isEditMode && rowEditable ? (
                       <form action={updateSystemUser} style={{ display: "grid", gap: 6, minWidth: 250 }}>
                         <input type="hidden" name="id" value={u.id} />
                         <input name="name" defaultValue={u.name} placeholder={t(lang, "Name", "姓名")} />
@@ -418,7 +468,14 @@ export default async function ManagerUsersPage({
                         <button type="submit">{t(lang, "Save", "保存")}</button>
                       </form>
                     ) : (
-                      <div>{u.role} / {u.language}</div>
+                      <div>
+                        {u.role} / {u.language}
+                        {isEditMode && !rowEditable ? (
+                          <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 4 }}>
+                            {t(lang, "Protected account, read-only.", "受保护账号，只读。")}
+                          </div>
+                        ) : null}
+                      </div>
                     )}
                   </td>
                   <td>{u.teacher ? u.teacher.name : t(lang, "Not linked", "未绑定")}</td>
@@ -430,22 +487,28 @@ export default async function ManagerUsersPage({
                   </td>
                   {isEditMode ? (
                     <td>
-                      <form action={resetSystemUserPassword} style={{ display: "grid", gap: 6, marginBottom: 8 }}>
-                        <input type="hidden" name="id" value={u.id} />
-                        <input
-                          name="password"
-                          type="password"
-                          minLength={8}
-                          placeholder={t(lang, "New password (>=8)", "新密码(至少8位)")}
-                        />
-                        <button type="submit">{t(lang, "Reset Password", "重置密码")}</button>
-                      </form>
-                      <form action={deleteSystemUser}>
-                        <input type="hidden" name="id" value={u.id} />
-                        <ConfirmSubmitButton message={t(lang, "Delete this user?", "确认删除该用户？")}>
-                          {t(lang, "Delete User", "删除用户")}
-                        </ConfirmSubmitButton>
-                      </form>
+                      {rowEditable ? (
+                        <>
+                          <form action={resetSystemUserPassword} style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+                            <input type="hidden" name="id" value={u.id} />
+                            <input
+                              name="password"
+                              type="password"
+                              minLength={8}
+                              placeholder={t(lang, "New password (>=8)", "新密码(至少8位)")}
+                            />
+                            <button type="submit">{t(lang, "Reset Password", "重置密码")}</button>
+                          </form>
+                          <form action={deleteSystemUser}>
+                            <input type="hidden" name="id" value={u.id} />
+                            <ConfirmSubmitButton message={t(lang, "Delete this user?", "确认删除该用户？")}>
+                              {t(lang, "Delete User", "删除用户")}
+                            </ConfirmSubmitButton>
+                          </form>
+                        </>
+                      ) : (
+                        <span style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Read-only", "只读")}</span>
+                      )}
                     </td>
                   ) : null}
                 </tr>

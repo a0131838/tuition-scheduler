@@ -52,6 +52,7 @@ function drawBadge(doc: PDFDoc, text: string, x: number, y: number) {
   doc.roundedRect(x, y, w, h, 12).fill("#f5b700");
   doc.fillColor("white").fontSize(16).text(text, x + 22, y + 10, { width: w - 44, align: "center" });
   doc.restore();
+  return { w, h };
 }
 
 function drawTeacherCardPage(doc: PDFDoc, teacher: any) {
@@ -86,29 +87,35 @@ function drawTeacherCardPage(doc: PDFDoc, teacher: any) {
   });
 
   const rightX = leftW + 24;
+  const rightW = pageW - rightX - 24;
   let y = 58;
 
-  drawBadge(doc, "教育背景", rightX, y);
-  y += 52;
-  doc.fillColor("#1f1f1f").fontSize(24).text(formatAlmaMater(teacher.almaMater), rightX + 4, y, {
-    width: pageW - rightX - 24,
+  const eduBadge = drawBadge(doc, "教育背景", rightX, y);
+  y += eduBadge.h + 14;
+  const almaText = formatAlmaMater(teacher.almaMater);
+  doc.fillColor("#1f1f1f").fontSize(20);
+  const almaH = doc.heightOfString(almaText, { width: rightW, lineGap: 3 });
+  doc.text(almaText, rightX + 4, y, {
+    width: rightW,
+    lineGap: 3,
   });
+  y += almaH + 18;
 
-  y += 62;
-  drawBadge(doc, "自我介绍", rightX, y);
-  y += 52;
+  const introBadge = drawBadge(doc, "自我介绍", rightX, y);
+  y += introBadge.h + 14;
 
   const lines = introLines(teacher.intro);
   if (lines.length === 0) {
     doc.fillColor("#666").fontSize(14).text("暂无介绍", rightX + 4, y);
   } else {
-    doc.fillColor("#1f1f1f").fontSize(16);
+    doc.fillColor("#1f1f1f").fontSize(14);
+    const maxY = pageH - 48;
     for (const line of lines) {
       const text = `◆ ${line}`;
-      const h = doc.heightOfString(text, { width: pageW - rightX - 24, lineGap: 2 });
-      doc.text(text, rightX + 4, y, { width: pageW - rightX - 24, lineGap: 2 });
+      const h = doc.heightOfString(text, { width: rightW, lineGap: 2 });
+      if (y + h > maxY) break;
+      doc.text(text, rightX + 4, y, { width: rightW, lineGap: 2 });
       y += h + 8;
-      if (y > pageH - 60) break;
     }
   }
 
