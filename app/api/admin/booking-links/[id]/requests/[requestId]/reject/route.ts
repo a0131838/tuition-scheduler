@@ -5,10 +5,10 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
-export async function POST(req: Request, ctx: { params: Promise<{ linkId: string; requestId: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string; requestId: string }> }) {
   const admin = await requireAdmin();
-  const { linkId, requestId } = await ctx.params;
-  if (!linkId) return bad("Missing linkId", 409);
+  const { id: linkId, requestId } = await ctx.params;
+  if (!linkId) return bad("Missing id", 409);
   if (!requestId) return bad("Missing requestId", 409);
 
   let body: any;
@@ -37,4 +37,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ linkId: string
 
   return Response.json({ ok: true });
 }
-
