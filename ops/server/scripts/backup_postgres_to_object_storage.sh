@@ -45,3 +45,8 @@ if [[ -z "${S3_BUCKET:-}" ]]; then
 fi
 
 bash "$SCRIPT_DIR/upload_object_storage_s3.sh" "$LATEST"
+
+# Optional: clean up old objects in the bucket (COS/S3 lifecycle may not be available).
+if [[ "${S3_CLEANUP_ENABLED:-true}" == "true" ]]; then
+  bash "$SCRIPT_DIR/cleanup_object_storage_backups.sh" || true
+fi
