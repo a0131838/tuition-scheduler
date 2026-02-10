@@ -279,15 +279,16 @@ async function deletePackage(formData: FormData) {
 export default async function AdminPackagesPage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string; q?: string; courseId?: string; paid?: string; warn?: string };
+  searchParams?: Promise<{ msg?: string; err?: string; q?: string; courseId?: string; paid?: string; warn?: string }>;
 }) {
   const lang = await getLang();
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const q = (searchParams?.q ?? "").trim();
-  const filterCourseId = searchParams?.courseId ?? "";
-  const filterPaid = searchParams?.paid ?? "";
-  const filterWarn = searchParams?.warn ?? "";
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const q = (sp?.q ?? "").trim();
+  const filterCourseId = sp?.courseId ?? "";
+  const filterPaid = sp?.paid ?? "";
+  const filterWarn = sp?.warn ?? "";
 
   const wherePackages: any = {};
   if (q) wherePackages.student = { name: { contains: q, mode: "insensitive" } };

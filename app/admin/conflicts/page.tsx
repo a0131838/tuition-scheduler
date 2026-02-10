@@ -383,7 +383,7 @@ async function replaceAppointmentTeacher(formData: FormData) {
 export default async function ConflictsPage({
   searchParams,
 }: {
-  searchParams?: { from?: string; to?: string; courseId?: string; subjectId?: string; msg?: string; err?: string };
+  searchParams?: Promise<{ from?: string; to?: string; courseId?: string; subjectId?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const today = new Date();
@@ -392,12 +392,13 @@ export default async function ConflictsPage({
   toDefault.setDate(toDefault.getDate() + 14);
   const defaultTo = ymd(toDefault);
 
-  const fromStr = (searchParams?.from ?? defaultFrom).trim();
-  const toStr = (searchParams?.to ?? defaultTo).trim();
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const filterCourseId = (searchParams?.courseId ?? "").trim();
-  const filterSubjectId = (searchParams?.subjectId ?? "").trim();
+  const sp = await searchParams;
+  const fromStr = (sp?.from ?? defaultFrom).trim();
+  const toStr = (sp?.to ?? defaultTo).trim();
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const filterCourseId = (sp?.courseId ?? "").trim();
+  const filterSubjectId = (sp?.subjectId ?? "").trim();
 
   const fromParsed = parseDateOnly(fromStr) ?? parseDateOnly(defaultFrom)!;
   const toParsed = parseDateOnly(toStr) ?? parseDateOnly(defaultTo)!;

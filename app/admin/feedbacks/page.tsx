@@ -141,14 +141,15 @@ async function createProxyDraft(formData: FormData) {
 export default async function AdminFeedbacksPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; msg?: string; err?: string };
+  searchParams?: Promise<{ status?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
 
-  const status = searchParams?.status ?? "missing";
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const status = sp?.status ?? "missing";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);

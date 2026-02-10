@@ -893,28 +893,29 @@ export default async function StudentDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { msg?: string; err?: string; [key: string]: string | undefined };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; [key: string]: string | undefined }>;
 }) {
   const lang = await getLang();
-  const studentId = params.id;
+  const { id: studentId } = await params;
+  const sp = await searchParams;
 
-  const courseId = searchParams?.courseId ?? "";
-  const subjectId = searchParams?.subjectId ?? "";
-  const levelIdFilter = searchParams?.levelId ?? "";
-  const teacherId = searchParams?.teacherId ?? "";
-  const status = searchParams?.status ?? "";
-  const days = toInt(searchParams?.days, 0);
-  const limitRaw = toInt(searchParams?.limit, ATTENDANCE_DEFAULT_LIMIT);
+  const courseId = sp?.courseId ?? "";
+  const subjectId = sp?.subjectId ?? "";
+  const levelIdFilter = sp?.levelId ?? "";
+  const teacherId = sp?.teacherId ?? "";
+  const status = sp?.status ?? "";
+  const days = toInt(sp?.days, 0);
+  const limitRaw = toInt(sp?.limit, ATTENDANCE_DEFAULT_LIMIT);
   const limit = Math.min(Math.max(limitRaw, 1), 500);
-  const quickSubjectId = searchParams?.quickSubjectId ?? "";
-  const quickLevelId = searchParams?.quickLevelId ?? "";
-  const quickStartAt = searchParams?.quickStartAt ?? "";
-  const quickDurationMin = Math.max(15, toInt(searchParams?.quickDurationMin, 60));
-  const quickCampusId = searchParams?.quickCampusId ?? "";
-  const quickRoomId = searchParams?.quickRoomId ?? "";
-  const monthParam = searchParams?.month ?? "";
-  const quickOpen = searchParams?.quickOpen === "1";
+  const quickSubjectId = sp?.quickSubjectId ?? "";
+  const quickLevelId = sp?.quickLevelId ?? "";
+  const quickStartAt = sp?.quickStartAt ?? "";
+  const quickDurationMin = Math.max(15, toInt(sp?.quickDurationMin, 60));
+  const quickCampusId = sp?.quickCampusId ?? "";
+  const quickRoomId = sp?.quickRoomId ?? "";
+  const monthParam = sp?.month ?? "";
+  const quickOpen = sp?.quickOpen === "1";
 
   const now = new Date();
   const monthParsed = parseMonth(monthParam);
@@ -1106,8 +1107,8 @@ export default async function StudentDetailPage({
     sessionKeyMap.set(key, sess);
   }
 
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const returnTo = `/admin/students/${studentId}?month=${monthLabel(monthDate)}`;
 
   const quickCandidates: {

@@ -285,12 +285,13 @@ async function createSingleAppointment(formData: FormData) {
 export default async function NewSinglePage({
   searchParams,
 }: {
-  searchParams?: { tab?: string; err?: string; classId?: string };
+  searchParams?: Promise<{ tab?: string; err?: string; classId?: string }>;
 }) {
   const lang = await getLang();
-  const tab = searchParams?.tab ?? "session";
-  const err = searchParams?.err ?? "";
-  const preferredClassId = searchParams?.classId ?? "";
+  const sp = await searchParams;
+  const tab = sp?.tab ?? "session";
+  const err = sp?.err ?? "";
+  const preferredClassId = sp?.classId ?? "";
 
   const [classes, teachers, students] = await Promise.all([
     prisma.class.findMany({

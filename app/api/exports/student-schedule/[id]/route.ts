@@ -249,8 +249,9 @@ function parseMonthParam(month?: string | null) {
   return { year, month: mm };
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id: studentId } = await params;
   const url = new URL(req.url);
   const monthParam = url.searchParams.get("month");
   const startParam = url.searchParams.get("start");
@@ -278,7 +279,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   } else {
     return new Response("Invalid month", { status: 400 });
   }
-  const studentId = params.id;
   let lang = await getLang();
 
   const student = await prisma.student.findUnique({

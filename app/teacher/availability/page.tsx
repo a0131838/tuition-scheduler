@@ -333,7 +333,7 @@ async function undoLastClearDayAvailability(teacherId: string) {
 export default async function TeacherAvailabilityPage({
   searchParams,
 }: {
-  searchParams?: { err?: string; msg?: string };
+  searchParams?: Promise<{ err?: string; msg?: string }>;
 }) {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
@@ -365,8 +365,9 @@ export default async function TeacherAvailabilityPage({
   });
   const undoPayload = parseUndoPayload(undoRow?.value);
 
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
+  const sp = await searchParams;
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const todayYMD = ymd(today);
   const in4Weeks = new Date(today);
   in4Weeks.setDate(in4Weeks.getDate() + 28);

@@ -27,13 +27,14 @@ type CalendarItem = {
 export default async function MonthlyScheduleReportPage({
   searchParams,
 }: {
-  searchParams?: { month?: string; teacherId?: string; campusId?: string };
+  searchParams?: Promise<{ month?: string; teacherId?: string; campusId?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
-  const month = searchParams?.month ?? monthKey(new Date());
-  const teacherId = searchParams?.teacherId ?? "";
-  const campusId = searchParams?.campusId ?? "";
+  const sp = await searchParams;
+  const month = sp?.month ?? monthKey(new Date());
+  const teacherId = sp?.teacherId ?? "";
+  const campusId = sp?.campusId ?? "";
   const data = await loadMonthlyScheduleData({ month, teacherId, campusId });
 
   if (!data) {

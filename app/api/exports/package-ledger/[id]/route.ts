@@ -206,10 +206,10 @@ function drawInfoGrid(
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await requireAdmin();
-  const packageId = params.id;
+  const { id: packageId } = await params;
   const lang = await getLang();
 
   const pkg = await prisma.coursePackage.findUnique({

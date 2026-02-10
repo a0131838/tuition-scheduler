@@ -63,10 +63,11 @@ async function login(formData: FormData) {
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams?: { err?: string; next?: string };
+  searchParams?: Promise<{ err?: string; next?: string }>;
 }) {
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const next = searchParams?.next ? decodeURIComponent(searchParams.next) : "";
+  const sp = await searchParams;
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const next = sp?.next ? decodeURIComponent(sp.next) : "";
   const count = await prisma.user.count();
 
   if (count === 0) {

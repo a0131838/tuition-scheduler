@@ -114,9 +114,10 @@ function formatAlmaMater(text?: string | null) {
 export default async function TeachersPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const lang = await getLang();
+  const sp = await searchParams;
   const [teachers, courses, subjects, levels] = await Promise.all([
     prisma.teacher.findMany({
       orderBy: { name: "asc" },
@@ -161,7 +162,7 @@ export default async function TeachersPage({
   }
 
   const getParam = (k: string) => {
-    const v = searchParams?.[k];
+    const v = sp?.[k];
     return Array.isArray(v) ? v[0] ?? "" : v ?? "";
   };
   const filterQ = getParam("q");

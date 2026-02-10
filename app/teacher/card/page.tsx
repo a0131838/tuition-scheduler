@@ -34,12 +34,13 @@ async function saveTeacherIntro(formData: FormData) {
 export default async function TeacherCardSelfPage({
   searchParams,
 }: {
-  searchParams?: { autoprint?: string; msg?: string; err?: string };
+  searchParams?: Promise<{ autoprint?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   if (!teacher) {
     return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
@@ -95,7 +96,7 @@ export default async function TeacherCardSelfPage({
         nationality={teacherFull.nationality || "-"}
         almaMater={teacherFull.almaMater || "-"}
         intro={teacherFull.intro || t(lang, "No intro yet.", "暂无介绍")}
-        autoPrint={searchParams?.autoprint === "1"}
+        autoPrint={sp?.autoprint === "1"}
       />
     </>
   );

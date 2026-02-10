@@ -45,10 +45,11 @@ function fmtDate(d: Date) {
 export default async function ScheduleAllPage({
   searchParams,
 }: {
-  searchParams?: { weekStart?: string };
+  searchParams?: Promise<{ weekStart?: string }>;
 }) {
   const lang = await getLang();
-  const base = searchParams?.weekStart ? parseYMD(searchParams.weekStart) : startOfWeekMonday(new Date());
+  const sp = await searchParams;
+  const base = sp?.weekStart ? parseYMD(sp.weekStart) : startOfWeekMonday(new Date());
   const weekStart = startOfWeekMonday(base);
   const weekEnd = addDays(weekStart, 7);
 

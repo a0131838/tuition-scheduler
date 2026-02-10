@@ -30,13 +30,14 @@ function toDateRange(month: string) {
 export default async function MonthlyHoursReportPage({
   searchParams,
 }: {
-  searchParams?: { month?: string; sourceChannelId?: string };
+  searchParams?: Promise<{ month?: string; sourceChannelId?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const now = new Date();
-  const month = searchParams?.month ?? monthKey(now);
-  const sourceChannelId = searchParams?.sourceChannelId ?? "";
+  const sp = await searchParams;
+  const month = sp?.month ?? monthKey(now);
+  const sourceChannelId = sp?.sourceChannelId ?? "";
 
   const range = toDateRange(month);
   if (!range) {

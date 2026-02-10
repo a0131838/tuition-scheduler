@@ -27,8 +27,9 @@ function buildCalendarDays(monthDate: Date) {
   });
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
   const url = new URL(req.url);
   const month = url.searchParams.get("month") ?? monthKey(new Date());
   const parsed = parseMonth(month);
@@ -36,7 +37,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const monthDate = new Date(parsed.year, parsed.month - 1, 1);
 
   const link = await prisma.studentBookingLink.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       student: true,
       teachers: { include: { teacher: true }, orderBy: { teacher: { name: "asc" } } },

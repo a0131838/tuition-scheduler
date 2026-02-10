@@ -4,8 +4,8 @@ import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
-function resolvePathnameFromHeaders() {
-  const h = headers();
+async function resolvePathnameFromHeaders() {
+  const h = await headers();
   const candidates = [
     h.get("x-pathname"),
     h.get("x-invoke-path"),
@@ -42,7 +42,7 @@ async function updateLanguage(formData: FormData) {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = resolvePathnameFromHeaders();
+  const pathname = await resolvePathnameFromHeaders();
   if (!pathname) {
     return <>{children}</>;
   }

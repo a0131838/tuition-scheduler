@@ -187,14 +187,16 @@ export default async function BookingPage({
   params,
   searchParams,
 }: {
-  params: { token: string };
-  searchParams?: { month?: string; msg?: string; err?: string };
+  params: Promise<{ token: string }>;
+  searchParams?: Promise<{ month?: string; msg?: string; err?: string }>;
 }) {
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const { token } = await params;
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const link = await prisma.studentBookingLink.findUnique({
-    where: { token: params.token },
+    where: { token },
     include: {
       student: true,
       teachers: {
@@ -219,7 +221,7 @@ export default async function BookingPage({
   }
 
   const fallbackMonth = monthKey(new Date(link.startDate));
-  const parsed = parseMonth(searchParams?.month ?? fallbackMonth);
+  const parsed = parseMonth(sp?.month ?? fallbackMonth);
   const monthDate = parsed ? new Date(parsed.year, parsed.month - 1, 1) : new Date(link.startDate);
   const currentMonth = monthKey(monthDate);
   const prevMonth = monthKey(new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1));
@@ -324,7 +326,7 @@ export default async function BookingPage({
               <li key={r.id}>
                 {new Date(r.startAt).toLocaleString()} - {new Date(r.endAt).toLocaleTimeString()} | {r.teacher.name} | {r.status}
                 {r.status === "PENDING" ? (
-                  <form action={cancelBookingRequest.bind(null, params.token)} style={{ display: "inline", marginLeft: 8 }}>
+                  <form action={cancelBookingRequest.bind(null, token)} style={{ display: "inline", marginLeft: 8 }}>
                     <input type="hidden" name="requestId" value={r.id} />
                     <button type="submit" style={{ fontSize: 12 }}>Cancel</button>
                   </form>
@@ -336,9 +338,9 @@ export default async function BookingPage({
       ) : null}
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
-        <a href={`/booking/${params.token}?month=${prevMonth}`}>← Prev</a>
+        <a href={`/booking/${token}?month=${prevMonth}`}>← Prev</a>
         <b>{currentMonth}</b>
-        <a href={`/booking/${params.token}?month=${nextMonth}`}>Next →</a>
+        <a href={`/booking/${token}?month=${nextMonth}`}>Next →</a>
       </div>
 
       <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -370,7 +372,7 @@ export default async function BookingPage({
                               This time conflicts with an existing request/class/appointment.
                             </div>
                           ) : (
-                            <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
+                            <form action={submitBookingRequest.bind(null, token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
                               <input type="hidden" name="teacherId" value={s.teacherId} />
                               <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
                               <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
@@ -398,7 +400,7 @@ export default async function BookingPage({
                                     This time conflicts with an existing request/class/appointment.
                                   </div>
                                 ) : (
-                                  <form action={submitBookingRequest.bind(null, params.token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
+                                  <form action={submitBookingRequest.bind(null, token)} style={{ display: "grid", gap: 4, marginTop: 6 }}>
                                     <input type="hidden" name="teacherId" value={s.teacherId} />
                                     <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
                                     <input type="hidden" name="endAt" value={s.endAt.toISOString()} />

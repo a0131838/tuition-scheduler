@@ -104,24 +104,25 @@ function hoursAgo(d: Date, now: Date) {
 export default async function AdminManagerPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     campusId?: string;
     teacherId?: string;
     courseId?: string;
     reqOverdueHours?: string;
     eventType?: string;
-  };
+  }>;
 }) {
   await requireManager();
   const lang = await getLang();
 
-  const selectedCampusId = (searchParams?.campusId ?? "").trim();
-  const selectedTeacherId = (searchParams?.teacherId ?? "").trim();
-  const selectedCourseId = (searchParams?.courseId ?? "").trim();
-  const selectedEventType = (searchParams?.eventType ?? "").trim().toUpperCase();
+  const sp = await searchParams;
+  const selectedCampusId = (sp?.campusId ?? "").trim();
+  const selectedTeacherId = (sp?.teacherId ?? "").trim();
+  const selectedCourseId = (sp?.courseId ?? "").trim();
+  const selectedEventType = (sp?.eventType ?? "").trim().toUpperCase();
   const reqOverdueHours = Math.max(
     1,
-    Number(searchParams?.reqOverdueHours ?? DEFAULT_REQ_OVERDUE_HOURS) || DEFAULT_REQ_OVERDUE_HOURS
+    Number(sp?.reqOverdueHours ?? DEFAULT_REQ_OVERDUE_HOURS) || DEFAULT_REQ_OVERDUE_HOURS
   );
 
   const now = new Date();

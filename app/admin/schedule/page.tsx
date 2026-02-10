@@ -208,7 +208,7 @@ function metaLine(e: EventItem) {
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     view?: string;
     teacherId?: string;
     roomId?: string;
@@ -218,15 +218,16 @@ export default async function SchedulePage({
     weekStart?: string;
     msg?: string;
     err?: string;
-  };
+  }>;
 }) {
   const lang = await getLang();
-  const view = (searchParams?.view as ViewMode) || "teacher";
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const view = (sp?.view as ViewMode) || "teacher";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
-  const base = searchParams?.weekStart
-    ? parseYMD(searchParams.weekStart)
+  const base = sp?.weekStart
+    ? parseYMD(sp.weekStart)
     : startOfWeekMonday(new Date());
   const weekStart = startOfWeekMonday(base);
   const weekEnd = addDays(weekStart, 7);
@@ -253,11 +254,11 @@ export default async function SchedulePage({
     }
   }
 
-  const teacherId = searchParams?.teacherId || teachers[0]?.id || "";
-  const roomId = searchParams?.roomId || rooms[0]?.id || "";
-  const campusId = searchParams?.campusId || campuses[0]?.id || "";
-  const filterCourseId = (searchParams?.courseId ?? "").trim();
-  const filterSubjectId = (searchParams?.subjectId ?? "").trim();
+  const teacherId = sp?.teacherId || teachers[0]?.id || "";
+  const roomId = sp?.roomId || rooms[0]?.id || "";
+  const campusId = sp?.campusId || campuses[0]?.id || "";
+  const filterCourseId = (sp?.courseId ?? "").trim();
+  const filterSubjectId = (sp?.subjectId ?? "").trim();
 
   let events: EventItem[] = [];
 

@@ -83,11 +83,12 @@ async function deleteLevel(formData: FormData) {
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams?: { q?: string; err?: string };
+  searchParams?: Promise<{ q?: string; err?: string }>;
 }) {
   const lang = await getLang();
-  const q = (searchParams?.q ?? "").trim().toLowerCase();
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const q = (sp?.q ?? "").trim().toLowerCase();
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const courses = await prisma.course.findMany({
     include: { subjects: { include: { levels: true } } },
     orderBy: { name: "asc" },
@@ -133,7 +134,7 @@ export default async function CoursesPage({
         <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
           <input
             name="q"
-            defaultValue={searchParams?.q ?? ""}
+            defaultValue={sp?.q ?? ""}
             placeholder={t(lang, "Search courses / subjects / levels", "搜索课程/科目/级别")}
             style={{ minWidth: 320 }}
           />

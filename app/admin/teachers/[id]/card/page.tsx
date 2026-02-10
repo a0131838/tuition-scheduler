@@ -11,11 +11,12 @@ function langLabel(v?: TeachingLanguage | null, other?: string | null) {
   return "-";
 }
 
-export default async function TeacherCardPage({ params }: { params: { id: string } }) {
+export default async function TeacherCardPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const { id } = await params;
 
   const teacher = await prisma.teacher.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       subjects: { include: { course: true } },
       subjectCourse: { include: { course: true } },

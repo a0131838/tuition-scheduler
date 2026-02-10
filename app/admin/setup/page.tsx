@@ -38,9 +38,10 @@ async function setupAdmin(formData: FormData) {
 export default async function AdminSetupPage({
   searchParams,
 }: {
-  searchParams?: { err?: string };
+  searchParams?: Promise<{ err?: string }>;
 }) {
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const count = await prisma.user.count();
   if (count > 0) {
     redirect("/admin/login");

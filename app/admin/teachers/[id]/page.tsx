@@ -447,17 +447,18 @@ export default async function TeacherDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{
     msg?: string;
     err?: string;
     startDate?: string;
     endDate?: string;
     preview?: string;
-  };
+  }>;
 }) {
   const lang = await getLang();
-  const teacherId = params.id;
+  const { id: teacherId } = await params;
+  const sp = await searchParams;
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
@@ -490,11 +491,11 @@ export default async function TeacherDetailPage({
     }),
   ]);
 
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const startDate = searchParams?.startDate ?? "";
-  const endDate = searchParams?.endDate ?? "";
-  const preview = searchParams?.preview === "1";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const startDate = sp?.startDate ?? "";
+  const endDate = sp?.endDate ?? "";
+  const preview = sp?.preview === "1";
 
   const plan = preview && startDate && endDate ? await computeGenerationPlan(teacherId, startDate, endDate) : null;
 

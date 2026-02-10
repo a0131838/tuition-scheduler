@@ -87,13 +87,14 @@ async function deleteStudent(formData: FormData) {
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams?: { sourceChannelId?: string; studentTypeId?: string };
+  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
-  const sourceChannelId = searchParams?.sourceChannelId ?? "";
-  const studentTypeId = searchParams?.studentTypeId ?? "";
+  const sp = await searchParams;
+  const sourceChannelId = sp?.sourceChannelId ?? "";
+  const studentTypeId = sp?.studentTypeId ?? "";
 
   const where: any = {};
   if (sourceChannelId) where.sourceChannelId = sourceChannelId;

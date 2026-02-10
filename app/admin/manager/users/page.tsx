@@ -205,13 +205,14 @@ async function removeManagerEmail(formData: FormData) {
 export default async function ManagerUsersPage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string; mode?: string };
+  searchParams?: Promise<{ msg?: string; err?: string; mode?: string }>;
 }) {
   const currentUser = await requireManager();
   const lang = await getLang();
   const now = new Date();
   const canEdit = true;
-  const isEditMode = canEdit && (searchParams?.mode ?? "").toLowerCase() === "edit";
+  const sp = await searchParams;
+  const isEditMode = canEdit && (sp?.mode ?? "").toLowerCase() === "edit";
 
   const [users, teachers, sessions, managerAclRows, managerSet] = await Promise.all([
     prisma.user.findMany({
@@ -252,8 +253,8 @@ export default async function ManagerUsersPage({
     { ADMIN: 0, TEACHER: 0, STUDENT: 0 } as Record<string, number>
   );
 
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   return (
     <div style={{ display: "grid", gap: 14 }}>

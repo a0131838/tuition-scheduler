@@ -209,16 +209,17 @@ export default async function AvailabilityPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { month?: string; err?: string; msg?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ month?: string; err?: string; msg?: string }>;
 }) {
   const lang = await getLang();
-  const teacherId = params.id;
+  const { id: teacherId } = await params;
+  const sp = await searchParams;
   const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } });
   if (!teacher) return <div>{t(lang, "Teacher not found.", "未找到老师。")}</div>;
 
   const now = new Date();
-  const parsed = parseMonth(searchParams?.month) ?? { year: now.getFullYear(), monthIndex: now.getMonth() };
+  const parsed = parseMonth(sp?.month) ?? { year: now.getFullYear(), monthIndex: now.getMonth() };
   const { year, monthIndex } = parsed;
   const { first, last, weeks } = buildMonthGrid(year, monthIndex);
   const month = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
@@ -245,8 +246,8 @@ export default async function AvailabilityPage({
   const prevMonth = monthKey(new Date(year, monthIndex - 1, 1));
   const nextMonth = monthKey(new Date(year, monthIndex + 1, 1));
 
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
 
   return (
     <div>

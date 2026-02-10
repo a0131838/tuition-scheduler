@@ -185,10 +185,10 @@ function drawLabelValue(
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await requireAdmin();
-  const studentId = params.id;
+  const { id: studentId } = await params;
   const lang = await getLang();
 
   const student = await prisma.student.findUnique({

@@ -139,7 +139,7 @@ async function quickMarkMissingStudents(
 export default async function TeacherAlertsPage({
   searchParams,
 }: {
-  searchParams?: { showResolved?: string; msg?: string; err?: string };
+  searchParams?: Promise<{ showResolved?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
@@ -148,9 +148,10 @@ export default async function TeacherAlertsPage({
     return <div style={{ color: "#999" }}>{t(lang, "Teacher profile is not linked.", "老师资料未绑定。")}</div>;
   }
 
-  const showResolved = searchParams?.showResolved === "1";
-  const msg = decode(searchParams?.msg);
-  const err = decode(searchParams?.err);
+  const sp = await searchParams;
+  const showResolved = sp?.showResolved === "1";
+  const msg = decode(sp?.msg);
+  const err = decode(sp?.err);
 
   await syncSignInAlerts();
   const alerts = await getTeacherVisibleSignInAlerts(user.id, { limit: 500, keepResolvedHours: 72 });

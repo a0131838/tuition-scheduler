@@ -180,8 +180,8 @@ export default async function TeacherSessionDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { msg?: string; err?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const { user, teacher } = await requireTeacherProfile();
@@ -189,8 +189,11 @@ export default async function TeacherSessionDetailPage({
     return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
   }
 
+  const { id: sessionId } = await params;
+  const sp = await searchParams;
+
   const session = await prisma.session.findUnique({
-    where: { id: params.id },
+    where: { id: sessionId },
     include: {
       student: true,
       class: { include: { course: true, subject: true, level: true, campus: true, room: true } },
@@ -222,8 +225,8 @@ export default async function TeacherSessionDetailPage({
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
       : null;
 
-  const msg = decode(searchParams?.msg);
-  const err = decode(searchParams?.err);
+  const msg = decode(sp?.msg);
+  const err = decode(sp?.err);
 
   return (
     <div>

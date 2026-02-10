@@ -517,13 +517,14 @@ export default async function ClassSessionsPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { msg?: string; err?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
-  const classId = params.id;
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const { id: classId } = await params;
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },

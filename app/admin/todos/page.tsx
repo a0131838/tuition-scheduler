@@ -126,16 +126,17 @@ async function runAutoFixNow(formData: FormData) {
 export default async function AdminTodosPage({
   searchParams,
 }: {
-  searchParams?: { warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string };
+  searchParams?: Promise<{ warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
-  const warnDays = Math.max(1, toInt(searchParams?.warnDays, DEFAULT_WARN_DAYS));
-  const warnMinutes = Math.max(1, toInt(searchParams?.warnMinutes, DEFAULT_WARN_MINUTES));
-  const pastDays = Math.min(365, Math.max(7, toInt(searchParams?.pastDays, 30)));
-  const pastPage = Math.max(1, toInt(searchParams?.pastPage, 1));
+  const sp = await searchParams;
+  const warnDays = Math.max(1, toInt(sp?.warnDays, DEFAULT_WARN_DAYS));
+  const warnMinutes = Math.max(1, toInt(sp?.warnMinutes, DEFAULT_WARN_MINUTES));
+  const pastDays = Math.min(365, Math.max(7, toInt(sp?.pastDays, 30)));
+  const pastPage = Math.max(1, toInt(sp?.pastPage, 1));
   const pastPageSize = 50;
-  const showConfirmed = searchParams?.showConfirmed === "1";
+  const showConfirmed = sp?.showConfirmed === "1";
 
   const now = new Date();
   const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;

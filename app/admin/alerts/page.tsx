@@ -64,12 +64,13 @@ async function updateThreshold(formData: FormData) {
 export default async function AdminAlertsPage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string };
+  searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const [{ thresholdMin, activeCount }, threshold] = await Promise.all([
     syncSignInAlerts(),

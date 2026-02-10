@@ -38,7 +38,7 @@ async function confirmTeacherCourses(dayKind: "today" | "tomorrow", formData: Fo
 export default async function TeacherHomePage({
   searchParams,
 }: {
-  searchParams?: { msg?: string; err?: string };
+  searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
@@ -58,8 +58,9 @@ export default async function TeacherHomePage({
     );
   }
 
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);

@@ -53,13 +53,14 @@ export default async function PackageLedgerPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { msg?: string; err?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
-  const packageId = params.id;
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const { id: packageId } = await params;
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },

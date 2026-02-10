@@ -184,7 +184,7 @@ async function restoreEnrollment(formData: FormData) {
 export default async function AdminEnrollmentsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     msg?: string;
     err?: string;
     q?: string;
@@ -196,22 +196,23 @@ export default async function AdminEnrollmentsPage({
     classType?: string;
     undoClassId?: string;
     undoStudentId?: string;
-  };
+  }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
-  const q = (searchParams?.q ?? "").trim().toLowerCase();
-  const courseId = (searchParams?.courseId ?? "").trim();
-  const subjectId = (searchParams?.subjectId ?? "").trim();
-  const levelId = (searchParams?.levelId ?? "").trim();
-  const teacherId = (searchParams?.teacherId ?? "").trim();
-  const campusId = (searchParams?.campusId ?? "").trim();
-  const classType = (searchParams?.classType ?? "").trim();
-  const undoClassId = (searchParams?.undoClassId ?? "").trim();
-  const undoStudentId = (searchParams?.undoStudentId ?? "").trim();
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const q = (sp?.q ?? "").trim().toLowerCase();
+  const courseId = (sp?.courseId ?? "").trim();
+  const subjectId = (sp?.subjectId ?? "").trim();
+  const levelId = (sp?.levelId ?? "").trim();
+  const teacherId = (sp?.teacherId ?? "").trim();
+  const campusId = (sp?.campusId ?? "").trim();
+  const classType = (sp?.classType ?? "").trim();
+  const undoClassId = (sp?.undoClassId ?? "").trim();
+  const undoStudentId = (sp?.undoStudentId ?? "").trim();
   const isFiltered = !!(q || courseId || subjectId || levelId || teacherId || campusId || classType);
 
   const [classes, students, enrollments] = await Promise.all([
@@ -485,7 +486,7 @@ export default async function AdminEnrollmentsPage({
           teachers={teacherOptions}
           campuses={campusOptions}
           initial={{
-            q: searchParams?.q ?? "",
+            q: sp?.q ?? "",
             courseId,
             subjectId,
             levelId,

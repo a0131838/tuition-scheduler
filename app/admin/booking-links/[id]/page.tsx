@@ -321,16 +321,18 @@ export default async function AdminBookingLinkDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { month?: string; msg?: string; err?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ month?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
-  const msg = searchParams?.msg ? decodeURIComponent(searchParams.msg) : "";
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const { id } = await params;
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const link = await prisma.studentBookingLink.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       student: true,
       teachers: { include: { teacher: true }, orderBy: { teacher: { name: "asc" } } },
@@ -346,7 +348,7 @@ export default async function AdminBookingLinkDetailPage({
     return <div>{t(lang, "Booking link not found.", "链接不存在。")}</div>;
   }
 
-  const selectedMonth = searchParams?.month ?? monthKey(new Date(link.startDate));
+  const selectedMonth = sp?.month ?? monthKey(new Date(link.startDate));
   const parsed = parseMonth(selectedMonth);
   const monthDate = parsed ? new Date(parsed.year, parsed.month - 1, 1) : new Date(link.startDate);
   const currentMonth = monthKey(monthDate);

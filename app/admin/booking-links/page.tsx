@@ -113,11 +113,12 @@ async function createBookingLink(formData: FormData) {
 export default async function AdminBookingLinksPage({
   searchParams,
 }: {
-  searchParams?: { err?: string };
+  searchParams?: Promise<{ err?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
-  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
+  const sp = await searchParams;
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   const [students, teachers, links] = await Promise.all([
     prisma.student.findMany({
