@@ -2,9 +2,7 @@
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../../_components/NoticeBanner";
-import SimpleModal from "../../../_components/SimpleModal";
-import BlurTimeInput from "@/app/_components/BlurTimeInput";
-import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import AdminClassSessionsClient from "./AdminClassSessionsClient";
 
 function ymd(d: Date) {
   const y = d.getFullYear();
@@ -580,209 +578,65 @@ export default async function ClassSessionsPage({
       {err ? <NoticeBanner type="error" title={t(lang, "Rejected", "已拒绝")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <b>{t(lang, "Course", "课程")}:</b>
-          <ClassTypeBadge capacity={cls.capacity} compact />
-          <span>
-            {cls.course.name}
-            {cls.subject ? ` / ${cls.subject.name}` : ""} {cls.level ? ` / ${cls.level.name}` : ""}
-          </span>
-        </div>
-        <div>
-          <b>{t(lang, "Teacher", "老师")}:</b> {cls.teacher.name}
-        </div>
-        <div>
-          <b>{t(lang, "Campus", "校区")}:</b> {cls.campus.name}
-        </div>
-        <div>
-          <b>{t(lang, "Room", "教室")}:</b> {cls.room?.name ?? "(none)"}
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <b>{t(lang, "Total Sessions", "课次数")}:</b> {sessions.length}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
-        <SimpleModal buttonLabel={t(lang, "Create One Session", "单次建课")} title={t(lang, "Create One Session", "单次建课")} closeOnSubmit>
-          <form action={createOneSession.bind(null, classId)} style={{ display: "grid", gap: 10, maxWidth: 520 }}>
-            {cls.capacity === 1 && (
-              <label>
-                {t(lang, "Student", "学生")}:
-                <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 240 }}>
-                  <option value="">{t(lang, "Select student", "选择学生")}</option>
-                  {enrollments.map((e) => (
-                    <option key={e.studentId} value={e.studentId}>
-                      {e.student.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label>
-              {t(lang, "Start", "开始")}:
-              <input name="startAt" type="datetime-local" required style={{ marginLeft: 8 }} />
-            </label>
-            <label>
-              {t(lang, "Duration (minutes)", "时长(分钟)")}:
-              <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
-            </label>
-            <button type="submit">{t(lang, "Create (reject on conflict)", "创建(冲突则拒绝)")}</button>
-          </form>
-        </SimpleModal>
-
-        <SimpleModal buttonLabel={t(lang, "Generate Weekly Sessions", "批量生成")} title={t(lang, "Generate Weekly Sessions", "批量生成")} closeOnSubmit>
-          <form action={generateWeeklySessions.bind(null, classId)} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
-            {cls.capacity === 1 && (
-              <label>
-                {t(lang, "Student", "学生")}:
-                <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 240 }}>
-                  <option value="">{t(lang, "Select student", "选择学生")}</option>
-                  {enrollments.map((e) => (
-                    <option key={e.studentId} value={e.studentId}>
-                      {e.student.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label>
-              {t(lang, "Start date (from)", "开始日期")}:
-              <input name="startDate" type="date" defaultValue={defaultStartDate} style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Weekday", "星期")}:
-              <select name="weekday" defaultValue={weekdayDefault} style={{ marginLeft: 8, minWidth: 200 }}>
-                <option value={1}>Mon</option>
-                <option value={2}>Tue</option>
-                <option value={3}>Wed</option>
-                <option value={4}>Thu</option>
-                <option value={5}>Fri</option>
-                <option value={6}>Sat</option>
-                <option value={7}>Sun</option>
-              </select>
-            </label>
-
-            <label>
-              {t(lang, "Time", "时间")}:
-              <BlurTimeInput name="time" defaultValue="19:00" style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Duration (minutes)", "时长(分钟)")}:
-              <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Weeks", "周数")}:
-              <input name="weeks" type="number" min={1} max={52} defaultValue={8} style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "On conflict", "冲突处理")}:
-              <select name="onConflict" defaultValue="reject" style={{ marginLeft: 8, minWidth: 220 }}>
-                <option value="reject">{t(lang, "Reject immediately", "立即拒绝")}</option>
-                <option value="skip">{t(lang, "Skip conflicts", "跳过冲突继续")}</option>
-              </select>
-            </label>
-
-            <button type="submit">{t(lang, "Generate", "生成")}</button>
-
-            <div style={{ color: "#666" }}>
-              {t(lang, "Conflict rule: same teacher (session/appointment overlap) or same room (session overlap).", "冲突规则：同老师（课次/预约重叠）或同教室（课次重叠）。")}
-            </div>
-          </form>
-        </SimpleModal>
-      </div>
-
-      <h3>{t(lang, "Existing Sessions", "已有课次")}</h3>
-      {sessions.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No sessions yet.", "暂无课次")}</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-          {sessions.map((s) => (
-            <div key={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, background: "#fff" }}>
-              <div style={{ fontWeight: 700 }}>
-                {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
-              </div>
-              <div style={{ marginTop: 4 }}>
-                <ClassTypeBadge capacity={cls.capacity} compact />
-              </div>
-              {cls.capacity === 1 && (
-                <div style={{ marginTop: 4, color: s.student ? "#0f172a" : "#b91c1c", fontSize: 12 }}>
-                  {t(lang, "Student", "学生")}: {s.student?.name ?? t(lang, "Not assigned", "未选择学生")}
-                </div>
-              )}
-              <div style={{ marginTop: 4, color: "#666", fontSize: 12 }}>
-                {t(lang, "Teacher", "老师")}: {s.teacher?.name ?? cls.teacher.name}
-              </div>
-              {s.teacherId && s.teacherId !== cls.teacherId ? (
-                <div style={{ color: "#b00", fontSize: 12, marginTop: 4 }}>{t(lang, "Replaced", "替换老师")}</div>
-              ) : null}
-
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
-                <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Attendance", "点名")}</a>
-                <form action={deleteSession.bind(null, classId)}>
-                  <input type="hidden" name="sessionId" value={s.id} />
-                  <button type="submit">{t(lang, "Delete", "删除")}</button>
-                </form>
-              </div>
-
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: "pointer" }}>{t(lang, "Replace teacher", "换老师")}</summary>
-                <form action={replaceSessionTeacher.bind(null, classId)} style={{ display: "grid", gap: 6, marginTop: 6 }}>
-                  <input type="hidden" name="sessionId" value={s.id} />
-                  <label>
-                    {t(lang, "Replace teacher", "换老师")}:
-                    <select
-                      name="newTeacherId"
-                      defaultValue={s.teacherId ?? cls.teacherId}
-                      style={{ marginLeft: 6, minWidth: 200 }}
-                    >
-                      {eligibleTeachers.map((tch) => (
-                        <option key={tch.id} value={tch.id}>
-                          {tch.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {t(lang, "Scope", "范围")}:
-                    <select name="scope" defaultValue="single" style={{ marginLeft: 6 }}>
-                      <option value="single">{t(lang, "This session only", "仅本节课")}</option>
-                      <option value="future">{t(lang, "Future sessions", "本班级未来所有课次")}</option>
-                    </select>
-                  </label>
-                  <input name="reason" type="text" placeholder={t(lang, "Reason (optional)", "原因(可选)")} style={{ minWidth: 200 }} />
-                  <button type="submit">{t(lang, "Confirm", "确认")}</button>
-                </form>
-                {eligibleTeachers.length === 0 && (
-                  <div style={{ color: "#b00", fontSize: 12, marginTop: 4 }}>{t(lang, "No eligible teachers for this course.", "没有可教授该课程的老师")}</div>
-                )}
-              </details>
-
-              {cls.capacity === 1 && !s.studentId && enrollments.length > 0 && (
-                <details style={{ marginTop: 8 }}>
-                  <summary style={{ cursor: "pointer" }}>{t(lang, "Assign student", "选择学生")}</summary>
-                  <form action={assignSessionStudent.bind(null, classId)} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
-                    <input type="hidden" name="sessionId" value={s.id} />
-                    <select name="studentId" defaultValue="">
-                      <option value="">{t(lang, "Select student", "选择学生")}</option>
-                      {enrollments.map((e) => (
-                        <option key={e.studentId} value={e.studentId}>
-                          {e.student.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit">{t(lang, "Confirm", "确认")}</button>
-                  </form>
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <AdminClassSessionsClient
+        classId={classId}
+        classCapacity={cls.capacity}
+        classTeacherId={cls.teacherId}
+        classTeacherName={cls.teacher.name}
+        courseLabel={formatCourseLabel(cls)}
+        campusName={cls.campus.name}
+        roomName={cls.room?.name ?? "(none)"}
+        enrollments={enrollments.map((e) => ({ studentId: e.studentId, studentName: e.student.name }))}
+        eligibleTeachers={eligibleTeachers.map((tch) => ({ id: tch.id, name: tch.name }))}
+        initialSessions={sessions.map((s) => ({
+          id: s.id,
+          startAt: new Date(s.startAt).toISOString(),
+          endAt: new Date(s.endAt).toISOString(),
+          teacherId: s.teacherId,
+          teacherName: s.teacher?.name ?? null,
+          studentId: s.studentId,
+          studentName: s.student?.name ?? null,
+        }))}
+        labels={{
+          rejected: t(lang, "Rejected", "已拒绝"),
+          ok: t(lang, "OK", "成功"),
+          error: t(lang, "Error", "错误"),
+          createOne: t(lang, "Create One Session", "单次建课"),
+          generateWeekly: t(lang, "Generate Weekly Sessions", "批量生成"),
+          student: t(lang, "Student", "学生"),
+          selectStudent: t(lang, "Select student", "选择学生"),
+          start: t(lang, "Start", "开始"),
+          durationMin: t(lang, "Duration (minutes)", "时长(分钟)"),
+          create: t(lang, "Create (reject on conflict)", "创建(冲突则拒绝)"),
+          startDateFrom: t(lang, "Start date (from)", "开始日期"),
+          weekday: t(lang, "Weekday", "星期"),
+          time: t(lang, "Time", "时间"),
+          weeks: t(lang, "Weeks", "周数"),
+          onConflict: t(lang, "On conflict", "冲突处理"),
+          rejectImmediately: t(lang, "Reject immediately", "立即拒绝"),
+          skipConflicts: t(lang, "Skip conflicts", "跳过冲突继续"),
+          generate: t(lang, "Generate", "生成"),
+          existing: t(lang, "Existing Sessions", "已有课次"),
+          none: t(lang, "No sessions yet.", "暂无课次"),
+          attendance: t(lang, "Attendance", "点名"),
+          delete: t(lang, "Delete", "删除"),
+          replaceTeacher: t(lang, "Replace teacher", "换老师"),
+          scope: t(lang, "Scope", "范围"),
+          thisSessionOnly: t(lang, "This session only", "仅本节课"),
+          futureSessions: t(lang, "Future sessions", "本班级未来所有课次"),
+          reasonOptional: t(lang, "Reason (optional)", "原因(可选)"),
+          confirm: t(lang, "Confirm", "确认"),
+          replaced: t(lang, "Replaced", "替换老师"),
+          assignStudent: t(lang, "Assign student", "选择学生"),
+          totalSessions: t(lang, "Total Sessions", "课次数"),
+          course: t(lang, "Course", "课程"),
+          teacher: t(lang, "Teacher", "老师"),
+          campus: t(lang, "Campus", "校区"),
+          room: t(lang, "Room", "教室"),
+          notAssigned: t(lang, "Not assigned", "未选择学生"),
+          replacedTag: t(lang, "Replaced", "替换老师"),
+        }}
+      />
     </div>
   );
 }

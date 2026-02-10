@@ -1,11 +1,12 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import { getLang, t } from "@/lib/i18n";
 import ClassEditForm from "../../_components/ClassEditForm";
 import NoticeBanner from "../../_components/NoticeBanner";
 import { isGroupPackNote } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import ClassEnrollmentsClient from "./ClassEnrollmentsClient";
+import DeleteClassClient from "./DeleteClassClient";
 
 function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
   if (!subjectId) return true;
@@ -282,46 +283,31 @@ export default async function ClassDetailPage({
         }}
       />
 
-      <div style={{ marginBottom: 24 }}>
-        <form action={deleteClass.bind(null, classId)}>
-          <ConfirmSubmitButton message={t(lang, "Delete class? This also deletes sessions/enrollments under it.", "删除班级？将同时删除课次/报名。")}>
-            {t(lang, "Delete Class", "删除班级")}
-          </ConfirmSubmitButton>
-        </form>
-      </div>
-
-      <h3>{t(lang, "Enrollments", "报名")}</h3>
-      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10, background: "#fafafa", marginBottom: 8 }}>
-        <form action={addEnrollment.bind(null, classId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select name="studentId" defaultValue="">
-            <option value="">{t(lang, "Select student", "选择学生")}</option>
-            {availableStudents.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit">{t(lang, "Add", "添加")}</button>
-        </form>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        {enrollments.length === 0 ? (
-          <div style={{ color: "#999" }}>{t(lang, "No enrollments yet.", "暂无报名")}</div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
-            {enrollments.map((e) => (
-              <div key={e.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
-                <div style={{ fontWeight: 700 }}>{e.student.name}</div>
-                <form action={removeEnrollment.bind(null, classId)} style={{ marginTop: 6 }}>
-                  <input type="hidden" name="studentId" value={e.studentId} />
-                  <button type="submit">{t(lang, "Remove", "移除")}</button>
-                </form>
-              </div>
-            ))}
-          </div>
+      <DeleteClassClient
+        classId={classId}
+        confirmMessage={t(
+          lang,
+          "Delete class? This also deletes sessions/enrollments under it.",
+          "删除班级？将同时删除课次/报名。"
         )}
-      </div>
+        label={t(lang, "Delete Class", "删除班级")}
+        labels={{ ok: t(lang, "OK", "成功"), error: t(lang, "Error", "错误") }}
+      />
+
+      <ClassEnrollmentsClient
+        classId={classId}
+        initialAvailableStudents={availableStudents.map((s) => ({ id: s.id, name: s.name }))}
+        initialEnrollments={enrollments.map((e) => ({ id: e.id, studentId: e.studentId, studentName: e.student.name }))}
+        labels={{
+          enrollments: t(lang, "Enrollments", "报名"),
+          selectStudent: t(lang, "Select student", "选择学生"),
+          add: t(lang, "Add", "添加"),
+          remove: t(lang, "Remove", "移除"),
+          noEnrollments: t(lang, "No enrollments yet.", "暂无报名"),
+          ok: t(lang, "OK", "成功"),
+          error: t(lang, "Error", "错误"),
+        }}
+      />
     </div>
   );
 }

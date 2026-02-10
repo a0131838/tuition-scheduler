@@ -69,7 +69,7 @@ export default function QuickScheduleModal({
   campuses,
   rooms,
   candidates,
-  onSchedule,
+  scheduleUrl,
   labels,
   openOnLoad,
   warning,
@@ -87,14 +87,17 @@ export default function QuickScheduleModal({
   campuses: CampusOption[];
   rooms: RoomOption[];
   candidates: { id: string; name: string; ok: boolean; reason?: string }[];
-  onSchedule: (formData: FormData) => void;
+  scheduleUrl: string;
   labels: Labels;
   openOnLoad: boolean;
   warning?: string;
 }) {
   const router = useRouter();
   const [isFinding, startFinding] = useTransition();
+  const [isScheduling, startScheduling] = useTransition();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [scheduleErr, setScheduleErr] = useState("");
+  const [scheduleMsg, setScheduleMsg] = useState("");
   const courses = useMemo<CourseOption[]>(() => {
     const map = new Map<string, string>();
     for (const s of subjects) map.set(s.courseId, s.courseName);
@@ -131,10 +134,46 @@ export default function QuickScheduleModal({
       router.replace(baseHref);
     });
   };
+
+  function scheduleWithTeacher(teacherId: string) {
+    if (!canSchedule) return;
+    setScheduleErr("");
+    setScheduleMsg("");
+    startScheduling(() => {
+      (async () => {
+        const res = await fetch(scheduleUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherId,
+            subjectId,
+            levelId,
+            campusId,
+            roomId,
+            startAt,
+            durationMin: Number(durationMin),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          setScheduleErr(String(data?.message ?? "Schedule failed"));
+          return;
+        }
+        setScheduleMsg("OK");
+        dialogRef.current?.close();
+        // Refresh the student page so the newly scheduled session appears.
+        router.refresh();
+      })();
+    });
+  }
   const campusIsOnline = useMemo(() => {
     if (!campusId) return false;
     return campuses.find((c) => c.id === campusId)?.isOnline ?? false;
   }, [campusId, campuses]);
+
+  const canSchedule = useMemo(() => {
+    return Boolean(subjectId && campusId && (roomId || campusIsOnline) && startAt && durationMin);
+  }, [subjectId, campusId, roomId, campusIsOnline, startAt, durationMin]);
 
   const levelOptions = useMemo(() => {
     if (!subjectId) return levels;
@@ -338,6 +377,10 @@ export default function QuickScheduleModal({
         <div style={{ marginTop: 12 }}>
           {warning ? (
             <NoticeBanner type="warn" title={labels.status} message={warning} />
+          ) : scheduleErr ? (
+            <NoticeBanner type="error" title={labels.status} message={scheduleErr} />
+          ) : scheduleMsg ? (
+            <NoticeBanner type="success" title={labels.status} message={scheduleMsg} />
           ) : subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
@@ -359,25 +402,9 @@ export default function QuickScheduleModal({
                       </td>
                       <td>
                         {c.ok ? (
-                          <form action={onSchedule} style={{ display: "inline" }}>
-                            <input type="hidden" name="month" value={month} />
-                            <input type="hidden" name="quickOpen" value="1" />
-                            <input type="hidden" name="teacherId" value={c.id} />
-                            <input type="hidden" name="subjectId" value={subjectId} />
-                            <input type="hidden" name="levelId" value={levelId} />
-                            <input type="hidden" name="campusId" value={campusId} />
-                            <input type="hidden" name="roomId" value={roomId} />
-                            <input type="hidden" name="startAt" value={startAt} />
-                            <input type="hidden" name="durationMin" value={durationMin} />
-                            <button
-                              type="submit"
-                              onClick={() => {
-                                dialogRef.current?.close();
-                              }}
-                            >
-                              {labels.schedule}
-                            </button>
-                          </form>
+                          <button type="button" onClick={() => scheduleWithTeacher(c.id)} disabled={isScheduling}>
+                            {isScheduling ? `${labels.schedule}...` : labels.schedule}
+                          </button>
                         ) : (
                           "-"
                         )}

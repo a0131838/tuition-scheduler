@@ -2,7 +2,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
-import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -10,6 +9,8 @@ import NoticeBanner from "../../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
+import StudentEditClient from "./_components/StudentEditClient";
+import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1873,25 +1874,21 @@ export default async function StudentDetailPage({
                   {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <details>
-                    <summary style={{ cursor: "pointer" }}>{tl(lang, "Change Teacher")}</summary>
-                    <form action={replaceSessionTeacherForStudent.bind(null, studentId)} style={{ display: "grid", gap: 6, marginTop: 6 }}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <input type="hidden" name="returnTo" value={returnTo} />
-                      <select name="newTeacherId" defaultValue="" style={{ minWidth: 200 }}>
-                        <option value="" disabled>
-                          {tl(lang, "Select teacher")}
-                        </option>
-                        {teachers.filter((tch) => canTeachSubject(tch, s.class.subjectId)).map((tch) => (
-                          <option key={tch.id} value={tch.id}>
-                            {tch.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input name="reason" type="text" placeholder={tl(lang, "Reason (optional)")} />
-                      <button type="submit">{tl(lang, "Replace Teacher")}</button>
-                    </form>
-                  </details>
+                    <SessionReplaceTeacherClient
+                      studentId={studentId}
+                      sessionId={s.id}
+                      teachers={teachers
+                        .filter((tch) => canTeachSubject(tch, s.class.subjectId))
+                        .map((tch) => ({ id: tch.id, name: tch.name }))}
+                      labels={{
+                        changeTeacher: tl(lang, "Change Teacher"),
+                        selectTeacher: tl(lang, "Select teacher"),
+                        reasonOptional: tl(lang, "Reason (optional)"),
+                        replaceTeacher: tl(lang, "Replace Teacher"),
+                        ok: tl(lang, "OK"),
+                        error: tl(lang, "Error"),
+                      }}
+                    />
                   <a
                     href={`/admin/students/${studentId}?month=${monthLabel(monthDate)}&quickOpen=1&quickStartAt=${encodeURIComponent(
                       fmtDatetimeLocal(new Date(s.startAt))
@@ -1955,7 +1952,7 @@ export default async function StudentDetailPage({
           campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
           rooms={rooms.map((r) => ({ id: r.id, name: `${r.name} (${r.campus.name})`, campusId: r.campusId }))}
           candidates={quickCandidates}
-          onSchedule={createQuickAppointment.bind(null, studentId)}
+          scheduleUrl={`/api/admin/students/${encodeURIComponent(studentId)}/quick-appointment`}
           warning={quickPackageWarn}
           labels={{
             title: tl(lang, "Quick Schedule"),
@@ -1981,52 +1978,36 @@ export default async function StudentDetailPage({
         />
       </details>
 
-      <details id="edit-student" style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Edit Student")}</summary>
-        <form action={updateStudent.bind(null, studentId)} style={{ display: "grid", gap: 8, maxWidth: 720, marginTop: 8 }}>
-          <input name="name" defaultValue={student.name} placeholder={tl(lang, "Name")} />
-          <input name="school" defaultValue={student.school ?? ""} placeholder={tl(lang, "School")} />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input name="birthDate" type="date" defaultValue={fmtDateInput(student.birthDate)} />
-            <select name="grade" defaultValue={student.grade ?? ""}>
-              <option value="">{tl(lang, "Grade")}</option>
-              {GRADE_OPTIONS.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select name="sourceChannelId" defaultValue={student.sourceChannelId ?? ""}>
-              <option value="">{tl(lang, "Source")}</option>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <select name="studentTypeId" defaultValue={student.studentTypeId ?? ""}>
-              <option value="">{tl(lang, "Type")}</option>
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <textarea name="note" defaultValue={student.note ?? ""} placeholder={tl(lang, "Notes")} rows={4} />
-          <button type="submit">{tl(lang, "Save")}</button>
-        </form>
-
-        <div style={{ marginTop: 12 }}>
-          <form action={deleteStudent.bind(null, studentId)}>
-            <ConfirmSubmitButton message={tl(lang, "Delete student? This also deletes enrollments/appointments/packages.")}>
-              {tl(lang, "Delete Student")}
-            </ConfirmSubmitButton>
-          </form>
-        </div>
-      </details>
+      <StudentEditClient
+        studentId={studentId}
+        initial={{
+          name: student.name,
+          school: student.school ?? "",
+          grade: student.grade ?? "",
+          birthDate: fmtDateInput(student.birthDate),
+          sourceChannelId: student.sourceChannelId ?? "",
+          studentTypeId: student.studentTypeId ?? "",
+          note: student.note ?? "",
+        }}
+        sources={sources.map((s) => ({ id: s.id, name: s.name }))}
+        types={types.map((t) => ({ id: t.id, name: t.name }))}
+        gradeOptions={GRADE_OPTIONS}
+        labels={{
+          title: tl(lang, "Edit Student"),
+          name: tl(lang, "Name"),
+          school: tl(lang, "School"),
+          grade: tl(lang, "Grade"),
+          birthDate: tl(lang, "Birth Date"),
+          source: tl(lang, "Source"),
+          type: tl(lang, "Type"),
+          notes: tl(lang, "Notes"),
+          save: tl(lang, "Save"),
+          deleteStudent: tl(lang, "Delete Student"),
+          deleteConfirm: tl(lang, "Delete student? This also deletes enrollments/appointments/packages."),
+          ok: tl(lang, "OK"),
+          error: tl(lang, "Error"),
+        }}
+      />
       </div>
     </div>
   );

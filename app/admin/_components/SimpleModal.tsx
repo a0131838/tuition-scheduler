@@ -11,11 +11,12 @@ export default function SimpleModal({
 }: {
   buttonLabel: string;
   title: string;
-  children: React.ReactNode;
+  children: React.ReactNode | ((opts: { close: () => void }) => React.ReactNode);
   closeOnSubmit?: boolean;
   closeLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement | null>(null);
+  const close = () => ref.current?.close();
 
   return (
     <>
@@ -30,8 +31,9 @@ export default function SimpleModal({
           padding: 0,
           width: "min(920px, 92vw)",
         }}
-        onSubmitCapture={() => {
-          if (closeOnSubmit) ref.current?.close();
+        onSubmit={(e) => {
+          // Allow child forms to preventDefault() to keep the modal open.
+          if (closeOnSubmit && !e.defaultPrevented) close();
         }}
       >
         <div
@@ -44,11 +46,11 @@ export default function SimpleModal({
           }}
         >
           <b>{title}</b>
-          <button type="button" onClick={() => ref.current?.close()}>
+          <button type="button" onClick={close}>
             {closeLabel}
           </button>
         </div>
-        <div style={{ padding: 16 }}>{children}</div>
+        <div style={{ padding: 16 }}>{typeof children === "function" ? children({ close }) : children}</div>
       </dialog>
     </>
   );
