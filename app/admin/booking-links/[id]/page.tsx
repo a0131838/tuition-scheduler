@@ -7,30 +7,10 @@ import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } f
 import CopyTextButton from "../../_components/CopyTextButton";
 import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SlotVisibilityToggleCard from "./_components/SlotVisibilityToggleCard";
+import BookingLinkAdminActionsClient from "./_components/BookingLinkAdminActionsClient";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
-}
-
-async function setLinkActive(linkId: string, active: boolean) {
-  "use server";
-  await requireAdmin();
-  await prisma.studentBookingLink.update({ where: { id: linkId }, data: { isActive: active } });
-  redirect(`/admin/booking-links/${linkId}?msg=${active ? "Link+activated" : "Link+deactivated"}`);
-}
-
-async function deleteLink(linkId: string) {
-  "use server";
-  await requireAdmin();
-  await prisma.studentBookingLink.delete({ where: { id: linkId } });
-  redirect("/admin/booking-links?msg=Link+deleted");
-}
-
-async function setOnlySelectedSlots(linkId: string, onlySelectedSlots: boolean) {
-  "use server";
-  await requireAdmin();
-  await prisma.studentBookingLink.update({ where: { id: linkId }, data: { onlySelectedSlots } });
-  redirect(`/admin/booking-links/${linkId}?msg=${onlySelectedSlots ? "Only+selected+slots+enabled" : "All+slots+enabled"}`);
 }
 
 async function rejectRequest(linkId: string, requestId: string, formData: FormData) {
@@ -363,24 +343,13 @@ export default async function AdminBookingLinkDetailPage({
         <div><a href={`/api/booking-links/${link.id}/export/pdf?month=${currentMonth}`}>{t(lang, "Export PDF", "导出PDF")}</a></div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        {link.isActive ? (
-          <form action={setLinkActive.bind(null, link.id, false)}><button type="submit">{t(lang, "Deactivate", "停用")}</button></form>
-        ) : (
-          <form action={setLinkActive.bind(null, link.id, true)}><button type="submit">{t(lang, "Activate", "启用")}</button></form>
-        )}
-        {link.onlySelectedSlots ? (
-          <form action={setOnlySelectedSlots.bind(null, link.id, false)}>
-            <button type="submit">{t(lang, "Show all slots to student", "学生显示所有时段")}</button>
-          </form>
-        ) : (
-          <form action={setOnlySelectedSlots.bind(null, link.id, true)}>
-            <button type="submit">{t(lang, "Only show selected slots", "仅显示勾选时段")}</button>
-          </form>
-        )}
-        <form action={deleteLink.bind(null, link.id)}>
-          <button type="submit" style={{ color: "#b00" }}>{t(lang, "Delete Link", "删除链接")}</button>
-        </form>
+      <div style={{ marginBottom: 14 }}>
+        <BookingLinkAdminActionsClient
+          lang={lang}
+          linkId={link.id}
+          initialIsActive={!!link.isActive}
+          initialOnlySelectedSlots={!!link.onlySelectedSlots}
+        />
       </div>
 
       <h3>{t(lang, "Monthly Availability", "月历可选时段")}</h3>
