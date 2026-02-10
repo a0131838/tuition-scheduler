@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
+import { useRouter } from "next/navigation";
 
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
@@ -11,7 +12,7 @@ type CampusOption = { id: string; name: string };
 type RoomOption = { id: string; name: string; campusName: string; campusId: string };
 
 export default function OneOnOneTemplateForm(props: {
-  action: (formData: FormData) => void;
+  teacherId: string;
   courses: CourseOption[];
   subjects: SubjectOption[];
   levels: LevelOption[];
@@ -33,7 +34,10 @@ export default function OneOnOneTemplateForm(props: {
   };
   weekdays: string[];
 }) {
-  const { courses, subjects, levels, students, campuses, rooms, labels, weekdays, action } = props;
+  const { courses, subjects, levels, students, campuses, rooms, labels, weekdays, teacherId } = props;
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState(
     subjects.find((s) => s.courseId === (courses[0]?.id ?? ""))?.id ?? subjects[0]?.id ?? ""
@@ -70,7 +74,47 @@ export default function OneOnOneTemplateForm(props: {
   }, [roomId, filteredRooms]);
 
   return (
-    <form action={action} style={{ display: "grid", gap: 8, maxWidth: 900 }}>
+    <form
+      style={{ display: "grid", gap: 8, maxWidth: 900 }}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        setErr("");
+        setBusy(true);
+        try {
+          const fd = new FormData(e.currentTarget);
+          const payload = {
+            studentId: String(fd.get("studentId") ?? ""),
+            subjectId: String(fd.get("subjectId") ?? ""),
+            levelId: String(fd.get("levelId") ?? ""),
+            campusId: String(fd.get("campusId") ?? ""),
+            roomId: String(fd.get("roomId") ?? ""),
+            weekday: String(fd.get("weekday") ?? ""),
+            startTime: String(fd.get("startTime") ?? ""),
+            durationMin: String(fd.get("durationMin") ?? ""),
+          };
+
+          const res = await fetch(`/api/admin/teachers/${encodeURIComponent(teacherId)}/one-on-one-templates`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = (await res.json().catch(() => null)) as any;
+          if (!res.ok || !data?.ok) {
+            setErr(String(data?.message ?? `Request failed (${res.status})`));
+            return;
+          }
+
+          (e.currentTarget as HTMLFormElement).reset();
+          const y = window.scrollY;
+          router.refresh();
+          requestAnimationFrame(() => window.scrollTo(0, y));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <select name="studentId" defaultValue="">
           <option value="">{labels.student}</option>
@@ -132,7 +176,9 @@ export default function OneOnOneTemplateForm(props: {
         <BlurTimeInput name="startTime" defaultValue="16:00" />
         <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ width: 120 }} />
         <span style={{ color: "#666" }}>{labels.durationMin}</span>
-        <button type="submit">{labels.add}</button>
+        <button type="submit" disabled={busy}>
+          {busy ? `${labels.add}...` : labels.add}
+        </button>
       </div>
     </form>
   );

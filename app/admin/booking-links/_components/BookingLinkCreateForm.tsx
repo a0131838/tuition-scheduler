@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type StudentOption = {
   id: string;
@@ -17,7 +18,6 @@ type TeacherOption = {
 };
 
 export default function BookingLinkCreateForm({
-  action,
   students,
   teachers,
   labels = {
@@ -44,7 +44,6 @@ export default function BookingLinkCreateForm({
     createLink: "Create Link / 创建链接",
   },
 }: {
-  action: (formData: FormData) => Promise<void>;
   students: StudentOption[];
   teachers: TeacherOption[];
   labels?: {
@@ -71,9 +70,12 @@ export default function BookingLinkCreateForm({
     createLink: string;
   };
 }) {
+  const router = useRouter();
   const [studentId, setStudentId] = useState("");
   const [query, setQuery] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
   const studentMap = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
   const selectedStudent = studentMap.get(studentId);
@@ -120,7 +122,46 @@ export default function BookingLinkCreateForm({
   }
 
   return (
-    <form action={action} style={{ display: "grid", gap: 8, maxWidth: 960, marginBottom: 20 }}>
+    <form
+      style={{ display: "grid", gap: 8, maxWidth: 960, marginBottom: 20 }}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        setErr("");
+        setBusy(true);
+        try {
+          const fd = new FormData(e.currentTarget);
+          const payload = {
+            studentId: String(fd.get("studentId") ?? ""),
+            startDate: String(fd.get("startDate") ?? ""),
+            endDate: String(fd.get("endDate") ?? ""),
+            durationMin: Number(String(fd.get("durationMin") ?? "60")),
+            slotStepMin: Number(String(fd.get("slotStepMin") ?? "15")),
+            title: String(fd.get("title") ?? ""),
+            note: String(fd.get("note") ?? ""),
+            expiresAt: String(fd.get("expiresAt") ?? ""),
+            teacherIds: selectedTeacherIds,
+          };
+
+          const res = await fetch("/api/admin/booking-links", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = (await res.json().catch(() => null)) as any;
+          if (!res.ok || !data?.ok) {
+            setErr(String(data?.message ?? `Request failed (${res.status})`));
+            return;
+          }
+
+          (e.currentTarget as HTMLFormElement).closest("dialog")?.close();
+          router.push(`/admin/booking-links/${encodeURIComponent(String(data.id))}?msg=Link+created`);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <select name="studentId" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
           <option value="">{labels.student}</option>
@@ -218,8 +259,8 @@ export default function BookingLinkCreateForm({
         <input key={id} type="hidden" name="teacherIds" value={id} />
       ))}
 
-      <button type="submit" style={{ width: 160 }}>
-        {labels.createLink}
+      <button type="submit" disabled={busy} style={{ width: 160 }}>
+        {busy ? `${labels.createLink}...` : labels.createLink}
       </button>
     </form>
   );

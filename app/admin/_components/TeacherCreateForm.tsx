@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type SubjectOpt = {
   id: string;
@@ -15,13 +16,13 @@ type CourseOpt = {
 };
 
 export default function TeacherCreateForm({
-  action,
   subjects,
   courses,
   labels,
   initial,
+  teacherId,
+  onDone,
 }: {
-  action: (formData: FormData) => Promise<void>;
   subjects: SubjectOpt[];
   courses: CourseOpt[];
   labels: {
@@ -59,13 +60,18 @@ export default function TeacherCreateForm({
     offlineShanghai?: boolean | null;
     offlineSingapore?: boolean | null;
   };
+  teacherId?: string;
+  onDone?: () => void;
 }) {
+  const router = useRouter();
   const [courseId, setCourseId] = useState("");
   const [subjectQ, setSubjectQ] = useState("");
   const [lang, setLang] = useState(initial?.teachingLanguageOther ? "OTHER" : initial?.teachingLanguage ?? "");
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>(
     initial?.subjectIds ? Array.from(new Set(initial.subjectIds)) : []
   );
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const shownSubjects = useMemo(() => {
     const q = subjectQ.trim().toLowerCase();
@@ -88,7 +94,52 @@ export default function TeacherCreateForm({
   };
 
   return (
-    <form action={action} style={{ display: "grid", gap: 8, maxWidth: 860 }}>
+    <form
+      style={{ display: "grid", gap: 8, maxWidth: 860 }}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        setErr("");
+        setBusy(true);
+        try {
+          const fd = new FormData(e.currentTarget);
+          const payload = {
+            name: String(fd.get("name") ?? ""),
+            nationality: String(fd.get("nationality") ?? ""),
+            almaMater: String(fd.get("almaMater") ?? ""),
+            intro: String(fd.get("intro") ?? ""),
+            yearsExperience: String(fd.get("yearsExperience") ?? ""),
+            teachingLanguage: String(fd.get("teachingLanguage") ?? ""),
+            teachingLanguageOther: String(fd.get("teachingLanguageOther") ?? ""),
+            offlineShanghai: String(fd.get("offlineShanghai") ?? "") === "on",
+            offlineSingapore: String(fd.get("offlineSingapore") ?? "") === "on",
+            subjectIds: selectedSubjectIds,
+          };
+
+          const url = teacherId ? `/api/admin/teachers/${encodeURIComponent(teacherId)}` : "/api/admin/teachers";
+          const method = teacherId ? "PATCH" : "POST";
+          const res = await fetch(url, {
+            method,
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = (await res.json().catch(() => null)) as any;
+          if (!res.ok || !data?.ok) {
+            setErr(String(data?.message ?? `Request failed (${res.status})`));
+            return;
+          }
+
+          if (onDone) onDone();
+          else (e.currentTarget as HTMLFormElement).closest("dialog")?.close();
+          const y = window.scrollY;
+          router.refresh();
+          requestAnimationFrame(() => window.scrollTo(0, y));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       <input name="name" placeholder={labels.teacherName} defaultValue={initial?.name ?? ""} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input name="nationality" placeholder={labels.nationality} defaultValue={initial?.nationality ?? ""} />
@@ -211,7 +262,9 @@ export default function TeacherCreateForm({
         />
       ) : null}
 
-      <button type="submit">{labels.add}</button>
+      <button type="submit" disabled={busy}>
+        {busy ? `${labels.add}...` : labels.add}
+      </button>
     </form>
   );
 }

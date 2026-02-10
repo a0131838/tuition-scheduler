@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Labels = {
   edit: string;
@@ -38,19 +39,22 @@ type PackageRow = {
 
 export default function PackageEditModal({
   pkg,
-  onUpdate,
-  onTopUp,
-  onDelete,
   labels,
 }: {
   pkg: PackageRow;
-  onUpdate: (formData: FormData) => void;
-  onTopUp: (formData: FormData) => void;
-  onDelete: (formData: FormData) => void;
   labels: Labels;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [hover, setHover] = useState(false);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const router = useRouter();
+
+  const preserveRefresh = () => {
+    const y = window.scrollY;
+    router.refresh();
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  };
 
   return (
     <>
@@ -84,7 +88,48 @@ export default function PackageEditModal({
           <button type="submit">{labels.close}</button>
         </form>
 
-        <form action={onUpdate} style={{ display: "grid", gap: 8, marginTop: 12 }}>
+        {err ? <div style={{ color: "#b00", marginTop: 10 }}>{err}</div> : null}
+
+        <form
+          style={{ display: "grid", gap: 8, marginTop: 12 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setErr("");
+            setBusy(true);
+            try {
+              const fd = new FormData(e.currentTarget);
+              const id = String(fd.get("id") ?? "");
+              const payload = {
+                status: String(fd.get("status") ?? ""),
+                remainingMinutes: String(fd.get("remainingMinutes") ?? ""),
+                validFrom: String(fd.get("validFrom") ?? ""),
+                validTo: String(fd.get("validTo") ?? ""),
+                paid: String(fd.get("paid") ?? "") === "on",
+                paidAt: String(fd.get("paidAt") ?? ""),
+                paidAmount: String(fd.get("paidAmount") ?? ""),
+                paidNote: String(fd.get("paidNote") ?? ""),
+                note: String(fd.get("note") ?? ""),
+              };
+
+              const res = await fetch(`/api/admin/packages/${encodeURIComponent(id)}`, {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const data = (await res.json().catch(() => null)) as any;
+              if (!res.ok || !data?.ok) {
+                setErr(String(data?.message ?? `Request failed (${res.status})`));
+                return;
+              }
+
+              dialogRef.current?.close();
+              preserveRefresh();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
           <input type="hidden" name="id" value={pkg.id} />
           <label>
             {labels.remaining}:
@@ -138,12 +183,50 @@ export default function PackageEditModal({
             <input name="note" type="text" defaultValue={pkg.note ?? ""} style={{ marginLeft: 8, width: "100%" }} />
           </label>
 
-          <button type="submit">{labels.update}</button>
+          <button type="submit" disabled={busy}>
+            {busy ? `${labels.update}...` : labels.update}
+          </button>
         </form>
 
         <hr style={{ margin: "16px 0" }} />
 
-        <form action={onTopUp} style={{ display: "grid", gap: 8 }}>
+        <form
+          style={{ display: "grid", gap: 8 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setErr("");
+            setBusy(true);
+            try {
+              const fd = new FormData(e.currentTarget);
+              const id = String(fd.get("id") ?? "");
+              const payload = {
+                addMinutes: Number(fd.get("addMinutes") ?? 0),
+                note: String(fd.get("note") ?? ""),
+                paid: String(fd.get("paid") ?? "") === "on",
+                paidAt: String(fd.get("paidAt") ?? ""),
+                paidAmount: String(fd.get("paidAmount") ?? ""),
+                paidNote: String(fd.get("paidNote") ?? ""),
+              };
+
+              const res = await fetch(`/api/admin/packages/${encodeURIComponent(id)}/top-up`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const data = (await res.json().catch(() => null)) as any;
+              if (!res.ok || !data?.ok) {
+                setErr(String(data?.message ?? `Request failed (${res.status})`));
+                return;
+              }
+
+              dialogRef.current?.close();
+              preserveRefresh();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
           <b>{labels.topUp}</b>
           <input type="hidden" name="id" value={pkg.id} />
           <label>
@@ -170,19 +253,42 @@ export default function PackageEditModal({
             {labels.paidNote}:
             <input name="paidNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
           </label>
-          <button type="submit">{labels.topUpSubmit}</button>
+          <button type="submit" disabled={busy}>
+            {busy ? `${labels.topUpSubmit}...` : labels.topUpSubmit}
+          </button>
         </form>
 
         <form
-          action={onDelete}
           onSubmit={(e) => {
             if (!window.confirm(labels.deleteConfirm)) e.preventDefault();
           }}
           style={{ marginTop: 12 }}
         >
           <input type="hidden" name="id" value={pkg.id} />
-          <button type="submit" style={{ color: "#b00" }}>
-            {labels.deleteLabel}
+          <button
+            type="button"
+            disabled={busy}
+            style={{ color: "#b00" }}
+            onClick={async () => {
+              if (busy) return;
+              if (!window.confirm(labels.deleteConfirm)) return;
+              setErr("");
+              setBusy(true);
+              try {
+                const res = await fetch(`/api/admin/packages/${encodeURIComponent(pkg.id)}`, { method: "DELETE" });
+                const data = (await res.json().catch(() => null)) as any;
+                if (!res.ok || !data?.ok) {
+                  setErr(String(data?.message ?? `Request failed (${res.status})`));
+                  return;
+                }
+                dialogRef.current?.close();
+                preserveRefresh();
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? `${labels.deleteLabel}...` : labels.deleteLabel}
           </button>
         </form>
       </dialog>

@@ -1,14 +1,10 @@
-﻿import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import PackageEditModal from "../_components/PackageEditModal";
-import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
-import StudentSearchSelect from "../_components/StudentSearchSelect";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
+import PackageCreateFormClient from "./PackageCreateFormClient";
 import {
-  GROUP_PACK_TAG,
-  composePackageNote,
   packageModeFromNote,
   stripGroupPackTag,
 } from "@/lib/package-mode";
@@ -44,310 +40,6 @@ function fmtDateInput(d: Date | null) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
-}
-
-type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
-
-function modeKeyFromCreateType(typeRaw: string, type: string): PackageModeKey {
-  if (type === "MONTHLY") return "MONTHLY";
-  return typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
-}
-
-function modeKeyFromSaved(type: string, note: string | null): PackageModeKey {
-  if (type === "MONTHLY") return "MONTHLY";
-  return packageModeFromNote(note) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
-}
-
-function sameModeWhere(mode: PackageModeKey) {
-  if (mode === "MONTHLY") return { type: "MONTHLY" as const };
-  if (mode === "GROUP_COUNT") {
-    return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_TAG } };
-  }
-  return {
-    type: "HOURS" as const,
-    OR: [{ note: null }, { NOT: { note: { startsWith: GROUP_PACK_TAG } } }],
-  };
-}
-
-async function createPackage(formData: FormData) {
-  "use server";
-  const studentId = String(formData.get("studentId") ?? "");
-  const courseId = String(formData.get("courseId") ?? "");
-  const typeRaw = String(formData.get("type") ?? "HOURS");
-  const type = typeRaw === "GROUP_COUNT" ? "HOURS" : typeRaw;
-  const status = String(formData.get("status") ?? "PAUSED");
-
-  const validFromStr = String(formData.get("validFrom") ?? "");
-  const validToStr = String(formData.get("validTo") ?? "");
-  const noteRaw = String(formData.get("note") ?? "");
-  const paid = String(formData.get("paid") ?? "") === "on";
-  const paidAtStr = String(formData.get("paidAt") ?? "");
-  const paidAmountRaw = String(formData.get("paidAmount") ?? "");
-  const paidNote = String(formData.get("paidNote") ?? "");
-
-  const totalMinutes = Number(formData.get("totalMinutes") ?? 0);
-
-  if (!studentId || !courseId || !validFromStr) {
-    redirect(`/admin/packages?err=Missing+student/course/validFrom`);
-  }
-
-  const validFrom = parseDateStart(validFromStr);
-  const validTo = validToStr ? parseDateEnd(validToStr) : null;
-  const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
-  let paidAmount: number | null = null;
-  if (paidAmountRaw !== "") {
-    const n = Number(paidAmountRaw);
-    if (Number.isFinite(n)) paidAmount = n;
-    else redirect(`/admin/packages?err=Invalid+paidAmount`);
-  }
-  if (paid && !paidAtStr && paidAmount == null) {
-    redirect(`/admin/packages?err=Paid+requires+paidAt+or+paidAmount`);
-  }
-  if (paidAtStr && (!paidAt || Number.isNaN(paidAt.getTime()))) {
-    redirect(`/admin/packages?err=Invalid+paidAt`);
-  }
-
-  const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
-  const createMode = modeKeyFromCreateType(typeRaw, type);
-  // MONTHLY packages must not overlap in active period.
-  // HOURS/GROUP packages are allowed to coexist (staff can sell a new package or top-up).
-  if (createMode === "MONTHLY") {
-    const overlap = await prisma.coursePackage.findFirst({
-      where: {
-        studentId,
-        courseId,
-        ...sameModeWhere(createMode),
-        status: "ACTIVE",
-        validFrom: { lte: overlapCheckTo },
-        OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
-      },
-      select: { id: true },
-    });
-    if (overlap) {
-      redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists`);
-    }
-  }
-
-  const packageNote = composePackageNote(typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES", noteRaw);
-
-  if (type === "HOURS") {
-    if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
-      redirect(`/admin/packages?err=HOURS+package+needs+totalMinutes`);
-    }
-
-    await prisma.coursePackage.create({
-      data: {
-        studentId,
-        courseId,
-        type: "HOURS",
-        status: (status as any) || "PAUSED",
-        totalMinutes,
-        remainingMinutes: totalMinutes,
-        validFrom,
-        validTo,
-        paid,
-        paidAt,
-        paidAmount,
-        paidNote: paidNote || null,
-        note: packageNote || null,
-        txns: {
-          create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: packageNote || null },
-        },
-      },
-    });
-  } else {
-    await prisma.coursePackage.create({
-      data: {
-        studentId,
-        courseId,
-        type: "MONTHLY",
-        status: (status as any) || "PAUSED",
-        validFrom,
-        validTo,
-        paid,
-        paidAt,
-        paidAmount,
-        paidNote: paidNote || null,
-        note: packageNote || null,
-        txns: {
-          create: { kind: "PURCHASE", deltaMinutes: 0, note: packageNote || null },
-        },
-      },
-    });
-  }
-
-  redirect(`/admin/packages?msg=Created`);
-}
-
-async function topUpPackage(formData: FormData) {
-  "use server";
-  const id = String(formData.get("id") ?? "");
-  const addMinutes = Number(formData.get("addMinutes") ?? 0);
-  const note = String(formData.get("note") ?? "").trim();
-  const paid = String(formData.get("paid") ?? "") === "on";
-  const paidAtStr = String(formData.get("paidAt") ?? "");
-  const paidAmountRaw = String(formData.get("paidAmount") ?? "");
-  const paidNote = String(formData.get("paidNote") ?? "");
-
-  if (!id) redirect(`/admin/packages?err=Missing+id`);
-  if (!Number.isFinite(addMinutes) || addMinutes <= 0) redirect(`/admin/packages?err=Invalid+addMinutes`);
-
-  const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
-  let paidAmount: number | null = null;
-  if (paidAmountRaw !== "") {
-    const n = Number(paidAmountRaw);
-    if (Number.isFinite(n)) paidAmount = n;
-    else redirect(`/admin/packages?err=Invalid+paidAmount`);
-  }
-  if (paid && !paidAtStr && paidAmount == null) {
-    redirect(`/admin/packages?err=Paid+requires+paidAt+or+paidAmount`);
-  }
-  if (paidAtStr && (!paidAt || Number.isNaN(paidAt.getTime()))) {
-    redirect(`/admin/packages?err=Invalid+paidAt`);
-  }
-
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id },
-    select: { id: true, type: true, remainingMinutes: true, totalMinutes: true },
-  });
-  if (!pkg) redirect(`/admin/packages?err=Package+not+found`);
-  if (pkg.type !== "HOURS") redirect(`/admin/packages?err=Only+HOURS+package+can+top-up`);
-
-  const curRemain = pkg.remainingMinutes ?? 0;
-  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.coursePackage.update({
-      where: { id },
-      data: {
-        remainingMinutes: curRemain + addMinutes,
-        totalMinutes: curTotal + addMinutes,
-        ...(paid
-          ? {
-              paid: true,
-              paidAt,
-              paidAmount,
-              paidNote: paidNote || null,
-            }
-          : {}),
-      },
-    });
-
-    await tx.packageTxn.create({
-      data: {
-        packageId: id,
-        kind: "PURCHASE",
-        deltaMinutes: addMinutes,
-        note: note ? `Top-up: ${note}` : "Top-up purchase",
-      },
-    });
-  });
-
-  redirect(`/admin/packages?msg=Top-up+added`);
-}
-
-async function updatePackage(formData: FormData) {
-  "use server";
-  const id = String(formData.get("id") ?? "");
-  const status = String(formData.get("status") ?? "");
-  const remainingMinutesRaw = String(formData.get("remainingMinutes") ?? "");
-  const validFromStr = String(formData.get("validFrom") ?? "");
-  const validToStr = String(formData.get("validTo") ?? "");
-  const noteRaw = String(formData.get("note") ?? "");
-  const paid = String(formData.get("paid") ?? "") === "on";
-  const paidAtStr = String(formData.get("paidAt") ?? "");
-  const paidAmountRaw = String(formData.get("paidAmount") ?? "");
-  const paidNote = String(formData.get("paidNote") ?? "");
-
-  if (!id || !validFromStr) redirect(`/admin/packages?err=Missing+id/validFrom`);
-
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id },
-    select: { remainingMinutes: true, note: true, type: true, studentId: true, courseId: true },
-  });
-  if (!pkg) redirect(`/admin/packages?err=Package+not+found`);
-
-  const validFrom = parseDateStart(validFromStr);
-  const validTo = validToStr ? parseDateEnd(validToStr) : null;
-  const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
-  let paidAmount: number | null = null;
-  if (paidAmountRaw !== "") {
-    const n = Number(paidAmountRaw);
-    if (Number.isFinite(n)) paidAmount = n;
-  }
-
-  let remainingMinutes: number | null = null;
-  if (remainingMinutesRaw !== "") {
-    const n = Number(remainingMinutesRaw);
-    if (Number.isFinite(n) && n >= 0) remainingMinutes = n;
-  }
-
-  const note = composePackageNote(
-    packageModeFromNote(pkg?.note ?? null) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES",
-    noteRaw
-  );
-  const updateMode = modeKeyFromSaved(pkg.type, note);
-  const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
-  if (status === "ACTIVE") {
-    if (updateMode === "MONTHLY") {
-      const overlap = await prisma.coursePackage.findFirst({
-        where: {
-          id: { not: id },
-          studentId: pkg.studentId,
-          courseId: pkg.courseId,
-          ...sameModeWhere(updateMode),
-          status: "ACTIVE",
-          validFrom: { lte: overlapCheckTo },
-          OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
-        },
-        select: { id: true },
-      });
-      if (overlap) {
-        redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists+for+same+mode`);
-      }
-    }
-  }
-
-  await prisma.coursePackage.update({
-    where: { id },
-    data: {
-      status: (status as any) || undefined,
-      remainingMinutes,
-      validFrom,
-      validTo,
-      paid,
-      paidAt: paid ? paidAt : null,
-      paidAmount: paid ? paidAmount : null,
-      paidNote: paid ? paidNote || null : null,
-      note: note || null,
-    },
-  });
-
-  if (pkg && remainingMinutes != null && pkg.remainingMinutes != null && remainingMinutes !== pkg.remainingMinutes) {
-    const delta = remainingMinutes - pkg.remainingMinutes;
-    await prisma.packageTxn.create({
-      data: {
-        packageId: id,
-        kind: "ADJUST",
-        deltaMinutes: delta,
-        note: `manual adjust`,
-      },
-    });
-  }
-
-  redirect(`/admin/packages?msg=Updated`);
-}
-
-async function deletePackage(formData: FormData) {
-  "use server";
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
-
-  await prisma.packageTxn.deleteMany({ where: { packageId: id } });
-  await prisma.attendance.updateMany({ where: { packageId: id }, data: { packageId: null } });
-  await prisma.coursePackage.delete({ where: { id } });
-
-  redirect(`/admin/packages?msg=Deleted`);
 }
 
 export default async function AdminPackagesPage({
@@ -429,94 +121,40 @@ export default async function AdminPackagesPage({
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Create Package", "创建课包")} title={t(lang, "Create Package", "创建课包")} closeOnSubmit>
-          <form action={createPackage} style={{ display: "grid", gap: 10, maxWidth: 760 }}>
-            <label>
-              {t(lang, "Student", "学生")}:
-              <div style={{ marginLeft: 8 }}>
-                <StudentSearchSelect
-                  name="studentId"
-                  placeholder={t(lang, "Search student name", "搜索学生姓名")}
-                  students={students.map((s) => ({ id: s.id, name: s.name }))}
-                />
-              </div>
-            </label>
-
-            <label>
-              {t(lang, "Course", "课程")}:
-              <select name="courseId" defaultValue={courses[0]?.id ?? ""} style={{ marginLeft: 8, minWidth: 520 }}>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              {t(lang, "Type", "类型")}:
-              <select name="type" defaultValue="HOURS" style={{ marginLeft: 8, minWidth: 220 }}>
-                <option value="HOURS">{t(lang, "HOURS (minutes)", "课时包(按分钟)")}</option>
-                <option value="GROUP_COUNT">{t(lang, "GROUP (per class)", "班课包(按次)")}</option>
-                <option value="MONTHLY">{t(lang, "MONTHLY (valid period)", "月卡(按有效期)")}</option>
-              </select>
-            </label>
-
-            <label>
-              {t(lang, "totalMinutes / count (HOURS/GROUP)", "总分钟数/次数(课时包/班课包)")}:
-              <input name="totalMinutes" type="number" min={1} step={1} defaultValue={20} style={{ marginLeft: 8 }} />
-              <span style={{ color: "#666", marginLeft: 8 }}>
-                {t(lang, "HOURS: minutes (e.g. 600=10h). GROUP: class count (e.g. 20=20 classes).", "课时包按分钟（例如600=10小时）；班课包按次数（例如20=20次）。")}
-              </span>
-            </label>
-
-            <label>
-              {t(lang, "validFrom", "生效日期")}:
-              <input name="validFrom" type="date" defaultValue={ymd} style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "validTo (optional)", "失效日期(可选)")}:
-              <input name="validTo" type="date" style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Status", "状态")}:
-              <select name="status" defaultValue="PAUSED" style={{ marginLeft: 8, minWidth: 220 }}>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="PAUSED">PAUSED</option>
-                <option value="EXPIRED">EXPIRED</option>
-              </select>
-            </label>
-
-            <label>
-              {t(lang, "Paid", "已付款")}:
-              <input type="checkbox" name="paid" style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Paid At", "付款时间")}:
-              <input name="paidAt" type="datetime-local" style={{ marginLeft: 8 }} />
-            </label>
-
-            <label>
-              {t(lang, "Paid Amount", "付款金额")}:
-              <input name="paidAmount" type="number" min={0} step={1} style={{ marginLeft: 8, width: 180 }} />
-            </label>
-
-            <label>
-              {t(lang, "Paid Note", "付款备注")}:
-              <input name="paidNote" type="text" placeholder={t(lang, "Paid note", "付款备注")} style={{ marginLeft: 8, width: 520 }} />
-            </label>
-
-            <label>
-              {t(lang, "Note", "备注")}:
-              <input name="note" type="text" placeholder={t(lang, "Note", "备注")} style={{ marginLeft: 8, width: 520 }} />
-            </label>
-
-            <ConfirmSubmitButton message={t(lang, "Create this package?", "确认创建课包？")}>
-              {t(lang, "Create", "创建")}
-            </ConfirmSubmitButton>
-          </form>
+          {({ close }) => (
+            <PackageCreateFormClient
+              close={close}
+              defaultYmd={ymd}
+              students={students.map((s) => ({ id: s.id, name: s.name }))}
+              courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+              labels={{
+                student: t(lang, "Student", "学生"),
+                studentPlaceholder: t(lang, "Search student name", "搜索学生姓名"),
+                course: t(lang, "Course", "课程"),
+                type: t(lang, "Type", "类型"),
+                typeHours: t(lang, "HOURS (minutes)", "课时包(按分钟)"),
+                typeGroup: t(lang, "GROUP (per class)", "班课包(按次)"),
+                typeMonthly: t(lang, "MONTHLY (valid period)", "月卡(按有效期)"),
+                totalMinutesOrCount: t(lang, "totalMinutes / count (HOURS/GROUP)", "总分钟数/次数(课时包/班课包)"),
+                totalMinutesHint: t(
+                  lang,
+                  "HOURS: minutes (e.g. 600=10h). GROUP: class count (e.g. 20=20 classes).",
+                  "课时包按分钟（例如600=10小时）；班课包按次数（例如20=20次）。"
+                ),
+                validFrom: t(lang, "validFrom", "生效日期"),
+                validToOptional: t(lang, "validTo (optional)", "失效日期(可选)"),
+                status: t(lang, "Status", "状态"),
+                paid: t(lang, "Paid", "已付款"),
+                paidAt: t(lang, "Paid At", "付款时间"),
+                paidAmount: t(lang, "Paid Amount", "付款金额"),
+                paidNote: t(lang, "Paid Note", "付款备注"),
+                note: t(lang, "Note", "备注"),
+                create: t(lang, "Create", "创建"),
+                confirmCreate: t(lang, "Create this package?", "确认创建课包？"),
+                errorPrefix: t(lang, "Error", "错误"),
+              }}
+            />
+          )}
         </SimpleModal>
       </div>
 
@@ -666,9 +304,6 @@ export default async function AdminPackagesPage({
                 <td>
                   <PackageEditModal
                     pkg={p}
-                    onUpdate={updatePackage}
-                    onTopUp={topUpPackage}
-                    onDelete={deletePackage}
                     labels={{
                       edit: t(lang, "Edit", "编辑"),
                       update: t(lang, "Update", "更新"),

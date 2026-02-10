@@ -1,17 +1,15 @@
-﻿﻿import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import ConfirmSubmitButton from "../../_components/ConfirmSubmitButton";
-import CopyTeacherCredentialsButton from "../../_components/CopyTeacherCredentialsButton";
+import { prisma } from "@/lib/prisma";
 import { TeachingLanguage } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
-import StudentSearchSelect from "../../_components/StudentSearchSelect";
-import { createPasswordHash } from "@/lib/auth";
 import TeacherCreateForm from "../../_components/TeacherCreateForm";
-import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import OneOnOneTemplateForm from "../../_components/OneOnOneTemplateForm";
 import NoticeBanner from "../../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
-import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
+import CreateAndBindTeacherUserFormClient from "./CreateAndBindTeacherUserFormClient";
+import UnbindTeacherUserButtonClient from "./UnbindTeacherUserButtonClient";
+import DeleteTemplateButtonClient from "./DeleteTemplateButtonClient";
+import GenerateSessionsButtonClient from "./GenerateSessionsButtonClient";
+import DeleteTeacherNavigateClient from "./DeleteTeacherNavigateClient";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -180,269 +178,6 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   return { occurrences, conflicts, toCreate, templates };
 }
 
-async function updateTeacher(teacherId: string, formData: FormData) {
-  "use server";
-  const name = String(formData.get("name") ?? "").trim();
-  const nationality = String(formData.get("nationality") ?? "").trim();
-  const almaMater = String(formData.get("almaMater") ?? "").trim();
-  const intro = String(formData.get("intro") ?? "").trim();
-  const yearsExperienceRaw = String(formData.get("yearsExperience") ?? "").trim();
-  const teachingLanguageRaw = String(formData.get("teachingLanguage") ?? "").trim();
-  const teachingLanguageOther = String(formData.get("teachingLanguageOther") ?? "").trim();
-  const offlineShanghai = String(formData.get("offlineShanghai") ?? "") === "on";
-  const offlineSingapore = String(formData.get("offlineSingapore") ?? "") === "on";
-  const subjectIds = formData.getAll("subjectIds").map((v) => String(v)).filter(Boolean);
-
-  if (!name) {
-    redirect(`/admin/teachers/${teacherId}?err=Name+is+required`);
-  }
-
-  let yearsExperience: number | null = null;
-  if (yearsExperienceRaw) {
-    const n = Number(yearsExperienceRaw);
-    if (Number.isFinite(n) && n >= 0) yearsExperience = n;
-  }
-
-  const teachingLanguage =
-    teachingLanguageRaw === "CHINESE" || teachingLanguageRaw === "ENGLISH" || teachingLanguageRaw === "BILINGUAL"
-      ? (teachingLanguageRaw as TeachingLanguage)
-      : null;
-  if (teachingLanguageRaw === "OTHER" && !teachingLanguageOther) {
-    redirect(`/admin/teachers/${teacherId}?err=Other+language+is+required`);
-  }
-
-  await prisma.teacher.update({
-    where: { id: teacherId },
-    data: {
-      name,
-      nationality: nationality || null,
-      almaMater: almaMater || null,
-      intro: intro || null,
-      yearsExperience,
-      teachingLanguage,
-      teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
-      offlineShanghai,
-      offlineSingapore,
-      subjects: { set: subjectIds.map((id) => ({ id })) },
-    },
-  });
-
-  redirect(`/admin/teachers/${teacherId}?msg=Saved`);
-}
-
-async function createTemplate(teacherId: string, formData: FormData) {
-  "use server";
-  const studentId = String(formData.get("studentId") ?? "");
-  const subjectId = String(formData.get("subjectId") ?? "");
-  const levelIdRaw = String(formData.get("levelId") ?? "");
-  const campusId = String(formData.get("campusId") ?? "");
-  const roomIdRaw = String(formData.get("roomId") ?? "");
-  const weekdayRaw = String(formData.get("weekday") ?? "");
-  const startTime = String(formData.get("startTime") ?? "");
-  const durationRaw = String(formData.get("durationMin") ?? "");
-
-  if (!studentId || !subjectId || !campusId || !weekdayRaw || !startTime || !durationRaw) {
-    redirect(`/admin/teachers/${teacherId}?err=Missing+template+fields`);
-  }
-
-  const weekday = Number(weekdayRaw);
-  const startMin = parseHHMM(startTime);
-  const durationMin = Number(durationRaw);
-  if (!Number.isFinite(weekday) || weekday < 0 || weekday > 6 || startMin == null || durationMin < 15) {
-    redirect(`/admin/teachers/${teacherId}?err=Invalid+template+fields`);
-  }
-
-  const levelId = levelIdRaw || null;
-  if (roomIdRaw) {
-    const room = await prisma.room.findUnique({ where: { id: roomIdRaw } });
-    if (!room || room.campusId !== campusId) {
-      redirect(`/admin/teachers/${teacherId}?err=Room+not+in+this+campus`);
-    }
-  }
-  let cls = null;
-  try {
-    cls = await getOrCreateOneOnOneClassForStudent({
-      teacherId,
-      studentId,
-      subjectId,
-      levelId,
-      campusId,
-      roomId: roomIdRaw || null,
-      ensureEnrollment: true,
-    });
-  } catch (error) {
-    const raw = error instanceof Error ? error.message : "Failed to create one-on-one class";
-    const message =
-      raw === "COURSE_ENROLLMENT_CONFLICT"
-        ? courseEnrollmentConflictMessage(await getLang())
-        : raw;
-    redirect(`/admin/teachers/${teacherId}?err=${encodeURIComponent(message)}`);
-  }
-  if (!cls) {
-    redirect(`/admin/teachers/${teacherId}?err=Invalid+subject+or+level`);
-  }
-
-  await prisma.teacherOneOnOneTemplate.create({
-    data: {
-      teacherId,
-      studentId,
-      classId: cls.id,
-      weekday,
-      startMin,
-      durationMin,
-    },
-  });
-
-  redirect(`/admin/teachers/${teacherId}?msg=Template+created`);
-}
-
-async function deleteTemplate(teacherId: string, formData: FormData) {
-  "use server";
-  const id = String(formData.get("templateId") ?? "");
-  if (!id) redirect(`/admin/teachers/${teacherId}?err=Missing+template+id`);
-  await prisma.teacherOneOnOneTemplate.delete({ where: { id } });
-  redirect(`/admin/teachers/${teacherId}?msg=Template+deleted`);
-}
-
-async function generateSessionsFromTemplates(teacherId: string, formData: FormData) {
-  "use server";
-  const startDate = String(formData.get("startDate") ?? "");
-  const endDate = String(formData.get("endDate") ?? "");
-  if (!startDate || !endDate) {
-    redirect(`/admin/teachers/${teacherId}?err=Missing+date+range`);
-  }
-
-  const { toCreate, conflicts } = await computeGenerationPlan(teacherId, startDate, endDate);
-  if (toCreate.length > 0) {
-    await prisma.session.createMany({
-      data: toCreate.map((o) => ({
-        classId: o.classId,
-        startAt: o.startAt,
-        endAt: o.endAt,
-        studentId: o.studentId,
-      })),
-    });
-  }
-
-  const msg = `Generated ${toCreate.length} sessions. Skipped ${conflicts.length} conflicts.`;
-  redirect(`/admin/teachers/${teacherId}?msg=${encodeURIComponent(msg)}`);
-}
-
-async function deleteTeacher(teacherId: string) {
-  "use server";
-  await prisma.teacherAvailability.deleteMany({ where: { teacherId } });
-  await prisma.teacherAvailabilityDate.deleteMany({ where: { teacherId } });
-  await prisma.teacherOneOnOneTemplate.deleteMany({ where: { teacherId } });
-  await prisma.appointment.deleteMany({ where: { teacherId } });
-  const classes = await prisma.class.findMany({
-    where: { teacherId },
-    select: { id: true },
-  });
-  const classIds = classes.map((c) => c.id);
-  if (classIds.length > 0) {
-    await prisma.enrollment.deleteMany({ where: { classId: { in: classIds } } });
-    await prisma.attendance.deleteMany({ where: { session: { classId: { in: classIds } } } });
-    await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
-  }
-  await prisma.class.deleteMany({ where: { teacherId } });
-  await prisma.oneOnOneGroup.deleteMany({ where: { teacherId } });
-  await prisma.teacher.delete({ where: { id: teacherId } });
-  redirect("/admin/teachers");
-}
-
-async function bindTeacherUser(teacherId: string, formData: FormData) {
-  "use server";
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email) redirect(`/admin/teachers/${teacherId}?err=Email+is+required`);
-
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) redirect(`/admin/teachers/${teacherId}?err=User+not+found`);
-  if (user.role !== "TEACHER" && user.role !== "ADMIN") {
-    redirect(`/admin/teachers/${teacherId}?err=User+role+must+be+TEACHER+or+ADMIN`);
-  }
-  if (user.teacherId && user.teacherId !== teacherId) {
-    redirect(`/admin/teachers/${teacherId}?err=This+user+is+already+linked+to+another+teacher`);
-  }
-
-  const existing = await prisma.user.findFirst({
-    where: { teacherId },
-    select: { id: true, email: true },
-  });
-  if (existing && existing.id !== user.id) {
-    redirect(`/admin/teachers/${teacherId}?err=This+teacher+is+already+linked+to+${encodeURIComponent(existing.email)}`);
-  }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { teacherId },
-  });
-  redirect(`/admin/teachers/${teacherId}?msg=Teacher+account+linked`);
-}
-
-async function unbindTeacherUser(teacherId: string, formData: FormData) {
-  "use server";
-  const userId = String(formData.get("userId") ?? "");
-  if (!userId) redirect(`/admin/teachers/${teacherId}?err=Missing+user+id`);
-
-  await prisma.user.updateMany({
-    where: { id: userId, teacherId },
-    data: { teacherId: null },
-  });
-  redirect(`/admin/teachers/${teacherId}?msg=Teacher+account+unlinked`);
-}
-
-async function createAndBindTeacherUser(teacherId: string, formData: FormData) {
-  "use server";
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !name || !password) {
-    redirect(`/admin/teachers/${teacherId}?err=Email,+name,+and+password+are+required`);
-  }
-  if (password.length < 8) {
-    redirect(`/admin/teachers/${teacherId}?err=Password+must+be+at+least+8+characters`);
-  }
-
-  const teacher = await prisma.teacher.findUnique({
-    where: { id: teacherId },
-    select: { id: true, name: true },
-  });
-  if (!teacher) {
-    redirect(`/admin/teachers/${teacherId}?err=Teacher+not+found`);
-  }
-
-  const existingLinked = await prisma.user.findFirst({
-    where: { teacherId },
-    select: { id: true, email: true },
-  });
-  if (existingLinked) {
-    redirect(`/admin/teachers/${teacherId}?err=This+teacher+already+has+linked+account:+${encodeURIComponent(existingLinked.email)}`);
-  }
-
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (existingUser) {
-    redirect(`/admin/teachers/${teacherId}?err=Email+already+exists,+please+use+Link+by+Email`);
-  }
-
-  const { salt, hash } = createPasswordHash(password);
-  await prisma.user.create({
-    data: {
-      email,
-      name,
-      role: "TEACHER",
-      teacherId,
-      passwordHash: hash,
-      passwordSalt: salt,
-    },
-  });
-
-  redirect(`/admin/teachers/${teacherId}?msg=Teacher+account+created+and+linked`);
-}
-
 export default async function TeacherDetailPage({
   params,
   searchParams,
@@ -518,7 +253,7 @@ export default async function TeacherDetailPage({
       </p>
       <div style={{ marginBottom: 16 }}>
         <TeacherCreateForm
-          action={updateTeacher.bind(null, teacherId)}
+          teacherId={teacherId}
           courses={courses.map((c) => ({ id: c.id, name: c.name }))}
           subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
           labels={{
@@ -564,11 +299,12 @@ export default async function TeacherDetailPage({
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        <form action={deleteTeacher.bind(null, teacherId)}>
-          <ConfirmSubmitButton message={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}>
-            {t(lang, "Delete Teacher", "删除老师")}
-          </ConfirmSubmitButton>
-        </form>
+        <DeleteTeacherNavigateClient
+          teacherId={teacherId}
+          to="/admin/teachers"
+          label={t(lang, "Delete Teacher", "删除老师")}
+          confirmMessage={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}
+        />
       </div>
 
       <h3>{t(lang, "Teacher Account Link", "老师账号绑定")}</h3>
@@ -578,62 +314,33 @@ export default async function TeacherDetailPage({
           : t(lang, "No linked account.", "当前未绑定账号。")}
       </div>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t(lang, "Create and Bind New Account", "新建账号并绑定")}</div>
-      <form action={createAndBindTeacherUser.bind(null, teacherId)} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, alignItems: "end" }}>
-        <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>{t(lang, "Login Email", "登录邮箱")}</span>
-          <input
-            id="teacher-account-email"
-            name="email"
-            type="email"
-            placeholder={t(lang, "New account email", "新账号邮箱")}
-            style={{ minWidth: 260 }}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>{t(lang, "Teacher Name", "老师姓名")}</span>
-          <input
-            id="teacher-account-name"
-            name="name"
-            defaultValue={teacher.name}
-            placeholder={t(lang, "Display name", "显示名称")}
-            style={{ minWidth: 180 }}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>{t(lang, "Initial Password", "初始密码")}</span>
-          <input
-            id="teacher-account-password"
-            name="password"
-            type="password"
-            placeholder={t(lang, "Initial password (>=8)", "初始密码(至少8位)")}
-            style={{ minWidth: 220 }}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>{t(lang, "Quick Copy", "一键复制")}</span>
-          <CopyTeacherCredentialsButton
-            emailInputId="teacher-account-email"
-            nameInputId="teacher-account-name"
-            passwordInputId="teacher-account-password"
-            label={t(lang, "Copy 3 fields", "复制三项信息")}
-          />
-        </label>
-        <button type="submit">{t(lang, "Create + Link Teacher User", "创建并绑定老师账号")}</button>
-      </form>
+      <CreateAndBindTeacherUserFormClient
+        teacherId={teacherId}
+        defaultName={teacher.name}
+        labels={{
+          loginEmail: t(lang, "Login Email", "登录邮箱"),
+          teacherName: t(lang, "Teacher Name", "老师姓名"),
+          initialPassword: t(lang, "Initial Password", "初始密码"),
+          quickCopy: t(lang, "Quick Copy", "一键复制"),
+          copy3: t(lang, "Copy 3 fields", "复制三项信息"),
+          submit: t(lang, "Create + Link Teacher User", "创建并绑定老师账号"),
+          errorPrefix: t(lang, "Error", "错误"),
+        }}
+      />
       {linkedUser ? (
-        <form action={unbindTeacherUser.bind(null, teacherId)} style={{ marginBottom: 24 }}>
-          <input type="hidden" name="userId" value={linkedUser.id} />
-          <ConfirmSubmitButton message={t(lang, "Unlink this teacher account?", "解除该老师账号绑定？")}>
-            {t(lang, "Unlink Account", "解除绑定")}
-          </ConfirmSubmitButton>
-        </form>
+        <UnbindTeacherUserButtonClient
+          teacherId={teacherId}
+          userId={linkedUser.id}
+          label={t(lang, "Unlink Account", "解除绑定")}
+          confirmMessage={t(lang, "Unlink this teacher account?", "解除该老师账号绑定？")}
+        />
       ) : (
         <div style={{ marginBottom: 24 }} />
       )}
 
       <h3>{t(lang, "1-1 Templates", "一对一模版")}</h3>
       <OneOnOneTemplateForm
-        action={createTemplate.bind(null, teacherId)}
+        teacherId={teacherId}
         courses={courses.map((c) => ({ id: c.id, name: c.name }))}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
         levels={levels.map((l) => ({
@@ -701,12 +408,12 @@ export default async function TeacherDetailPage({
                     <a href={`/admin/classes/${tpl.classId}/sessions`}>{t(lang, "Sessions", "课次")}</a>
                   </td>
                   <td>
-                    <form action={deleteTemplate.bind(null, teacherId)}>
-                      <input type="hidden" name="templateId" value={tpl.id} />
-                      <ConfirmSubmitButton message={t(lang, "Delete this template?", "删除该模版？")}>
-                        {t(lang, "Delete", "删除")}
-                      </ConfirmSubmitButton>
-                    </form>
+                    <DeleteTemplateButtonClient
+                      teacherId={teacherId}
+                      templateId={tpl.id}
+                      label={t(lang, "Delete", "删除")}
+                      confirmMessage={t(lang, "Delete this template?", "删除该模版？")}
+                    />
                   </td>
                 </tr>
               ))}
@@ -774,13 +481,13 @@ export default async function TeacherDetailPage({
             </div>
           )}
 
-          <form action={generateSessionsFromTemplates.bind(null, teacherId)}>
-            <input type="hidden" name="startDate" value={startDate} />
-            <input type="hidden" name="endDate" value={endDate} />
-            <ConfirmSubmitButton message={t(lang, "Generate sessions? Conflicts will be skipped.", "生成课次？冲突将跳过。")}>
-              {t(lang, "Generate", "生成")}
-            </ConfirmSubmitButton>
-          </form>
+          <GenerateSessionsButtonClient
+            teacherId={teacherId}
+            startDate={startDate}
+            endDate={endDate}
+            label={t(lang, "Generate", "生成")}
+            confirmMessage={t(lang, "Generate sessions? Conflicts will be skipped.", "生成课次？冲突将跳过。")}
+          />
         </div>
       )}
     </div>

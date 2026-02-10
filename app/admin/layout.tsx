@@ -1,8 +1,8 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 
 async function resolvePathnameFromHeaders() {
   const h = await headers();
@@ -28,17 +28,6 @@ async function resolvePathnameFromHeaders() {
     }
   }
   return "";
-}
-
-async function updateLanguage(formData: FormData) {
-  "use server";
-  const lang = String(formData.get("lang") ?? "BILINGUAL");
-  const user = await requireAdmin();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { language: lang as any },
-  });
-  redirect("/admin");
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -246,20 +235,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <form action={updateLanguage}>
-                <select
-                  name="lang"
-                  defaultValue={user.language}
-                  style={{ minWidth: 140, padding: "4px 6px", borderRadius: 6, fontSize: 12 }}
-                >
-                  <option value="BILINGUAL">Bilingual / 双语</option>
-                  <option value="ZH">中文</option>
-                  <option value="EN">English</option>
-                </select>
-                <button type="submit" style={{ marginLeft: 6 }}>
-                  Apply
-                </button>
-              </form>
+              <LanguageSelectorClient initialLang={user.language} />
               <a href="/admin/logout">Logout</a>
             </div>
           </div>

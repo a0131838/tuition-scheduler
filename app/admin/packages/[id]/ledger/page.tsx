@@ -1,9 +1,10 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import { packageModeFromNote, stripGroupPackTag } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import PackageLedgerGiftClient from "./PackageLedgerGiftClient";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(Math.abs(min) / 60);
@@ -16,37 +17,6 @@ function fmtMinutes(min: number) {
 
 function fmtCount(v: number) {
   return `${v} cls`;
-}
-
-async function addGift(packageId: string, formData: FormData) {
-  "use server";
-  const unitsRaw = String(formData.get("minutes") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim();
-  const units = Number(unitsRaw);
-  if (!Number.isFinite(units) || units <= 0) {
-    redirect(`/admin/packages/${packageId}/ledger?err=Invalid+value`);
-  }
-
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id: packageId },
-    select: { type: true, remainingMinutes: true },
-  });
-  if (!pkg) redirect(`/admin/packages/${packageId}/ledger?err=Package+not+found`);
-  if (pkg.type !== "HOURS") redirect(`/admin/packages/${packageId}/ledger?err=Only+HOURS+package+is+supported`);
-
-  const nextRemaining = (pkg.remainingMinutes ?? 0) + units;
-  await prisma.$transaction([
-    prisma.coursePackage.update({ where: { id: packageId }, data: { remainingMinutes: nextRemaining } }),
-    prisma.packageTxn.create({
-      data: {
-        packageId,
-        kind: "GIFT",
-        deltaMinutes: units,
-        note: note || null,
-      },
-    }),
-  ]);
-  redirect(`/admin/packages/${packageId}/ledger?msg=Gift+added`);
 }
 
 export default async function PackageLedgerPage({
@@ -130,11 +100,18 @@ export default async function PackageLedgerPage({
 
       <div style={{ padding: 12, border: "1px dashed #f0b266", borderRadius: 8, marginBottom: 16, background: "#fff7ed" }}>
         <b>{isGroupPack ? t(lang, "Gift Count", "赠送次数") : t(lang, "Gift Minutes", "赠送分钟")}</b>
-        <form action={addGift.bind(null, packageId)} style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-          <input name="minutes" type="number" min={1} step={1} placeholder={isGroupPack ? t(lang, "Count", "次数") : t(lang, "Minutes", "分钟")} />
-          <input name="note" type="text" placeholder={t(lang, "Note", "备注")} style={{ minWidth: 220 }} />
-          <button type="submit">{t(lang, "Add", "增加")}</button>
-        </form>
+        <PackageLedgerGiftClient
+          packageId={packageId}
+          isGroupPack={isGroupPack}
+          labels={{
+            count: t(lang, "Count", "次数"),
+            minutes: t(lang, "Minutes", "分钟"),
+            note: t(lang, "Note", "备注"),
+            add: t(lang, "Add", "增加"),
+            saving: t(lang, "Saving...", "保存中..."),
+            errorPrefix: t(lang, "Error", "错误"),
+          }}
+        />
       </div>
 
       {rows.length === 0 ? (

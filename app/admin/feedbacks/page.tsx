@@ -1,9 +1,10 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
+import ProxyDraftFormClient from "./ProxyDraftFormClient";
+import MarkForwardedFormClient from "./MarkForwardedFormClient";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
@@ -56,86 +57,6 @@ function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; statu
   if (feedback.isProxyDraft) return false;
   if (feedback.status === "PROXY_DRAFT") return false;
   return true;
-}
-
-async function markForwarded(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  const channel = String(formData.get("channel") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim();
-  const status = String(formData.get("status") ?? "pending");
-  if (!id) redirect(`/admin/feedbacks?status=${encodeURIComponent(status)}&err=Missing+id`);
-
-  await prisma.sessionFeedback.update({
-    where: { id },
-    data: {
-      forwardedAt: new Date(),
-      forwardedBy: admin.name,
-      forwardChannel: channel || null,
-      forwardNote: note || null,
-    },
-  });
-
-  redirect(`/admin/feedbacks?status=${encodeURIComponent(status)}&msg=Forwarded`);
-}
-
-async function createProxyDraft(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const sessionId = String(formData.get("sessionId") ?? "");
-  const teacherId = String(formData.get("teacherId") ?? "");
-  const status = String(formData.get("status") ?? "missing");
-  const note = String(formData.get("note") ?? "").trim();
-  if (!sessionId || !teacherId) redirect(`/admin/feedbacks?status=${encodeURIComponent(status)}&err=Missing+session+or+teacher`);
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    include: {
-      class: { include: { course: true, subject: true, level: true } },
-    },
-  });
-  if (!session) redirect(`/admin/feedbacks?status=${encodeURIComponent(status)}&err=Session+not+found`);
-
-  const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
-  const content = [
-    "[Proxy Draft / 代填草稿 - Admin / 教务]",
-    `Session / 课次: ${buildSessionLine(session)}`,
-    "Reason / 原因: Teacher feedback overdue more than 12 hours. / 老师反馈超过12小时未提交。",
-    `Note / 备注: ${note || "Pending teacher completion / 待老师补全"}`,
-  ].join("\n");
-
-  await prisma.sessionFeedback.upsert({
-    where: { sessionId_teacherId: { sessionId, teacherId } },
-    update: {
-      content,
-      classPerformance: "Proxy draft by admin. Pending teacher completion.",
-      homework: "Pending teacher completion.",
-      status: "PROXY_DRAFT",
-      dueAt: deadline,
-      isProxyDraft: true,
-      proxyNote: note || "Auto-created due to >12h overdue feedback.",
-      submittedByRole: "ADMIN",
-      submittedByUserId: admin.id,
-      submittedAt: new Date(),
-    },
-    create: {
-      sessionId,
-      teacherId,
-      content,
-      classPerformance: "Proxy draft by admin. Pending teacher completion.",
-      homework: "Pending teacher completion.",
-      status: "PROXY_DRAFT",
-      dueAt: deadline,
-      isProxyDraft: true,
-      proxyNote: note || "Auto-created due to >12h overdue feedback.",
-      submittedByRole: "ADMIN",
-      submittedByUserId: admin.id,
-      submittedAt: new Date(),
-    },
-  });
-
-  redirect(`/admin/feedbacks?status=${encodeURIComponent(status)}&msg=Proxy+draft+created`);
 }
 
 export default async function AdminFeedbacksPage({
@@ -386,24 +307,20 @@ export default async function AdminFeedbacksPage({
 
                   <div style={{ display: "grid", gap: 6 }}>
                     <a href={`/teacher/sessions/${r.session.id}`}>{t(lang, "Open teacher page", "打开老师页")}</a>
-                    <form action={createProxyDraft} style={{ display: "grid", gap: 6 }}>
-                      <input type="hidden" name="sessionId" value={r.session.id} />
-                      <input type="hidden" name="teacherId" value={r.teacherId} />
-                      <input type="hidden" name="status" value={status} />
-                      <textarea
-                        name="note"
-                        rows={2}
-                        defaultValue={r.feedback?.proxyNote ?? ""}
-                        placeholder={t(lang, "Proxy note", "代填备注")}
-                      />
-                      <div>
-                        <button type="submit">
-                          {r.kind === "proxy"
+                    <ProxyDraftFormClient
+                      sessionId={r.session.id}
+                      teacherId={r.teacherId}
+                      initialNote={r.feedback?.proxyNote ?? ""}
+                      labels={{
+                        placeholder: t(lang, "Proxy note", "代填备注"),
+                        submit:
+                          r.kind === "proxy"
                             ? t(lang, "Update Proxy Draft", "更新代填草稿")
-                            : t(lang, "Create Proxy Draft", "创建代填草稿")}
-                        </button>
-                      </div>
-                    </form>
+                            : t(lang, "Create Proxy Draft", "创建代填草稿"),
+                        saving: t(lang, "Saving...", "保存中..."),
+                        errorPrefix: t(lang, "Error", "错误"),
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -488,15 +405,16 @@ export default async function AdminFeedbacksPage({
                       {r.forwardNote ? <div style={{ whiteSpace: "pre-wrap" }}>{r.forwardNote}</div> : null}
                     </div>
                   ) : (
-                    <form action={markForwarded} style={{ display: "grid", gap: 6, maxWidth: 360 }}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <input type="hidden" name="status" value={status} />
-                      <input name="channel" placeholder={t(lang, "Channel (e.g. WeChat)", "渠道(如微信)")} />
-                      <textarea name="note" rows={3} placeholder={t(lang, "Forward note", "转发备注")} />
-                      <div>
-                        <button type="submit">{t(lang, "Mark as Forwarded", "标记已转发")}</button>
-                      </div>
-                    </form>
+                    <MarkForwardedFormClient
+                      id={r.id}
+                      labels={{
+                        channelPlaceholder: t(lang, "Channel (e.g. WeChat)", "渠道(如微信)"),
+                        notePlaceholder: t(lang, "Forward note", "转发备注"),
+                        submit: t(lang, "Mark as Forwarded", "标记已转发"),
+                        saving: t(lang, "Saving...", "保存中..."),
+                        errorPrefix: t(lang, "Error", "错误"),
+                      }}
+                    />
                   )}
                 </div>
               </div>

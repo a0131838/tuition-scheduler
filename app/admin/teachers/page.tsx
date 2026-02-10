@@ -1,90 +1,13 @@
-﻿import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
+import { prisma } from "@/lib/prisma";
 import { TeachingLanguage } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
 import { Fragment } from "react";
 import SimpleModal from "../_components/SimpleModal";
-import { redirect } from "next/navigation";
 import TeacherCreateForm from "../_components/TeacherCreateForm";
 import TeacherCardExportForm from "../_components/TeacherCardExportForm";
 import TeacherFilterForm from "../_components/TeacherFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
-
-async function createTeacher(formData: FormData) {
-  "use server";
-  const name = String(formData.get("name") ?? "").trim();
-  const nationality = String(formData.get("nationality") ?? "").trim();
-  const almaMater = String(formData.get("almaMater") ?? "").trim();
-  const intro = String(formData.get("intro") ?? "").trim();
-  const yearsExperienceRaw = String(formData.get("yearsExperience") ?? "").trim();
-  const teachingLanguageRaw = String(formData.get("teachingLanguage") ?? "").trim();
-  const teachingLanguageOther = String(formData.get("teachingLanguageOther") ?? "").trim();
-  const offlineShanghai = String(formData.get("offlineShanghai") ?? "") === "on";
-  const offlineSingapore = String(formData.get("offlineSingapore") ?? "") === "on";
-  const subjectIds = formData.getAll("subjectIds").map((v) => String(v)).filter(Boolean);
-
-  if (!name) {
-    redirect("/admin/teachers?err=Name+is+required");
-  }
-
-  let yearsExperience: number | null = null;
-  if (yearsExperienceRaw) {
-    const n = Number(yearsExperienceRaw);
-    if (Number.isFinite(n) && n >= 0) yearsExperience = n;
-  }
-
-  const teachingLanguage =
-    teachingLanguageRaw === "CHINESE" || teachingLanguageRaw === "ENGLISH" || teachingLanguageRaw === "BILINGUAL"
-      ? (teachingLanguageRaw as TeachingLanguage)
-      : null;
-  if (teachingLanguageRaw === "OTHER" && !teachingLanguageOther) {
-    redirect("/admin/teachers?err=Other+language+is+required");
-  }
-
-  await prisma.teacher.create({
-    data: {
-      name,
-      nationality: nationality || null,
-      almaMater: almaMater || null,
-      intro: intro || null,
-      yearsExperience,
-      teachingLanguage,
-      teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
-      offlineShanghai,
-      offlineSingapore,
-      subjects: { connect: subjectIds.map((id) => ({ id })) },
-    },
-  });
-  revalidatePath("/admin/teachers");
-  redirect("/admin/teachers?msg=Teacher+added");
-}
-
-async function deleteTeacher(formData: FormData) {
-  "use server";
-  const id = String(formData.get("id"));
-  if (!id) return;
-
-  await prisma.teacherAvailability.deleteMany({ where: { teacherId: id } });
-  await prisma.teacherAvailabilityDate.deleteMany({ where: { teacherId: id } });
-  await prisma.teacherOneOnOneTemplate.deleteMany({ where: { teacherId: id } });
-  await prisma.appointment.deleteMany({ where: { teacherId: id } });
-  const classes = await prisma.class.findMany({
-    where: { teacherId: id },
-    select: { id: true },
-  });
-  const classIds = classes.map((c) => c.id);
-  if (classIds.length > 0) {
-    await prisma.enrollment.deleteMany({ where: { classId: { in: classIds } } });
-    await prisma.attendance.deleteMany({ where: { session: { classId: { in: classIds } } } });
-    await prisma.session.deleteMany({ where: { classId: { in: classIds } } });
-  }
-  await prisma.class.deleteMany({ where: { teacherId: id } });
-  await prisma.oneOnOneGroup.deleteMany({ where: { teacherId: id } });
-  await prisma.teacher.delete({ where: { id } });
-
-  revalidatePath("/admin/teachers");
-}
+import DeleteTeacherButtonClient from "./DeleteTeacherButtonClient";
 
 function languageLabel(lang: string, v?: string | null, other?: string | null) {
   if (v === TeachingLanguage.CHINESE) return lang === "EN" ? "Chinese" : "中文";
@@ -246,7 +169,6 @@ export default async function TeachersPage({
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Add Teacher", "新增老师")} title={t(lang, "Add Teacher", "新增老师")} closeOnSubmit>
           <TeacherCreateForm
-            action={createTeacher}
             courses={courses.map((c) => ({ id: c.id, name: c.name }))}
             subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
             labels={{
@@ -445,12 +367,11 @@ export default async function TeachersPage({
                     >
                       {t(lang, "Export Card", "导出名片")}
                     </a>
-                    <form action={deleteTeacher}>
-                      <input type="hidden" name="id" value={tch.id} />
-                      <ConfirmSubmitButton message={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}>
-                        {t(lang, "Delete", "删除")}
-                      </ConfirmSubmitButton>
-                    </form>
+                    <DeleteTeacherButtonClient
+                      teacherId={tch.id}
+                      label={t(lang, "Delete", "删除")}
+                      confirmMessage={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}
+                    />
                   </td>
                 </tr>
               </Fragment>
