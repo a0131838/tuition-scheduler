@@ -5,6 +5,10 @@ import { useRef, useState } from "react";
 type Labels = {
   edit: string;
   update: string;
+  topUp: string;
+  topUpMinutes: string;
+  topUpNote: string;
+  topUpSubmit: string;
   deleteLabel: string;
   paid: string;
   paidAt: string;
@@ -35,11 +39,13 @@ type PackageRow = {
 export default function PackageEditModal({
   pkg,
   onUpdate,
+  onTopUp,
   onDelete,
   labels,
 }: {
   pkg: PackageRow;
   onUpdate: (formData: FormData) => void;
+  onTopUp: (formData: FormData) => void;
   onDelete: (formData: FormData) => void;
   labels: Labels;
 }) {
@@ -133,6 +139,38 @@ export default function PackageEditModal({
           </label>
 
           <button type="submit">{labels.update}</button>
+        </form>
+
+        <hr style={{ margin: "16px 0" }} />
+
+        <form action={onTopUp} style={{ display: "grid", gap: 8 }}>
+          <b>{labels.topUp}</b>
+          <input type="hidden" name="id" value={pkg.id} />
+          <label>
+            {labels.topUpMinutes}:
+            <input name="addMinutes" type="number" min={1} step={1} defaultValue={60} style={{ marginLeft: 8 }} />
+          </label>
+          <label>
+            {labels.topUpNote}:
+            <input name="note" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
+          </label>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input type="checkbox" name="paid" defaultChecked={false} />
+            {labels.paid}
+          </label>
+          <label>
+            {labels.paidAt}:
+            <input name="paidAt" type="datetime-local" defaultValue="" style={{ marginLeft: 8 }} />
+          </label>
+          <label>
+            {labels.paidAmount}:
+            <input name="paidAmount" type="number" min={0} step={1} defaultValue="" style={{ marginLeft: 8 }} />
+          </label>
+          <label>
+            {labels.paidNote}:
+            <input name="paidNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
+          </label>
+          <button type="submit">{labels.topUpSubmit}</button>
         </form>
 
         <form

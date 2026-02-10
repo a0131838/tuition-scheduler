@@ -109,22 +109,23 @@ async function createPackage(formData: FormData) {
 
   const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
   const createMode = modeKeyFromCreateType(typeRaw, type);
-  const overlap = await prisma.coursePackage.findFirst({
-    where: {
-      studentId,
-      courseId,
-      ...sameModeWhere(createMode),
-      status: "ACTIVE",
-      // Allow buying a new HOURS/GROUP package when the current one is depleted (remainingMinutes <= 0).
-      // MONTHLY packages still require no overlap in active period.
-      ...(createMode === "MONTHLY" ? {} : { remainingMinutes: { gt: 0 } }),
-      validFrom: { lte: overlapCheckTo },
-      OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
-    },
-    select: { id: true },
-  });
-  if (overlap) {
-    redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists`);
+  // MONTHLY packages must not overlap in active period.
+  // HOURS/GROUP packages are allowed to coexist (staff can sell a new package or top-up).
+  if (createMode === "MONTHLY") {
+    const overlap = await prisma.coursePackage.findFirst({
+      where: {
+        studentId,
+        courseId,
+        ...sameModeWhere(createMode),
+        status: "ACTIVE",
+        validFrom: { lte: overlapCheckTo },
+        OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
+      },
+      select: { id: true },
+    });
+    if (overlap) {
+      redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists`);
+    }
   }
 
   const packageNote = composePackageNote(typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES", noteRaw);
@@ -140,6 +141,7 @@ async function createPackage(formData: FormData) {
         courseId,
         type: "HOURS",
         status: (status as any) || "PAUSED",
+        totalMinutes,
         remainingMinutes: totalMinutes,
         validFrom,
         validTo,
@@ -175,6 +177,73 @@ async function createPackage(formData: FormData) {
   }
 
   redirect(`/admin/packages?msg=Created`);
+}
+
+async function topUpPackage(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  const addMinutes = Number(formData.get("addMinutes") ?? 0);
+  const note = String(formData.get("note") ?? "").trim();
+  const paid = String(formData.get("paid") ?? "") === "on";
+  const paidAtStr = String(formData.get("paidAt") ?? "");
+  const paidAmountRaw = String(formData.get("paidAmount") ?? "");
+  const paidNote = String(formData.get("paidNote") ?? "");
+
+  if (!id) redirect(`/admin/packages?err=Missing+id`);
+  if (!Number.isFinite(addMinutes) || addMinutes <= 0) redirect(`/admin/packages?err=Invalid+addMinutes`);
+
+  const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
+  let paidAmount: number | null = null;
+  if (paidAmountRaw !== "") {
+    const n = Number(paidAmountRaw);
+    if (Number.isFinite(n)) paidAmount = n;
+    else redirect(`/admin/packages?err=Invalid+paidAmount`);
+  }
+  if (paid && !paidAtStr && paidAmount == null) {
+    redirect(`/admin/packages?err=Paid+requires+paidAt+or+paidAmount`);
+  }
+  if (paidAtStr && (!paidAt || Number.isNaN(paidAt.getTime()))) {
+    redirect(`/admin/packages?err=Invalid+paidAt`);
+  }
+
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id },
+    select: { id: true, type: true, remainingMinutes: true, totalMinutes: true },
+  });
+  if (!pkg) redirect(`/admin/packages?err=Package+not+found`);
+  if (pkg.type !== "HOURS") redirect(`/admin/packages?err=Only+HOURS+package+can+top-up`);
+
+  const curRemain = pkg.remainingMinutes ?? 0;
+  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.coursePackage.update({
+      where: { id },
+      data: {
+        remainingMinutes: curRemain + addMinutes,
+        totalMinutes: curTotal + addMinutes,
+        ...(paid
+          ? {
+              paid: true,
+              paidAt,
+              paidAmount,
+              paidNote: paidNote || null,
+            }
+          : {}),
+      },
+    });
+
+    await tx.packageTxn.create({
+      data: {
+        packageId: id,
+        kind: "PURCHASE",
+        deltaMinutes: addMinutes,
+        note: note ? `Top-up: ${note}` : "Top-up purchase",
+      },
+    });
+  });
+
+  redirect(`/admin/packages?msg=Top-up+added`);
 }
 
 async function updatePackage(formData: FormData) {
@@ -220,21 +289,22 @@ async function updatePackage(formData: FormData) {
   const updateMode = modeKeyFromSaved(pkg.type, note);
   const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
   if (status === "ACTIVE") {
-    const overlap = await prisma.coursePackage.findFirst({
-      where: {
-        id: { not: id },
-        studentId: pkg.studentId,
-        courseId: pkg.courseId,
-        ...sameModeWhere(updateMode),
-        status: "ACTIVE",
-        ...(updateMode === "MONTHLY" ? {} : { remainingMinutes: { gt: 0 } }),
-        validFrom: { lte: overlapCheckTo },
-        OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
-      },
-      select: { id: true },
-    });
-    if (overlap) {
-      redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists+for+same+mode`);
+    if (updateMode === "MONTHLY") {
+      const overlap = await prisma.coursePackage.findFirst({
+        where: {
+          id: { not: id },
+          studentId: pkg.studentId,
+          courseId: pkg.courseId,
+          ...sameModeWhere(updateMode),
+          status: "ACTIVE",
+          validFrom: { lte: overlapCheckTo },
+          OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
+        },
+        select: { id: true },
+      });
+      if (overlap) {
+        redirect(`/admin/packages?err=Overlapping+ACTIVE+package+exists+for+same+mode`);
+      }
     }
   }
 
@@ -597,10 +667,15 @@ export default async function AdminPackagesPage({
                   <PackageEditModal
                     pkg={p}
                     onUpdate={updatePackage}
+                    onTopUp={topUpPackage}
                     onDelete={deletePackage}
                     labels={{
                       edit: t(lang, "Edit", "编辑"),
                       update: t(lang, "Update", "更新"),
+                      topUp: t(lang, "Top-up", "增购"),
+                      topUpMinutes: t(lang, "Add Minutes", "增加分钟"),
+                      topUpNote: t(lang, "Top-up Note", "增购备注"),
+                      topUpSubmit: t(lang, "Add", "确认增购"),
                       deleteLabel: t(lang, "Delete", "删除"),
                       paid: t(lang, "Paid", "已付款"),
                       paidAt: t(lang, "Paid At", "付款时间"),

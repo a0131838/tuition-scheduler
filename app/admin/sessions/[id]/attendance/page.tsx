@@ -37,8 +37,11 @@ function isNextRedirectError(e: any) {
   return typeof e?.digest === "string" && e.digest.startsWith("NEXT_REDIRECT");
 }
 
-async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentId: string; courseId: string; at: Date }) {
-  const { studentId, courseId, at } = opts;
+async function pickHoursPackageId(
+  tx: Prisma.TransactionClient,
+  opts: { studentId: string; courseId: string; at: Date; needMinutes: number }
+) {
+  const { studentId, courseId, at, needMinutes } = opts;
 
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
@@ -46,7 +49,7 @@ async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentI
       courseId,
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
-      remainingMinutes: { gt: 0 },
+      remainingMinutes: { gte: Math.max(1, needMinutes) },
       validFrom: { lte: at },
       OR: [{ validTo: null }, { validTo: { gte: at } }],
     },
@@ -57,15 +60,18 @@ async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentI
   return picked?.id ?? null;
 }
 
-async function pickGroupPackPackageId(tx: Prisma.TransactionClient, opts: { studentId: string; courseId: string; at: Date }) {
-  const { studentId, courseId, at } = opts;
+async function pickGroupPackPackageId(
+  tx: Prisma.TransactionClient,
+  opts: { studentId: string; courseId: string; at: Date; needCount: number }
+) {
+  const { studentId, courseId, at, needCount } = opts;
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
       studentId,
       courseId,
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
-      remainingMinutes: { gt: 0 },
+      remainingMinutes: { gte: Math.max(1, needCount) },
       validFrom: { lte: at },
       OR: [{ validTo: null }, { validTo: { gte: at } }],
     },
@@ -128,8 +134,8 @@ async function applyOneStudentAttendanceAndDeduct(
   if (delta !== 0) {
     if (!packageId && delta > 0) {
       packageId = isGroupClass
-        ? await pickGroupPackPackageId(tx, { studentId, courseId, at })
-        : await pickHoursPackageId(tx, { studentId, courseId, at });
+        ? await pickGroupPackPackageId(tx, { studentId, courseId, at, needCount: delta })
+        : await pickHoursPackageId(tx, { studentId, courseId, at, needMinutes: delta });
     }
 
     if (!packageId) {

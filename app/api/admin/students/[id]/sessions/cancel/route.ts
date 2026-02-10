@@ -51,7 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               courseId: session.class.courseId,
               type: "HOURS",
               status: "ACTIVE",
-              remainingMinutes: { gt: 0 },
+              remainingMinutes: { gte: delta },
               validFrom: { lte: session.startAt },
               OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
             },
