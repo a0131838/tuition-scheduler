@@ -6,6 +6,7 @@ import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
 import CopyTextButton from "../../_components/CopyTextButton";
 import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
+import SlotVisibilityToggleCard from "./_components/SlotVisibilityToggleCard";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -30,48 +31,6 @@ async function setOnlySelectedSlots(linkId: string, onlySelectedSlots: boolean) 
   await requireAdmin();
   await prisma.studentBookingLink.update({ where: { id: linkId }, data: { onlySelectedSlots } });
   redirect(`/admin/booking-links/${linkId}?msg=${onlySelectedSlots ? "Only+selected+slots+enabled" : "All+slots+enabled"}`);
-}
-
-async function toggleSelectedSlot(linkId: string, month: string, formData: FormData) {
-  "use server";
-  await requireAdmin();
-
-  const teacherId = String(formData.get("teacherId") ?? "");
-  const startAtRaw = String(formData.get("startAt") ?? "");
-  const endAtRaw = String(formData.get("endAt") ?? "");
-  const checked = String(formData.get("checked") ?? "") === "1";
-
-  if (!teacherId || !startAtRaw || !endAtRaw) {
-    redirect(`/admin/booking-links/${linkId}?month=${month}&err=Invalid+slot+payload`);
-  }
-  const startAt = new Date(startAtRaw);
-  const endAt = new Date(endAtRaw);
-  if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime()) || endAt <= startAt) {
-    redirect(`/admin/booking-links/${linkId}?month=${month}&err=Invalid+slot+time`);
-  }
-
-  const teacherInLink = await prisma.studentBookingLinkTeacher.findFirst({
-    where: { linkId, teacherId },
-    select: { id: true },
-  });
-  if (!teacherInLink) {
-    redirect(`/admin/booking-links/${linkId}?month=${month}&err=Teacher+not+in+link`);
-  }
-
-  if (checked) {
-    await prisma.studentBookingLinkSelectedSlot.upsert({
-      where: {
-        linkId_teacherId_startAt_endAt: { linkId, teacherId, startAt, endAt },
-      },
-      update: {},
-      create: { linkId, teacherId, startAt, endAt },
-    });
-  } else {
-    await prisma.studentBookingLinkSelectedSlot.deleteMany({
-      where: { linkId, teacherId, startAt, endAt },
-    });
-  }
-  redirect(`/admin/booking-links/${linkId}?month=${month}`);
 }
 
 async function rejectRequest(linkId: string, requestId: string, formData: FormData) {
@@ -457,45 +416,18 @@ export default async function AdminBookingLinkDetailPage({
                       {items.map((s, i) => {
                         const isVisibleToStudent = selectedSet.has(s.slotKey);
                         return (
-                          <form
+                          <SlotVisibilityToggleCard
                             key={`${s.teacherId}-${s.startAt.toISOString()}-${i}`}
-                            action={toggleSelectedSlot.bind(null, link.id, currentMonth)}
-                            style={{
-                              fontSize: 12,
-                              border: `1px solid ${isVisibleToStudent ? "#98d8b5" : "#e3e3e3"}`,
-                              background: isVisibleToStudent ? "#effcf3" : "#f8f8f8",
-                              borderRadius: 4,
-                              padding: 4,
-                              display: "grid",
-                              gap: 4,
-                            }}
-                          >
-                            <input type="hidden" name="teacherId" value={s.teacherId} />
-                            <input type="hidden" name="startAt" value={s.startAt.toISOString()} />
-                            <input type="hidden" name="endAt" value={s.endAt.toISOString()} />
-                            <input type="hidden" name="checked" value={isVisibleToStudent ? "0" : "1"} />
-                            <div>
-                              {s.startLabel}-{s.endLabel} {s.teacherName}
-                              <span style={{ marginLeft: 6, color: isVisibleToStudent ? "#157347" : "#777" }}>
-                                {isVisibleToStudent
-                                  ? t(lang, "(Visible to student)", "（学生可见）")
-                                  : t(lang, "(Hidden from student)", "（学生不可见）")}
-                              </span>
-                            </div>
-                            <button
-                              type="submit"
-                              style={{
-                                border: "none",
-                                borderRadius: 4,
-                                padding: "5px 8px",
-                                cursor: "pointer",
-                                background: isVisibleToStudent ? "#6c757d" : "#0d6efd",
-                                color: "#fff",
-                              }}
-                            >
-                              {isVisibleToStudent ? t(lang, "Change to hidden", "改为学生不可见") : t(lang, "Change to visible", "改为学生可见")}
-                            </button>
-                          </form>
+                            lang={lang}
+                            linkId={link.id}
+                            teacherId={s.teacherId}
+                            startAtIso={s.startAt.toISOString()}
+                            endAtIso={s.endAt.toISOString()}
+                            startLabel={s.startLabel}
+                            endLabel={s.endLabel}
+                            teacherName={s.teacherName}
+                            initialVisible={isVisibleToStudent}
+                          />
                         );
                       })}
                     </div>
