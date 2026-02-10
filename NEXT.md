@@ -1,6 +1,6 @@
 # NEXT
 
-Generated: 2026-02-11 00:17:51
+Generated: 2026-02-11 00:23:21
 Branch: master
 
 ## Context
@@ -10,23 +10,22 @@ Branch: master
 ## Current Status
 ```text
 ## master...origin/master
- M NEXT.md
- M ops/codex/eod.ps1
 ```
 
 ## Changed Files (diff --name-only)
 ```text
-[error] warning: in the working copy of 'NEXT.md', CRLF will be replaced by LF the next time Git touches it
+
 ```
 
 ## Diff Summary (diff --stat)
 ```text
-[error] warning: in the working copy of 'NEXT.md', CRLF will be replaced by LF the next time Git touches it
+
 ```
 
 ## Recent Commits
 ```text
-001d5c5 (HEAD -> master, origin/master) fix: repair booking-links request routes + ensure oneOnOneGroupId column
+d7f3146 (HEAD -> master, origin/master) chore: update NEXT.md + write utf8 without bom
+001d5c5 fix: repair booking-links request routes + ensure oneOnOneGroupId column
 537c3c7 ux: remove server-action refresh (packages/teachers/booking-links)
 0a99fca ux: remove teacher/admin server-action refresh for common ops
 cdeb42d ux: remove remaining server-action refresh in admin todos/classes/student list
@@ -37,7 +36,6 @@ c6986d1 fix: allow new hours package purchase when depleted
 006dd92 feat: admin actions without page refresh
 4620a41 feat: booking link actions without page refresh
 37824a7 feat: booking link slot visibility toggle without page refresh
-0d32262 fix: teacher availability client props must be serializable
 ```
 
 ## Untracked Files
@@ -49,13 +47,6 @@ c6986d1 fix: allow new hours package purchase when depleted
 These are the remaining <form action={...}> occurrences that still tend to refresh the page / jump to top:
 
 ```text
-app/admin\schedule\page.tsx:1050:                            <form action={replaceSessionTeacher} style={{ display: "grid", gap: 6 }}>
-app/admin\schedule\page.tsx:1071:                            <form action={replaceAppointmentTeacher} style={{ display: "grid", gap: 6 }}>
-app/admin\schedule\page.tsx:1091:                            <form action={deleteAppointment}>
-app/admin\schedule\page.tsx:1099:                            <form action={deleteSession}>
-app/admin\setup\page.tsx:54:      <form action={setupAdmin} style={{ display: "grid", gap: 10 }}>
-app/admin\schedule\new\page.tsx:341:            <form action={createSingleSession} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
-app/admin\schedule\new\page.tsx:391:          <form action={createSingleAppointment} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
 app/admin\conflicts\page.tsx:676:                                <form action={replaceAppointmentTeacher} style={{ display: "grid", gap: 6 }}>
 app/admin\conflicts\page.tsx:695:                                <form action={cancelAppointment}>
 app/admin\conflicts\page.tsx:727:                    <form action={replaceSessionTeacher} style={{ display: "grid", gap: 6 }}>
@@ -68,6 +59,13 @@ app/admin\manager\users\page.tsx:371:          <form action={createSystemUser} s
 app/admin\manager\users\page.tsx:445:                      <form action={updateSystemUser} style={{ display: "grid", gap: 6, minWidth: 250 }}>
 app/admin\manager\users\page.tsx:493:                          <form action={resetSystemUserPassword} style={{ display: "grid", gap: 6, marginBottom: 8 }}>
 app/admin\manager\users\page.tsx:503:                          <form action={deleteSystemUser}>
+app/admin\setup\page.tsx:54:      <form action={setupAdmin} style={{ display: "grid", gap: 10 }}>
+app/admin\schedule\page.tsx:1050:                            <form action={replaceSessionTeacher} style={{ display: "grid", gap: 6 }}>
+app/admin\schedule\page.tsx:1071:                            <form action={replaceAppointmentTeacher} style={{ display: "grid", gap: 6 }}>
+app/admin\schedule\page.tsx:1091:                            <form action={deleteAppointment}>
+app/admin\schedule\page.tsx:1099:                            <form action={deleteSession}>
+app/admin\schedule\new\page.tsx:341:            <form action={createSingleSession} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
+app/admin\schedule\new\page.tsx:391:          <form action={createSingleAppointment} style={{ display: "grid", gap: 10, maxWidth: 720 }}>
 ```
 
 ## Next Actions
