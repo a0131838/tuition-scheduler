@@ -79,5 +79,6 @@ $lines += "## Verification"
 $lines += "- Local build: `npm run build` (should pass before deploy)."
 
 $content = ($lines -join "`n") + "`n"
-Set-Content -LiteralPath $OutFile -Value $content -Encoding UTF8
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText((Resolve-Path -LiteralPath $OutFile), $content, $utf8NoBom)
 Write-Host "Wrote $OutFile"
