@@ -3,6 +3,13 @@
 import { useMemo, useState } from "react";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
+type Lang = "BILINGUAL" | "ZH" | "EN";
+function tr(lang: Lang, en: string, zh: string) {
+  if (lang === "EN") return en;
+  if (lang === "ZH") return zh;
+  return `${en} / ${zh}`;
+}
+
 const WEEKDAYS = [
   { value: 0, en: "Sun", zh: "周日" },
   { value: 1, en: "Mon", zh: "周一" },
@@ -92,43 +99,12 @@ async function fetchTextIfNotOk(res: Response) {
 }
 
 export default function TeacherAvailabilityClient(props: {
+  lang: Lang;
   teacherId: string;
   initialSlots: Slot[];
   initialUndoPayload: AvailabilityUndoPayload | null;
-  labels: {
-    title: string;
-    errPrefix: string;
-    msgPrefix: string;
-    undoAvailable: string;
-    undo: string;
-    quickAdd: string;
-    bulkAdd: string;
-    from: string;
-    to: string;
-    start: string;
-    end: string;
-    add: string;
-    save: string;
-    del: string;
-    availabilityCalendar: string;
-    clearDay: string;
-    clearDayConfirmPrefix: string;
-    manageRaw: string;
-    edit: string;
-    addSlot: string;
-    noSlots: string;
-    outOfRange: string;
-    days: string[];
-    weekdayLabel: (en: string, zh: string) => string;
-    bulkAdded: (n: number) => string;
-    added1: string;
-    updated1: string;
-    deleted1: string;
-    clearedDay: (date: string) => string;
-    undoDone: (n: number) => string;
-  };
 }) {
-  const { teacherId, labels } = props;
+  const { teacherId, lang } = props;
   const [slots, setSlots] = useState<Slot[]>(props.initialSlots);
   const [undoPayload, setUndoPayload] = useState<AvailabilityUndoPayload | null>(props.initialUndoPayload);
   const [err, setErr] = useState("");
@@ -180,8 +156,8 @@ export default function TeacherAvailabilityClient(props: {
     });
     const e = await fetchTextIfNotOk(res);
     if (e) throw new Error(e);
-    const data = (await res.json()) as { slot: Slot };
-    setSlots((prev) => [...prev, data.slot]);
+      const data = (await res.json()) as { slot: Slot };
+      setSlots((prev) => [...prev, data.slot]);
   }
 
   async function onQuickAdd(e: React.FormEvent<HTMLFormElement>) {
@@ -196,7 +172,7 @@ export default function TeacherAvailabilityClient(props: {
       const start = String(fd.get("start") ?? "");
       const end = String(fd.get("end") ?? "");
       await addSingle(date, start, end);
-      setMsg(labels.added1);
+      setMsg(tr(lang, "Added 1", "已添加 1"));
     } catch (err: any) {
       setErr(err?.message ?? String(err));
     } finally {
@@ -225,7 +201,7 @@ export default function TeacherAvailabilityClient(props: {
       const e2 = await fetchTextIfNotOk(res);
       if (e2) throw new Error(e2);
       const data = (await res.json()) as { added: number };
-      setMsg(labels.bulkAdded(data.added));
+      setMsg(tr(lang, `Bulk added ${data.added}`, `批量添加 ${data.added}`));
 
       // Refresh local slots in the affected range.
       const list = await fetch(`/api/teacher/availability/slots?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
@@ -258,7 +234,7 @@ export default function TeacherAvailabilityClient(props: {
       const start = String(fd.get("start") ?? "");
       const end = String(fd.get("end") ?? "");
       await addSingle(date, start, end);
-      setMsg(labels.added1);
+      setMsg(tr(lang, "Added 1", "已添加 1"));
       (e.currentTarget as HTMLFormElement).reset();
     } catch (err: any) {
       setErr(err?.message ?? String(err));
@@ -287,7 +263,7 @@ export default function TeacherAvailabilityClient(props: {
       const startMin = toMin(start);
       const endMin = toMin(end);
       setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, startMin, endMin } : s)));
-      setMsg(labels.updated1);
+      setMsg(tr(lang, "Updated 1", "已更新 1"));
     } catch (err: any) {
       setErr(err?.message ?? String(err));
     } finally {
@@ -305,7 +281,7 @@ export default function TeacherAvailabilityClient(props: {
       const e2 = await fetchTextIfNotOk(res);
       if (e2) throw new Error(e2);
       setSlots((prev) => prev.filter((s) => s.id !== id));
-      setMsg(labels.deleted1);
+      setMsg(tr(lang, "Deleted 1", "已删除 1"));
     } catch (err: any) {
       setErr(err?.message ?? String(err));
     } finally {
@@ -315,7 +291,7 @@ export default function TeacherAvailabilityClient(props: {
 
   async function onClearDay(date: string) {
     if (busy) return;
-    if (!window.confirm(`${labels.clearDayConfirmPrefix} ${date}?`)) return;
+    if (!window.confirm(`${tr(lang, "Clear all availability slots on", "确定清空当天全部时段")} ${date}?`)) return;
     setBusy(true);
     setErr("");
     setMsg("");
@@ -330,7 +306,7 @@ export default function TeacherAvailabilityClient(props: {
       const data = (await res.json()) as { undoPayload: AvailabilityUndoPayload };
       setUndoPayload(data.undoPayload);
       setSlots((prev) => prev.filter((s) => ymd(new Date(s.date)) !== date));
-      setMsg(labels.clearedDay(date));
+      setMsg(tr(lang, `Cleared ${date}`, `已清空 ${date}`));
     } catch (err: any) {
       setErr(err?.message ?? String(err));
     } finally {
@@ -355,7 +331,7 @@ export default function TeacherAvailabilityClient(props: {
         const keep = prev.filter((s) => !restoredDates.has(ymd(new Date(s.date))));
         return [...keep, ...data.slots];
       });
-      setMsg(labels.undoDone(data.restoredCount));
+      setMsg(tr(lang, `Undo done, restored ${data.restoredCount} slots`, `撤回完成，恢复 ${data.restoredCount} 条时段`));
     } catch (err: any) {
       setErr(err?.message ?? String(err));
     } finally {
@@ -365,47 +341,51 @@ export default function TeacherAvailabilityClient(props: {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <h2>{labels.title}</h2>
-      {err ? <div style={{ color: "#b00", marginBottom: 2 }}>{labels.errPrefix}{err}</div> : null}
-      {msg ? <div style={{ color: "#087", marginBottom: 2 }}>{labels.msgPrefix}{msg}</div> : null}
+      <h2>{tr(lang, "My Availability", "我的可上课时间")}</h2>
+      {err ? <div style={{ color: "#b00", marginBottom: 2 }}>{err}</div> : null}
+      {msg ? <div style={{ color: "#087", marginBottom: 2 }}>{msg}</div> : null}
 
       {undoPayload ? (
         <div style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, padding: 10 }}>
           <div style={{ marginBottom: 6 }}>
-            {labels.undoAvailable} ({undoPayload.date})
+            {tr(lang, "Undo available for last clear-day action", "有可撤回的最近清空操作")} ({undoPayload.date})
           </div>
-          <button type="button" onClick={onUndo} disabled={busy}>{labels.undo}</button>
+          <button type="button" onClick={onUndo} disabled={busy}>
+            {tr(lang, "Undo last clear-day", "撤回上次清空当天")}
+          </button>
         </div>
       ) : null}
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{labels.quickAdd}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Quick Add (Single Day)", "快速添加（单日）")}</div>
         <form onSubmit={onQuickAdd} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input name="date" type="date" required defaultValue={todayYMD} />
           <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="16:00" />
           <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" />
-          <button type="submit" disabled={busy}>{labels.add}</button>
+          <button type="submit" disabled={busy}>
+            {tr(lang, "Add", "添加")}
+          </button>
         </form>
       </div>
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{labels.bulkAdd}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Bulk Add by Date Range", "批量添加（日期区间）")}</div>
         <form onSubmit={onBulkAdd} style={{ display: "grid", gap: 8 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <label>
-              {labels.from}
+              {tr(lang, "From", "从")}
               <input name="from" type="date" required defaultValue={todayYMD} style={{ marginLeft: 6 }} />
             </label>
             <label>
-              {labels.to}
+              {tr(lang, "To", "到")}
               <input name="to" type="date" required defaultValue={in4WeeksYMD} style={{ marginLeft: 6 }} />
             </label>
             <label>
-              {labels.start}
+              {tr(lang, "Start", "开始")}
               <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="16:00" style={{ marginLeft: 6 }} />
             </label>
             <label>
-              {labels.end}
+              {tr(lang, "End", "结束")}
               <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" style={{ marginLeft: 6 }} />
             </label>
           </div>
@@ -413,22 +393,24 @@ export default function TeacherAvailabilityClient(props: {
             {WEEKDAYS.map((d) => (
               <label key={d.value} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
                 <input type="checkbox" name="weekday" value={String(d.value)} defaultChecked={d.value >= 1 && d.value <= 5} />
-                {labels.weekdayLabel(d.en, d.zh)}
+                {tr(lang, d.en, d.zh)}
               </label>
             ))}
           </div>
           <div>
-            <button type="submit" disabled={busy}>{labels.bulkAdd}</button>
+            <button type="submit" disabled={busy}>
+              {tr(lang, "Bulk Add", "批量添加")}
+            </button>
           </div>
         </form>
       </div>
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{labels.availabilityCalendar}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Availability Calendar (Next 30 days)", "未来30天可上课日历")}</div>
         <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              {labels.days.map((h) => (
+              {[tr(lang, "Sun", "周日"), tr(lang, "Mon", "周一"), tr(lang, "Tue", "周二"), tr(lang, "Wed", "周三"), tr(lang, "Thu", "周四"), tr(lang, "Fri", "周五"), tr(lang, "Sat", "周六")].map((h) => (
                 <th key={h} align="left" style={{ border: "1px solid #e5e7eb" }}>{h}</th>
               ))}
             </tr>
@@ -457,7 +439,7 @@ export default function TeacherAvailabilityClient(props: {
                         <b>{d.getDate()}</b>
                         {inRange && daySlots.length > 0 ? (
                           <button type="button" onClick={() => onClearDay(key)} disabled={busy} style={{ fontSize: 11, color: "#b91c1c" }}>
-                            {labels.clearDay}
+                            {tr(lang, "Clear day", "清空当天")}
                           </button>
                         ) : null}
                       </div>
@@ -485,15 +467,15 @@ export default function TeacherAvailabilityClient(props: {
                               </div>
                             ))
                           ) : (
-                            <div style={{ color: "#94a3b8", fontSize: 12 }}>{labels.noSlots}</div>
+                            <div style={{ color: "#94a3b8", fontSize: 12 }}>{tr(lang, "No slots", "无时段")}</div>
                           )
                         ) : (
-                          <div style={{ color: "#cbd5e1", fontSize: 12 }}>{labels.outOfRange}</div>
+                          <div style={{ color: "#cbd5e1", fontSize: 12 }}>{tr(lang, "Out of range", "范围外")}</div>
                         )}
 
                         {inRange && daySlots.length > 0 ? (
                           <details style={{ marginTop: 2 }}>
-                            <summary style={{ cursor: "pointer", fontSize: 11 }}>{labels.manageRaw}</summary>
+                            <summary style={{ cursor: "pointer", fontSize: 11 }}>{tr(lang, "Manage raw slots", "管理原始时段")}</summary>
                             <div style={{ marginTop: 6, display: "grid", gap: 4 }}>
                               {daySlots.map((s) => (
                                 <div
@@ -515,7 +497,7 @@ export default function TeacherAvailabilityClient(props: {
                                   </span>
                                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                     <details>
-                                      <summary style={{ cursor: "pointer", fontSize: 11 }}>{labels.edit}</summary>
+                                      <summary style={{ cursor: "pointer", fontSize: 11 }}>{tr(lang, "Edit", "编辑")}</summary>
                                       <form
                                         onSubmit={(e) => onUpdateSlot(s.id, e)}
                                         style={{ marginTop: 6, display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}
@@ -537,13 +519,11 @@ export default function TeacherAvailabilityClient(props: {
                                           defaultValue={fromMin(s.endMin)}
                                           style={{ fontSize: 11, width: 82 }}
                                         />
-                                        <button type="submit" disabled={busy} style={{ fontSize: 11 }}>
-                                          {labels.save}
-                                        </button>
+                                        <button type="submit" disabled={busy} style={{ fontSize: 11 }}>{tr(lang, "Save", "保存")}</button>
                                       </form>
                                     </details>
                                     <button type="button" onClick={() => onDeleteSlot(s.id)} disabled={busy} style={{ fontSize: 11 }}>
-                                      {labels.del}
+                                      {tr(lang, "Del", "删")}
                                     </button>
                                   </div>
                                 </div>
@@ -554,7 +534,7 @@ export default function TeacherAvailabilityClient(props: {
 
                         {inRange ? (
                           <details style={{ marginTop: 2, paddingTop: 4, borderTop: "1px dashed #e5e7eb" }}>
-                            <summary style={{ cursor: "pointer", fontSize: 11 }}>{labels.addSlot}</summary>
+                            <summary style={{ cursor: "pointer", fontSize: 11 }}>{tr(lang, "Add slot", "添加时段")}</summary>
                             <form
                               onSubmit={onAddInCell}
                               style={{
@@ -570,7 +550,7 @@ export default function TeacherAvailabilityClient(props: {
                               <span style={{ fontSize: 11 }}>-</span>
                               <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} defaultValue="18:00" style={{ fontSize: 11, width: 82 }} />
                               <button type="submit" disabled={busy} style={{ fontSize: 11 }}>
-                                {labels.add}
+                                {tr(lang, "Add", "添加")}
                               </button>
                             </form>
                           </details>
@@ -585,9 +565,6 @@ export default function TeacherAvailabilityClient(props: {
         </table>
       </div>
 
-      {/* Keep teacherId referenced so TS doesn't complain about unused prop in future expansions */}
-      <input type="hidden" value={teacherId} readOnly />
     </div>
   );
 }
-
