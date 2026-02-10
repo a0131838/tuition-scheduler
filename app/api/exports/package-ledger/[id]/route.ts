@@ -88,16 +88,31 @@ function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   const right = doc.page.width - doc.page.margins.right;
   const top = doc.y;
 
-  let logoH = 0;
   const logoW = 255;
+  let logoH = 0;
   try {
-    doc.image(LOGO_PATH, left, top, { width: logoW });
+    const logo = (doc as any).openImage(LOGO_PATH);
+    if (logo?.width && logo?.height) {
+      logoH = Math.round((logoW * logo.height) / logo.width);
+    }
+    // Prefer passing the opened image object, so pdfkit doesn't have to re-open it.
+    doc.image(logo, left, top, { width: logoW });
   } catch {}
 
-  const textX = left;
-  const textW = Math.max(40, right - textX);
+  // Layout: try 2 columns (company lines to the right of logo). If page is too narrow or logo missing,
+  // fallback to put company lines below the logo.
+  const gapX = 12;
+  let textX = left + logoW + gapX;
+  let textY = top;
+  let textW = right - textX;
+  const canTwoCol = logoH > 0 && textW >= 220;
+  if (!canTwoCol) {
+    textX = left;
+    textY = top + logoH + 6;
+    textW = Math.max(40, right - textX);
+  }
+
   doc.fontSize(9);
-  let textY = top + logoH + 6;
   COMPANY_LINES.forEach((line) => {
     doc.text(line, textX, textY, { width: textW });
     textY += doc.currentLineHeight() + 2;

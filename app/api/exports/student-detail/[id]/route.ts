@@ -92,15 +92,26 @@ function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
   let logoH = 0;
   try {
     const logo = (doc as any).openImage(LOGO_PATH);
-    const scale = logoW / logo.width;
-    logoH = logo.height * scale;
+    if (logo?.width && logo?.height) {
+      logoH = Math.round((logoW * logo.height) / logo.width);
+    }
     doc.image(logo, left, top, { width: logoW });
   } catch {}
 
-  const textX = left;
-  const textW = Math.max(40, right - textX);
+  // Layout: try 2 columns (company lines to the right of logo). If page is too narrow or logo missing,
+  // fallback to put company lines below the logo.
+  const gapX = 12;
+  let textX = left + logoW + gapX;
+  let textY = top;
+  let textW = right - textX;
+  const canTwoCol = logoH > 0 && textW >= 220;
+  if (!canTwoCol) {
+    textX = left;
+    textY = top + logoH + 6;
+    textW = Math.max(40, right - textX);
+  }
+
   doc.fontSize(9);
-  let textY = top + logoH + 6;
   COMPANY_LINES.forEach((line) => {
     doc.text(line, textX, textY, { width: textW });
     textY += doc.currentLineHeight() + 2;
