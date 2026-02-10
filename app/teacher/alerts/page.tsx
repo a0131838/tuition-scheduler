@@ -1,4 +1,4 @@
-﻿import { getCurrentUser, requireTeacherProfile } from "@/lib/auth";
+import { getCurrentUser, requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import {
   ALERT_TYPE_FEEDBACK,
@@ -8,9 +8,8 @@ import {
   syncSignInAlerts,
 } from "@/lib/signin-alerts";
 import { prisma } from "@/lib/prisma";
-import { AttendanceStatus } from "@prisma/client";
-import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString()}`;
@@ -72,69 +71,7 @@ function badgeStyle(kind: "danger" | "warn" | "ok" | "muted") {
   } as const;
 }
 
-async function quickMarkMissingStudents(
-  status: "ABSENT" | "EXCUSED",
-  sessionId: string,
-  studentIdsCsv: string,
-  showResolved: string | undefined
-) {
-  "use server";
-  const { teacher } = await requireTeacherProfile();
-  if (!teacher) {
-    redirect("/teacher/alerts?err=Teacher+profile+not+linked");
-  }
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    include: { class: true },
-  });
-  if (!session) {
-    redirect("/teacher/alerts?err=Session+not+found");
-  }
-
-  const allowed = session.teacherId === teacher.id || (!session.teacherId && session.class.teacherId === teacher.id);
-  if (!allowed) {
-    redirect("/teacher/alerts?err=No+permission");
-  }
-
-  const enrollments = await prisma.enrollment.findMany({
-    where: { classId: session.classId },
-    select: { studentId: true },
-  });
-  const expectedSet = new Set(
-    session.class.capacity === 1 && session.studentId ? [session.studentId] : enrollments.map((e) => e.studentId)
-  );
-
-  const targetIds = studentIdsCsv
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s && expectedSet.has(s));
-
-  const base = showResolved === "1" ? "/teacher/alerts?showResolved=1" : "/teacher/alerts";
-  if (targetIds.length === 0) {
-    redirect(`${base}${base.includes("?") ? "&" : "?"}err=No+target+students`);
-  }
-
-  const autoNote = `[Quick mark from alerts @ ${new Date().toLocaleString()}]`;
-  await prisma.$transaction(
-    targetIds.map((studentId) =>
-      prisma.attendance.upsert({
-        where: { sessionId_studentId: { sessionId, studentId } },
-        update: { status: status as AttendanceStatus, note: autoNote },
-        create: {
-          sessionId,
-          studentId,
-          status: status as AttendanceStatus,
-          note: autoNote,
-          deductedCount: 0,
-          deductedMinutes: 0,
-        },
-      })
-    )
-  );
-
-  redirect(`${base}${base.includes("?") ? "&" : "?"}msg=Updated`);
-}
+// Quick mark is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherAlertsPage({
   searchParams,
@@ -343,28 +280,16 @@ export default async function TeacherAlertsPage({
 
                   {r.isPending && r.missingStudentIds.length > 0 ? (
                     <>
-                      <form
-                        action={quickMarkMissingStudents.bind(
-                          null,
-                          "ABSENT",
-                          r.sessionId,
-                          r.missingStudentIds.join(","),
-                          showResolved ? "1" : undefined
-                        )}
-                      >
-                        <button type="submit" style={{ padding: "6px 10px" }}>{t(lang, "Mark Absent", "一键标缺勤")}</button>
-                      </form>
-                      <form
-                        action={quickMarkMissingStudents.bind(
-                          null,
-                          "EXCUSED",
-                          r.sessionId,
-                          r.missingStudentIds.join(","),
-                          showResolved ? "1" : undefined
-                        )}
-                      >
-                        <button type="submit" style={{ padding: "6px 10px" }}>{t(lang, "Mark Excused", "一键标请假")}</button>
-                      </form>
+                      <TeacherAlertsQuickMarkClient
+                        sessionId={r.sessionId}
+                        studentIds={r.missingStudentIds}
+                        labels={{
+                          absent: t(lang, "Mark Absent", "一键标缺勤"),
+                          excused: t(lang, "Mark Excused", "一键标请假"),
+                          errorPrefix: t(lang, "Error", "错误"),
+                          saved: t(lang, "Saved", "已保存"),
+                        }}
+                      />
                     </>
                   ) : null}
                 </div>

@@ -1,9 +1,9 @@
-﻿import { requireTeacherProfile } from "@/lib/auth";
+import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { TeachingLanguage } from "@prisma/client";
 import TeacherCardView from "@/app/admin/teachers/[id]/card/TeacherCardView";
-import { redirect } from "next/navigation";
+import TeacherIntroClient from "./TeacherIntroClient";
 
 function langLabel(lang: "BILINGUAL" | "ZH" | "EN", value?: TeachingLanguage | null, other?: string | null) {
   if (value === "CHINESE") return t(lang, "Chinese", "中文");
@@ -13,23 +13,7 @@ function langLabel(lang: "BILINGUAL" | "ZH" | "EN", value?: TeachingLanguage | n
   return "-";
 }
 
-async function saveTeacherIntro(formData: FormData) {
-  "use server";
-  const { teacher } = await requireTeacherProfile();
-  if (!teacher) redirect("/teacher/card?err=Teacher+profile+not+linked");
-
-  const intro = String(formData.get("intro") ?? "").trim();
-  if (intro.length > 1200) {
-    redirect("/teacher/card?err=Intro+is+too+long+(max+1200+chars)");
-  }
-
-  await prisma.teacher.update({
-    where: { id: teacher.id },
-    data: { intro: intro || null },
-  });
-
-  redirect("/teacher/card?msg=Intro+updated");
-}
+// Intro editing is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherCardSelfPage({
   searchParams,
@@ -75,17 +59,14 @@ export default async function TeacherCardSelfPage({
 
         <div style={{ marginTop: 12, border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Edit Self Intro", "编辑自我介绍")}</div>
-          <form action={saveTeacherIntro} style={{ display: "grid", gap: 8 }}>
-            <textarea
-              name="intro"
-              rows={5}
-              defaultValue={teacherFull.intro ?? ""}
-              placeholder={t(lang, "Write your teaching intro...", "填写你的教学介绍...")}
-            />
-            <div>
-              <button type="submit">{t(lang, "Save Intro", "保存介绍")}</button>
-            </div>
-          </form>
+          <TeacherIntroClient
+            initialIntro={teacherFull.intro ?? ""}
+            labels={{
+              placeholder: t(lang, "Write your teaching intro...", "填写你的教学介绍..."),
+              save: t(lang, "Save Intro", "保存介绍"),
+              saved: t(lang, "Saved", "已保存"),
+            }}
+          />
         </div>
       </div>
       <TeacherCardView

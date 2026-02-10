@@ -1,8 +1,8 @@
-﻿import { requireTeacherProfile } from "@/lib/auth";
+import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import TeacherConfirmCoursesButton from "./TeacherConfirmCoursesButton";
 
 const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
 const TEACHER_SELF_CONFIRM_TOMORROW = "TEACHER_SELF_CONFIRM_TOMORROW";
@@ -15,25 +15,7 @@ function toDateInputValue(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-async function confirmTeacherCourses(dayKind: "today" | "tomorrow", formData: FormData) {
-  "use server";
-  const { teacher } = await requireTeacherProfile();
-  if (!teacher) redirect("/teacher?err=Teacher+profile+not+linked");
-
-  const dateStr = String(formData.get("date") ?? "");
-  if (!dateStr) redirect("/teacher?err=Invalid+date");
-  const date = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(date.getTime())) redirect("/teacher?err=Invalid+date");
-
-  const type = dayKind === "today" ? TEACHER_SELF_CONFIRM_TODAY : TEACHER_SELF_CONFIRM_TOMORROW;
-  await prisma.todoReminderConfirm.upsert({
-    where: { type_targetId_date: { type, targetId: teacher.id, date } },
-    create: { type, targetId: teacher.id, date },
-    update: { createdAt: new Date() },
-  });
-
-  redirect(`/teacher?msg=${dayKind === "today" ? "Today+courses+confirmed" : "Tomorrow+courses+confirmed"}`);
-}
+// Teacher self-confirm is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherHomePage({
   searchParams,
@@ -70,42 +52,31 @@ export default async function TeacherHomePage({
   const tomorrowEnd = new Date(todayEnd);
   tomorrowEnd.setDate(todayEnd.getDate() + 1);
 
-  const [todaySessions, tomorrowSessions, todayConfirmed, tomorrowConfirmed] = await Promise.all([
-    prisma.session.findMany({
-      where: {
-        startAt: { gte: todayStart, lte: todayEnd },
-        OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
-      },
-      include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
-      orderBy: { startAt: "asc" },
-    }),
-    prisma.session.findMany({
-      where: {
-        startAt: { gte: tomorrowStart, lte: tomorrowEnd },
-        OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
-      },
-      include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
-      orderBy: { startAt: "asc" },
-    }),
-    prisma.todoReminderConfirm.findUnique({
-      where: {
-        type_targetId_date: {
-          type: TEACHER_SELF_CONFIRM_TODAY,
-          targetId: teacher.id,
-          date: toDateOnly(todayStart),
-        },
-      },
-    }),
-    prisma.todoReminderConfirm.findUnique({
-      where: {
-        type_targetId_date: {
-          type: TEACHER_SELF_CONFIRM_TOMORROW,
-          targetId: teacher.id,
-          date: toDateOnly(tomorrowStart),
-        },
-      },
-    }),
-  ]);
+  const todaySessions = await prisma.session.findMany({
+    where: {
+      startAt: { gte: todayStart, lte: todayEnd },
+      OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+    },
+    include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
+    orderBy: { startAt: "asc" },
+  });
+  const tomorrowSessions = await prisma.session.findMany({
+    where: {
+      startAt: { gte: tomorrowStart, lte: tomorrowEnd },
+      OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+    },
+    include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
+    orderBy: { startAt: "asc" },
+  });
+  // Prisma types can infer `never` for composite-date queries in some setups; cast keeps runtime behavior unchanged.
+  const todayConfirmed = (await prisma.todoReminderConfirm.findFirst({
+    where: { type: TEACHER_SELF_CONFIRM_TODAY, targetId: teacher.id, date: toDateOnly(todayStart) },
+    select: { createdAt: true },
+  } as any)) as { createdAt: Date } | null;
+  const tomorrowConfirmed = (await prisma.todoReminderConfirm.findFirst({
+    where: { type: TEACHER_SELF_CONFIRM_TOMORROW, targetId: teacher.id, date: toDateOnly(tomorrowStart) },
+    select: { createdAt: true },
+  } as any)) as { createdAt: Date } | null;
 
   return (
     <div>
@@ -142,13 +113,19 @@ export default async function TeacherHomePage({
             <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")} ({todaySessions.length})</h3>
             {todayConfirmed ? (
               <span style={{ color: "#166534", fontWeight: 700 }}>
-                {t(lang, "Confirmed", "已确认")}: {todayConfirmed.createdAt.toLocaleTimeString()}
+                {t(lang, "Confirmed", "已确认")}: {(todayConfirmed as any).createdAt.toLocaleTimeString()}
               </span>
             ) : (
-              <form action={confirmTeacherCourses.bind(null, "today")}>
-                <input type="hidden" name="date" value={toDateInputValue(todayStart)} />
-                <button type="submit">{t(lang, "Confirm Today's Courses", "确认今日课程")}</button>
-              </form>
+              <TeacherConfirmCoursesButton
+                dayKind="today"
+                date={toDateInputValue(todayStart)}
+                initialConfirmedAt={(todayConfirmed as any)?.createdAt ? (todayConfirmed as any).createdAt.toISOString() : null}
+                labels={{
+                  confirm: t(lang, "Confirm Today's Courses", "确认今日课程"),
+                  confirmed: t(lang, "Confirmed", "已确认"),
+                  errorPrefix: t(lang, "Error", "错误"),
+                }}
+              />
             )}
           </div>
           {todaySessions.length === 0 ? (
@@ -183,13 +160,19 @@ export default async function TeacherHomePage({
             <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow's Courses", "明日课程")} ({tomorrowSessions.length})</h3>
             {tomorrowConfirmed ? (
               <span style={{ color: "#166534", fontWeight: 700 }}>
-                {t(lang, "Confirmed", "已确认")}: {tomorrowConfirmed.createdAt.toLocaleTimeString()}
+                {t(lang, "Confirmed", "已确认")}: {(tomorrowConfirmed as any).createdAt.toLocaleTimeString()}
               </span>
             ) : (
-              <form action={confirmTeacherCourses.bind(null, "tomorrow")}>
-                <input type="hidden" name="date" value={toDateInputValue(tomorrowStart)} />
-                <button type="submit">{t(lang, "Confirm Tomorrow's Courses", "确认明日课程")}</button>
-              </form>
+              <TeacherConfirmCoursesButton
+                dayKind="tomorrow"
+                date={toDateInputValue(tomorrowStart)}
+                initialConfirmedAt={(tomorrowConfirmed as any)?.createdAt ? (tomorrowConfirmed as any).createdAt.toISOString() : null}
+                labels={{
+                  confirm: t(lang, "Confirm Tomorrow's Courses", "确认明日课程"),
+                  confirmed: t(lang, "Confirmed", "已确认"),
+                  errorPrefix: t(lang, "Error", "错误"),
+                }}
+              />
             )}
           </div>
           {tomorrowSessions.length === 0 ? (

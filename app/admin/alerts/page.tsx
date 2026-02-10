@@ -1,15 +1,14 @@
-﻿import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import NoticeBanner from "../_components/NoticeBanner";
+import AlertsThresholdClient from "./AlertsThresholdClient";
 import {
   ALERT_TYPE_FEEDBACK,
   ALERT_TYPE_STUDENT,
   ALERT_TYPE_TEACHER,
   getAdminOpenSignInAlerts,
   getSignInAlertThresholdMin,
-  setSignInAlertThresholdMin,
   syncSignInAlerts,
 } from "@/lib/signin-alerts";
 import { prisma } from "@/lib/prisma";
@@ -51,14 +50,6 @@ function severityChip(lang: Lang, overdueMin: number) {
       {t(lang, "Normal", "普通")}
     </span>
   );
-}
-
-async function updateThreshold(formData: FormData) {
-  "use server";
-  await requireAdmin();
-  const min = Number(String(formData.get("thresholdMin") ?? "10"));
-  await setSignInAlertThresholdMin(Number.isFinite(min) ? Math.max(1, Math.floor(min)) : 10);
-  redirect("/admin/alerts?msg=Threshold+updated");
 }
 
 export default async function AdminAlertsPage({
@@ -130,22 +121,17 @@ export default async function AdminAlertsPage({
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div style={{ border: "1px solid #fca5a5", borderRadius: 10, padding: 12, background: "#fffafa" }}>
-        <form action={updateThreshold} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <label>
-            {t(lang, "Alert Threshold (minutes)", "告警阈值(分钟)")}:
-            <input
-              name="thresholdMin"
-              type="number"
-              min={1}
-              defaultValue={String(threshold)}
-              style={{ marginLeft: 6, width: 100 }}
-            />
-          </label>
-          <button type="submit">{t(lang, "Save", "保存")}</button>
-          <span style={{ color: "#64748b", fontSize: 12 }}>
-            {t(lang, "Current threshold", "当前阈值")}: {thresholdMin} min
-          </span>
-        </form>
+        <AlertsThresholdClient
+          initialThreshold={threshold}
+          currentThresholdMin={thresholdMin}
+          labels={{
+            label: t(lang, "Alert Threshold (minutes)", "告警阈值(分钟)"),
+            save: t(lang, "Save", "保存"),
+            saved: t(lang, "Saved", "已保存"),
+            current: t(lang, "Current threshold", "当前阈值"),
+            errorPrefix: t(lang, "Error", "错误"),
+          }}
+        />
       </div>
 
       {alerts.length === 0 ? (
