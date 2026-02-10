@@ -7,9 +7,11 @@ CRON_EXPR="${CRON_EXPR:-*/5 * * * *}"
 
 # If ENV_FILE exists, load APP_NAME for log file naming.
 APP_NAME="tuition-scheduler"
-if [[ -f "$ENV_FILE" ]]; then
+if [[ -r "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$ENV_FILE"
+elif [[ -f "$ENV_FILE" ]]; then
+  echo "WARN: env file exists but is not readable: $ENV_FILE (using default APP_NAME=$APP_NAME)" >&2
 fi
 
 LOG_DIR="${LOG_DIR:-/home/ubuntu/logs}"

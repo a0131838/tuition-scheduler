@@ -7,7 +7,7 @@ set -euo pipefail
 # so they won't be written into the app runtime .env.
 
 ENV_FILE="${1:-ops/server/.deploy.env}"
-if [[ ! -f "$ENV_FILE" ]]; then
+if [[ ! -r "$ENV_FILE" ]]; then
   echo "Missing env file: $ENV_FILE"
   exit 1
 fi
@@ -16,12 +16,14 @@ fi
 source "$ENV_FILE"
 
 OPS_ENV="/etc/tuition-scheduler/backup.env"
-if [[ -f "$OPS_ENV" ]]; then
+if [[ -r "$OPS_ENV" ]]; then
   # shellcheck disable=SC1090
   # Export vars so the upload script (new process) can read them.
   set -a
   source "$OPS_ENV"
   set +a
+elif [[ -f "$OPS_ENV" ]]; then
+  echo "WARN: backup env exists but is not readable: $OPS_ENV (upload will be skipped)" >&2
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

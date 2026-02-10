@@ -16,13 +16,15 @@ set -euo pipefail
 # - 1: any failure (still sends alert if configured)
 
 ENV_FILE="${1:-ops/server/.deploy.env}"
-if [[ -f "$ENV_FILE" ]]; then
+if [[ -r "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$ENV_FILE"
+elif [[ -f "$ENV_FILE" ]]; then
+  echo "WARN: env file exists but is not readable: $ENV_FILE" >&2
 fi
 
 OPS_ENV="/etc/tuition-scheduler/monitor.env"
-if [[ -f "$OPS_ENV" ]]; then
+if [[ -r "$OPS_ENV" ]]; then
   # Allow one-off overrides like:
   #   MONITOR_URLS=https://127.0.0.1:1 ./monitor_http.sh ...
   # even if monitor.env contains `MONITOR_URLS=` (empty).
@@ -32,6 +34,8 @@ if [[ -f "$OPS_ENV" ]]; then
   if [[ "${_MONITOR_URLS_PRE}" != "__unset__" ]] && [[ -n "${_MONITOR_URLS_PRE}" ]] && [[ -z "${MONITOR_URLS:-}" ]]; then
     MONITOR_URLS="${_MONITOR_URLS_PRE}"
   fi
+elif [[ -f "$OPS_ENV" ]]; then
+  echo "WARN: monitor env exists but is not readable: $OPS_ENV (fix perms/owner or run cron as a user who can read it)" >&2
 fi
 
 DOMAIN="${DOMAIN:-}"
