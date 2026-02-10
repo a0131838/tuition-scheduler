@@ -9,6 +9,7 @@ import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilt
 import NoticeBanner from "../../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
+import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1520,47 +1521,22 @@ export default async function StudentDetailPage({
                               {tl(lang, "Cancelled")}
                             </span>
                           ) : null}
-                          {cancelled ? (
-                            <form
-                              action={restoreStudentSession.bind(null, studentId)}
-                              style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}
-                            >
-                              <input type="hidden" name="sessionId" value={s.id} />
-                              <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                              <ConfirmSubmitButton message={tl(lang, "Restore this session?")}>
-                                {tl(lang, "Restore")}
-                              </ConfirmSubmitButton>
-                            </form>
-                          ) : (
-                            <form
-                              action={cancelStudentSession.bind(null, studentId)}
-                              style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}
-                            >
-                              <input type="hidden" name="sessionId" value={s.id} />
-                              <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                              <button
-                                type="submit"
-                                title={tl(lang, "Cancel")}
-                                style={{
-                                  border: "1px solid #f0b266",
-                                  background: "#fff7ed",
-                                  color: "#b45309",
-                                  borderRadius: 6,
-                                  padding: "2px 6px",
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                x
-                              </button>
-                              <label style={{ display: "inline-flex", gap: 4, alignItems: "center", fontSize: 11 }}>
-                                <input type="checkbox" name="charge" />
-                                {tl(lang, "Charge")}
-                              </label>
-                              <input name="note" placeholder={tl(lang, "Note")} style={{ fontSize: 11, padding: "2px 4px", width: 90 }} />
-                            </form>
-                          )}
+                          <div style={{ marginTop: 4 }}>
+                            <SessionCancelRestoreClient
+                              studentId={studentId}
+                              sessionId={s.id}
+                              initialCancelled={cancelled}
+                              initialCharge={Boolean(att?.excusedCharge)}
+                              variant="compact"
+                              labels={{
+                                cancel: tl(lang, "Cancel"),
+                                restore: tl(lang, "Restore"),
+                                restoreConfirm: tl(lang, "Restore this session?"),
+                                charge: tl(lang, "Charge"),
+                                note: tl(lang, "Note"),
+                              }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
@@ -1928,26 +1904,20 @@ export default async function StudentDetailPage({
                   </a>
                 </div>
                 <div style={{ marginTop: 6 }}>
-                  {cancelled ? (
-                    <form action={restoreStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                      <ConfirmSubmitButton message={tl(lang, "Restore this session?")}>
-                        {tl(lang, "Restore")}
-                      </ConfirmSubmitButton>
-                    </form>
-                  ) : (
-                    <form action={cancelStudentSession.bind(null, studentId)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <input type="hidden" name="month" value={monthLabel(monthDate)} />
-                      <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                        <input type="checkbox" name="charge" defaultChecked={false} />
-                        {tl(lang, "Charge")}
-                      </label>
-                      <input name="note" placeholder={tl(lang, "Note")} style={{ minWidth: 160 }} />
-                      <button type="submit">{tl(lang, "Cancel")}</button>
-                    </form>
-                  )}
+                  <SessionCancelRestoreClient
+                    studentId={studentId}
+                    sessionId={s.id}
+                    initialCancelled={cancelled}
+                    initialCharge={Boolean(att?.excusedCharge)}
+                    variant="full"
+                    labels={{
+                      cancel: tl(lang, "Cancel"),
+                      restore: tl(lang, "Restore"),
+                      restoreConfirm: tl(lang, "Restore this session?"),
+                      charge: tl(lang, "Charge"),
+                      note: tl(lang, "Note"),
+                    }}
+                  />
                 </div>
               </div>
             );

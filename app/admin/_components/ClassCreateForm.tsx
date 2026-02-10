@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
@@ -10,7 +10,6 @@ type CampusOption = { id: string; name: string };
 type RoomOption = { id: string; name: string; campusName: string; campusId: string; capacity: number };
 
 export default function ClassCreateForm(props: {
-  action: (formData: FormData) => void;
   courses: CourseOption[];
   subjects: SubjectOption[];
   levels: LevelOption[];
@@ -29,56 +28,97 @@ export default function ClassCreateForm(props: {
     none: string;
   };
 }) {
-  const { courses, subjects, levels, teachers, campuses, rooms, action, labels } = props;
+  const { courses, subjects, levels, teachers, campuses, rooms, labels } = props;
+
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState(
     subjects.find((s) => s.courseId === (courses[0]?.id ?? ""))?.id ?? subjects[0]?.id ?? ""
   );
   const [levelId, setLevelId] = useState("");
+
   const eligibleTeachers = useMemo(() => {
     if (!subjectId) return teachers;
     return teachers.filter((t) => t.subjectCourseId === subjectId || t.subjectIds.includes(subjectId));
   }, [teachers, subjectId]);
   const [teacherId, setTeacherId] = useState(eligibleTeachers[0]?.id ?? "");
+
   const [campusId, setCampusId] = useState(campuses[0]?.id ?? "");
   const [roomId, setRoomId] = useState("");
   const [capacity, setCapacity] = useState("6");
+
   useEffect(() => {
     if (!courseId) return;
     const currentInCourse = subjects.some((s) => s.courseId === courseId && s.id === subjectId);
     if (currentInCourse) return;
     const first = subjects.find((s) => s.courseId === courseId);
     setSubjectId(first?.id ?? "");
-  }, [courseId, subjects]);
-  const filteredLevels = useMemo(
-    () => levels.filter((l) => l.subjectId === subjectId),
-    [levels, subjectId]
-  );
+  }, [courseId, subjects, subjectId]);
+
+  const filteredLevels = useMemo(() => levels.filter((l) => l.subjectId === subjectId), [levels, subjectId]);
   useEffect(() => {
-    if (levelId && !filteredLevels.some((l) => l.id === levelId)) {
-      setLevelId("");
-    }
+    if (levelId && !filteredLevels.some((l) => l.id === levelId)) setLevelId("");
   }, [levelId, filteredLevels]);
+
   useEffect(() => {
     if (teacherId && eligibleTeachers.some((t) => t.id === teacherId)) return;
     setTeacherId(eligibleTeachers[0]?.id ?? "");
   }, [eligibleTeachers, teacherId]);
+
   const filteredRooms = useMemo(() => {
     if (!campusId) return rooms;
     return rooms.filter((r) => r.campusId === campusId);
   }, [rooms, campusId]);
   useEffect(() => {
-    if (roomId && !filteredRooms.some((r) => r.id === roomId)) {
-      setRoomId("");
-    }
+    if (roomId && !filteredRooms.some((r) => r.id === roomId)) setRoomId("");
   }, [roomId, filteredRooms]);
+
   const selectedRoom = useMemo(() => filteredRooms.find((r) => r.id === roomId) ?? null, [filteredRooms, roomId]);
   const capacityNum = Number(capacity);
   const overCapacity =
-    Boolean(selectedRoom) && Number.isFinite(capacityNum) && capacityNum > 0 && capacityNum > (selectedRoom?.capacity ?? 0);
+    Boolean(selectedRoom) &&
+    Number.isFinite(capacityNum) &&
+    capacityNum > 0 &&
+    capacityNum > (selectedRoom?.capacity ?? 0);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [createdId, setCreatedId] = useState("");
 
   return (
-    <form action={action} style={{ display: "grid", gap: 8, maxWidth: 860 }}>
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
+        setError("");
+        setCreatedId("");
+        try {
+          const res = await fetch("/api/admin/classes", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              subjectId,
+              levelId: levelId || null,
+              teacherId,
+              campusId,
+              roomId: roomId || null,
+              capacity: Number(capacity),
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.ok) {
+            setError(String(data?.message ?? "Create failed"));
+            return;
+          }
+          setCreatedId(String(data.classId ?? ""));
+        } catch (err: any) {
+          setError(String(err?.message ?? "Create failed"));
+        } finally {
+          setSubmitting(false);
+        }
+      }}
+      style={{ display: "grid", gap: 8, maxWidth: 860 }}
+    >
       <label>
         {labels.course}:
         <select
@@ -191,10 +231,11 @@ export default function ClassCreateForm(props: {
           style={{ marginLeft: 8, width: 120 }}
         />
       </label>
+
       {selectedRoom ? (
         <div style={{ fontSize: 12, color: overCapacity ? "#b00" : "#666" }}>
-          Room capacity limit / 教室容量上限: {selectedRoom.capacity}
-          {overCapacity ? " (Current class capacity exceeds room limit / 当前班级容量超出教室上限)" : ""}
+          Room capacity limit: {selectedRoom.capacity}
+          {overCapacity ? " (Current class capacity exceeds room limit)" : ""}
         </div>
       ) : null}
 
@@ -205,16 +246,24 @@ export default function ClassCreateForm(props: {
           teachers.length === 0 ||
           campuses.length === 0 ||
           eligibleTeachers.length === 0 ||
-          overCapacity
+          overCapacity ||
+          submitting
         }
       >
-        {labels.create}
+        {submitting ? "..." : labels.create}
       </button>
-      {eligibleTeachers.length === 0 ? (
-        <div style={{ color: "#b00", fontSize: 12 }}>
-          No eligible teachers for selected subject / 当前科目没有可授课老师
+
+      {error ? <div style={{ color: "#b00", fontSize: 12 }}>{error}</div> : null}
+      {createdId ? (
+        <div style={{ fontSize: 12, color: "#166534" }}>
+          Created: <a href={`/admin/classes/${createdId}`}>{createdId}</a>
         </div>
+      ) : null}
+
+      {eligibleTeachers.length === 0 ? (
+        <div style={{ color: "#b00", fontSize: 12 }}>No eligible teachers for selected subject</div>
       ) : null}
     </form>
   );
 }
+

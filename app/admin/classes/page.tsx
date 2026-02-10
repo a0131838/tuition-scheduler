@@ -1,67 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
 import { getLang, t } from "@/lib/i18n";
 import SimpleModal from "../_components/SimpleModal";
 import ClassCreateForm from "../_components/ClassCreateForm";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
-
-function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
-  if (!subjectId) return true;
-  if (teacher?.subjectCourseId === subjectId) return true;
-  return Array.isArray(teacher?.subjects) ? teacher.subjects.some((s) => s.id === subjectId) : false;
-}
-
-async function createClass(formData: FormData) {
-  "use server";
-  const subjectId = String(formData.get("subjectId") ?? "");
-  const levelIdRaw = String(formData.get("levelId") ?? "");
-  const teacherId = String(formData.get("teacherId") ?? "");
-  const campusId = String(formData.get("campusId") ?? "");
-  const roomIdRaw = String(formData.get("roomId") ?? "");
-  const capacity = Number(formData.get("capacity") ?? 0);
-
-  if (!subjectId || !teacherId || !campusId || !Number.isFinite(capacity) || capacity <= 0) return;
-
-  const subject = await prisma.subject.findUnique({
-    where: { id: subjectId },
-    include: { course: true },
-  });
-  if (!subject) return;
-  const teacher = await prisma.teacher.findUnique({
-    where: { id: teacherId },
-    include: { subjects: { select: { id: true } } },
-  });
-  if (!teacher || !canTeachSubject(teacher as any, subjectId)) return;
-
-  let levelId: string | null = null;
-  if (levelIdRaw) {
-    const level = await prisma.level.findUnique({ where: { id: levelIdRaw } });
-    if (!level || level.subjectId !== subjectId) return;
-    levelId = levelIdRaw;
-  }
-
-  const courseId = subject.courseId;
-  const roomId = roomIdRaw ? roomIdRaw : null;
-  if (roomId) {
-    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { campusId: true, capacity: true } });
-    if (!room || room.campusId !== campusId) return;
-    if (capacity > room.capacity) return;
-  }
-
-  await prisma.class.create({
-    data: {
-      courseId,
-      subjectId,
-      levelId,
-      teacherId,
-      campusId,
-      roomId,
-      capacity,
-    },
-  });
-
-  revalidatePath("/admin/classes");
-}
 
 export default async function ClassesPage() {
   const lang = await getLang();
@@ -114,9 +55,8 @@ export default async function ClassesPage() {
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-        <SimpleModal buttonLabel={t(lang, "Create Class", "新建班级")} title={t(lang, "Create Class", "新建班级")} closeOnSubmit>
+        <SimpleModal buttonLabel={t(lang, "Create Class", "新建班级")} title={t(lang, "Create Class", "新建班级")}>
           <ClassCreateForm
-            action={createClass}
             courses={courses.map((c) => ({ id: c.id, name: c.name }))}
             subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
             levels={levels.map((l) => ({

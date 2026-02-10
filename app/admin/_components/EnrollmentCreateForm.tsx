@@ -22,12 +22,10 @@ type StudentOption = {
 };
 
 export default function EnrollmentCreateForm({
-  action,
   classes,
   students,
   labels,
 }: {
-  action: (formData: FormData) => Promise<void>;
   classes: ClassOption[];
   students: StudentOption[];
   labels: {
@@ -42,6 +40,9 @@ export default function EnrollmentCreateForm({
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [studentId, setStudentId] = useState("");
   const [classQuery, setClassQuery] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [created, setCreated] = useState<{ classId: string; studentId: string } | null>(null);
 
   const filteredClasses = useMemo(() => {
     const q = classQuery.trim().toLowerCase();
@@ -79,7 +80,33 @@ export default function EnrollmentCreateForm({
       : true;
 
   return (
-    <form action={action} style={{ display: "grid", gap: 10, maxWidth: 900 }}>
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
+        setError("");
+        setCreated(null);
+        try {
+          const res = await fetch("/api/admin/enrollments", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ classId: effectiveClassId, studentId }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.ok) {
+            setError(String(data?.message ?? "Enroll failed"));
+            return;
+          }
+          setCreated({ classId: effectiveClassId, studentId });
+        } catch (err: any) {
+          setError(String(err?.message ?? "Enroll failed"));
+        } finally {
+          setSubmitting(false);
+        }
+      }}
+      style={{ display: "grid", gap: 10, maxWidth: 900 }}
+    >
       <label>
         {labels.classLabel}:
         <div style={{ margin: "6px 0 6px 8px", color: "#666", fontSize: 12 }}>
@@ -126,7 +153,16 @@ export default function EnrollmentCreateForm({
         </div>
       </label>
 
-      <button type="submit" disabled={selectableStudents.length === 0}>{labels.confirm}</button>
+      <button type="submit" disabled={selectableStudents.length === 0 || submitting}>
+        {submitting ? "..." : labels.confirm}
+      </button>
+      {error ? <div style={{ color: "#b00", fontSize: 12 }}>{error}</div> : null}
+      {created ? (
+        <div style={{ fontSize: 12, color: "#166534" }}>
+          Enrolled: <a href={`/admin/classes/${created.classId}`}>{created.classId}</a> /{" "}
+          <a href={`/admin/students/${created.studentId}`}>{created.studentId}</a>
+        </div>
+      ) : null}
     </form>
   );
 }

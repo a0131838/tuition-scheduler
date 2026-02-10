@@ -6,6 +6,8 @@ import EnrollmentCreateForm from "../_components/EnrollmentCreateForm";
 import EnrollmentExpandCollapse from "../_components/EnrollmentExpandCollapse";
 import EnrollmentFilterForm from "../_components/EnrollmentFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
+import EnrollmentRemoveButton from "./EnrollmentRemoveButton";
+import EnrollmentRestoreButton from "./EnrollmentRestoreButton";
 import { isGroupPackNote } from "@/lib/package-mode";
 import {
   courseEnrollmentConflictMessage,
@@ -57,129 +59,6 @@ type OneOnOneEntry = {
   };
   fromEnrollment: boolean;
 };
-
-async function addEnrollment(formData: FormData) {
-  "use server";
-  const classId = String(formData.get("classId") ?? "");
-  const studentId = String(formData.get("studentId") ?? "");
-
-  if (!classId || !studentId) {
-    redirect("/admin/enrollments?err=Missing+classId+or+studentId&keep=1");
-  }
-
-  const cls = await prisma.class.findUnique({
-    where: { id: classId },
-    select: { id: true, courseId: true, capacity: true },
-  });
-  if (!cls) {
-    redirect("/admin/enrollments?err=Class+not+found&keep=1");
-  }
-
-  const now = new Date();
-  const candidatePkgs = await prisma.coursePackage.findMany({
-    where: {
-      studentId,
-      courseId: cls.courseId,
-      status: "ACTIVE",
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gte: now } }],
-    },
-    select: { id: true, type: true, remainingMinutes: true, note: true },
-  });
-  const activePkg = candidatePkgs.find((p) => {
-    if (p.type === "MONTHLY") return true;
-    if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
-    if (cls.capacity === 1) return !isGroupPackNote(p.note);
-    return true;
-  });
-  if (!activePkg) {
-    redirect("/admin/enrollments?err=Student+has+no+active+package+for+this+course&keep=1");
-  }
-
-  const exists = await prisma.enrollment.findFirst({
-    where: { classId, studentId },
-    select: { id: true },
-  });
-
-  if (exists) {
-    redirect("/admin/enrollments?err=Already+enrolled&keep=1");
-  }
-
-  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId);
-  if (courseConflict) {
-    const lang = await getLang();
-    redirect(
-      `/admin/enrollments?err=${encodeURIComponent(
-        courseEnrollmentConflictMessage(lang, formatEnrollmentConflict(courseConflict))
-      )}&keep=1`
-    );
-  }
-
-  await prisma.enrollment.create({
-    data: { classId, studentId },
-  });
-
-  redirect("/admin/enrollments?msg=Enrolled+successfully");
-}
-
-async function removeEnrollment(formData: FormData) {
-  "use server";
-  const classId = String(formData.get("classId") ?? "");
-  const studentId = String(formData.get("studentId") ?? "");
-
-  if (!classId || !studentId) {
-    redirect("/admin/enrollments?err=Missing+classId+or+studentId");
-  }
-
-  await prisma.enrollment.deleteMany({
-    where: { classId, studentId },
-  });
-
-  redirect(
-    `/admin/enrollments?msg=Enrollment+removed&undoClassId=${encodeURIComponent(
-      classId
-    )}&undoStudentId=${encodeURIComponent(studentId)}&keep=1`
-  );
-}
-
-async function restoreEnrollment(formData: FormData) {
-  "use server";
-  const classId = String(formData.get("classId") ?? "");
-  const studentId = String(formData.get("studentId") ?? "");
-
-  if (!classId || !studentId) {
-    redirect("/admin/enrollments?err=Missing+classId+or+studentId&keep=1");
-  }
-
-  const cls = await prisma.class.findUnique({
-    where: { id: classId },
-    select: { courseId: true },
-  });
-  if (!cls) {
-    redirect("/admin/enrollments?err=Class+not+found&keep=1");
-  }
-
-  const exists = await prisma.enrollment.findFirst({
-    where: { classId, studentId },
-    select: { id: true },
-  });
-  if (!exists) {
-    const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId);
-    if (courseConflict) {
-      const lang = await getLang();
-      redirect(
-        `/admin/enrollments?err=${encodeURIComponent(
-          courseEnrollmentConflictMessage(lang, formatEnrollmentConflict(courseConflict))
-        )}&keep=1`
-      );
-    }
-    await prisma.enrollment.create({
-      data: { classId, studentId },
-    });
-  }
-
-  redirect("/admin/enrollments?msg=Enrollment+restored&keep=1");
-}
 
 export default async function AdminEnrollmentsPage({
   searchParams,
@@ -431,17 +310,14 @@ export default async function AdminEnrollmentsPage({
         />
       )}
       {undoClassId && undoStudentId && (
-        <form action={restoreEnrollment} style={{ marginBottom: 12 }}>
-          <input type="hidden" name="classId" value={undoClassId} />
-          <input type="hidden" name="studentId" value={undoStudentId} />
-          <button type="submit">{t(lang, "Undo", "撤销")}</button>
-        </form>
+        <div style={{ marginBottom: 12 }}>
+          <EnrollmentRestoreButton classId={undoClassId} studentId={undoStudentId} label={t(lang, "Undo", "撤销")} />
+        </div>
       )}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-        <SimpleModal buttonLabel={t(lang, "Add Enrollment", "新增报名")} title={t(lang, "Add Enrollment", "新增报名")} closeOnSubmit>
+        <SimpleModal buttonLabel={t(lang, "Add Enrollment", "新增报名")} title={t(lang, "Add Enrollment", "新增报名")}>
           <EnrollmentCreateForm
-            action={addEnrollment}
             classes={classes.map((c) => ({
               id: c.id,
               courseId: c.courseId,
@@ -591,11 +467,11 @@ export default async function AdminEnrollmentsPage({
                             {e.studentId ? <span style={{ color: "#999", fontSize: 12 }}>({formatId("STU", e.studentId)})</span> : null}
                           </div>
                           {e.fromEnrollment && e.studentId ? (
-                            <form action={removeEnrollment}>
-                              <input type="hidden" name="classId" value={e.classId} />
-                              <input type="hidden" name="studentId" value={e.studentId} />
-                              <button type="submit">{t(lang, "Remove", "取消报名")}</button>
-                            </form>
+                            <EnrollmentRemoveButton
+                              classId={e.classId}
+                              studentId={e.studentId}
+                              labels={{ remove: t(lang, "Remove", "取消报名"), undo: t(lang, "Undo", "撤销") }}
+                            />
                           ) : (
                             <div style={{ color: "#999", fontSize: 12 }}>
                               {t(lang, "Not enrolled", "未报名")} ·{" "}
@@ -659,11 +535,11 @@ export default async function AdminEnrollmentsPage({
                           {e.student?.name ?? "-"}{" "}
                           <span style={{ color: "#999", fontSize: 12 }}>({formatId("STU", e.studentId)})</span>
                         </div>
-                        <form action={removeEnrollment}>
-                          <input type="hidden" name="classId" value={e.classId} />
-                          <input type="hidden" name="studentId" value={e.studentId} />
-                          <button type="submit">{t(lang, "Remove", "取消报名")}</button>
-                        </form>
+                        <EnrollmentRemoveButton
+                          classId={e.classId}
+                          studentId={e.studentId}
+                          labels={{ remove: t(lang, "Remove", "取消报名"), undo: t(lang, "Undo", "撤销") }}
+                        />
                       </div>
                     ))}
                   </div>

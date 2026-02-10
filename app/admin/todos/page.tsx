@@ -3,6 +3,7 @@ import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import AdminTodosRemindersClient from "./AdminTodosRemindersClient";
 import {
   autoResolveTeacherConflicts,
   getLatestAutoFixResult,
@@ -949,233 +950,68 @@ export default async function AdminTodosPage({
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
-        <div style={reminderStyle}>
-          <div style={sectionHeaderStyle}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ width: 8, height: 8, borderRadius: 999, background: "#1d4ed8", display: "inline-block" }} />
-              <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow Reminders (Teachers)", "明天上课提醒(老师)")}</h3>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ color: "#666", fontSize: 12 }}>
-                {t(lang, "Count", "数量")}: {teacherRemindersPending.length}
-              </span>
-              <a href={todoHref({ showConfirmed: showConfirmed ? null : 1 })} style={{ fontSize: 12 }}>
-                {showConfirmed ? t(lang, "Hide Confirmed", "隐藏已确认") : t(lang, "Show Confirmed", "显示已确认")}
-              </a>
-              {teacherRemindersPending.length > 0 ? (
-                <form action={confirmReminder.bind(null, "teacher")}>
-                  <input type="hidden" name="date" value={confirmDateStr} />
-                  <input type="hidden" name="targetIds" value={teacherIds} />
-                  <input type="hidden" name="warnDays" value={String(warnDays)} />
-                  <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-                  <button type="submit">
-                    {t(lang, "Confirm All", "批量确认已提醒")}
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          </div>
-        {teacherRemindersPending.length === 0 ? (
-          <div style={{ color: "#999" }}>
-            {t(lang, "No sessions tomorrow.", "明天没有课次。")}
-          </div>
-        ) : (
-          <table cellPadding={8} style={tableStyle}>
-            <thead>
-              <tr style={{ background: "#f5f5f5" }}>
-                <th align="left">{t(lang, "Teacher", "老师")}</th>
-                <th align="left">{t(lang, "Sessions", "课次")}</th>
-                <th align="left">{t(lang, "Detail", "详情")}</th>
-                <th align="left">{t(lang, "Teacher Confirm", "老师确认")}</th>
-                <th align="left">{t(lang, "Action", "操作")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teacherRemindersPending.map((x) => (
-                <tr key={x.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{x.name}</td>
-                  <td>{x.sessions.length}</td>
-                  <td>
-                    {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
-                      .split("; ")
-                      .map((line, idx) => (
-                      <div key={`${x.id}-t-${idx}`} style={detailLineStyle}>
-                          {line}
-                        </div>
-                      ))}
-                  </td>
-                  <td style={{ color: teacherSelfTomorrowMap.get(x.id) ? "#166534" : "#b91c1c", fontWeight: 700 }}>
-                    {teacherSelfTomorrowMap.get(x.id)
-                      ? `${t(lang, "Confirmed", "已确认")} ${new Date(teacherSelfTomorrowMap.get(x.id) as Date).toLocaleTimeString()}`
-                      : t(lang, "Not confirmed", "未确认")}
-                  </td>
-                  <td>
-                    <form action={confirmReminder.bind(null, "teacher")}>
-                      <input type="hidden" name="date" value={confirmDateStr} />
-                      <input type="hidden" name="targetIds" value={x.id} />
-                      <input type="hidden" name="warnDays" value={String(warnDays)} />
-                      <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-                      <button type="submit">
-                        {t(lang, "Confirm", "确认已提醒")}
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {showConfirmed && teacherRemindersConfirmed.length > 0 ? (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
-              {t(lang, "Confirmed", "已确认")}: {teacherRemindersConfirmed.length}
-            </div>
-            <table cellPadding={8} style={tableStyle}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th align="left">{t(lang, "Teacher", "老师")}</th>
-                  <th align="left">{t(lang, "Sessions", "课次")}</th>
-                  <th align="left">{t(lang, "Detail", "详情")}</th>
-                  <th align="left">{t(lang, "Teacher Confirm", "老师确认")}</th>
-                  <th align="left">{t(lang, "Status", "状态")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teacherRemindersConfirmed.map((x) => (
-                  <tr key={`tc-${x.id}`} style={{ borderTop: "1px solid #eee" }}>
-                    <td>{x.name}</td>
-                    <td>{x.sessions.length}</td>
-                    <td>
-                      {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
-                        .split("; ")
-                        .map((line, idx) => (
-                        <div key={`${x.id}-tc-${idx}`} style={detailLineStyle}>
-                          {line}
-                        </div>
-                      ))}
-                  </td>
-                  <td style={{ color: teacherSelfTomorrowMap.get(x.id) ? "#166534" : "#b91c1c", fontWeight: 700 }}>
-                    {teacherSelfTomorrowMap.get(x.id)
-                      ? `${t(lang, "Confirmed", "已确认")} ${new Date(teacherSelfTomorrowMap.get(x.id) as Date).toLocaleTimeString()}`
-                      : t(lang, "Not confirmed", "未确认")}
-                  </td>
-                  <td>{t(lang, "Confirmed", "已确认")}</td>
-                </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-        </div>
-
-        <div style={reminderStyle}>
-          <div style={sectionHeaderStyle}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ width: 8, height: 8, borderRadius: 999, background: "#2563eb", display: "inline-block" }} />
-              <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow Reminders (Students)", "明天上课提醒(学生)")}</h3>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ color: "#666", fontSize: 12 }}>
-                {t(lang, "Count", "数量")}: {studentRemindersPending.length}
-              </span>
-              <a href={todoHref({ showConfirmed: showConfirmed ? null : 1 })} style={{ fontSize: 12 }}>
-                {showConfirmed ? t(lang, "Hide Confirmed", "隐藏已确认") : t(lang, "Show Confirmed", "显示已确认")}
-              </a>
-              {studentRemindersPending.length > 0 ? (
-                <form action={confirmReminder.bind(null, "student")}>
-                  <input type="hidden" name="date" value={confirmDateStr} />
-                  <input type="hidden" name="targetIds" value={studentIds} />
-                  <input type="hidden" name="warnDays" value={String(warnDays)} />
-                  <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-                  <button type="submit">
-                    {t(lang, "Confirm All", "批量确认已提醒")}
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          </div>
-        {studentRemindersPending.length === 0 ? (
-          <div style={{ color: "#999" }}>
-            {t(lang, "No students to remind tomorrow.", "明天没有需要提醒的学生。")}
-          </div>
-        ) : (
-          <table cellPadding={8} style={tableStyle}>
-            <thead>
-              <tr style={{ background: "#f5f5f5" }}>
-                <th align="left">{t(lang, "Student", "学生")}</th>
-                <th align="left">{t(lang, "Sessions", "课次")}</th>
-                <th align="left">{t(lang, "Detail", "详情")}</th>
-                <th align="left">{t(lang, "Action", "操作")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studentRemindersPending.map((x) => (
-                <tr key={x.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{x.name}</td>
-                  <td>{x.sessions.length}</td>
-                  <td>
-                    {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
-                      .split("; ")
-                      .map((line, idx) => (
-                        <div key={`${x.id}-s-${idx}`} style={detailLineStyle}>
-                          {line}
-                        </div>
-                      ))}
-                  </td>
-                  <td>
-                    <form action={confirmReminder.bind(null, "student")}>
-                      <input type="hidden" name="date" value={confirmDateStr} />
-                      <input type="hidden" name="targetIds" value={x.id} />
-                      <input type="hidden" name="warnDays" value={String(warnDays)} />
-                      <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-                      <button type="submit">
-                        {t(lang, "Confirm", "确认已提醒")}
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {showConfirmed && studentRemindersConfirmed.length > 0 ? (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
-              {t(lang, "Confirmed", "已确认")}: {studentRemindersConfirmed.length}
-            </div>
-            <table cellPadding={8} style={tableStyle}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th align="left">{t(lang, "Student", "学生")}</th>
-                  <th align="left">{t(lang, "Sessions", "课次")}</th>
-                  <th align="left">{t(lang, "Detail", "详情")}</th>
-                  <th align="left">{t(lang, "Status", "状态")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentRemindersConfirmed.map((x) => (
-                  <tr key={`sc-${x.id}`} style={{ borderTop: "1px solid #eee" }}>
-                    <td>{x.name}</td>
-                    <td>{x.sessions.length}</td>
-                    <td>
-                      {listWithLimit(x.sessions.map((s) => formatSessionBrief(s)))
-                        .split("; ")
-                        .map((line, idx) => (
-                          <div key={`${x.id}-sc-${idx}`} style={detailLineStyle}>
-                            {line}
-                          </div>
-                        ))}
-                    </td>
-                    <td>{t(lang, "Confirmed", "已确认")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-        </div>
-        </div>
+        <AdminTodosRemindersClient
+          date={confirmDateStr}
+          maxListItems={MAX_LIST_ITEMS}
+          teacherPending={teacherRemindersPending.map((x) => ({
+            id: x.id,
+            name: x.name,
+            teacherConfirmAt: teacherSelfTomorrowMap.get(x.id) ? new Date(teacherSelfTomorrowMap.get(x.id) as Date).toISOString() : null,
+            sessions: x.sessions.map((s) => ({
+              startAt: new Date(s.startAt).toISOString(),
+              endAt: new Date(s.endAt).toISOString(),
+              courseName: s.class.course.name,
+              subjectName: s.class.subject?.name ?? null,
+              levelName: s.class.level?.name ?? null,
+            })),
+          }))}
+          teacherConfirmed={teacherRemindersConfirmed.map((x) => ({
+            id: x.id,
+            name: x.name,
+            teacherConfirmAt: teacherSelfTomorrowMap.get(x.id) ? new Date(teacherSelfTomorrowMap.get(x.id) as Date).toISOString() : null,
+            sessions: x.sessions.map((s) => ({
+              startAt: new Date(s.startAt).toISOString(),
+              endAt: new Date(s.endAt).toISOString(),
+              courseName: s.class.course.name,
+              subjectName: s.class.subject?.name ?? null,
+              levelName: s.class.level?.name ?? null,
+            })),
+          }))}
+          studentPending={studentRemindersPending.map((x) => ({
+            id: x.id,
+            name: x.name,
+            sessions: x.sessions.map((s) => ({
+              startAt: new Date(s.startAt).toISOString(),
+              endAt: new Date(s.endAt).toISOString(),
+              courseName: s.class.course.name,
+              subjectName: s.class.subject?.name ?? null,
+              levelName: s.class.level?.name ?? null,
+            })),
+          }))}
+          studentConfirmed={studentRemindersConfirmed.map((x) => ({
+            id: x.id,
+            name: x.name,
+            sessions: x.sessions.map((s) => ({
+              startAt: new Date(s.startAt).toISOString(),
+              endAt: new Date(s.endAt).toISOString(),
+              courseName: s.class.course.name,
+              subjectName: s.class.subject?.name ?? null,
+              levelName: s.class.level?.name ?? null,
+            })),
+          }))}
+          labels={{
+            teacherTitle: t(lang, "Tomorrow Reminders (Teachers)", "明天上课提醒(老师)"),
+            studentTitle: t(lang, "Tomorrow Reminders (Students)", "明天上课提醒(学生)"),
+            count: t(lang, "Count", "数量"),
+            showConfirmed: t(lang, "Show Confirmed", "显示已确认"),
+            hideConfirmed: t(lang, "Hide Confirmed", "隐藏已确认"),
+            confirmAll: t(lang, "Confirm All", "批量确认已提醒"),
+            confirm: t(lang, "Confirm", "确认已提醒"),
+            confirmed: t(lang, "Confirmed", "已确认"),
+            emptyTeachers: t(lang, "No sessions tomorrow.", "明天没有课次。"),
+            emptyStudents: t(lang, "No students to remind tomorrow.", "明天没有需要提醒的学生。"),
+          }}
+        />
 
         <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 12, letterSpacing: 0.5 }}>
           {t(lang, "Other Tasks", "其他事项")}
