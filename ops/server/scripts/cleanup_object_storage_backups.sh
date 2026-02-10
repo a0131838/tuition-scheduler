@@ -84,7 +84,11 @@ EOF
   AWS_ENV+=(AWS_CONFIG_FILE="$AWS_CONFIG_FILE_TMP")
 fi
 
-cutoff="$(date -d \"-$S3_RETENTION_DAYS days\" +%F 2>/dev/null || date -v\"-${S3_RETENTION_DAYS}d\" +%F 2>/dev/null || true)"
+cutoff="$(
+  date -u -d "$S3_RETENTION_DAYS days ago" +%F 2>/dev/null || \
+  date -u -v-"${S3_RETENTION_DAYS}d" +%F 2>/dev/null || \
+  true
+)"
 if [[ -z "$cutoff" ]]; then
   echo "Cannot compute cutoff date (need GNU date or BSD date)."
   exit 1
@@ -146,4 +150,3 @@ while IFS= read -r key; do
 done <<<"$to_delete"
 
 echo "Deleted objects: $count"
-
