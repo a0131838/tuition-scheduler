@@ -45,11 +45,15 @@ export default function TeacherCardExportForm({
   const [notice, setNotice] = useState<{ type: "error" | "success" | "info" | "warn"; message: string } | null>(null);
 
   useEffect(() => {
+    // Subject is optional. When course changes, only clear an incompatible subject selection.
+    // Do NOT auto-pick the first subject, otherwise users cannot choose any other subject
+    // for courses that have multiple subjects (e.g. IB).
     if (!courseId) return;
-    const first = subjects.find((s) => s.courseId === courseId);
-    if (first && first.id !== subjectId) setSubjectId(first.id);
-    if (!first) setSubjectId("");
-  }, [courseId, subjects, subjectId]);
+    if (subjectId && !subjects.some((s) => s.id === subjectId && s.courseId === courseId)) {
+      setSubjectId("");
+      setLevelId("");
+    }
+  }, [courseId, subjectId, subjects]);
 
   const subjectOptions = useMemo(() => {
     if (!courseId) return subjects;
