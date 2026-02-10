@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
@@ -10,7 +10,15 @@ type CampusOption = { id: string; name: string };
 type RoomOption = { id: string; name: string; campusName: string; campusId: string; capacity: number };
 
 export default function ClassEditForm(props: {
-  action: (formData: FormData) => void;
+  action?: (formData: FormData) => void;
+  onSave?: (payload: {
+    subjectId: string;
+    levelId: string | null;
+    teacherId: string;
+    campusId: string;
+    roomId: string | null;
+    capacity: number;
+  }) => Promise<void> | void;
   courses: CourseOption[];
   subjects: SubjectOption[];
   levels: LevelOption[];
@@ -38,7 +46,7 @@ export default function ClassEditForm(props: {
     none: string;
   };
 }) {
-  const { courses, subjects, levels, teachers, campuses, rooms, action, labels, initial } = props;
+  const { courses, subjects, levels, teachers, campuses, rooms, action, labels, initial, onSave } = props;
   const [courseId, setCourseId] = useState(initial.courseId || courses[0]?.id || "");
   const [subjectId, setSubjectId] = useState(initial.subjectId || subjects[0]?.id || "");
   const [levelId, setLevelId] = useState(initial.levelId ?? "");
@@ -83,9 +91,36 @@ export default function ClassEditForm(props: {
   const capacityNum = Number(capacity);
   const overCapacity =
     Boolean(selectedRoom) && Number.isFinite(capacityNum) && capacityNum > 0 && capacityNum > (selectedRoom?.capacity ?? 0);
+  const [err, setErr] = useState("");
+  const [saving, startSaving] = useTransition();
 
   return (
-    <form action={action} style={{ display: "grid", gap: 8, maxWidth: 860, marginBottom: 16 }}>
+    <form
+      action={onSave ? undefined : action}
+      onSubmit={
+        onSave
+          ? (e) => {
+              e.preventDefault();
+              setErr("");
+              startSaving(() => {
+                Promise.resolve(
+                  onSave({
+                    subjectId,
+                    levelId: levelId ? String(levelId) : null,
+                    teacherId,
+                    campusId,
+                    roomId: roomId ? String(roomId) : null,
+                    capacity: Number(capacity),
+                  })
+                ).catch((ex: any) => {
+                  setErr(String(ex?.message ?? "Save failed"));
+                });
+              });
+            }
+          : undefined
+      }
+      style={{ display: "grid", gap: 8, maxWidth: 860, marginBottom: 16 }}
+    >
       <label>
         {labels.course}:
         <select
@@ -205,7 +240,8 @@ export default function ClassEditForm(props: {
         </div>
       ) : null}
 
-      <button type="submit" disabled={eligibleTeachers.length === 0 || overCapacity}>{labels.save}</button>
+      <button type="submit" disabled={eligibleTeachers.length === 0 || overCapacity || saving}>{saving ? "..." : labels.save}</button>
+      {err ? <div style={{ color: "#b00", fontSize: 12 }}>{err}</div> : null}
       {eligibleTeachers.length === 0 ? (
         <div style={{ color: "#b00", fontSize: 12 }}>
           No eligible teachers for selected subject / 当前科目没有可授课老师
@@ -214,3 +250,4 @@ export default function ClassEditForm(props: {
     </form>
   );
 }
+

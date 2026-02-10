@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminTodosRemindersClient from "./AdminTodosRemindersClient";
+import AdminTodosOpsClient from "./AdminTodosOpsClient";
 import {
   autoResolveTeacherConflicts,
   getLatestAutoFixResult,
@@ -718,13 +719,20 @@ export default async function AdminTodosPage({
             >
               {t(lang, "Open Conflict Desk", "去冲突处理")}
             </a>
-            <form action={rerunConflictAudit}>
-              <input type="hidden" name="warnDays" value={String(warnDays)} />
-              <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-              <input type="hidden" name="pastDays" value={String(pastDays)} />
-              <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
-              <button type="submit">{t(lang, "Recheck Now", "立即复检")}</button>
-            </form>
+            <AdminTodosOpsClient
+              payload={{
+                warnDays: String(warnDays),
+                warnMinutes: String(warnMinutes),
+                pastDays: String(pastDays),
+                showConfirmed: showConfirmed ? "1" : "",
+              }}
+              labels={{
+                ok: t(lang, "OK", "成功"),
+                error: t(lang, "Error", "错误"),
+                recheckNow: t(lang, "Recheck Now", "立即复检"),
+                runNow: t(lang, "Run Now", "立即执行"),
+              }}
+            />
           </div>
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: "#334155" }}>
@@ -752,13 +760,6 @@ export default async function AdminTodosPage({
                 : t(lang, "Auto-fix not run today", "今日未执行自动修复")}
             </div>
           </div>
-          <form action={runAutoFixNow}>
-            <input type="hidden" name="warnDays" value={String(warnDays)} />
-            <input type="hidden" name="warnMinutes" value={String(warnMinutes)} />
-            <input type="hidden" name="pastDays" value={String(pastDays)} />
-            <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
-            <button type="submit">{t(lang, "Run Now", "立即执行")}</button>
-          </form>
         </div>
         {lastAutoFix?.result ? (
           <div style={{ marginTop: 8, fontSize: 12, color: "#334155", display: "grid", gap: 2 }}>

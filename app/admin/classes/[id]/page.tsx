@@ -1,12 +1,12 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
-import ClassEditForm from "../../_components/ClassEditForm";
 import NoticeBanner from "../../_components/NoticeBanner";
 import { isGroupPackNote } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import ClassEnrollmentsClient from "./ClassEnrollmentsClient";
 import DeleteClassClient from "./DeleteClassClient";
+import ClassEditClient from "./ClassEditClient";
 
 function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
   if (!subjectId) return true;
@@ -236,8 +236,8 @@ export default async function ClassDetailPage({
       </div>
 
       <h3>{t(lang, "Edit Class", "编辑班级")}</h3>
-      <ClassEditForm
-        action={updateClass.bind(null, classId)}
+      <ClassEditClient
+        classId={classId}
         courses={subjects.length ? Array.from(new Map(subjects.map((s) => [s.courseId, s.course]))).map(([id, c]) => ({ id, name: c.name })) : []}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
         levels={levels.map((l) => ({
@@ -280,6 +280,8 @@ export default async function ClassDetailPage({
           capacity: t(lang, "Capacity", "容量"),
           save: t(lang, "Save", "保存"),
           none: t(lang, "(none)", "(无)"),
+          ok: t(lang, "OK", "成功"),
+          error: t(lang, "Error", "错误"),
         }}
       />
 
