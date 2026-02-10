@@ -46,6 +46,7 @@ async function pickHoursPackageId(tx: Prisma.TransactionClient, opts: { studentI
       courseId,
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
+      remainingMinutes: { gt: 0 },
       validFrom: { lte: at },
       OR: [{ validTo: null }, { validTo: { gte: at } }],
     },

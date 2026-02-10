@@ -733,6 +733,7 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
           courseId: session.class.courseId,
           type: "HOURS",
           status: "ACTIVE",
+          remainingMinutes: { gt: 0 },
           validFrom: { lte: session.startAt },
           OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
         },

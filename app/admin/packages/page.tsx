@@ -115,6 +115,9 @@ async function createPackage(formData: FormData) {
       courseId,
       ...sameModeWhere(createMode),
       status: "ACTIVE",
+      // Allow buying a new HOURS/GROUP package when the current one is depleted (remainingMinutes <= 0).
+      // MONTHLY packages still require no overlap in active period.
+      ...(createMode === "MONTHLY" ? {} : { remainingMinutes: { gt: 0 } }),
       validFrom: { lte: overlapCheckTo },
       OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
     },
@@ -224,6 +227,7 @@ async function updatePackage(formData: FormData) {
         courseId: pkg.courseId,
         ...sameModeWhere(updateMode),
         status: "ACTIVE",
+        ...(updateMode === "MONTHLY" ? {} : { remainingMinutes: { gt: 0 } }),
         validFrom: { lte: overlapCheckTo },
         OR: [{ validTo: null }, { validTo: { gte: validFrom } }],
       },
