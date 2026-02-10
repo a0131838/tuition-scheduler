@@ -1,6 +1,6 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import FlashAlert from "./_components/FlashAlert";
-
+import ScrollManager from "./_components/ScrollManager";
 export default function RootLayout({
   children,
 }: {
@@ -72,6 +72,9 @@ export default function RootLayout({
         `}</style>
         <Suspense fallback={null}>
           <FlashAlert />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ScrollManager />
         </Suspense>
         {children}
       </body>
