@@ -99,18 +99,10 @@ function drawCompanyHeader(doc: PDFDoc, showBrand: boolean) {
     doc.image(logo, left, top, { width: logoW });
   } catch {}
 
-  // Layout: try 2 columns (company lines to the right of logo). If page is too narrow or logo missing,
-  // fallback to put company lines below the logo.
-  const gapX = 12;
-  let textX = left + logoW + gapX;
-  let textY = top;
-  let textW = right - textX;
-  const canTwoCol = logoH > 0 && textW >= 220;
-  if (!canTwoCol) {
-    textX = left;
-    textY = top + logoH + 6;
-    textW = Math.max(40, right - textX);
-  }
+  // Per ops requirement: company text must be below the logo, left-aligned.
+  const textX = left;
+  let textY = top + logoH + 6;
+  const textW = Math.max(40, right - textX);
 
   doc.fontSize(9);
   COMPANY_LINES.forEach((line) => {
@@ -134,23 +126,24 @@ function drawHeader(
 ) {
   drawCompanyHeader(doc, showBrand);
   if (showTitle) {
+    const left = doc.page.margins.left;
     doc.fillColor(ORANGE);
     if (lang === "EN") {
       setEnglishBoldFont(doc);
-      doc.fontSize(16).text(titleEn);
+      doc.fontSize(16).text(titleEn, left, doc.y, { align: "left" });
     } else if (lang === "ZH") {
       setChineseFont(doc);
-      doc.fontSize(16).text(titleZh);
+      doc.fontSize(16).text(titleZh, left, doc.y, { align: "left" });
     } else {
       setEnglishBoldFont(doc);
-      doc.fontSize(16).text(titleEn);
+      doc.fontSize(16).text(titleEn, left, doc.y, { align: "left" });
       setChineseFont(doc);
-      doc.fontSize(12).text(titleZh);
+      doc.fontSize(12).text(titleZh, left, doc.y, { align: "left" });
     }
     doc.fillColor("black");
     setupFont(doc);
     const dateLabel = choose(lang, "Issued Date", "出具日期");
-    doc.fontSize(9).text(`${dateLabel}: ${formatDate(new Date())}`);
+    doc.fontSize(9).text(`${dateLabel}: ${formatDate(new Date())}`, left, doc.y, { align: "left" });
     doc.moveDown(0.4);
   }
 }
