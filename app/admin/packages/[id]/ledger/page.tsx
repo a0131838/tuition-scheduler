@@ -105,6 +105,14 @@ export default async function PackageLedgerPage({
       <p>
         <a href="/admin/packages">- {t(lang, "Back to Packages", "返回课包列表")}</a>
       </p>
+      <p style={{ marginTop: -4 }}>
+        <a
+          href={`/api/exports/package-ledger/${packageId}`}
+          style={{ display: "inline-block", padding: "6px 10px", border: "1px solid #ddd", borderRadius: 8, background: "#fff" }}
+        >
+          {t(lang, "Export PDF", "导出PDF")}
+        </a>
+      </p>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
