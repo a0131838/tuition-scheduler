@@ -18,6 +18,9 @@ export async function POST(req: Request) {
   const name = String(body?.name ?? "").trim();
   const school = String(body?.school ?? "").trim();
   const grade = String(body?.grade ?? "").trim();
+  const targetSchool = String(body?.targetSchool ?? "").trim();
+  const currentMajor = String(body?.currentMajor ?? "").trim();
+  const coachingContent = String(body?.coachingContent ?? "").trim();
   const note = String(body?.note ?? "").trim();
   const birthDateStr = String(body?.birthDate ?? "").trim();
   const sourceChannelId = String(body?.sourceChannelId ?? "").trim() || null;
@@ -37,6 +40,9 @@ export async function POST(req: Request) {
       name,
       school: school || null,
       grade: grade || null,
+      targetSchool: targetSchool || null,
+      currentMajor: currentMajor || null,
+      coachingContent: coachingContent || null,
       note: note || null,
       birthDate,
       sourceChannelId,
@@ -47,4 +53,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true, studentId: created.id }, { status: 201 });
 }
-

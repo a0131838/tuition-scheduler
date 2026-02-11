@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,9 @@ type StudentRow = {
   sourceName: string | null;
   typeName: string | null;
   note: string | null;
+  targetSchool: string | null;
+  currentMajor: string | null;
+  coachingContent: string | null;
   unpaidCount: number;
 };
 
@@ -42,6 +45,9 @@ export default function AdminStudentsClient({
     type: string;
     unpaid: string;
     notes: string;
+    targetSchool: string;
+    currentMajor: string;
+    coachingContent: string;
     id: string;
     action: string;
     edit: string;
@@ -60,7 +66,7 @@ export default function AdminStudentsClient({
   const [creating, startCreating] = useTransition();
 
   const formatId = useMemo(
-    () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`,
+    () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
     []
   );
 
@@ -95,11 +101,12 @@ export default function AdminStudentsClient({
           sourceName,
           typeName,
           note: String(payload.note ?? "").trim() || null,
+          targetSchool: String(payload.targetSchool ?? "").trim() || null,
+          currentMajor: String(payload.currentMajor ?? "").trim() || null,
+          coachingContent: String(payload.coachingContent ?? "").trim() || null,
           unpaidCount: 0,
         };
-        setStudents((prev) =>
-          [...prev, createdRow].sort((a, b) => a.name.localeCompare(b.name))
-        );
+        setStudents((prev) => [...prev, createdRow].sort((a, b) => a.name.localeCompare(b.name)));
         setMsg(labels.created);
         close();
         router.refresh();
@@ -141,6 +148,9 @@ export default function AdminStudentsClient({
                   sourceChannelId: String(fd.get("sourceChannelId") ?? ""),
                   studentTypeId: String(fd.get("studentTypeId") ?? ""),
                   note: String(fd.get("note") ?? ""),
+                  targetSchool: String(fd.get("targetSchool") ?? ""),
+                  currentMajor: String(fd.get("currentMajor") ?? ""),
+                  coachingContent: String(fd.get("coachingContent") ?? ""),
                 });
               }}
               style={{ display: "grid", gap: 8, maxWidth: 720 }}
@@ -176,6 +186,9 @@ export default function AdminStudentsClient({
                   ))}
                 </select>
               </div>
+              <input name="targetSchool" placeholder={labels.targetSchool} />
+              <input name="currentMajor" placeholder={labels.currentMajor} />
+              <input name="coachingContent" placeholder={labels.coachingContent} />
               <textarea name="note" placeholder={labels.notes} rows={3} />
               <button type="submit" disabled={creating}>
                 {creating ? "..." : labels.add}
@@ -195,6 +208,9 @@ export default function AdminStudentsClient({
             <th align="left">{labels.source}</th>
             <th align="left">{labels.type}</th>
             <th align="left">{labels.unpaid}</th>
+            <th align="left">{labels.targetSchool}</th>
+            <th align="left">{labels.currentMajor}</th>
+            <th align="left">{labels.coachingContent}</th>
             <th align="left">{labels.notes}</th>
             <th align="left">{labels.id}</th>
             <th align="left">{labels.action}</th>
@@ -212,6 +228,9 @@ export default function AdminStudentsClient({
               <td>{s.sourceName ?? "-"}</td>
               <td>{s.typeName ?? "-"}</td>
               <td>{s.unpaidCount ? <span style={{ color: "#b00", fontWeight: 700 }}>{s.unpaidCount}</span> : "-"}</td>
+              <td>{s.targetSchool ?? "-"}</td>
+              <td>{s.currentMajor ?? "-"}</td>
+              <td>{s.coachingContent ?? "-"}</td>
               <td>{s.note ?? "-"}</td>
               <td
                 style={{
@@ -235,7 +254,7 @@ export default function AdminStudentsClient({
           ))}
           {students.length === 0 && (
             <tr>
-              <td colSpan={10}>{labels.noStudents}</td>
+              <td colSpan={13}>{labels.noStudents}</td>
             </tr>
           )}
         </tbody>

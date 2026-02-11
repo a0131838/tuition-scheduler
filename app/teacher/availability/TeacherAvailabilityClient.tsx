@@ -1,14 +1,19 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
 type Lang = "BILINGUAL" | "ZH" | "EN";
-function tr(lang: Lang, en: string, zh: string) {
-  if (lang === "EN") return en;
-  if (lang === "ZH") return zh;
-  return `${en} / ${zh}`;
-}
+
+type Slot = { id: string; date: string; startMin: number; endMin: number };
+
+type AvailabilityUndoPayload = {
+  type: "CLEAR_DAY";
+  teacherId: string;
+  date: string;
+  createdAt: string;
+  slots: Array<{ date: string; startMin: number; endMin: number }>;
+};
 
 const WEEKDAYS = [
   { value: 0, en: "Sun", zh: "周日" },
@@ -24,6 +29,12 @@ const AVAIL_MIN_TIME = "08:00";
 const AVAIL_MAX_TIME = "22:50";
 const AVAIL_MIN_MIN = 8 * 60;
 const AVAIL_MAX_MIN = 22 * 60 + 50;
+
+function tr(lang: Lang, en: string, zh: string) {
+  if (lang === "EN") return en;
+  if (lang === "ZH") return zh;
+  return `${en} / ${zh}`;
+}
 
 function toMin(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -41,11 +52,6 @@ function ymd(d: Date) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
-}
-
-function parseYMD(s: string) {
-  const [Y, M, D] = s.split("-").map(Number);
-  return new Date(Y, M - 1, D, 0, 0, 0, 0);
 }
 
 function inAllowedWindow(startMin: number, endMin: number) {
@@ -83,15 +89,6 @@ function buildCalendarDays(start: Date, end: Date) {
   return days;
 }
 
-type Slot = { id: string; date: string; startMin: number; endMin: number };
-type AvailabilityUndoPayload = {
-  type: "CLEAR_DAY";
-  teacherId: string;
-  date: string;
-  createdAt: string;
-  slots: Array<{ date: string; startMin: number; endMin: number }>;
-};
-
 async function fetchTextIfNotOk(res: Response) {
   if (res.ok) return "";
   const t = await res.text().catch(() => "");
@@ -104,7 +101,7 @@ export default function TeacherAvailabilityClient(props: {
   initialSlots: Slot[];
   initialUndoPayload: AvailabilityUndoPayload | null;
 }) {
-  const { teacherId, lang } = props;
+  const { lang } = props;
   const [slots, setSlots] = useState<Slot[]>(props.initialSlots);
   const [undoPayload, setUndoPayload] = useState<AvailabilityUndoPayload | null>(props.initialUndoPayload);
   const [err, setErr] = useState("");
@@ -156,25 +153,26 @@ export default function TeacherAvailabilityClient(props: {
     });
     const e = await fetchTextIfNotOk(res);
     if (e) throw new Error(e);
-      const data = (await res.json()) as { slot: Slot };
-      setSlots((prev) => [...prev, data.slot]);
+    const data = (await res.json()) as { slot: Slot };
+    setSlots((prev) => [...prev, data.slot]);
   }
 
   async function onQuickAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    const form = e.currentTarget;
     setBusy(true);
     setErr("");
     setMsg("");
     try {
-      const fd = new FormData(e.currentTarget);
+      const fd = new FormData(form);
       const date = String(fd.get("date") ?? "");
-      const start = String(fd.get("start") ?? "");
-      const end = String(fd.get("end") ?? "");
-      await addSingle(date, start, end);
+      const startV = String(fd.get("start") ?? "");
+      const endV = String(fd.get("end") ?? "");
+      await addSingle(date, startV, endV);
       setMsg(tr(lang, "Added 1", "已添加 1"));
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -183,27 +181,28 @@ export default function TeacherAvailabilityClient(props: {
   async function onBulkAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    const form = e.currentTarget;
     setBusy(true);
     setErr("");
     setMsg("");
     try {
-      const fd = new FormData(e.currentTarget);
+      const fd = new FormData(form);
       const from = String(fd.get("from") ?? "");
       const to = String(fd.get("to") ?? "");
-      const start = String(fd.get("start") ?? "");
-      const end = String(fd.get("end") ?? "");
+      const startV = String(fd.get("start") ?? "");
+      const endV = String(fd.get("end") ?? "");
       const weekdays = fd.getAll("weekday").map((v) => Number(String(v))).filter((n) => Number.isFinite(n));
+
       const res = await fetch("/api/teacher/availability/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, start, end, weekdays }),
+        body: JSON.stringify({ from, to, start: startV, end: endV, weekdays }),
       });
       const e2 = await fetchTextIfNotOk(res);
       if (e2) throw new Error(e2);
       const data = (await res.json()) as { added: number };
       setMsg(tr(lang, `Bulk added ${data.added}`, `批量添加 ${data.added}`));
 
-      // Refresh local slots in the affected range.
       const list = await fetch(`/api/teacher/availability/slots?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       const e3 = await fetchTextIfNotOk(list);
       if (e3) throw new Error(e3);
@@ -215,8 +214,8 @@ export default function TeacherAvailabilityClient(props: {
         });
         return [...keep, ...data3.slots];
       });
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -225,19 +224,20 @@ export default function TeacherAvailabilityClient(props: {
   async function onAddInCell(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    const form = e.currentTarget;
     setBusy(true);
     setErr("");
     setMsg("");
     try {
-      const fd = new FormData(e.currentTarget);
+      const fd = new FormData(form);
       const date = String(fd.get("date") ?? "");
-      const start = String(fd.get("start") ?? "");
-      const end = String(fd.get("end") ?? "");
-      await addSingle(date, start, end);
+      const startV = String(fd.get("start") ?? "");
+      const endV = String(fd.get("end") ?? "");
+      await addSingle(date, startV, endV);
       setMsg(tr(lang, "Added 1", "已添加 1"));
-      (e.currentTarget as HTMLFormElement).reset();
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+      form.reset();
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -246,26 +246,25 @@ export default function TeacherAvailabilityClient(props: {
   async function onUpdateSlot(id: string, e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    const form = e.currentTarget;
     setBusy(true);
     setErr("");
     setMsg("");
     try {
-      const fd = new FormData(e.currentTarget);
-      const start = String(fd.get("start") ?? "");
-      const end = String(fd.get("end") ?? "");
+      const fd = new FormData(form);
+      const startV = String(fd.get("start") ?? "");
+      const endV = String(fd.get("end") ?? "");
       const res = await fetch(`/api/teacher/availability/slots/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start, end }),
+        body: JSON.stringify({ start: startV, end: endV }),
       });
       const e2 = await fetchTextIfNotOk(res);
       if (e2) throw new Error(e2);
-      const startMin = toMin(start);
-      const endMin = toMin(end);
-      setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, startMin, endMin } : s)));
+      setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, startMin: toMin(startV), endMin: toMin(endV) } : s)));
       setMsg(tr(lang, "Updated 1", "已更新 1"));
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -282,8 +281,8 @@ export default function TeacherAvailabilityClient(props: {
       if (e2) throw new Error(e2);
       setSlots((prev) => prev.filter((s) => s.id !== id));
       setMsg(tr(lang, "Deleted 1", "已删除 1"));
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -291,7 +290,7 @@ export default function TeacherAvailabilityClient(props: {
 
   async function onClearDay(date: string) {
     if (busy) return;
-    if (!window.confirm(`${tr(lang, "Clear all availability slots on", "确定清空当天全部时段")} ${date}?`)) return;
+    if (!window.confirm(`${tr(lang, "Clear all availability slots on", "确认清空当天全部时段")} ${date}?`)) return;
     setBusy(true);
     setErr("");
     setMsg("");
@@ -307,8 +306,8 @@ export default function TeacherAvailabilityClient(props: {
       setUndoPayload(data.undoPayload);
       setSlots((prev) => prev.filter((s) => ymd(new Date(s.date)) !== date));
       setMsg(tr(lang, `Cleared ${date}`, `已清空 ${date}`));
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -325,15 +324,14 @@ export default function TeacherAvailabilityClient(props: {
       if (e2) throw new Error(e2);
       const data = (await res.json()) as { restoredCount: number; slots: Slot[] };
       setUndoPayload(null);
-      // Replace slots for dates in snapshot by server return.
       const restoredDates = new Set(data.slots.map((s) => ymd(new Date(s.date))));
       setSlots((prev) => {
         const keep = prev.filter((s) => !restoredDates.has(ymd(new Date(s.date))));
         return [...keep, ...data.slots];
       });
-      setMsg(tr(lang, `Undo done, restored ${data.restoredCount} slots`, `撤回完成，恢复 ${data.restoredCount} 条时段`));
-    } catch (err: any) {
-      setErr(err?.message ?? String(err));
+      setMsg(tr(lang, `Undo done, restored ${data.restoredCount} slots`, `撤销完成，恢复 ${data.restoredCount} 条时段`));
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
     } finally {
       setBusy(false);
     }
@@ -348,7 +346,7 @@ export default function TeacherAvailabilityClient(props: {
       {undoPayload ? (
         <div style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, padding: 10 }}>
           <div style={{ marginBottom: 6 }}>
-            {tr(lang, "Undo available for last clear-day action", "有可撤回的最近清空操作")} ({undoPayload.date})
+            {tr(lang, "Undo available for last clear-day action", "可撤回的最近清空操作")} ({undoPayload.date})
           </div>
           <button type="button" onClick={onUndo} disabled={busy}>
             {tr(lang, "Undo last clear-day", "撤回上次清空当天")}
@@ -362,9 +360,7 @@ export default function TeacherAvailabilityClient(props: {
           <input name="date" type="date" required defaultValue={todayYMD} />
           <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="16:00" />
           <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" />
-          <button type="submit" disabled={busy}>
-            {tr(lang, "Add", "添加")}
-          </button>
+          <button type="submit" disabled={busy}>{tr(lang, "Add", "添加")}</button>
         </form>
       </div>
 
@@ -389,6 +385,7 @@ export default function TeacherAvailabilityClient(props: {
               <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" style={{ marginLeft: 6 }} />
             </label>
           </div>
+
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {WEEKDAYS.map((d) => (
               <label key={d.value} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
@@ -397,10 +394,9 @@ export default function TeacherAvailabilityClient(props: {
               </label>
             ))}
           </div>
+
           <div>
-            <button type="submit" disabled={busy}>
-              {tr(lang, "Bulk Add", "批量添加")}
-            </button>
+            <button type="submit" disabled={busy}>{tr(lang, "Bulk Add", "批量添加")}</button>
           </div>
         </form>
       </div>
@@ -461,16 +457,14 @@ export default function TeacherAvailabilityClient(props: {
                                   alignItems: "center",
                                 }}
                               >
-                                <span style={{ fontWeight: 700 }}>
-                                  {fromMin(s.startMin)} - {fromMin(s.endMin)}
-                                </span>
+                                <span style={{ fontWeight: 700 }}>{fromMin(s.startMin)} - {fromMin(s.endMin)}</span>
                               </div>
                             ))
                           ) : (
                             <div style={{ color: "#94a3b8", fontSize: 12 }}>{tr(lang, "No slots", "无时段")}</div>
                           )
                         ) : (
-                          <div style={{ color: "#cbd5e1", fontSize: 12 }}>{tr(lang, "Out of range", "范围外")}</div>
+                          <div style={{ color: "#cbd5e1", fontSize: 12 }}>{tr(lang, "Out of range", "超范围")}</div>
                         )}
 
                         {inRange && daySlots.length > 0 ? (
@@ -492,9 +486,7 @@ export default function TeacherAvailabilityClient(props: {
                                     alignItems: "center",
                                   }}
                                 >
-                                  <span style={{ fontWeight: 700 }}>
-                                    {fromMin(s.startMin)} - {fromMin(s.endMin)}
-                                  </span>
+                                  <span style={{ fontWeight: 700 }}>{fromMin(s.startMin)} - {fromMin(s.endMin)}</span>
                                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                     <details>
                                       <summary style={{ cursor: "pointer", fontSize: 11 }}>{tr(lang, "Edit", "编辑")}</summary>
@@ -537,21 +529,13 @@ export default function TeacherAvailabilityClient(props: {
                             <summary style={{ cursor: "pointer", fontSize: 11 }}>{tr(lang, "Add slot", "添加时段")}</summary>
                             <form
                               onSubmit={onAddInCell}
-                              style={{
-                                marginTop: 6,
-                                display: "flex",
-                                gap: 4,
-                                alignItems: "center",
-                                flexWrap: "wrap",
-                              }}
+                              style={{ marginTop: 6, display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}
                             >
                               <input type="hidden" name="date" value={key} />
                               <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} defaultValue="16:00" style={{ fontSize: 11, width: 82 }} />
                               <span style={{ fontSize: 11 }}>-</span>
                               <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} defaultValue="18:00" style={{ fontSize: 11, width: 82 }} />
-                              <button type="submit" disabled={busy} style={{ fontSize: 11 }}>
-                                {tr(lang, "Add", "添加")}
-                              </button>
+                              <button type="submit" disabled={busy} style={{ fontSize: 11 }}>{tr(lang, "Add", "添加")}</button>
                             </form>
                           </details>
                         ) : null}
@@ -564,7 +548,6 @@ export default function TeacherAvailabilityClient(props: {
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }

@@ -33,12 +33,7 @@ export default function PartnerStudentIntakePage() {
 
   return (
     <div style={{ maxWidth: 760, margin: "24px auto", padding: "0 12px" }}>
-      <h2 style={{ marginBottom: 8 }}>合作方学生信息填写</h2>
-      <div style={{ marginBottom: 16, color: "#666", fontSize: 13 }}>
-        提交后系统会自动设置为:
-        <b> 学生类型 = 合作方学生</b>，
-        <b> 学生来源 = 新东方学生</b>。
-      </div>
+      <h2 style={{ marginBottom: 16 }}>新东方学生信息填写</h2>
 
       {err ? <div style={{ marginBottom: 12, color: "#b00020" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
@@ -59,6 +54,9 @@ export default function PartnerStudentIntakePage() {
               grade: String(fd.get("grade") ?? ""),
               birthDate: String(fd.get("birthDate") ?? ""),
               note: String(fd.get("note") ?? ""),
+              targetSchool: String(fd.get("targetSchool") ?? ""),
+              currentMajor: String(fd.get("currentMajor") ?? ""),
+              coachingContent: String(fd.get("coachingContent") ?? ""),
             };
 
             const res = await fetch("/api/partner/student-intake", {
@@ -82,8 +80,8 @@ export default function PartnerStudentIntakePage() {
         }}
         style={{ display: "grid", gap: 10 }}
       >
-        <input name="name" placeholder="学生姓名 *" required style={{ height: 36, padding: "0 10px" }} />
-        <input name="school" placeholder="学校" style={{ height: 36, padding: "0 10px" }} />
+        <input name="name" placeholder="姓名 *" required style={{ height: 36, padding: "0 10px" }} />
+        <input name="school" placeholder="目前学校" style={{ height: 36, padding: "0 10px" }} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select name="grade" defaultValue="" style={{ minWidth: 160, height: 36, padding: "0 10px" }}>
             <option value="">年级</option>
@@ -95,7 +93,10 @@ export default function PartnerStudentIntakePage() {
           </select>
           <input name="birthDate" type="date" style={{ height: 36, padding: "0 10px" }} />
         </div>
-        <textarea name="note" rows={4} placeholder="备注（可选）" style={{ padding: 10 }} />
+        <input name="targetSchool" placeholder="申请目标院校" style={{ height: 36, padding: "0 10px" }} />
+        <input name="currentMajor" placeholder="目前专业" style={{ height: 36, padding: "0 10px" }} />
+        <textarea name="coachingContent" rows={3} placeholder="辅导内容" style={{ padding: 10 }} />
+        <textarea name="note" rows={3} placeholder="备注（可选）" style={{ padding: 10 }} />
 
         <button type="submit" disabled={submitting} style={{ height: 38 }}>
           {submitting ? "提交中..." : "提交"}
@@ -104,4 +105,3 @@ export default function PartnerStudentIntakePage() {
     </div>
   );
 }
-

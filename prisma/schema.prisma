@@ -358,6 +358,9 @@ model Student {
   school    String?
   birthDate DateTime?
   grade     String?
+  targetSchool String?
+  currentMajor String?
+  coachingContent String?
   note      String?
   sourceChannelId String?
   studentTypeId   String?

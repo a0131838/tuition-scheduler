@@ -20,6 +20,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const name = String(body?.name ?? "").trim();
   const school = String(body?.school ?? "").trim();
   const grade = String(body?.grade ?? "").trim();
+  const targetSchool = String(body?.targetSchool ?? "").trim();
+  const currentMajor = String(body?.currentMajor ?? "").trim();
+  const coachingContent = String(body?.coachingContent ?? "").trim();
   const note = String(body?.note ?? "").trim();
   const birthDateStr = String(body?.birthDate ?? "").trim();
   const sourceChannelId = String(body?.sourceChannelId ?? "").trim() || null;
@@ -43,6 +46,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       name,
       school: school || null,
       grade: grade || null,
+      targetSchool: targetSchool || null,
+      currentMajor: currentMajor || null,
+      coachingContent: coachingContent || null,
       note: note || null,
       birthDate,
       sourceChannelId,
@@ -75,4 +81,3 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   await prisma.student.delete({ where: { id: studentId } });
   return Response.json({ ok: true });
 }
-

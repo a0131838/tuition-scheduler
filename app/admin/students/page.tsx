@@ -97,6 +97,9 @@ export default async function StudentsPage({
           sourceName: s.sourceChannel?.name ?? null,
           typeName: s.studentType?.name ?? null,
           note: s.note ?? null,
+          targetSchool: s.targetSchool ?? null,
+          currentMajor: s.currentMajor ?? null,
+          coachingContent: s.coachingContent ?? null,
           unpaidCount: unpaidMap.get(s.id) ?? 0,
         }))}
         sources={sources.map((s) => ({ id: s.id, name: s.name }))}
@@ -113,6 +116,9 @@ export default async function StudentsPage({
           type: t(lang, "Type", "类型"),
           unpaid: t(lang, "Unpaid", "未付款"),
           notes: t(lang, "Notes", "备注"),
+          targetSchool: t(lang, "Target School", "申请目标院校"),
+          currentMajor: t(lang, "Current Major", "目前专业"),
+          coachingContent: t(lang, "Coaching Content", "辅导内容"),
           id: "ID",
           action: t(lang, "Action", "操作"),
           edit: t(lang, "Edit", "编辑"),
