@@ -47,7 +47,7 @@ export default function PackageCreateFormClient({
     confirmCreate: string;
     errorPrefix: string;
   };
-  close: () => void;
+  close?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,10 +61,11 @@ export default function PackageCreateFormClient({
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
+        const formEl = e.currentTarget as HTMLFormElement;
         setErr("");
         setBusy(true);
         try {
-          const fd = new FormData(e.currentTarget);
+          const fd = new FormData(formEl);
           const payload = {
             studentId: String(fd.get("studentId") ?? ""),
             courseId: String(fd.get("courseId") ?? ""),
@@ -91,7 +92,14 @@ export default function PackageCreateFormClient({
             return;
           }
 
-          close();
+          if (close) {
+            close();
+          } else {
+            const dlg =
+              formEl.closest("dialog") ??
+              (formEl.ownerDocument?.querySelector("dialog[open]") as HTMLDialogElement | null);
+            dlg?.close();
+          }
           const params = new URLSearchParams(searchParams?.toString() ?? "");
           params.delete("err");
           params.set("msg", "Package created");

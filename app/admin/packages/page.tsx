@@ -121,9 +121,7 @@ export default async function AdminPackagesPage({
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Create Package", "创建课包")} title={t(lang, "Create Package", "创建课包")} closeOnSubmit>
-          {({ close }) => (
             <PackageCreateFormClient
-              close={close}
               defaultYmd={ymd}
               students={students.map((s) => ({ id: s.id, name: s.name }))}
               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
@@ -154,7 +152,6 @@ export default async function AdminPackagesPage({
                 errorPrefix: t(lang, "Error", "错误"),
               }}
             />
-          )}
         </SimpleModal>
       </div>
 
