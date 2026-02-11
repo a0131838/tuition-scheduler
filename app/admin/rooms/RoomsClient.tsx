@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import SimpleModal from "../_components/SimpleModal";
+import NoticeBanner from "../_components/NoticeBanner";
 
 type Campus = { id: string; name: string };
 type RoomRow = { id: string; name: string; capacity: number; campusId: string; campusName: string };
@@ -31,11 +32,15 @@ export default function RoomsClient({
 }) {
   const [rooms, setRooms] = useState<RoomRow[]>(initialRooms);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
 
   const sorted = useMemo(() => [...rooms].sort((a, b) => a.name.localeCompare(b.name)), [rooms]);
 
   async function create(payload: { name: string; capacity: number; campusId: string }) {
     if (saving) return;
+    setErr("");
+    setMsg("");
     setSaving(true);
     try {
       const res = await fetch("/api/admin/rooms", {
@@ -44,11 +49,15 @@ export default function RoomsClient({
         body: JSON.stringify(payload),
       });
       const data = (await res.json()) as any;
-      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Create failed"));
+      if (!res.ok || !data?.ok) {
+        setErr(String(data?.message ?? "Create failed"));
+        return false;
+      }
       setRooms((prev) => [data.room as RoomRow, ...prev]);
+      setMsg("Created");
       return true;
     } catch (e: any) {
-      alert(`${labels.errorPrefix}: ${e?.message ?? "Create failed"}`);
+      setErr(String(e?.message ?? "Create failed"));
       return false;
     } finally {
       setSaving(false);
@@ -58,6 +67,8 @@ export default function RoomsClient({
   async function del(id: string) {
     if (saving) return;
     if (!confirm(labels.deleteConfirm)) return;
+    setErr("");
+    setMsg("");
     setSaving(true);
     try {
       const res = await fetch("/api/admin/rooms", {
@@ -66,10 +77,14 @@ export default function RoomsClient({
         body: JSON.stringify({ id }),
       });
       const data = (await res.json()) as any;
-      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Delete failed"));
+      if (!res.ok || !data?.ok) {
+        setErr(String(data?.message ?? "Delete failed"));
+        return;
+      }
       setRooms((prev) => prev.filter((x) => x.id !== id));
+      setMsg("Deleted");
     } catch (e: any) {
-      alert(`${labels.errorPrefix}: ${e?.message ?? "Delete failed"}`);
+      setErr(String(e?.message ?? "Delete failed"));
     } finally {
       setSaving(false);
     }
@@ -77,6 +92,9 @@ export default function RoomsClient({
 
   return (
     <div>
+      {err ? <NoticeBanner type="error" title={labels.errorPrefix} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title="Success" message={msg} /> : null}
+
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={labels.addRoom} title={labels.addRoom} closeOnSubmit>
           {({ close }) => (
@@ -182,4 +200,3 @@ function RoomCreateForm({
     </form>
   );
 }
-

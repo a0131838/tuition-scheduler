@@ -21,7 +21,10 @@ export default async function AvailabilityPage({
   const { id: teacherId } = await params;
   const sp = await searchParams;
 
-  const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true, name: true } });
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    select: { id: true, name: true },
+  });
   if (!teacher) return <div>{t(lang, "Teacher not found.", "未找到老师。")}</div>;
 
   const now = new Date();
@@ -52,7 +55,9 @@ export default async function AvailabilityPage({
       initialMonth={month}
       initialDateAvails={dateAvails.map((a) => ({
         id: a.id,
-        date: `${a.date.getFullYear()}-${String(a.date.getMonth() + 1).padStart(2, "0")}-${String(a.date.getDate()).padStart(2, "0")}`,
+        date: `${a.date.getFullYear()}-${String(a.date.getMonth() + 1).padStart(2, "0")}-${String(
+          a.date.getDate(),
+        ).padStart(2, "0")}`,
         startMin: a.startMin,
         endMin: a.endMin,
       }))}
@@ -63,6 +68,11 @@ export default async function AvailabilityPage({
         next: t(lang, "Next", "下个月"),
         monthlyTitle: t(lang, "Monthly Availability (by date)", "月度可用时间（按日期）"),
         weeklyTitle: t(lang, "Weekly Template (for bulk month generation)", "每周模板（用于批量生成整月）"),
+        weeklyAutoSyncNote: t(
+          lang,
+          "Saving weekly template will auto-sync this month date slots.",
+          "保存每周模板后，会自动同步本月按日期可用时段。",
+        ),
         add: t(lang, "Add", "添加"),
         delete: t(lang, "Delete", "删除"),
         addWeekly: t(lang, "Add Weekly", "添加每周模板"),

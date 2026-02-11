@@ -33,6 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const month = String(body?.month ?? "");
+  const sync = Boolean(body?.sync);
   const parsed = parseMonth(month);
   if (!parsed) return bad("Invalid month");
 
@@ -47,20 +48,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   if (weekly.length === 0) return bad("No weekly template", 409);
 
-  const existing = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: first, lte: last } },
-    select: { date: true, startMin: true, endMin: true },
-  });
-  const exists = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
-
   const creates: { date: Date; startMin: number; endMin: number }[] = [];
   for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
     const weekday = d.getDay();
     const slots = weekly.filter((w) => w.weekday === weekday);
     if (slots.length === 0) continue;
     for (const s of slots) {
-      const key = `${ymd(d)}|${s.startMin}|${s.endMin}`;
-      if (exists.has(key)) continue;
       creates.push({
         date: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0),
         startMin: s.startMin,
@@ -69,12 +62,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  if (creates.length > 0) {
+  if (sync) {
+    await prisma.$transaction(async (tx) => {
+      await tx.teacherAvailabilityDate.deleteMany({
+        where: { teacherId, date: { gte: first, lte: last } },
+      });
+      if (creates.length > 0) {
+        await tx.teacherAvailabilityDate.createMany({
+          data: creates.map((c) => ({ teacherId, date: c.date, startMin: c.startMin, endMin: c.endMin })),
+        });
+      }
+    });
+    return Response.json({ ok: true, created: creates.length, mode: "sync" });
+  }
+
+  const existing = await prisma.teacherAvailabilityDate.findMany({
+    where: { teacherId, date: { gte: first, lte: last } },
+    select: { date: true, startMin: true, endMin: true },
+  });
+  const exists = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
+  const missing = creates.filter((c) => !exists.has(`${ymd(c.date)}|${c.startMin}|${c.endMin}`));
+  if (missing.length > 0) {
     await prisma.teacherAvailabilityDate.createMany({
-      data: creates.map((c) => ({ teacherId, date: c.date, startMin: c.startMin, endMin: c.endMin })),
+      data: missing.map((c) => ({ teacherId, date: c.date, startMin: c.startMin, endMin: c.endMin })),
     });
   }
 
-  return Response.json({ ok: true, created: creates.length });
+  return Response.json({ ok: true, created: missing.length, mode: "merge" });
 }
-

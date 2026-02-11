@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 type CourseOption = { id: string; name: string };
@@ -93,6 +93,8 @@ export default function QuickScheduleModal({
   warning?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isFinding, startFinding] = useTransition();
   const [isScheduling, startScheduling] = useTransition();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -130,6 +132,8 @@ export default function QuickScheduleModal({
   const closeAndClear = () => {
     dialogRef.current?.close();
     resetFormState();
+    setScheduleErr("");
+    setScheduleMsg("");
     startFinding(() => {
       router.replace(baseHref);
     });
@@ -161,6 +165,11 @@ export default function QuickScheduleModal({
         }
         setScheduleMsg("OK");
         dialogRef.current?.close();
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        params.delete("err");
+        params.set("msg", "Scheduled");
+        const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        router.replace(target, { scroll: false });
         // Refresh the student page so the newly scheduled session appears.
         router.refresh();
       })();
@@ -244,7 +253,15 @@ export default function QuickScheduleModal({
       <button type="button" onClick={() => dialogRef.current?.showModal()}>
         {labels.open}
       </button>
-      <dialog ref={dialogRef} style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd" }}>
+      <dialog
+        ref={dialogRef}
+        style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd" }}
+        onClose={() => {
+          setScheduleErr("");
+          setScheduleMsg("");
+          resetFormState();
+        }}
+      >
         <h3 style={{ marginTop: 0 }}>{labels.title}</h3>
         <form onSubmit={submitFind} style={{ display: "grid", gap: 10 }}>
           <label>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type CourseOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; courseId: string; courseName: string };
@@ -29,6 +30,9 @@ export default function ClassCreateForm(props: {
   };
 }) {
   const { courses, subjects, levels, teachers, campuses, rooms, labels } = props;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState(
@@ -89,6 +93,7 @@ export default function ClassCreateForm(props: {
       onSubmit={async (e) => {
         e.preventDefault();
         if (submitting) return;
+        const formEl = e.currentTarget as HTMLFormElement;
         setSubmitting(true);
         setError("");
         setCreatedId("");
@@ -111,6 +116,16 @@ export default function ClassCreateForm(props: {
             return;
           }
           setCreatedId(String(data.classId ?? ""));
+          const dlg =
+            formEl.closest("dialog") ??
+            (formEl.ownerDocument?.querySelector("dialog[open]") as HTMLDialogElement | null);
+          dlg?.close();
+          const params = new URLSearchParams(searchParams?.toString() ?? "");
+          params.delete("err");
+          params.set("msg", `Class created: ${String(data.classId ?? "")}`);
+          const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+          router.push(target, { scroll: false });
+          router.refresh();
         } catch (err: any) {
           setError(String(err?.message ?? "Create failed"));
         } finally {
@@ -266,4 +281,3 @@ export default function ClassCreateForm(props: {
     </form>
   );
 }
-

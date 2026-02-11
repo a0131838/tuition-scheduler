@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 
@@ -50,6 +50,8 @@ export default function PackageCreateFormClient({
   close: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -90,6 +92,11 @@ export default function PackageCreateFormClient({
           }
 
           close();
+          const params = new URLSearchParams(searchParams?.toString() ?? "");
+          params.delete("err");
+          params.set("msg", "Package created");
+          const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+          router.replace(target, { scroll: false });
           preserveRefresh(router);
         } finally {
           setBusy(false);
@@ -189,4 +196,3 @@ export default function PackageCreateFormClient({
     </form>
   );
 }
-

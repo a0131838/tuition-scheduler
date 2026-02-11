@@ -79,6 +79,27 @@ export default function AdminStudentsClient({
           setErr(String(data?.message ?? "Create failed"));
           return;
         }
+        const createdId = String(data?.studentId ?? "");
+        const sourceName = payload.sourceChannelId
+          ? (sources.find((s) => s.id === payload.sourceChannelId)?.name ?? null)
+          : null;
+        const typeName = payload.studentTypeId
+          ? (types.find((t) => t.id === payload.studentTypeId)?.name ?? null)
+          : null;
+        const createdRow: StudentRow = {
+          id: createdId,
+          name: String(payload.name ?? "").trim(),
+          school: String(payload.school ?? "").trim() || null,
+          birthDate: String(payload.birthDate ?? "").trim() || null,
+          grade: String(payload.grade ?? "").trim() || null,
+          sourceName,
+          typeName,
+          note: String(payload.note ?? "").trim() || null,
+          unpaidCount: 0,
+        };
+        setStudents((prev) =>
+          [...prev, createdRow].sort((a, b) => a.name.localeCompare(b.name))
+        );
         setMsg(labels.created);
         close();
         router.refresh();
@@ -222,4 +243,3 @@ export default function AdminStudentsClient({
     </div>
   );
 }
-

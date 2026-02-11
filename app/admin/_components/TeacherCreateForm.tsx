@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type SubjectOpt = {
   id: string;
@@ -64,6 +64,8 @@ export default function TeacherCreateForm({
   onDone?: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [courseId, setCourseId] = useState("");
   const [subjectQ, setSubjectQ] = useState("");
   const [lang, setLang] = useState(initial?.teachingLanguageOther ? "OTHER" : initial?.teachingLanguage ?? "");
@@ -99,10 +101,11 @@ export default function TeacherCreateForm({
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
+        const formEl = e.currentTarget as HTMLFormElement;
         setErr("");
         setBusy(true);
         try {
-          const fd = new FormData(e.currentTarget);
+          const fd = new FormData(formEl);
           const payload = {
             name: String(fd.get("name") ?? ""),
             nationality: String(fd.get("nationality") ?? ""),
@@ -129,11 +132,24 @@ export default function TeacherCreateForm({
             return;
           }
 
+          const dlg =
+            formEl.closest("dialog") ??
+            (formEl.ownerDocument?.querySelector("dialog[open]") as HTMLDialogElement | null);
           if (onDone) onDone();
-          else (e.currentTarget as HTMLFormElement).closest("dialog")?.close();
+          else dlg?.close();
+
+          if (!teacherId) {
+            const createdId = String(data?.id ?? "");
+            const target = `/admin/teachers?msg=${encodeURIComponent(`Teacher created: ${createdId}`)}&t=${Date.now()}`;
+            window.location.href = target;
+            return;
+          }
+
           const y = window.scrollY;
           router.refresh();
           requestAnimationFrame(() => window.scrollTo(0, y));
+        } catch (e2: any) {
+          setErr(String(e2?.message ?? "Create failed"));
         } finally {
           setBusy(false);
         }

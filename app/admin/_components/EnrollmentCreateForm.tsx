@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import StudentSearchSelect from "./StudentSearchSelect";
 
 type ClassOption = {
@@ -37,6 +38,9 @@ export default function EnrollmentCreateForm({
     confirm: string;
   };
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [studentId, setStudentId] = useState("");
   const [classQuery, setClassQuery] = useState("");
@@ -84,6 +88,7 @@ export default function EnrollmentCreateForm({
       onSubmit={async (e) => {
         e.preventDefault();
         if (submitting) return;
+        const formEl = e.currentTarget as HTMLFormElement;
         setSubmitting(true);
         setError("");
         setCreated(null);
@@ -99,6 +104,15 @@ export default function EnrollmentCreateForm({
             return;
           }
           setCreated({ classId: effectiveClassId, studentId });
+          const dlg =
+            formEl.closest("dialog") ??
+            (formEl.ownerDocument?.querySelector("dialog[open]") as HTMLDialogElement | null);
+          dlg?.close();
+          const params = new URLSearchParams(searchParams?.toString() ?? "");
+          params.delete("err");
+          params.set("msg", "Enrolled successfully");
+          const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+          router.push(target, { scroll: false });
         } catch (err: any) {
           setError(String(err?.message ?? "Enroll failed"));
         } finally {
@@ -166,4 +180,3 @@ export default function EnrollmentCreateForm({
     </form>
   );
 }
-

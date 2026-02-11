@@ -185,13 +185,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const courseId = subject.courseId;
+  const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
   const activePkg = await prisma.coursePackage.findFirst({
     where: {
       studentId,
       courseId,
       status: "ACTIVE",
-      validFrom: { lte: startAt },
-      OR: [{ validTo: null }, { validTo: { gte: startAt } }],
+      validFrom: { lte: packageCheckAt },
+      OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
       AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gte: durationMin } }] }],
     },
     select: { id: true },
@@ -222,4 +223,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json({ ok: true });
 }
-

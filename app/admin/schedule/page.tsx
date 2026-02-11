@@ -1,12 +1,12 @@
-﻿import React from "react";
+import React from "react";
 import { prisma } from "@/lib/prisma";
 import { PackageStatus, PackageType } from "@prisma/client";
-import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
-import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import NoticeBanner from "../_components/NoticeBanner";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import ScheduleDeleteEventClient from "./_components/ScheduleDeleteEventClient";
+import ScheduleReplaceTeacherClient from "./_components/ScheduleReplaceTeacherClient";
 
 type ViewMode = "teacher" | "room" | "campus";
 
@@ -114,15 +114,6 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
 function overlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && aEnd > bStart;
-}
-
-function canTeachSubject(teacher: any, subjectId?: string | null) {
-  if (!subjectId) return true;
-  if (teacher?.subjectCourseId === subjectId) return true;
-  if (Array.isArray(teacher?.subjects)) {
-    return teacher.subjects.some((s: any) => s?.id === subjectId);
-  }
-  return false;
 }
 
 type EventItem = {
@@ -239,6 +230,8 @@ export default async function SchedulePage({
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
   ]);
+
+  const teacherOptionsAll = teachers.map((x) => ({ id: x.id, name: x.name }));
 
   const teacherBySubject = new Map<string, typeof teachers>();
   for (const t of teachers) {
@@ -489,276 +482,6 @@ export default async function SchedulePage({
     return `/admin/schedule?${p.toString()}`;
   }
 
-  async function replaceSessionTeacher(formData: FormData) {
-    "use server";
-
-    const sessionId = String(formData.get("sessionId") ?? "");
-    const newTeacherId = String(formData.get("newTeacherId") ?? "");
-    const scope = String(formData.get("scope") ?? "single"); // single | future
-    const reason = String(formData.get("reason") ?? "").trim() || null;
-    const returnTo = String(formData.get("returnTo") ?? "/admin/schedule");
-
-    if (!sessionId || !newTeacherId) {
-      redirect(`${returnTo}&err=Missing+sessionId+or+newTeacherId`);
-    }
-
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      include: { class: true },
-    });
-    if (!session) {
-      redirect(`${returnTo}&err=Session+not+found`);
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: newTeacherId },
-      include: { subjects: true },
-    });
-    if (!teacher) {
-      redirect(`${returnTo}&err=Teacher+not+found`);
-    }
-    if (!canTeachSubject(teacher, session.class.subjectId)) {
-      redirect(`${returnTo}&err=Teacher+cannot+teach+this+course`);
-    }
-
-    const targetSessions =
-      scope === "future"
-        ? await prisma.session.findMany({
-            where: { classId: session.classId, startAt: { gte: session.startAt } },
-            include: { class: true },
-            orderBy: { startAt: "asc" },
-          })
-        : [session];
-
-    const targetIds = targetSessions.map((s) => s.id);
-
-    for (const s of targetSessions) {
-      const availErr = await checkTeacherAvailability(newTeacherId, s.startAt, s.endAt);
-      if (availErr) {
-        redirect(
-          `${returnTo}&err=${encodeURIComponent(
-            `Availability conflict on ${ymd(s.startAt)} ${fmtTime(s.startAt)}-${fmtTime(
-              s.endAt
-            )}: ${availErr}`
-          )}`
-        );
-      }
-
-      const teacherSessionConflict = await prisma.session.findFirst({
-        where: {
-          id: targetIds.length ? { notIn: targetIds } : undefined,
-          startAt: { lt: s.endAt },
-          endAt: { gt: s.startAt },
-          OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
-        },
-        select: { id: true, classId: true },
-      });
-      if (teacherSessionConflict) {
-        redirect(
-          `${returnTo}&err=${encodeURIComponent(
-            `Time conflict on ${ymd(s.startAt)} ${fmtTime(s.startAt)}-${fmtTime(
-              s.endAt
-            )}: Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`
-          )}`
-        );
-      }
-
-      const teacherApptConflict = await prisma.appointment.findFirst({
-        where: { teacherId: newTeacherId, startAt: { lt: s.endAt }, endAt: { gt: s.startAt } },
-        select: { id: true, startAt: true, endAt: true },
-      });
-      if (teacherApptConflict) {
-        const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtTime(teacherApptConflict.startAt)}-${fmtTime(
-          teacherApptConflict.endAt
-        )}`;
-        redirect(
-          `${returnTo}&err=${encodeURIComponent(
-            `Time conflict on ${ymd(s.startAt)} ${fmtTime(s.startAt)}-${fmtTime(
-              s.endAt
-            )}: Teacher conflict with appointment ${timeLabel}`
-          )}`
-        );
-      }
-    }
-
-    await prisma.$transaction(async (tx) => {
-      for (const s of targetSessions) {
-        const fromTeacherId = s.teacherId ?? s.class.teacherId;
-        const toTeacherId = newTeacherId;
-
-        if (fromTeacherId === toTeacherId) continue;
-
-        await tx.session.update({
-          where: { id: s.id },
-          data: { teacherId: toTeacherId === s.class.teacherId ? null : toTeacherId },
-        });
-
-        await tx.sessionTeacherChange.create({
-          data: {
-            sessionId: s.id,
-            fromTeacherId,
-            toTeacherId,
-            reason,
-          },
-        });
-      }
-    });
-
-    const msg =
-      scope === "future"
-        ? `Replaced teacher for ${targetSessions.length} sessions`
-        : "Replaced teacher for 1 session";
-    redirect(`${returnTo}&msg=${encodeURIComponent(msg)}`);
-  }
-
-  async function deleteAppointment(formData: FormData) {
-    "use server";
-    const appointmentId = String(formData.get("appointmentId") ?? "");
-    const returnTo = String(formData.get("returnTo") ?? "/admin/schedule");
-
-    if (!appointmentId) {
-      redirect(`${returnTo}&err=Missing+appointmentId`);
-    }
-
-    const appt = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-    if (!appt) {
-      redirect(`${returnTo}&err=Appointment+not+found`);
-    }
-
-    const sessionMatch = await prisma.session.findFirst({
-      where: {
-        startAt: appt.startAt,
-        endAt: appt.endAt,
-        OR: [{ teacherId: appt.teacherId }, { teacherId: null, class: { teacherId: appt.teacherId } }],
-      },
-      select: { id: true },
-    });
-
-    await prisma.$transaction(async (tx) => {
-      await tx.appointment.delete({ where: { id: appt.id } });
-      if (sessionMatch) {
-        await tx.session.delete({ where: { id: sessionMatch.id } });
-      }
-    });
-
-    redirect(`${returnTo}&msg=Deleted`);
-  }
-
-  async function deleteSession(formData: FormData) {
-    "use server";
-    const sessionId = String(formData.get("sessionId") ?? "");
-    const returnTo = String(formData.get("returnTo") ?? "/admin/schedule");
-
-    if (!sessionId) {
-      redirect(`${returnTo}&err=Missing+sessionId`);
-    }
-
-    await prisma.session.delete({ where: { id: sessionId } });
-    redirect(`${returnTo}&msg=Deleted`);
-  }
-
-  async function replaceAppointmentTeacher(formData: FormData) {
-    "use server";
-    const appointmentId = String(formData.get("appointmentId") ?? "");
-    const newTeacherId = String(formData.get("newTeacherId") ?? "");
-    const reason = String(formData.get("reason") ?? "").trim() || null;
-    const returnTo = String(formData.get("returnTo") ?? "/admin/schedule");
-
-    if (!appointmentId || !newTeacherId) {
-      redirect(`${returnTo}&err=Missing+appointmentId+or+newTeacherId`);
-    }
-
-    const appt = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-    if (!appt) {
-      redirect(`${returnTo}&err=Appointment+not+found`);
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: newTeacherId },
-      include: { subjects: true },
-    });
-    if (!teacher) {
-      redirect(`${returnTo}&err=Teacher+not+found`);
-    }
-
-    const sessionMatch = await prisma.session.findFirst({
-      where: {
-        startAt: appt.startAt,
-        endAt: appt.endAt,
-        OR: [{ teacherId: appt.teacherId }, { teacherId: null, class: { teacherId: appt.teacherId } }],
-      },
-      include: { class: true },
-    });
-
-    if (sessionMatch && !canTeachSubject(teacher, sessionMatch.class.subjectId)) {
-      redirect(`${returnTo}&err=Teacher+cannot+teach+this+course`);
-    }
-
-    const availErr = await checkTeacherAvailability(newTeacherId, appt.startAt, appt.endAt);
-    if (availErr) {
-      redirect(`${returnTo}&err=${encodeURIComponent(availErr)}`);
-    }
-
-    const teacherSessionConflict = await prisma.session.findFirst({
-      where: {
-        id: sessionMatch ? { not: sessionMatch.id } : undefined,
-        startAt: { lt: appt.endAt },
-        endAt: { gt: appt.startAt },
-        OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
-      },
-      select: { id: true, classId: true },
-    });
-    if (teacherSessionConflict) {
-      redirect(
-        `${returnTo}&err=${encodeURIComponent(
-          `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`
-        )}`
-      );
-    }
-
-    const teacherApptConflict = await prisma.appointment.findFirst({
-      where: {
-        id: { not: appt.id },
-        teacherId: newTeacherId,
-        startAt: { lt: appt.endAt },
-        endAt: { gt: appt.startAt },
-      },
-      select: { id: true, startAt: true, endAt: true },
-    });
-    if (teacherApptConflict) {
-      const timeLabel = `${ymd(teacherApptConflict.startAt)} ${fmtTime(teacherApptConflict.startAt)}-${fmtTime(
-        teacherApptConflict.endAt
-      )}`;
-      redirect(`${returnTo}&err=${encodeURIComponent(`Teacher conflict with appointment ${timeLabel}`)}`);
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.appointment.update({ where: { id: appt.id }, data: { teacherId: newTeacherId } });
-      if (sessionMatch) {
-        const fromTeacherId = sessionMatch.teacherId ?? sessionMatch.class.teacherId;
-        const toTeacherId = newTeacherId;
-
-        await tx.session.update({
-          where: { id: sessionMatch.id },
-          data: { teacherId: toTeacherId === sessionMatch.class.teacherId ? null : toTeacherId },
-        });
-
-        if (fromTeacherId !== toTeacherId) {
-          await tx.sessionTeacherChange.create({
-            data: {
-              sessionId: sessionMatch.id,
-              fromTeacherId,
-              toTeacherId,
-              reason,
-            },
-          });
-        }
-      }
-    });
-
-    redirect(`${returnTo}&msg=Replaced`);
-  }
-
   return (
     <div>
       <h2>{t(lang, "Schedule (Week View)", "周课表")}</h2>
@@ -965,6 +688,7 @@ export default async function SchedulePage({
                   const reasons = conflictMap.get(e.id) ?? [];
                   const lowCount = lowBalanceMap.get(e.id) ?? 0;
                   const eligibleTeachers = e.subjectId ? teacherBySubject.get(e.subjectId) ?? [] : [];
+                  const eligibleTeacherOptions = eligibleTeachers.map((x) => ({ id: x.id, name: x.name }));
 
                   return (
                     <React.Fragment key={e.id}>
@@ -1047,62 +771,51 @@ export default async function SchedulePage({
                         <td>{isConflict ? t(lang, "overlap", "重叠") : ""}</td>
                         <td>
                           {e.kind === "session" ? (
-                            <form action={replaceSessionTeacher} style={{ display: "grid", gap: 6 }}>
-                              <input type="hidden" name="sessionId" value={e.id} />
-                              <input type="hidden" name="returnTo" value={buildHref({})} />
-                              <select name="newTeacherId" defaultValue="" style={{ minWidth: 180 }}>
-                                <option value="" disabled>
-                                  {t(lang, "Select teacher", "选择老师")}
-                                </option>
-                                {eligibleTeachers.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <select name="scope" defaultValue="single">
-                                <option value="single">{t(lang, "This session only", "仅本节课")}</option>
-                                <option value="future">{t(lang, "Future sessions", "本班级未来所有课次")}</option>
-                              </select>
-                              <input name="reason" type="text" placeholder={t(lang, "Reason (optional)", "原因(可选)")} />
-                              <button type="submit">{t(lang, "Replace", "替换")}</button>
-                            </form>
+                            <ScheduleReplaceTeacherClient
+                              kind="session"
+                              id={e.id}
+                              classId={e.classId}
+                              teachers={eligibleTeacherOptions}
+                              labels={{
+                                selectTeacher: t(lang, "Select teacher", "选择老师"),
+                                reasonOptional: t(lang, "Reason (optional)", "原因(可选)"),
+                                replace: t(lang, "Replace", "替换"),
+                                errorPrefix: t(lang, "Error", "错误"),
+                                thisSessionOnly: t(lang, "This session only", "仅本节课"),
+                                futureSessions: t(lang, "Future sessions", "本班级未来所有课次"),
+                              }}
+                            />
                           ) : (
-                            <form action={replaceAppointmentTeacher} style={{ display: "grid", gap: 6 }}>
-                              <input type="hidden" name="appointmentId" value={e.id} />
-                              <input type="hidden" name="returnTo" value={buildHref({})} />
-                              <select name="newTeacherId" defaultValue="" style={{ minWidth: 180 }}>
-                                <option value="" disabled>
-                                  {t(lang, "Select teacher", "选择老师")}
-                                </option>
-                                {teachers.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <input name="reason" type="text" placeholder={t(lang, "Reason (optional)", "原因(可选)")} />
-                              <button type="submit">{t(lang, "Replace", "替换")}</button>
-                            </form>
+                            <ScheduleReplaceTeacherClient
+                              kind="appointment"
+                              id={e.id}
+                              teachers={teacherOptionsAll}
+                              labels={{
+                                selectTeacher: t(lang, "Select teacher", "选择老师"),
+                                reasonOptional: t(lang, "Reason (optional)", "原因(可选)"),
+                                replace: t(lang, "Replace", "替换"),
+                                errorPrefix: t(lang, "Error", "错误"),
+                              }}
+                            />
                           )}
                         </td>
                         <td>
                           {e.kind === "appointment" ? (
-                            <form action={deleteAppointment}>
-                              <input type="hidden" name="appointmentId" value={e.id} />
-                              <input type="hidden" name="returnTo" value={buildHref({})} />
-                              <ConfirmSubmitButton message={t(lang, "Delete appointment?", "删除预约？")}>
-                                {t(lang, "Delete", "删除")}
-                              </ConfirmSubmitButton>
-                            </form>
+                            <ScheduleDeleteEventClient
+                              kind="appointment"
+                              id={e.id}
+                              confirmMessage={t(lang, "Delete appointment?", "删除预约？")}
+                              label={t(lang, "Delete", "删除")}
+                              errorPrefix={t(lang, "Error", "错误")}
+                            />
                           ) : e.kind === "session" ? (
-                            <form action={deleteSession}>
-                              <input type="hidden" name="sessionId" value={e.id} />
-                              <input type="hidden" name="returnTo" value={buildHref({})} />
-                              <ConfirmSubmitButton message={t(lang, "Delete session?", "删除课次？")}>
-                                {t(lang, "Delete", "删除")}
-                              </ConfirmSubmitButton>
-                            </form>
+                            <ScheduleDeleteEventClient
+                              kind="session"
+                              id={e.id}
+                              confirmMessage={t(lang, "Delete session?", "删除课次？")}
+                              label={t(lang, "Delete", "删除")}
+                              errorPrefix={t(lang, "Error", "错误")}
+                            />
                           ) : (
                             "-"
                           )}

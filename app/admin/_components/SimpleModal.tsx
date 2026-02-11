@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 export default function SimpleModal({
   buttonLabel,
@@ -16,6 +16,7 @@ export default function SimpleModal({
   closeLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement | null>(null);
+  const [contentKey, setContentKey] = useState(0);
   const close = () => ref.current?.close();
 
   return (
@@ -35,6 +36,10 @@ export default function SimpleModal({
           // Allow child forms to preventDefault() to keep the modal open.
           if (closeOnSubmit && !e.defaultPrevented) close();
         }}
+        onClose={() => {
+          // Re-mount children after each close so form inputs don't keep stale values.
+          setContentKey((v) => v + 1);
+        }}
       >
         <div
           style={{
@@ -50,7 +55,9 @@ export default function SimpleModal({
             {closeLabel}
           </button>
         </div>
-        <div style={{ padding: 16 }}>{typeof children === "function" ? children({ close }) : children}</div>
+        <div key={contentKey} style={{ padding: 16 }}>
+          {typeof children === "function" ? children({ close }) : children}
+        </div>
       </dialog>
     </>
   );

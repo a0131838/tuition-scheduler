@@ -3,9 +3,17 @@ import { getLang, t } from "@/lib/i18n";
 import SimpleModal from "../_components/SimpleModal";
 import ClassCreateForm from "../_components/ClassCreateForm";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import NoticeBanner from "../_components/NoticeBanner";
 
-export default async function ClassesPage() {
+export default async function ClassesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ msg?: string; err?: string }>;
+}) {
   const lang = await getLang();
+  const sp = await searchParams;
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const [classes, courses, subjects, levels, teachers, campuses, rooms] = await Promise.all([
@@ -37,6 +45,8 @@ export default async function ClassesPage() {
   return (
     <div>
       <h2>{t(lang, "Classes", "班级")}</h2>
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
         <div style={{ color: "#666" }}>

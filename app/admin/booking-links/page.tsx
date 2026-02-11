@@ -4,6 +4,7 @@ import { getLang, t } from "@/lib/i18n";
 import BookingLinkCreateForm from "./_components/BookingLinkCreateForm";
 import SimpleModal from "../_components/SimpleModal";
 import CopyTextButton from "../_components/CopyTextButton";
+import NoticeBanner from "../_components/NoticeBanner";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -12,12 +13,13 @@ function appBaseUrl() {
 export default async function AdminBookingLinksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ err?: string }>;
+  searchParams?: Promise<{ err?: string; msg?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
   const sp = await searchParams;
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
 
   const [students, teachers, links] = await Promise.all([
     prisma.student.findMany({
@@ -79,7 +81,8 @@ export default async function AdminBookingLinksPage({
   return (
     <div>
       <h2>{t(lang, "Student Booking Links", "学生选课链接")}</h2>
-      {err ? <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div> : null}
+      {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
+      {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Create Link", "创建链接")} title={t(lang, "Create Link", "创建链接")} closeOnSubmit>

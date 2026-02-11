@@ -1,9 +1,10 @@
-﻿import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import NoticeBanner from "../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import ConflictsAppointmentActionsClient from "./_components/ConflictsAppointmentActionsClient";
+import ConflictsSessionActionsClient from "./_components/ConflictsSessionActionsClient";
 
 function parseDateOnly(s: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
@@ -60,325 +61,7 @@ function canTeachClass(teacher: any, courseId?: string | null, subjectId?: strin
   return false;
 }
 
-function withReturnParam(returnTo: string, key: "msg" | "err", value: string) {
-  const [base, qs = ""] = returnTo.split("?");
-  const p = new URLSearchParams(qs);
-  p.set(key, value);
-  return `${base}?${p.toString()}`;
-}
-
-async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
-  if (startAt.toDateString() !== endAt.toDateString()) {
-    return "Session spans multiple days";
-  }
-
-  const startMin = startAt.getHours() * 60 + startAt.getMinutes();
-  const endMin = endAt.getHours() * 60 + endAt.getMinutes();
-
-  const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
-  const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
-
-  let slots = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
-
-  if (slots.length === 0) {
-    const weekday = startAt.getDay();
-    slots = await prisma.teacherAvailability.findMany({
-      where: { teacherId, weekday },
-      select: { startMin: true, endMin: true },
-      orderBy: { startMin: "asc" },
-    });
-  }
-
-  if (slots.length === 0) return "No availability (no slots)";
-
-  const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
-  if (!ok) return "Outside availability";
-  return null;
-}
-
-async function replaceSessionTeacher(formData: FormData) {
-  "use server";
-  const sessionId = String(formData.get("sessionId") ?? "");
-  const newTeacherId = String(formData.get("newTeacherId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim() || null;
-  const returnTo = String(formData.get("returnTo") ?? "/admin/conflicts");
-
-  if (!sessionId || !newTeacherId) redirect(withReturnParam(returnTo, "err", "Missing sessionId or newTeacherId"));
-
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    include: { class: true, teacher: true },
-  });
-  if (!session) redirect(withReturnParam(returnTo, "err", "Session not found"));
-
-  const teacher = await prisma.teacher.findUnique({
-    where: { id: newTeacherId },
-    include: { subjects: true },
-  });
-  if (!teacher) redirect(withReturnParam(returnTo, "err", "Teacher not found"));
-  if (!canTeachClass(teacher, session.class.courseId, session.class.subjectId)) {
-    const cls = await prisma.class.findUnique({
-      where: { id: session.classId },
-      include: { course: true, subject: true, level: true },
-    });
-    const label = cls ? classLabel(cls) : "Class";
-    redirect(withReturnParam(returnTo, "err", `Teacher cannot teach this course: ${label}`));
-  }
-
-  const availErr = await checkTeacherAvailability(newTeacherId, session.startAt, session.endAt);
-  if (availErr) {
-    redirect(withReturnParam(returnTo, "err", `Availability conflict: ${availErr}`));
-  }
-
-  const conflict = await prisma.session.findFirst({
-    where: {
-      id: { not: session.id },
-      startAt: { lt: session.endAt },
-      endAt: { gt: session.startAt },
-      OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
-    },
-    include: { class: { include: { course: true, subject: true, level: true } } },
-  });
-  if (conflict) {
-    const label = classLabel(conflict.class);
-    const time = fmtRange(conflict.startAt, conflict.endAt);
-    redirect(withReturnParam(returnTo, "err", `Teacher time conflict: ${label} | ${time}`));
-  }
-  const apptConflict = await prisma.appointment.findFirst({
-    where: {
-      teacherId: newTeacherId,
-      startAt: { lt: session.endAt },
-      endAt: { gt: session.startAt },
-    },
-    include: { student: true },
-  });
-  if (apptConflict) {
-    const time = fmtRange(apptConflict.startAt, apptConflict.endAt);
-    redirect(
-      withReturnParam(
-        returnTo,
-        "err",
-        `Teacher appointment conflict: ${teacher.name} | ${time} | ${apptConflict.student?.name ?? "Appointment"}`
-      )
-    );
-  }
-
-  const fromTeacherId = session.teacherId ?? session.class.teacherId;
-  const toTeacherId = newTeacherId;
-  const clsInfo = await prisma.class.findUnique({
-    where: { id: session.classId },
-    include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
-  });
-  const label = clsInfo ? classLabel(clsInfo) : "Class";
-  const time = fmtRange(session.startAt, session.endAt);
-  const fromName = session.teacher?.name ?? clsInfo?.teacher?.name ?? "Teacher";
-  const toName = teacher.name;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.session.update({
-      where: { id: session.id },
-      data: { teacherId: toTeacherId === session.class.teacherId ? null : toTeacherId },
-    });
-    await tx.sessionTeacherChange.create({
-      data: { sessionId: session.id, fromTeacherId, toTeacherId, reason },
-    });
-  });
-
-  redirect(withReturnParam(returnTo, "msg", `Teacher updated: ${label} | ${time} | ${fromName} -> ${toName}`));
-}
-
-async function changeClassRoom(formData: FormData) {
-  "use server";
-  const classId = String(formData.get("classId") ?? "");
-  const roomIdRaw = String(formData.get("roomId") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "/admin/conflicts");
-  const rangeFrom = String(formData.get("rangeFrom") ?? "");
-  const rangeTo = String(formData.get("rangeTo") ?? "");
-
-  if (!classId) redirect(withReturnParam(returnTo, "err", "Missing classId"));
-
-  const cls = await prisma.class.findUnique({
-    where: { id: classId },
-    include: { campus: true },
-  });
-  if (!cls) redirect(withReturnParam(returnTo, "err", "Class not found"));
-
-  const clsInfo = await prisma.class.findUnique({
-    where: { id: classId },
-    include: { course: true, subject: true, level: true, campus: true, room: true },
-  });
-  const label = clsInfo ? classLabel(clsInfo) : "Class";
-  const oldRoomLabel = clsInfo ? roomLabel(clsInfo) : "(no room)";
-
-  const roomId = roomIdRaw || null;
-  let nextRoomLabel = "(none)";
-  if (roomId) {
-    const room = await prisma.room.findUnique({ where: { id: roomId }, include: { campus: true } });
-    if (!room || room.campusId !== cls.campusId) {
-      redirect(withReturnParam(returnTo, "err", `Room not in this campus: ${cls.campus.name}`));
-    }
-    if (cls.capacity > room.capacity) {
-      redirect(withReturnParam(returnTo, "err", `Class capacity ${cls.capacity} exceeds room capacity ${room.capacity}`));
-    }
-    nextRoomLabel = `${room.campus.name} / ${room.name}`;
-  }
-
-  if (rangeFrom && rangeTo && roomId) {
-    const from = parseDateOnly(rangeFrom);
-    const to = parseDateOnly(rangeTo);
-    if (!from || !to) {
-      redirect(withReturnParam(returnTo, "err", "Invalid date range"));
-    }
-    to.setHours(23, 59, 59, 999);
-    const classSessions = await prisma.session.findMany({
-      where: { classId, startAt: { lte: to }, endAt: { gte: from } },
-      select: { id: true, startAt: true, endAt: true },
-    });
-
-    for (const s of classSessions) {
-      const conflict = await prisma.session.findFirst({
-        where: {
-          id: { not: s.id },
-          class: { roomId },
-          startAt: { lt: s.endAt },
-          endAt: { gt: s.startAt },
-        },
-        select: { id: true, classId: true, startAt: true, endAt: true },
-      });
-      if (conflict) {
-        const conflictClass = await prisma.class.findUnique({
-          where: { id: conflict.classId },
-          include: { course: true, subject: true, level: true, campus: true, room: true },
-        });
-        const label = conflictClass ? classLabel(conflictClass) : "Class";
-        const place = conflictClass ? roomLabel(conflictClass) : "Room";
-        const time = fmtRange(conflict.startAt, conflict.endAt);
-        redirect(withReturnParam(returnTo, "err", `Room conflict: ${label} | ${place} | ${time}`));
-      }
-    }
-  }
-
-  await prisma.class.update({
-    where: { id: classId },
-    data: { roomId },
-  });
-
-  redirect(withReturnParam(returnTo, "msg", `Room updated: ${label} | ${oldRoomLabel} -> ${nextRoomLabel}`));
-}
-
-async function cancelSession(formData: FormData) {
-  "use server";
-  const sessionId = String(formData.get("sessionId") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "/admin/conflicts");
-  if (!sessionId) redirect(withReturnParam(returnTo, "err", "Missing sessionId"));
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    include: { class: { include: { course: true, subject: true, level: true } } },
-  });
-  if (!session) redirect(withReturnParam(returnTo, "err", "Session not found"));
-  const label = classLabel(session.class);
-  const time = fmtRange(session.startAt, session.endAt);
-  await prisma.session.delete({ where: { id: sessionId } });
-  redirect(withReturnParam(returnTo, "msg", `Session cancelled: ${label} | ${time}`));
-}
-
-async function cancelAppointment(formData: FormData) {
-  "use server";
-  const appointmentId = String(formData.get("appointmentId") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "/admin/conflicts");
-  if (!appointmentId) redirect(withReturnParam(returnTo, "err", "Missing appointmentId"));
-  const appt = await prisma.appointment.findUnique({
-    where: { id: appointmentId },
-    include: { student: true, teacher: true },
-  });
-  if (!appt) redirect(withReturnParam(returnTo, "err", "Appointment not found"));
-  const label = `${fmtRange(appt.startAt, appt.endAt)} | ${appt.teacher.name} | ${appt.student.name}`;
-  await prisma.appointment.delete({ where: { id: appointmentId } });
-  redirect(withReturnParam(returnTo, "msg", `Appointment cancelled: ${label}`));
-}
-
-async function replaceAppointmentTeacher(formData: FormData) {
-  "use server";
-  const appointmentId = String(formData.get("appointmentId") ?? "");
-  const newTeacherId = String(formData.get("newTeacherId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim() || null;
-  const returnTo = String(formData.get("returnTo") ?? "/admin/conflicts");
-  const classId = String(formData.get("classId") ?? "");
-
-  if (!appointmentId || !newTeacherId) {
-    redirect(withReturnParam(returnTo, "err", "Missing appointmentId or newTeacherId"));
-  }
-
-  const appt = await prisma.appointment.findUnique({
-    where: { id: appointmentId },
-    include: { student: true, teacher: true },
-  });
-  if (!appt) redirect(withReturnParam(returnTo, "err", "Appointment not found"));
-
-  const newTeacher = await prisma.teacher.findUnique({
-    where: { id: newTeacherId },
-    include: { subjects: true, subjectCourse: true },
-  });
-  if (!newTeacher) redirect(withReturnParam(returnTo, "err", "Teacher not found"));
-
-  if (classId) {
-    const cls = await prisma.class.findUnique({ where: { id: classId } });
-    if (cls && !canTeachClass(newTeacher, cls.courseId, cls.subjectId)) {
-      redirect(withReturnParam(returnTo, "err", "Teacher cannot teach this class course"));
-    }
-  }
-
-  const availErr = await checkTeacherAvailability(newTeacherId, appt.startAt, appt.endAt);
-  if (availErr) {
-    redirect(withReturnParam(returnTo, "err", `Availability conflict: ${availErr}`));
-  }
-
-  const teacherSessionConflict = await prisma.session.findFirst({
-    where: {
-      startAt: { lt: appt.endAt },
-      endAt: { gt: appt.startAt },
-      OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
-    },
-    include: { class: { include: { course: true, subject: true, level: true } } },
-  });
-  if (teacherSessionConflict) {
-    const label = classLabel(teacherSessionConflict.class);
-    const time = fmtRange(teacherSessionConflict.startAt, teacherSessionConflict.endAt);
-    redirect(withReturnParam(returnTo, "err", `Teacher session conflict: ${label} | ${time}`));
-  }
-
-  const teacherApptConflict = await prisma.appointment.findFirst({
-    where: {
-      id: { not: appointmentId },
-      teacherId: newTeacherId,
-      startAt: { lt: appt.endAt },
-      endAt: { gt: appt.startAt },
-    },
-    include: { student: true },
-  });
-  if (teacherApptConflict) {
-    const time = fmtRange(teacherApptConflict.startAt, teacherApptConflict.endAt);
-    redirect(withReturnParam(returnTo, "err", `Teacher appointment conflict: ${time} | ${teacherApptConflict.student.name}`));
-  }
-
-  await prisma.appointment.update({
-    where: { id: appointmentId },
-    data: { teacherId: newTeacherId },
-  });
-
-  const reasonTail = reason ? ` | ${reason}` : "";
-  redirect(
-    withReturnParam(
-      returnTo,
-      "msg",
-      `Appointment teacher updated: ${fmtRange(appt.startAt, appt.endAt)} | ${appt.teacher.name} -> ${newTeacher.name}${reasonTail}`
-    )
-  );
-}
+// Server actions were removed; conflict resolution now uses client fetch + /api routes.
 
 export default async function ConflictsPage({
   searchParams,
@@ -581,6 +264,8 @@ export default async function ConflictsPage({
             const eligibleTeachers = teachers.filter((tch) => canTeachClass(tch, cls.courseId, cls.subjectId));
             const eligibleAppointmentTeachers = eligibleTeachers;
             const campusRooms = rooms.filter((r) => r.campusId === cls.campusId);
+            const eligibleTeacherOptions = eligibleTeachers.map((x) => ({ id: x.id, name: x.name }));
+            const campusRoomOptions = campusRooms.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity }));
             const conflictTags = [
               conflictTeacherIds.length > 0 ? t(lang, "Teacher conflict", "老师冲突") : null,
               conflictRoomIds.length > 0 ? t(lang, "Room conflict", "教室冲突") : null,
@@ -672,34 +357,7 @@ export default async function ConflictsPage({
                               <div>
                                 {fmtRange(a.startAt, a.endAt)} | {a.teacher?.name ?? "-"} | {a.student?.name ?? "-"}
                               </div>
-                              <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
-                                <form action={replaceAppointmentTeacher} style={{ display: "grid", gap: 6 }}>
-                                  <input type="hidden" name="appointmentId" value={a.id} />
-                                  <input type="hidden" name="classId" value={cls.id} />
-                                  <input type="hidden" name="returnTo" value={returnToBase} />
-                                  <label style={{ display: "grid", gap: 4 }}>
-                                    <span style={{ fontSize: 12 }}>{t(lang, "Change appointment teacher", "换约课老师")}</span>
-                                    <select name="newTeacherId" defaultValue={a.teacherId} disabled={eligibleAppointmentTeachers.length === 0}>
-                                      {eligibleAppointmentTeachers.map((tch) => (
-                                        <option key={`${a.id}-${tch.id}`} value={tch.id}>
-                                          {tch.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <input name="reason" placeholder={t(lang, "Reason (optional)", "原因(可选)")} />
-                                  <button type="submit" disabled={eligibleAppointmentTeachers.length === 0}>
-                                    {t(lang, "Confirm Change Appointment Teacher", "确认更换约课老师")}
-                                  </button>
-                                </form>
-                                <form action={cancelAppointment}>
-                                  <input type="hidden" name="appointmentId" value={a.id} />
-                                  <input type="hidden" name="returnTo" value={returnToBase} />
-                                  <button type="submit" style={{ background: "#fee2e2", borderColor: "#fca5a5" }}>
-                                    {t(lang, "Cancel Appointment", "取消约课")}
-                                  </button>
-                                </form>
-                              </div>
+                              <div style={{ marginTop: 6 }}>                                 <ConflictsAppointmentActionsClient                                   appointmentId={a.id}                                   classId={cls.id}                                   teachers={eligibleAppointmentTeachers.map((x) => ({ id: x.id, name: x.name }))}                                   defaultTeacherId={a.teacherId}                                   labels={{                                     changeTeacher: t(lang, "Change appointment teacher", "换约课老师"),                                     reasonOptional: t(lang, "Reason (optional)", "原因(可选)"),                                     confirmChange: t(lang, "Confirm Change Appointment Teacher", "确认更换约课老师"),                                     cancel: t(lang, "Cancel Appointment", "取消约课"),                                     errorPrefix: t(lang, "Error", "错误"),                                   }}                                 />                               </div>
                             </div>
                           ))}
                         </div>
@@ -720,80 +378,32 @@ export default async function ConflictsPage({
                     </div>
                   ) : null}
 
-                  <div style={{ border: "1px solid #dbeafe", borderRadius: 8, padding: 8, background: "#f8fbff" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8", marginBottom: 6 }}>
-                      {t(lang, "B. Resolve Session", "B. 处理课次")}
-                    </div>
-                    <form action={replaceSessionTeacher} style={{ display: "grid", gap: 6 }}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <input type="hidden" name="returnTo" value={returnToBase} />
-                      <label style={{ display: "grid", gap: 4 }}>
-                        <span style={{ fontSize: 12 }}>{t(lang, "Change Session Teacher", "更换课次老师")}</span>
-                        <select name="newTeacherId" defaultValue={teacherId ?? ""} disabled={eligibleTeachers.length === 0}>
-                          {eligibleTeachers.map((tch) => (
-                            <option key={tch.id} value={tch.id}>
-                              {tch.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <input name="reason" placeholder={t(lang, "Reason (optional)", "原因(可选)") } />
-                      <button type="submit" disabled={eligibleTeachers.length === 0}>
-                        {t(lang, "Confirm Change Session Teacher", "确认更换课次老师")}
-                      </button>
-                      {eligibleTeachers.length === 0 ? (
-                        <div style={{ color: "#b00", fontSize: 12 }}>
-                          {t(lang, "No eligible teachers for this course.", "该课程暂无可选老师。")}
-                        </div>
-                      ) : null}
-                    </form>
-                  </div>
-
-                  <form action={changeClassRoom} style={{ display: "grid", gap: 6 }}>
-                    <input type="hidden" name="classId" value={cls.id} />
-                    <input type="hidden" name="returnTo" value={returnToBase} />
-                    <input type="hidden" name="rangeFrom" value={fromSafeStr} />
-                    <input type="hidden" name="rangeTo" value={toSafeStr} />
-                    <label style={{ display: "grid", gap: 4 }}>
-                      <span style={{ fontSize: 12 }}>{t(lang, "Change Room (class)", "换教室(班级)")}</span>
-                      <select name="roomId" defaultValue={cls.roomId ?? ""} disabled={campusRooms.length === 0}>
-                        <option value="">{t(lang, "(none)", "(无)")}</option>
-                        {campusRooms.map((r) => (
-                          <option key={r.id} value={r.id} disabled={r.capacity < cls.capacity}>
-                            {r.name} ({t(lang, "capacity", "容量")} {r.capacity})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {campusRooms.some((r) => r.capacity < cls.capacity) ? (
-                      <div style={{ fontSize: 11, color: "#b45309" }}>
-                        {t(
-                          lang,
-                          `Some rooms are disabled because class capacity is ${cls.capacity}.`,
-                          `部分教室已禁用：当前班级容量为 ${cls.capacity}。`
-                        )}
-                      </div>
-                    ) : null}
-                    <div style={{ fontSize: 11, color: "#666" }}>
-                      {t(lang, "Note: changing room affects the whole class (in selected date range).", "提示：换教室会影响该班级（所选日期范围内）。")}
-                    </div>
-                    <button type="submit" disabled={campusRooms.length === 0}>
-                      {t(lang, "Confirm", "确认")}
-                    </button>
-                    {campusRooms.length === 0 ? (
-                      <div style={{ color: "#b00", fontSize: 12 }}>
-                        {t(lang, "No rooms available in this campus.", "该校区暂无教室。")}
-                      </div>
-                    ) : null}
-                  </form>
-
-                  <form action={cancelSession}>
-                    <input type="hidden" name="sessionId" value={s.id} />
-                    <input type="hidden" name="returnTo" value={returnToBase} />
-                    <button type="submit" style={{ background: "#fee2e2", borderColor: "#fca5a5" }}>
-                      {t(lang, "Cancel Session", "取消课次")}
-                    </button>
-                  </form>
+                  <ConflictsSessionActionsClient
+                    sessionId={s.id}
+                    classId={cls.id}
+                    eligibleTeachers={eligibleTeacherOptions}
+                    defaultTeacherId={teacherId ?? ""}
+                    rooms={campusRoomOptions}
+                    defaultRoomId={cls.roomId ?? ""}
+                    classCapacity={cls.capacity}
+                    rangeFrom={fromSafeStr}
+                    rangeTo={toSafeStr}
+                    labels={{
+                      errorPrefix: t(lang, "Error", "错误"),
+                      changeSessionTeacher: t(lang, "B. Resolve Session", "B. 处理课次"),
+                      reasonOptional: t(lang, "Reason (optional)", "原因(可选)"),
+                      confirmChangeSessionTeacher: t(lang, "Confirm Change Session Teacher", "确认更换课次老师"),
+                      noEligibleTeachers: t(lang, "No eligible teachers for this course.", "该课程暂无可选老师。"),
+                      changeRoomClass: t(lang, "Change Room (class)", "换教室(班级)"),
+                      noneRoom: t(lang, "(none)", "(无)"),
+                      capacityLabel: t(lang, "capacity", "容量"),
+                      confirm: t(lang, "Confirm", "确认"),
+                      noRooms: t(lang, "No rooms available in this campus.", "该校区暂无教室。"),
+                      cancelSession: t(lang, "Cancel Session", "取消课次"),
+                      roomNote: t(lang, "Note: changing room affects the whole class (in selected date range).", "提示: 换教室会影响该班级(所选日期范围内)。"),
+                      disabledRoomNotePrefix: t(lang, `Some rooms are disabled because class capacity is ${cls.capacity}.`, `部分教室已禁用: 当前班级容量为 ${cls.capacity}。`),
+                    }}
+                  />
                 </div>
               </div>
             );
@@ -803,4 +413,3 @@ export default async function ConflictsPage({
     </div>
   );
 }
-

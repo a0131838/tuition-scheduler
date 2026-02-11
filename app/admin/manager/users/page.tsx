@@ -1,28 +1,17 @@
-﻿import {
-  createPasswordHash,
+import {
   getManagerEmailSet,
   isOwnerManager,
   managerEmailsFromEnv,
   requireManager,
-  requireOwnerManager,
 } from "@/lib/auth";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
-import ConfirmSubmitButton from "@/app/admin/_components/ConfirmSubmitButton";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
-import { redirect } from "next/navigation";
-
-function pickRole(v: string) {
-  return v === "ADMIN" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
-}
-
-function pickLang(v: string) {
-  return v === "BILINGUAL" || v === "ZH" || v === "EN" ? v : "BILINGUAL";
-}
-
-function editRedirect(query: string) {
-  redirect(`/admin/manager/users?mode=edit&${query}`);
-}
+import ManagerEmailAddClient from "./_components/ManagerEmailAddClient";
+import ManagerEmailRemoveClient from "./_components/ManagerEmailRemoveClient";
+import SystemUserCreateClient from "./_components/SystemUserCreateClient";
+import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient";
+import SystemUserActionsClient from "./_components/SystemUserActionsClient";
 
 type BasicUser = { id: string; email: string; role: "ADMIN" | "TEACHER" | "STUDENT" };
 
@@ -44,163 +33,7 @@ function canEditTargetUser(
   return { ok: true };
 }
 
-async function requireEditableTarget(actor: BasicUser, id: string) {
-  const target = await prisma.user.findUnique({
-    where: { id },
-    select: { id: true, email: true, role: true },
-  });
-  if (!target) {
-    editRedirect("err=User+not+found");
-    throw new Error("unreachable");
-  }
-  const targetUser: BasicUser = {
-    id: target.id,
-    email: target.email,
-    role: target.role as BasicUser["role"],
-  };
-
-  const managerSet = await getManagerEmailSet();
-  const check = canEditTargetUser(actor, targetUser, managerSet);
-  if (!check.ok) editRedirect(`err=${encodeURIComponent(check.reason)}`);
-
-  return targetUser;
-}
-
-async function createSystemUser(formData: FormData) {
-  "use server";
-  await requireManager();
-
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const role = pickRole(String(formData.get("role") ?? ""));
-  const language = pickLang(String(formData.get("language") ?? ""));
-  const teacherIdRaw = String(formData.get("teacherId") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !name || !password) editRedirect("err=Email,+name,+and+password+are+required");
-  if (password.length < 8) editRedirect("err=Password+must+be+at+least+8+characters");
-
-  const teacherId = role === "TEACHER" || role === "ADMIN" ? teacherIdRaw || null : null;
-  if (teacherId) {
-    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
-    if (!teacher) editRedirect("err=Teacher+not+found");
-    const linked = await prisma.user.findFirst({ where: { teacherId }, select: { email: true } });
-    if (linked) editRedirect(`err=Teacher+already+linked+to+${encodeURIComponent(linked.email)}`);
-  }
-
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) editRedirect("err=Email+already+exists");
-
-  const { salt, hash } = createPasswordHash(password);
-  await prisma.user.create({
-    data: {
-      email,
-      name,
-      role: role as any,
-      language: language as any,
-      teacherId,
-      passwordSalt: salt,
-      passwordHash: hash,
-    },
-  });
-
-  editRedirect("msg=User+created");
-}
-
-async function updateSystemUser(formData: FormData) {
-  "use server";
-  const manager = await requireManager();
-
-  const id = String(formData.get("id") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const role = pickRole(String(formData.get("role") ?? ""));
-  const language = pickLang(String(formData.get("language") ?? ""));
-  const teacherIdRaw = String(formData.get("teacherId") ?? "").trim();
-
-  if (!id || !email || !name) editRedirect("err=Missing+required+fields");
-  await requireEditableTarget(manager, id);
-  if (id === manager.id && role !== "ADMIN") editRedirect("err=You+cannot+change+your+own+role+from+ADMIN");
-
-  const teacherId = role === "TEACHER" || role === "ADMIN" ? teacherIdRaw || null : null;
-  if (teacherId) {
-    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId }, select: { id: true } });
-    if (!teacher) editRedirect("err=Teacher+not+found");
-    const linked = await prisma.user.findFirst({ where: { teacherId, NOT: { id } }, select: { email: true } });
-    if (linked) editRedirect(`err=Teacher+already+linked+to+${encodeURIComponent(linked.email)}`);
-  }
-
-  try {
-    await prisma.user.update({
-      where: { id },
-      data: { email, name, role: role as any, language: language as any, teacherId },
-    });
-  } catch {
-    editRedirect("err=Save+failed+(email+may+already+exist)");
-  }
-
-  editRedirect("msg=User+updated");
-}
-
-async function resetSystemUserPassword(formData: FormData) {
-  "use server";
-  const manager = await requireManager();
-
-  const id = String(formData.get("id") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  if (!id || !password) editRedirect("err=Missing+user+or+password");
-  if (password.length < 8) editRedirect("err=Password+must+be+at+least+8+characters");
-  await requireEditableTarget(manager, id);
-
-  const { salt, hash } = createPasswordHash(password);
-  await prisma.user.update({
-    where: { id },
-    data: { passwordSalt: salt, passwordHash: hash },
-  });
-  await prisma.authSession.deleteMany({ where: { userId: id } });
-
-  editRedirect("msg=Password+reset+(all+sessions+revoked)");
-}
-
-async function deleteSystemUser(formData: FormData) {
-  "use server";
-  const manager = await requireManager();
-  const id = String(formData.get("id") ?? "").trim();
-  if (!id) editRedirect("err=Missing+user+id");
-  await requireEditableTarget(manager, id);
-  if (id === manager.id) editRedirect("err=You+cannot+delete+your+own+account");
-
-  await prisma.authSession.deleteMany({ where: { userId: id } });
-  await prisma.user.delete({ where: { id } });
-
-  editRedirect("msg=User+deleted");
-}
-
-async function addManagerEmail(formData: FormData) {
-  "use server";
-  await requireOwnerManager();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const note = String(formData.get("note") ?? "").trim();
-
-  if (!email || !email.includes("@")) editRedirect("err=Invalid+manager+email");
-  await prisma.managerAcl.upsert({
-    where: { email },
-    update: { isActive: true, note: note || null },
-    create: { email, isActive: true, note: note || null },
-  });
-
-  editRedirect("msg=Manager+added");
-}
-
-async function removeManagerEmail(formData: FormData) {
-  "use server";
-  await requireOwnerManager();
-  const id = String(formData.get("id") ?? "").trim();
-  if (!id) editRedirect("err=Missing+manager+id");
-
-  await prisma.managerAcl.delete({ where: { id } });
-  editRedirect("msg=Manager+removed");
-}
+// Server actions were removed; this page uses client fetch + /api routes.
 
 export default async function ManagerUsersPage({
   searchParams,
@@ -316,17 +149,14 @@ export default async function ManagerUsersPage({
         </div>
 
         {isEditMode && isOwnerManager(currentUser) ? (
-          <form action={addManagerEmail} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end", marginBottom: 10 }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Manager Email", "管理者邮箱")}</span>
-              <input name="email" type="email" required style={{ minWidth: 240 }} />
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Note (optional)", "备注(可选)")}</span>
-              <input name="note" style={{ minWidth: 220 }} />
-            </label>
-            <button type="submit">{t(lang, "Add Manager", "新增管理者")}</button>
-          </form>
+          <ManagerEmailAddClient
+            labels={{
+              managerEmail: t(lang, "Manager Email", "管理员邮箱"),
+              noteOptional: t(lang, "Note (optional)", "备注(可选)"),
+              addManager: t(lang, "Add Manager", "新增管理员"),
+              errorPrefix: t(lang, "Error", "错误"),
+            }}
+          />
         ) : null}
 
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -346,12 +176,12 @@ export default async function ManagerUsersPage({
                 <td>{row.createdAt.toLocaleString()}</td>
                 {isEditMode && isOwnerManager(currentUser) ? (
                   <td>
-                    <form action={removeManagerEmail}>
-                      <input type="hidden" name="id" value={row.id} />
-                      <ConfirmSubmitButton message={t(lang, "Remove this manager email?", "确认移除该管理者邮箱？")}>
-                        {t(lang, "Remove", "移除")}
-                      </ConfirmSubmitButton>
-                    </form>
+                    <ManagerEmailRemoveClient
+                      id={row.id}
+                      confirmMessage={t(lang, "Remove this manager email?", "确认移除该管理员邮箱？")}
+                      label={t(lang, "Remove", "移除")}
+                      errorPrefix={t(lang, "Error", "错误")}
+                    />
                   </td>
                 ) : null}
               </tr>
@@ -368,48 +198,19 @@ export default async function ManagerUsersPage({
       {isEditMode ? (
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 12 }}>
           <h3 style={{ marginTop: 0 }}>{t(lang, "Create User", "新增用户")}</h3>
-          <form action={createSystemUser} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>Email</span>
-              <input name="email" type="email" required style={{ minWidth: 240 }} />
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Name", "姓名")}</span>
-              <input name="name" required style={{ minWidth: 160 }} />
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Role", "角色")}</span>
-              <select name="role" defaultValue="ADMIN">
-                <option value="ADMIN">ADMIN</option>
-                <option value="TEACHER">TEACHER</option>
-                <option value="STUDENT">STUDENT</option>
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Language", "语言")}</span>
-              <select name="language" defaultValue="BILINGUAL">
-                <option value="BILINGUAL">BILINGUAL</option>
-                <option value="ZH">ZH</option>
-                <option value="EN">EN</option>
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Bind Teacher (optional)", "绑定老师(可选)")}</span>
-              <select name="teacherId" defaultValue="">
-                <option value="">{t(lang, "No binding", "不绑定")}</option>
-                {teachers.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12 }}>{t(lang, "Initial Password", "初始密码")}</span>
-              <input name="password" type="password" required minLength={8} style={{ minWidth: 180 }} />
-            </label>
-            <button type="submit">{t(lang, "Create", "创建")}</button>
-          </form>
+          <SystemUserCreateClient
+            teachers={teachers}
+            labels={{
+              name: t(lang, "Name", "姓名"),
+              role: t(lang, "Role", "角色"),
+              language: t(lang, "Language", "语言"),
+              bindTeacherOptional: t(lang, "Bind Teacher (optional)", "绑定老师(可选)"),
+              noBinding: t(lang, "No binding", "不绑定"),
+              initialPassword: t(lang, "Initial Password", "初始密码"),
+              create: t(lang, "Create", "创建"),
+              errorPrefix: t(lang, "Error", "错误"),
+            }}
+          />
         </div>
       ) : null}
 
@@ -442,32 +243,18 @@ export default async function ManagerUsersPage({
                   </td>
                   <td>
                     {isEditMode && rowEditable ? (
-                      <form action={updateSystemUser} style={{ display: "grid", gap: 6, minWidth: 250 }}>
-                        <input type="hidden" name="id" value={u.id} />
-                        <input name="name" defaultValue={u.name} placeholder={t(lang, "Name", "姓名")} />
-                        <input name="email" type="email" defaultValue={u.email} placeholder="Email" />
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <select name="role" defaultValue={u.role}>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="TEACHER">TEACHER</option>
-                            <option value="STUDENT">STUDENT</option>
-                          </select>
-                          <select name="language" defaultValue={u.language}>
-                            <option value="BILINGUAL">BILINGUAL</option>
-                            <option value="ZH">ZH</option>
-                            <option value="EN">EN</option>
-                          </select>
-                        </div>
-                        <select name="teacherId" defaultValue={u.teacherId ?? ""}>
-                          <option value="">{t(lang, "No teacher", "不绑定老师")}</option>
-                          {teachers.map((x) => (
-                            <option key={x.id} value={x.id}>
-                              {x.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit">{t(lang, "Save", "保存")}</button>
-                      </form>
+                      <SystemUserUpdateFormClient
+                        user={{ id: u.id, name: u.name, email: u.email, role: u.role, language: u.language, teacherId: u.teacherId ?? null }}
+                        teachers={teachers}
+                        labels={{
+                          name: t(lang, "Name", "姓名"),
+                          role: t(lang, "Role", "角色"),
+                          language: t(lang, "Language", "语言"),
+                          noTeacher: t(lang, "No teacher", "不绑定老师"),
+                          save: t(lang, "Save", "保存"),
+                          errorPrefix: t(lang, "Error", "错误"),
+                        }}
+                      />
                     ) : (
                       <div>
                         {u.role} / {u.language}
@@ -490,22 +277,16 @@ export default async function ManagerUsersPage({
                     <td>
                       {rowEditable ? (
                         <>
-                          <form action={resetSystemUserPassword} style={{ display: "grid", gap: 6, marginBottom: 8 }}>
-                            <input type="hidden" name="id" value={u.id} />
-                            <input
-                              name="password"
-                              type="password"
-                              minLength={8}
-                              placeholder={t(lang, "New password (>=8)", "新密码(至少8位)")}
-                            />
-                            <button type="submit">{t(lang, "Reset Password", "重置密码")}</button>
-                          </form>
-                          <form action={deleteSystemUser}>
-                            <input type="hidden" name="id" value={u.id} />
-                            <ConfirmSubmitButton message={t(lang, "Delete this user?", "确认删除该用户？")}>
-                              {t(lang, "Delete User", "删除用户")}
-                            </ConfirmSubmitButton>
-                          </form>
+                          <SystemUserActionsClient
+                            userId={u.id}
+                            labels={{
+                              newPasswordPlaceholder: t(lang, "New password (>=8)", "新密码(至少8位)"),
+                              resetPassword: t(lang, "Reset Password", "重置密码"),
+                              deleteUser: t(lang, "Delete User", "删除用户"),
+                              confirmDelete: t(lang, "Delete this user?", "确认删除该用户？"),
+                              errorPrefix: t(lang, "Error", "错误"),
+                            }}
+                          />
                         </>
                       ) : (
                         <span style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Read-only", "只读")}</span>

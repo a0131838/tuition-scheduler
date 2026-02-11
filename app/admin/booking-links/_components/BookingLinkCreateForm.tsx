@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type StudentOption = {
   id: string;
@@ -70,7 +69,6 @@ export default function BookingLinkCreateForm({
     createLink: string;
   };
 }) {
-  const router = useRouter();
   const [studentId, setStudentId] = useState("");
   const [query, setQuery] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
@@ -154,8 +152,12 @@ export default function BookingLinkCreateForm({
             return;
           }
 
-          (e.currentTarget as HTMLFormElement).closest("dialog")?.close();
-          router.push(`/admin/booking-links/${encodeURIComponent(String(data.id))}?msg=Link+created`);
+          const formEl = e.currentTarget as HTMLFormElement;
+          const dlg =
+            formEl.closest("dialog") ??
+            (formEl.ownerDocument?.querySelector("dialog[open]") as HTMLDialogElement | null);
+          dlg?.close();
+          window.location.assign(`/admin/booking-links?msg=${encodeURIComponent(`Link created: ${String(data.id ?? "")}`)}`);
         } finally {
           setBusy(false);
         }

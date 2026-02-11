@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Labels = {
   edit: string;
@@ -47,10 +47,21 @@ export default function PackageEditModal({
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [hover, setHover] = useState(false);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [contentKey, setContentKey] = useState(0);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const preserveRefresh = () => {
+  const preserveRefresh = (okMsg?: string) => {
+    if (okMsg) {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.delete("err");
+      params.set("msg", okMsg);
+      const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(target, { scroll: false });
+    }
     const y = window.scrollY;
     router.refresh();
     requestAnimationFrame(() => window.scrollTo(0, y));
@@ -82,13 +93,23 @@ export default function PackageEditModal({
           ✎ {labels.edit}
         </button>
       </span>
-      <dialog ref={dialogRef} style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd", minWidth: 420 }}>
+      <dialog
+        ref={dialogRef}
+        style={{ padding: 16, borderRadius: 8, border: "1px solid #ddd", minWidth: 420 }}
+        onClose={() => {
+          setErr("");
+          setMsg("");
+          setContentKey((v) => v + 1);
+        }}
+      >
+        <div key={contentKey}>
         <form method="dialog" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b>{labels.edit}</b>
           <button type="submit">{labels.close}</button>
         </form>
 
         {err ? <div style={{ color: "#b00", marginTop: 10 }}>{err}</div> : null}
+        {msg ? <div style={{ color: "#087", marginTop: 10 }}>{msg}</div> : null}
 
         <form
           style={{ display: "grid", gap: 8, marginTop: 12 }}
@@ -124,7 +145,7 @@ export default function PackageEditModal({
               }
 
               dialogRef.current?.close();
-              preserveRefresh();
+              preserveRefresh("Saved");
             } finally {
               setBusy(false);
             }
@@ -221,7 +242,7 @@ export default function PackageEditModal({
               }
 
               dialogRef.current?.close();
-              preserveRefresh();
+              preserveRefresh("Saved");
             } finally {
               setBusy(false);
             }
@@ -282,7 +303,7 @@ export default function PackageEditModal({
                   return;
                 }
                 dialogRef.current?.close();
-                preserveRefresh();
+                preserveRefresh("Deleted");
               } finally {
                 setBusy(false);
               }
@@ -291,6 +312,7 @@ export default function PackageEditModal({
             {busy ? `${labels.deleteLabel}...` : labels.deleteLabel}
           </button>
         </form>
+        </div>
       </dialog>
     </>
   );

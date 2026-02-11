@@ -87,6 +87,7 @@ export default function AdminTeacherAvailabilityClient(props: {
     generate: string;
     noSlots: string;
     noWeekly: string;
+    weeklyAutoSyncNote: string;
   };
 }) {
   const { teacherId, teacherName, initialMonth, initialDateAvails, initialWeeklyAvails, labels } = props;
@@ -144,6 +145,17 @@ export default function AdminTeacherAvailabilityClient(props: {
     } finally {
       setLoading(false);
     }
+  };
+
+  const syncMonthFromWeekly = async (m: string) => {
+    const res = await fetch(`/api/admin/teachers/${encodeURIComponent(teacherId)}/availability/generate-month`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ month: m, sync: true }),
+    });
+    const data = await jsonOrNull(res);
+    if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Sync failed"));
+    return Number(data?.created ?? 0);
   };
 
   return (
@@ -273,6 +285,7 @@ export default function AdminTeacherAvailabilityClient(props: {
       </table>
 
       <h3 style={{ marginTop: 24 }}>{labels.weeklyTitle}</h3>
+      <div style={{ marginBottom: 8, color: "#666", fontSize: 12 }}>{labels.weeklyAutoSyncNote}</div>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -293,6 +306,9 @@ export default function AdminTeacherAvailabilityClient(props: {
             const data = await jsonOrNull(res);
             if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Add weekly failed"));
             setWeeklyAvails((prev) => [...prev, data.slot]);
+            const created = await syncMonthFromWeekly(month);
+            await loadMonth(month);
+            setMsg(`Weekly template saved and synced (${created})`);
           } catch (e2: any) {
             setError(String(e2?.message ?? "Add weekly failed"));
           } finally {
@@ -338,15 +354,18 @@ export default function AdminTeacherAvailabilityClient(props: {
                     setLoading(true);
                     setError("");
                     setMsg("");
-                    try {
-                      const res = await fetch(`/api/admin/teachers/${encodeURIComponent(teacherId)}/availability/weekly`, {
-                        method: "DELETE",
+                  try {
+                    const res = await fetch(`/api/admin/teachers/${encodeURIComponent(teacherId)}/availability/weekly`, {
+                      method: "DELETE",
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({ id: a.id }),
                       });
                       const data = await jsonOrNull(res);
                       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Delete failed"));
                       setWeeklyAvails((prev) => prev.filter((x) => x.id !== a.id));
+                      const created = await syncMonthFromWeekly(month);
+                      await loadMonth(month);
+                      setMsg(`Weekly template synced (${created})`);
                     } catch (e: any) {
                       setError(String(e?.message ?? "Delete failed"));
                     } finally {

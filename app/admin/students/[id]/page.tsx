@@ -539,13 +539,14 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     }
 
     const courseId = subject.courseId;
+    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
     const activePkg = await prisma.coursePackage.findFirst({
       where: {
         studentId,
         courseId,
         status: "ACTIVE",
-        validFrom: { lte: startAt },
-        OR: [{ validTo: null }, { validTo: { gte: startAt } }],
+        validFrom: { lte: packageCheckAt },
+        OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
         AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
       },
       select: { id: true },
