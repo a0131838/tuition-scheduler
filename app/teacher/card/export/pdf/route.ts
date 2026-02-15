@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
+const MAX_SUBJECT_LINES = 6;
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -69,6 +70,10 @@ export async function GET() {
     : teacherFull.subjectCourse
       ? [`${teacherFull.subjectCourse.course.name}-${teacherFull.subjectCourse.name}`]
       : [];
+  const subjectLinesForCard =
+    subjectLabels.length > MAX_SUBJECT_LINES
+      ? [...subjectLabels.slice(0, MAX_SUBJECT_LINES), `+${subjectLabels.length - MAX_SUBJECT_LINES} 更多课程科目`]
+      : subjectLabels;
 
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 0 });
   setPdfFont(doc);
@@ -84,7 +89,7 @@ export async function GET() {
   doc.fontSize(24).text("教授", 24, 122, { width: leftW - 42 });
   doc
     .fontSize(13)
-    .text(subjectLabels.length ? subjectLabels.join("\n") : "课程", 24, 164, {
+    .text(subjectLinesForCard.length ? subjectLinesForCard.join("\n") : "课程", 24, 164, {
       width: leftW - 42,
       lineGap: 2,
     });

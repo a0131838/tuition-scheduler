@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   name: string;
@@ -36,6 +36,7 @@ function formatAlmaMater(text: string) {
 }
 
 export default function TeacherCardView(props: Props) {
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
   useEffect(() => {
     if (!props.autoPrint) return;
     const id = window.setTimeout(() => window.print(), 120);
@@ -51,6 +52,16 @@ export default function TeacherCardView(props: Props) {
     if (sg) return "sg";
     return "none";
   })();
+  const subjectLines = useMemo(
+    () =>
+      String(props.subjectText || "")
+        .split(/\r?\n/)
+        .map((x) => x.trim())
+        .filter(Boolean),
+    [props.subjectText]
+  );
+  const visibleSubjectLines = showAllSubjects ? subjectLines : subjectLines.slice(0, 6);
+  const hiddenSubjectCount = Math.max(0, subjectLines.length - visibleSubjectLines.length);
 
   return (
     <div
@@ -94,8 +105,28 @@ export default function TeacherCardView(props: Props) {
         >
           <div style={{ fontSize: "clamp(23px, 2.57vw, 35px)", lineHeight: 1.1, fontWeight: 900, marginBottom: 10 }}>{props.name}</div>
           <div style={{ fontSize: "clamp(13px, 1.4vw, 18px)", fontWeight: 800, marginBottom: 6 }}>教授</div>
-          <div style={{ fontSize: "clamp(12px, 1.12vw, 16px)", fontWeight: 800, lineHeight: 1.35, whiteSpace: "pre-line" }}>
-            {props.subjectText || "课程"}
+          <div style={{ fontSize: "clamp(12px, 1.12vw, 16px)", fontWeight: 800, lineHeight: 1.35 }}>
+            {visibleSubjectLines.length > 0 ? visibleSubjectLines.map((line) => <div key={line}>{line}</div>) : <div>课程</div>}
+            {hiddenSubjectCount > 0 ? (
+              <button
+                type="button"
+                className="no-print"
+                onClick={() => setShowAllSubjects((v) => !v)}
+                style={{
+                  marginTop: 8,
+                  border: "1px solid rgba(255,255,255,0.85)",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "3px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                {showAllSubjects ? "收起" : `+${hiddenSubjectCount} 展开`}
+              </button>
+            ) : null}
           </div>
 
           <div
