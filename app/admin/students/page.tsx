@@ -29,7 +29,7 @@ const GRADE_OPTIONS = [
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; page?: string }>;
+  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; page?: string; pageSize?: string }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
@@ -38,7 +38,8 @@ export default async function StudentsPage({
   const sourceChannelId = sp?.sourceChannelId ?? "";
   const studentTypeId = sp?.studentTypeId ?? "";
   const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
-  const pageSize = 50;
+  const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
+  const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
 
   const where: any = {};
   if (sourceChannelId) where.sourceChannelId = sourceChannelId;
@@ -72,6 +73,7 @@ export default async function StudentsPage({
     const params = new URLSearchParams();
     if (sourceChannelId) params.set("sourceChannelId", sourceChannelId);
     if (studentTypeId) params.set("studentTypeId", studentTypeId);
+    params.set("pageSize", String(pageSize));
     if (targetPage > 1) params.set("page", String(targetPage));
     const q = params.toString();
     return q ? `/admin/students?${q}` : "/admin/students";
@@ -98,6 +100,11 @@ export default async function StudentsPage({
               {t.name}
             </option>
           ))}
+        </select>
+        <select name="pageSize" defaultValue={String(pageSize)}>
+          <option value="20">20 / {t(lang, "page", "页")}</option>
+          <option value="50">50 / {t(lang, "page", "页")}</option>
+          <option value="100">100 / {t(lang, "page", "页")}</option>
         </select>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
         <a href="/admin/students">{t(lang, "Clear", "清除")}</a>

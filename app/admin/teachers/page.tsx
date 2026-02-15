@@ -53,7 +53,8 @@ export default async function TeachersPage({
   const filterLinked = getParam("linked");
   const groupBy = getParam("groupBy");
   const requestedPage = Math.max(1, Number.parseInt(getParam("page") || "1", 10) || 1);
-  const pageSize = 50;
+  const pageSizeRaw = Number.parseInt(getParam("pageSize") || "20", 10);
+  const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
   const msg = getParam("msg");
   const err = getParam("err");
 
@@ -158,7 +159,7 @@ export default async function TeachersPage({
       return a.name.localeCompare(b.name);
     });
   const filteredTotal = groupBy ? sortedTeachers.length : totalCountRaw;
-  const buildPageHref = (targetPage: number) => {
+  const buildPageHref = (targetPage: number, targetPageSize = pageSize) => {
     const params = new URLSearchParams();
     if (filterQ) params.set("q", filterQ);
     if (filterCourseId) params.set("courseId", filterCourseId);
@@ -167,6 +168,7 @@ export default async function TeachersPage({
     if (filterOffline) params.set("offlineMode", filterOffline);
     if (filterLinked) params.set("linked", filterLinked);
     if (groupBy) params.set("groupBy", groupBy);
+    params.set("pageSize", String(targetPageSize));
     if (targetPage > 1) params.set("page", String(targetPage));
     const qstr = params.toString();
     return qstr ? `/admin/teachers?${qstr}` : "/admin/teachers";
@@ -299,6 +301,15 @@ export default async function TeachersPage({
           </div>
           {!groupBy ? (
             <>
+              <div>
+                {t(lang, "Per Page", "每页")}:{" "}
+                {[20, 50, 100].map((size, idx) => (
+                  <span key={size}>
+                    {idx > 0 ? " / " : ""}
+                    {size === pageSize ? <b>{size}</b> : <a href={buildPageHref(1, size)}>{size}</a>}
+                  </span>
+                ))}
+              </div>
               <div>
                 {t(lang, "Page", "页")}: <b>{page}</b> / <b>{totalPages}</b>
               </div>
