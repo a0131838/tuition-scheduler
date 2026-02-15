@@ -29,7 +29,7 @@ const GRADE_OPTIONS = [
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string }>;
+  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; page?: string }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
@@ -37,15 +37,23 @@ export default async function StudentsPage({
   const sp = await searchParams;
   const sourceChannelId = sp?.sourceChannelId ?? "";
   const studentTypeId = sp?.studentTypeId ?? "";
+  const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
+  const pageSize = 50;
 
   const where: any = {};
   if (sourceChannelId) where.sourceChannelId = sourceChannelId;
   if (studentTypeId) where.studentTypeId = studentTypeId;
 
+  const totalCount = await prisma.student.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+
   const students = await prisma.student.findMany({
     where,
     include: { sourceChannel: true, studentType: true },
     orderBy: { name: "asc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 
   const [sources, types, unpaidCounts] = await Promise.all([
@@ -60,6 +68,14 @@ export default async function StudentsPage({
       : Promise.resolve([]),
   ]);
   const unpaidMap = new Map(unpaidCounts.map((u) => [u.studentId, u._count._all]));
+  const buildPageHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (sourceChannelId) params.set("sourceChannelId", sourceChannelId);
+    if (studentTypeId) params.set("studentTypeId", studentTypeId);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const q = params.toString();
+    return q ? `/admin/students?${q}` : "/admin/students";
+  };
 
   return (
     <div>
@@ -86,6 +102,26 @@ export default async function StudentsPage({
         <button type="submit">{t(lang, "Apply", "应用")}</button>
         <a href="/admin/students">{t(lang, "Clear", "清除")}</a>
       </form>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, fontSize: 13 }}>
+        <span>
+          {t(lang, "Showing", "显示")} {students.length} / {totalCount}
+        </span>
+        <span>
+          {t(lang, "Page", "页")} {page} / {totalPages}
+        </span>
+        <a
+          href={page > 1 ? buildPageHref(page - 1) : "#"}
+          style={{ pointerEvents: page > 1 ? "auto" : "none", opacity: page > 1 ? 1 : 0.4 }}
+        >
+          {t(lang, "Prev", "上一页")}
+        </a>
+        <a
+          href={page < totalPages ? buildPageHref(page + 1) : "#"}
+          style={{ pointerEvents: page < totalPages ? "auto" : "none", opacity: page < totalPages ? 1 : 0.4 }}
+        >
+          {t(lang, "Next", "下一页")}
+        </a>
+      </div>
 
       <AdminStudentsClient
         initialStudents={students.map((s) => ({

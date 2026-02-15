@@ -41,22 +41,85 @@ export default async function TeachersPage({
 }) {
   const lang = await getLang();
   const sp = await searchParams;
-  const [teachers, courses, subjects, levels] = await Promise.all([
-    prisma.teacher.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        subjects: { include: { course: true } },
-        subjectCourse: { include: { course: true } },
-        users: { select: { id: true, email: true }, where: { role: { in: ["TEACHER", "ADMIN"] } }, take: 1 },
-      },
-    }),
+  const getParam = (k: string) => {
+    const v = sp?.[k];
+    return Array.isArray(v) ? v[0] ?? "" : v ?? "";
+  };
+  const filterQ = getParam("q");
+  const filterCourseId = getParam("courseId");
+  const filterSubjectId = getParam("subjectId");
+  const filterLanguage = getParam("teachingLanguage");
+  const filterOffline = getParam("offlineMode");
+  const filterLinked = getParam("linked");
+  const groupBy = getParam("groupBy");
+  const requestedPage = Math.max(1, Number.parseInt(getParam("page") || "1", 10) || 1);
+  const pageSize = 50;
+  const msg = getParam("msg");
+  const err = getParam("err");
+
+  const teacherWhere: any = {};
+  const andClauses: any[] = [];
+  const q = filterQ.trim();
+  if (q) {
+    andClauses.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { nationality: { contains: q, mode: "insensitive" } },
+        { almaMater: { contains: q, mode: "insensitive" } },
+        { intro: { contains: q, mode: "insensitive" } },
+        { users: { some: { email: { contains: q, mode: "insensitive" }, role: { in: ["TEACHER", "ADMIN"] } } } },
+      ],
+    });
+  }
+  if (filterCourseId) {
+    andClauses.push({
+      OR: [{ subjectCourse: { courseId: filterCourseId } }, { subjects: { some: { courseId: filterCourseId } } }],
+    });
+  }
+  if (filterSubjectId) {
+    andClauses.push({
+      OR: [{ subjectCourseId: filterSubjectId }, { subjects: { some: { id: filterSubjectId } } }],
+    });
+  }
+  if (filterLanguage) {
+    if (filterLanguage === "OTHER") {
+      andClauses.push({ teachingLanguage: null, teachingLanguageOther: { not: null } });
+    } else {
+      andClauses.push({ teachingLanguage: filterLanguage });
+    }
+  }
+  if (filterOffline === "ONLINE_ONLY") andClauses.push({ offlineShanghai: false, offlineSingapore: false });
+  if (filterOffline === "OFFLINE_SH") andClauses.push({ offlineShanghai: true });
+  if (filterOffline === "OFFLINE_SG") andClauses.push({ offlineSingapore: true });
+  if (filterOffline === "OFFLINE_BOTH") andClauses.push({ offlineShanghai: true, offlineSingapore: true });
+  if (filterOffline === "OFFLINE_ANY") andClauses.push({ OR: [{ offlineShanghai: true }, { offlineSingapore: true }] });
+  if (filterLinked === "linked") andClauses.push({ users: { some: { role: { in: ["TEACHER", "ADMIN"] } } } });
+  if (filterLinked === "unlinked") andClauses.push({ users: { none: { role: { in: ["TEACHER", "ADMIN"] } } } });
+  if (andClauses.length) teacherWhere.AND = andClauses;
+
+  const [courses, subjects, levels, totalCountRaw] = await Promise.all([
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
     prisma.level.findMany({
       include: { subject: { include: { course: true } } },
       orderBy: [{ subjectId: "asc" }, { name: "asc" }],
     }),
+    groupBy ? Promise.resolve(0) : prisma.teacher.count({ where: teacherWhere }),
   ]);
+  const totalPages = groupBy ? 1 : Math.max(1, Math.ceil(totalCountRaw / pageSize));
+  const page = groupBy ? 1 : Math.min(requestedPage, totalPages);
+
+  const teachers = await prisma.teacher.findMany({
+    where: teacherWhere,
+    orderBy: { name: "asc" },
+    skip: groupBy ? undefined : (page - 1) * pageSize,
+    take: groupBy ? undefined : pageSize,
+    include: {
+      subjects: { include: { course: true } },
+      subjectCourse: { include: { course: true } },
+      users: { select: { id: true, email: true }, where: { role: { in: ["TEACHER", "ADMIN"] } }, take: 1 },
+    },
+  });
 
   function courseNamesOf(tch: (typeof teachers)[number]) {
     const set = new Set<string>();
@@ -84,72 +147,7 @@ export default async function TeachersPage({
     return "";
   }
 
-  const getParam = (k: string) => {
-    const v = sp?.[k];
-    return Array.isArray(v) ? v[0] ?? "" : v ?? "";
-  };
-  const filterQ = getParam("q");
-  const filterCourseId = getParam("courseId");
-  const filterSubjectId = getParam("subjectId");
-  const filterLanguage = getParam("teachingLanguage");
-  const filterOffline = getParam("offlineMode");
-  const filterLinked = getParam("linked");
-  const groupBy = getParam("groupBy");
-  const msg = getParam("msg");
-  const err = getParam("err");
-
-  const filteredTeachers = teachers.filter((tch) => {
-    const q = filterQ.trim().toLowerCase();
-    if (q) {
-      const joined = [
-        tch.name,
-        tch.nationality ?? "",
-        tch.almaMater ?? "",
-        tch.intro ?? "",
-        tch.users[0]?.email ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!joined.includes(q)) return false;
-    }
-
-    if (filterCourseId) {
-      const ok =
-        tch.subjectCourse?.courseId === filterCourseId ||
-        tch.subjects.some((s) => s.courseId === filterCourseId);
-      if (!ok) return false;
-    }
-
-    if (filterSubjectId) {
-      const ok =
-        tch.subjectCourseId === filterSubjectId ||
-        tch.subjects.some((s) => s.id === filterSubjectId);
-      if (!ok) return false;
-    }
-
-    if (filterLanguage) {
-      if (filterLanguage === "OTHER") {
-        if (tch.teachingLanguage || !tch.teachingLanguageOther) return false;
-      } else if (tch.teachingLanguage !== (filterLanguage as TeachingLanguage)) {
-        return false;
-      }
-    }
-
-    if (filterOffline) {
-      if (filterOffline === "ONLINE_ONLY" && (tch.offlineShanghai || tch.offlineSingapore)) return false;
-      if (filterOffline === "OFFLINE_SH" && !tch.offlineShanghai) return false;
-      if (filterOffline === "OFFLINE_SG" && !tch.offlineSingapore) return false;
-      if (filterOffline === "OFFLINE_BOTH" && !(tch.offlineShanghai && tch.offlineSingapore)) return false;
-      if (filterOffline === "OFFLINE_ANY" && !(tch.offlineShanghai || tch.offlineSingapore)) return false;
-    }
-
-    if (filterLinked === "linked" && !tch.users[0]?.email) return false;
-    if (filterLinked === "unlinked" && tch.users[0]?.email) return false;
-
-    return true;
-  });
-
-  const sortedTeachers = filteredTeachers
+  const sortedTeachers = teachers
     .slice()
     .sort((a, b) => {
       if (!groupBy) return a.name.localeCompare(b.name);
@@ -159,6 +157,20 @@ export default async function TeachersPage({
       if (gcmp !== 0) return gcmp;
       return a.name.localeCompare(b.name);
     });
+  const filteredTotal = groupBy ? sortedTeachers.length : totalCountRaw;
+  const buildPageHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (filterQ) params.set("q", filterQ);
+    if (filterCourseId) params.set("courseId", filterCourseId);
+    if (filterSubjectId) params.set("subjectId", filterSubjectId);
+    if (filterLanguage) params.set("teachingLanguage", filterLanguage);
+    if (filterOffline) params.set("offlineMode", filterOffline);
+    if (filterLinked) params.set("linked", filterLinked);
+    if (groupBy) params.set("groupBy", groupBy);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const qstr = params.toString();
+    return qstr ? `/admin/teachers?${qstr}` : "/admin/teachers";
+  };
 
   return (
     <div>
@@ -277,7 +289,7 @@ export default async function TeachersPage({
         />
         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#555", marginTop: 6 }}>
           <div>
-            {t(lang, "Total", "总数")}: <b>{sortedTeachers.length}</b>
+            {t(lang, "Total", "总数")}: <b>{filteredTotal}</b>
           </div>
           <div>
             {t(lang, "Linked", "已绑定")}: <b>{sortedTeachers.filter((tch) => !!tch.users[0]?.email).length}</b>
@@ -285,6 +297,25 @@ export default async function TeachersPage({
           <div>
             {t(lang, "Not linked", "未绑定")}: <b>{sortedTeachers.filter((tch) => !tch.users[0]?.email).length}</b>
           </div>
+          {!groupBy ? (
+            <>
+              <div>
+                {t(lang, "Page", "页")}: <b>{page}</b> / <b>{totalPages}</b>
+              </div>
+              <a
+                href={page > 1 ? buildPageHref(page - 1) : "#"}
+                style={{ pointerEvents: page > 1 ? "auto" : "none", opacity: page > 1 ? 1 : 0.4 }}
+              >
+                {t(lang, "Prev", "上一页")}
+              </a>
+              <a
+                href={page < totalPages ? buildPageHref(page + 1) : "#"}
+                style={{ pointerEvents: page < totalPages ? "auto" : "none", opacity: page < totalPages ? 1 : 0.4 }}
+              >
+                {t(lang, "Next", "下一页")}
+              </a>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -379,7 +410,7 @@ export default async function TeachersPage({
           })}
           {sortedTeachers.length === 0 && (
             <tr>
-              <td colSpan={9}>{t(lang, "No teachers yet.", "暂无老师")}</td>
+              <td colSpan={10}>{t(lang, "No teachers yet.", "暂无老师")}</td>
             </tr>
           )}
         </tbody>
