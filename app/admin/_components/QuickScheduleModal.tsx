@@ -53,6 +53,7 @@ type Labels = {
   noTeachers: string;
   chooseHint: string;
   schedule: string;
+  roomRequiredOffline: string;
 };
 
 export default function QuickScheduleModal({
@@ -100,6 +101,7 @@ export default function QuickScheduleModal({
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [scheduleErr, setScheduleErr] = useState("");
   const [scheduleMsg, setScheduleMsg] = useState("");
+  const [formWarn, setFormWarn] = useState("");
   const courses = useMemo<CourseOption[]>(() => {
     const map = new Map<string, string>();
     for (const s of subjects) map.set(s.courseId, s.courseName);
@@ -257,6 +259,11 @@ export default function QuickScheduleModal({
 
   function submitFind(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setFormWarn("");
+    if (campusId && !campusIsOnline && !roomId) {
+      setFormWarn(labels.roomRequiredOffline);
+      return;
+    }
     const params = new URLSearchParams();
     params.set("month", month);
     params.set("quickOpen", "1");
@@ -283,6 +290,7 @@ export default function QuickScheduleModal({
         onClose={() => {
           setScheduleErr("");
           setScheduleMsg("");
+          setFormWarn("");
           resetFormState();
         }}
       >
@@ -351,6 +359,7 @@ export default function QuickScheduleModal({
               onChange={(e) => {
                 const next = e.target.value;
                 setCampusId(next);
+                setFormWarn("");
                 if (next && roomId && !rooms.some((r) => r.id === roomId && r.campusId === next)) {
                   setRoomId("");
                 }
@@ -370,7 +379,10 @@ export default function QuickScheduleModal({
             <select
               name="quickRoomId"
               value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
+              onChange={(e) => {
+                setRoomId(e.target.value);
+                setFormWarn("");
+              }}
               style={{ marginLeft: 6, minWidth: 220 }}
             >
               <option value="">{campusIsOnline ? `${labels.room} (${labels.roomOptional})` : labels.room}</option>
@@ -418,6 +430,8 @@ export default function QuickScheduleModal({
         <div style={{ marginTop: 12 }}>
           {warning ? (
             <NoticeBanner type="warn" title={labels.status} message={warning} />
+          ) : formWarn ? (
+            <NoticeBanner type="warn" title={labels.status} message={formWarn} />
           ) : scheduleErr ? (
             <NoticeBanner type="error" title={labels.status} message={scheduleErr} />
           ) : scheduleMsg ? (

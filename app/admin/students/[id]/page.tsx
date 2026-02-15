@@ -82,6 +82,7 @@ const zhMap: Record<string, string> = {
   "Restore": "\u6062\u590d",
   "Restore this session?": "\u786e\u8ba4\u6062\u590d\u8be5\u8bfe\u6b21\uff1f",
   "Room": "\u6559\u5ba4",
+  "Room is required for offline campus.": "\u9009\u62e9\u7ebf\u4e0b\u6821\u533a\u65f6\uff0c\u5fc5\u987b\u9009\u62e9\u6559\u5ba4",
   "Save": "\u4fdd\u5b58",
   "Schedule": "\u6392\u8bfe",
   "Scheduled": "\u5df2\u6392\u8bfe",
@@ -1985,6 +1986,7 @@ export default async function StudentDetailPage({
             noTeachers: tl(lang, "No eligible teachers found."),
             chooseHint: tl(lang, "Choose subject, campus, room and time to match teachers."),
             schedule: tl(lang, "Schedule"),
+            roomRequiredOffline: tl(lang, "Room is required for offline campus."),
           }}
         />
       </details>
