@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
+import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -204,16 +205,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!activePkg) return bad("No active package for this course", 409);
   }
 
-  const cls = await getOrCreateOneOnOneClassForStudent({
-    teacherId,
-    studentId,
-    courseId,
-    subjectId,
-    levelId,
-    campusId,
-    roomId,
-    ensureEnrollment: true,
-  });
+  let cls: Awaited<ReturnType<typeof getOrCreateOneOnOneClassForStudent>>;
+  try {
+    cls = await getOrCreateOneOnOneClassForStudent({
+      teacherId,
+      studentId,
+      courseId,
+      subjectId,
+      levelId,
+      campusId,
+      roomId,
+      ensureEnrollment: true,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "";
+    if (msg === "COURSE_ENROLLMENT_CONFLICT") {
+      const conflict = await findStudentCourseEnrollment(studentId, courseId);
+      return bad("Course enrollment conflict", 409, {
+        code: "COURSE_CONFLICT",
+        detail: conflict ? formatEnrollmentConflict(conflict) : undefined,
+      });
+    }
+    return bad(msg || "Quick schedule failed", 500);
+  }
   if (!cls) return bad("Failed to create class", 500);
 
   const dupSession = await prisma.session.findFirst({

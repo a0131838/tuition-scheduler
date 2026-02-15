@@ -159,9 +159,20 @@ export default function QuickScheduleModal({
             durationMin: Number(durationMin),
           }),
         });
-        const data = await res.json().catch(() => null);
+        const raw = await res.text();
+        let data: any = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {
+          data = null;
+        }
         if (!res.ok || !data?.ok) {
-          setScheduleErr(String(data?.message ?? "Schedule failed"));
+          const detail = String(data?.detail ?? "").trim();
+          const message =
+            String(data?.message ?? "").trim() ||
+            (raw ? raw.slice(0, 240) : "") ||
+            `Schedule failed (HTTP ${res.status})`;
+          setScheduleErr(detail ? `${message}: ${detail}` : message);
           return;
         }
         setScheduleMsg("OK");
