@@ -96,7 +96,7 @@ export default function QuickScheduleModal({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isFinding, startFinding] = useTransition();
-  const [isScheduling, startScheduling] = useTransition();
+  const [isScheduling, setIsScheduling] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [scheduleErr, setScheduleErr] = useState("");
   const [scheduleMsg, setScheduleMsg] = useState("");
@@ -143,8 +143,9 @@ export default function QuickScheduleModal({
     if (!canSchedule) return;
     setScheduleErr("");
     setScheduleMsg("");
-    startScheduling(() => {
-      (async () => {
+    setIsScheduling(true);
+    (async () => {
+      try {
         const res = await fetch(scheduleUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -172,8 +173,12 @@ export default function QuickScheduleModal({
         router.replace(target, { scroll: false });
         // Refresh the student page so the newly scheduled session appears.
         router.refresh();
-      })();
-    });
+      } catch {
+        setScheduleErr("Schedule failed: network or server error");
+      } finally {
+        setIsScheduling(false);
+      }
+    })();
   }
   const campusIsOnline = useMemo(() => {
     if (!campusId) return false;
