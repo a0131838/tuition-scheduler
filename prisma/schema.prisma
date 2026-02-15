@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
@@ -64,11 +64,11 @@ enum FeedbackStatus {
 }
 
 model Campus {
-  id      String  @id @default(uuid())
-  name    String
-  isOnline Boolean @default(false)
-  rooms   Room[]
-  classes Class[]
+  id             String          @id @default(uuid())
+  name           String
+  isOnline       Boolean         @default(false)
+  rooms          Room[]
+  classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
 }
 
@@ -80,7 +80,7 @@ model Room {
   campusId String
   campus   Campus @relation(fields: [campusId], references: [id])
 
-  classes Class[]
+  classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
 }
 
@@ -88,34 +88,34 @@ model Teacher {
   id   String @id @default(uuid())
   name String
 
-  nationality     String?
-  almaMater       String?
-  intro           String?
-  yearsExperience Int?
-  teachingLanguage TeachingLanguage?
+  nationality           String?
+  almaMater             String?
+  intro                 String?
+  yearsExperience       Int?
+  teachingLanguage      TeachingLanguage?
   teachingLanguageOther String?
-  offlineShanghai Boolean @default(false)
-  offlineSingapore Boolean @default(false)
+  offlineShanghai       Boolean           @default(false)
+  offlineSingapore      Boolean           @default(false)
 
   subjectCourseId String?
-  subjectCourse   Subject? @relation("SubjectCourse", fields: [subjectCourseId], references: [id])
+  subjectCourse   Subject?  @relation("SubjectCourse", fields: [subjectCourseId], references: [id])
   subjects        Subject[] @relation("TeacherSubjects")
 
-  availabilities TeacherAvailability[]
-  dateAvailabilities TeacherAvailabilityDate[]
-  oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateTeacher")
-  oneOnOneGroups OneOnOneGroup[]
-  classes        Class[]
-  appointments   Appointment[]
-  sessionOverrides Session[] @relation("SessionTeacherOverride")
-  sessionFeedbacks SessionFeedback[]
-  sessionTeacherChangesFrom SessionTeacherChange[] @relation("SessionTeacherChangeFrom")
-  sessionTeacherChangesTo SessionTeacherChange[] @relation("SessionTeacherChangeTo")
-  users User[]
-  bookingLinks StudentBookingLinkTeacher[]
-  bookingRequests StudentBookingRequest[]
-  selectedBookingSlots StudentBookingLinkSelectedSlot[]
-  bookingRequestSlotLocks StudentBookingRequestSlotLock[]
+  availabilities            TeacherAvailability[]
+  dateAvailabilities        TeacherAvailabilityDate[]
+  oneOnOneTemplates         TeacherOneOnOneTemplate[]        @relation("TeacherOneOnOneTemplateTeacher")
+  oneOnOneGroups            OneOnOneGroup[]
+  classes                   Class[]
+  appointments              Appointment[]
+  sessionOverrides          Session[]                        @relation("SessionTeacherOverride")
+  sessionFeedbacks          SessionFeedback[]
+  sessionTeacherChangesFrom SessionTeacherChange[]           @relation("SessionTeacherChangeFrom")
+  sessionTeacherChangesTo   SessionTeacherChange[]           @relation("SessionTeacherChangeTo")
+  users                     User[]
+  bookingLinks              StudentBookingLinkTeacher[]
+  bookingRequests           StudentBookingRequest[]
+  selectedBookingSlots      StudentBookingLinkSelectedSlot[]
+  bookingRequestSlotLocks   StudentBookingRequestSlotLock[]
 }
 
 model OneOnOneGroup {
@@ -128,12 +128,12 @@ model OneOnOneGroup {
   roomId    String?
   createdAt DateTime @default(now())
 
-  teacher Teacher @relation(fields: [teacherId], references: [id])
-  course  Course  @relation(fields: [courseId], references: [id])
+  teacher Teacher  @relation(fields: [teacherId], references: [id])
+  course  Course   @relation(fields: [courseId], references: [id])
   subject Subject? @relation(fields: [subjectId], references: [id])
   level   Level?   @relation(fields: [levelId], references: [id])
-  campus  Campus  @relation(fields: [campusId], references: [id])
-  room    Room?   @relation(fields: [roomId], references: [id])
+  campus  Campus   @relation(fields: [campusId], references: [id])
+  room    Room?    @relation(fields: [roomId], references: [id])
 
   classes Class[]
 
@@ -156,7 +156,7 @@ model TeacherAvailabilityDate {
   id        String   @id @default(uuid())
   teacherId String
   date      DateTime // date-only (local), time in startMin/endMin
-  startMin  Int      // minutes from 00:00
+  startMin  Int // minutes from 00:00
   endMin    Int
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
@@ -183,12 +183,12 @@ model TeacherOneOnOneTemplate {
 }
 
 model Course {
-  id    String @id @default(uuid())
-  name  String
+  id   String @id @default(uuid())
+  name String
 
-  subjects Subject[]
-  classes  Class[]
-  packages CoursePackage[]
+  subjects       Subject[]
+  classes        Class[]
+  packages       CoursePackage[]
   oneOnOneGroups OneOnOneGroup[]
 }
 
@@ -197,12 +197,12 @@ model Subject {
   name     String
   courseId String
 
-  course Course @relation(fields: [courseId], references: [id])
-  levels Level[]
-  classes Class[]
+  course         Course          @relation(fields: [courseId], references: [id])
+  levels         Level[]
+  classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
 
-  subjectTeachers Teacher[] @relation("SubjectCourse")
+  subjectTeachers      Teacher[] @relation("SubjectCourse")
   subjectTeachersMulti Teacher[] @relation("TeacherSubjects")
 
   @@unique([courseId, name])
@@ -214,8 +214,8 @@ model Level {
   name      String
   subjectId String
 
-  subject Subject @relation(fields: [subjectId], references: [id])
-  classes Class[]
+  subject        Subject         @relation(fields: [subjectId], references: [id])
+  classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
 
   @@unique([subjectId, name])
@@ -232,21 +232,21 @@ model Class {
   campusId  String
   roomId    String?
 
-  capacity Int
+  capacity          Int
   oneOnOneGroupId   String?
   oneOnOneStudentId String?
 
-  course  Course  @relation(fields: [courseId], references: [id])
-  subject Subject? @relation(fields: [subjectId], references: [id])
-  level   Level? @relation(fields: [levelId], references: [id])
-  teacher Teacher @relation(fields: [teacherId], references: [id])
-  campus  Campus  @relation(fields: [campusId], references: [id])
-  room    Room?   @relation(fields: [roomId], references: [id])
-  oneOnOneGroup OneOnOneGroup? @relation(fields: [oneOnOneGroupId], references: [id])
-  oneOnOneStudent Student? @relation("OneOnOneStudentClass", fields: [oneOnOneStudentId], references: [id])
+  course          Course         @relation(fields: [courseId], references: [id])
+  subject         Subject?       @relation(fields: [subjectId], references: [id])
+  level           Level?         @relation(fields: [levelId], references: [id])
+  teacher         Teacher        @relation(fields: [teacherId], references: [id])
+  campus          Campus         @relation(fields: [campusId], references: [id])
+  room            Room?          @relation(fields: [roomId], references: [id])
+  oneOnOneGroup   OneOnOneGroup? @relation(fields: [oneOnOneGroupId], references: [id])
+  oneOnOneStudent Student?       @relation("OneOnOneStudentClass", fields: [oneOnOneStudentId], references: [id])
 
-  sessions    Session[]
-  enrollments Enrollment[]
+  sessions          Session[]
+  enrollments       Enrollment[]
   oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateClass")
 
   @@index([subjectId])
@@ -256,23 +256,27 @@ model Class {
 }
 
 model Session {
-  id      String   @id @default(uuid())
-  classId String
-  startAt DateTime
-  endAt   DateTime
+  id        String   @id @default(uuid())
+  classId   String
+  startAt   DateTime
+  endAt     DateTime
   teacherId String?
   studentId String?
 
-  class       Class        @relation(fields: [classId], references: [id])
-  teacher     Teacher?     @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
-  student     Student?     @relation("SessionStudent", fields: [studentId], references: [id])
-  attendances Attendance[]
-  feedbacks   SessionFeedback[]
-  teacherChanges SessionTeacherChange[]
+  class           Class                   @relation(fields: [classId], references: [id])
+  teacher         Teacher?                @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  student         Student?                @relation("SessionStudent", fields: [studentId], references: [id])
+  attendances     Attendance[]
+  feedbacks       SessionFeedback[]
+  teacherChanges  SessionTeacherChange[]
   bookingRequests StudentBookingRequest[]
-  signInAlerts SignInAlert[]
+  signInAlerts    SignInAlert[]
 
   @@index([studentId])
+  @@index([classId, startAt])
+  @@index([teacherId, startAt])
+  @@index([startAt])
+  @@index([startAt, endAt])
 }
 
 model AppSetting {
@@ -283,19 +287,19 @@ model AppSetting {
 }
 
 model SignInAlert {
-  id             String   @id @default(uuid())
-  sessionId      String
-  alertType      String
-  targetRole     String
-  targetUserId   String?
-  studentId      String?
-  scopeKey       String
-  thresholdMin   Int
-  firstTriggeredAt DateTime @default(now())
-  lastTriggeredAt  DateTime @default(now())
-  resolvedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String    @id @default(uuid())
+  sessionId        String
+  alertType        String
+  targetRole       String
+  targetUserId     String?
+  studentId        String?
+  scopeKey         String
+  thresholdMin     Int
+  firstTriggeredAt DateTime  @default(now())
+  lastTriggeredAt  DateTime  @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
@@ -305,28 +309,28 @@ model SignInAlert {
 }
 
 model SessionFeedback {
-  id          String   @id @default(uuid())
-  sessionId   String
-  teacherId   String
-  content     String
-  focusStudentName String?
-  actualStartAt DateTime?
-  actualEndAt DateTime?
-  classPerformance String?
-  homework String?
+  id                   String         @id @default(uuid())
+  sessionId            String
+  teacherId            String
+  content              String
+  focusStudentName     String?
+  actualStartAt        DateTime?
+  actualEndAt          DateTime?
+  classPerformance     String?
+  homework             String?
   previousHomeworkDone Boolean?
-  forwardedAt DateTime?
-  forwardedBy String?
-  forwardChannel String?
-  forwardNote String?
-  status      FeedbackStatus @default(ON_TIME)
-  dueAt       DateTime?
-  submittedByRole String?
-  submittedByUserId String?
-  isProxyDraft Boolean @default(false)
-  proxyNote   String?
-  submittedAt DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  forwardedAt          DateTime?
+  forwardedBy          String?
+  forwardChannel       String?
+  forwardNote          String?
+  status               FeedbackStatus @default(ON_TIME)
+  dueAt                DateTime?
+  submittedByRole      String?
+  submittedByUserId    String?
+  isProxyDraft         Boolean        @default(false)
+  proxyNote            String?
+  submittedAt          DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -353,30 +357,30 @@ model SessionTeacherChange {
 }
 
 model Student {
-  id        String   @id @default(uuid())
-  name      String
-  school    String?
-  birthDate DateTime?
-  grade     String?
-  targetSchool String?
-  currentMajor String?
+  id              String    @id @default(uuid())
+  name            String
+  school          String?
+  birthDate       DateTime?
+  grade           String?
+  targetSchool    String?
+  currentMajor    String?
   coachingContent String?
-  note      String?
+  note            String?
   sourceChannelId String?
   studentTypeId   String?
 
-  enrollments  Enrollment[]
-  appointments Appointment[]
-  packages     CoursePackage[]
+  enrollments        Enrollment[]
+  appointments       Appointment[]
+  packages           CoursePackage[]
   sharedPackageLinks CoursePackageSharedStudent[]
-  attendances  Attendance[]
-  oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateStudent")
-  oneOnOneClasses Class[] @relation("OneOnOneStudentClass")
-  sessions Session[] @relation("SessionStudent")
-  sourceChannel StudentSourceChannel? @relation(fields: [sourceChannelId], references: [id])
-  studentType   StudentType? @relation(fields: [studentTypeId], references: [id])
-  bookingLinks StudentBookingLink[]
-  bookingRequests StudentBookingRequest[]
+  attendances        Attendance[]
+  oneOnOneTemplates  TeacherOneOnOneTemplate[]    @relation("TeacherOneOnOneTemplateStudent")
+  oneOnOneClasses    Class[]                      @relation("OneOnOneStudentClass")
+  sessions           Session[]                    @relation("SessionStudent")
+  sourceChannel      StudentSourceChannel?        @relation(fields: [sourceChannelId], references: [id])
+  studentType        StudentType?                 @relation(fields: [studentTypeId], references: [id])
+  bookingLinks       StudentBookingLink[]
+  bookingRequests    StudentBookingRequest[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -418,7 +422,7 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  teacher  Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  teacher  Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   sessions AuthSession[]
 }
 
@@ -463,31 +467,35 @@ model Appointment {
   endAt     DateTime
   mode      AppointmentMode
 
-  teacher Teacher @relation(fields: [teacherId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
+  teacher         Teacher                 @relation(fields: [teacherId], references: [id])
+  student         Student                 @relation(fields: [studentId], references: [id])
   bookingRequests StudentBookingRequest[]
+
+  @@index([teacherId, startAt])
+  @@index([studentId, startAt])
+  @@index([startAt])
 }
 
 model StudentBookingLink {
-  id          String   @id @default(uuid())
-  token       String   @unique
-  studentId   String
-  title       String?
-  note        String?
-  startDate   DateTime
-  endDate     DateTime
-  durationMin Int      @default(60)
-  slotStepMin Int      @default(15)
-  onlySelectedSlots Boolean @default(false)
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String    @id @default(uuid())
+  token             String    @unique
+  studentId         String
+  title             String?
+  note              String?
+  startDate         DateTime
+  endDate           DateTime
+  durationMin       Int       @default(60)
+  slotStepMin       Int       @default(15)
+  onlySelectedSlots Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  student  Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teachers StudentBookingLinkTeacher[]
+  student       Student                          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teachers      StudentBookingLinkTeacher[]
   selectedSlots StudentBookingLinkSelectedSlot[]
-  requests StudentBookingRequest[]
+  requests      StudentBookingRequest[]
 
   @@index([studentId, createdAt])
   @@index([token, isActive])
@@ -535,28 +543,28 @@ model TodoReminderConfirm {
 }
 
 model StudentBookingRequest {
-  id             String               @id @default(uuid())
-  linkId         String
-  studentId      String
-  teacherId      String
-  startAt        DateTime
-  endAt          DateTime
-  coursePref     String?
-  note           String?
-  status         BookingRequestStatus @default(PENDING)
-  reviewedAt     DateTime?
-  reviewedBy     String?
-  adminNote      String?
-  appointmentId  String?
-  sessionId      String?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id            String               @id @default(uuid())
+  linkId        String
+  studentId     String
+  teacherId     String
+  startAt       DateTime
+  endAt         DateTime
+  coursePref    String?
+  note          String?
+  status        BookingRequestStatus @default(PENDING)
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  adminNote     String?
+  appointmentId String?
+  sessionId     String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
-  link        StudentBookingLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  student     Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher     Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  appointment Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  session     Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  link        StudentBookingLink             @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  student     Student                        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher     Teacher                        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  appointment Appointment?                   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  session     Session?                       @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   slotLock    StudentBookingRequestSlotLock?
 
   @@index([linkId, status, createdAt])
@@ -595,21 +603,23 @@ model CoursePackage {
   validFrom DateTime
   validTo   DateTime?
 
-  paid      Boolean  @default(false)
-  paidAt    DateTime?
+  paid       Boolean   @default(false)
+  paidAt     DateTime?
   paidAmount Int?
-  paidNote  String?
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  paidNote   String?
+  note       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  student     Student      @relation(fields: [studentId], references: [id])
-  course      Course       @relation(fields: [courseId], references: [id])
-  txns        PackageTxn[]
-  attendances Attendance[]
+  student        Student                      @relation(fields: [studentId], references: [id])
+  course         Course                       @relation(fields: [courseId], references: [id])
+  txns           PackageTxn[]
+  attendances    Attendance[]
   sharedStudents CoursePackageSharedStudent[]
 
   @@index([studentId, courseId])
+  @@index([studentId, courseId, status, validFrom, validTo])
+  @@index([courseId, status, validFrom, validTo])
 }
 
 model CoursePackageSharedStudent {
@@ -635,6 +645,10 @@ model PackageTxn {
   createdAt    DateTime @default(now())
 
   package CoursePackage @relation(fields: [packageId], references: [id])
+
+  @@index([packageId, createdAt])
+  @@index([kind, createdAt])
+  @@index([sessionId])
 }
 
 model Attendance {
@@ -646,8 +660,8 @@ model Attendance {
   deductedCount   Int @default(0)
   deductedMinutes Int @default(0)
 
-  packageId String?
-  note      String?
+  packageId     String?
+  note          String?
   excusedCharge Boolean @default(false)
 
   createdAt DateTime @default(now())
