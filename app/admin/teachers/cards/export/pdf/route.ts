@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
+const MAX_SUBJECT_LINES = 6;
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -65,13 +66,17 @@ function drawTeacherCardPage(doc: PDFDoc, teacher: any) {
     : teacher.subjectCourse
       ? [`${teacher.subjectCourse.course.name}-${teacher.subjectCourse.name}`]
       : [];
+  const subjectLinesForCard =
+    subjectLabels.length > MAX_SUBJECT_LINES
+      ? [...subjectLabels.slice(0, MAX_SUBJECT_LINES), `+${subjectLabels.length - MAX_SUBJECT_LINES} 更多课程科目`]
+      : subjectLabels;
 
   doc.rect(0, 0, pageW, pageH).fill("#efefef");
   doc.rect(0, 0, leftW, pageH).fill("#f5b700");
 
   doc.fillColor("white").fontSize(42).text(teacher.name, 24, 58, { width: leftW - 42 });
   doc.fontSize(24).text("教授", 24, 122, { width: leftW - 42 });
-  doc.fontSize(13).text(subjectLabels.length ? subjectLabels.join("\n") : "课程", 24, 164, {
+  doc.fontSize(13).text(subjectLinesForCard.length ? subjectLinesForCard.join("\n") : "课程", 24, 164, {
     width: leftW - 42,
     lineGap: 2,
   });
