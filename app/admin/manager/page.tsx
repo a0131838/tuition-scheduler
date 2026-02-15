@@ -5,6 +5,7 @@ import { packageModeFromNote } from "@/lib/package-mode";
 
 const ATTENDED_STATUS = new Set(["PRESENT", "LATE"]);
 const DEFAULT_REQ_OVERDUE_HOURS = 24;
+const DEFAULT_RECENT_DAYS = 3;
 
 function ymd(d: Date) {
   const y = d.getFullYear();
@@ -109,6 +110,7 @@ export default async function AdminManagerPage({
     teacherId?: string;
     courseId?: string;
     reqOverdueHours?: string;
+    recentDays?: string;
     eventType?: string;
   }>;
 }) {
@@ -120,6 +122,7 @@ export default async function AdminManagerPage({
   const selectedTeacherId = (sp?.teacherId ?? "").trim();
   const selectedCourseId = (sp?.courseId ?? "").trim();
   const selectedEventType = (sp?.eventType ?? "").trim().toUpperCase();
+  const recentDays = Math.min(30, Math.max(1, Number(sp?.recentDays ?? DEFAULT_RECENT_DAYS) || DEFAULT_RECENT_DAYS));
   const reqOverdueHours = Math.max(
     1,
     Number(sp?.reqOverdueHours ?? DEFAULT_REQ_OVERDUE_HOURS) || DEFAULT_REQ_OVERDUE_HOURS
@@ -128,8 +131,8 @@ export default async function AdminManagerPage({
   const now = new Date();
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const past7Start = new Date(dayStart);
-  past7Start.setDate(dayStart.getDate() - 7);
+  const recentStart = new Date(dayStart);
+  recentStart.setDate(dayStart.getDate() - recentDays);
   const tomorrowStart = new Date(dayStart);
   tomorrowStart.setDate(dayStart.getDate() + 1);
   const tomorrowEnd = new Date(dayEnd);
@@ -156,7 +159,7 @@ export default async function AdminManagerPage({
       orderBy: { startAt: "asc" },
     }),
     prisma.session.findMany({
-      where: { startAt: { gte: past7Start, lte: dayEnd } },
+      where: { startAt: { gte: recentStart, lte: dayEnd } },
       include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
       orderBy: { startAt: "asc" },
     }),
@@ -165,25 +168,25 @@ export default async function AdminManagerPage({
       include: { class: { include: { teacher: true, course: true, subject: true, level: true, campus: true, room: true } } },
     }),
     prisma.studentBookingRequest.findMany({
-      where: { updatedAt: { gte: past7Start } },
+      where: { updatedAt: { gte: recentStart } },
       include: { student: true, teacher: true },
       orderBy: { updatedAt: "desc" },
       take: 40,
     }),
     prisma.sessionTeacherChange.findMany({
-      where: { changedAt: { gte: past7Start } },
+      where: { changedAt: { gte: recentStart } },
       include: { session: true, fromTeacher: true, toTeacher: true },
       orderBy: { changedAt: "desc" },
       take: 40,
     }),
     prisma.packageTxn.findMany({
-      where: { createdAt: { gte: past7Start }, kind: { in: ["ADJUST", "ROLLBACK"] } },
+      where: { createdAt: { gte: recentStart }, kind: { in: ["ADJUST", "ROLLBACK"] } },
       include: { package: { include: { student: true, course: true } } },
       orderBy: { createdAt: "desc" },
       take: 40,
     }),
     prisma.attendance.findMany({
-      where: { updatedAt: { gte: past7Start }, status: { not: "UNMARKED" } },
+      where: { updatedAt: { gte: recentStart }, status: { not: "UNMARKED" } },
       include: {
         student: true,
         session: {
@@ -430,6 +433,10 @@ export default async function AdminManagerPage({
           <label>
             {t(lang, "Request SLA(h)", "请求超时阈值(小时)")}:
             <input name="reqOverdueHours" type="number" min={1} defaultValue={String(reqOverdueHours)} style={{ marginLeft: 6, width: 90 }} />
+          </label>
+          <label>
+            {t(lang, "Recent Days", "最近天数")}:
+            <input name="recentDays" type="number" min={1} max={30} defaultValue={String(recentDays)} style={{ marginLeft: 6, width: 70 }} />
           </label>
           <label>
             {t(lang, "Event Type", "事件类型")}:

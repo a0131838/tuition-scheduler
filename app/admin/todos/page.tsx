@@ -98,11 +98,13 @@ async function rerunConflictAudit(formData: FormData) {
   const warnMinutes = String(formData.get("warnMinutes") ?? "");
   const pastDays = String(formData.get("pastDays") ?? "");
   const showConfirmed = String(formData.get("showConfirmed") ?? "");
+  const includeConflicts = String(formData.get("includeConflicts") ?? "");
   const p = new URLSearchParams();
   if (warnDays) p.set("warnDays", warnDays);
   if (warnMinutes) p.set("warnMinutes", warnMinutes);
   if (pastDays) p.set("pastDays", pastDays);
   if (showConfirmed === "1") p.set("showConfirmed", "1");
+  if (includeConflicts === "1") p.set("includeConflicts", "1");
   redirect(`/admin/todos?${p.toString()}`);
 }
 
@@ -117,18 +119,20 @@ async function runAutoFixNow(formData: FormData) {
   const warnMinutes = String(formData.get("warnMinutes") ?? "");
   const pastDays = String(formData.get("pastDays") ?? "");
   const showConfirmed = String(formData.get("showConfirmed") ?? "");
+  const includeConflicts = String(formData.get("includeConflicts") ?? "");
   const p = new URLSearchParams();
   if (warnDays) p.set("warnDays", warnDays);
   if (warnMinutes) p.set("warnMinutes", warnMinutes);
   if (pastDays) p.set("pastDays", pastDays);
   if (showConfirmed === "1") p.set("showConfirmed", "1");
+  if (includeConflicts === "1") p.set("includeConflicts", "1");
   redirect(`/admin/todos?${p.toString()}`);
 }
 
 export default async function AdminTodosPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string }>;
+  searchParams?: Promise<{ warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -139,6 +143,7 @@ export default async function AdminTodosPage({
   const pastPage = Math.max(1, toInt(sp?.pastPage, 1));
   const pastPageSize = 50;
   const showConfirmed = sp?.showConfirmed === "1";
+  const includeConflicts = sp?.includeConflicts === "1";
 
   const now = new Date();
   const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -486,19 +491,23 @@ export default async function AdminTodosPage({
       return a.remaining - b.remaining;
     });
 
-  const monthSessions = await prisma.session.findMany({
-    where: { startAt: { gte: monthStart, lt: monthEnd } },
-    include: {
-      teacher: true,
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-    orderBy: { startAt: "asc" },
-  });
-  const monthAppointments = await prisma.appointment.findMany({
-    where: { startAt: { gte: monthStart, lt: monthEnd } },
-    include: { teacher: true, student: true },
-    orderBy: { startAt: "asc" },
-  });
+  const [monthSessions, monthAppointments] = includeConflicts
+    ? await Promise.all([
+        prisma.session.findMany({
+          where: { startAt: { gte: monthStart, lt: monthEnd } },
+          include: {
+            teacher: true,
+            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+          },
+          orderBy: { startAt: "asc" },
+        }),
+        prisma.appointment.findMany({
+          where: { startAt: { gte: monthStart, lt: monthEnd } },
+          include: { teacher: true, student: true },
+          orderBy: { startAt: "asc" },
+        }),
+      ])
+    : [[], []];
 
   const conflicts: Array<{
     type: string;
@@ -658,6 +667,7 @@ export default async function AdminTodosPage({
     p.set("pastDays", String(pastDays));
     if (pastPage) p.set("pastPage", String(pastPage));
     if (showConfirmed) p.set("showConfirmed", "1");
+    if (includeConflicts) p.set("includeConflicts", "1");
     Object.entries(extra).forEach(([k, v]) => {
       if (v == null || v === "") p.delete(k);
       else p.set(k, String(v));
@@ -1204,7 +1214,12 @@ export default async function AdminTodosPage({
               {t(lang, "This Month Conflict Details", "本月冲突明细")} ({t(lang, "Count", "数量")}: {conflictList.length})
             </summary>
             <div style={{ marginTop: 10 }}>
-              {conflictList.length === 0 ? (
+              {!includeConflicts ? (
+                <div style={{ color: "#64748b" }}>
+                  {t(lang, "Conflict scan is lazy-loaded to reduce DB compute.", "为减少数据库算力占用，冲突扫描默认按需加载。")}{" "}
+                  <a href={todoHref({ includeConflicts: 1, pastPage: 1 })}>{t(lang, "Load now", "立即加载")}</a>
+                </div>
+              ) : conflictList.length === 0 ? (
                 <div style={{ color: "#999" }}>
                   {t(lang, "No conflicts found this month.", "本月未发现冲突。")}
                 </div>

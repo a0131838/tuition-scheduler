@@ -8,32 +8,43 @@ import NoticeBanner from "../_components/NoticeBanner";
 export default async function ClassesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; page?: string; pageSize?: string }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
+  const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
+  const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
-  const [classes, courses, subjects, levels, teachers, campuses, rooms] = await Promise.all([
+  const classInclude = {
+    course: true,
+    subject: { include: { course: true } },
+    level: { include: { subject: true } },
+    teacher: true,
+    campus: true,
+    room: true,
+    oneOnOneGroup: {
+      include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+    },
+    oneOnOneStudent: true,
+    enrollments: { include: { student: true } },
+    _count: { select: { enrollments: true, sessions: true } } as any,
+  };
+  const oneOnOneWhere = { capacity: 1 };
+  const groupWhere = { NOT: { capacity: 1 } };
+
+  const [oneOnOneClasses, groupTotal, courses, subjects, levels, teachers, campuses, rooms] = await Promise.all([
     prisma.class.findMany({
+      where: oneOnOneWhere,
       include: {
-        course: true,
-        subject: { include: { course: true } },
-        level: { include: { subject: true } },
-        teacher: true,
-        campus: true,
-        room: true,
-        oneOnOneGroup: {
-          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
-        },
-        oneOnOneStudent: true,
-        enrollments: { include: { student: true } },
-        _count: { select: { enrollments: true, sessions: true } } as any,
+        ...classInclude,
       },
       orderBy: { id: "asc" },
     }),
+    prisma.class.count({ where: groupWhere }),
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
     prisma.level.findMany({ include: { subject: { include: { course: true } } }, orderBy: [{ subjectId: "asc" }, { name: "asc" }] }),
@@ -41,6 +52,23 @@ export default async function ClassesPage({
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
+  const groupTotalPages = Math.max(1, Math.ceil(groupTotal / pageSize));
+  const page = Math.min(requestedPage, groupTotalPages);
+  const groupClasses = await prisma.class.findMany({
+    where: groupWhere,
+    include: { ...classInclude },
+    orderBy: { id: "asc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+  const totalClasses = oneOnOneClasses.length + groupTotal;
+  const buildPageHref = (targetPage: number, targetPageSize = pageSize) => {
+    const params = new URLSearchParams();
+    params.set("pageSize", String(targetPageSize));
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const q = params.toString();
+    return q ? `/admin/classes?${q}` : "/admin/classes";
+  };
 
   return (
     <div>
@@ -111,13 +139,11 @@ export default async function ClassesPage({
         </SimpleModal>
       </div>
 
-      {classes.length === 0 ? (
+      {totalClasses === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No classes yet.", "暂无班级")}</div>
       ) : (
         <>
           {(() => {
-            const oneOnOneClasses = classes.filter((c) => c.capacity === 1);
-            const groupClasses = classes.filter((c) => c.capacity !== 1);
             const totalOneOnOneStudents = Array.from(
               new Set(
                 oneOnOneClasses.flatMap((c) =>
@@ -135,7 +161,7 @@ export default async function ClassesPage({
                 teacherLabel: string;
                 campusLabel: string;
                 roomLabel: string;
-                classes: typeof classes;
+                classes: typeof oneOnOneClasses;
                 entries: { classId: string; studentId: string | null; studentName: string }[];
               }
             >();
@@ -241,6 +267,33 @@ export default async function ClassesPage({
                 )}
 
                 {groupClasses.length > 0 && (
+                  <>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+                    <span style={{ color: "#666", fontSize: 12 }}>
+                      {t(lang, "Group Classes", "班课")} {t(lang, "Page", "页")}: {page} / {groupTotalPages} · {t(lang, "Total", "总数")}: {groupTotal}
+                    </span>
+                    <span style={{ color: "#666", fontSize: 12 }}>
+                      {t(lang, "Per Page", "每页")}:{" "}
+                      {[20, 50, 100].map((size, idx) => (
+                        <span key={size}>
+                          {idx > 0 ? " / " : ""}
+                          {size === pageSize ? <b>{size}</b> : <a href={buildPageHref(1, size)}>{size}</a>}
+                        </span>
+                      ))}
+                    </span>
+                    <a
+                      href={page > 1 ? buildPageHref(page - 1) : "#"}
+                      style={{ pointerEvents: page > 1 ? "auto" : "none", opacity: page > 1 ? 1 : 0.4 }}
+                    >
+                      {t(lang, "Prev", "上一页")}
+                    </a>
+                    <a
+                      href={page < groupTotalPages ? buildPageHref(page + 1) : "#"}
+                      style={{ pointerEvents: page < groupTotalPages ? "auto" : "none", opacity: page < groupTotalPages ? 1 : 0.4 }}
+                    >
+                      {t(lang, "Next", "下一页")}
+                    </a>
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
                     {groupClasses.map((c) => (
                       <div key={c.id} style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
@@ -281,6 +334,7 @@ export default async function ClassesPage({
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </>
             );
