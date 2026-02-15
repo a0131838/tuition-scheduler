@@ -543,20 +543,22 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     }
 
     const courseId = subject.courseId;
-    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-    const activePkg = await prisma.coursePackage.findFirst({
-      where: {
-        studentId,
-        courseId,
-        status: "ACTIVE",
-        validFrom: { lte: packageCheckAt },
-        OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
-        AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
-      },
-      select: { id: true },
-    });
-    if (!activePkg) {
-      redirect(backWithQuickParams({ err: "No active package for this course" }));
+    if (!bypassAvailabilityCheck) {
+      const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
+      const activePkg = await prisma.coursePackage.findFirst({
+        where: {
+          studentId,
+          courseId,
+          status: "ACTIVE",
+          validFrom: { lte: packageCheckAt },
+          OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
+          AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+        },
+        select: { id: true },
+      });
+      if (!activePkg) {
+        redirect(backWithQuickParams({ err: "No active package for this course" }));
+      }
     }
 
     const cls = await getOrCreateOneOnOneClassForStudent({
@@ -1148,7 +1150,7 @@ export default async function StudentDetailPage({
         }
       }
     }
-    if (!quickPackageWarn) {
+    if (!quickPackageWarn && !bypassAvailabilityCheck) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
           studentId,
