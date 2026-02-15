@@ -179,6 +179,14 @@ export default function QuickScheduleModal({
         dialogRef.current?.close();
         const params = new URLSearchParams(searchParams?.toString() ?? "");
         params.delete("err");
+        params.delete("quickOpen");
+        params.delete("quickCourseId");
+        params.delete("quickSubjectId");
+        params.delete("quickLevelId");
+        params.delete("quickCampusId");
+        params.delete("quickRoomId");
+        params.delete("quickStartAt");
+        params.delete("quickDurationMin");
         params.set("msg", "Scheduled");
         const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
         router.replace(target, { scroll: false });
