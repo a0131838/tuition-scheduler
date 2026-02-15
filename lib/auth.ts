@@ -6,6 +6,8 @@ import crypto from "crypto";
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
 const DEFAULT_OWNER_MANAGER_EMAIL = "zhaohongwei0880@gmail.com";
+const STRICT_SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
+const STRICT_SUPER_ADMIN_NAME = "zhao hongwei";
 
 type AuthUser = {
   id: string;
@@ -148,6 +150,13 @@ export function isOwnerManager(user: Pick<AuthUser, "role" | "email"> | null | u
   const owner = (process.env.OWNER_MANAGER_EMAIL ?? DEFAULT_OWNER_MANAGER_EMAIL).trim().toLowerCase();
   if (!owner) return false;
   return user.email.toLowerCase() === owner;
+}
+
+export function isStrictSuperAdmin(user: Pick<AuthUser, "role" | "email" | "name"> | null | undefined) {
+  if (!user || user.role !== "ADMIN") return false;
+  const email = user.email.trim().toLowerCase();
+  const name = user.name.trim().toLowerCase().replace(/\s+/g, " ");
+  return email === STRICT_SUPER_ADMIN_EMAIL && name === STRICT_SUPER_ADMIN_NAME;
 }
 
 export async function requireOwnerManager() {

@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
+import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -397,6 +398,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
   const month = String(formData.get("month") ?? "").trim();
+  const bypassAvailabilityCheck = isStrictSuperAdmin(await getCurrentUser());
 
   const backWithQuickParams = (extra: Record<string, string>) => {
     const params = new URLSearchParams();
@@ -456,9 +458,11 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       redirect(backWithQuickParams({ err: "Teacher cannot teach this course" }));
     }
 
-    const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
-    if (availErr) {
-      redirect(backWithQuickParams({ err: availErr }));
+    if (!bypassAvailabilityCheck) {
+      const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
+      if (availErr) {
+        redirect(backWithQuickParams({ err: availErr }));
+      }
     }
 
     const teacherSessionConflict = await prisma.session.findFirst({
@@ -922,6 +926,7 @@ export default async function StudentDetailPage({
   const quickOpen = sp?.quickOpen === "1";
 
   const now = new Date();
+  const bypassAvailabilityCheck = isStrictSuperAdmin(await getCurrentUser());
   const monthParsed = parseMonth(monthParam);
   const monthDate = monthParsed ? new Date(monthParsed.year, monthParsed.month - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
   const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1, 0, 0, 0, 0);
@@ -1189,10 +1194,12 @@ export default async function StudentDetailPage({
           });
           continue;
         }
-        const availErr = await checkTeacherAvailability(tch.id, startAt, endAt);
-        if (availErr) {
-          quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availErr });
-          continue;
+        if (!bypassAvailabilityCheck) {
+          const availErr = await checkTeacherAvailability(tch.id, startAt, endAt);
+          if (availErr) {
+            quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availErr });
+            continue;
+          }
         }
         const sessionConflict = await prisma.session.findFirst({
           where: {

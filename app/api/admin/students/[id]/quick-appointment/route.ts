@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -83,9 +83,10 @@ function canTeachSubject(teacher: any, subjectId?: string | null) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const { id: studentId } = await params;
   if (!studentId) return bad("Missing studentId");
+  const bypassAvailabilityCheck = isStrictSuperAdmin(user);
 
   let body: any;
   try {
@@ -126,8 +127,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!teacher) return bad("Teacher not found", 404);
   if (!canTeachSubject(teacher, subjectId)) return bad("Teacher cannot teach this course", 409);
 
-  const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
-  if (availErr) return bad(availErr, 409);
+  if (!bypassAvailabilityCheck) {
+    const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
+    if (availErr) return bad(availErr, 409);
+  }
 
   const teacherSessionConflict = await prisma.session.findFirst({
     where: {
