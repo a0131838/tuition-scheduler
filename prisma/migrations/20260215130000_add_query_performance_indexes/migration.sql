@@ -1,4 +1,4 @@
-﻿-- Session query indexes
+-- Session query indexes
 CREATE INDEX IF NOT EXISTS "Session_classId_startAt_idx" ON "Session"("classId", "startAt");
 CREATE INDEX IF NOT EXISTS "Session_teacherId_startAt_idx" ON "Session"("teacherId", "startAt");
 CREATE INDEX IF NOT EXISTS "Session_startAt_idx" ON "Session"("startAt");
