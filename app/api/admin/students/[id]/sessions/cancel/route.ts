@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -47,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!packageId && delta > 0) {
           const pkg = await tx.coursePackage.findFirst({
             where: {
-              studentId,
+              ...coursePackageAccessibleByStudent(studentId),
               courseId: session.class.courseId,
               type: "HOURS",
               status: "ACTIVE",
@@ -68,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const pkg = await tx.coursePackage.findFirst({
           where: {
             id: packageId,
-            studentId,
+            ...coursePackageAccessibleByStudent(studentId),
             courseId: session.class.courseId,
             status: "ACTIVE",
             validFrom: { lte: session.startAt },

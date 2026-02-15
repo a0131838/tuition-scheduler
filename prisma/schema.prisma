@@ -368,6 +368,7 @@ model Student {
   enrollments  Enrollment[]
   appointments Appointment[]
   packages     CoursePackage[]
+  sharedPackageLinks CoursePackageSharedStudent[]
   attendances  Attendance[]
   oneOnOneTemplates TeacherOneOnOneTemplate[] @relation("TeacherOneOnOneTemplateStudent")
   oneOnOneClasses Class[] @relation("OneOnOneStudentClass")
@@ -606,8 +607,22 @@ model CoursePackage {
   course      Course       @relation(fields: [courseId], references: [id])
   txns        PackageTxn[]
   attendances Attendance[]
+  sharedStudents CoursePackageSharedStudent[]
 
   @@index([studentId, courseId])
+}
+
+model CoursePackageSharedStudent {
+  id        String   @id @default(uuid())
+  packageId String
+  studentId String
+  createdAt DateTime @default(now())
+
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, studentId])
+  @@index([studentId])
 }
 
 model PackageTxn {

@@ -42,6 +42,7 @@ export default function PackageCreateFormClient({
     paidAt: string;
     paidAmount: string;
     paidNote: string;
+    sharedStudents: string;
     note: string;
     create: string;
     confirmCreate: string;
@@ -78,6 +79,7 @@ export default function PackageCreateFormClient({
             paidAt: String(fd.get("paidAt") ?? ""),
             paidAmount: String(fd.get("paidAmount") ?? ""),
             paidNote: String(fd.get("paidNote") ?? ""),
+            sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
             note: String(fd.get("note") ?? ""),
           };
 
@@ -191,6 +193,17 @@ export default function PackageCreateFormClient({
       <label>
         {labels.paidNote}:
         <input name="paidNote" type="text" style={{ marginLeft: 8, width: 520 }} />
+      </label>
+
+      <label>
+        {labels.sharedStudents}:
+        <select name="sharedStudentIds" multiple size={6} style={{ marginLeft: 8, minWidth: 520 }}>
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label>

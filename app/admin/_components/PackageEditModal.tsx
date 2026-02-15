@@ -15,6 +15,7 @@ type Labels = {
   paidAt: string;
   paidAmount: string;
   paidNote: string;
+  sharedStudents: string;
   remaining: string;
   validFrom: string;
   validTo: string;
@@ -34,14 +35,17 @@ type PackageRow = {
   paidAt: Date | null;
   paidAmount: number | null;
   paidNote: string | null;
+  sharedStudents: Array<{ studentId: string }>;
   note: string | null;
 };
 
 export default function PackageEditModal({
   pkg,
+  students,
   labels,
 }: {
   pkg: PackageRow;
+  students: Array<{ id: string; name: string }>;
   labels: Labels;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -130,6 +134,7 @@ export default function PackageEditModal({
                 paidAt: String(fd.get("paidAt") ?? ""),
                 paidAmount: String(fd.get("paidAmount") ?? ""),
                 paidNote: String(fd.get("paidNote") ?? ""),
+                sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
                 note: String(fd.get("note") ?? ""),
               };
 
@@ -198,6 +203,22 @@ export default function PackageEditModal({
           <label>
             {labels.paidNote}:
             <input name="paidNote" type="text" defaultValue={pkg.paidNote ?? ""} style={{ marginLeft: 8, width: "100%" }} />
+          </label>
+          <label>
+            {labels.sharedStudents}:
+            <select
+              name="sharedStudentIds"
+              multiple
+              size={6}
+              defaultValue={pkg.sharedStudents.map((s) => s.studentId)}
+              style={{ marginLeft: 8, width: "100%" }}
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             {labels.note}:

@@ -54,6 +54,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
+  const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
+    ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
+    : [];
 
   if (!validFromStr) return bad("Missing validFrom", 409);
 
@@ -62,6 +65,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     select: { remainingMinutes: true, note: true, type: true, studentId: true, courseId: true },
   });
   if (!pkg) return bad("Package not found", 404);
+  const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
 
   const validFrom = parseDateStart(validFromStr);
   const validTo = validToStr ? parseDateEnd(validToStr) : null;
@@ -88,6 +92,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   );
   const updateMode = modeKeyFromSaved(pkg.type, note);
   const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
+
+  if (sharedStudentIds.length > 0) {
+    const rows = await prisma.student.findMany({
+      where: { id: { in: sharedStudentIds } },
+      select: { id: true },
+    });
+    if (rows.length !== sharedStudentIds.length) return bad("Invalid sharedStudentIds", 409);
+  }
 
   if (status === "ACTIVE" && updateMode === "MONTHLY") {
     const overlap = await prisma.coursePackage.findFirst({
@@ -117,6 +129,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       paidAmount: paid ? paidAmount : null,
       paidNote: paid ? paidNote || null : null,
       note: note || null,
+      sharedStudents: {
+        deleteMany: {},
+        ...(sharedStudentIds.length
+          ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
+          : {}),
+      },
     },
   });
 
@@ -145,4 +163,3 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   await prisma.coursePackage.delete({ where: { id } });
   return Response.json({ ok: true });
 }
-

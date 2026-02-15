@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
+import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -547,7 +548,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
       const activePkg = await prisma.coursePackage.findFirst({
         where: {
-          studentId,
+          ...coursePackageAccessibleByStudent(studentId),
           courseId,
           status: "ACTIVE",
           validFrom: { lte: packageCheckAt },
@@ -737,7 +738,7 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     if (!packageId && delta > 0) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
-          studentId,
+          ...coursePackageAccessibleByStudent(studentId),
           courseId: session.class.courseId,
           type: "HOURS",
           status: "ACTIVE",
@@ -758,7 +759,7 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     const pkg = await prisma.coursePackage.findFirst({
       where: {
         id: packageId,
-        studentId,
+        ...coursePackageAccessibleByStudent(studentId),
         courseId: session.class.courseId,
         status: "ACTIVE",
         validFrom: { lte: session.startAt },
@@ -986,8 +987,8 @@ export default async function StudentDetailPage({
     rooms,
   ] = await Promise.all([
     prisma.enrollment.count({ where: { studentId } }),
-    prisma.coursePackage.count({ where: { studentId } }),
-    prisma.coursePackage.count({ where: { studentId, paid: false } }),
+    prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId) } }),
+    prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId), paid: false } }),
     prisma.attendance.count({ where: { studentId, status: "EXCUSED" } }),
     prisma.enrollment.findMany({
       where: { studentId },
@@ -997,7 +998,7 @@ export default async function StudentDetailPage({
       orderBy: { id: "asc" },
     }),
     prisma.coursePackage.findMany({
-      where: { studentId },
+      where: { ...coursePackageAccessibleByStudent(studentId) },
       include: { course: true },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -1153,7 +1154,7 @@ export default async function StudentDetailPage({
     if (!quickPackageWarn && !bypassAvailabilityCheck) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
-          studentId,
+          ...coursePackageAccessibleByStudent(studentId),
           courseId: quickSubject?.courseId ?? "",
           status: "ACTIVE",
           validFrom: { lte: startAt },

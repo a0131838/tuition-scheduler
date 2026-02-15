@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
+import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -193,7 +194,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
     const activePkg = await prisma.coursePackage.findFirst({
       where: {
-        studentId,
+        ...coursePackageAccessibleByStudent(studentId),
         courseId,
         status: "ACTIVE",
         validFrom: { lte: packageCheckAt },

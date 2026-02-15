@@ -73,20 +73,31 @@ export default async function AttendancePage({
   const classIsGroup = session.class.capacity !== 1;
   const packages = await prisma.coursePackage.findMany({
     where: {
-      studentId: { in: studentIds },
+      AND: [
+        {
+          OR: [
+            { studentId: { in: studentIds } },
+            { sharedStudents: { some: { studentId: { in: studentIds } } } },
+          ],
+        },
+        { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
+      ],
       courseId: session.class.courseId,
       status: PackageStatus.ACTIVE,
       validFrom: { lte: session.startAt },
-      OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
     },
     orderBy: [{ studentId: "asc" }, { validTo: "asc" }],
+    include: { sharedStudents: { select: { studentId: true } } },
   });
 
   const pkgMap = new Map<string, typeof packages>();
   for (const p of packages) {
-    const arr = pkgMap.get(p.studentId) ?? [];
-    arr.push(p);
-    pkgMap.set(p.studentId, arr);
+    const targetIds = new Set<string>([p.studentId, ...p.sharedStudents.map((s) => s.studentId)]);
+    for (const targetId of targetIds) {
+      const arr = pkgMap.get(targetId) ?? [];
+      arr.push(p);
+      pkgMap.set(targetId, arr);
+    }
   }
 
   const excusedTotals = await prisma.attendance.groupBy({

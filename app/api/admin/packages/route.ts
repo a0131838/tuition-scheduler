@@ -56,11 +56,25 @@ export async function POST(req: Request) {
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
+  const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
+    ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
+    : [];
+  const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((id) => id !== studentId);
 
   const totalMinutes = Number(body?.totalMinutes ?? 0);
 
   if (!studentId || !courseId || !validFromStr) {
     return bad("Missing studentId/courseId/validFrom", 409);
+  }
+
+  if (sharedStudentIds.length > 0) {
+    const rows = await prisma.student.findMany({
+      where: { id: { in: sharedStudentIds } },
+      select: { id: true },
+    });
+    if (rows.length !== sharedStudentIds.length) {
+      return bad("Invalid sharedStudentIds", 409);
+    }
   }
 
   const validFrom = parseDateStart(validFromStr);
@@ -118,6 +132,9 @@ export async function POST(req: Request) {
         paidAmount,
         paidNote: paidNote || null,
         note: packageNote || null,
+        sharedStudents: sharedStudentIds.length
+          ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
+          : undefined,
         txns: {
           create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: packageNote || null },
         },
@@ -142,6 +159,9 @@ export async function POST(req: Request) {
       paidAmount,
       paidNote: paidNote || null,
       note: packageNote || null,
+      sharedStudents: sharedStudentIds.length
+        ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
+        : undefined,
       txns: {
         create: { kind: "PURCHASE", deltaMinutes: 0, note: packageNote || null },
       },

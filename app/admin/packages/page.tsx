@@ -67,7 +67,7 @@ export default async function AdminPackagesPage({
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.coursePackage.findMany({
       where: wherePackages,
-      include: { student: true, course: true },
+      include: { student: true, course: true, sharedStudents: { include: { student: true } } },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
@@ -146,6 +146,7 @@ export default async function AdminPackagesPage({
                 paidAt: t(lang, "Paid At", "付款时间"),
                 paidAmount: t(lang, "Paid Amount", "付款金额"),
                 paidNote: t(lang, "Paid Note", "付款备注"),
+                sharedStudents: t(lang, "Shared Students", "共享学生"),
                 note: t(lang, "Note", "备注"),
                 create: t(lang, "Create", "创建"),
                 confirmCreate: t(lang, "Create this package?", "确认创建课包？"),
@@ -210,6 +211,7 @@ export default async function AdminPackagesPage({
               <th align="left">{t(lang, "Paid At", "付款时间")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Paid Note", "付款备注")}</th>
+              <th align="left">{t(lang, "Shared Students", "共享学生")}</th>
               <th align="left">{t(lang, "Note", "备注")}</th>
               <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
@@ -296,11 +298,13 @@ export default async function AdminPackagesPage({
                 <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
                 <td>{p.paidAmount ?? "-"}</td>
                 <td>{p.paidNote ?? "-"}</td>
+                <td>{p.sharedStudents.map((x) => x.student.name).join(", ") || "-"}</td>
                 <td>{stripGroupPackTag(p.note) || "-"}</td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
                 <td>
                   <PackageEditModal
                     pkg={p}
+                    students={students.map((s) => ({ id: s.id, name: s.name }))}
                     labels={{
                       edit: t(lang, "Edit", "编辑"),
                       update: t(lang, "Update", "更新"),
@@ -313,6 +317,7 @@ export default async function AdminPackagesPage({
                       paidAt: t(lang, "Paid At", "付款时间"),
                       paidAmount: t(lang, "Amount", "金额"),
                       paidNote: t(lang, "Paid Note", "付款备注"),
+                      sharedStudents: t(lang, "Shared Students", "共享学生"),
                       remaining: t(lang, "Remaining", "剩余"),
                       validFrom: t(lang, "validFrom", "生效日期"),
                       validTo: t(lang, "validTo", "失效日期"),

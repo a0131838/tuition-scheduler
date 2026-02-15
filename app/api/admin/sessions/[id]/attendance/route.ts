@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { AttendanceStatus, PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { isGroupPackNote } from "@/lib/package-mode";
+import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -21,7 +22,7 @@ async function pickHoursPackageId(
 
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
-      studentId,
+      ...coursePackageAccessibleByStudent(studentId),
       courseId,
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
@@ -43,7 +44,7 @@ async function pickGroupPackPackageId(
   const { studentId, courseId, at, needCount } = opts;
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
-      studentId,
+      ...coursePackageAccessibleByStudent(studentId),
       courseId,
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
@@ -121,7 +122,7 @@ async function applyOneStudentAttendanceAndDeduct(
     const pkg = await tx.coursePackage.findFirst({
       where: {
         id: packageId,
-        studentId,
+        ...coursePackageAccessibleByStudent(studentId),
         courseId,
         status: PackageStatus.ACTIVE,
         validFrom: { lte: at },
@@ -335,4 +336,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   return Response.json({ ok: true, totalDeducted });
 }
-

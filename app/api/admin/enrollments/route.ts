@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { isGroupPackNote } from "@/lib/package-mode";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
+import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   const now = new Date();
   const candidatePkgs = await prisma.coursePackage.findMany({
     where: {
-      studentId,
+      ...coursePackageAccessibleByStudent(studentId),
       courseId: cls.courseId,
       status: "ACTIVE",
       validFrom: { lte: now },
@@ -86,4 +87,3 @@ export async function DELETE(req: Request) {
   const result = await prisma.enrollment.deleteMany({ where: { classId, studentId } });
   return Response.json({ ok: true, deleted: result.count });
 }
-
