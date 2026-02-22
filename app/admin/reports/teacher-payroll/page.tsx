@@ -6,8 +6,8 @@ import {
   loadTeacherPayroll,
   monthKey,
   parseMonth,
+  upsertTeacherPayrollRate,
 } from "@/lib/teacher-payroll";
-import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -33,8 +33,6 @@ async function saveRateAction(formData: FormData) {
   const courseId = typeof formData.get("courseId") === "string" ? String(formData.get("courseId")) : "";
   const subjectId = normalizeOptionalId(formData.get("subjectId"));
   const levelId = normalizeOptionalId(formData.get("levelId"));
-  const subjectKey = subjectId ?? "";
-  const levelKey = levelId ?? "";
   const hourlyRateRaw = typeof formData.get("hourlyRate") === "string" ? String(formData.get("hourlyRate")) : "0";
 
   const hourlyRate = Number(hourlyRateRaw);
@@ -43,28 +41,12 @@ async function saveRateAction(formData: FormData) {
   }
 
   const hourlyRateCents = Math.round(hourlyRate * 100);
-
-  await prisma.teacherCourseRate.upsert({
-    where: {
-      teacherId_courseId_subjectKey_levelKey: {
-        teacherId,
-        courseId,
-        subjectKey,
-        levelKey,
-      },
-    },
-    update: {
-      hourlyRateCents,
-    },
-    create: {
-      teacherId,
-      courseId,
-      subjectId,
-      levelId,
-      subjectKey,
-      levelKey,
-      hourlyRateCents,
-    },
+  await upsertTeacherPayrollRate({
+    teacherId,
+    courseId,
+    subjectId,
+    levelId,
+    hourlyRateCents,
   });
 
   revalidatePath("/admin/reports/teacher-payroll");
@@ -128,6 +110,15 @@ export default async function TeacherPayrollPage({
       <div style={{ marginBottom: 12 }}>
         <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
       </div>
+      {data.usingRateFallback ? (
+        <div style={{ marginBottom: 12, color: "#92400e" }}>
+          {t(
+            lang,
+            "Rate table migration not found. Using fallback storage for preview.",
+            "费率表迁移未生效，当前使用预览降级存储。"
+          )}
+        </div>
+      ) : null}
 
       {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
