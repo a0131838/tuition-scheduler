@@ -109,6 +109,7 @@ export async function loadMonthlyScheduleData(query: MonthlyScheduleQuery) {
       },
       include: {
         teacher: { select: { id: true, name: true } },
+        student: { select: { id: true, name: true } },
         class: {
           include: {
             teacher: { select: { id: true, name: true } },
@@ -117,6 +118,7 @@ export async function loadMonthlyScheduleData(query: MonthlyScheduleQuery) {
             level: { select: { name: true } },
             campus: { select: { id: true, name: true } },
             room: { select: { name: true } },
+            oneOnOneStudent: { select: { id: true, name: true } },
             enrollments: {
               include: { student: { select: { id: true, name: true } } },
             },

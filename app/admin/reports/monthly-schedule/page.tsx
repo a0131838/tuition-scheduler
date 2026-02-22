@@ -61,7 +61,15 @@ export default async function MonthlyScheduleReportPage({
   for (const s of sessions) {
     const dateKey = fmtYMD(new Date(s.startAt));
     const teacherName = s.teacher?.name ?? s.class.teacher.name;
-    const students = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
+    const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
+    const oneOnOneStudent =
+      s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
+    const students =
+      s.class.capacity === 1
+        ? oneOnOneStudent
+          ? [oneOnOneStudent]
+          : []
+        : enrolledStudents;
 
     teacherSet.add(teacherName);
     for (const studentName of students) studentSet.add(studentName);
