@@ -5,24 +5,23 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
+import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-function buildSessionLine(session: any) {
-  const plannedTime = fmtRange(session.startAt, session.endAt);
-  const courseLine = `${session.class.course.name}${session.class.subject ? ` / ${session.class.subject.name}` : ""}${
-    session.class.level ? ` / ${session.class.level.name}` : ""
-  }`;
-  return `${plannedTime} | ${courseLine}`;
+function getStudentNames(session: any) {
+  const classStudentNames = session.class.enrollments.map((e: any) => e.student.name).filter(Boolean);
+  const singleStudentName = session.student?.name ? [session.student.name] : [];
+  return Array.from(new Set([...classStudentNames, ...singleStudentName]));
 }
 
 function buildForwardText(row: any) {
   const classLine = `${row.session.class.course.name}${row.session.class.subject ? ` / ${row.session.class.subject.name}` : ""}${
     row.session.class.level ? ` / ${row.session.class.level.name}` : ""
   }`;
-  const studentNames = row.session.class.enrollments.map((e: any) => e.student.name).filter(Boolean);
+  const studentNames = getStudentNames(row.session);
   return [
     `Session / 课次: ${fmtRange(row.session.startAt, row.session.endAt)}`,
     `Class / 班级: ${classLine}`,
@@ -62,7 +61,7 @@ function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; statu
 export default async function AdminFeedbacksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string; msg?: string; err?: string }>;
+  searchParams?: Promise<{ status?: string; msg?: string; err?: string; studentId?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
@@ -71,16 +70,27 @@ export default async function AdminFeedbacksPage({
   const status = sp?.status ?? "missing";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const studentId = String(sp?.studentId ?? "").trim();
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
   const lookback = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+  const studentScopeWhere = studentId
+    ? {
+        session: {
+          OR: [{ studentId }, { class: { enrollments: { some: { studentId } } } }],
+        },
+      }
+    : undefined;
+
   const allFeedbackRows = await prisma.sessionFeedback.findMany({
+    where: studentScopeWhere,
     include: {
       teacher: true,
       session: {
         include: {
+          student: true,
           class: {
             include: {
               course: true,
@@ -97,10 +107,12 @@ export default async function AdminFeedbacksPage({
     orderBy: [{ submittedAt: "desc" }],
     take: 800,
   });
+
   const finalFeedbackRows = allFeedbackRows.filter((r) => isFinalTeacherFeedback(r));
   const pendingRows = finalFeedbackRows.filter((r) => !r.forwardedAt);
   const forwardedRows = finalFeedbackRows.filter((r) => !!r.forwardedAt);
   const proxyDraftRows = allFeedbackRows.filter((r) => !isFinalTeacherFeedback(r));
+
   const rows =
     status === "pending"
       ? pendingRows
@@ -113,9 +125,13 @@ export default async function AdminFeedbacksPage({
       : [];
 
   const overdueSessions = await prisma.session.findMany({
-    where: { endAt: { gte: lookback, lte: overdueAt } },
+    where: {
+      endAt: { gte: lookback, lte: overdueAt },
+      ...(studentId ? { OR: [{ studentId }, { class: { enrollments: { some: { studentId } } } }] } : {}),
+    },
     include: {
       teacher: true,
+      student: true,
       class: {
         include: {
           teacher: true,
@@ -161,15 +177,48 @@ export default async function AdminFeedbacksPage({
   const isOverdueTab = status === "missing" || status === "proxy";
   const shownOverdueRows = status === "proxy" ? overdueProxyRows : missingRows;
 
+  const students = await prisma.student.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: 1200,
+  });
+  const selectedStudentName = studentId ? students.find((s) => s.id === studentId)?.name ?? null : null;
+
+  const tabHref = (nextStatus: string) => {
+    const params = new URLSearchParams();
+    params.set("status", nextStatus);
+    if (studentId) params.set("studentId", studentId);
+    return `/admin/feedbacks?${params.toString()}`;
+  };
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <h2 style={{ marginBottom: 0 }}>{t(lang, "Teacher Feedback Desk", "老师课后反馈工作台")}</h2>
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
 
+      <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input type="hidden" name="status" value={status} />
+        <select name="studentId" defaultValue={studentId} style={{ minWidth: 280 }}>
+          <option value="">{t(lang, "All students", "全部学生")}</option>
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} (STU-{s.id.slice(0, 4)}…{s.id.slice(-4)})
+            </option>
+          ))}
+        </select>
+        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <a href={tabHref(status)}>{t(lang, "Clear", "清除")}</a>
+        {selectedStudentName ? (
+          <span style={{ color: "#334155", fontSize: 13 }}>
+            {t(lang, "Current student", "当前学生")}: {selectedStudentName}
+          </span>
+        ) : null}
+      </form>
+
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <a
-          href="/admin/feedbacks?status=missing"
+          href={tabHref("missing")}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -180,7 +229,7 @@ export default async function AdminFeedbacksPage({
           {t(lang, "Missing > 12h", "超过12小时未反馈")} ({missingCount})
         </a>
         <a
-          href="/admin/feedbacks?status=proxy"
+          href={tabHref("proxy")}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -191,7 +240,7 @@ export default async function AdminFeedbacksPage({
           {t(lang, "Proxy draft pending teacher", "代填草稿待老师补全")} ({proxyCount})
         </a>
         <a
-          href="/admin/feedbacks?status=pending"
+          href={tabHref("pending")}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -202,7 +251,7 @@ export default async function AdminFeedbacksPage({
           {t(lang, "Pending Forward", "待转发")} ({pendingCount})
         </a>
         <a
-          href="/admin/feedbacks?status=forwarded"
+          href={tabHref("forwarded")}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -213,7 +262,7 @@ export default async function AdminFeedbacksPage({
           {t(lang, "Forwarded", "已转发")} ({forwardedCount})
         </a>
         <a
-          href="/admin/feedbacks?status=all"
+          href={tabHref("all")}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -254,77 +303,93 @@ export default async function AdminFeedbacksPage({
         shownOverdueRows.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No overdue feedbacks.", "暂无超时反馈。")}</div>
         ) : (
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
-            {shownOverdueRows.map((r) => {
-              const studentNames = r.session.class.enrollments.map((e) => e.student.name).filter(Boolean);
-              const cardTone =
-                r.kind === "proxy"
-                  ? { border: "1px solid #fcd34d", background: "#fffbeb" }
-                  : { border: "1px solid #fecaca", background: "#fff7f7" };
-              return (
-                <div key={r.session.id} style={{ ...cardTone, borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <div style={{ fontWeight: 700 }}>{fmtRange(r.session.startAt, r.session.endAt)}</div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        <ClassTypeBadge capacity={r.session.class.capacity} compact />
-                        <span>
-                          {r.session.class.course.name}
-                          {r.session.class.subject ? ` / ${r.session.class.subject.name}` : ""}
-                          {r.session.class.level ? ` / ${r.session.class.level.name}` : ""}
-                        </span>
-                      </div>
-                      <div style={{ color: "#666", fontSize: 12 }}>
-                        {r.session.class.campus.name}
-                        {r.session.class.room ? ` / ${r.session.class.room.name}` : ""}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        alignSelf: "start",
-                        padding: "4px 8px",
-                        borderRadius: 999,
-                        fontSize: 12,
-                        border: r.kind === "proxy" ? "1px solid #f59e0b" : "1px solid #ef4444",
-                        color: r.kind === "proxy" ? "#92400e" : "#991b1b",
-                        background: "#fff",
-                      }}
-                    >
-                      {r.kind === "proxy"
-                        ? t(lang, "Proxy draft exists", "已有代填草稿")
-                        : t(lang, "Missing", "缺失")}
-                    </div>
-                  </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            <BulkMarkOverdueForwardedClient
+              filterStudentId={studentId}
+              labels={{
+                notePlaceholder: t(lang, "Batch note (optional)", "批量备注(可选)"),
+                submit: t(lang, "Batch mark as WeChat forwarded", "批量标记已微信反馈"),
+                saving: t(lang, "Saving...", "保存中..."),
+                donePrefix: t(lang, "Done", "完成"),
+                errorPrefix: t(lang, "Error", "错误"),
+                confirmText: t(
+                  lang,
+                  "Process all overdue items in current filter and mark as WeChat forwarded?",
+                  "确认处理当前筛选下所有超时项并标记为微信已反馈？"
+                ),
+              }}
+            />
 
-                  <div style={{ display: "grid", gap: 2, fontSize: 13 }}>
-                    <div>
-                      <b>{t(lang, "Teacher", "老师")}:</b> {r.teacherName}
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
+              {shownOverdueRows.map((r) => {
+                const studentNames = getStudentNames(r.session);
+                const cardTone =
+                  r.kind === "proxy"
+                    ? { border: "1px solid #fcd34d", background: "#fffbeb" }
+                    : { border: "1px solid #fecaca", background: "#fff7f7" };
+                return (
+                  <div key={r.session.id} style={{ ...cardTone, borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <div style={{ fontWeight: 700 }}>{fmtRange(r.session.startAt, r.session.endAt)}</div>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                          <ClassTypeBadge capacity={r.session.class.capacity} compact />
+                          <span>
+                            {r.session.class.course.name}
+                            {r.session.class.subject ? ` / ${r.session.class.subject.name}` : ""}
+                            {r.session.class.level ? ` / ${r.session.class.level.name}` : ""}
+                          </span>
+                        </div>
+                        <div style={{ color: "#666", fontSize: 12 }}>
+                          {r.session.class.campus.name}
+                          {r.session.class.room ? ` / ${r.session.class.room.name}` : ""}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          alignSelf: "start",
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          border: r.kind === "proxy" ? "1px solid #f59e0b" : "1px solid #ef4444",
+                          color: r.kind === "proxy" ? "#92400e" : "#991b1b",
+                          background: "#fff",
+                        }}
+                      >
+                        {r.kind === "proxy" ? t(lang, "Proxy draft exists", "已有代填草稿") : t(lang, "Missing", "缺失")}
+                      </div>
                     </div>
-                    <div>
-                      <b>{t(lang, "Students", "学生")}:</b> {studentNames.length > 0 ? studentNames.join(", ") : "-"}
-                    </div>
-                  </div>
 
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <a href={`/teacher/sessions/${r.session.id}`}>{t(lang, "Open teacher page", "打开老师页")}</a>
-                    <ProxyDraftFormClient
-                      sessionId={r.session.id}
-                      teacherId={r.teacherId}
-                      initialNote={r.feedback?.proxyNote ?? ""}
-                      labels={{
-                        placeholder: t(lang, "Proxy note", "代填备注"),
-                        submit:
-                          r.kind === "proxy"
-                            ? t(lang, "Update Proxy Draft", "更新代填草稿")
-                            : t(lang, "Create Proxy Draft", "创建代填草稿"),
-                        saving: t(lang, "Saving...", "保存中..."),
-                        errorPrefix: t(lang, "Error", "错误"),
-                      }}
-                    />
+                    <div style={{ display: "grid", gap: 2, fontSize: 13 }}>
+                      <div>
+                        <b>{t(lang, "Teacher", "老师")}:</b> {r.teacherName}
+                      </div>
+                      <div>
+                        <b>{t(lang, "Students", "学生")}:</b> {studentNames.length > 0 ? studentNames.join(", ") : "-"}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <a href={`/teacher/sessions/${r.session.id}`}>{t(lang, "Open teacher page", "打开老师页面")}</a>
+                      <ProxyDraftFormClient
+                        sessionId={r.session.id}
+                        teacherId={r.teacherId}
+                        initialNote={r.feedback?.proxyNote ?? ""}
+                        labels={{
+                          placeholder: t(lang, "Proxy note", "代填备注"),
+                          submit:
+                            r.kind === "proxy"
+                              ? t(lang, "Update Proxy Draft", "更新代填草稿")
+                              : t(lang, "Create Proxy Draft", "创建代填草稿"),
+                          saving: t(lang, "Saving...", "保存中..."),
+                          errorPrefix: t(lang, "Error", "错误"),
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )
       ) : rows.length === 0 ? (
@@ -332,7 +397,7 @@ export default async function AdminFeedbacksPage({
       ) : (
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
           {rows.map((r) => {
-            const studentNames = r.session.class.enrollments.map((e) => e.student.name).filter(Boolean);
+            const studentNames = getStudentNames(r.session);
             return (
               <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
@@ -352,8 +417,12 @@ export default async function AdminFeedbacksPage({
                     </div>
                   </div>
                   <div style={{ textAlign: "right", fontSize: 12 }}>
-                    <div>{t(lang, "Submitted", "提交时间")}: {new Date(r.submittedAt).toLocaleString()}</div>
-                    <div>{t(lang, "Teacher", "老师")}: {r.teacher.name}</div>
+                    <div>
+                      {t(lang, "Submitted", "提交时间")}: {new Date(r.submittedAt).toLocaleString()}
+                    </div>
+                    <div>
+                      {t(lang, "Teacher", "老师")}: {r.teacher.name}
+                    </div>
                   </div>
                 </div>
 
@@ -425,4 +494,3 @@ export default async function AdminFeedbacksPage({
     </div>
   );
 }
-
