@@ -7,6 +7,7 @@ import {
   fmtYMD,
   loadMonthlyScheduleData,
   monthKey,
+  parseMonth,
 } from "./_lib";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
@@ -49,7 +50,8 @@ export default async function MonthlyScheduleReportPage({
   }
 
   const { range, teachers, campuses, sessions } = data;
-  const monthDate = new Date(range.start);
+  const parsedMonth = parseMonth(month);
+  const monthDate = parsedMonth ? new Date(parsedMonth.year, parsedMonth.month - 1, 1) : new Date(range.start);
   const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
   const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
   const calendarDays = buildCalendarDays(monthDate);

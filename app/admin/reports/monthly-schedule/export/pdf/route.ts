@@ -3,7 +3,7 @@ import { PassThrough } from "stream";
 import { setPdfFont } from "@/lib/pdf-font";
 import { getLang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
-import { choose, fmtYMD, loadMonthlyScheduleData, safeName } from "../../_lib";
+import { choose, fmtHHMM, fmtYMD, loadMonthlyScheduleData, safeName } from "../../_lib";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -12,10 +12,6 @@ function streamPdf(doc: PDFDoc) {
   doc.pipe(stream);
   doc.end();
   return stream;
-}
-
-function lineTime(d: Date) {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export async function GET(req: Request) {
@@ -63,9 +59,17 @@ export async function GET(req: Request) {
           setPdfFont(doc);
         }
         const teacherName = s.teacher?.name ?? s.class.teacher.name;
-        const students = s.class.enrollments.map((e) => e.student.name).filter(Boolean).join(", ");
-        const line1 = `${lineTime(new Date(s.startAt))}-${lineTime(new Date(s.endAt))} | ${teacherName} | ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
-        const line2 = `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""} | ${choose(lang, "Students", "\u5b66\u751f")}: ${students || "-"}`;
+        const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
+        const oneOnOneStudent =
+          s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
+        const students =
+          s.class.capacity === 1
+            ? oneOnOneStudent
+              ? [oneOnOneStudent]
+              : []
+            : enrolledStudents;
+        const line1 = `${fmtHHMM(new Date(s.startAt))}-${fmtHHMM(new Date(s.endAt))} | ${teacherName} | ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
+        const line2 = `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""} | ${choose(lang, "Students", "\u5b66\u751f")}: ${students.join(", ") || "-"}`;
         doc.fontSize(9).fillColor("black").text(line1);
         doc.fontSize(8).fillColor("#555555").text(line2);
         doc.moveDown(0.25);

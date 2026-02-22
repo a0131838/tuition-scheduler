@@ -1,5 +1,5 @@
 import { getLang } from "@/lib/i18n";
-import { choose, csvEscape, loadMonthlyScheduleData } from "../../_lib";
+import { choose, csvEscape, fmtHHMM, fmtYMD, loadMonthlyScheduleData } from "../../_lib";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(req: Request) {
@@ -31,21 +31,29 @@ export async function GET(req: Request) {
   const lines = [header.join(",")];
   for (const s of data.sessions) {
     const teacherName = s.teacher?.name ?? s.class.teacher.name;
-    const students = s.class.enrollments.map((e) => e.student.name).filter(Boolean).join(" | ");
+    const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
+    const oneOnOneStudent =
+      s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
+    const students =
+      s.class.capacity === 1
+        ? oneOnOneStudent
+          ? [oneOnOneStudent]
+          : []
+        : enrolledStudents;
     const startAt = new Date(s.startAt);
     const endAt = new Date(s.endAt);
     lines.push(
       [
-        `${startAt.getFullYear()}-${String(startAt.getMonth() + 1).padStart(2, "0")}-${String(startAt.getDate()).padStart(2, "0")}`,
-        `${String(startAt.getHours()).padStart(2, "0")}:${String(startAt.getMinutes()).padStart(2, "0")}`,
-        `${String(endAt.getHours()).padStart(2, "0")}:${String(endAt.getMinutes()).padStart(2, "0")}`,
+        fmtYMD(startAt),
+        fmtHHMM(startAt),
+        fmtHHMM(endAt),
         teacherName,
         s.class.campus.name,
         s.class.room?.name ?? "",
         s.class.course.name,
         s.class.subject?.name ?? "",
         s.class.level?.name ?? "",
-        students,
+        students.join(" | "),
         s.classId,
         s.id,
       ]

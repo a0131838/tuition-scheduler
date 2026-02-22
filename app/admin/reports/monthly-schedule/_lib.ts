@@ -1,6 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import type { Lang } from "@/lib/i18n";
 
+const BIZ_TIMEZONE = "Asia/Shanghai";
+const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
+const YMD_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BIZ_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const HM_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BIZ_TIMEZONE,
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export type MonthlyScheduleQuery = {
   month: string;
   teacherId?: string;
@@ -26,22 +41,18 @@ export function monthKey(d: Date) {
 export function toDateRange(month: string) {
   const parsed = parseMonth(month);
   if (!parsed) return null;
-  const start = new Date(parsed.year, parsed.month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(parsed.year, parsed.month, 1, 0, 0, 0, 0);
+  // Convert month boundaries from business timezone (UTC+8) into UTC Date for DB queries.
+  const start = new Date(Date.UTC(parsed.year, parsed.month - 1, 1, 0, 0, 0, 0) - BIZ_UTC_OFFSET_MS);
+  const end = new Date(Date.UTC(parsed.year, parsed.month, 1, 0, 0, 0, 0) - BIZ_UTC_OFFSET_MS);
   return { start, end };
 }
 
 export function fmtYMD(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  return YMD_FMT.format(d);
 }
 
 export function fmtHHMM(d: Date) {
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
+  return HM_FMT.format(d);
 }
 
 export function startOfCalendar(d: Date) {
