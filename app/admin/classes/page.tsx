@@ -8,7 +8,7 @@ import NoticeBanner from "../_components/NoticeBanner";
 export default async function ClassesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; page?: string; pageSize?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; page?: string; pageSize?: string; studentQ?: string }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
@@ -17,6 +17,8 @@ export default async function ClassesPage({
   const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
   const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
+  const studentQ = String(sp?.studentQ ?? "").trim();
+  const studentQNorm = studentQ.toLowerCase();
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const classInclude = {
@@ -204,65 +206,105 @@ export default async function ClassesPage({
                 bucket.entries.push({ classId: c.id, studentId: s.id ?? null, studentName: s.name });
               }
             }
+            const oneOnOneRows = Array.from(grouped.values())
+              .flatMap((g) => {
+                const sessionsByClassId = new Map(g.classes.map((c) => [c.id, (c as any)._count?.sessions ?? 0]));
+                return g.entries.map((e) => ({
+                  classId: e.classId,
+                  studentId: e.studentId,
+                  studentName: e.studentName,
+                  groupLabel: g.groupLabel,
+                  teacherLabel: g.teacherLabel,
+                  campusLabel: g.campusLabel,
+                  roomLabel: g.roomLabel,
+                  sessionsCount: sessionsByClassId.get(e.classId) ?? 0,
+                }));
+              })
+              .filter((r) => (studentQNorm ? r.studentName.toLowerCase().includes(studentQNorm) : true))
+              .sort((a, b) => {
+                const byStudent = a.studentName.localeCompare(b.studentName, "en", { sensitivity: "base" });
+                if (byStudent !== 0) return byStudent;
+                const byTeacher = a.teacherLabel.localeCompare(b.teacherLabel, "en", { sensitivity: "base" });
+                if (byTeacher !== 0) return byTeacher;
+                return a.groupLabel.localeCompare(b.groupLabel, "en", { sensitivity: "base" });
+              });
 
             return (
               <>
                 {grouped.size > 0 && (
                   <div style={{ marginBottom: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <h3 style={{ marginBottom: 0 }}>{t(lang, "1-on-1 Templates", "一对一模板")}</h3>
+                      <h3 style={{ marginBottom: 0 }}>{t(lang, "1-on-1 by Student", "一对一按学生")}</h3>
                       <div style={{ color: "#666", fontSize: 12 }}>
-                        {t(lang, "Classes", "班级")}: {oneOnOneClasses.length} · {t(lang, "Students", "学生")}: {totalOneOnOneStudents}
+                        {t(lang, "Classes", "班级")}: {oneOnOneClasses.length} · {t(lang, "Students", "学生")}: {totalOneOnOneStudents} ·{" "}
+                        {t(lang, "Shown", "显示")}: {oneOnOneRows.length}
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
-                      {Array.from(grouped.values()).map((g) => (
-                        <details key={g.key} open style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
-                          <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                    <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+                      <input type="hidden" name="page" value={String(page)} />
+                      <input type="hidden" name="pageSize" value={String(pageSize)} />
+                      <input
+                        name="studentQ"
+                        defaultValue={studentQ}
+                        placeholder={t(lang, "Filter by student name", "按学生姓名筛选")}
+                        style={{ minWidth: 260 }}
+                      />
+                      <button type="submit">{t(lang, "Apply", "应用")}</button>
+                      <a href={`/admin/classes?page=${page}&pageSize=${pageSize}`}>{t(lang, "Clear", "清除")}</a>
+                    </form>
+                    {oneOnOneRows.length === 0 ? (
+                      <div style={{ color: "#999", marginBottom: 10 }}>{t(lang, "No matching students.", "没有匹配的学生。")}</div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+                        {oneOnOneRows.map((r) => (
+                          <div key={`${r.classId}-${r.studentId ?? r.studentName}`} style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
                             <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                               <ClassTypeBadge capacity={1} compact />
-                              <a href={`/admin/classes/${g.classes[0]?.id ?? ""}`}>{g.groupLabel}</a>
+                              <a href={`/admin/classes/${r.classId}`}>{r.studentName}</a>
                             </div>
-                            <div style={{ color: "#666", fontSize: 12 }}>
-                              {t(lang, "Teacher", "老师")}: {g.teacherLabel} | {t(lang, "Campus", "校区")}: {g.campusLabel} |{" "}
-                              {t(lang, "Room", "教室")}: {g.roomLabel}
+                            <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                              {r.groupLabel}
                             </div>
-                            <div style={{ fontSize: 12, color: "#475569" }}>
-                              {t(lang, "Students", "学生")}:{" "}
-                              <b>{Array.from(new Set(g.entries.map((e) => e.studentId ?? e.studentName))).length}</b> |{" "}
-                              {t(lang, "Sessions", "课次")}:{" "}
-                              <b>{g.classes.reduce((sum, c) => sum + ((c as any)._count?.sessions ?? 0), 0)}</b>
+                            <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                              {t(lang, "Teacher", "老师")}: {r.teacherLabel} | {t(lang, "Campus", "校区")}: {r.campusLabel} | {t(lang, "Room", "教室")}: {r.roomLabel}
                             </div>
-                          </summary>
-                          <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                            {g.entries.map((e) => {
-                              return (
-                                <div key={`${e.classId}-${e.studentId ?? e.studentName}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                                  <div>
-                                    <a href={`/admin/classes/${e.classId}`}>{e.studentName}</a>{" "}
-                                    <span style={{ color: "#999", fontSize: 12 }}>{formatId("CLS", e.classId)}</span>
-                                  </div>
-                                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                    <a
-                                      href={`/admin/classes/${e.classId}/sessions`}
-                                      style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
-                                    >
-                                      {t(lang, "Sessions", "课次")}
-                                    </a>
-                                    <a
-                                      href={`/admin/enrollments`}
-                                      style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
-                                    >
-                                      {t(lang, "Manage Enrollments", "管理报名")}
-                                    </a>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            <div style={{ marginTop: 4, fontSize: 12, color: "#475569" }}>
+                              {formatId("CLS", r.classId)} | {t(lang, "Sessions", "课次")}: <b>{r.sessionsCount}</b>
+                            </div>
+                            <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <a href={`/admin/classes/${r.classId}`} style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+                                {t(lang, "View", "查看")}
+                              </a>
+                              <a href={`/admin/classes/${r.classId}/sessions`} style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+                                {t(lang, "Sessions", "课次")}
+                              </a>
+                              <a href={`/admin/enrollments`} style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+                                {t(lang, "Manage Enrollments", "管理报名")}
+                              </a>
+                            </div>
                           </div>
-                        </details>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+                    <details style={{ marginTop: 10 }}>
+                      <summary style={{ cursor: "pointer", color: "#555" }}>{t(lang, "Show template grouping", "展开模板分组视图")}</summary>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, marginTop: 10 }}>
+                        {Array.from(grouped.values()).map((g) => (
+                          <details key={g.key} style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fff" }}>
+                            <summary style={{ cursor: "pointer", display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                <ClassTypeBadge capacity={1} compact />
+                                <a href={`/admin/classes/${g.classes[0]?.id ?? ""}`}>{g.groupLabel}</a>
+                              </div>
+                              <div style={{ color: "#666", fontSize: 12 }}>
+                                {t(lang, "Teacher", "老师")}: {g.teacherLabel} | {t(lang, "Campus", "校区")}: {g.campusLabel} | {t(lang, "Room", "教室")}:{" "}
+                                {g.roomLabel}
+                              </div>
+                            </summary>
+                          </details>
+                        ))}
+                      </div>
+                    </details>
                   </div>
                 )}
 
