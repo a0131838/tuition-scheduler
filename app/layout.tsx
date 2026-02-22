@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import FlashAlert from "./_components/FlashAlert";
 import ScrollManager from "./_components/ScrollManager";
+import "@/lib/date-format-global";
 export default function RootLayout({
   children,
 }: {
@@ -22,6 +23,23 @@ export default function RootLayout({
     const y = Number(raw);
     if (!Number.isFinite(y)) return;
     window.scrollTo(0, Math.max(0, y));
+  } catch {}
+})();`,
+          }}
+        />
+        <script
+          // Keep browser-side Date locale output aligned with server-side formatting.
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+  try {
+    if (window.__tuitionSchedulerDateFormatInstalled) return;
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const fmtDate = (d) => \`\${pad2(d.getDate())}/\${pad2(d.getMonth() + 1)}/\${d.getFullYear()}\`;
+    const fmtTime = (d) => \`\${pad2(d.getHours())}:\${pad2(d.getMinutes())}\`;
+    Date.prototype.toLocaleDateString = function () { return fmtDate(this); };
+    Date.prototype.toLocaleTimeString = function () { return fmtTime(this); };
+    Date.prototype.toLocaleString = function () { return \`\${fmtDate(this)} \${fmtTime(this)}\`; };
+    window.__tuitionSchedulerDateFormatInstalled = true;
   } catch {}
 })();`,
           }}
