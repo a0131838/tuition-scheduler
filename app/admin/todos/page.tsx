@@ -58,6 +58,29 @@ function toDateOnly(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
 
+function expectedStudentsForReminder(session: any, enrollmentsByClass: Map<string, any[]>) {
+  const roster = (enrollmentsByClass.get(session.classId) ?? []).map((e: any) => ({
+    id: e.studentId as string,
+    name: e.student?.name ?? "-",
+  }));
+  if (session.class?.capacity === 1) {
+    if (session.studentId) {
+      const fromRoster = roster.find((x) => x.id === session.studentId);
+      return [{ id: session.studentId as string, name: session.student?.name ?? fromRoster?.name ?? "-" }];
+    }
+    if (session.class?.oneOnOneStudentId) {
+      return [
+        {
+          id: session.class.oneOnOneStudentId as string,
+          name: session.class.oneOnOneStudent?.name ?? roster.find((x) => x.id === session.class.oneOnOneStudentId)?.name ?? "-",
+        },
+      ];
+    }
+    return roster.length > 0 ? [roster[0]] : [];
+  }
+  return roster;
+}
+
 async function confirmReminder(kind: "teacher" | "student", formData: FormData) {
   "use server";
   const dateStr = String(formData.get("date") ?? "");
@@ -330,7 +353,10 @@ export default async function AdminTodosPage({
     where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
     include: {
       teacher: true,
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      student: true,
+      class: {
+        include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent: true },
+      },
     },
     orderBy: { startAt: "asc" },
   });
@@ -381,11 +407,11 @@ export default async function AdminTodosPage({
 
   const studentRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
   for (const s of sessionsTomorrow) {
-    const list = enrollmentsByClass.get(s.classId) ?? [];
+    const list = expectedStudentsForReminder(s, enrollmentsByClass);
     for (const e of list) {
-      const sid = e.studentId;
-      const sname = e.student?.name ?? "-";
-      const entry = studentRemindersMap.get(sid) ?? { id: sid, name: sname, sessions: [] };
+      const sid = e.id;
+      const sname = e.name ?? "-";
+      const entry = studentRemindersMap.get(sid) ?? { id: sid, name: sname, sessions: [] as any[] };
       entry.sessions.push(s);
       studentRemindersMap.set(sid, entry);
     }
