@@ -1080,6 +1080,18 @@ export default async function StudentDetailPage({
       })
     : [];
   const monthAttendanceMap = new Map(monthAttendance.map((a) => [a.sessionId, a]));
+  const teacherChangeSessionIds = Array.from(new Set([...upcomingSessionIds, ...monthSessionIds]));
+  const teacherChanges = teacherChangeSessionIds.length
+    ? await prisma.sessionTeacherChange.findMany({
+        where: { sessionId: { in: teacherChangeSessionIds } },
+        include: { fromTeacher: true, toTeacher: true },
+        orderBy: { changedAt: "desc" },
+      })
+    : [];
+  const latestTeacherChangeMap = new Map<string, (typeof teacherChanges)[number]>();
+  for (const c of teacherChanges) {
+    if (!latestTeacherChangeMap.has(c.sessionId)) latestTeacherChangeMap.set(c.sessionId, c);
+  }
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packageIds = packages.map((p) => p.id);
@@ -1492,6 +1504,7 @@ export default async function StudentDetailPage({
                     })}
                     {daySessions.map((s) => {
                       const att = monthAttendanceMap.get(s.id);
+                      const teacherChange = latestTeacherChangeMap.get(s.id);
                       const cancelled = att?.status === "EXCUSED";
                       return (
                         <div
@@ -1528,6 +1541,11 @@ export default async function StudentDetailPage({
                             {s.teacher?.name ?? s.class.teacher.name} {s.class.campus.name}
                             {s.class.room ? ` / ${s.class.room.name}` : ""}
                           </div>
+                          {teacherChange && teacherChange.fromTeacherId !== teacherChange.toTeacherId ? (
+                            <div style={{ color: cancelled ? "#888" : "#9a3412", fontSize: 11, marginTop: 2 }}>
+                              {tl(lang, "Change Teacher")}: {teacherChange.fromTeacher.name} -&gt; {teacherChange.toTeacher.name}
+                            </div>
+                          ) : null}
                           {cancelled ? (
                             <span
                               style={{
@@ -1858,6 +1876,7 @@ export default async function StudentDetailPage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
           {upcomingSessions.map((s) => {
             const att = upcomingAttendanceMap.get(s.id);
+            const teacherChange = latestTeacherChangeMap.get(s.id);
             const cancelled = att?.status === "EXCUSED";
             return (
               <div key={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
@@ -1895,6 +1914,11 @@ export default async function StudentDetailPage({
                   {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
                   {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                 </div>
+                {teacherChange && teacherChange.fromTeacherId !== teacherChange.toTeacherId ? (
+                  <div style={{ marginTop: 4, color: "#9a3412", fontSize: 12 }}>
+                    {tl(lang, "Change Teacher")}: {teacherChange.fromTeacher.name} -&gt; {teacherChange.toTeacher.name}
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                     <SessionReplaceTeacherClient
                       studentId={studentId}
