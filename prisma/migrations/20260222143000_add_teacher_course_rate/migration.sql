@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS "TeacherCourseRate" (
+CREATE TABLE IF NOT EXISTS "TeacherCourseRate" (
   "id" TEXT NOT NULL,
   "teacherId" TEXT NOT NULL,
   "courseId" TEXT NOT NULL,
