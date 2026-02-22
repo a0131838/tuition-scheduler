@@ -1008,7 +1008,10 @@ export default async function StudentDetailPage({
       where: attendanceWhere,
       include: {
         session: {
-          include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+          include: {
+            teacher: true,
+            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -1039,7 +1042,10 @@ export default async function StudentDetailPage({
           startAt: { gte: new Date(), lt: upcomingRangeEnd },
           OR: [{ studentId: null }, { studentId }],
         },
-        include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+        include: {
+          teacher: true,
+          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        },
         orderBy: { startAt: "asc" },
       })
     : [];
@@ -1059,7 +1065,10 @@ export default async function StudentDetailPage({
           startAt: { gte: monthStart, lt: monthEnd },
           OR: [{ studentId: null }, { studentId }],
         },
-        include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+        include: {
+          teacher: true,
+          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        },
         orderBy: { startAt: "asc" },
       })
     : [];
@@ -1114,7 +1123,7 @@ export default async function StudentDetailPage({
   }
   const sessionKeyMap = new Map<string, (typeof teacherSessions)[number]>();
   for (const sess of teacherSessions) {
-    const key = `${sess.class.teacherId}|${new Date(sess.startAt).toISOString()}|${new Date(
+    const key = `${sess.teacherId ?? sess.class.teacherId}|${new Date(sess.startAt).toISOString()}|${new Date(
       sess.endAt
     ).toISOString()}`;
     sessionKeyMap.set(key, sess);
@@ -1516,7 +1525,7 @@ export default async function StudentDetailPage({
                               textDecoration: cancelled ? "line-through" : "none",
                             }}
                           >
-                            {s.class.teacher.name} {s.class.campus.name}
+                            {s.teacher?.name ?? s.class.teacher.name} {s.class.campus.name}
                             {s.class.room ? ` / ${s.class.room.name}` : ""}
                           </div>
                           {cancelled ? (
@@ -1821,7 +1830,8 @@ export default async function StudentDetailPage({
                   <span>
                     {a.session.class.course.name}
                     {a.session.class.subject ? ` / ${a.session.class.subject.name}` : ""}{" "}
-                    {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} | {a.session.class.teacher.name}
+                    {a.session.class.level ? ` / ${a.session.class.level.name}` : ""} |{" "}
+                    {a.session.teacher?.name ?? a.session.class.teacher.name}
                   </span>
                 </span>
               </div>
@@ -1875,7 +1885,7 @@ export default async function StudentDetailPage({
                     <span>
                       {s.class.course.name}
                       {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
-                      {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.class.teacher.name} |{" "}
+                      {s.class.level ? ` / ${s.class.level.name}` : ""} | {s.teacher?.name ?? s.class.teacher.name} |{" "}
                       {s.class.campus.name}
                       {s.class.room ? ` / ${s.class.room.name}` : ""}
                     </span>
