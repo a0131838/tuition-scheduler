@@ -22,6 +22,7 @@ type SessionForAlert = {
   class: {
     capacity: number;
     teacherId: string;
+    oneOnOneStudentId: string | null;
     enrollments: Array<{ studentId: string }>;
   };
 };
@@ -74,6 +75,8 @@ export async function setSignInAlertThresholdMin(min: number) {
 
 function sessionExpectedStudentIds(s: SessionForAlert) {
   if (s.class.capacity === 1 && s.studentId) return [s.studentId];
+  if (s.class.capacity === 1 && s.class.oneOnOneStudentId) return [s.class.oneOnOneStudentId];
+  if (s.class.capacity === 1 && s.class.enrollments.length > 0) return [s.class.enrollments[0].studentId];
   return s.class.enrollments.map((e) => e.studentId);
 }
 

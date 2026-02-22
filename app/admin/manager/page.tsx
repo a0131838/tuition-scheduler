@@ -71,6 +71,7 @@ type SessionLite = {
   class: {
     capacity: number;
     teacherId: string;
+    oneOnOneStudentId?: string | null;
     campusId: string;
     courseId: string;
     teacher: { name: string };
@@ -82,12 +83,22 @@ type SessionLite = {
   };
 };
 
+function expectedStudentIdsForSession(s: SessionLite, enrollmentsByClass: Map<string, string[]>) {
+  const enrolled = enrollmentsByClass.get(s.classId) ?? [];
+  if (s.class.capacity === 1) {
+    if (s.studentId) return [s.studentId];
+    if (s.class.oneOnOneStudentId) return [s.class.oneOnOneStudentId];
+    return enrolled.length > 0 ? [enrolled[0]] : [];
+  }
+  return enrolled;
+}
+
 function calcUnmarkedCount(
   s: SessionLite,
   enrollmentsByClass: Map<string, string[]>,
   attendanceBySession: Map<string, Array<{ studentId: string; status: string }>>
 ) {
-  const expected = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrollmentsByClass.get(s.classId) ?? [];
+  const expected = expectedStudentIdsForSession(s, enrollmentsByClass);
   if (!expected.length) return 0;
   const expectedSet = new Set(expected);
   const rows = (attendanceBySession.get(s.id) ?? []).filter((a) => expectedSet.has(a.studentId));
@@ -160,12 +171,18 @@ export default async function AdminManagerPage({
     }),
     prisma.session.findMany({
       where: { startAt: { gte: recentStart, lte: dayEnd } },
-      include: { class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+      include: {
+        student: true,
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
       orderBy: { startAt: "asc" },
     }),
     prisma.session.findMany({
       where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
-      include: { class: { include: { teacher: true, course: true, subject: true, level: true, campus: true, room: true } } },
+      include: {
+        student: true,
+        class: { include: { teacher: true, course: true, subject: true, level: true, campus: true, room: true } },
+      },
     }),
     prisma.studentBookingRequest.findMany({
       where: { updatedAt: { gte: recentStart } },
@@ -308,10 +325,12 @@ export default async function AdminManagerPage({
   for (const s of weekSessions) {
     const enrolled = enrollmentsByClassWithStudent.get(s.classId) ?? [];
     const expected =
-      s.class.capacity === 1 && s.studentId
+      s.class.capacity === 1
         ? (() => {
-            const hit = enrolled.find((x) => x.studentId === s.studentId);
-            return [{ studentId: s.studentId, studentName: hit?.studentName ?? s.studentId }];
+            const id = s.studentId ?? s.class.oneOnOneStudentId ?? enrolled[0]?.studentId ?? null;
+            if (!id) return [];
+            const hit = enrolled.find((x) => x.studentId === id);
+            return [{ studentId: id, studentName: s.student?.name ?? hit?.studentName ?? id }];
           })()
         : enrolled;
     if (!expected.length) continue;
@@ -335,9 +354,17 @@ export default async function AdminManagerPage({
   const teacherIdsTomorrow = Array.from(new Set(tomorrowSessionsFiltered.map((s) => s.teacherId ?? s.class.teacherId)));
   const tomorrowClassIds = Array.from(new Set(tomorrowSessionsFiltered.map((s) => s.classId)));
   const tomorrowEnrollments = tomorrowClassIds.length
-    ? await prisma.enrollment.findMany({ where: { classId: { in: tomorrowClassIds } }, select: { studentId: true } })
+    ? await prisma.enrollment.findMany({ where: { classId: { in: tomorrowClassIds } }, select: { classId: true, studentId: true } })
     : [];
-  const studentIdsTomorrow = Array.from(new Set(tomorrowEnrollments.map((e) => e.studentId)));
+  const tomorrowEnrollmentsByClass = new Map<string, string[]>();
+  for (const e of tomorrowEnrollments) {
+    const arr = tomorrowEnrollmentsByClass.get(e.classId) ?? [];
+    arr.push(e.studentId);
+    tomorrowEnrollmentsByClass.set(e.classId, arr);
+  }
+  const studentIdsTomorrow = Array.from(
+    new Set(tomorrowSessionsFiltered.flatMap((s) => expectedStudentIdsForSession(s, tomorrowEnrollmentsByClass)))
+  );
   const confirmDate = new Date(tomorrowStart.getFullYear(), tomorrowStart.getMonth(), tomorrowStart.getDate(), 0, 0, 0, 0);
   const [teacherConfirms, studentConfirms] = await Promise.all([
     teacherIdsTomorrow.length

@@ -13,8 +13,11 @@ function fmtRange(startAt: Date, endAt: Date) {
 
 function getStudentNames(session: any) {
   const classStudentNames = session.class.enrollments.map((e: any) => e.student.name).filter(Boolean);
-  const singleStudentName = session.student?.name ? [session.student.name] : [];
-  return Array.from(new Set([...classStudentNames, ...singleStudentName]));
+  if (session.class.capacity === 1) {
+    const onlyStudent = session.student?.name ?? session.class.oneOnOneStudent?.name ?? (classStudentNames[0] ?? null);
+    return onlyStudent ? [onlyStudent] : [];
+  }
+  return Array.from(new Set(classStudentNames));
 }
 
 function buildForwardText(row: any) {
@@ -98,6 +101,7 @@ export default async function AdminFeedbacksPage({
               level: true,
               campus: true,
               room: true,
+              oneOnOneStudent: true,
               enrollments: { include: { student: true } },
             },
           },
@@ -140,6 +144,7 @@ export default async function AdminFeedbacksPage({
           level: true,
           campus: true,
           room: true,
+          oneOnOneStudent: true,
           enrollments: { include: { student: true } },
         },
       },
