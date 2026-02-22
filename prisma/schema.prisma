@@ -116,6 +116,28 @@ model Teacher {
   bookingRequests           StudentBookingRequest[]
   selectedBookingSlots      StudentBookingLinkSelectedSlot[]
   bookingRequestSlotLocks   StudentBookingRequestSlotLock[]
+  courseRates               TeacherCourseRate[]
+}
+
+model TeacherCourseRate {
+  id              String   @id @default(uuid())
+  teacherId       String
+  courseId        String
+  subjectId       String?
+  levelId         String?
+  subjectKey      String   @default("")
+  levelKey        String   @default("")
+  hourlyRateCents Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  teacher Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  level   Level?   @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  @@unique([teacherId, courseId, subjectKey, levelKey])
+  @@index([teacherId, updatedAt])
 }
 
 model OneOnOneGroup {
@@ -190,6 +212,7 @@ model Course {
   classes        Class[]
   packages       CoursePackage[]
   oneOnOneGroups OneOnOneGroup[]
+  teacherRates   TeacherCourseRate[]
 }
 
 model Subject {
@@ -201,6 +224,7 @@ model Subject {
   levels         Level[]
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
+  teacherRates   TeacherCourseRate[]
 
   subjectTeachers      Teacher[] @relation("SubjectCourse")
   subjectTeachersMulti Teacher[] @relation("TeacherSubjects")
@@ -217,6 +241,7 @@ model Level {
   subject        Subject         @relation(fields: [subjectId], references: [id])
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
+  teacherRates   TeacherCourseRate[]
 
   @@unique([subjectId, name])
   @@index([subjectId])
