@@ -32,6 +32,8 @@ export type PayrollTeacherSummary = {
   totalMinutes: number;
   totalHours: number;
   totalAmountCents: number;
+  completedSessions: number;
+  pendingSessions: number;
 };
 
 export type PayrollRateEditorRow = {
@@ -74,6 +76,7 @@ export type PayrollTeacherDetailSessionRow = {
   totalHours: number;
   hourlyRateCents: number;
   amountCents: number;
+  isCompleted: boolean;
 };
 
 type PayrollRateItem = {
@@ -83,6 +86,8 @@ type PayrollRateItem = {
   levelId: string | null;
   hourlyRateCents: number;
 };
+
+export type PayrollScope = "all" | "completed";
 
 export function parseMonth(s?: string | null) {
   if (!s) return null;
@@ -112,6 +117,10 @@ export function toPayrollRange(month: string): PayrollRange | null {
   const start = bizMidnightUtc(prevYear, prevMonth, 15);
   const end = bizMidnightUtc(parsed.year, parsed.month, 15);
   return { start, end };
+}
+
+function normalizePayrollScope(scope?: string | null): PayrollScope {
+  return scope === "completed" ? "completed" : "all";
 }
 
 function comboKey(teacherId: string, courseId: string, subjectId: string | null, levelId: string | null) {
@@ -232,7 +241,8 @@ export async function upsertTeacherPayrollRate(input: PayrollRateItem) {
   await saveFallbackRateItem(input);
 }
 
-export async function loadTeacherPayroll(month: string) {
+export async function loadTeacherPayroll(month: string, scopeInput?: string | null) {
+  const scope = normalizePayrollScope(scopeInput);
   const range = toPayrollRange(month);
   if (!range) return null;
 
@@ -250,6 +260,8 @@ export async function loadTeacherPayroll(month: string) {
           level: { select: { id: true, name: true } },
         },
       },
+      attendances: { select: { status: true } },
+      feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
     take: 10000,
@@ -336,6 +348,16 @@ export async function loadTeacherPayroll(month: string) {
   for (const s of sessions) {
     const effectiveTeacher = s.teacher ?? s.class.teacher;
     if (!effectiveTeacher) continue;
+    const completed = isSessionCompleted(
+      {
+        teacherId: s.teacherId ?? null,
+        class: { teacherId: s.class.teacher.id },
+        attendances: s.attendances,
+        feedbacks: s.feedbacks,
+      },
+      effectiveTeacher.id
+    );
+    if (scope === "completed" && !completed) continue;
 
     const totalMinutes = Math.max(0, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000));
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) continue;
@@ -381,6 +403,8 @@ export async function loadTeacherPayroll(month: string) {
       teacherPrev.totalMinutes += totalMinutes;
       teacherPrev.totalHours = toHours(teacherPrev.totalMinutes);
       teacherPrev.totalAmountCents += amountCents;
+      if (completed) teacherPrev.completedSessions += 1;
+      else teacherPrev.pendingSessions += 1;
     } else {
       teacherTotals.set(effectiveTeacher.id, {
         teacherId: effectiveTeacher.id,
@@ -389,6 +413,8 @@ export async function loadTeacherPayroll(month: string) {
         totalMinutes,
         totalHours: toHours(totalMinutes),
         totalAmountCents: amountCents,
+        completedSessions: completed ? 1 : 0,
+        pendingSessions: completed ? 0 : 1,
       });
     }
   }
@@ -459,6 +485,7 @@ export async function loadTeacherPayroll(month: string) {
     rateEditorRows,
     grandTotalAmountCents,
     grandTotalHours,
+    scope,
     usingRateFallback: !loadedFromTable,
   };
 }
@@ -478,7 +505,26 @@ function resolveSessionStudentName(session: {
   return names.join(", ");
 }
 
-export async function loadTeacherPayrollDetail(month: string, teacherId: string) {
+function isSessionCompleted(
+  session: {
+    teacherId: string | null;
+    class: { teacherId: string };
+    attendances: Array<{ status: string }>;
+    feedbacks: Array<{ teacherId: string; content: string }>;
+  },
+  teacherId: string
+) {
+  if (!session.attendances.length) return false;
+  const allMarked = session.attendances.every((a) => a.status !== "UNMARKED");
+  if (!allMarked) return false;
+  const effectiveTeacherId = session.teacherId ?? session.class.teacherId;
+  const feedbackTeacherId = effectiveTeacherId || teacherId;
+  const hasFeedback = session.feedbacks.some((f) => f.teacherId === feedbackTeacherId && String(f.content ?? "").trim().length > 0);
+  return hasFeedback;
+}
+
+export async function loadTeacherPayrollDetail(month: string, teacherId: string, scopeInput?: string | null) {
+  const scope = normalizePayrollScope(scopeInput);
   const range = toPayrollRange(month);
   if (!range) return null;
 
@@ -505,6 +551,8 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string)
           level: { select: { id: true, name: true } },
         },
       },
+      attendances: { select: { status: true } },
+      feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
     take: 10000,
@@ -548,6 +596,8 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string)
   for (const s of sessions) {
     const effectiveTeacherId = s.teacherId ?? s.class.teacherId;
     if (effectiveTeacherId !== teacherId) continue;
+    const completed = isSessionCompleted(s, teacherId);
+    if (scope === "completed" && !completed) continue;
 
     const minutes = Math.max(0, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000));
     if (!minutes) continue;
@@ -596,6 +646,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string)
       totalHours: toHours(minutes),
       hourlyRateCents,
       amountCents,
+      isCompleted: completed,
     });
 
     totalMinutes += minutes;
@@ -619,6 +670,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string)
     totalMinutes,
     totalHours: toHours(totalMinutes),
     totalAmountCents,
+    scope,
     usingRateFallback: !loadedFromTable,
   };
 }

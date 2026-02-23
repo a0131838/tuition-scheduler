@@ -30,13 +30,14 @@ export default async function TeacherPayrollDetailPage({
   searchParams,
 }: {
   params: Promise<{ teacherId: string }>;
-  searchParams?: Promise<{ month?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const p = await params;
   const sp = await searchParams;
   const month = sp?.month ?? monthKey(new Date());
+  const scope = sp?.scope === "completed" ? "completed" : "all";
 
   if (!parseMonth(month)) {
     return (
@@ -47,13 +48,13 @@ export default async function TeacherPayrollDetailPage({
     );
   }
 
-  const data = await loadTeacherPayrollDetail(month, p.teacherId);
+  const data = await loadTeacherPayrollDetail(month, p.teacherId, scope);
   if (!data) {
     return (
       <div>
         <h2>{t(lang, "Teacher Payroll Detail", "老师工资明细")}</h2>
         <div style={{ color: "#b00" }}>{t(lang, "Teacher not found.", "老师不存在。")}</div>
-        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}`}>{t(lang, "Back", "返回")}</a>
+        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back", "返回")}</a>
       </div>
     );
   }
@@ -63,7 +64,7 @@ export default async function TeacherPayrollDetailPage({
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
-        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}`}>{t(lang, "Back to Payroll", "返回工资总览")}</a>
+        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back to Payroll", "返回工资总览")}</a>
       </div>
 
       <h2>
@@ -74,6 +75,13 @@ export default async function TeacherPayrollDetailPage({
         <label>
           {t(lang, "Payroll Month", "工资月份")}:
           <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
+        </label>
+        <label>
+          {t(lang, "Scope", "统计口径")}:
+          <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
+            <option value="all">{t(lang, "All Scheduled Sessions", "全部排课课次")}</option>
+            <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
+          </select>
         </label>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
@@ -114,6 +122,7 @@ export default async function TeacherPayrollDetailPage({
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
+              <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
             </tr>
           </thead>
@@ -156,6 +165,11 @@ export default async function TeacherPayrollDetailPage({
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents)}</td>
+                <td>
+                  <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+                    {row.isCompleted ? t(lang, "Completed", "已完成") : t(lang, "Pending", "未完成")}
+                  </span>
+                </td>
                 <td>{formatMoneyCents(row.amountCents)}</td>
               </tr>
             ))}
