@@ -104,6 +104,11 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=package-not-eligible`);
   }
 
+  const remainingMinutes = pkg.remainingMinutes ?? 0;
+  if (pkg.type !== "HOURS" || remainingMinutes > 0) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=package-not-completed`);
+  }
+
   if (pkg.settlements.length > 0) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
@@ -276,11 +281,12 @@ export default async function PartnerSettlementPage({
 
     const onlinePackages = await prisma.coursePackage.findMany({
       where: {
+        type: "HOURS",
         student: {
           sourceChannelId: source.id,
           settlementMode: "ONLINE_PACKAGE_END",
         },
-        OR: [{ status: "EXPIRED" }, { remainingMinutes: { lte: 0 } }],
+        remainingMinutes: { lte: 0 },
       },
       include: {
         student: { select: { id: true, name: true } },
