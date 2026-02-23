@@ -56,32 +56,16 @@ async function findPartnerSource() {
   });
 }
 
-async function updatePackageModeAction(formData: FormData) {
-  "use server";
-  await requireAdmin();
+function modeLabel(m: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | null) {
+  if (m === "ONLINE_PACKAGE_END") return "Online: Package End / 线上：课包完结";
+  if (m === "OFFLINE_MONTHLY") return "Offline: Monthly / 线下：按月";
+  return "Not Included / 不纳入";
+}
 
-  const packageId = typeof formData.get("packageId") === "string" ? String(formData.get("packageId")) : "";
-  const mode = parseMode(formData.get("mode"));
-  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
-
-  if (!packageId) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-package`);
-  }
-
-  try {
-    await prisma.coursePackage.update({
-      where: { id: packageId },
-      data: { settlementMode: mode ? mode : null },
-    });
-  } catch (err) {
-    if (isSchemaNotReadyError(err)) {
-      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
-    }
-    throw err;
-  }
-
-  revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=mode-updated`);
+function offlineCourseFromNote(note?: string | null) {
+  if (!note) return "";
+  const m = note.match(/Courses:\\s*(.+)$/);
+  return m?.[1]?.trim() ?? "";
 }
 
 async function createOnlineSettlementAction(formData: FormData) {
@@ -193,14 +177,19 @@ async function createOfflineSettlementAction(formData: FormData) {
     },
     include: {
       session: { select: { id: true, startAt: true, endAt: true } },
+      package: { select: { course: { select: { name: true } } } },
     },
   });
 
   let totalMinutes = 0;
+  const courseNames = new Set<string>();
   for (const r of rows) {
     const min = Math.max(0, Math.round((r.session.endAt.getTime() - r.session.startAt.getTime()) / 60000));
     totalMinutes += min;
+    const courseName = r.package?.course?.name?.trim();
+    if (courseName) courseNames.add(courseName);
   }
+  const courseNote = Array.from(courseNames).join(", ");
 
   try {
     await prisma.partnerSettlement.create({
@@ -211,7 +200,7 @@ async function createOfflineSettlementAction(formData: FormData) {
         status: "PENDING",
         hours: Number(toHours(totalMinutes).toFixed(2)),
         amount: 0,
-        note: `Offline monthly settlement ${month}`,
+        note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}`,
       },
     });
   } catch (err) {
@@ -283,6 +272,7 @@ export default async function PartnerSettlementPage({
     mode: string;
     monthKey: string | null;
     package: { course: { name: string } | null } | null;
+    note: string | null;
     hours: Prisma.Decimal;
     amount: number;
     status: string;
@@ -461,27 +451,22 @@ export default async function PartnerSettlementPage({
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             <th align="left">{t(lang, "Student", "学生")}</th>
+            <th align="left">{t(lang, "Course", "课程")}</th>
+            <th align="left">{t(lang, "Type", "类型")}</th>
+            <th align="left">{t(lang, "Remaining", "剩余")}</th>
+            <th align="left">{t(lang, "Status", "状态")}</th>
             <th align="left">{t(lang, "Mode", "模式")}</th>
-            <th align="left">{t(lang, "Action", "操作")}</th>
           </tr>
         </thead>
         <tbody>
           {modePackages.map((p) => (
             <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
               <td>{p.student?.name ?? "-"}</td>
-              <td>
-                <form action={updatePackageModeAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="hidden" name="packageId" value={p.id} />
-                  <input type="hidden" name="month" value={month} />
-                  <select name="mode" defaultValue={p.settlementMode ?? ""}>
-                    <option value="">{t(lang, "Not Included", "不纳入")}</option>
-                    <option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "线上：课包完结")}</option>
-                    <option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "线下：按月")}</option>
-                  </select>
-                  <button type="submit">{t(lang, "Save", "保存")}</button>
-                </form>
-              </td>
-              <td />
+              <td>{p.course?.name ?? "-"}</td>
+              <td>{p.type}</td>
+              <td>{p.remainingMinutes ?? "-"}</td>
+              <td>{p.status}</td>
+              <td>{modeLabel(p.settlementMode)}</td>
             </tr>
           ))}
         </tbody>
@@ -581,7 +566,7 @@ export default async function PartnerSettlementPage({
                 <td>{r.student?.name ?? "-"}</td>
                 <td>{r.mode}</td>
                 <td>{r.monthKey ?? "-"}</td>
-                <td>{r.package?.course?.name ?? "-"}</td>
+                <td>{r.package?.course?.name ?? (offlineCourseFromNote(r.note) || "-")}</td>
                 <td>{String(r.hours)}</td>
                 <td>{r.amount}</td>
                 <td>{r.status}</td>
