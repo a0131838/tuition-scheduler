@@ -477,7 +477,11 @@ export default async function PartnerSettlementPage({
     <div>
       <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
       <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(lang, "Only students with source channel = partner are included.", "仅纳入来源为合作方的学生。")}
+        {t(
+          lang,
+          `Only students with source channel = ${PARTNER_SOURCE_NAME} are included.`,
+          `仅纳入来源为${PARTNER_SOURCE_NAME}的学生。`
+        )}
       </div>
       {schemaNotReady || err === "schema-not-ready" ? (
         <div
