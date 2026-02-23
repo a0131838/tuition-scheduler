@@ -49,6 +49,15 @@ if [[ -z "${MONITOR_URLS:-}" ]]; then
 fi
 
 timeout="${CURL_TIMEOUT_SECONDS:-10}"
+retry_attempts="${MONITOR_RETRY_ATTEMPTS:-3}"
+retry_delay_seconds="${MONITOR_RETRY_DELAY_SECONDS:-1}"
+
+if ! [[ "$retry_attempts" =~ ^[0-9]+$ ]] || [[ "$retry_attempts" -lt 1 ]]; then
+  retry_attempts=1
+fi
+if ! [[ "$retry_delay_seconds" =~ ^[0-9]+$ ]] || [[ "$retry_delay_seconds" -lt 0 ]]; then
+  retry_delay_seconds=1
+fi
 
 json_escape() {
   # Prints JSON-escaped content without surrounding quotes.
@@ -124,13 +133,32 @@ is_ok_code() {
   esac
 }
 
+check_url_code() {
+  local url="$1"
+  local code="000"
+  local attempt
+
+  for ((attempt = 1; attempt <= retry_attempts; attempt++)); do
+    # `curl -w` still prints "000" on some failures; avoid double-"000" by not using `|| echo`.
+    code="$(curl -k -s -o /dev/null -m "$timeout" -w "%{http_code}" "$url" || true)"
+    [[ -z "$code" ]] && code="000"
+    if is_ok_code "$code"; then
+      printf '%s' "$code"
+      return 0
+    fi
+    if (( attempt < retry_attempts )) && (( retry_delay_seconds > 0 )); then
+      sleep "$retry_delay_seconds"
+    fi
+  done
+
+  printf '%s' "$code"
+  return 1
+}
+
 fails=()
 while read -r url; do
   [[ -z "$url" ]] && continue
-  # `curl -w` still prints "000" on some failures; avoid double-"000" by not using `|| echo`.
-  code="$(curl -k -s -o /dev/null -m "$timeout" -w "%{http_code}" "$url" || true)"
-  [[ -z "$code" ]] && code="000"
-  if ! is_ok_code "$code"; then
+  if ! code="$(check_url_code "$url")"; then
     fails+=("$code $url")
   fi
 done < <(printf '%s\n' $MONITOR_URLS)

@@ -84,7 +84,7 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-package`);
   }
 
-  let pkg: Awaited<ReturnType<typeof prisma.coursePackage.findUnique>>;
+  let pkg: any;
   try {
     pkg = await prisma.coursePackage.findUnique({
       where: { id: packageId },

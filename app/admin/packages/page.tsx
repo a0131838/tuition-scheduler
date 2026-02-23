@@ -4,6 +4,7 @@ import PackageEditModal from "../_components/PackageEditModal";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
 import PackageCreateFormClient from "./PackageCreateFormClient";
+import { Prisma } from "@prisma/client";
 import {
   packageModeFromNote,
   stripGroupPackTag,
@@ -42,6 +43,11 @@ function fmtDateInput(d: Date | null) {
   return `${y}-${m}-${dd}`;
 }
 
+function isSchemaNotReadyError(err: unknown) {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  return err.code === "P2021" || err.code === "P2022";
+}
+
 export default async function AdminPackagesPage({
   searchParams,
 }: {
@@ -62,13 +68,19 @@ export default async function AdminPackagesPage({
   if (filterPaid === "paid") wherePackages.paid = true;
   if (filterPaid === "unpaid") wherePackages.paid = false;
 
-  const [students, courses, packages] = await Promise.all([
+  const [students, courses] = await Promise.all([
     prisma.student.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
     prisma.course.findMany({ orderBy: { name: "asc" } }),
-    prisma.coursePackage.findMany({
+  ]);
+
+  let schemaNotReady = false;
+  let packages: any[] = [];
+
+  try {
+    packages = await prisma.coursePackage.findMany({
       where: wherePackages,
       include: {
         student: {
@@ -83,8 +95,26 @@ export default async function AdminPackagesPage({
       },
       orderBy: { createdAt: "desc" },
       take: 200,
-    }),
-  ]);
+    });
+  } catch (err) {
+    if (!isSchemaNotReadyError(err)) throw err;
+    schemaNotReady = true;
+    packages = await prisma.coursePackage.findMany({
+      where: wherePackages,
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        course: true,
+        sharedStudents: { include: { student: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packageIds = packages.map((p) => p.id);
@@ -131,6 +161,17 @@ export default async function AdminPackagesPage({
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      {schemaNotReady ? (
+        <NoticeBanner
+          type="warn"
+          title={t(lang, "Schema Not Ready", "数据库结构未就绪")}
+          message={t(
+            lang,
+            "Preview database migration is not ready yet. Student source column is temporarily hidden on this page.",
+            "预览环境数据库迁移尚未完成，此页暂时隐藏“学员来源”数据。"
+          )}
+        />
+      ) : null}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Create Package", "创建课包")} title={t(lang, "Create Package", "创建课包")} closeOnSubmit>
@@ -313,7 +354,7 @@ export default async function AdminPackagesPage({
                 <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
                 <td>{p.paidAmount ?? "-"}</td>
                 <td>{p.paidNote ?? "-"}</td>
-                <td>{p.sharedStudents.map((x) => x.student.name).join(", ") || "-"}</td>
+                <td>{p.sharedStudents.map((x: any) => x.student.name).join(", ") || "-"}</td>
                 <td>{stripGroupPackTag(p.note) || "-"}</td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
                 <td>

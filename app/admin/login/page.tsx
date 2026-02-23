@@ -11,10 +11,15 @@ export default async function AdminLoginPage({
   const sp = await searchParams;
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const next = sp?.next ? decodeURIComponent(sp.next) : "";
-  const count = await prisma.user.count();
-
-  if (count === 0) {
-    redirect("/admin/setup");
+  let dbUnavailable = false;
+  try {
+    const count = await prisma.user.count();
+    if (count === 0) {
+      redirect("/admin/setup");
+    }
+  } catch (error) {
+    dbUnavailable = true;
+    console.error("[admin/login] failed to query users", error);
   }
 
   return (
@@ -64,6 +69,13 @@ export default async function AdminLoginPage({
         </div>
 
         {err ? <NoticeBanner type="error" title="Error" message={err} /> : null}
+        {dbUnavailable ? (
+          <NoticeBanner
+            type="error"
+            title="Service Temporary Unavailable"
+            message="数据库连接异常，请稍后重试。Database connection is temporarily unavailable, please try again shortly."
+          />
+        ) : null}
 
         <AdminLoginClient next={next} />
       </section>
