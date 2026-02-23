@@ -20,6 +20,10 @@ type Labels = {
   validFrom: string;
   validTo: string;
   status: string;
+  settlementMode?: string;
+  settlementNone?: string;
+  settlementOnline?: string;
+  settlementOffline?: string;
   note: string;
   close: string;
   deleteConfirm: string;
@@ -31,6 +35,7 @@ type PackageRow = {
   validFrom: Date;
   validTo: Date | null;
   status: string;
+  settlementMode: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | null;
   paid: boolean;
   paidAt: Date | null;
   paidAmount: number | null;
@@ -57,6 +62,10 @@ export default function PackageEditModal({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const settlementModeLabel = labels.settlementMode ?? "Settlement Mode";
+  const settlementNoneLabel = labels.settlementNone ?? "Not Included";
+  const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
+  const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
 
   const preserveRefresh = (okMsg?: string) => {
     if (okMsg) {
@@ -127,6 +136,7 @@ export default function PackageEditModal({
               const id = String(fd.get("id") ?? "");
               const payload = {
                 status: String(fd.get("status") ?? ""),
+                settlementMode: String(fd.get("settlementMode") ?? ""),
                 remainingMinutes: String(fd.get("remainingMinutes") ?? ""),
                 validFrom: String(fd.get("validFrom") ?? ""),
                 validTo: String(fd.get("validTo") ?? ""),
@@ -181,6 +191,14 @@ export default function PackageEditModal({
               <option value="ACTIVE">ACTIVE</option>
               <option value="PAUSED">PAUSED</option>
               <option value="EXPIRED">EXPIRED</option>
+            </select>
+          </label>
+          <label>
+            {settlementModeLabel}:
+            <select name="settlementMode" defaultValue={pkg.settlementMode ?? ""} style={{ marginLeft: 8 }}>
+              <option value="">{settlementNoneLabel}</option>
+              <option value="ONLINE_PACKAGE_END">{settlementOnlineLabel}</option>
+              <option value="OFFLINE_MONTHLY">{settlementOfflineLabel}</option>
             </select>
           </label>
           <label style={{ display: "flex", gap: 6, alignItems: "center" }}>

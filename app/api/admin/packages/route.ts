@@ -15,6 +15,12 @@ function parseDateEnd(s: string) {
   return new Date(Y, M - 1, D, 23, 59, 59, 999);
 }
 
+function parseSettlementMode(v: unknown) {
+  const x = String(v ?? "");
+  if (x === "ONLINE_PACKAGE_END" || x === "OFFLINE_MONTHLY") return x;
+  return null;
+}
+
 type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
 
 function modeKeyFromCreateType(typeRaw: string, type: string): PackageModeKey {
@@ -48,6 +54,7 @@ export async function POST(req: Request) {
   const typeRaw = String(body?.type ?? "HOURS");
   const type = typeRaw === "GROUP_COUNT" ? "HOURS" : typeRaw;
   const status = String(body?.status ?? "PAUSED");
+  const settlementMode = parseSettlementMode(body?.settlementMode);
 
   const validFromStr = String(body?.validFrom ?? "");
   const validToStr = String(body?.validTo ?? "");
@@ -123,6 +130,7 @@ export async function POST(req: Request) {
         courseId,
         type: "HOURS",
         status: (status as any) || "PAUSED",
+        settlementMode: settlementMode as any,
         totalMinutes,
         remainingMinutes: totalMinutes,
         validFrom,
@@ -152,6 +160,7 @@ export async function POST(req: Request) {
       courseId,
       type: "MONTHLY",
       status: (status as any) || "PAUSED",
+      settlementMode: settlementMode as any,
       validFrom,
       validTo,
       paid,

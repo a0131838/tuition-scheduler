@@ -15,6 +15,12 @@ function parseDateEnd(s: string) {
   return new Date(Y, M - 1, D, 23, 59, 59, 999);
 }
 
+function parseSettlementMode(v: unknown) {
+  const x = String(v ?? "");
+  if (x === "ONLINE_PACKAGE_END" || x === "OFFLINE_MONTHLY") return x;
+  return null;
+}
+
 type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
 
 function modeKeyFromSaved(type: string, note: string | null): PackageModeKey {
@@ -46,6 +52,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   const status = String(body?.status ?? "");
+  const settlementMode = parseSettlementMode(body?.settlementMode);
   const remainingMinutesRaw = body?.remainingMinutes;
   const validFromStr = String(body?.validFrom ?? "");
   const validToStr = String(body?.validTo ?? "");
@@ -121,6 +128,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     where: { id },
     data: {
       status: (status as any) || undefined,
+      settlementMode: settlementMode as any,
       remainingMinutes,
       validFrom,
       validTo,

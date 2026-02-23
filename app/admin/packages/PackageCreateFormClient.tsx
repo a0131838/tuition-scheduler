@@ -38,6 +38,10 @@ export default function PackageCreateFormClient({
     validFrom: string;
     validToOptional: string;
     status: string;
+    settlementMode?: string;
+    settlementNone?: string;
+    settlementOnline?: string;
+    settlementOffline?: string;
     paid: string;
     paidAt: string;
     paidAmount: string;
@@ -55,6 +59,10 @@ export default function PackageCreateFormClient({
   const searchParams = useSearchParams();
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const settlementModeLabel = labels.settlementMode ?? "Settlement Mode";
+  const settlementNoneLabel = labels.settlementNone ?? "Not Included";
+  const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
+  const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
 
   return (
     <form
@@ -72,6 +80,7 @@ export default function PackageCreateFormClient({
             courseId: String(fd.get("courseId") ?? ""),
             type: String(fd.get("type") ?? "HOURS"),
             status: String(fd.get("status") ?? "PAUSED"),
+            settlementMode: String(fd.get("settlementMode") ?? ""),
             totalMinutes: Number(fd.get("totalMinutes") ?? 0),
             validFrom: String(fd.get("validFrom") ?? ""),
             validTo: String(fd.get("validTo") ?? ""),
@@ -172,6 +181,15 @@ export default function PackageCreateFormClient({
           <option value="ACTIVE">ACTIVE</option>
           <option value="PAUSED">PAUSED</option>
           <option value="EXPIRED">EXPIRED</option>
+        </select>
+      </label>
+
+      <label>
+        {settlementModeLabel}:
+        <select name="settlementMode" defaultValue="" style={{ marginLeft: 8, minWidth: 220 }}>
+          <option value="">{settlementNoneLabel}</option>
+          <option value="ONLINE_PACKAGE_END">{settlementOnlineLabel}</option>
+          <option value="OFFLINE_MONTHLY">{settlementOfflineLabel}</option>
         </select>
       </label>
 
