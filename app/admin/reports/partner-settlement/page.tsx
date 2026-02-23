@@ -279,6 +279,24 @@ async function createOfflineSettlementAction(formData: FormData) {
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=offline-created`);
 }
 
+async function clearSettlementRecordsAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const source = await findPartnerSource();
+  if (!source) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=source-not-found`);
+  }
+
+  await prisma.partnerSettlement.deleteMany({
+    where: { student: { sourceChannelId: source.id } },
+  });
+
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlements-cleared`);
+}
+
 export default async function PartnerSettlementPage({
   searchParams,
 }: {
@@ -640,6 +658,12 @@ export default async function PartnerSettlementPage({
       )}
 
       <h3>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
+      <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
+        <input type="hidden" name="month" value={month} />
+        <button type="submit" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239" }}>
+          {t(lang, "Clear Test Records", "清空测试结算记录")}
+        </button>
+      </form>
       {recentSettlements.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "暂无结算记录。")}</div>
       ) : (
