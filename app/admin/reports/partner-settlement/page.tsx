@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -40,6 +41,11 @@ function parseMode(v: FormDataEntryValue | null) {
   return "";
 }
 
+function isSchemaNotReadyError(err: unknown) {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  return err.code === "P2021" || err.code === "P2022";
+}
+
 async function updateStudentModeAction(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -51,12 +57,19 @@ async function updateStudentModeAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-student`);
   }
 
-  await prisma.student.update({
-    where: { id: studentId },
-    data: {
-      settlementMode: mode ? mode : null,
-    },
-  });
+  try {
+    await prisma.student.update({
+      where: { id: studentId },
+      data: {
+        settlementMode: mode ? mode : null,
+      },
+    });
+  } catch (err) {
+    if (isSchemaNotReadyError(err)) {
+      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+    }
+    throw err;
+  }
 
   revalidatePath("/admin/reports/partner-settlement");
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=mode-updated`);
@@ -71,13 +84,21 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-package`);
   }
 
-  const pkg = await prisma.coursePackage.findUnique({
-    where: { id: packageId },
-    include: {
-      student: { include: { sourceChannel: true } },
-      settlements: { where: { mode: "ONLINE_PACKAGE_END" } },
-    },
-  });
+  let pkg: Awaited<ReturnType<typeof prisma.coursePackage.findUnique>>;
+  try {
+    pkg = await prisma.coursePackage.findUnique({
+      where: { id: packageId },
+      include: {
+        student: { include: { sourceChannel: true } },
+        settlements: { where: { mode: "ONLINE_PACKAGE_END" } },
+      },
+    });
+  } catch (err) {
+    if (isSchemaNotReadyError(err)) {
+      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+    }
+    throw err;
+  }
 
   if (!pkg || pkg.student?.sourceChannel?.name !== "新东方学生") {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=package-not-eligible`);
@@ -87,17 +108,24 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
 
-  await prisma.partnerSettlement.create({
-    data: {
-      studentId: pkg.studentId,
-      packageId: pkg.id,
-      mode: "ONLINE_PACKAGE_END",
-      status: "PENDING",
-      hours: Number(toHours(pkg.totalMinutes ?? 0).toFixed(2)),
-      amount: pkg.paidAmount ?? 0,
-      note: `Online package completed: ${pkg.courseId}`,
-    },
-  });
+  try {
+    await prisma.partnerSettlement.create({
+      data: {
+        studentId: pkg.studentId,
+        packageId: pkg.id,
+        mode: "ONLINE_PACKAGE_END",
+        status: "PENDING",
+        hours: Number(toHours(pkg.totalMinutes ?? 0).toFixed(2)),
+        amount: pkg.paidAmount ?? 0,
+        note: `Online package completed: ${pkg.courseId}`,
+      },
+    });
+  } catch (err) {
+    if (isSchemaNotReadyError(err)) {
+      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+    }
+    throw err;
+  }
 
   revalidatePath("/admin/reports/partner-settlement");
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=online-created`);
@@ -114,13 +142,21 @@ async function createOfflineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-offline-input`);
   }
 
-  const existed = await prisma.partnerSettlement.findFirst({
-    where: {
-      studentId,
-      monthKey: month,
-      mode: "OFFLINE_MONTHLY",
-    },
-  });
+  let existed: Awaited<ReturnType<typeof prisma.partnerSettlement.findFirst>>;
+  try {
+    existed = await prisma.partnerSettlement.findFirst({
+      where: {
+        studentId,
+        monthKey: month,
+        mode: "OFFLINE_MONTHLY",
+      },
+    });
+  } catch (err) {
+    if (isSchemaNotReadyError(err)) {
+      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+    }
+    throw err;
+  }
   if (existed) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
@@ -145,17 +181,24 @@ async function createOfflineSettlementAction(formData: FormData) {
     totalMinutes += min;
   }
 
-  await prisma.partnerSettlement.create({
-    data: {
-      studentId,
-      monthKey: month,
-      mode: "OFFLINE_MONTHLY",
-      status: "PENDING",
-      hours: Number(toHours(totalMinutes).toFixed(2)),
-      amount: 0,
-      note: `Offline monthly settlement ${month}`,
-    },
-  });
+  try {
+    await prisma.partnerSettlement.create({
+      data: {
+        studentId,
+        monthKey: month,
+        mode: "OFFLINE_MONTHLY",
+        status: "PENDING",
+        hours: Number(toHours(totalMinutes).toFixed(2)),
+        amount: 0,
+        note: `Offline monthly settlement ${month}`,
+      },
+    });
+  } catch (err) {
+    if (isSchemaNotReadyError(err)) {
+      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+    }
+    throw err;
+  }
 
   revalidatePath("/admin/reports/partner-settlement");
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=offline-created`);
@@ -197,118 +240,153 @@ export default async function PartnerSettlementPage({
     );
   }
 
-  const partnerStudents = await prisma.student.findMany({
-    where: { sourceChannelId: source.id },
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      settlementMode: true,
-    },
-  });
+  let schemaNotReady = false;
+  let partnerStudents: Array<{ id: string; name: string; settlementMode: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | null }> = [];
+  let onlinePending: Array<{
+    id: string;
+    student: { id: string; name: string } | null;
+    course: { name: string } | null;
+    status: string;
+    totalMinutes: number | null;
+    paidAmount: number | null;
+  }> = [];
+  let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; hours: number }> = [];
+  let recentSettlements: Array<{
+    id: string;
+    createdAt: Date;
+    student: { name: string } | null;
+    mode: string;
+    monthKey: string | null;
+    package: { course: { name: string } | null } | null;
+    hours: Prisma.Decimal;
+    amount: number;
+    status: string;
+  }> = [];
 
-  const onlinePackages = await prisma.coursePackage.findMany({
-    where: {
-      student: {
-        sourceChannelId: source.id,
-        settlementMode: "ONLINE_PACKAGE_END",
+  try {
+    partnerStudents = await prisma.student.findMany({
+      where: { sourceChannelId: source.id },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        settlementMode: true,
       },
-      OR: [{ status: "EXPIRED" }, { remainingMinutes: { lte: 0 } }],
-    },
-    include: {
-      student: { select: { id: true, name: true } },
-      course: { select: { name: true } },
-      settlements: { where: { mode: "ONLINE_PACKAGE_END" }, select: { id: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 500,
-  });
+    });
 
-  const onlinePending = onlinePackages.filter((p) => p.settlements.length === 0);
+    const onlinePackages = await prisma.coursePackage.findMany({
+      where: {
+        student: {
+          sourceChannelId: source.id,
+          settlementMode: "ONLINE_PACKAGE_END",
+        },
+        OR: [{ status: "EXPIRED" }, { remainingMinutes: { lte: 0 } }],
+      },
+      include: {
+        student: { select: { id: true, name: true } },
+        course: { select: { name: true } },
+        settlements: { where: { mode: "ONLINE_PACKAGE_END" }, select: { id: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    });
+    onlinePending = onlinePackages.filter((p) => p.settlements.length === 0);
 
-  const offlineStudents = partnerStudents.filter((s) => s.settlementMode === "OFFLINE_MONTHLY");
-  const offlineIds = offlineStudents.map((s) => s.id);
+    const offlineStudents = partnerStudents.filter((s) => s.settlementMode === "OFFLINE_MONTHLY");
+    const offlineIds = offlineStudents.map((s) => s.id);
 
-  const [offlineAttendanceRows, offlineSettledRows] = await Promise.all([
-    offlineIds.length
-      ? prisma.attendance.findMany({
-          where: {
-            studentId: { in: offlineIds },
-            status: { not: "UNMARKED" },
-            session: {
-              startAt: { gte: monthRange.start, lt: monthRange.end },
-              feedbacks: { some: { content: { not: "" } } },
+    const [offlineAttendanceRows, offlineSettledRows] = await Promise.all([
+      offlineIds.length
+        ? prisma.attendance.findMany({
+            where: {
+              studentId: { in: offlineIds },
+              status: { not: "UNMARKED" },
+              session: {
+                startAt: { gte: monthRange.start, lt: monthRange.end },
+                feedbacks: { some: { content: { not: "" } } },
+              },
             },
-          },
-          include: {
-            student: { select: { id: true, name: true } },
-            session: {
-              select: {
-                id: true,
-                startAt: true,
-                endAt: true,
-                class: {
-                  select: {
-                    course: { select: { name: true } },
-                    subject: { select: { name: true } },
-                    level: { select: { name: true } },
+            include: {
+              student: { select: { id: true, name: true } },
+              session: {
+                select: {
+                  id: true,
+                  startAt: true,
+                  endAt: true,
+                  class: {
+                    select: {
+                      course: { select: { name: true } },
+                      subject: { select: { name: true } },
+                      level: { select: { name: true } },
+                    },
                   },
                 },
               },
             },
-          },
-        })
-      : Promise.resolve([]),
-    offlineIds.length
-      ? prisma.partnerSettlement.findMany({
-          where: {
-            mode: "OFFLINE_MONTHLY",
-            monthKey: month,
-            studentId: { in: offlineIds },
-          },
-          select: { id: true, studentId: true },
-        })
-      : Promise.resolve([]),
-  ]);
+          })
+        : Promise.resolve([]),
+      offlineIds.length
+        ? prisma.partnerSettlement.findMany({
+            where: {
+              mode: "OFFLINE_MONTHLY",
+              monthKey: month,
+              studentId: { in: offlineIds },
+            },
+            select: { id: true, studentId: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-  const offlineSettledSet = new Set(offlineSettledRows.map((x) => x.studentId));
-  const offlineAgg = new Map<string, { studentName: string; sessions: number; totalMinutes: number }>();
-  for (const row of offlineAttendanceRows) {
-    const prev = offlineAgg.get(row.studentId);
-    const minutes = Math.max(0, Math.round((row.session.endAt.getTime() - row.session.startAt.getTime()) / 60000));
-    if (prev) {
-      prev.sessions += 1;
-      prev.totalMinutes += minutes;
+    const offlineSettledSet = new Set(offlineSettledRows.map((x) => x.studentId));
+    const offlineAgg = new Map<string, { studentName: string; sessions: number; totalMinutes: number }>();
+    for (const row of offlineAttendanceRows) {
+      const prev = offlineAgg.get(row.studentId);
+      const minutes = Math.max(0, Math.round((row.session.endAt.getTime() - row.session.startAt.getTime()) / 60000));
+      if (prev) {
+        prev.sessions += 1;
+        prev.totalMinutes += minutes;
+      } else {
+        offlineAgg.set(row.studentId, {
+          studentName: row.student?.name ?? "-",
+          sessions: 1,
+          totalMinutes: minutes,
+        });
+      }
+    }
+
+    offlinePending = Array.from(offlineAgg.entries())
+      .filter(([studentId]) => !offlineSettledSet.has(studentId))
+      .map(([studentId, agg]) => ({
+        studentId,
+        studentName: agg.studentName,
+        sessions: agg.sessions,
+        hours: toHours(agg.totalMinutes),
+      }))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+    recentSettlements = await prisma.partnerSettlement.findMany({
+      where: {
+        student: { sourceChannelId: source.id },
+      },
+      include: {
+        student: { select: { name: true } },
+        package: { include: { course: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  } catch (e) {
+    if (isSchemaNotReadyError(e)) {
+      schemaNotReady = true;
+      partnerStudents = await prisma.student.findMany({
+        where: { sourceChannelId: source.id },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }).then((rows) => rows.map((x) => ({ ...x, settlementMode: null })));
     } else {
-      offlineAgg.set(row.studentId, {
-        studentName: row.student?.name ?? "-",
-        sessions: 1,
-        totalMinutes: minutes,
-      });
+      throw e;
     }
   }
-
-  const offlinePending = Array.from(offlineAgg.entries())
-    .filter(([studentId]) => !offlineSettledSet.has(studentId))
-    .map(([studentId, agg]) => ({
-      studentId,
-      studentName: agg.studentName,
-      sessions: agg.sessions,
-      hours: toHours(agg.totalMinutes),
-    }))
-    .sort((a, b) => a.studentName.localeCompare(b.studentName));
-
-  const recentSettlements = await prisma.partnerSettlement.findMany({
-    where: {
-      student: { sourceChannelId: source.id },
-    },
-    include: {
-      student: { select: { name: true } },
-      package: { include: { course: { select: { name: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
 
   return (
     <div>
@@ -320,6 +398,15 @@ export default async function PartnerSettlementPage({
           "仅学生来源为“新东方学生”的学生会进入结算。"
         )}
       </div>
+      {schemaNotReady || err === "schema-not-ready" ? (
+        <div style={{ marginBottom: 10, color: "#92400e", border: "1px solid #f59e0b", background: "#fffbeb", borderRadius: 8, padding: "8px 10px" }}>
+          {t(
+            lang,
+            "Preview database migration is not ready yet. Please run migrations on this environment before using settlement actions.",
+            "预览环境数据库迁移尚未完成。请先在该环境执行迁移，再使用结算功能。"
+          )}
+        </div>
+      ) : null}
 
       {msg ? <div style={{ marginBottom: 8, color: "#166534" }}>{msg}</div> : null}
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
