@@ -67,7 +67,11 @@ export default async function AdminPackagesPage({
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.coursePackage.findMany({
       where: wherePackages,
-      include: { student: true, course: true, sharedStudents: { include: { student: true } } },
+      include: {
+        student: { include: { sourceChannel: true } },
+        course: true,
+        sharedStudents: { include: { student: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
@@ -199,6 +203,7 @@ export default async function AdminPackagesPage({
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Student Source", "学生来源")}</th>
               <th align="left">{t(lang, "Course", "课程")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
               <th align="left">{t(lang, "Remaining", "剩余")}</th>
@@ -231,6 +236,7 @@ export default async function AdminPackagesPage({
                   return (
                     <>
                 <td>{p.student?.name ?? "-"}</td>
+                <td>{p.student?.sourceChannel?.name ?? "-"}</td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>
                   {p.type === "HOURS"
