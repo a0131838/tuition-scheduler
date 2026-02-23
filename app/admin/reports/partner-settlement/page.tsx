@@ -95,6 +95,10 @@ function offlineCourseFromNote(note?: string | null) {
   return m?.[1]?.trim() ?? "";
 }
 
+function studentAttendanceHref(studentId: string) {
+  return `/admin/students/${encodeURIComponent(studentId)}?focus=attendance&limit=500#attendance`;
+}
+
 async function updateRateSettingsAction(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -329,7 +333,7 @@ export default async function PartnerSettlementPage({
   let recentSettlements: Array<{
     id: string;
     createdAt: Date;
-    student: { name: string } | null;
+    student: { id: string; name: string } | null;
     mode: string;
     monthKey: string | null;
     package: { course: { name: string } | null } | null;
@@ -444,7 +448,7 @@ export default async function PartnerSettlementPage({
         student: { sourceChannelId: source.id },
       },
       include: {
-        student: { select: { name: true } },
+        student: { select: { id: true, name: true } },
         package: { include: { course: { select: { name: true } } } },
       },
       orderBy: { createdAt: "desc" },
@@ -577,7 +581,9 @@ export default async function PartnerSettlementPage({
           <tbody>
             {onlinePending.map((p) => (
               <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{p.student?.name ?? "-"}</td>
+                <td>
+                  {p.student ? <a href={studentAttendanceHref(p.student.id)}>{p.student.name}</a> : "-"}
+                </td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>{p.status}</td>
                 <td>{toHours(p.totalMinutes ?? 0)}</td>
@@ -613,7 +619,9 @@ export default async function PartnerSettlementPage({
           <tbody>
             {offlinePending.map((r) => (
               <tr key={`${r.studentId}-${month}`} style={{ borderTop: "1px solid #eee" }}>
-                <td>{r.studentName}</td>
+                <td>
+                  <a href={studentAttendanceHref(r.studentId)}>{r.studentName}</a>
+                </td>
                 <td>{month}</td>
                 <td>{r.sessions}</td>
                 <td>{r.hours}</td>
@@ -652,7 +660,9 @@ export default async function PartnerSettlementPage({
             {recentSettlements.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{new Date(r.createdAt).toLocaleString()}</td>
-                <td>{r.student?.name ?? "-"}</td>
+                <td>
+                  {r.student ? <a href={studentAttendanceHref(r.student.id)}>{r.student.name}</a> : "-"}
+                </td>
                 <td>{r.mode}</td>
                 <td>{r.monthKey ?? "-"}</td>
                 <td>{r.package?.course?.name ?? (offlineCourseFromNote(r.note) || "-")}</td>

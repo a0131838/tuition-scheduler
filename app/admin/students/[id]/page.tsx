@@ -928,6 +928,8 @@ export default async function StudentDetailPage({
   const quickRoomId = sp?.quickRoomId ?? "";
   const monthParam = sp?.month ?? "";
   const quickOpen = sp?.quickOpen === "1";
+  const focus = sp?.focus ?? "";
+  const attendanceOpen = focus === "attendance";
 
   const now = new Date();
   const bypassAvailabilityCheck = isStrictSuperAdmin(await getCurrentUser());
@@ -1757,7 +1759,7 @@ export default async function StudentDetailPage({
       )}
       </details>
 
-      <details style={{ marginBottom: 14 }}>
+      <details id="attendance" open={attendanceOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")}</summary>
       <StudentAttendanceFilterForm
         studentId={studentId}
