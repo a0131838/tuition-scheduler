@@ -29,7 +29,7 @@ const GRADE_OPTIONS = [
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; page?: string; pageSize?: string }>;
+  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; q?: string; page?: string; pageSize?: string }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
@@ -37,6 +37,7 @@ export default async function StudentsPage({
   const sp = await searchParams;
   const sourceChannelId = sp?.sourceChannelId ?? "";
   const studentTypeId = sp?.studentTypeId ?? "";
+  const q = (sp?.q ?? "").trim();
   const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
   const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
@@ -44,6 +45,18 @@ export default async function StudentsPage({
   const where: any = {};
   if (sourceChannelId) where.sourceChannelId = sourceChannelId;
   if (studentTypeId) where.studentTypeId = studentTypeId;
+  if (q) {
+    where.OR = [
+      { id: { contains: q, mode: "insensitive" } },
+      { name: { contains: q, mode: "insensitive" } },
+      { school: { contains: q, mode: "insensitive" } },
+      { grade: { contains: q, mode: "insensitive" } },
+      { targetSchool: { contains: q, mode: "insensitive" } },
+      { currentMajor: { contains: q, mode: "insensitive" } },
+      { coachingContent: { contains: q, mode: "insensitive" } },
+      { note: { contains: q, mode: "insensitive" } },
+    ];
+  }
 
   const totalCount = await prisma.student.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -73,10 +86,11 @@ export default async function StudentsPage({
     const params = new URLSearchParams();
     if (sourceChannelId) params.set("sourceChannelId", sourceChannelId);
     if (studentTypeId) params.set("studentTypeId", studentTypeId);
+    if (q) params.set("q", q);
     params.set("pageSize", String(pageSize));
     if (targetPage > 1) params.set("page", String(targetPage));
-    const q = params.toString();
-    return q ? `/admin/students?${q}` : "/admin/students";
+    const queryString = params.toString();
+    return queryString ? `/admin/students?${queryString}` : "/admin/students";
   };
 
   return (
@@ -85,6 +99,13 @@ export default async function StudentsPage({
 
       <h3>{t(lang, "Filter", "筛选")}</h3>
       <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <input
+          type="text"
+          name="q"
+          defaultValue={q}
+          placeholder={t(lang, "Search name/school/notes/ID", "搜索姓名/学校/备注/ID")}
+          style={{ minWidth: 240 }}
+        />
         <select name="sourceChannelId" defaultValue={sourceChannelId}>
           <option value="">{t(lang, "All Sources", "全部来源")}</option>
           {sources.map((s) => (
