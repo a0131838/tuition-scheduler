@@ -63,6 +63,17 @@ enum FeedbackStatus {
   PROXY_DRAFT
 }
 
+enum PartnerSettlementMode {
+  ONLINE_PACKAGE_END
+  OFFLINE_MONTHLY
+}
+
+enum PartnerSettlementStatus {
+  PENDING
+  INVOICED
+  CANCELLED
+}
+
 model Campus {
   id             String          @id @default(uuid())
   name           String
@@ -393,6 +404,7 @@ model Student {
   note            String?
   sourceChannelId String?
   studentTypeId   String?
+  settlementMode  PartnerSettlementMode?
 
   enrollments        Enrollment[]
   appointments       Appointment[]
@@ -406,9 +418,32 @@ model Student {
   studentType        StudentType?                 @relation(fields: [studentTypeId], references: [id])
   bookingLinks       StudentBookingLink[]
   bookingRequests    StudentBookingRequest[]
+  settlements        PartnerSettlement[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
+}
+
+model PartnerSettlement {
+  id         String                  @id @default(uuid())
+  studentId  String
+  packageId  String?
+  monthKey   String?
+  mode       PartnerSettlementMode
+  status     PartnerSettlementStatus @default(PENDING)
+  hours      Decimal                 @default(0) @db.Decimal(10, 2)
+  amount     Int                     @default(0)
+  note       String?
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  @@unique([packageId, mode])
+  @@unique([studentId, monthKey, mode])
+  @@index([mode, status, createdAt])
+  @@index([studentId, createdAt])
 }
 
 model StudentSourceChannel {
@@ -641,6 +676,7 @@ model CoursePackage {
   txns           PackageTxn[]
   attendances    Attendance[]
   sharedStudents CoursePackageSharedStudent[]
+  settlements    PartnerSettlement[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])

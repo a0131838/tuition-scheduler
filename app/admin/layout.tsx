@@ -213,6 +213,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   <a href="/admin/reports/teacher-payroll" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                     {t(lang, "Teacher Payroll", "老师工资单")}
                   </a>
+                  <a href="/admin/reports/partner-settlement" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Partner Settlement", "合作方结算")}
+                  </a>
                 </div>
               </>
             ) : null}
