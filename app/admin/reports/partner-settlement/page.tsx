@@ -7,6 +7,10 @@ import { redirect } from "next/navigation";
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PARTNER_SOURCE_NAME = "\u65b0\u4e1c\u65b9\u5b66\u751f";
+const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
+const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
+const DEFAULT_ONLINE_RATE_PER_45 = 70;
+const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 
 type Mode = "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | "";
 
@@ -38,6 +42,11 @@ function toHours(minutes: number) {
   return Number((minutes / 60).toFixed(2));
 }
 
+function calcAmountByRatePer45(minutes: number, ratePer45: number) {
+  if (!Number.isFinite(minutes) || minutes <= 0 || !Number.isFinite(ratePer45) || ratePer45 < 0) return 0;
+  return Math.round((minutes / 45) * ratePer45);
+}
+
 function parseMode(v: FormDataEntryValue | null): Mode {
   const x = typeof v === "string" ? v : "";
   if (x === "ONLINE_PACKAGE_END" || x === "OFFLINE_MONTHLY") return x;
@@ -47,6 +56,24 @@ function parseMode(v: FormDataEntryValue | null): Mode {
 function isSchemaNotReadyError(err: unknown) {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
   return err.code === "P2021" || err.code === "P2022";
+}
+
+function readRateSetting(raw: string | null | undefined, fallback: number) {
+  const n = Number(raw ?? "");
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
+async function getSettlementRates() {
+  const rows = await prisma.appSetting.findMany({
+    where: { key: { in: [ONLINE_RATE_KEY, OFFLINE_RATE_KEY] } },
+    select: { key: true, value: true },
+  });
+  const map = new Map(rows.map((x) => [x.key, x.value]));
+  return {
+    onlineRatePer45: readRateSetting(map.get(ONLINE_RATE_KEY), DEFAULT_ONLINE_RATE_PER_45),
+    offlineRatePer45: readRateSetting(map.get(OFFLINE_RATE_KEY), DEFAULT_OFFLINE_RATE_PER_45),
+  };
 }
 
 async function findPartnerSource() {
@@ -66,6 +93,36 @@ function offlineCourseFromNote(note?: string | null) {
   if (!note) return "";
   const m = note.match(/Courses:\\s*(.+)$/);
   return m?.[1]?.trim() ?? "";
+}
+
+async function updateRateSettingsAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const onlineRaw = typeof formData.get("onlineRatePer45") === "string" ? String(formData.get("onlineRatePer45")) : "";
+  const offlineRaw = typeof formData.get("offlineRatePer45") === "string" ? String(formData.get("offlineRatePer45")) : "";
+  const onlineRate = Number(onlineRaw);
+  const offlineRate = Number(offlineRaw);
+  if (!Number.isFinite(onlineRate) || onlineRate < 0 || !Number.isFinite(offlineRate) || offlineRate < 0) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-rate`);
+  }
+
+  await prisma.$transaction([
+    prisma.appSetting.upsert({
+      where: { key: ONLINE_RATE_KEY },
+      create: { key: ONLINE_RATE_KEY, value: String(onlineRate) },
+      update: { value: String(onlineRate) },
+    }),
+    prisma.appSetting.upsert({
+      where: { key: OFFLINE_RATE_KEY },
+      create: { key: OFFLINE_RATE_KEY, value: String(offlineRate) },
+      update: { value: String(offlineRate) },
+    }),
+  ]);
+
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=rate-updated`);
 }
 
 async function createOnlineSettlementAction(formData: FormData) {
@@ -114,6 +171,9 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
 
+  const rates = await getSettlementRates();
+  const totalMinutes = Number(pkg.totalMinutes ?? 0);
+
   try {
     await prisma.partnerSettlement.create({
       data: {
@@ -121,8 +181,8 @@ async function createOnlineSettlementAction(formData: FormData) {
         packageId: pkg.id,
         mode: "ONLINE_PACKAGE_END",
         status: "PENDING",
-        hours: Number(toHours(pkg.totalMinutes ?? 0).toFixed(2)),
-        amount: pkg.paidAmount ?? 0,
+        hours: Number(toHours(totalMinutes).toFixed(2)),
+        amount: calcAmountByRatePer45(totalMinutes, rates.onlineRatePer45),
         note: `Online package completed: ${pkg.courseId}`,
       },
     });
@@ -190,6 +250,7 @@ async function createOfflineSettlementAction(formData: FormData) {
     if (courseName) courseNames.add(courseName);
   }
   const courseNote = Array.from(courseNames).join(", ");
+  const rates = await getSettlementRates();
 
   try {
     await prisma.partnerSettlement.create({
@@ -199,7 +260,7 @@ async function createOfflineSettlementAction(formData: FormData) {
         mode: "OFFLINE_MONTHLY",
         status: "PENDING",
         hours: Number(toHours(totalMinutes).toFixed(2)),
-        amount: 0,
+        amount: calcAmountByRatePer45(totalMinutes, rates.offlineRatePer45),
         note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}`,
       },
     });
@@ -225,6 +286,7 @@ export default async function PartnerSettlementPage({
   const month = sp?.month ?? monthKey(new Date());
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
+  const rates = await getSettlementRates();
 
   const monthRange = toBizMonthRange(month);
   if (!monthRange) {
@@ -262,9 +324,8 @@ export default async function PartnerSettlementPage({
     course: { name: string } | null;
     status: string;
     totalMinutes: number | null;
-    paidAmount: number | null;
   }> = [];
-  let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; hours: number }> = [];
+  let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number }> = [];
   let recentSettlements: Array<{
     id: string;
     createdAt: Date;
@@ -373,6 +434,7 @@ export default async function PartnerSettlementPage({
         studentId,
         studentName: agg.studentName,
         sessions: agg.sessions,
+        totalMinutes: agg.totalMinutes,
         hours: toHours(agg.totalMinutes),
       }))
       .sort((a, b) => a.studentName.localeCompare(b.studentName));
@@ -446,6 +508,27 @@ export default async function PartnerSettlementPage({
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
 
+      <h3>{t(lang, "Rate Settings", "费率设置")}</h3>
+      <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+        <input type="hidden" name="month" value={month} />
+        <label>
+          {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
+          <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+        </label>
+        <label>
+          {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
+          <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+        </label>
+        <button type="submit">{t(lang, "Save Rates", "保存费率")}</button>
+      </form>
+      <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
+        {t(
+          lang,
+          "Bill amount formula: amount = (minutes / 45) x rate.",
+          "账单金额公式：金额 = （总分钟 / 45）x 单价。"
+        )}
+      </div>
+
       <h3>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
         <thead>
@@ -494,7 +577,7 @@ export default async function PartnerSettlementPage({
                 <td>{p.course?.name ?? "-"}</td>
                 <td>{p.status}</td>
                 <td>{toHours(p.totalMinutes ?? 0)}</td>
-                <td>{p.paidAmount ?? 0}</td>
+                <td>{calcAmountByRatePer45(Number(p.totalMinutes ?? 0), rates.onlineRatePer45)}</td>
                 <td>
                   <form action={createOnlineSettlementAction}>
                     <input type="hidden" name="month" value={month} />
@@ -519,6 +602,7 @@ export default async function PartnerSettlementPage({
               <th align="left">{t(lang, "Month", "月份")}</th>
               <th align="left">{t(lang, "Sessions", "课次")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
+              <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -529,6 +613,7 @@ export default async function PartnerSettlementPage({
                 <td>{month}</td>
                 <td>{r.sessions}</td>
                 <td>{r.hours}</td>
+                <td>{calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45)}</td>
                 <td>
                   <form action={createOfflineSettlementAction}>
                     <input type="hidden" name="studentId" value={r.studentId} />
