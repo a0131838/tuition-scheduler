@@ -68,16 +68,24 @@ export default async function AdminPackagesPage({
   if (filterPaid === "paid") wherePackages.paid = true;
   if (filterPaid === "unpaid") wherePackages.paid = false;
 
-  const [students, courses] = await Promise.all([
-    prisma.student.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.course.findMany({ orderBy: { name: "asc" } }),
-  ]);
-
   let schemaNotReady = false;
+  let loadFailed = false;
+  let students: Array<{ id: string; name: string }> = [];
+  let courses: Array<{ id: string; name: string }> = [];
   let packages: any[] = [];
+
+  try {
+    [students, courses] = await Promise.all([
+      prisma.student.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.course.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    ]);
+  } catch (error) {
+    loadFailed = true;
+    console.error("[admin/packages] failed to load students/courses", error);
+  }
 
   try {
     packages = await prisma.coursePackage.findMany({
@@ -97,60 +105,80 @@ export default async function AdminPackagesPage({
       take: 200,
     });
   } catch (err) {
-    if (!isSchemaNotReadyError(err)) throw err;
-    schemaNotReady = true;
-    packages = await prisma.coursePackage.findMany({
-      where: wherePackages,
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
+    if (isSchemaNotReadyError(err)) {
+      schemaNotReady = true;
+      try {
+        packages = await prisma.coursePackage.findMany({
+          where: wherePackages,
+          include: {
+            student: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            course: true,
+            sharedStudents: { include: { student: true } },
           },
-        },
-        course: true,
-        sharedStudents: { include: { student: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
+          orderBy: { createdAt: "desc" },
+          take: 200,
+        });
+      } catch (fallbackError) {
+        loadFailed = true;
+        console.error("[admin/packages] fallback query failed", fallbackError);
+      }
+    } else {
+      loadFailed = true;
+      console.error("[admin/packages] failed to load packages", err);
+    }
   }
 
-  const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const packageIds = packages.map((p) => p.id);
-  const deductedRows = packageIds.length
-    ? await prisma.packageTxn.groupBy({
-        by: ["packageId"],
-        where: {
-          packageId: { in: packageIds },
-          kind: "DEDUCT",
-          createdAt: { gte: usageSince },
-        },
-        _sum: { deltaMinutes: true },
-      })
-    : [];
-  const deducted30Map = new Map(
-    deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
+  let packageRiskMap: Map<string, any> = new Map(
+    packages.map((p) => [p.id, { deducted30: 0, estDays: null, lowMinutes: false, lowDays: false, isAlert: false, isGroupPack: false }] as const)
   );
+  let filteredPackages = packages;
 
-  const packageRiskMap = new Map(
-    packages.map((p) => {
-      const remaining = p.remainingMinutes ?? 0;
-      const deducted30 = deducted30Map.get(p.id) ?? 0;
-      const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
-      const isGroupPack = p.type === "HOURS" && packageModeFromNote(p.note) === "GROUP_COUNT";
-      const lowBalanceThreshold = isGroupPack ? LOW_COUNTS : LOW_MINUTES;
-      const estDays =
-        p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
-          ? Math.ceil(remaining / avgPerDay)
-          : null;
-      const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= lowBalanceThreshold;
-      const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
-      const isAlert = p.type === "HOURS" && p.status === "ACTIVE" && (remaining <= 0 || lowMinutes || lowDays);
-      return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert, isGroupPack }] as const;
-    })
-  );
-  const filteredPackages = filterWarn === "alert" ? packages.filter((p) => packageRiskMap.get(p.id)?.isAlert) : packages;
+  try {
+    const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const packageIds = packages.map((p) => p.id);
+    const deductedRows = packageIds.length
+      ? await prisma.packageTxn.groupBy({
+          by: ["packageId"],
+          where: {
+            packageId: { in: packageIds },
+            kind: "DEDUCT",
+            createdAt: { gte: usageSince },
+          },
+          _sum: { deltaMinutes: true },
+        })
+      : [];
+    const deducted30Map = new Map(
+      deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
+    );
+
+    packageRiskMap = new Map(
+      packages.map((p) => {
+        const remaining = p.remainingMinutes ?? 0;
+        const deducted30 = deducted30Map.get(p.id) ?? 0;
+        const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+        const isGroupPack = p.type === "HOURS" && packageModeFromNote(p.note) === "GROUP_COUNT";
+        const lowBalanceThreshold = isGroupPack ? LOW_COUNTS : LOW_MINUTES;
+        const estDays =
+          p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
+            ? Math.ceil(remaining / avgPerDay)
+            : null;
+        const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= lowBalanceThreshold;
+        const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
+        const isAlert = p.type === "HOURS" && p.status === "ACTIVE" && (remaining <= 0 || lowMinutes || lowDays);
+        return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert, isGroupPack }] as const;
+      })
+    );
+
+    filteredPackages = filterWarn === "alert" ? packages.filter((p) => packageRiskMap.get(p.id)?.isAlert) : packages;
+  } catch (error) {
+    loadFailed = true;
+    console.error("[admin/packages] failed to load usage summary", error);
+  }
 
   const today = new Date();
   const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -161,6 +189,17 @@ export default async function AdminPackagesPage({
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      {loadFailed ? (
+        <NoticeBanner
+          type="error"
+          title={t(lang, "Data Load Failed", "数据加载失败")}
+          message={t(
+            lang,
+            "Some package data could not be loaded in this environment. Please check deployment logs for details.",
+            "当前环境部分课包数据加载失败，请查看部署日志定位具体原因。"
+          )}
+        />
+      ) : null}
       {schemaNotReady ? (
         <NoticeBanner
           type="warn"
