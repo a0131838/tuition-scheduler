@@ -241,8 +241,8 @@ export default async function PartnerSettlementPage({
   if (!monthRange) {
     return (
       <div>
-        <h2>{t(lang, "Partner Settlement", "Partner Settlement")}</h2>
-        <div style={{ color: "#b00" }}>{t(lang, "Invalid month format. Use YYYY-MM.", "Invalid month format. Use YYYY-MM.")}</div>
+        <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
+        <div style={{ color: "#b00" }}>{t(lang, "Invalid month format. Use YYYY-MM.", "月份格式错误，请使用 YYYY-MM。")}</div>
       </div>
     );
   }
@@ -251,8 +251,8 @@ export default async function PartnerSettlementPage({
   if (!source) {
     return (
       <div>
-        <h2>{t(lang, "Partner Settlement", "Partner Settlement")}</h2>
-        <div style={{ color: "#b00" }}>{t(lang, "Source channel not found.", "Source channel not found.")}</div>
+        <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
+        <div style={{ color: "#b00" }}>{t(lang, "Source channel not found.", "未找到来源渠道。")}</div>
       </div>
     );
   }
@@ -423,9 +423,9 @@ export default async function PartnerSettlementPage({
 
   return (
     <div>
-      <h2>{t(lang, "Partner Settlement", "Partner Settlement")}</h2>
+      <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
       <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(lang, "Only students with source channel = partner are included.", "Only students with source channel = partner are included.")}
+        {t(lang, "Only students with source channel = partner are included.", "仅纳入来源为合作方的学生。")}
       </div>
       {schemaNotReady || err === "schema-not-ready" ? (
         <div
@@ -451,18 +451,18 @@ export default async function PartnerSettlementPage({
 
       <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
         <label>
-          {t(lang, "Month", "Month")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
+          {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "Apply")}</button>
+        <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
 
-      <h3>{t(lang, "Package Mode Config", "Package Mode Config")}</h3>
+      <h3>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
-            <th align="left">{t(lang, "Student", "Student")}</th>
-            <th align="left">{t(lang, "Mode", "Mode")}</th>
-            <th align="left">{t(lang, "Action", "Action")}</th>
+            <th align="left">{t(lang, "Student", "学生")}</th>
+            <th align="left">{t(lang, "Mode", "模式")}</th>
+            <th align="left">{t(lang, "Action", "操作")}</th>
           </tr>
         </thead>
         <tbody>
@@ -474,11 +474,11 @@ export default async function PartnerSettlementPage({
                   <input type="hidden" name="packageId" value={p.id} />
                   <input type="hidden" name="month" value={month} />
                   <select name="mode" defaultValue={p.settlementMode ?? ""}>
-                    <option value="">{t(lang, "Not Included", "Not Included")}</option>
-                    <option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "Online: Package End")}</option>
-                    <option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "Offline: Monthly")}</option>
+                    <option value="">{t(lang, "Not Included", "不纳入")}</option>
+                    <option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "线上：课包完结")}</option>
+                    <option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "线下：按月")}</option>
                   </select>
-                  <button type="submit">{t(lang, "Save", "Save")}</button>
+                  <button type="submit">{t(lang, "Save", "保存")}</button>
                 </form>
               </td>
               <td />
@@ -487,19 +487,19 @@ export default async function PartnerSettlementPage({
         </tbody>
       </table>
 
-      <h3>{t(lang, "Online Pending (Package Completed)", "Online Pending (Package Completed)")}</h3>
+      <h3>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
       {onlinePending.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No online pending items.", "No online pending items.")}</div>
+        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No online pending items.", "暂无线上待结算项。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "Student")}</th>
-              <th align="left">{t(lang, "Course", "Course")}</th>
-              <th align="left">{t(lang, "Package Status", "Package Status")}</th>
-              <th align="left">{t(lang, "Hours", "Hours")}</th>
-              <th align="left">{t(lang, "Amount", "Amount")}</th>
-              <th align="left">{t(lang, "Action", "Action")}</th>
+              <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Course", "课程")}</th>
+              <th align="left">{t(lang, "Package Status", "课包状态")}</th>
+              <th align="left">{t(lang, "Hours", "课时")}</th>
+              <th align="left">{t(lang, "Amount", "金额")}</th>
+              <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -514,7 +514,7 @@ export default async function PartnerSettlementPage({
                   <form action={createOnlineSettlementAction}>
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="packageId" value={p.id} />
-                    <button type="submit">{t(lang, "Create Bill", "Create Bill")}</button>
+                    <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
                   </form>
                 </td>
               </tr>
@@ -523,18 +523,18 @@ export default async function PartnerSettlementPage({
         </table>
       )}
 
-      <h3>{t(lang, "Offline Pending (Monthly)", "Offline Pending (Monthly)")}</h3>
+      <h3>{t(lang, "Offline Pending (Monthly)", "线下待结算（按月）")}</h3>
       {offlinePending.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "No offline pending items.")}</div>
+        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "暂无线下待结算项。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "Student")}</th>
-              <th align="left">{t(lang, "Month", "Month")}</th>
-              <th align="left">{t(lang, "Sessions", "Sessions")}</th>
-              <th align="left">{t(lang, "Hours", "Hours")}</th>
-              <th align="left">{t(lang, "Action", "Action")}</th>
+              <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Month", "月份")}</th>
+              <th align="left">{t(lang, "Sessions", "课次")}</th>
+              <th align="left">{t(lang, "Hours", "课时")}</th>
+              <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -548,7 +548,7 @@ export default async function PartnerSettlementPage({
                   <form action={createOfflineSettlementAction}>
                     <input type="hidden" name="studentId" value={r.studentId} />
                     <input type="hidden" name="month" value={month} />
-                    <button type="submit">{t(lang, "Create Bill", "Create Bill")}</button>
+                    <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
                   </form>
                 </td>
               </tr>
@@ -557,21 +557,21 @@ export default async function PartnerSettlementPage({
         </table>
       )}
 
-      <h3>{t(lang, "Recent Settlement Records", "Recent Settlement Records")}</h3>
+      <h3>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
       {recentSettlements.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "No settlement records yet.")}</div>
+        <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "暂无结算记录。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Created", "Created")}</th>
-              <th align="left">{t(lang, "Student", "Student")}</th>
-              <th align="left">{t(lang, "Mode", "Mode")}</th>
-              <th align="left">{t(lang, "Month", "Month")}</th>
-              <th align="left">{t(lang, "Course", "Course")}</th>
-              <th align="left">{t(lang, "Hours", "Hours")}</th>
-              <th align="left">{t(lang, "Amount", "Amount")}</th>
-              <th align="left">{t(lang, "Status", "Status")}</th>
+              <th align="left">{t(lang, "Created", "创建时间")}</th>
+              <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Mode", "模式")}</th>
+              <th align="left">{t(lang, "Month", "月份")}</th>
+              <th align="left">{t(lang, "Course", "课程")}</th>
+              <th align="left">{t(lang, "Hours", "课时")}</th>
+              <th align="left">{t(lang, "Amount", "金额")}</th>
+              <th align="left">{t(lang, "Status", "状态")}</th>
             </tr>
           </thead>
           <tbody>
@@ -593,3 +593,4 @@ export default async function PartnerSettlementPage({
     </div>
   );
 }
+
