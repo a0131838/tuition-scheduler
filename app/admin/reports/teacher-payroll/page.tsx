@@ -119,6 +119,24 @@ export default async function TeacherPayrollPage({
       <div style={{ marginBottom: 12 }}>
         <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
       </div>
+      <div
+        style={{
+          marginBottom: 12,
+          padding: "8px 10px",
+          border: "1px solid #bfdbfe",
+          background: "#eff6ff",
+          borderRadius: 8,
+          color: "#1e3a8a",
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        {t(
+          lang,
+          "Completion rule: session is Completed only when attendance is marked (no UNMARKED) and teacher feedback has been submitted.",
+          "完成判定规则：仅当该课次已完成点名（无UNMARKED）且老师已提交课后反馈，才算已完成。"
+        )}
+      </div>
       {data.usingRateFallback ? (
         <div style={{ marginBottom: 12, color: "#92400e" }}>
           {t(
