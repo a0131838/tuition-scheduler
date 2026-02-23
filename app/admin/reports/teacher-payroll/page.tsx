@@ -143,45 +143,25 @@ export default async function TeacherPayrollPage({
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Salary", "工资")}</th>
+              <th align="left">{t(lang, "Detail", "详情")}</th>
             </tr>
           </thead>
           <tbody>
             {data.summaryRows.map((row) => (
               <tr key={row.teacherId} style={{ borderTop: "1px solid #eee" }}>
-                <td>{row.teacherName}</td>
+                <td>
+                  <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}`}>
+                    {row.teacherName}
+                  </a>
+                </td>
                 <td>{row.totalSessions}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.totalAmountCents)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <h3>{t(lang, "Hours Breakdown", "课时统计明细")}</h3>
-      {data.breakdownRows.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No breakdown rows.", "暂无明细。")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Teacher", "老师")}</th>
-              <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
-              <th align="left">{t(lang, "Sessions", "课次数")}</th>
-              <th align="left">{t(lang, "Hours", "课时")}</th>
-              <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
-              <th align="left">{t(lang, "Amount", "金额")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.breakdownRows.map((row) => (
-              <tr key={`${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
-                <td>{row.teacherName}</td>
-                <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
-                <td>{row.sessionCount}</td>
-                <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.hourlyRateCents)}</td>
-                <td>{formatMoneyCents(row.amountCents)}</td>
+                <td>
+                  <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}`}>
+                    {t(lang, "Open", "打开")}
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>

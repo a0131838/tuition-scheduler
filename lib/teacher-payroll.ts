@@ -48,6 +48,34 @@ export type PayrollRateEditorRow = {
   matchedHours: number;
 };
 
+export type PayrollTeacherDetailComboRow = {
+  courseId: string;
+  courseName: string;
+  subjectId: string | null;
+  subjectName: string | null;
+  levelId: string | null;
+  levelName: string | null;
+  sessionCount: number;
+  totalMinutes: number;
+  totalHours: number;
+  hourlyRateCents: number;
+  amountCents: number;
+};
+
+export type PayrollTeacherDetailSessionRow = {
+  sessionId: string;
+  startAt: Date;
+  endAt: Date;
+  studentName: string;
+  courseName: string;
+  subjectName: string | null;
+  levelName: string | null;
+  totalMinutes: number;
+  totalHours: number;
+  hourlyRateCents: number;
+  amountCents: number;
+};
+
 type PayrollRateItem = {
   teacherId: string;
   courseId: string;
@@ -431,6 +459,166 @@ export async function loadTeacherPayroll(month: string) {
     rateEditorRows,
     grandTotalAmountCents,
     grandTotalHours,
+    usingRateFallback: !loadedFromTable,
+  };
+}
+
+function resolveSessionStudentName(session: {
+  student?: { name: string } | null;
+  class: {
+    oneOnOneStudent?: { name: string } | null;
+    enrollments?: Array<{ student: { name: string } }>;
+  };
+}) {
+  if (session.student?.name) return session.student.name;
+  if (session.class.oneOnOneStudent?.name) return session.class.oneOnOneStudent.name;
+  const names = (session.class.enrollments ?? []).map((e) => e.student.name).filter(Boolean);
+  if (names.length === 0) return "-";
+  if (names.length === 1) return names[0];
+  return names.join(", ");
+}
+
+export async function loadTeacherPayrollDetail(month: string, teacherId: string) {
+  const range = toPayrollRange(month);
+  if (!range) return null;
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    select: { id: true, name: true },
+  });
+  if (!teacher) return null;
+
+  const sessions = await prisma.session.findMany({
+    where: {
+      startAt: { gte: range.start, lt: range.end },
+      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
+    },
+    include: {
+      student: { select: { name: true } },
+      class: {
+        select: {
+          teacherId: true,
+          oneOnOneStudent: { select: { name: true } },
+          enrollments: { include: { student: { select: { name: true } } } },
+          course: { select: { id: true, name: true } },
+          subject: { select: { id: true, name: true } },
+          level: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { startAt: "asc" },
+    take: 10000,
+  });
+
+  let rates: Array<{
+    teacherId: string;
+    courseId: string;
+    subjectId: string | null;
+    levelId: string | null;
+    hourlyRateCents: number;
+  }> = [];
+  let loadedFromTable = true;
+  try {
+    rates = await prisma.teacherCourseRate.findMany({
+      where: { teacherId },
+      select: {
+        teacherId: true,
+        courseId: true,
+        subjectId: true,
+        levelId: true,
+        hourlyRateCents: true,
+      },
+    });
+  } catch (err) {
+    if (!isMissingRateTableError(err)) throw err;
+    loadedFromTable = false;
+    rates = (await loadFallbackRateItems()).filter((r) => r.teacherId === teacherId);
+  }
+
+  const rateMap = new Map<string, number>();
+  for (const r of rates) {
+    rateMap.set(comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId), r.hourlyRateCents);
+  }
+
+  const comboMap = new Map<string, PayrollTeacherDetailComboRow>();
+  const sessionRows: PayrollTeacherDetailSessionRow[] = [];
+  let totalMinutes = 0;
+  let totalAmountCents = 0;
+
+  for (const s of sessions) {
+    const effectiveTeacherId = s.teacherId ?? s.class.teacherId;
+    if (effectiveTeacherId !== teacherId) continue;
+
+    const minutes = Math.max(0, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000));
+    if (!minutes) continue;
+
+    const courseId = s.class.course.id;
+    const courseName = s.class.course.name;
+    const subjectId = s.class.subject?.id ?? null;
+    const subjectName = s.class.subject?.name ?? null;
+    const levelId = s.class.level?.id ?? null;
+    const levelName = s.class.level?.name ?? null;
+    const hourlyRateCents = resolveRateCents(rateMap, teacherId, courseId, subjectId, levelId);
+    const amountCents = Math.round((minutes * hourlyRateCents) / 60);
+
+    const key = comboKey(teacherId, courseId, subjectId, levelId);
+    const prev = comboMap.get(key);
+    if (prev) {
+      prev.sessionCount += 1;
+      prev.totalMinutes += minutes;
+      prev.totalHours = toHours(prev.totalMinutes);
+      prev.amountCents += amountCents;
+    } else {
+      comboMap.set(key, {
+        courseId,
+        courseName,
+        subjectId,
+        subjectName,
+        levelId,
+        levelName,
+        sessionCount: 1,
+        totalMinutes: minutes,
+        totalHours: toHours(minutes),
+        hourlyRateCents,
+        amountCents,
+      });
+    }
+
+    sessionRows.push({
+      sessionId: s.id,
+      startAt: s.startAt,
+      endAt: s.endAt,
+      studentName: resolveSessionStudentName(s),
+      courseName,
+      subjectName,
+      levelName,
+      totalMinutes: minutes,
+      totalHours: toHours(minutes),
+      hourlyRateCents,
+      amountCents,
+    });
+
+    totalMinutes += minutes;
+    totalAmountCents += amountCents;
+  }
+
+  const comboRows = Array.from(comboMap.values()).sort((a, b) => {
+    if (a.courseName !== b.courseName) return a.courseName.localeCompare(b.courseName);
+    const aSubject = a.subjectName ?? "";
+    const bSubject = b.subjectName ?? "";
+    if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+    return (a.levelName ?? "").localeCompare(b.levelName ?? "");
+  });
+
+  return {
+    teacher,
+    range,
+    comboRows,
+    sessionRows,
+    totalSessions: sessionRows.length,
+    totalMinutes,
+    totalHours: toHours(totalMinutes),
+    totalAmountCents,
     usingRateFallback: !loadedFromTable,
   };
 }
