@@ -620,6 +620,13 @@ export default async function PartnerSettlementPage({
       )}
 
       <h3>{t(lang, "Offline Pending (Monthly)", "线下待结算（按月）")}</h3>
+      <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
+        {t(
+          lang,
+          "Rule: include attendances where status != UNMARKED, package mode = OFFLINE_MONTHLY, session start time is within selected month (UTC+8 business month), and session has non-empty feedback. Sessions = attendance count. Hours = sum of (endAt - startAt) in minutes / 60.",
+          "统计口径：仅纳入 status != UNMARKED、课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空的记录。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。"
+        )}
+      </div>
       {offlinePending.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "暂无线下待结算项。")}</div>
       ) : (
