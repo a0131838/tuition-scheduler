@@ -69,6 +69,7 @@ export type PayrollTeacherDetailSessionRow = {
   startAt: Date;
   endAt: Date;
   studentName: string;
+  studentSessionCount: number;
   courseName: string;
   subjectName: string | null;
   levelName: string | null;
@@ -639,6 +640,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       startAt: s.startAt,
       endAt: s.endAt,
       studentName: resolveSessionStudentName(s),
+      studentSessionCount: 0,
       courseName,
       subjectName,
       levelName,
@@ -651,6 +653,14 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
 
     totalMinutes += minutes;
     totalAmountCents += amountCents;
+  }
+
+  const studentSessionCountMap = new Map<string, number>();
+  for (const row of sessionRows) {
+    studentSessionCountMap.set(row.studentName, (studentSessionCountMap.get(row.studentName) ?? 0) + 1);
+  }
+  for (const row of sessionRows) {
+    row.studentSessionCount = studentSessionCountMap.get(row.studentName) ?? 0;
   }
 
   const comboRows = Array.from(comboMap.values()).sort((a, b) => {

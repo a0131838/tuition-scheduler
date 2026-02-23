@@ -168,6 +168,7 @@ export default async function TeacherPayrollDetailPage({
               <th align="left">{t(lang, "Start", "开始时间")}</th>
               <th align="left">{t(lang, "End", "结束时间")}</th>
               <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Student Sessions", "该学生课次数")}</th>
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
@@ -180,6 +181,7 @@ export default async function TeacherPayrollDetailPage({
                 <td>{DATE_TIME_FMT.format(row.startAt)}</td>
                 <td>{DATE_TIME_FMT.format(row.endAt)}</td>
                 <td>{row.studentName}</td>
+                <td>{row.studentSessionCount}</td>
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents)}</td>
