@@ -63,12 +63,21 @@ export default async function AdminPackagesPage({
   if (filterPaid === "unpaid") wherePackages.paid = false;
 
   const [students, courses, packages] = await Promise.all([
-    prisma.student.findMany({ orderBy: { name: "asc" } }),
+    prisma.student.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.coursePackage.findMany({
       where: wherePackages,
       include: {
-        student: { include: { sourceChannel: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            sourceChannel: { select: { name: true } },
+          },
+        },
         course: true,
         sharedStudents: { include: { student: true } },
       },
