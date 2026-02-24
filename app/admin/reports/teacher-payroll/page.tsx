@@ -305,7 +305,7 @@ export default async function TeacherPayrollPage({
         <label>
           {t(lang, "Scope", "统计口径")}:
           <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
-            <option value="all">{t(lang, "All Scheduled Sessions", "全部排课课次")}</option>
+            <option value="all">{t(lang, "All Scheduled Sessions (exclude fully cancelled)", "全部排课课次（排除整节取消）")}</option>
             <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
           </select>
         </label>
@@ -330,7 +330,7 @@ export default async function TeacherPayrollPage({
         {t(
           lang,
           "Completion rule: session is Completed only when attendance is marked (no UNMARKED) and teacher feedback has been submitted.",
-          "完成判定规则：仅当该课次已完成点名（无UNMARKED）且老师已提交课后反馈，才算已完成。"
+          "完成判定规则：整节取消课次不计入；其余课次仅当已完成点名（无UNMARKED）且老师已提交课后反馈，才算已完成。"
         )}
       </div>
       {data.usingRateFallback ? (

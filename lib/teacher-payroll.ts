@@ -640,12 +640,15 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       class: {
         select: {
           teacher: { select: { id: true, name: true } },
+          capacity: true,
+          oneOnOneStudentId: true,
+          enrollments: { select: { studentId: true } },
           course: { select: { id: true, name: true } },
           subject: { select: { id: true, name: true } },
           level: { select: { id: true, name: true } },
         },
       },
-      attendances: { select: { status: true } },
+      attendances: { select: { studentId: true, status: true } },
       feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
@@ -731,6 +734,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
   const teacherTotals = new Map<string, PayrollTeacherSummary>();
 
   for (const s of sessions) {
+    if (isFullyCancelledSessionForPayroll(s)) continue;
     const effectiveTeacher = s.teacher ?? s.class.teacher;
     if (!effectiveTeacher) continue;
     const completed = isSessionCompleted(
@@ -890,15 +894,50 @@ function resolveSessionStudentName(session: {
   return names.join(", ");
 }
 
+function isFullyCancelledSessionForPayroll(session: {
+  studentId?: string | null;
+  class: {
+    capacity?: number | null;
+    oneOnOneStudentId?: string | null;
+    enrollments?: Array<{ studentId?: string | null }>;
+  };
+  attendances: Array<{ studentId?: string | null; status: string }>;
+}) {
+  const cancelledSet = new Set(
+    (session.attendances ?? [])
+      .filter((a) => a.status === "EXCUSED")
+      .map((a) => a.studentId)
+      .filter(Boolean) as string[]
+  );
+  if (cancelledSet.size === 0) return false;
+
+  if (session.class?.capacity === 1) {
+    const sid =
+      session.studentId ??
+      session.class?.oneOnOneStudentId ??
+      session.class?.enrollments?.[0]?.studentId ??
+      null;
+    return !!sid && cancelledSet.has(sid);
+  }
+
+  const expected = (session.class?.enrollments ?? [])
+    .map((e) => e.studentId)
+    .filter(Boolean) as string[];
+  if (expected.length === 0) return false;
+  return expected.every((sid) => cancelledSet.has(sid));
+}
+
 function isSessionCompleted(
   session: {
+    studentId?: string | null;
     teacherId: string | null;
-    class: { teacherId: string };
-    attendances: Array<{ status: string }>;
+    class: { teacherId: string; capacity?: number | null; oneOnOneStudentId?: string | null; enrollments?: Array<{ studentId?: string | null }> };
+    attendances: Array<{ studentId?: string | null; status: string }>;
     feedbacks: Array<{ teacherId: string; content: string }>;
   },
   teacherId: string
 ) {
+  if (isFullyCancelledSessionForPayroll(session)) return false;
   if (!session.attendances.length) return false;
   const allMarked = session.attendances.every((a) => a.status !== "UNMARKED");
   if (!allMarked) return false;
@@ -929,6 +968,8 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       class: {
         select: {
           teacherId: true,
+          capacity: true,
+          oneOnOneStudentId: true,
           oneOnOneStudent: { select: { name: true } },
           enrollments: { include: { student: { select: { name: true } } } },
           course: { select: { id: true, name: true } },
@@ -936,7 +977,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
           level: { select: { id: true, name: true } },
         },
       },
-      attendances: { select: { status: true } },
+      attendances: { select: { studentId: true, status: true } },
       feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
@@ -979,6 +1020,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
   let totalAmountCents = 0;
 
   for (const s of sessions) {
+    if (isFullyCancelledSessionForPayroll(s)) continue;
     const effectiveTeacherId = s.teacherId ?? s.class.teacherId;
     if (effectiveTeacherId !== teacherId) continue;
     const completed = isSessionCompleted(s, teacherId);
