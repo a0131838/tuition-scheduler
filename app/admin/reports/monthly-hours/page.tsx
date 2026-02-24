@@ -3,6 +3,8 @@ import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
+const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
+
 function parseMonth(s?: string) {
   if (!s) return null;
   const m = s.match(/^(\d{4})-(\d{2})$/);
@@ -54,7 +56,7 @@ export default async function MonthlyHoursReportPage({
     prisma.attendance.findMany({
       where: {
         updatedAt: { gte: range.start, lt: range.end },
-        status: { not: "UNMARKED" },
+        status: { in: ATTENDED_STATUSES as any },
         ...(sourceChannelId ? { student: { sourceChannelId } } : {}),
       },
       include: {
@@ -99,7 +101,11 @@ export default async function MonthlyHoursReportPage({
       </form>
 
       <div style={{ marginBottom: 12, color: "#666" }}>
-        {t(lang, "Rule: based on attendance save time (Attendance.updatedAt).", "统计口径：按点名保存时间（Attendance.updatedAt）归属月份。")}
+        {t(
+          lang,
+          "Rule: only PRESENT/LATE attendances, grouped by attendance save time (Attendance.updatedAt).",
+          "统计口径：仅统计 PRESENT/LATE 点名，按点名保存时间（Attendance.updatedAt）归属月份。"
+        )}
       </div>
 
       {rows.length === 0 ? (

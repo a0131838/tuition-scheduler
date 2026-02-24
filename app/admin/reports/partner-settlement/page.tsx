@@ -19,6 +19,7 @@ const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
 const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
 const DEFAULT_ONLINE_RATE_PER_45 = 70;
 const DEFAULT_OFFLINE_RATE_PER_45 = 90;
+const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
 
 type Mode = "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | "";
 
@@ -249,7 +250,7 @@ async function createOfflineSettlementAction(formData: FormData) {
   const rows = await prisma.attendance.findMany({
     where: {
       studentId,
-      status: { not: "UNMARKED" },
+      status: { in: ATTENDED_STATUSES as any },
       package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
       session: {
         startAt: { gte: range.start, lt: range.end },
@@ -530,7 +531,7 @@ export default async function PartnerSettlementPage({
     const [offlineAttendanceRows, offlineSettledRows] = await Promise.all([
       prisma.attendance.findMany({
         where: {
-          status: { not: "UNMARKED" },
+          status: { in: ATTENDED_STATUSES as any },
           package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
           student: { sourceChannelId: source.id },
           session: {
@@ -766,8 +767,8 @@ export default async function PartnerSettlementPage({
       <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
         {t(
           lang,
-          "Rule: include attendances where status != UNMARKED, package mode = OFFLINE_MONTHLY, session start time is within selected month (UTC+8 business month), and session has non-empty feedback. Sessions = attendance count. Hours = sum of (endAt - startAt) in minutes / 60.",
-          "统计口径：仅纳入 status != UNMARKED、课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空的记录。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。"
+          "Rule: include attendances where status in (PRESENT, LATE), package mode = OFFLINE_MONTHLY, session start time is within selected month (UTC+8 business month), and session has non-empty feedback. Sessions = attendance count. Hours = sum of (endAt - startAt) in minutes / 60.",
+          "统计口径：仅纳入 status in (PRESENT, LATE)、课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空的记录。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。"
         )}
       </div>
       {offlinePending.length === 0 ? (

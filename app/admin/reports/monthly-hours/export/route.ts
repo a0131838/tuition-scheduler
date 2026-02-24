@@ -2,6 +2,8 @@
 import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 
+const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
+
 function parseMonth(s?: string) {
   if (!s) return null;
   const m = s.match(/^(\d{4})-(\d{2})$/);
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
   const rows = await prisma.attendance.findMany({
     where: {
       updatedAt: { gte: range.start, lt: range.end },
-      status: { not: "UNMARKED" },
+      status: { in: ATTENDED_STATUSES as any },
       ...(sourceChannelId ? { student: { sourceChannelId } } : {}),
     },
     include: {
