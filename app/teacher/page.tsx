@@ -15,6 +15,14 @@ function toDateInputValue(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function sessionStudentNames(s: any) {
+  if (s.class?.capacity === 1) {
+    const one = s.student?.name ?? s.class?.oneOnOneStudent?.name ?? s.class?.enrollments?.[0]?.student?.name ?? null;
+    return one ? [one] : [];
+  }
+  return (s.class?.enrollments ?? []).map((e: any) => e.student?.name).filter(Boolean);
+}
+
 // Teacher self-confirm is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherHomePage({
@@ -57,7 +65,20 @@ export default async function TeacherHomePage({
       startAt: { gte: todayStart, lte: todayEnd },
       OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
     },
-    include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
+    include: {
+      student: { select: { id: true, name: true } },
+      class: {
+        include: {
+          course: true,
+          subject: true,
+          level: true,
+          campus: true,
+          room: true,
+          oneOnOneStudent: { select: { id: true, name: true } },
+          enrollments: { include: { student: { select: { id: true, name: true } } } },
+        },
+      },
+    },
     orderBy: { startAt: "asc" },
   });
   const tomorrowSessions = await prisma.session.findMany({
@@ -65,7 +86,20 @@ export default async function TeacherHomePage({
       startAt: { gte: tomorrowStart, lte: tomorrowEnd },
       OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
     },
-    include: { class: { include: { course: true, subject: true, level: true, campus: true, room: true } } },
+    include: {
+      student: { select: { id: true, name: true } },
+      class: {
+        include: {
+          course: true,
+          subject: true,
+          level: true,
+          campus: true,
+          room: true,
+          oneOnOneStudent: { select: { id: true, name: true } },
+          enrollments: { include: { student: { select: { id: true, name: true } } } },
+        },
+      },
+    },
     orderBy: { startAt: "asc" },
   });
   // Prisma types can infer `never` for composite-date queries in some setups; cast keeps runtime behavior unchanged.
@@ -132,7 +166,9 @@ export default async function TeacherHomePage({
             <div style={{ color: "#666", marginTop: 8 }}>{t(lang, "No courses today.", "今天没有课程。")}</div>
           ) : (
             <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-              {todaySessions.map((s) => (
+              {todaySessions.map((s) => {
+                const students = sessionStudentNames(s);
+                return (
                 <div key={s.id} style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div>
                     {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
@@ -149,8 +185,12 @@ export default async function TeacherHomePage({
                     {s.class.campus.name}
                     {s.class.room ? ` / ${s.class.room.name}` : ""}
                   </div>
+                  <div style={{ color: "#0f766e", fontSize: 12 }}>
+                    {t(lang, "Students", "学生")}: {students.length > 0 ? students.join(", ") : "-"}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -179,7 +219,9 @@ export default async function TeacherHomePage({
             <div style={{ color: "#666", marginTop: 8 }}>{t(lang, "No courses tomorrow.", "明天没有课程。")}</div>
           ) : (
             <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-              {tomorrowSessions.map((s) => (
+              {tomorrowSessions.map((s) => {
+                const students = sessionStudentNames(s);
+                return (
                 <div key={s.id} style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div>
                     {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
@@ -196,8 +238,12 @@ export default async function TeacherHomePage({
                     {s.class.campus.name}
                     {s.class.room ? ` / ${s.class.room.name}` : ""}
                   </div>
+                  <div style={{ color: "#0f766e", fontSize: 12 }}>
+                    {t(lang, "Students", "学生")}: {students.length > 0 ? students.join(", ") : "-"}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
