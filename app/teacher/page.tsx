@@ -60,57 +60,58 @@ export default async function TeacherHomePage({
   const tomorrowEnd = new Date(todayEnd);
   tomorrowEnd.setDate(todayEnd.getDate() + 1);
 
-  const todaySessions = await prisma.session.findMany({
-    where: {
-      startAt: { gte: todayStart, lte: todayEnd },
-      OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
-    },
-    include: {
-      student: { select: { id: true, name: true } },
-      class: {
-        include: {
-          course: true,
-          subject: true,
-          level: true,
-          campus: true,
-          room: true,
-          oneOnOneStudent: { select: { id: true, name: true } },
-          enrollments: { include: { student: { select: { id: true, name: true } } } },
+  const [todaySessions, tomorrowSessions, todayConfirmed, tomorrowConfirmed] = await Promise.all([
+    prisma.session.findMany({
+      where: {
+        startAt: { gte: todayStart, lte: todayEnd },
+        OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+      },
+      include: {
+        student: { select: { id: true, name: true } },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            campus: true,
+            room: true,
+            oneOnOneStudent: { select: { id: true, name: true } },
+            enrollments: { include: { student: { select: { id: true, name: true } } } },
+          },
         },
       },
-    },
-    orderBy: { startAt: "asc" },
-  });
-  const tomorrowSessions = await prisma.session.findMany({
-    where: {
-      startAt: { gte: tomorrowStart, lte: tomorrowEnd },
-      OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
-    },
-    include: {
-      student: { select: { id: true, name: true } },
-      class: {
-        include: {
-          course: true,
-          subject: true,
-          level: true,
-          campus: true,
-          room: true,
-          oneOnOneStudent: { select: { id: true, name: true } },
-          enrollments: { include: { student: { select: { id: true, name: true } } } },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.session.findMany({
+      where: {
+        startAt: { gte: tomorrowStart, lte: tomorrowEnd },
+        OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+      },
+      include: {
+        student: { select: { id: true, name: true } },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            campus: true,
+            room: true,
+            oneOnOneStudent: { select: { id: true, name: true } },
+            enrollments: { include: { student: { select: { id: true, name: true } } } },
+          },
         },
       },
-    },
-    orderBy: { startAt: "asc" },
-  });
-  // Prisma types can infer `never` for composite-date queries in some setups; cast keeps runtime behavior unchanged.
-  const todayConfirmed = (await prisma.todoReminderConfirm.findFirst({
-    where: { type: TEACHER_SELF_CONFIRM_TODAY, targetId: teacher.id, date: toDateOnly(todayStart) },
-    select: { createdAt: true },
-  } as any)) as { createdAt: Date } | null;
-  const tomorrowConfirmed = (await prisma.todoReminderConfirm.findFirst({
-    where: { type: TEACHER_SELF_CONFIRM_TOMORROW, targetId: teacher.id, date: toDateOnly(tomorrowStart) },
-    select: { createdAt: true },
-  } as any)) as { createdAt: Date } | null;
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.todoReminderConfirm.findFirst({
+      where: { type: TEACHER_SELF_CONFIRM_TODAY, targetId: teacher.id, date: toDateOnly(todayStart) },
+      select: { createdAt: true },
+    } as any),
+    prisma.todoReminderConfirm.findFirst({
+      where: { type: TEACHER_SELF_CONFIRM_TOMORROW, targetId: teacher.id, date: toDateOnly(tomorrowStart) },
+      select: { createdAt: true },
+    } as any),
+  ]);
 
   return (
     <div>

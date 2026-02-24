@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 
 export const SIGNIN_THRESHOLD_KEY = "signin_alert_threshold_min";
 export const DEFAULT_SIGNIN_ALERT_THRESHOLD_MIN = 10;
+const SIGNIN_ALERT_SYNC_LAST_AT_KEY = "signin_alert_sync_last_at";
+const SIGNIN_ALERT_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
 export const ALERT_TYPE_TEACHER = "TEACHER_SIGNIN_MISSED";
 export const ALERT_TYPE_STUDENT = "STUDENT_SIGNIN_MISSED";
@@ -43,6 +45,35 @@ function toIntSafe(v: string | null | undefined, def: number) {
 
 function isMissingTableError(err: unknown) {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021";
+}
+
+async function shouldRunSignInAlertSync(now: Date) {
+  try {
+    const row = await prisma.appSetting.findUnique({
+      where: { key: SIGNIN_ALERT_SYNC_LAST_AT_KEY },
+      select: { value: true },
+    });
+    if (!row?.value) return true;
+    const last = new Date(row.value);
+    if (Number.isNaN(last.getTime())) return true;
+    return now.getTime() - last.getTime() >= SIGNIN_ALERT_SYNC_MIN_INTERVAL_MS;
+  } catch (err) {
+    if (isMissingTableError(err)) return true;
+    throw err;
+  }
+}
+
+async function markSignInAlertSyncTime(now: Date) {
+  try {
+    await prisma.appSetting.upsert({
+      where: { key: SIGNIN_ALERT_SYNC_LAST_AT_KEY },
+      create: { key: SIGNIN_ALERT_SYNC_LAST_AT_KEY, value: now.toISOString() },
+      update: { value: now.toISOString() },
+    });
+  } catch (err) {
+    if (isMissingTableError(err)) return;
+    throw err;
+  }
 }
 
 export async function getSignInAlertThresholdMin() {
@@ -86,6 +117,12 @@ function teacherSignedIn(s: SessionForAlert) {
 }
 
 export async function syncSignInAlerts(now = new Date()) {
+  const shouldRun = await shouldRunSignInAlertSync(now);
+  if (!shouldRun) {
+    const thresholdMin = await getSignInAlertThresholdMin();
+    return { thresholdMin, activeCount: 0, skipped: true as const };
+  }
+
   const thresholdMin = await getSignInAlertThresholdMin();
   const thresholdAt = new Date(now.getTime() - thresholdMin * 60 * 1000);
   const lookback = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -101,7 +138,10 @@ export async function syncSignInAlerts(now = new Date()) {
     },
   })) as SessionForAlert[];
 
-  if (sessions.length === 0) return { thresholdMin, activeCount: 0 };
+  if (sessions.length === 0) {
+    await markSignInAlertSyncTime(now);
+    return { thresholdMin, activeCount: 0, skipped: false as const };
+  }
 
   const teacherIds = Array.from(new Set(sessions.map((s) => s.class.teacherId)));
   const teacherUsers = teacherIds.length
@@ -269,7 +309,8 @@ export async function syncSignInAlerts(now = new Date()) {
     throw err;
   }
 
-  return { thresholdMin, activeCount: desiredList.length };
+  await markSignInAlertSyncTime(now);
+  return { thresholdMin, activeCount: desiredList.length, skipped: false as const };
 }
 
 export async function getAdminOpenSignInAlerts(limit = 200) {

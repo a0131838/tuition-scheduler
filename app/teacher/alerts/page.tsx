@@ -7,7 +7,6 @@ import {
   getTeacherVisibleSignInAlerts,
   syncSignInAlerts,
 } from "@/lib/signin-alerts";
-import { prisma } from "@/lib/prisma";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
 
@@ -25,6 +24,18 @@ function sessionStudentNames(session: any) {
     return one ? [one] : [];
   }
   return (session.class?.enrollments ?? []).map((e: any) => e.student?.name).filter(Boolean);
+}
+
+function sessionStudentNameMap(session: any) {
+  const m = new Map<string, string>();
+  if (session?.student?.id && session?.student?.name) m.set(session.student.id, session.student.name);
+  if (session?.class?.oneOnOneStudent?.id && session?.class?.oneOnOneStudent?.name) {
+    m.set(session.class.oneOnOneStudent.id, session.class.oneOnOneStudent.name);
+  }
+  for (const e of session?.class?.enrollments ?? []) {
+    if (e?.student?.id && e?.student?.name) m.set(e.student.id, e.student.name);
+  }
+  return m;
 }
 
 function decode(v: string | undefined) {
@@ -101,12 +112,6 @@ export default async function TeacherAlertsPage({
   await syncSignInAlerts();
   const alerts = await getTeacherVisibleSignInAlerts(user.id, { limit: 500, keepResolvedHours: 72 });
 
-  const studentIds = Array.from(new Set(alerts.map((a) => a.studentId).filter(Boolean))) as string[];
-  const students = studentIds.length
-    ? await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true } })
-    : [];
-  const studentMap = new Map(students.map((s) => [s.id, s.name]));
-
   const grouped = new Map<string, { session: any; items: (typeof alerts)[number][] }>();
   for (const a of alerts) {
     const g = grouped.get(a.sessionId) ?? { session: a.session, items: [] };
@@ -128,7 +133,8 @@ export default async function TeacherAlertsPage({
       )
     ) as string[];
 
-    const missingStudentNames = missingStudentIds.map((sid) => studentMap.get(sid) ?? sid);
+    const sessionStudentMap = sessionStudentNameMap(g.session);
+    const missingStudentNames = missingStudentIds.map((sid) => sessionStudentMap.get(sid) ?? sid);
     const hasTeacherAlert = sourceItems.some((x) => x.alertType === ALERT_TYPE_TEACHER);
     const hasFeedbackAlert = sourceItems.some((x) => x.alertType === ALERT_TYPE_FEEDBACK);
 
