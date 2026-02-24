@@ -167,6 +167,9 @@ export default async function PackageLedgerPage({
                         remove: t(lang, "Delete", "删除"),
                         removing: t(lang, "Deleting...", "删除中..."),
                         confirmRemove: t(lang, "Delete this ledger row?", "确认删除这条流水记录？"),
+                        undoRemove: t(lang, "Undo Delete", "撤销删除"),
+                        undoing: t(lang, "Undoing...", "撤销中..."),
+                        removedHint: t(lang, "Deleted. You can undo now.", "已删除，可以立即撤销。"),
                         errorPrefix: t(lang, "Error", "错误"),
                       }}
                     />

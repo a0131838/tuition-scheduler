@@ -15,6 +15,9 @@ type Props = {
     remove: string;
     removing: string;
     confirmRemove: string;
+    undoRemove: string;
+    undoing: string;
+    removedHint: string;
     errorPrefix: string;
   };
 };
@@ -23,6 +26,12 @@ export default function PackageLedgerEditTxnClient(props: Props) {
   const [delta, setDelta] = useState(String(props.defaultDelta));
   const [note, setNote] = useState(props.defaultNote);
   const [saving, setSaving] = useState(false);
+  const [deletedPayload, setDeletedPayload] = useState<{
+    kind: string;
+    deltaMinutes: number;
+    sessionId: string | null;
+    note: string;
+  } | null>(null);
 
   async function onSave() {
     if (saving) return;
@@ -66,8 +75,42 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         alert(`${props.labels.errorPrefix}: ${data?.message ?? `HTTP ${res.status}`}`);
         return;
       }
+      if (data?.deleted) {
+        setDeletedPayload({
+          kind: String(data.deleted.kind ?? ""),
+          deltaMinutes: Number(data.deleted.deltaMinutes ?? 0),
+          sessionId: data.deleted.sessionId ? String(data.deleted.sessionId) : null,
+          note: String(data.deleted.note ?? ""),
+        });
+      } else {
+        window.location.href = `/admin/packages/${encodeURIComponent(props.packageId)}/ledger?msg=${encodeURIComponent(
+          "Txn deleted"
+        )}`;
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onUndoDelete() {
+    if (saving || !deletedPayload) return;
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `/api/admin/packages/${encodeURIComponent(props.packageId)}/ledger/txns/${encodeURIComponent(props.txnId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(deletedPayload),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        alert(`${props.labels.errorPrefix}: ${data?.message ?? `HTTP ${res.status}`}`);
+        return;
+      }
       window.location.href = `/admin/packages/${encodeURIComponent(props.packageId)}/ledger?msg=${encodeURIComponent(
-        "Txn deleted"
+        "Txn restored"
       )}`;
     } finally {
       setSaving(false);
@@ -82,6 +125,7 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         onChange={(e) => setDelta(e.target.value)}
         style={{ width: 90 }}
         title={props.labels.delta}
+        disabled={saving || !!deletedPayload}
       />
       <input
         type="text"
@@ -89,13 +133,22 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         onChange={(e) => setNote(e.target.value)}
         style={{ width: 180 }}
         title={props.labels.note}
+        disabled={saving || !!deletedPayload}
       />
-      <button type="button" onClick={onSave} disabled={saving}>
+      <button type="button" onClick={onSave} disabled={saving || !!deletedPayload}>
         {saving ? props.labels.saving : props.labels.save}
       </button>
-      <button type="button" onClick={onDelete} disabled={saving} style={{ color: "#b91c1c" }}>
+      <button type="button" onClick={onDelete} disabled={saving || !!deletedPayload} style={{ color: "#b91c1c" }}>
         {saving ? props.labels.removing : props.labels.remove}
       </button>
+      {deletedPayload ? (
+        <>
+          <span style={{ color: "#b45309", fontSize: 12 }}>{props.labels.removedHint}</span>
+          <button type="button" onClick={onUndoDelete} disabled={saving}>
+            {saving ? props.labels.undoing : props.labels.undoRemove}
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

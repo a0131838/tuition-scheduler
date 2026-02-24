@@ -71,7 +71,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
 
   const txn = await prisma.packageTxn.findFirst({
     where: { id: txnId, packageId },
-    select: { id: true, deltaMinutes: true },
+    select: { id: true, kind: true, deltaMinutes: true, sessionId: true, note: true },
   });
   if (!txn) return bad("Ledger record not found", 404);
 
@@ -86,6 +86,67 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
 
   await prisma.$transaction([
     prisma.packageTxn.delete({ where: { id: txn.id } }),
+    prisma.coursePackage.update({
+      where: { id: packageId },
+      data: { remainingMinutes: nextRemaining },
+    }),
+  ]);
+
+  return Response.json({
+    ok: true,
+    remainingMinutes: nextRemaining,
+    deleted: {
+      kind: txn.kind,
+      deltaMinutes: txn.deltaMinutes,
+      sessionId: txn.sessionId,
+      note: txn.note ?? "",
+    },
+  });
+}
+
+export async function POST(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
+  const admin = await requireAdmin();
+  const actor = admin.email.trim().toLowerCase();
+  if (actor !== "zhaohongwei0880@gmail.com") {
+    return bad("Only zhao hongwei can undo delete", 403);
+  }
+
+  const { id: packageId } = await ctx.params;
+  if (!packageId) return bad("Missing id", 409);
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return bad("Invalid JSON body");
+  }
+
+  const kind = String(body?.kind ?? "").trim();
+  const note = String(body?.note ?? "").trim();
+  const deltaMinutes = Number(body?.deltaMinutes);
+  const sessionId = body?.sessionId ? String(body.sessionId) : null;
+  if (!kind) return bad("Invalid kind", 409);
+  if (!Number.isFinite(deltaMinutes)) return bad("Invalid deltaMinutes", 409);
+
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id: packageId },
+    select: { id: true, remainingMinutes: true },
+  });
+  if (!pkg) return bad("Package not found", 404);
+
+  const nextRemaining = (pkg.remainingMinutes ?? 0) + Math.round(deltaMinutes);
+  if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
+
+  await prisma.$transaction([
+    prisma.packageTxn.create({
+      data: {
+        packageId,
+        kind,
+        deltaMinutes: Math.round(deltaMinutes),
+        sessionId,
+        note: note || null,
+      },
+    }),
     prisma.coursePackage.update({
       where: { id: packageId },
       data: { remainingMinutes: nextRemaining },
