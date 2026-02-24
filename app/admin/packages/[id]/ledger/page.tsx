@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import { packageModeFromNote, stripGroupPackTag } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import PackageLedgerGiftClient from "./PackageLedgerGiftClient";
+import PackageLedgerEditTxnClient from "./PackageLedgerEditTxnClient";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(Math.abs(min) / 60);
@@ -26,11 +27,13 @@ export default async function PackageLedgerPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
+  const admin = await requireAdmin();
   const lang = await getLang();
   const { id: packageId } = await params;
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const canEditTxn = admin.email.trim().toLowerCase() === "zhaohongwei0880@gmail.com";
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
@@ -126,6 +129,7 @@ export default async function PackageLedgerPage({
               <th align="left">{t(lang, "Balance", "余额")}</th>
               <th align="left">{t(lang, "Session", "课次")}</th>
               <th align="left">{t(lang, "Note", "备注")}</th>
+              <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -148,6 +152,25 @@ export default async function PackageLedgerPage({
                   ) : "-"}
                 </td>
                 <td>{r.txn.note ?? "-"}</td>
+                <td>
+                  {canEditTxn ? (
+                    <PackageLedgerEditTxnClient
+                      packageId={packageId}
+                      txnId={r.txn.id}
+                      defaultDelta={r.txn.deltaMinutes}
+                      defaultNote={r.txn.note ?? ""}
+                      labels={{
+                        delta: t(lang, "Delta", "变动"),
+                        note: t(lang, "Note", "备注"),
+                        save: t(lang, "Save", "保存"),
+                        saving: t(lang, "Saving...", "保存中..."),
+                        errorPrefix: t(lang, "Error", "错误"),
+                      }}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -156,5 +179,3 @@ export default async function PackageLedgerPage({
     </div>
   );
 }
-
-
