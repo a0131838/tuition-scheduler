@@ -24,6 +24,11 @@ const PERIOD_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   month: "2-digit",
   year: "numeric",
 });
+const APPROVAL_CONFIG_OWNER_EMAIL = "zhaohongwei0880@gmail.com";
+
+function canEditApprovalRoleConfig(email: string | null | undefined) {
+  return (email ?? "").trim().toLowerCase() === APPROVAL_CONFIG_OWNER_EMAIL;
+}
 
 function normalizeOptionalId(v: FormDataEntryValue | null) {
   if (typeof v !== "string") return null;
@@ -113,6 +118,9 @@ async function saveApprovalConfigAction(formData: FormData) {
   const user = await requireAdmin();
   if (user.role === "FINANCE") {
     redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
+  if (!canEditApprovalRoleConfig(user.email)) {
+    redirect("/admin/reports/teacher-payroll?error=cfg-perm");
   }
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
@@ -234,6 +242,7 @@ export default async function TeacherPayrollPage({
   const isManagerApprover = isRoleApprover(current?.email ?? admin.email, roleConfig.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(current?.email ?? admin.email, roleConfig.financeApproverEmails);
   const isFinanceOnlyUser = admin.role === "FINANCE";
+  const canEditApprovalConfig = canEditApprovalRoleConfig(current?.email ?? admin.email);
 
   if (!parseMonth(month)) {
     return (
@@ -346,6 +355,7 @@ export default async function TeacherPayrollPage({
       {sp?.error === "fin-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance payout failed.", "财务发薪失败。")}</div> : null}
       {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
       {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
+      {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only zhao hongwei can edit approval role config.", "只有 zhao hongwei 可以修改审批角色配置。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
       {!isFinanceOnlyUser ? <h3>{t(lang, "Approval Role Config", "审批角色配置")}</h3> : null}
@@ -354,16 +364,19 @@ export default async function TeacherPayrollPage({
         <input type="hidden" name="scope" value={scope} />
         <label>
           {t(lang, "Manager approver emails (comma-separated)", "管理审批人邮箱（逗号分隔）")}:
-          <input name="managerEmails" defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+          <input name="managerEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
         </label>
         <label>
           {t(lang, "Finance approver emails (comma-separated)", "财务审批人邮箱（逗号分隔）")}:
-          <input name="financeEmails" defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+          <input name="financeEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
         </label>
         <div style={{ color: "#666", fontSize: 13 }}>
           {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
         </div>
-        <div><button type="submit">{t(lang, "Save", "保存")}</button></div>
+        {!canEditApprovalConfig ? (
+          <div style={{ color: "#666", fontSize: 13 }}>{t(lang, "Read-only for non-owner accounts.", "非负责人账号只读。")}</div>
+        ) : null}
+        <div><button type="submit" disabled={!canEditApprovalConfig}>{t(lang, "Save", "保存")}</button></div>
       </form> : null}
 
       <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
