@@ -285,16 +285,23 @@ async function savePayrollPublishItems(items: PayrollPublishItem[]) {
   });
 }
 
-export async function markTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
+export async function markTeacherPayrollSent(input: {
+  teacherId: string;
+  month: string;
+  scope?: string | null;
+  actorEmail?: string | null;
+}) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month)) return false;
+  const actorEmail = (input.actorEmail ?? "").trim().toLowerCase();
+  const canOverridePaid = actorEmail === "zhaohongwei0880@gmail.com";
 
   const now = new Date().toISOString();
   const items = await loadPayrollPublishItems();
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (existing) {
-    if (existing.financePaidAt) return false;
+    if (existing.financePaidAt && !canOverridePaid) return false;
     existing.sentAt = now;
   } else {
     items.push({
@@ -317,15 +324,22 @@ export async function markTeacherPayrollSent(input: { teacherId: string; month: 
   return true;
 }
 
-export async function revokeTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
+export async function revokeTeacherPayrollSent(input: {
+  teacherId: string;
+  month: string;
+  scope?: string | null;
+  actorEmail?: string | null;
+}) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month)) return false;
+  const actorEmail = (input.actorEmail ?? "").trim().toLowerCase();
+  const canOverridePaid = actorEmail === "zhaohongwei0880@gmail.com";
 
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const items = await loadPayrollPublishItems();
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (!existing) return false;
-  if (existing.financePaidAt) return false;
+  if (existing.financePaidAt && !canOverridePaid) return false;
   const next = items.filter((x) => payrollPublishKey(x.teacherId, x.month, x.scope) !== key);
   await savePayrollPublishItems(next);
   return true;

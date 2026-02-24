@@ -84,7 +84,7 @@ async function sendPayrollAction(formData: FormData) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=send`);
   }
 
-  const ok = await markTeacherPayrollSent({ teacherId, month, scope });
+  const ok = await markTeacherPayrollSent({ teacherId, month, scope, actorEmail: user.email });
   if (!ok) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=send-paid`);
   }
@@ -109,7 +109,7 @@ async function revokePayrollAction(formData: FormData) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=revoke`);
   }
 
-  const ok = await revokeTeacherPayrollSent({ teacherId, month, scope });
+  const ok = await revokeTeacherPayrollSent({ teacherId, month, scope, actorEmail: user.email });
   if (!ok) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=revoke-paid`);
   }
@@ -353,9 +353,9 @@ export default async function TeacherPayrollPage({
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
       {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
       {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
-      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll cannot be resent.", "已发薪的工资单不可重新发送。")}</div> : null}
+      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll can only be resent by zhao hongwei.", "已发薪工资单仅 zhao hongwei 可重新发送。")}</div> : null}
       {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
-      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll cannot be revoked.", "已发薪的工资单不可撤销。")}</div> : null}
+      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll can only be revoked by zhao hongwei.", "已发薪工资单仅 zhao hongwei 可撤销。")}</div> : null}
       {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
       {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
@@ -454,7 +454,7 @@ export default async function TeacherPayrollPage({
                 </td>
                 <td>
                   <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
-                    {!isFinanceOnlyUser && !publish?.financePaidAt ? (
+                    {!isFinanceOnlyUser && (!publish?.financePaidAt || canEditApprovalConfig) ? (
                       <form action={sendPayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
@@ -462,7 +462,7 @@ export default async function TeacherPayrollPage({
                         <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
                       </form>
                     ) : null}
-                    {!isFinanceOnlyUser && publish && !publish.financePaidAt ? (
+                    {!isFinanceOnlyUser && publish && (!publish.financePaidAt || canEditApprovalConfig) ? (
                       <form action={revokePayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
