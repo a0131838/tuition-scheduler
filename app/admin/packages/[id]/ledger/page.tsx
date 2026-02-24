@@ -164,6 +164,9 @@ export default async function PackageLedgerPage({
                         note: t(lang, "Note", "备注"),
                         save: t(lang, "Save", "保存"),
                         saving: t(lang, "Saving...", "保存中..."),
+                        remove: t(lang, "Delete", "删除"),
+                        removing: t(lang, "Deleting...", "删除中..."),
+                        confirmRemove: t(lang, "Delete this ledger row?", "确认删除这条流水记录？"),
                         errorPrefix: t(lang, "Error", "错误"),
                       }}
                     />

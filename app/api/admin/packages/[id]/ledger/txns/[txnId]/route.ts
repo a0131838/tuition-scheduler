@@ -59,3 +59,38 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
 }
 
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
+  const admin = await requireAdmin();
+  const actor = admin.email.trim().toLowerCase();
+  if (actor !== "zhaohongwei0880@gmail.com") {
+    return bad("Only zhao hongwei can delete ledger records", 403);
+  }
+
+  const { id: packageId, txnId } = await ctx.params;
+  if (!packageId || !txnId) return bad("Missing id", 409);
+
+  const txn = await prisma.packageTxn.findFirst({
+    where: { id: txnId, packageId },
+    select: { id: true, deltaMinutes: true },
+  });
+  if (!txn) return bad("Ledger record not found", 404);
+
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id: packageId },
+    select: { id: true, remainingMinutes: true },
+  });
+  if (!pkg) return bad("Package not found", 404);
+
+  const nextRemaining = (pkg.remainingMinutes ?? 0) - txn.deltaMinutes;
+  if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
+
+  await prisma.$transaction([
+    prisma.packageTxn.delete({ where: { id: txn.id } }),
+    prisma.coursePackage.update({
+      where: { id: packageId },
+      data: { remainingMinutes: nextRemaining },
+    }),
+  ]);
+
+  return Response.json({ ok: true, remainingMinutes: nextRemaining });
+}

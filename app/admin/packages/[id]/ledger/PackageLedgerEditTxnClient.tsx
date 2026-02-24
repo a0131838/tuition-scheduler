@@ -12,6 +12,9 @@ type Props = {
     note: string;
     save: string;
     saving: string;
+    remove: string;
+    removing: string;
+    confirmRemove: string;
     errorPrefix: string;
   };
 };
@@ -47,6 +50,30 @@ export default function PackageLedgerEditTxnClient(props: Props) {
     }
   }
 
+  async function onDelete() {
+    if (saving) return;
+    if (!window.confirm(props.labels.confirmRemove)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `/api/admin/packages/${encodeURIComponent(props.packageId)}/ledger/txns/${encodeURIComponent(props.txnId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        alert(`${props.labels.errorPrefix}: ${data?.message ?? `HTTP ${res.status}`}`);
+        return;
+      }
+      window.location.href = `/admin/packages/${encodeURIComponent(props.packageId)}/ledger?msg=${encodeURIComponent(
+        "Txn deleted"
+      )}`;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       <input
@@ -66,7 +93,9 @@ export default function PackageLedgerEditTxnClient(props: Props) {
       <button type="button" onClick={onSave} disabled={saving}>
         {saving ? props.labels.saving : props.labels.save}
       </button>
+      <button type="button" onClick={onDelete} disabled={saving} style={{ color: "#b91c1c" }}>
+        {saving ? props.labels.removing : props.labels.remove}
+      </button>
     </div>
   );
 }
-
