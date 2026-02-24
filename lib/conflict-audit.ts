@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 const CONFLICT_AUDIT_LAST_DAY_KEY = "conflict_audit_last_day";
 const CONFLICT_AUDIT_LAST_RESULT_KEY = "conflict_audit_last_result";
 const CONFLICT_AUDIT_VERSION_KEY = "conflict_audit_version";
-const CONFLICT_AUDIT_VERSION = "2";
+const CONFLICT_AUDIT_VERSION = "3";
 const CONFLICT_AUTOFIX_LAST_DAY_KEY = "conflict_autofix_last_day";
 const CONFLICT_AUTOFIX_LAST_RESULT_KEY = "conflict_autofix_last_result";
 
@@ -37,6 +37,23 @@ function overlaps(a: { startAt: Date; endAt: Date }, b: { startAt: Date; endAt: 
   return a.startAt < b.endAt && b.startAt < a.endAt;
 }
 
+function isFullyCancelledSessionForConflict(s: any) {
+  const cancelledSet = new Set(
+    Array.isArray(s.attendances) ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string) : []
+  );
+  if (cancelledSet.size === 0) return false;
+
+  if (s.class?.capacity === 1) {
+    const sid =
+      (s.studentId as string | null) ?? (s.class?.oneOnOneStudentId as string | null) ?? (s.class?.enrollments?.[0]?.studentId as string | null);
+    return !!sid && cancelledSet.has(sid);
+  }
+
+  const expected = Array.isArray(s.class?.enrollments) ? s.class.enrollments.map((e: any) => e.studentId as string) : [];
+  if (expected.length === 0) return false;
+  return expected.every((sid: string) => cancelledSet.has(sid));
+}
+
 function collectOverlapPairs<T extends { startAt: Date; endAt: Date }>(groups: Map<string, T[]>) {
   let pairs = 0;
   for (const list of groups.values()) {
@@ -57,10 +74,22 @@ export async function runConflictAuditSnapshot(referenceDate = new Date(), horiz
   dayEnd.setDate(dayEnd.getDate() + horizonDays);
   dayEnd.setHours(23, 59, 59, 999);
 
-  const [sessions, classes, appointments] = await Promise.all([
+  const [sessionsRaw, classes, appointments] = await Promise.all([
     prisma.session.findMany({
       where: { startAt: { gte: dayStart, lte: dayEnd } },
-      include: { class: true },
+      include: {
+        attendances: { select: { studentId: true, status: true } },
+        class: {
+          select: {
+            id: true,
+            teacherId: true,
+            roomId: true,
+            capacity: true,
+            oneOnOneStudentId: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+      },
       orderBy: { startAt: "asc" },
     }),
     prisma.class.findMany({
@@ -71,6 +100,7 @@ export async function runConflictAuditSnapshot(referenceDate = new Date(), horiz
       orderBy: { startAt: "asc" },
     }),
   ]);
+  const sessions = sessionsRaw.filter((s) => !isFullyCancelledSessionForConflict(s));
 
   const byTeacher = new Map<string, typeof sessions>();
   const byRoom = new Map<string, typeof sessions>();
@@ -280,10 +310,20 @@ export async function autoResolveTeacherConflicts(referenceDate = new Date(), ho
   dayEnd.setDate(dayEnd.getDate() + horizonDays);
   dayEnd.setHours(23, 59, 59, 999);
 
-  const [sessions, appointments] = await Promise.all([
+  const [sessionsRaw, appointments] = await Promise.all([
     prisma.session.findMany({
       where: { startAt: { gte: dayStart, lte: dayEnd } },
-      include: { class: true },
+      include: {
+        attendances: { select: { studentId: true, status: true } },
+        class: {
+          select: {
+            teacherId: true,
+            capacity: true,
+            oneOnOneStudentId: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+      },
       orderBy: { startAt: "asc" },
     }),
     prisma.appointment.findMany({
@@ -291,6 +331,7 @@ export async function autoResolveTeacherConflicts(referenceDate = new Date(), ho
       orderBy: { startAt: "asc" },
     }),
   ]);
+  const sessions = sessionsRaw.filter((s) => !isFullyCancelledSessionForConflict(s));
 
   const pairs = collectTeacherConflictPairs(sessions);
   const apptPairs: Array<{ session: (typeof sessions)[number]; appointment: (typeof appointments)[number] }> = [];
