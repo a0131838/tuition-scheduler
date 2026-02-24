@@ -7,6 +7,10 @@ export type PartnerSettlementApprovalItem = {
   managerApprovedBy: string[];
   financeApprovedBy: string[];
   exportedAt: string | null;
+  exportedBy: string | null;
+  managerRejectedAt: string | null;
+  managerRejectedBy: string | null;
+  managerRejectReason: string | null;
   financeRejectedAt: string | null;
   financeRejectedBy: string | null;
   financeRejectReason: string | null;
@@ -36,6 +40,12 @@ function parseItems(raw?: string | null): PartnerSettlementApprovalItem[] {
           ? x.financeApprovedBy.map((v) => normalizeEmail(String(v ?? ""))).filter(Boolean)
           : [],
         exportedAt: typeof x.exportedAt === "string" && x.exportedAt.trim() ? x.exportedAt : null,
+        exportedBy: typeof x.exportedBy === "string" && x.exportedBy.trim() ? normalizeEmail(x.exportedBy) : null,
+        managerRejectedAt: typeof x.managerRejectedAt === "string" && x.managerRejectedAt.trim() ? x.managerRejectedAt : null,
+        managerRejectedBy:
+          typeof x.managerRejectedBy === "string" && x.managerRejectedBy.trim() ? normalizeEmail(x.managerRejectedBy) : null,
+        managerRejectReason:
+          typeof x.managerRejectReason === "string" && x.managerRejectReason.trim() ? x.managerRejectReason.trim() : null,
         financeRejectedAt: typeof x.financeRejectedAt === "string" && x.financeRejectedAt.trim() ? x.financeRejectedAt : null,
         financeRejectedBy:
           typeof x.financeRejectedBy === "string" && x.financeRejectedBy.trim() ? normalizeEmail(x.financeRejectedBy) : null,
@@ -73,6 +83,10 @@ function ensureItem(items: PartnerSettlementApprovalItem[], settlementId: string
     managerApprovedBy: [],
     financeApprovedBy: [],
     exportedAt: null,
+    exportedBy: null,
+    managerRejectedAt: null,
+    managerRejectedBy: null,
+    managerRejectReason: null,
     financeRejectedAt: null,
     financeRejectedBy: null,
     financeRejectReason: null,
@@ -95,6 +109,23 @@ export async function managerApprovePartnerSettlement(settlementId: string, appr
   const items = await loadItems();
   const item = ensureItem(items, settlementId);
   item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
+  item.managerRejectedAt = null;
+  item.managerRejectedBy = null;
+  item.managerRejectReason = null;
+  await saveItems(items);
+}
+
+export async function managerRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
+  const items = await loadItems();
+  const item = ensureItem(items, settlementId);
+  const email = normalizeEmail(approverEmail);
+  item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
+  item.financeApprovedBy = [];
+  item.exportedAt = null;
+  item.exportedBy = null;
+  item.managerRejectedAt = new Date().toISOString();
+  item.managerRejectedBy = email;
+  item.managerRejectReason = reason.trim();
   await saveItems(items);
 }
 
@@ -114,15 +145,17 @@ export async function financeRejectPartnerSettlement(settlementId: string, appro
   const email = normalizeEmail(approverEmail);
   item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
   item.exportedAt = null;
+  item.exportedBy = null;
   item.financeRejectedAt = new Date().toISOString();
   item.financeRejectedBy = email;
   item.financeRejectReason = reason.trim();
   await saveItems(items);
 }
 
-export async function markPartnerSettlementExported(settlementId: string) {
+export async function markPartnerSettlementExported(settlementId: string, exporterEmail: string) {
   const items = await loadItems();
   const item = ensureItem(items, settlementId);
   item.exportedAt = new Date().toISOString();
+  item.exportedBy = normalizeEmail(exporterEmail);
   await saveItems(items);
 }

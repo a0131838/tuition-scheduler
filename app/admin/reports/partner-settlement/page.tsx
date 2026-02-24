@@ -6,6 +6,7 @@ import {
   financeRejectPartnerSettlement,
   getPartnerSettlementApprovalMap,
   managerApprovePartnerSettlement,
+  managerRejectPartnerSettlement,
 } from "@/lib/partner-settlement-approval";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -328,9 +329,39 @@ async function managerApproveSettlementAction(formData: FormData) {
   if (!settlementId || !isRoleApprover(user.email, cfg.managerApproverEmails)) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=manager-approve-forbidden`);
   }
+  const approval = (await getPartnerSettlementApprovalMap([settlementId])).get(settlementId);
+  if (approval?.exportedAt) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-locked`);
+  }
   await managerApprovePartnerSettlement(settlementId, user.email);
   revalidatePath("/admin/reports/partner-settlement");
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=manager-approved`);
+}
+
+async function managerRejectSettlementAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")) : "";
+  const rejectReason = typeof formData.get("rejectReason") === "string" ? String(formData.get("rejectReason")).trim() : "";
+  const cfg = await getApprovalRoleConfig();
+  if (!settlementId || !isRoleApprover(user.email, cfg.managerApproverEmails)) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=manager-reject-forbidden`);
+  }
+  if (!rejectReason) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=manager-reject-reason`);
+  }
+  const approval = (await getPartnerSettlementApprovalMap([settlementId])).get(settlementId);
+  if (approval?.exportedAt) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-locked`);
+  }
+  await managerRejectPartnerSettlement(settlementId, user.email, rejectReason);
+  await prisma.partnerSettlement.update({ where: { id: settlementId }, data: { status: "PENDING" } });
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=manager-rejected`);
 }
 
 async function financeApproveSettlementAction(formData: FormData) {
@@ -341,6 +372,18 @@ async function financeApproveSettlementAction(formData: FormData) {
   const cfg = await getApprovalRoleConfig();
   if (!settlementId || !isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=finance-approve-forbidden`);
+  }
+  const approval = (await getPartnerSettlementApprovalMap([settlementId])).get(settlementId) ?? {
+    managerApprovedBy: [],
+    financeApprovedBy: [],
+    exportedAt: null,
+  };
+  if (approval.exportedAt) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-locked`);
+  }
+  const managerAllApproved = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
+  if (!managerAllApproved) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=manager-approval-required`);
   }
   await financeApprovePartnerSettlement(settlementId, user.email);
   revalidatePath("/admin/reports/partner-settlement");
@@ -360,7 +403,12 @@ async function financeRejectSettlementAction(formData: FormData) {
   if (!rejectReason) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=finance-reject-reason`);
   }
+  const approval = (await getPartnerSettlementApprovalMap([settlementId])).get(settlementId);
+  if (approval?.exportedAt) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-locked`);
+  }
   await financeRejectPartnerSettlement(settlementId, user.email, rejectReason);
+  await prisma.partnerSettlement.update({ where: { id: settlementId }, data: { status: "PENDING" } });
   revalidatePath("/admin/reports/partner-settlement");
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=finance-rejected`);
 }
@@ -425,6 +473,10 @@ export default async function PartnerSettlementPage({
     managerApprovedBy: string[];
     financeApprovedBy: string[];
     exportedAt: string | null;
+    exportedBy: string | null;
+    managerRejectedAt: string | null;
+    managerRejectedBy: string | null;
+    managerRejectReason: string | null;
     financeRejectedAt: string | null;
     financeRejectedBy: string | null;
     financeRejectReason: string | null;
@@ -609,7 +661,10 @@ export default async function PartnerSettlementPage({
       {msg ? <div style={{ marginBottom: 8, color: "#166534" }}>{msg}</div> : null}
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
       {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
+      {err === "manager-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter manager reject reason.", "请填写管理驳回原因。")}</div> : null}
       {err === "finance-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
+      {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
+      {err === "settlement-locked" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement already exported and locked.", "该结算单已导出并锁定。")}</div> : null}
 
       <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
         <label>
@@ -788,6 +843,10 @@ export default async function PartnerSettlementPage({
                 managerApprovedBy: [],
                 financeApprovedBy: [],
                 exportedAt: null,
+                exportedBy: null,
+                managerRejectedAt: null,
+                managerRejectedBy: null,
+                managerRejectReason: null,
                 financeRejectedAt: null,
                 financeRejectedBy: null,
                 financeRejectReason: null,
@@ -795,6 +854,7 @@ export default async function PartnerSettlementPage({
               const managerAllApproved = areAllApproversConfirmed(approval.managerApprovedBy, roleConfig.managerApproverEmails);
               const financeAllApproved = areAllApproversConfirmed(approval.financeApprovedBy, roleConfig.financeApproverEmails);
               const exportReady = managerAllApproved && financeAllApproved;
+              const isLocked = Boolean(approval.exportedAt);
               return (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{new Date(r.createdAt).toLocaleString()}</td>
@@ -809,11 +869,30 @@ export default async function PartnerSettlementPage({
                 <td>{r.status}</td>
                 <td>
                   <div>{`${approval.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
-                  {isManagerApprover && !managerAllApproved ? (
+                  {approval.managerRejectedAt ? (
+                    <div style={{ color: "#b91c1c", fontSize: 12 }}>
+                      {t(lang, "Rejected", "已驳回")}: {approval.managerRejectReason ?? "-"}
+                    </div>
+                  ) : null}
+                  {isManagerApprover && !isLocked && !managerAllApproved ? (
                     <form action={managerApproveSettlementAction}>
                       <input type="hidden" name="month" value={month} />
                       <input type="hidden" name="settlementId" value={r.id} />
                       <button type="submit">{t(lang, "Approve", "确认")}</button>
+                    </form>
+                  ) : null}
+                  {isManagerApprover && !isLocked && approval.managerApprovedBy.includes(admin.email.toLowerCase()) ? (
+                    <form action={managerRejectSettlementAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="settlementId" value={r.id} />
+                      <input
+                        type="text"
+                        name="rejectReason"
+                        required
+                        placeholder={t(lang, "Reject reason", "驳回原因")}
+                        style={{ width: 150 }}
+                      />
+                      <button type="submit">{t(lang, "Reject", "驳回")}</button>
                     </form>
                   ) : null}
                 </td>
@@ -824,14 +903,14 @@ export default async function PartnerSettlementPage({
                       {t(lang, "Rejected", "已驳回")}: {approval.financeRejectReason ?? "-"}
                     </div>
                   ) : null}
-                  {isFinanceApprover && managerAllApproved && !financeAllApproved ? (
+                  {isFinanceApprover && !isLocked && managerAllApproved && !financeAllApproved ? (
                     <form action={financeApproveSettlementAction}>
                       <input type="hidden" name="month" value={month} />
                       <input type="hidden" name="settlementId" value={r.id} />
                       <button type="submit">{t(lang, "Approve", "确认")}</button>
                     </form>
                   ) : null}
-                  {isFinanceApprover && approval.financeApprovedBy.includes(admin.email.toLowerCase()) ? (
+                  {isFinanceApprover && !isLocked && approval.financeApprovedBy.includes(admin.email.toLowerCase()) ? (
                     <form action={financeRejectSettlementAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <input type="hidden" name="month" value={month} />
                       <input type="hidden" name="settlementId" value={r.id} />
@@ -847,7 +926,9 @@ export default async function PartnerSettlementPage({
                   ) : null}
                 </td>
                 <td>
-                  {exportReady ? (
+                  {isLocked ? (
+                    <span style={{ color: "#166534" }}>{t(lang, "Exported", "已导出")}</span>
+                  ) : exportReady ? (
                     <a href={`/api/admin/reports/partner-settlement/export?id=${encodeURIComponent(r.id)}&month=${encodeURIComponent(month)}`}>
                       {t(lang, "Export PDF/CSV", "导出电子单据")}
                     </a>

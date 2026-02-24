@@ -4,7 +4,7 @@ import { getPartnerSettlementApprovalMap, markPartnerSettlementExported } from "
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { searchParams } = new URL(req.url);
   const id = String(searchParams.get("id") ?? "").trim();
   if (!id) return new Response("Missing id", { status: 400 });
@@ -29,7 +29,8 @@ export async function GET(req: Request) {
     return new Response("All manager + finance approvals are required before export", { status: 403 });
   }
 
-  await markPartnerSettlementExported(id);
+  await markPartnerSettlementExported(id, admin.email);
+  await prisma.partnerSettlement.update({ where: { id }, data: { status: "INVOICED" } });
 
   const headers = [
     "settlement_id",
@@ -64,4 +65,3 @@ export async function GET(req: Request) {
     },
   });
 }
-
