@@ -406,6 +406,7 @@ export async function financeFinalizeTeacherPayroll(input: {
   month: string;
   scope?: string | null;
   financeEmail: string;
+  allManagerApproverEmails?: string[];
 }) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month) || !input.financeEmail) return false;
@@ -413,7 +414,16 @@ export async function financeFinalizeTeacherPayroll(input: {
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (!existing) return false;
-  if (!existing.managerApprovedAt) return false;
+  if (!existing.managerApprovedAt) {
+    const requiredManagers = Array.from(
+      new Set((input.allManagerApproverEmails ?? []).map((x) => x.trim().toLowerCase()).filter(Boolean))
+    );
+    const approvedManagers = Array.from(new Set((existing.managerApprovedBy ?? []).map((x) => x.trim().toLowerCase())));
+    const allManagersApproved =
+      requiredManagers.length > 0 && requiredManagers.every((x) => approvedManagers.includes(x));
+    if (!allManagersApproved) return false;
+    existing.managerApprovedAt = new Date().toISOString();
+  }
   const now = new Date().toISOString();
   existing.financePaidAt = existing.financePaidAt ?? now;
   existing.financePaidBy = input.financeEmail.trim().toLowerCase();
