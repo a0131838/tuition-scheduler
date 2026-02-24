@@ -1089,6 +1089,12 @@ export default async function AdminTodosPage({
                     {t(lang, "Campus", "校区")}: {s.class.campus.name}
                     {s.class.room ? ` / ${s.class.room.name}` : ""}
                   </div>
+                  <div style={{ marginTop: 8 }}>
+                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                    <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>
+                      {t(lang, "Unmarked", "未点名")}: {unmarkedMap.get(s.id) ?? 0}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
