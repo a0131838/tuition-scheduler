@@ -472,6 +472,14 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
         class: { teacherId },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
+        NOT: {
+          attendances: {
+            some: {
+              studentId,
+              status: "EXCUSED",
+            },
+          },
+        },
       },
       include: {
         class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
@@ -1233,6 +1241,14 @@ export default async function StudentDetailPage({
             class: { teacherId: tch.id },
             startAt: { lt: endAt },
             endAt: { gt: startAt },
+            NOT: {
+              attendances: {
+                some: {
+                  studentId,
+                  status: "EXCUSED",
+                },
+              },
+            },
           },
           include: {
             class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
