@@ -224,6 +224,53 @@ function formatSessionConflictLabel(s: any) {
   return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
 }
 
+async function humanizeQuickScheduleError(raw: string) {
+  const teacherSessionConflict = raw.match(/^Teacher conflict with session ([a-zA-Z0-9-]+) \(class ([a-zA-Z0-9-]+)\)$/);
+  if (teacherSessionConflict) {
+    const sessionId = teacherSessionConflict[1];
+    const s = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+    });
+    if (s) return `Teacher conflict: ${formatSessionConflictLabel(s)}`;
+    return "Teacher conflict: another class is already scheduled in this time slot.";
+  }
+
+  const roomSessionConflict = raw.match(/^Room conflict with session ([a-zA-Z0-9-]+) \(class ([a-zA-Z0-9-]+)\)$/);
+  if (roomSessionConflict) {
+    const sessionId = roomSessionConflict[1];
+    const s = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+    });
+    if (s) {
+      const room = s.class.room?.name ?? "(none)";
+      return `Room conflict: ${room} | ${formatSessionConflictLabel(s)}`;
+    }
+    return "Room conflict: selected room is already occupied in this time slot.";
+  }
+
+  const teacherAppointmentConflict = raw.match(/^Teacher conflict with appointment ([a-zA-Z0-9-]+)$/);
+  if (teacherAppointmentConflict) {
+    const apptId = teacherAppointmentConflict[1];
+    const appt = await prisma.appointment.findUnique({
+      where: { id: apptId },
+      include: { teacher: { select: { name: true } } },
+    });
+    if (appt) {
+      const timeLabel = `${fmtDateInput(appt.startAt)} ${fmtHHMM(appt.startAt)}-${fmtHHMM(appt.endAt)}`;
+      return `Teacher conflict: appointment | ${appt.teacher.name} | ${timeLabel}`;
+    }
+    return "Teacher conflict: another appointment is already scheduled in this time slot.";
+  }
+
+  return raw;
+}
+
 function fmtYMD(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -618,7 +665,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     const message =
       raw === "COURSE_ENROLLMENT_CONFLICT"
         ? courseEnrollmentConflictMessage(await getLang())
-        : raw;
+        : await humanizeQuickScheduleError(raw);
     redirect(backWithQuickParams({ err: message }));
   }
 }
