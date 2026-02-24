@@ -279,7 +279,19 @@ export async function getAdminOpenSignInAlerts(limit = 200) {
       include: {
         session: {
           include: {
-            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+            student: { select: { id: true, name: true } },
+            class: {
+              include: {
+                course: true,
+                subject: true,
+                level: true,
+                teacher: true,
+                campus: true,
+                room: true,
+                oneOnOneStudent: { select: { id: true, name: true } },
+                enrollments: { include: { student: { select: { id: true, name: true } } } },
+              },
+            },
           },
         },
       },
@@ -303,7 +315,19 @@ export async function getTeacherOpenSignInAlerts(userId: string, limit = 200) {
       include: {
         session: {
           include: {
-            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+            student: { select: { id: true, name: true } },
+            class: {
+              include: {
+                course: true,
+                subject: true,
+                level: true,
+                teacher: true,
+                campus: true,
+                room: true,
+                oneOnOneStudent: { select: { id: true, name: true } },
+                enrollments: { include: { student: { select: { id: true, name: true } } } },
+              },
+            },
           },
         },
       },
@@ -334,7 +358,19 @@ export async function getTeacherVisibleSignInAlerts(
       include: {
         session: {
           include: {
-            class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+            student: { select: { id: true, name: true } },
+            class: {
+              include: {
+                course: true,
+                subject: true,
+                level: true,
+                teacher: true,
+                campus: true,
+                room: true,
+                oneOnOneStudent: { select: { id: true, name: true } },
+                enrollments: { include: { student: { select: { id: true, name: true } } } },
+              },
+            },
           },
         },
       },

@@ -19,6 +19,14 @@ function classLabel(cls: any) {
   return `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
 }
 
+function sessionStudentNames(session: any) {
+  if (session.class?.capacity === 1) {
+    const one = session.student?.name ?? session.class?.oneOnOneStudent?.name ?? session.class?.enrollments?.[0]?.student?.name ?? null;
+    return one ? [one] : [];
+  }
+  return (session.class?.enrollments ?? []).map((e: any) => e.student?.name).filter(Boolean);
+}
+
 function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
 }
@@ -213,6 +221,7 @@ export default async function TeacherAlertsPage({
             const primaryLabel = r.hasFeedbackAlert
               ? t(lang, "Fill Feedback", "去补反馈")
               : t(lang, "Open Session", "打开课次");
+            const allStudentNames = sessionStudentNames(r.session);
             const studentPreview =
               r.missingStudentNames.length > 3
                 ? `${r.missingStudentNames.slice(0, 3).join(", ")} +${r.missingStudentNames.length - 3}`
@@ -244,6 +253,10 @@ export default async function TeacherAlertsPage({
                 <div style={{ color: "#475569", fontSize: 13 }}>
                   {r.session.class.campus.name}
                   {r.session.class.room ? ` / ${r.session.class.room.name}` : ""}
+                </div>
+                <div style={{ color: "#0f766e", fontSize: 13 }}>
+                  <b>{t(lang, "Students", "学生")}: </b>
+                  {allStudentNames.length > 0 ? allStudentNames.join(", ") : "-"}
                 </div>
 
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

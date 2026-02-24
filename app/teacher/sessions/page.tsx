@@ -9,12 +9,15 @@ type SessionWithMeta = {
   endAt: Date;
   class: {
     capacity: number;
+    oneOnOneStudent: { id: string; name: string } | null;
+    enrollments: Array<{ studentId: string; student: { id: string; name: string } }>;
     course: { name: string };
     subject: { name: string } | null;
     level: { name: string } | null;
     campus: { name: string };
     room: { name: string } | null;
   };
+  student: { id: string; name: string } | null;
   attendances: Array<{ status: string }>;
   feedbacks: Array<{ isProxyDraft: boolean; status: string }>;
 };
@@ -26,6 +29,14 @@ function dayKey(d: Date) {
 
 function classLabel(s: SessionWithMeta) {
   return `${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
+}
+
+function sessionStudentNames(s: SessionWithMeta) {
+  if (s.class.capacity === 1) {
+    const one = s.student?.name ?? s.class.oneOnOneStudent?.name ?? s.class.enrollments[0]?.student?.name ?? null;
+    return one ? [one] : [];
+  }
+  return s.class.enrollments.map((e) => e.student.name).filter(Boolean);
 }
 
 function attendancePill(marked: number, total: number) {
@@ -76,7 +87,18 @@ export default async function TeacherSessionsPage() {
       OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
     },
     include: {
-      class: { include: { course: true, subject: true, level: true, campus: true, room: true } },
+      student: { select: { id: true, name: true } },
+      class: {
+        include: {
+          course: true,
+          subject: true,
+          level: true,
+          campus: true,
+          room: true,
+          oneOnOneStudent: { select: { id: true, name: true } },
+          enrollments: { include: { student: { select: { id: true, name: true } } } },
+        },
+      },
       attendances: true,
       feedbacks: { where: { teacherId: teacher.id } },
     },
@@ -120,6 +142,7 @@ export default async function TeacherSessionsPage() {
 
               <div style={{ padding: 12 }}>
                 {items.map((s, idx) => {
+                  const studentNames = sessionStudentNames(s);
                   const total = s.attendances.length;
                   const marked = s.attendances.filter((a) => a.status !== "UNMARKED").length;
                   const feedback = s.feedbacks[0] ?? null;
@@ -161,6 +184,9 @@ export default async function TeacherSessionsPage() {
                         <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
                           {s.class.campus.name}
                           {s.class.room ? ` / ${s.class.room.name}` : ""}
+                        </div>
+                        <div style={{ color: "#0f766e", fontSize: 12, marginTop: 2 }}>
+                          {t(lang, "Students", "学生")}: {studentNames.length > 0 ? studentNames.join(", ") : "-"}
                         </div>
 
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
