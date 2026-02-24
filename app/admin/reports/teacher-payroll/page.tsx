@@ -106,7 +106,10 @@ async function revokePayrollAction(formData: FormData) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=revoke`);
   }
 
-  await revokeTeacherPayrollSent({ teacherId, month, scope });
+  const ok = await revokeTeacherPayrollSent({ teacherId, month, scope });
+  if (!ok) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=revoke-paid`);
+  }
 
   revalidatePath("/admin/reports/teacher-payroll");
   revalidatePath("/teacher/payroll");
@@ -348,6 +351,7 @@ export default async function TeacherPayrollPage({
       {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
       {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
       {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
+      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll cannot be revoked.", "已发薪的工资单不可撤销。")}</div> : null}
       {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
       {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
@@ -454,7 +458,7 @@ export default async function TeacherPayrollPage({
                         <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
                       </form>
                     ) : null}
-                    {!isFinanceOnlyUser && publish ? (
+                    {!isFinanceOnlyUser && publish && !publish.financePaidAt ? (
                       <form action={revokePayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />

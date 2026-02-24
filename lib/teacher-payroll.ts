@@ -317,12 +317,16 @@ export async function markTeacherPayrollSent(input: { teacherId: string; month: 
 
 export async function revokeTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
   const scope = normalizePayrollScope(input.scope);
-  if (!input.teacherId || !parseMonth(input.month)) return;
+  if (!input.teacherId || !parseMonth(input.month)) return false;
 
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const items = await loadPayrollPublishItems();
+  const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
+  if (!existing) return false;
+  if (existing.financePaidAt) return false;
   const next = items.filter((x) => payrollPublishKey(x.teacherId, x.month, x.scope) !== key);
   await savePayrollPublishItems(next);
+  return true;
 }
 
 export async function confirmTeacherPayroll(input: { teacherId: string; month: string; scope?: string | null }) {
