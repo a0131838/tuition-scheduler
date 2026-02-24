@@ -84,7 +84,10 @@ async function sendPayrollAction(formData: FormData) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=send`);
   }
 
-  await markTeacherPayrollSent({ teacherId, month, scope });
+  const ok = await markTeacherPayrollSent({ teacherId, month, scope });
+  if (!ok) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=send-paid`);
+  }
 
   revalidatePath("/admin/reports/teacher-payroll");
   revalidatePath("/teacher/payroll");
@@ -350,6 +353,7 @@ export default async function TeacherPayrollPage({
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
       {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
       {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
+      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll cannot be resent.", "已发薪的工资单不可重新发送。")}</div> : null}
       {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
       {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll cannot be revoked.", "已发薪的工资单不可撤销。")}</div> : null}
       {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
@@ -450,7 +454,7 @@ export default async function TeacherPayrollPage({
                 </td>
                 <td>
                   <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
-                    {!isFinanceOnlyUser ? (
+                    {!isFinanceOnlyUser && !publish?.financePaidAt ? (
                       <form action={sendPayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />

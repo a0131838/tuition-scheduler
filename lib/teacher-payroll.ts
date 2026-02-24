@@ -287,13 +287,14 @@ async function savePayrollPublishItems(items: PayrollPublishItem[]) {
 
 export async function markTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
   const scope = normalizePayrollScope(input.scope);
-  if (!input.teacherId || !parseMonth(input.month)) return;
+  if (!input.teacherId || !parseMonth(input.month)) return false;
 
   const now = new Date().toISOString();
   const items = await loadPayrollPublishItems();
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (existing) {
+    if (existing.financePaidAt) return false;
     existing.sentAt = now;
   } else {
     items.push({
@@ -313,6 +314,7 @@ export async function markTeacherPayrollSent(input: { teacherId: string; month: 
     });
   }
   await savePayrollPublishItems(items);
+  return true;
 }
 
 export async function revokeTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
