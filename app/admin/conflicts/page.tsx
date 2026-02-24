@@ -82,7 +82,7 @@ function isFullyCancelledSessionForConflict(s: any) {
 export default async function ConflictsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ from?: string; to?: string; courseId?: string; subjectId?: string; msg?: string; err?: string }>;
+  searchParams?: Promise<{ from?: string; to?: string; courseId?: string; subjectId?: string; page?: string; pageSize?: string; msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
   const today = new Date();
@@ -98,6 +98,9 @@ export default async function ConflictsPage({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const filterCourseId = (sp?.courseId ?? "").trim();
   const filterSubjectId = (sp?.subjectId ?? "").trim();
+  const requestedPage = Math.max(1, Number.parseInt((sp?.page ?? "1").trim(), 10) || 1);
+  const requestedPageSize = Number.parseInt((sp?.pageSize ?? "30").trim(), 10) || 30;
+  const pageSize = Math.min(100, Math.max(10, requestedPageSize));
 
   const fromParsed = parseDateOnly(fromStr) ?? parseDateOnly(defaultFrom)!;
   const toParsed = parseDateOnly(toStr) ?? parseDateOnly(defaultTo)!;
@@ -234,13 +237,27 @@ export default async function ConflictsPage({
     if (filterSubjectId && s.class.subjectId !== filterSubjectId) return false;
     return true;
   });
+  const totalConflicts = filteredConflicts.length;
+  const totalPages = Math.max(1, Math.ceil(totalConflicts / pageSize));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagedConflicts = filteredConflicts.slice(pageStart, pageStart + pageSize);
 
   const sessionMap = new Map(sessions.map((s) => [s.id, s]));
-  const returnToBase = `/admin/conflicts?${new URLSearchParams({
+  const paginationBaseParams = {
     from: fromSafeStr,
     to: toSafeStr,
+    pageSize: String(pageSize),
     ...(filterCourseId ? { courseId: filterCourseId } : {}),
     ...(filterSubjectId ? { subjectId: filterSubjectId } : {}),
+  };
+  const prevHref = `/admin/conflicts?${new URLSearchParams({
+    ...paginationBaseParams,
+    page: String(Math.max(1, currentPage - 1)),
+  }).toString()}`;
+  const nextHref = `/admin/conflicts?${new URLSearchParams({
+    ...paginationBaseParams,
+    page: String(Math.min(totalPages, currentPage + 1)),
   }).toString()}`;
 
   return (
@@ -269,21 +286,33 @@ export default async function ConflictsPage({
               subjectAll: t(lang, "Subject (all)", "科目（全部）"),
             }}
           />
+          <label>
+            {t(lang, "Page size", "每页数量")}:
+            <select name="pageSize" defaultValue={String(pageSize)} style={{ marginLeft: 6 }}>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
           <button type="submit">{t(lang, "Apply", "应用")}</button>
         </form>
         <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
-          {t(lang, "Conflicts in range", "所选范围冲突")}: <b>{filteredConflicts.length}</b>
+          {t(lang, "Conflicts in range", "所选范围冲突")}: <b>{totalConflicts}</b> | {t(lang, "Page", "页")}: <b>{currentPage}</b> /{" "}
+          <b>{totalPages}</b>
         </div>
       </div>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
 
-      {filteredConflicts.length === 0 ? (
+      {totalConflicts === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No conflicts found in selected range.", "所选范围内暂无冲突。")}</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
-          {filteredConflicts.map((s) => {
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            {pagedConflicts.map((s) => {
             const teacherId = effectiveTeacherId(s);
             const cls = s.class;
             const conflictTeacherIds = Array.from(teacherConflicts.get(s.id) ?? []).map((id) => sessionMap.get(id)).filter(Boolean) as typeof sessions;
@@ -435,8 +464,32 @@ export default async function ConflictsPage({
                 </div>
               </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+            <a
+              href={prevHref}
+              style={{
+                pointerEvents: currentPage <= 1 ? "none" : "auto",
+                opacity: currentPage <= 1 ? 0.5 : 1,
+              }}
+            >
+              {t(lang, "Previous", "上一页")}
+            </a>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              {t(lang, "Showing", "显示")} {pageStart + 1}-{Math.min(pageStart + pageSize, totalConflicts)} / {totalConflicts}
+            </div>
+            <a
+              href={nextHref}
+              style={{
+                pointerEvents: currentPage >= totalPages ? "none" : "auto",
+                opacity: currentPage >= totalPages ? 0.5 : 1,
+              }}
+            >
+              {t(lang, "Next", "下一页")}
+            </a>
+          </div>
+        </>
       )}
     </div>
   );
