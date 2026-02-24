@@ -147,8 +147,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { capacity: true },
+  });
+  if (!cls) return bad("Class not found", 404);
+
   const sessions = await prisma.session.findMany({
-    where: { classId },
+    where: {
+      classId,
+      ...(cls.capacity === 1
+        ? {
+            NOT: {
+              attendances: {
+                some: {
+                  status: "EXCUSED",
+                },
+              },
+            },
+          }
+        : {}),
+    },
     include: { teacher: { select: { id: true, name: true } }, student: { select: { id: true, name: true } }, class: { select: { teacherId: true } } },
     orderBy: { startAt: "desc" },
   });
@@ -260,4 +279,3 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   await prisma.session.delete({ where: { id: sessionId } });
   return Response.json({ ok: true });
 }
-

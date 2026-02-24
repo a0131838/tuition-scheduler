@@ -552,7 +552,20 @@ export default async function ClassSessionsPage({
   const eligibleTeachers = teachers.filter((tch) => canTeachSubject(tch, cls.subjectId));
 
   const sessions = await prisma.session.findMany({
-    where: { classId },
+    where: {
+      classId,
+      ...(cls.capacity === 1
+        ? {
+            NOT: {
+              attendances: {
+                some: {
+                  status: "EXCUSED",
+                },
+              },
+            },
+          }
+        : {}),
+    },
     include: { teacher: true, student: true },
     orderBy: { startAt: "desc" },
   });
