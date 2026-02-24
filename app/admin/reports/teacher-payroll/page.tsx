@@ -89,6 +89,11 @@ export default async function TeacherPayrollPage({
   const periodText = `${PERIOD_DATE_FMT.format(data.range.start)} - ${PERIOD_DATE_FMT.format(
     new Date(data.range.end.getTime() - 1000)
   )}`;
+  const parsedMonth = parseMonth(month);
+  const payrollMonthLabel = parsedMonth ? `${parsedMonth.year}-${String(parsedMonth.month).padStart(2, "0")}` : month;
+  const payDateLabel = parsedMonth
+    ? `${parsedMonth.month === 12 ? parsedMonth.year + 1 : parsedMonth.year}-${String(parsedMonth.month === 12 ? 1 : parsedMonth.month + 1).padStart(2, "0")}-05`
+    : "";
 
   return (
     <div>
@@ -98,6 +103,13 @@ export default async function TeacherPayrollPage({
           lang,
           "Payroll period rule: from last month 15th to this month 14th.",
           "计薪周期规则：上月15日到当月14日。"
+        )}
+      </div>
+      <div style={{ marginBottom: 10, color: "#666" }}>
+        {t(
+          lang,
+          `Payout note: salary for ${payrollMonthLabel} is paid on ${payDateLabel}, and covers ${periodText}. Example: paid on March 5 for February payroll; February payroll covers Jan 15 to Feb 14.`,
+          `发薪说明：${payrollMonthLabel} 工资在 ${payDateLabel} 发放，统计区间为 ${periodText}。例如：3月5日发2月工资，2月工资统计1月15日到2月14日。`
         )}
       </div>
 
