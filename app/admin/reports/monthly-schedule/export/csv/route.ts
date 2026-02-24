@@ -1,5 +1,5 @@
 import { getLang } from "@/lib/i18n";
-import { choose, csvEscape, fmtHHMM, fmtYMD, loadMonthlyScheduleData } from "../../_lib";
+import { choose, csvEscape, fmtHHMM, fmtYMD, loadMonthlyScheduleData, resolveSessionStudentsForMonthlySchedule } from "../../_lib";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET(req: Request) {
@@ -30,16 +30,11 @@ export async function GET(req: Request) {
 
   const lines = [header.join(",")];
   for (const s of data.sessions) {
+    const resolved = resolveSessionStudentsForMonthlySchedule(s);
+    if (resolved.hidden) continue;
+
     const teacherName = s.teacher?.name ?? s.class.teacher.name;
-    const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
-    const oneOnOneStudent =
-      s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
-    const students =
-      s.class.capacity === 1
-        ? oneOnOneStudent
-          ? [oneOnOneStudent]
-          : []
-        : enrolledStudents;
+    const students = resolved.students;
     const startAt = new Date(s.startAt);
     const endAt = new Date(s.endAt);
     lines.push(

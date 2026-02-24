@@ -8,6 +8,7 @@ import {
   loadMonthlyScheduleData,
   monthKey,
   parseMonth,
+  resolveSessionStudentsForMonthlySchedule,
 } from "./_lib";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
@@ -59,20 +60,17 @@ export default async function MonthlyScheduleReportPage({
   const itemsByDay = new Map<string, CalendarItem[]>();
   const teacherSet = new Set<string>();
   const studentSet = new Set<string>();
+  let visibleSessionCount = 0;
 
   for (const s of sessions) {
+    const resolved = resolveSessionStudentsForMonthlySchedule(s);
+    if (resolved.hidden) continue;
+
     const dateKey = fmtYMD(new Date(s.startAt));
     const teacherName = s.teacher?.name ?? s.class.teacher.name;
-    const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
-    const oneOnOneStudent =
-      s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
-    const students =
-      s.class.capacity === 1
-        ? oneOnOneStudent
-          ? [oneOnOneStudent]
-          : []
-        : enrolledStudents;
+    const students = resolved.students;
 
+    visibleSessionCount += 1;
     teacherSet.add(teacherName);
     for (const studentName of students) studentSet.add(studentName);
 
@@ -162,7 +160,7 @@ export default async function MonthlyScheduleReportPage({
       </div>
 
       <div style={{ marginBottom: 12, color: "#444" }}>
-        {choose(lang, "Sessions", "课次数")}: <b>{sessions.length}</b> | {choose(lang, "Teachers", "老师数")}: <b>{teacherSet.size}</b> |{" "}
+        {choose(lang, "Sessions", "课次数")}: <b>{visibleSessionCount}</b> | {choose(lang, "Teachers", "老师数")}: <b>{teacherSet.size}</b> |{" "}
         {choose(lang, "Students", "学生数")}: <b>{studentSet.size}</b>
       </div>
 

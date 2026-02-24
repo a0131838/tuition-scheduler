@@ -3,7 +3,7 @@ import { PassThrough } from "stream";
 import { setPdfFont } from "@/lib/pdf-font";
 import { getLang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
-import { choose, fmtHHMM, fmtYMD, loadMonthlyScheduleData, safeName } from "../../_lib";
+import { choose, fmtHHMM, fmtYMD, loadMonthlyScheduleData, resolveSessionStudentsForMonthlySchedule, safeName } from "../../_lib";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -30,17 +30,20 @@ export async function GET(req: Request) {
   doc.fontSize(14).text(choose(lang, "Monthly Schedule Calendar", "\u6708\u8bfe\u8868\u603b\u89c8"));
   doc.moveDown(0.3);
   doc.fontSize(10).text(`${choose(lang, "Month", "\u6708\u4efd")}: ${month}`);
-  doc.text(`${choose(lang, "Total Sessions", "\u603b\u8bfe\u6b21\u6570")}: ${data.sessions.length}`);
-  doc.moveDown(0.5);
 
   const sessionsByDay = new Map<string, typeof data.sessions>();
+  let visibleSessionCount = 0;
   for (const s of data.sessions) {
+    const resolved = resolveSessionStudentsForMonthlySchedule(s);
+    if (resolved.hidden) continue;
     const key = fmtYMD(new Date(s.startAt));
     const list = sessionsByDay.get(key) ?? [];
     list.push(s);
     sessionsByDay.set(key, list);
+    visibleSessionCount += 1;
   }
-
+  doc.text(`${choose(lang, "Total Sessions", "\u603b\u8bfe\u6b21\u6570")}: ${visibleSessionCount}`);
+  doc.moveDown(0.5);
   const keys = Array.from(sessionsByDay.keys()).sort();
   if (keys.length === 0) {
     doc.fontSize(10).text(choose(lang, "No sessions for this filter.", "\u5f53\u524d\u7b5b\u9009\u6761\u4ef6\u4e0b\u6ca1\u6709\u8bfe\u6b21\u3002"));
@@ -59,15 +62,7 @@ export async function GET(req: Request) {
           setPdfFont(doc);
         }
         const teacherName = s.teacher?.name ?? s.class.teacher.name;
-        const enrolledStudents = s.class.enrollments.map((e) => e.student.name).filter(Boolean);
-        const oneOnOneStudent =
-          s.student?.name ?? s.class.oneOnOneStudent?.name ?? (enrolledStudents.length > 0 ? enrolledStudents[0] : null);
-        const students =
-          s.class.capacity === 1
-            ? oneOnOneStudent
-              ? [oneOnOneStudent]
-              : []
-            : enrolledStudents;
+        const students = resolveSessionStudentsForMonthlySchedule(s).students;
         const line1 = `${fmtHHMM(new Date(s.startAt))}-${fmtHHMM(new Date(s.endAt))} | ${teacherName} | ${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
         const line2 = `${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""} | ${choose(lang, "Students", "\u5b66\u751f")}: ${students.join(", ") || "-"}`;
         doc.fontSize(9).fillColor("black").text(line1);

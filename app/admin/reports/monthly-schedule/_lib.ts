@@ -91,6 +91,32 @@ export function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
+export function resolveSessionStudentsForMonthlySchedule(session: any) {
+  const cancelledSet = new Set(
+    Array.isArray(session.attendances)
+      ? session.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
+      : []
+  );
+  const enrolled = (session.class?.enrollments ?? []).map((e: any) => ({
+    id: e.studentId as string,
+    name: e.student?.name ?? "-",
+  }));
+
+  if (session.class?.capacity === 1) {
+    const candidateId = (session.studentId as string | null) ?? (session.class?.oneOnOneStudent?.id as string | null) ?? (enrolled[0]?.id ?? null);
+    const candidateName =
+      (session.student?.name as string | null) ??
+      (session.class?.oneOnOneStudent?.name as string | null) ??
+      (candidateId ? enrolled.find((x: any) => x.id === candidateId)?.name ?? null : null);
+    if (candidateId && cancelledSet.has(candidateId)) return { students: [] as string[], hidden: true };
+    return { students: candidateName ? [candidateName] : [], hidden: false };
+  }
+
+  const students = enrolled.filter((x: any) => !cancelledSet.has(x.id)).map((x: any) => x.name);
+  const hidden = enrolled.length > 0 && students.length === 0 && cancelledSet.size > 0;
+  return { students, hidden };
+}
+
 export async function loadMonthlyScheduleData(query: MonthlyScheduleQuery) {
   const range = toDateRange(query.month);
   if (!range) return null;
@@ -121,6 +147,7 @@ export async function loadMonthlyScheduleData(query: MonthlyScheduleQuery) {
       include: {
         teacher: { select: { id: true, name: true } },
         student: { select: { id: true, name: true } },
+        attendances: { select: { studentId: true, status: true } },
         class: {
           include: {
             teacher: { select: { id: true, name: true } },
