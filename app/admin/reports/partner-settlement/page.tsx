@@ -1,5 +1,11 @@
 ﻿import { requireAdmin } from "@/lib/auth";
+import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
+import {
+  financeApprovePartnerSettlement,
+  getPartnerSettlementApprovalMap,
+  managerApprovePartnerSettlement,
+} from "@/lib/partner-settlement-approval";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -297,18 +303,49 @@ async function clearSettlementRecordsAction(formData: FormData) {
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlements-cleared`);
 }
 
+async function managerApproveSettlementAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")) : "";
+  const cfg = await getApprovalRoleConfig();
+  if (!settlementId || !isRoleApprover(user.email, cfg.managerApproverEmails)) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=manager-approve-forbidden`);
+  }
+  await managerApprovePartnerSettlement(settlementId, user.email);
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=manager-approved`);
+}
+
+async function financeApproveSettlementAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")) : "";
+  const cfg = await getApprovalRoleConfig();
+  if (!settlementId || !isRoleApprover(user.email, cfg.financeApproverEmails)) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=finance-approve-forbidden`);
+  }
+  await financeApprovePartnerSettlement(settlementId, user.email);
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=finance-approved`);
+}
+
 export default async function PartnerSettlementPage({
   searchParams,
 }: {
   searchParams?: Promise<{ month?: string; msg?: string; err?: string }>;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const month = sp?.month ?? monthKey(new Date());
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
   const rates = await getSettlementRates();
+  const roleConfig = await getApprovalRoleConfig();
+  const isManagerApprover = isRoleApprover(admin.email, roleConfig.managerApproverEmails);
+  const isFinanceApprover = isRoleApprover(admin.email, roleConfig.financeApproverEmails);
 
   const monthRange = toBizMonthRange(month);
   if (!monthRange) {
@@ -348,6 +385,7 @@ export default async function PartnerSettlementPage({
     totalMinutes: number | null;
   }> = [];
   let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number }> = [];
+  let settlementApprovalMap = new Map<string, { managerApprovedBy: string[]; financeApprovedBy: string[]; exportedAt: string | null }>();
   let recentSettlements: Array<{
     id: string;
     createdAt: Date;
@@ -472,6 +510,7 @@ export default async function PartnerSettlementPage({
       orderBy: { createdAt: "desc" },
       take: 100,
     });
+    settlementApprovalMap = await getPartnerSettlementApprovalMap(recentSettlements.map((x) => x.id));
   } catch (e) {
     if (isSchemaNotReadyError(e)) {
       schemaNotReady = true;
@@ -685,10 +724,18 @@ export default async function PartnerSettlementPage({
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
+              <th align="left">{t(lang, "Manager Approval", "管理审批")}</th>
+              <th align="left">{t(lang, "Finance Approval", "财务审批")}</th>
+              <th align="left">{t(lang, "Export", "导出")}</th>
             </tr>
           </thead>
           <tbody>
-            {recentSettlements.map((r) => (
+            {recentSettlements.map((r) => {
+              const approval = settlementApprovalMap.get(r.id) ?? { managerApprovedBy: [], financeApprovedBy: [], exportedAt: null };
+              const managerAllApproved = areAllApproversConfirmed(approval.managerApprovedBy, roleConfig.managerApproverEmails);
+              const financeAllApproved = areAllApproversConfirmed(approval.financeApprovedBy, roleConfig.financeApproverEmails);
+              const exportReady = managerAllApproved && financeAllApproved;
+              return (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{new Date(r.createdAt).toLocaleString()}</td>
                 <td>
@@ -700,12 +747,42 @@ export default async function PartnerSettlementPage({
                 <td>{String(r.hours)}</td>
                 <td>{r.amount}</td>
                 <td>{r.status}</td>
+                <td>
+                  <div>{`${approval.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
+                  {isManagerApprover && !managerAllApproved ? (
+                    <form action={managerApproveSettlementAction}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="settlementId" value={r.id} />
+                      <button type="submit">{t(lang, "Approve", "确认")}</button>
+                    </form>
+                  ) : null}
+                </td>
+                <td>
+                  <div>{`${approval.financeApprovedBy.length}/${roleConfig.financeApproverEmails.length}`}</div>
+                  {isFinanceApprover && managerAllApproved && !financeAllApproved ? (
+                    <form action={financeApproveSettlementAction}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="settlementId" value={r.id} />
+                      <button type="submit">{t(lang, "Approve", "确认")}</button>
+                    </form>
+                  ) : null}
+                </td>
+                <td>
+                  {exportReady ? (
+                    <a href={`/api/admin/reports/partner-settlement/export?id=${encodeURIComponent(r.id)}&month=${encodeURIComponent(month)}`}>
+                      {t(lang, "Export PDF/CSV", "导出电子单据")}
+                    </a>
+                  ) : (
+                    <span style={{ color: "#999" }}>{t(lang, "Waiting all approvals", "待全部审批完成")}</span>
+                  )}
+                </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       )}
     </div>
   );
 }
+
 
