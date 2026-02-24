@@ -3,7 +3,9 @@ import { getLang, t } from "@/lib/i18n";
 import {
   formatComboLabel,
   formatMoneyCents,
+  getTeacherPayrollPublishStatus,
   loadTeacherPayroll,
+  markTeacherPayrollSent,
   monthKey,
   parseMonth,
   upsertTeacherPayrollRate,
@@ -54,10 +56,29 @@ async function saveRateAction(formData: FormData) {
   redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&saved=1`);
 }
 
+async function sendPayrollAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
+  const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
+
+  if (!teacherId || !parseMonth(month)) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=send`);
+  }
+
+  await markTeacherPayrollSent({ teacherId, month, scope });
+
+  revalidatePath("/admin/reports/teacher-payroll");
+  revalidatePath("/teacher/payroll");
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&sent=1`);
+}
+
 export default async function TeacherPayrollPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; error?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; error?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -66,6 +87,8 @@ export default async function TeacherPayrollPage({
   const scope = sp?.scope === "completed" ? "completed" : "all";
   const saved = sp?.saved === "1";
   const hasError = sp?.error === "rate";
+  const sent = sp?.sent === "1";
+  const sendError = sp?.error === "send";
 
   if (!parseMonth(month)) {
     return (
@@ -77,6 +100,7 @@ export default async function TeacherPayrollPage({
   }
 
   const data = await loadTeacherPayroll(month, scope);
+  const publishMap = await getTeacherPayrollPublishStatus(month, scope);
   if (!data) {
     return (
       <div>
@@ -161,6 +185,8 @@ export default async function TeacherPayrollPage({
 
       {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
+      {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
+      {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
 
       <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
         <div>
@@ -184,11 +210,15 @@ export default async function TeacherPayrollPage({
               <th align="left">{t(lang, "Pending", "未完成")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Salary", "工资")}</th>
+              <th align="left">{t(lang, "Teacher Confirmation", "老师确认")}</th>
               <th align="left">{t(lang, "Detail", "详情")}</th>
+              <th align="left">{t(lang, "Send", "发送")}</th>
             </tr>
           </thead>
           <tbody>
-            {data.summaryRows.map((row) => (
+            {data.summaryRows.map((row) => {
+              const publish = publishMap.get(row.teacherId) ?? null;
+              return (
               <tr key={row.teacherId} style={{ borderTop: "1px solid #eee" }}>
                 <td>
                   <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
@@ -201,12 +231,27 @@ export default async function TeacherPayrollPage({
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.totalAmountCents)}</td>
                 <td>
+                  {publish?.confirmedAt
+                    ? `${t(lang, "Confirmed", "已确认")}: ${new Date(publish.confirmedAt).toLocaleString()}`
+                    : publish?.sentAt
+                    ? `${t(lang, "Sent", "已发送")}: ${new Date(publish.sentAt).toLocaleString()}`
+                    : t(lang, "Not sent", "未发送")}
+                </td>
+                <td>
                   <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
                     {t(lang, "Open", "打开")}
                   </a>
                 </td>
+                <td>
+                  <form action={sendPayrollAction}>
+                    <input type="hidden" name="month" value={month} />
+                    <input type="hidden" name="scope" value={scope} />
+                    <input type="hidden" name="teacherId" value={row.teacherId} />
+                    <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
+                  </form>
+                </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       )}

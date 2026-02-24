@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PAYROLL_RATE_FALLBACK_KEY = "teacher_payroll_rates_v1";
+const PAYROLL_PUBLISH_FALLBACK_KEY = "teacher_payroll_publish_v1";
 
 export type PayrollRange = {
   start: Date;
@@ -90,6 +91,14 @@ type PayrollRateItem = {
 
 export type PayrollScope = "all" | "completed";
 
+export type PayrollPublishItem = {
+  teacherId: string;
+  month: string;
+  scope: PayrollScope;
+  sentAt: string;
+  confirmedAt: string | null;
+};
+
 export function parseMonth(s?: string | null) {
   if (!s) return null;
   const m = s.match(/^(\d{4})-(\d{2})$/);
@@ -122,6 +131,10 @@ export function toPayrollRange(month: string): PayrollRange | null {
 
 function normalizePayrollScope(scope?: string | null): PayrollScope {
   return scope === "completed" ? "completed" : "all";
+}
+
+function payrollPublishKey(teacherId: string, month: string, scope: PayrollScope) {
+  return `${teacherId}__${month}__${scope}`;
 }
 
 function comboKey(teacherId: string, courseId: string, subjectId: string | null, levelId: string | null) {
@@ -192,6 +205,106 @@ async function loadFallbackRateItems() {
     select: { value: true },
   });
   return parseFallbackRateItems(row?.value ?? null);
+}
+
+function parsePayrollPublishItems(raw: string | null): PayrollPublishItem[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const out: PayrollPublishItem[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const x = item as Record<string, unknown>;
+      const teacherId = typeof x.teacherId === "string" ? x.teacherId : "";
+      const month = typeof x.month === "string" ? x.month : "";
+      const scope = normalizePayrollScope(typeof x.scope === "string" ? x.scope : "all");
+      const sentAt = typeof x.sentAt === "string" ? x.sentAt : "";
+      const confirmedAt = typeof x.confirmedAt === "string" && x.confirmedAt.trim() ? x.confirmedAt : null;
+      if (!teacherId || !parseMonth(month) || !sentAt) continue;
+      out.push({ teacherId, month, scope, sentAt, confirmedAt });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+async function loadPayrollPublishItems() {
+  const row = await prisma.appSetting.findUnique({
+    where: { key: PAYROLL_PUBLISH_FALLBACK_KEY },
+    select: { value: true },
+  });
+  return parsePayrollPublishItems(row?.value ?? null);
+}
+
+async function savePayrollPublishItems(items: PayrollPublishItem[]) {
+  await prisma.appSetting.upsert({
+    where: { key: PAYROLL_PUBLISH_FALLBACK_KEY },
+    update: { value: JSON.stringify(items) },
+    create: {
+      key: PAYROLL_PUBLISH_FALLBACK_KEY,
+      value: JSON.stringify(items),
+    },
+  });
+}
+
+export async function markTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month)) return;
+
+  const now = new Date().toISOString();
+  const items = await loadPayrollPublishItems();
+  const key = payrollPublishKey(input.teacherId, input.month, scope);
+  const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
+  if (existing) {
+    existing.sentAt = now;
+  } else {
+    items.push({
+      teacherId: input.teacherId,
+      month: input.month,
+      scope,
+      sentAt: now,
+      confirmedAt: null,
+    });
+  }
+  await savePayrollPublishItems(items);
+}
+
+export async function confirmTeacherPayroll(input: { teacherId: string; month: string; scope?: string | null }) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month)) return false;
+
+  const now = new Date().toISOString();
+  const items = await loadPayrollPublishItems();
+  const key = payrollPublishKey(input.teacherId, input.month, scope);
+  const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
+  if (!existing) return false;
+  existing.confirmedAt = now;
+  await savePayrollPublishItems(items);
+  return true;
+}
+
+export async function getTeacherPayrollPublishStatus(month: string, scopeInput?: string | null) {
+  const scope = normalizePayrollScope(scopeInput);
+  if (!parseMonth(month)) return new Map<string, PayrollPublishItem>();
+  const items = await loadPayrollPublishItems();
+  const out = new Map<string, PayrollPublishItem>();
+  for (const item of items) {
+    if (item.month !== month) continue;
+    if (item.scope !== scope) continue;
+    out.set(item.teacherId, item);
+  }
+  return out;
+}
+
+export async function getTeacherPayrollPublishForTeacher(input: { teacherId: string; month: string; scope?: string | null }) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month)) return null;
+  const items = await loadPayrollPublishItems();
+  return (
+    items.find((x) => x.teacherId === input.teacherId && x.month === input.month && x.scope === scope) ?? null
+  );
 }
 
 async function saveFallbackRateItem(nextItem: PayrollRateItem) {
