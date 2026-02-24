@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,74 +16,88 @@ type TeacherOption = {
   courseNames: string[];
 };
 
+type Labels = {
+  student: string;
+  startDate: string;
+  endDate: string;
+  durationMin: string;
+  slotStepMin: string;
+  expiresAt: string;
+  titleOptional: string;
+  noteOptional: string;
+  teacherHint: string;
+  studentCoursePrefix: string;
+  none: string;
+  pickStudentFirst: string;
+  searchTeacherOrCourse: string;
+  selectFiltered: string;
+  clearFiltered: string;
+  candidateStats: string;
+  matchedStats: string;
+  selectedStats: string;
+  timeMatchedStats: string;
+  pleasePickStudent: string;
+  noMatchedTeachers: string;
+  noTeacherAvailableInWindow: string;
+  loadingTeachers: string;
+  createLink: string;
+};
+
 export default function BookingLinkCreateForm({
   students,
-  teachers,
+  teachers: _teachers,
   labels = {
-    student: "Student / 学生",
-    startDate: "Start Date / 开始日期",
-    endDate: "End Date / 结束日期",
-    durationMin: "Duration (min) / 时长(分钟)",
-    slotStepMin: "Slot Step (min) / 起始间隔(分钟)",
-    expiresAt: "Expires At / 失效时间",
-    titleOptional: "Title (optional) / 标题(可选)",
-    noteOptional: "Note (optional) / 备注(可选)",
-    teacherHint: "Teachers (only those matching student's purchased courses) / 老师（仅显示可教该学生已购课程）",
-    studentCoursePrefix: "Student purchased courses / 学生已购课程",
-    none: "None / 无",
-    pickStudentFirst: "Please select student first, then matching teachers will appear / 先选择学生，再显示可匹配老师",
-    searchTeacherOrCourse: "Search teacher or course / 搜索老师或课程",
-    selectFiltered: "Select filtered / 勾选当前筛选",
-    clearFiltered: "Clear filtered / 取消当前筛选",
+    student: "Student",
+    startDate: "Start Date",
+    endDate: "End Date",
+    durationMin: "Duration (min)",
+    slotStepMin: "Slot Step (min)",
+    expiresAt: "Expires At",
+    titleOptional: "Title (optional)",
+    noteOptional: "Note (optional)",
+    teacherHint: "Teachers (matching purchased courses + available in selected date window)",
+    studentCoursePrefix: "Student purchased courses",
+    none: "None",
+    pickStudentFirst: "Please select student first, then matching teachers will appear",
+    searchTeacherOrCourse: "Search teacher or course",
+    selectFiltered: "Select filtered",
+    clearFiltered: "Clear filtered",
     candidateStats: "Available",
     matchedStats: "Matched",
     selectedStats: "Selected",
-    pleasePickStudent: "Please select student first / 请先选择学生",
-    noMatchedTeachers: "No matched teachers / 没有可匹配老师",
-    createLink: "Create Link / 创建链接",
+    timeMatchedStats: "Time matched",
+    pleasePickStudent: "Please select student first",
+    noMatchedTeachers: "No matched teachers",
+    noTeacherAvailableInWindow: "No teacher available in selected schedule window",
+    loadingTeachers: "Loading matching teachers...",
+    createLink: "Create Link",
   },
 }: {
   students: StudentOption[];
   teachers: TeacherOption[];
-  labels?: {
-    student: string;
-    startDate: string;
-    endDate: string;
-    durationMin: string;
-    slotStepMin: string;
-    expiresAt: string;
-    titleOptional: string;
-    noteOptional: string;
-    teacherHint: string;
-    studentCoursePrefix: string;
-    none: string;
-    pickStudentFirst: string;
-    searchTeacherOrCourse: string;
-    selectFiltered: string;
-    clearFiltered: string;
-    candidateStats: string;
-    matchedStats: string;
-    selectedStats: string;
-    pleasePickStudent: string;
-    noMatchedTeachers: string;
-    createLink: string;
-  };
+  labels?: Labels;
 }) {
   const [studentId, setStudentId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [durationMin, setDurationMin] = useState(60);
   const [query, setQuery] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+  const [candidateBusy, setCandidateBusy] = useState(false);
+  const [candidateErr, setCandidateErr] = useState("");
+  const [candidateTimeFiltered, setCandidateTimeFiltered] = useState(false);
+  const [candidateTeachers, setCandidateTeachers] = useState<TeacherOption[]>([]);
+  const [candidateStudentCourseNames, setCandidateStudentCourseNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const studentMap = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
-  const selectedStudent = studentMap.get(studentId);
-  const selectedCourseIds = selectedStudent?.courseIds ?? [];
-  const selectedCourseSet = useMemo(() => new Set(selectedCourseIds), [selectedCourseIds]);
+  const selectedStudent = useMemo(() => students.find((s) => s.id === studentId), [studentId, students]);
+  const selectedCourseLabel = useMemo(() => {
+    if (candidateStudentCourseNames.length > 0) return candidateStudentCourseNames;
+    return selectedStudent?.courseNames ?? [];
+  }, [candidateStudentCourseNames, selectedStudent]);
 
-  const eligibleTeachers = useMemo(() => {
-    if (!studentId || selectedCourseSet.size === 0) return [];
-    return teachers.filter((t) => t.courseIds.some((courseId) => selectedCourseSet.has(courseId)));
-  }, [studentId, selectedCourseSet, teachers]);
+  const eligibleTeachers = useMemo(() => candidateTeachers, [candidateTeachers]);
 
   const filteredTeachers = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -98,6 +112,56 @@ export default function BookingLinkCreateForm({
     const eligibleSet = new Set(eligibleTeachers.map((t) => t.id));
     setSelectedTeacherIds((prev) => prev.filter((id) => eligibleSet.has(id)));
   }, [eligibleTeachers]);
+
+  useEffect(() => {
+    let active = true;
+    if (!studentId) {
+      setCandidateTeachers([]);
+      setCandidateStudentCourseNames([]);
+      setCandidateErr("");
+      setCandidateBusy(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const timer = window.setTimeout(async () => {
+      setCandidateBusy(true);
+      setCandidateErr("");
+      try {
+        const q = new URLSearchParams();
+        q.set("studentId", studentId);
+        q.set("durationMin", String(durationMin));
+        if (startDate) q.set("startDate", startDate);
+        if (endDate) q.set("endDate", endDate);
+
+        const res = await fetch(`/api/admin/booking-links/candidates?${q.toString()}`, { cache: "no-store" });
+        const data = (await res.json().catch(() => null)) as any;
+        if (!res.ok || !data?.ok) {
+          if (!active) return;
+          setCandidateErr(String(data?.message ?? `Failed to load teachers (${res.status})`));
+          setCandidateTeachers([]);
+          setCandidateStudentCourseNames(selectedStudent?.courseNames ?? []);
+          setCandidateTimeFiltered(Boolean(startDate && endDate));
+          return;
+        }
+        if (!active) return;
+        const list: TeacherOption[] = Array.isArray(data?.teachers) ? data.teachers : [];
+        setCandidateTeachers(list);
+        setCandidateStudentCourseNames(
+          Array.isArray(data?.studentCourses) ? data.studentCourses.map((c: any) => String(c?.name ?? "")).filter(Boolean) : []
+        );
+        setCandidateTimeFiltered(Boolean(data?.timeFiltered));
+      } finally {
+        if (active) setCandidateBusy(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [studentId, startDate, endDate, durationMin, selectedStudent?.courseNames]);
 
   function toggleTeacher(teacherId: string, checked: boolean) {
     setSelectedTeacherIds((prev) => {
@@ -175,15 +239,23 @@ export default function BookingLinkCreateForm({
         </select>
         <label>
           {labels.startDate}:
-          <input type="date" name="startDate" style={{ marginLeft: 6 }} />
+          <input type="date" name="startDate" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ marginLeft: 6 }} />
         </label>
         <label>
           {labels.endDate}:
-          <input type="date" name="endDate" style={{ marginLeft: 6 }} />
+          <input type="date" name="endDate" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ marginLeft: 6 }} />
         </label>
         <label>
           {labels.durationMin}:
-          <input type="number" name="durationMin" min={15} step={15} defaultValue={60} style={{ marginLeft: 6, width: 90 }} />
+          <input
+            type="number"
+            name="durationMin"
+            min={15}
+            step={15}
+            value={durationMin}
+            onChange={(e) => setDurationMin(Number(e.target.value || 60))}
+            style={{ marginLeft: 6, width: 90 }}
+          />
         </label>
         <label>
           {labels.slotStepMin}:
@@ -200,11 +272,31 @@ export default function BookingLinkCreateForm({
 
       <div style={{ border: "1px solid #e8e8e8", borderRadius: 8, padding: 10 }}>
         <div style={{ marginBottom: 6, fontWeight: 600 }}>{labels.teacherHint}</div>
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-          {selectedStudent
-            ? `${labels.studentCoursePrefix}: ${selectedStudent.courseNames.join(", ") || labels.none}`
-            : labels.pickStudentFirst}
+        <div style={{ fontSize: 12, color: "#334155", marginBottom: 8, lineHeight: 1.6 }}>
+          {selectedStudent ? `${labels.studentCoursePrefix}: ${selectedCourseLabel.join(" / ") || labels.none}` : labels.pickStudentFirst}
         </div>
+        {selectedStudent && selectedCourseLabel.length > 0 ? (
+          <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {selectedCourseLabel.map((name) => (
+              <span
+                key={name}
+                style={{
+                  fontSize: 12,
+                  border: "1px solid #93c5fd",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  borderRadius: 999,
+                  padding: "2px 8px",
+                  fontWeight: 700,
+                }}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {candidateErr ? <div style={{ color: "#b00", marginBottom: 8 }}>{candidateErr}</div> : null}
+
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
           <input
             value={query}
@@ -220,9 +312,10 @@ export default function BookingLinkCreateForm({
             {labels.clearFiltered}
           </button>
           <span style={{ fontSize: 12, color: "#666" }}>
-            {labels.candidateStats} {filteredTeachers.length} / {labels.matchedStats} {eligibleTeachers.length} / {labels.selectedStats} {selectedTeacherIds.length}
+            {labels.candidateStats} {filteredTeachers.length} / {labels.timeMatchedStats} {eligibleTeachers.length} / {labels.selectedStats} {selectedTeacherIds.length}
           </span>
         </div>
+
         <div
           style={{
             border: "1px solid #eee",
@@ -237,8 +330,10 @@ export default function BookingLinkCreateForm({
         >
           {!selectedStudent ? (
             <div style={{ color: "#999" }}>{labels.pleasePickStudent}</div>
+          ) : candidateBusy ? (
+            <div style={{ color: "#999" }}>{labels.loadingTeachers}</div>
           ) : filteredTeachers.length === 0 ? (
-            <div style={{ color: "#999" }}>{labels.noMatchedTeachers}</div>
+            <div style={{ color: "#999" }}>{candidateTimeFiltered ? labels.noTeacherAvailableInWindow : labels.noMatchedTeachers}</div>
           ) : (
             filteredTeachers.map((t) => (
               <label key={t.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>

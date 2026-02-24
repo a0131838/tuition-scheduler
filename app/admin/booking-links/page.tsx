@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import BookingLinkCreateForm from "./_components/BookingLinkCreateForm";
@@ -52,6 +52,7 @@ export default async function AdminBookingLinksPage({
       },
     }),
   ]);
+
   const studentOptions = students.map((student) => {
     const courseMap = new Map(student.packages.map((pkg) => [pkg.courseId, pkg.course.name]));
     return {
@@ -61,6 +62,7 @@ export default async function AdminBookingLinksPage({
       courseNames: Array.from(courseMap.values()),
     };
   });
+
   const teacherOptions = teachers.map((teacher) => {
     const courseMap = new Map<string, string>();
     if (teacher.subjectCourse) {
@@ -78,6 +80,7 @@ export default async function AdminBookingLinksPage({
   });
 
   const base = appBaseUrl();
+
   return (
     <div>
       <h2>{t(lang, "Student Booking Links", "学生选课链接")}</h2>
@@ -100,20 +103,27 @@ export default async function AdminBookingLinksPage({
               noteOptional: t(lang, "Note (optional)", "备注(可选)"),
               teacherHint: t(
                 lang,
-                "Teachers (only those matching student's purchased courses)",
-                "老师（仅显示可教该学生已购课程）"
+                "Teachers (matching student's purchased courses and available in selected date range)",
+                "老师（仅显示可教该学生已购课程且在所选日期范围有可用时间）"
               ),
               studentCoursePrefix: t(lang, "Student purchased courses", "学生已购课程"),
               none: t(lang, "None", "无"),
-              pickStudentFirst: t(lang, "Please select student first, then matching teachers will appear", "先选择学生，再显示可匹配老师"),
+              pickStudentFirst: t(lang, "Please select student first, then matching teachers will appear", "先选择学生，再显示匹配老师"),
               searchTeacherOrCourse: t(lang, "Search teacher or course", "搜索老师或课程"),
               selectFiltered: t(lang, "Select filtered", "勾选当前筛选"),
               clearFiltered: t(lang, "Clear filtered", "取消当前筛选"),
               candidateStats: t(lang, "Available", "可选"),
               matchedStats: t(lang, "Matched", "匹配"),
               selectedStats: t(lang, "Selected", "已选"),
+              timeMatchedStats: t(lang, "Time matched", "时间匹配"),
               pleasePickStudent: t(lang, "Please select student first", "请先选择学生"),
               noMatchedTeachers: t(lang, "No matched teachers", "没有可匹配老师"),
+              noTeacherAvailableInWindow: t(
+                lang,
+                "No teacher available in selected schedule window",
+                "当前排课时间范围内无可用老师"
+              ),
+              loadingTeachers: t(lang, "Loading matching teachers...", "正在加载可匹配老师..."),
               createLink: t(lang, "Create Link", "创建链接"),
             }}
           />
@@ -147,7 +157,9 @@ export default async function AdminBookingLinksPage({
                 <td>{l.teachers.map((x) => x.teacher.name).join(", ")}</td>
                 <td>{l._count.requests}</td>
                 <td style={{ maxWidth: 300, wordBreak: "break-all" }}>
-                  <a href={`/booking/${l.token}`} target="_blank" rel="noreferrer">{url}</a>
+                  <a href={`/booking/${l.token}`} target="_blank" rel="noreferrer">
+                    {url}
+                  </a>
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -172,5 +184,3 @@ export default async function AdminBookingLinksPage({
     </div>
   );
 }
-
-
