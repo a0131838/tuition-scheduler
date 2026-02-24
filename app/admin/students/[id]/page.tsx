@@ -1574,6 +1574,7 @@ export default async function StudentDetailPage({
                       return (
                         <div
                           key={s.id}
+                          data-session-ui={s.id}
                           style={{
                             fontSize: 12,
                             color: cancelled ? "#888" : "#555",
@@ -1583,6 +1584,7 @@ export default async function StudentDetailPage({
                           }}
                         >
                           <div
+                            data-session-strike="1"
                             style={{
                               fontWeight: 700,
                               color: cancelled ? "#888" : "#d97706",
@@ -1598,6 +1600,7 @@ export default async function StudentDetailPage({
                             {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                           </div>
                           <div
+                            data-session-strike="1"
                             style={{
                               color: cancelled ? "#888" : "#666",
                               textDecoration: cancelled ? "line-through" : "none",
@@ -1944,7 +1947,7 @@ export default async function StudentDetailPage({
             const teacherChange = latestTeacherChangeMap.get(s.id);
             const cancelled = att?.status === "EXCUSED";
             return (
-              <div key={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
+              <div key={s.id} data-session-ui={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
                 <div style={{ fontWeight: 700 }}>
                   {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
                 </div>
@@ -1963,7 +1966,7 @@ export default async function StudentDetailPage({
                     {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
                   </span>
                 </div>
-                <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                <div data-session-strike="1" style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
                   <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <ClassTypeBadge capacity={s.class.capacity} compact />
                     <span>
@@ -1975,7 +1978,7 @@ export default async function StudentDetailPage({
                     </span>
                   </span>
                 </div>
-                <div style={{ marginTop: 6, color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
+                <div data-session-strike="1" style={{ marginTop: 6, color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
                   {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
                   {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                 </div>

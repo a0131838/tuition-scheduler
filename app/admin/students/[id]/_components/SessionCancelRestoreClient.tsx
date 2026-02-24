@@ -11,6 +11,21 @@ async function jsonOrNull(res: Response) {
   }
 }
 
+function applySessionVisualState(sessionId: string, cancelled: boolean) {
+  if (typeof document === "undefined") return;
+  const nodes = document.querySelectorAll<HTMLElement>(`[data-session-ui="${sessionId}"]`);
+  nodes.forEach((node) => {
+    node.style.color = cancelled ? "#888" : "";
+    node.style.opacity = cancelled ? "0.7" : "1";
+    const strikeNodes = node.querySelectorAll<HTMLElement>('[data-session-strike="1"]');
+    strikeNodes.forEach((item) => {
+      item.style.textDecoration = cancelled ? "line-through" : "none";
+      if (cancelled) item.style.color = "#888";
+      else item.style.color = "";
+    });
+  });
+}
+
 export default function SessionCancelRestoreClient(props: {
   studentId: string;
   sessionId: string;
@@ -48,6 +63,7 @@ export default function SessionCancelRestoreClient(props: {
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Cancel failed"));
       setCancelled(true);
+      applySessionVisualState(sessionId, true);
       setDoneMsg("OK");
       router.refresh();
     } catch (e: any) {
@@ -72,6 +88,7 @@ export default function SessionCancelRestoreClient(props: {
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Restore failed"));
       setCancelled(false);
+      applySessionVisualState(sessionId, false);
       setDoneMsg("OK");
       router.refresh();
     } catch (e: any) {
