@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AttendanceStatus } from "@prisma/client";
+import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { teacher } = await requireTeacherProfile();
+  const { user, teacher } = await requireTeacherProfile();
   if (!teacher) return bad("Teacher profile not linked", 403);
 
   const { id: sessionId } = await ctx.params;
@@ -70,6 +71,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
   }
 
+  await logAudit({
+    actor: { email: user.email, name: user.name, role: user.role },
+    module: "ATTENDANCE",
+    action: "TEACHER_SAVE",
+    entityType: "Session",
+    entityId: sessionId,
+    meta: { submittedItemCount: items.length, expectedStudentCount: expected.size },
+  });
+
   return Response.json({ ok: true, savedAt: new Date().toISOString() });
 }
-

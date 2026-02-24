@@ -487,6 +487,24 @@ model User {
   sessions AuthSession[]
 }
 
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorEmail String
+  actorName  String?
+  actorRole  String?
+  module    String
+  action    String
+  entityType String?
+  entityId   String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([module, createdAt])
+  @@index([entityType, entityId, createdAt])
+}
+
 model ManagerAcl {
   id        String   @id @default(uuid())
   email     String   @unique

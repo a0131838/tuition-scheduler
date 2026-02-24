@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { AttendanceStatus, PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { isGroupPackNote } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -215,7 +216,7 @@ function parseStatus(raw: any): AttendanceStatus {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id: sessionId } = await ctx.params;
 
   let body: any;
@@ -333,6 +334,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   } catch (e: any) {
     return bad(e?.message ?? "Save failed", 409);
   }
+
+  await logAudit({
+    actor: admin,
+    module: "ATTENDANCE",
+    action: "ADMIN_SAVE",
+    entityType: "Session",
+    entityId: sessionId,
+    meta: {
+      expectedStudentCount: expectedStudentIds.length,
+      submittedItemCount: items.length,
+      updatedStudentCount: desiredMap.size,
+      totalDeducted,
+    },
+  });
 
   return Response.json({ ok: true, totalDeducted });
 }

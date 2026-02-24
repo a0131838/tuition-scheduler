@@ -1,5 +1,6 @@
-﻿import { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit-log";
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PAYROLL_RATE_FALLBACK_KEY = "teacher_payroll_rates_v1";
@@ -321,6 +322,14 @@ export async function markTeacherPayrollSent(input: {
     });
   }
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.actorEmail, role: "ADMIN" },
+    module: "TEACHER_PAYROLL",
+    action: "SEND",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
@@ -342,10 +351,23 @@ export async function revokeTeacherPayrollSent(input: {
   if (existing.financePaidAt && !canOverridePaid) return false;
   const next = items.filter((x) => payrollPublishKey(x.teacherId, x.month, x.scope) !== key);
   await savePayrollPublishItems(next);
+  await logAudit({
+    actor: { email: input.actorEmail, role: "ADMIN" },
+    module: "TEACHER_PAYROLL",
+    action: "REVOKE_SEND",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
-export async function confirmTeacherPayroll(input: { teacherId: string; month: string; scope?: string | null }) {
+export async function confirmTeacherPayroll(input: {
+  teacherId: string;
+  month: string;
+  scope?: string | null;
+  actorEmail?: string | null;
+}) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month)) return false;
 
@@ -356,6 +378,14 @@ export async function confirmTeacherPayroll(input: { teacherId: string; month: s
   if (!existing) return false;
   existing.confirmedAt = now;
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.actorEmail, role: "TEACHER" },
+    module: "TEACHER_PAYROLL",
+    action: "TEACHER_CONFIRM",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
@@ -382,6 +412,14 @@ export async function managerApproveTeacherPayroll(input: {
     existing.managerApprovedAt = new Date().toISOString();
   }
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.approverEmail, role: "ADMIN" },
+    module: "TEACHER_PAYROLL",
+    action: "MANAGER_APPROVE",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope, approvedBy: input.approverEmail },
+  });
   return true;
 }
 
@@ -402,6 +440,14 @@ export async function financeMarkTeacherPayrollPaid(input: {
   existing.financePaidAt = new Date().toISOString();
   existing.financePaidBy = input.financeEmail.trim().toLowerCase();
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.financeEmail, role: "FINANCE" },
+    module: "TEACHER_PAYROLL",
+    action: "FINANCE_MARK_PAID",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
@@ -409,6 +455,7 @@ export async function financeConfirmTeacherPayroll(input: {
   teacherId: string;
   month: string;
   scope?: string | null;
+  financeEmail?: string | null;
 }) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month)) return false;
@@ -424,6 +471,14 @@ export async function financeConfirmTeacherPayroll(input: {
     existing.financePaidBy = null;
   }
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.financeEmail, role: "FINANCE" },
+    module: "TEACHER_PAYROLL",
+    action: "FINANCE_CONFIRM",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
@@ -458,6 +513,14 @@ export async function financeFinalizeTeacherPayroll(input: {
   existing.financeRejectedBy = null;
   existing.financeRejectReason = null;
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.financeEmail, role: "FINANCE" },
+    module: "TEACHER_PAYROLL",
+    action: "FINANCE_FINALIZE",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope },
+  });
   return true;
 }
 
@@ -482,6 +545,14 @@ export async function financeRejectTeacherPayroll(input: {
   existing.financeRejectedBy = input.financeEmail.trim().toLowerCase();
   existing.financeRejectReason = input.reason.trim();
   await savePayrollPublishItems(items);
+  await logAudit({
+    actor: { email: input.financeEmail, role: "FINANCE" },
+    module: "TEACHER_PAYROLL",
+    action: "FINANCE_REJECT",
+    entityType: "TeacherPayroll",
+    entityId: `${input.teacherId}:${input.month}:${scope}`,
+    meta: { teacherId: input.teacherId, month: input.month, scope, reason: input.reason.trim() },
+  });
   return true;
 }
 
@@ -1005,3 +1076,5 @@ export function formatMoneyCents(cents: number) {
 export function formatComboLabel(courseName: string, subjectName: string | null, levelName: string | null) {
   return [courseName, subjectName, levelName].filter(Boolean).join(" / ");
 }
+
+

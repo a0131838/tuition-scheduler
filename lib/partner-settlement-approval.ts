@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit-log";
 
 const PARTNER_SETTLEMENT_APPROVAL_KEY = "partner_settlement_approval_v1";
 
@@ -113,6 +114,13 @@ export async function managerApprovePartnerSettlement(settlementId: string, appr
   item.managerRejectedBy = null;
   item.managerRejectReason = null;
   await saveItems(items);
+  await logAudit({
+    actor: { email: approverEmail, role: "ADMIN" },
+    module: "PARTNER_SETTLEMENT",
+    action: "MANAGER_APPROVE",
+    entityType: "PartnerSettlement",
+    entityId: settlementId,
+  });
 }
 
 export async function managerRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
@@ -127,6 +135,14 @@ export async function managerRejectPartnerSettlement(settlementId: string, appro
   item.managerRejectedBy = email;
   item.managerRejectReason = reason.trim();
   await saveItems(items);
+  await logAudit({
+    actor: { email: approverEmail, role: "ADMIN" },
+    module: "PARTNER_SETTLEMENT",
+    action: "MANAGER_REJECT",
+    entityType: "PartnerSettlement",
+    entityId: settlementId,
+    meta: { reason: reason.trim() },
+  });
 }
 
 export async function financeApprovePartnerSettlement(settlementId: string, approverEmail: string) {
@@ -137,6 +153,13 @@ export async function financeApprovePartnerSettlement(settlementId: string, appr
   item.financeRejectedBy = null;
   item.financeRejectReason = null;
   await saveItems(items);
+  await logAudit({
+    actor: { email: approverEmail, role: "FINANCE" },
+    module: "PARTNER_SETTLEMENT",
+    action: "FINANCE_APPROVE",
+    entityType: "PartnerSettlement",
+    entityId: settlementId,
+  });
 }
 
 export async function financeRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
@@ -150,6 +173,14 @@ export async function financeRejectPartnerSettlement(settlementId: string, appro
   item.financeRejectedBy = email;
   item.financeRejectReason = reason.trim();
   await saveItems(items);
+  await logAudit({
+    actor: { email: approverEmail, role: "FINANCE" },
+    module: "PARTNER_SETTLEMENT",
+    action: "FINANCE_REJECT",
+    entityType: "PartnerSettlement",
+    entityId: settlementId,
+    meta: { reason: reason.trim() },
+  });
 }
 
 export async function markPartnerSettlementExported(settlementId: string, exporterEmail: string) {
@@ -158,4 +189,11 @@ export async function markPartnerSettlementExported(settlementId: string, export
   item.exportedAt = new Date().toISOString();
   item.exportedBy = normalizeEmail(exporterEmail);
   await saveItems(items);
+  await logAudit({
+    actor: { email: exporterEmail, role: "ADMIN" },
+    module: "PARTNER_SETTLEMENT",
+    action: "EXPORT",
+    entityType: "PartnerSettlement",
+    entityId: settlementId,
+  });
 }

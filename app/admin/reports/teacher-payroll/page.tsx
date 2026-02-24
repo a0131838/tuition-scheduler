@@ -174,7 +174,7 @@ async function financeApprovePayrollAction(formData: FormData) {
   if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
   }
-  const ok = await financeConfirmTeacherPayroll({ teacherId, month, scope });
+  const ok = await financeConfirmTeacherPayroll({ teacherId, month, scope, financeEmail: user.email });
   if (!ok) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-approve`);
   }

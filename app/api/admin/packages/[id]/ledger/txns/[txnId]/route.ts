@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -56,6 +57,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     }),
   ]);
 
+  await logAudit({
+    actor: admin,
+    module: "PACKAGE_LEDGER",
+    action: "TXN_UPDATE",
+    entityType: "PackageTxn",
+    entityId: txn.id,
+    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), note: note || null, diff },
+  });
+
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
 }
 
@@ -91,6 +101,15 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
       data: { remainingMinutes: nextRemaining },
     }),
   ]);
+
+  await logAudit({
+    actor: admin,
+    module: "PACKAGE_LEDGER",
+    action: "TXN_DELETE",
+    entityType: "PackageTxn",
+    entityId: txn.id,
+    meta: { packageId, deltaMinutes: txn.deltaMinutes, kind: txn.kind },
+  });
 
   return Response.json({
     ok: true,
@@ -161,6 +180,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
       data: { remainingMinutes: nextRemaining },
     }),
   ]);
+
+  await logAudit({
+    actor: admin,
+    module: "PACKAGE_LEDGER",
+    action: "TXN_RESTORE",
+    entityType: "PackageTxn",
+    entityId: txnId,
+    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), kind },
+  });
 
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
 }

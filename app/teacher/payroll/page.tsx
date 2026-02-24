@@ -31,7 +31,7 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
 
 async function confirmPayrollAction(formData: FormData) {
   "use server";
-  const { teacher } = await requireTeacherProfile();
+  const { teacher, user } = await requireTeacherProfile();
   if (!teacher) {
     redirect("/teacher/payroll?err=no-teacher");
   }
@@ -42,7 +42,7 @@ async function confirmPayrollAction(formData: FormData) {
     redirect(`/teacher/payroll?err=month`);
   }
 
-  const ok = await confirmTeacherPayroll({ teacherId: teacher.id, month, scope });
+  const ok = await confirmTeacherPayroll({ teacherId: teacher.id, month, scope, actorEmail: user.email });
   if (!ok) {
     redirect(`/teacher/payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&err=not-sent`);
   }
