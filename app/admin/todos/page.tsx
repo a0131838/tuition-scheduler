@@ -59,6 +59,12 @@ function toDateOnly(d: Date) {
 }
 
 function expectedStudentsForReminder(session: any, enrollmentsByClass: Map<string, any[]>) {
+  const cancelledSet = new Set(
+    Array.isArray(session.attendances)
+      ? session.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
+      : []
+  );
+
   const roster = (enrollmentsByClass.get(session.classId) ?? []).map((e: any) => ({
     id: e.studentId as string,
     name: e.student?.name ?? "-",
@@ -66,9 +72,11 @@ function expectedStudentsForReminder(session: any, enrollmentsByClass: Map<strin
   if (session.class?.capacity === 1) {
     if (session.studentId) {
       const fromRoster = roster.find((x) => x.id === session.studentId);
+      if (cancelledSet.has(session.studentId as string)) return [];
       return [{ id: session.studentId as string, name: session.student?.name ?? fromRoster?.name ?? "-" }];
     }
     if (session.class?.oneOnOneStudentId) {
+      if (cancelledSet.has(session.class.oneOnOneStudentId as string)) return [];
       return [
         {
           id: session.class.oneOnOneStudentId as string,
@@ -76,9 +84,10 @@ function expectedStudentsForReminder(session: any, enrollmentsByClass: Map<strin
         },
       ];
     }
-    return roster.length > 0 ? [roster[0]] : [];
+    const first = roster.find((x) => !cancelledSet.has(x.id));
+    return first ? [first] : [];
   }
-  return roster;
+  return roster.filter((x) => !cancelledSet.has(x.id));
 }
 
 async function confirmReminder(kind: "teacher" | "student", formData: FormData) {
@@ -354,6 +363,7 @@ export default async function AdminTodosPage({
     include: {
       teacher: true,
       student: true,
+      attendances: { select: { studentId: true, status: true } },
       class: {
         include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent: true },
       },
@@ -381,8 +391,12 @@ export default async function AdminTodosPage({
     enrollmentsByClass.set(e.classId, arr);
   }
 
+  const sessionsTomorrowForReminders = sessionsTomorrow.filter(
+    (s) => expectedStudentsForReminder(s, enrollmentsByClass).length > 0
+  );
+
   const teacherRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
-  for (const s of sessionsTomorrow) {
+  for (const s of sessionsTomorrowForReminders) {
     const tid = s.teacherId ?? s.class.teacherId;
     const tname = s.teacher?.name ?? s.class.teacher.name;
     const entry = teacherRemindersMap.get(tid) ?? { id: tid, name: tname, sessions: [] };
@@ -406,7 +420,7 @@ export default async function AdminTodosPage({
   );
 
   const studentRemindersMap = new Map<string, { id: string; name: string; sessions: any[] }>();
-  for (const s of sessionsTomorrow) {
+  for (const s of sessionsTomorrowForReminders) {
     const list = expectedStudentsForReminder(s, enrollmentsByClass);
     for (const e of list) {
       const sid = e.id;
