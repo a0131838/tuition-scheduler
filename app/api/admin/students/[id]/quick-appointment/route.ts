@@ -35,6 +35,22 @@ function fmtSlotRange(startMin: number, endMin: number) {
   return `${sh}:${sm}-${eh}:${em}`;
 }
 
+function fmtDateInput(d: Date | null) {
+  if (!d) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function formatSessionConflictLabel(s: any) {
+  const cls = s.class;
+  const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+  const roomLabel = cls.room?.name ?? "(none)";
+  const timeLabel = `${fmtDateInput(s.startAt)} ${fmtHHMM(s.startAt)}-${fmtHHMM(s.endAt)}`;
+  return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
+}
+
 async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
   if (startAt.toDateString() !== endAt.toDateString()) {
     return "Session spans multiple days";
@@ -139,14 +155,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       class: { teacherId },
       startAt: { lt: endAt },
       endAt: { gt: startAt },
+      NOT: {
+        attendances: {
+          some: {
+            studentId,
+            status: "EXCUSED",
+          },
+        },
+      },
     },
-    select: { id: true, classId: true },
+    include: {
+      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+    },
   });
   if (teacherSessionConflict) {
-    return bad(
-      `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`,
-      409
-    );
+    return bad(`Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`, 409);
   }
 
   const teacherApptConflict = await prisma.appointment.findFirst({
@@ -158,10 +181,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     select: { id: true, startAt: true, endAt: true },
   });
   if (teacherApptConflict) {
-    return bad(
-      `Teacher conflict with appointment ${teacherApptConflict.id}`,
-      409
-    );
+    const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+      teacherApptConflict.endAt
+    )}`;
+    return bad(`Teacher conflict: appointment ${timeLabel}`, 409);
   }
 
   if (roomId) {
@@ -171,9 +194,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
-      select: { id: true, classId: true },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
     });
-    if (roomConflict) return bad(`Room conflict with session ${roomConflict.id} (class ${roomConflict.classId})`, 409);
+    if (roomConflict) return bad(`Room conflict: ${formatSessionConflictLabel(roomConflict)}`, 409);
   }
 
   const subject = await prisma.subject.findUnique({
