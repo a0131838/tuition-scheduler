@@ -8,6 +8,7 @@ import {
   markTeacherPayrollSent,
   monthKey,
   parseMonth,
+  revokeTeacherPayrollSent,
   upsertTeacherPayrollRate,
 } from "@/lib/teacher-payroll";
 import { revalidatePath } from "next/cache";
@@ -75,10 +76,29 @@ async function sendPayrollAction(formData: FormData) {
   redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&sent=1`);
 }
 
+async function revokePayrollAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
+  const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
+
+  if (!teacherId || !parseMonth(month)) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=revoke`);
+  }
+
+  await revokeTeacherPayrollSent({ teacherId, month, scope });
+
+  revalidatePath("/admin/reports/teacher-payroll");
+  revalidatePath("/teacher/payroll");
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&revoked=1`);
+}
+
 export default async function TeacherPayrollPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; error?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; error?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -88,7 +108,9 @@ export default async function TeacherPayrollPage({
   const saved = sp?.saved === "1";
   const hasError = sp?.error === "rate";
   const sent = sp?.sent === "1";
+  const revoked = sp?.revoked === "1";
   const sendError = sp?.error === "send";
+  const revokeError = sp?.error === "revoke";
 
   if (!parseMonth(month)) {
     return (
@@ -186,7 +208,9 @@ export default async function TeacherPayrollPage({
       {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
+      {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
       {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
+      {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
 
       <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
         <div>
@@ -249,6 +273,14 @@ export default async function TeacherPayrollPage({
                     <input type="hidden" name="teacherId" value={row.teacherId} />
                     <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
                   </form>
+                  {publish ? (
+                    <form action={revokePayrollAction} style={{ marginTop: 6 }}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="scope" value={scope} />
+                      <input type="hidden" name="teacherId" value={row.teacherId} />
+                      <button type="submit">{t(lang, "Revoke", "撤销发送")}</button>
+                    </form>
+                  ) : null}
                 </td>
               </tr>
             )})}

@@ -271,6 +271,16 @@ export async function markTeacherPayrollSent(input: { teacherId: string; month: 
   await savePayrollPublishItems(items);
 }
 
+export async function revokeTeacherPayrollSent(input: { teacherId: string; month: string; scope?: string | null }) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month)) return;
+
+  const key = payrollPublishKey(input.teacherId, input.month, scope);
+  const items = await loadPayrollPublishItems();
+  const next = items.filter((x) => payrollPublishKey(x.teacherId, x.month, x.scope) !== key);
+  await savePayrollPublishItems(next);
+}
+
 export async function confirmTeacherPayroll(input: { teacherId: string; month: string; scope?: string | null }) {
   const scope = normalizePayrollScope(input.scope);
   if (!input.teacherId || !parseMonth(input.month)) return false;
