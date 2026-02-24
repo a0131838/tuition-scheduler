@@ -1,7 +1,10 @@
-﻿import { getLang, t } from "@/lib/i18n";
+import { getCurrentUser } from "@/lib/auth";
+import { getLang, t } from "@/lib/i18n";
 
 export default async function AdminHome() {
   const lang = await getLang();
+  const user = await getCurrentUser();
+  const isFinance = user?.role === "FINANCE";
   const cardStyle = {
     padding: "14px 16px",
     borderRadius: 12,
@@ -10,6 +13,38 @@ export default async function AdminHome() {
     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
   } as const;
   const sectionTitleStyle = { fontSize: 12, fontWeight: 700, color: "#334155" } as const;
+
+  if (isFinance) {
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <section
+          style={{
+            ...cardStyle,
+            background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+            borderColor: "#e2e8f0",
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{t(lang, "Finance Workspace", "财务工作台")}</div>
+          <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+            {t(
+              lang,
+              "Use this workspace to process teacher payroll and partner settlement approvals.",
+              "此页面用于处理老师工资与合作方结算审批。"
+            )}
+          </div>
+        </section>
+
+        <section style={{ ...cardStyle, background: "#f8fafc" }}>
+          <div style={sectionTitleStyle}>{t(lang, "Finance Actions", "财务入口")}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            <a href="/admin/reports/teacher-payroll">{t(lang, "Teacher Payroll", "老师工资单")}</a>
+            <a href="/admin/reports/partner-settlement">{t(lang, "Partner Settlement", "合作方结算")}</a>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <section
@@ -73,3 +108,4 @@ export default async function AdminHome() {
     </div>
   );
 }
+

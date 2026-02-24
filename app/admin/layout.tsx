@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
 import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 
 async function resolvePathnameFromHeaders() {
@@ -46,6 +46,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdmin();
   const lang = await getLang();
   const showManagerConsole = await isManagerUser(user);
+  const isFinance = user.role === "FINANCE";
+
+  const financeAllowedPath =
+    pathname === "/admin" ||
+    pathname === "/admin/reports/teacher-payroll" ||
+    pathname.startsWith("/admin/reports/teacher-payroll/") ||
+    pathname === "/admin/reports/partner-settlement";
+
+  if (isFinance && !financeAllowedPath) {
+    redirect("/admin/reports/teacher-payroll");
+  }
 
   return (
     <div style={{ fontFamily: "system-ui", margin: 0, fontSize: 12.5 }}>
@@ -95,35 +106,56 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
 
           <nav style={{ display: "grid", gap: 10 }}>
-            <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5 }}>
-              {t(lang, "Overview", "概览")}
-            </div>
-            <div style={{ display: "grid", gap: 5, padding: 6, borderRadius: 10, background: "#eef2ff", border: "1px solid #a5b4fc" }}>
-              <a href="/admin" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
-                {t(lang, "Dashboard", "总览")}
-              </a>
-              <a href="/admin/todos" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
-                {t(lang, "Todo Center", "待办中心")}
-              </a>
-              <a href="/admin/alerts" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fee2e2", border: "1px solid #ef4444", borderLeft: "4px solid #b91c1c", color: "#7f1d1d" }}>
-                {t(lang, "Sign-in Alerts", "签到告警")}
-              </a>
-              {showManagerConsole ? (
-                <a href="/admin/manager" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
-                  {t(lang, "Manager Console", "管理者驾驶舱")}
-                </a>
-              ) : null}
-              {showManagerConsole ? (
-                <a href="/admin/manager/users" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
-                  {t(lang, "System User Admin", "系统使用者管理")}
-                </a>
-              ) : null}
-              <a href="/admin/schedule" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
-                {t(lang, "Schedule", "周课表")}
-              </a>
-            </div>
+            {isFinance ? (
+              <>
+                <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5 }}>
+                  {t(lang, "Finance", "财务")}
+                </div>
+                <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 10, background: "#f7f5ff", border: "1px solid #e4ddf7" }}>
+                  <a href="/admin" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Finance Dashboard", "财务首页")}
+                  </a>
+                  <a href="/admin/reports/teacher-payroll" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Teacher Payroll", "老师工资单")}
+                  </a>
+                  <a href="/admin/reports/partner-settlement" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Partner Settlement", "合作方结算")}
+                  </a>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5 }}>
+                  {t(lang, "Overview", "概览")}
+                </div>
+                <div style={{ display: "grid", gap: 5, padding: 6, borderRadius: 10, background: "#eef2ff", border: "1px solid #a5b4fc" }}>
+                  <a href="/admin" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                    {t(lang, "Dashboard", "总览")}
+                  </a>
+                  <a href="/admin/todos" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                    {t(lang, "Todo Center", "待办中心")}
+                  </a>
+                  <a href="/admin/alerts" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fee2e2", border: "1px solid #ef4444", borderLeft: "4px solid #b91c1c", color: "#7f1d1d" }}>
+                    {t(lang, "Sign-in Alerts", "签到警告")}
+                  </a>
+                  {showManagerConsole ? (
+                    <a href="/admin/manager" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                      {t(lang, "Manager Console", "管理者驾驶舱")}
+                    </a>
+                  ) : null}
+                  {showManagerConsole ? (
+                    <a href="/admin/manager/users" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                      {t(lang, "System User Admin", "系统使用者管理")}
+                    </a>
+                  ) : null}
+                  <a href="/admin/schedule" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                    {t(lang, "Schedule", "周课表")}
+                  </a>
+                </div>
+              </>
+            )}
 
-            {showManagerConsole ? (
+            {showManagerConsole && !isFinance ? (
               <>
                 <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5, marginTop: 6 }}>
                   {t(lang, "Data Setup", "基础数据录入")}
@@ -148,60 +180,64 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </>
             ) : null}
 
-            <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5, marginTop: 6 }}>
-              {t(lang, "Operations", "日常运营")}
-            </div>
-            <div style={{ display: "grid", gap: 8, padding: 6, borderRadius: 10, background: "#fff8f1", border: "1px solid #f4e1cf" }}>
-              <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa" }}>
-                <div style={{ fontSize: 10.5, color: "#9a3412", fontWeight: 700 }}>
-                  {t(lang, "People", "人员")}
+            {!isFinance ? (
+              <>
+                <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5, marginTop: 6 }}>
+                  {t(lang, "Operations", "日常运营")}
                 </div>
-                <a href="/admin/teachers" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fff3e1", border: "1px solid #f59e0b", borderLeft: "4px solid #d97706" }}>
-                  {t(lang, "Teachers", "老师")}
-                </a>
-                <a href="/admin/students" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fff3e1", border: "1px solid #f59e0b", borderLeft: "4px solid #d97706" }}>
-                  {t(lang, "Students", "学生")}
-                </a>
-              </div>
+                <div style={{ display: "grid", gap: 8, padding: 6, borderRadius: 10, background: "#fff8f1", border: "1px solid #f4e1cf" }}>
+                  <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa" }}>
+                    <div style={{ fontSize: 10.5, color: "#9a3412", fontWeight: 700 }}>
+                      {t(lang, "People", "人员")}
+                    </div>
+                    <a href="/admin/teachers" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fff3e1", border: "1px solid #f59e0b", borderLeft: "4px solid #d97706" }}>
+                      {t(lang, "Teachers", "老师")}
+                    </a>
+                    <a href="/admin/students" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fff3e1", border: "1px solid #f59e0b", borderLeft: "4px solid #d97706" }}>
+                      {t(lang, "Students", "学生")}
+                    </a>
+                  </div>
 
-              <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
-                <div style={{ fontSize: 10.5, color: "#1d4ed8", fontWeight: 700 }}>
-                  {t(lang, "Scheduling & Attendance", "排课与出勤")}
+                  <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                    <div style={{ fontSize: 10.5, color: "#1d4ed8", fontWeight: 700 }}>
+                      {t(lang, "Scheduling & Attendance", "排课与出勤")}
+                    </div>
+                    <a href="/admin/classes" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#eaf3ff", border: "1px solid #60a5fa", borderLeft: "4px solid #2563eb" }}>
+                      {t(lang, "Classes", "班级")}
+                    </a>
+                    <a href="/admin/conflicts" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#eaf3ff", border: "1px solid #60a5fa", borderLeft: "4px solid #2563eb" }}>
+                      {t(lang, "Conflicts", "冲突处理")}
+                    </a>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                    <div style={{ fontSize: 10.5, color: "#166534", fontWeight: 700 }}>
+                      {t(lang, "Enrollment & Packages", "报名与课时包")}
+                    </div>
+                    <a href="/admin/booking-links" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
+                      {t(lang, "Booking Links", "学生选课链接")}
+                    </a>
+                    <a href="/admin/enrollments" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
+                      {t(lang, "Enrollments", "报名")}
+                    </a>
+                    <a href="/admin/packages" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
+                      {t(lang, "Packages", "课时包")}
+                    </a>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#fdf2f8", border: "1px solid #fbcfe8" }}>
+                    <div style={{ fontSize: 10.5, color: "#9d174d", fontWeight: 700 }}>
+                      {t(lang, "Feedback Workflow", "反馈流程")}
+                    </div>
+                    <a href="/admin/feedbacks" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#ffeff9", border: "1px solid #f472b6", borderLeft: "4px solid #db2777" }}>
+                      {t(lang, "Teacher Feedbacks", "老师课后反馈")}
+                    </a>
+                  </div>
                 </div>
-                <a href="/admin/classes" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#eaf3ff", border: "1px solid #60a5fa", borderLeft: "4px solid #2563eb" }}>
-                  {t(lang, "Classes", "班级")}
-                </a>
-                <a href="/admin/conflicts" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#eaf3ff", border: "1px solid #60a5fa", borderLeft: "4px solid #2563eb" }}>
-                  {t(lang, "Conflicts", "冲突处理")}
-                </a>
-              </div>
+              </>
+            ) : null}
 
-              <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-                <div style={{ fontSize: 10.5, color: "#166534", fontWeight: 700 }}>
-                  {t(lang, "Enrollment & Packages", "报名与课时包")}
-                </div>
-                <a href="/admin/booking-links" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
-                  {t(lang, "Booking Links", "学生选课链接")}
-                </a>
-                <a href="/admin/enrollments" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
-                  {t(lang, "Enrollments", "报名")}
-                </a>
-                <a href="/admin/packages" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#edfff1", border: "1px solid #4ade80", borderLeft: "4px solid #16a34a" }}>
-                  {t(lang, "Packages", "课时包")}
-                </a>
-              </div>
-
-              <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#fdf2f8", border: "1px solid #fbcfe8" }}>
-                <div style={{ fontSize: 10.5, color: "#9d174d", fontWeight: 700 }}>
-                  {t(lang, "Feedback Workflow", "反馈流程")}
-                </div>
-                <a href="/admin/feedbacks" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#ffeff9", border: "1px solid #f472b6", borderLeft: "4px solid #db2777" }}>
-                  {t(lang, "Teacher Feedbacks", "老师课后反馈")}
-                </a>
-              </div>
-            </div>
-
-            {showManagerConsole ? (
+            {showManagerConsole && !isFinance ? (
               <>
                 <div style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700, letterSpacing: 0.5, marginTop: 6 }}>
                   {t(lang, "Reports", "报表")}
@@ -251,5 +287,4 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </div>
   );
 }
-
 
