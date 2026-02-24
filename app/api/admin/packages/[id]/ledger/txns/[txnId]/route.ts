@@ -71,7 +71,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
 
   const txn = await prisma.packageTxn.findFirst({
     where: { id: txnId, packageId },
-    select: { id: true, kind: true, deltaMinutes: true, sessionId: true, note: true },
+    select: { id: true, kind: true, deltaMinutes: true, sessionId: true, note: true, createdAt: true },
   });
   if (!txn) return bad("Ledger record not found", 404);
 
@@ -96,10 +96,12 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     ok: true,
     remainingMinutes: nextRemaining,
     deleted: {
+      id: txn.id,
       kind: txn.kind,
       deltaMinutes: txn.deltaMinutes,
       sessionId: txn.sessionId,
       note: txn.note ?? "",
+      createdAt: txn.createdAt.toISOString(),
     },
   });
 }
@@ -122,11 +124,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
   }
 
   const kind = String(body?.kind ?? "").trim();
+  const txnId = String(body?.id ?? "").trim();
   const note = String(body?.note ?? "").trim();
   const deltaMinutes = Number(body?.deltaMinutes);
   const sessionId = body?.sessionId ? String(body.sessionId) : null;
+  const createdAt = String(body?.createdAt ?? "").trim();
   if (!kind) return bad("Invalid kind", 409);
+  if (!txnId) return bad("Invalid id", 409);
   if (!Number.isFinite(deltaMinutes)) return bad("Invalid deltaMinutes", 409);
+  const createdAtDate = new Date(createdAt);
+  if (Number.isNaN(createdAtDate.getTime())) return bad("Invalid createdAt", 409);
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
@@ -140,11 +147,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
   await prisma.$transaction([
     prisma.packageTxn.create({
       data: {
+        id: txnId,
         packageId,
         kind,
         deltaMinutes: Math.round(deltaMinutes),
         sessionId,
         note: note || null,
+        createdAt: createdAtDate,
       },
     }),
     prisma.coursePackage.update({

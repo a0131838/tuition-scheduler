@@ -27,10 +27,12 @@ export default function PackageLedgerEditTxnClient(props: Props) {
   const [note, setNote] = useState(props.defaultNote);
   const [saving, setSaving] = useState(false);
   const [deletedPayload, setDeletedPayload] = useState<{
+    id: string;
     kind: string;
     deltaMinutes: number;
     sessionId: string | null;
     note: string;
+    createdAt: string;
   } | null>(null);
 
   async function onSave() {
@@ -77,10 +79,12 @@ export default function PackageLedgerEditTxnClient(props: Props) {
       }
       if (data?.deleted) {
         setDeletedPayload({
+          id: String(data.deleted.id ?? ""),
           kind: String(data.deleted.kind ?? ""),
           deltaMinutes: Number(data.deleted.deltaMinutes ?? 0),
           sessionId: data.deleted.sessionId ? String(data.deleted.sessionId) : null,
           note: String(data.deleted.note ?? ""),
+          createdAt: String(data.deleted.createdAt ?? ""),
         });
       } else {
         window.location.href = `/admin/packages/${encodeURIComponent(props.packageId)}/ledger?msg=${encodeURIComponent(
