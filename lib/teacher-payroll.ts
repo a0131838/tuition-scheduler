@@ -25,6 +25,7 @@ export type PayrollBreakdownRow = {
   totalHours: number;
   hourlyRateCents: number;
   amountCents: number;
+  chargedExcusedSessions: number;
 };
 
 export type PayrollTeacherSummary = {
@@ -36,6 +37,7 @@ export type PayrollTeacherSummary = {
   totalAmountCents: number;
   completedSessions: number;
   pendingSessions: number;
+  chargedExcusedSessions: number;
 };
 
 export type PayrollRateEditorRow = {
@@ -64,6 +66,7 @@ export type PayrollTeacherDetailComboRow = {
   totalHours: number;
   hourlyRateCents: number;
   amountCents: number;
+  chargedExcusedSessions: number;
 };
 
 export type PayrollTeacherDetailSessionRow = {
@@ -80,6 +83,7 @@ export type PayrollTeacherDetailSessionRow = {
   hourlyRateCents: number;
   amountCents: number;
   isCompleted: boolean;
+  isChargedExcused: boolean;
 };
 
 type PayrollRateItem = {
@@ -648,7 +652,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
           level: { select: { id: true, name: true } },
         },
       },
-      attendances: { select: { studentId: true, status: true } },
+      attendances: { select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true } },
       feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
@@ -747,6 +751,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       effectiveTeacher.id
     );
     if (scope === "completed" && !completed) continue;
+    const chargedExcused = hasChargedExcusedAttendance(s);
 
     const totalMinutes = Math.max(0, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000));
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) continue;
@@ -768,6 +773,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       prev.totalMinutes += totalMinutes;
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
+      if (chargedExcused) prev.chargedExcusedSessions += 1;
     } else {
       breakdownByCombo.set(key, {
         teacherId: effectiveTeacher.id,
@@ -783,6 +789,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         totalHours: toHours(totalMinutes),
         hourlyRateCents,
         amountCents,
+        chargedExcusedSessions: chargedExcused ? 1 : 0,
       });
     }
 
@@ -794,6 +801,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       teacherPrev.totalAmountCents += amountCents;
       if (completed) teacherPrev.completedSessions += 1;
       else teacherPrev.pendingSessions += 1;
+      if (chargedExcused) teacherPrev.chargedExcusedSessions += 1;
     } else {
       teacherTotals.set(effectiveTeacher.id, {
         teacherId: effectiveTeacher.id,
@@ -804,6 +812,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         totalAmountCents: amountCents,
         completedSessions: completed ? 1 : 0,
         pendingSessions: completed ? 0 : 1,
+        chargedExcusedSessions: chargedExcused ? 1 : 0,
       });
     }
   }
@@ -894,6 +903,16 @@ function resolveSessionStudentName(session: {
   return names.join(", ");
 }
 
+function hasChargedExcusedAttendance(session: {
+  attendances: Array<{ status: string; excusedCharge?: boolean | null; deductedMinutes?: number | null; deductedCount?: number | null }>;
+}) {
+  return (session.attendances ?? []).some(
+    (a) =>
+      a.status === "EXCUSED" &&
+      (Boolean(a.excusedCharge) || Number(a.deductedMinutes ?? 0) > 0 || Number(a.deductedCount ?? 0) > 0)
+  );
+}
+
 function isFullyCancelledSessionForPayroll(session: {
   studentId?: string | null;
   class: {
@@ -901,7 +920,7 @@ function isFullyCancelledSessionForPayroll(session: {
     oneOnOneStudentId?: string | null;
     enrollments?: Array<{ studentId?: string | null }>;
   };
-  attendances: Array<{ studentId?: string | null; status: string }>;
+  attendances: Array<{ studentId?: string | null; status: string; excusedCharge?: boolean | null; deductedMinutes?: number | null; deductedCount?: number | null }>;
 }) {
   const cancelledSet = new Set(
     (session.attendances ?? [])
@@ -924,7 +943,10 @@ function isFullyCancelledSessionForPayroll(session: {
     .map((e) => e.studentId)
     .filter(Boolean) as string[];
   if (expected.length === 0) return false;
-  return expected.every((sid) => cancelledSet.has(sid));
+  const fullyCancelled = expected.every((sid) => cancelledSet.has(sid));
+  if (!fullyCancelled) return false;
+  // Keep "cancelled but charged" sessions in payroll/settlement flows.
+  return !hasChargedExcusedAttendance(session);
 }
 
 function isSessionCompleted(
@@ -932,7 +954,7 @@ function isSessionCompleted(
     studentId?: string | null;
     teacherId: string | null;
     class: { teacherId: string; capacity?: number | null; oneOnOneStudentId?: string | null; enrollments?: Array<{ studentId?: string | null }> };
-    attendances: Array<{ studentId?: string | null; status: string }>;
+    attendances: Array<{ studentId?: string | null; status: string; excusedCharge?: boolean | null; deductedMinutes?: number | null; deductedCount?: number | null }>;
     feedbacks: Array<{ teacherId: string; content: string }>;
   },
   teacherId: string
@@ -977,7 +999,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
           level: { select: { id: true, name: true } },
         },
       },
-      attendances: { select: { studentId: true, status: true } },
+      attendances: { select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true } },
       feedbacks: { select: { teacherId: true, content: true } },
     },
     orderBy: { startAt: "asc" },
@@ -1025,6 +1047,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     if (effectiveTeacherId !== teacherId) continue;
     const completed = isSessionCompleted(s, teacherId);
     if (scope === "completed" && !completed) continue;
+    const chargedExcused = hasChargedExcusedAttendance(s);
 
     const minutes = Math.max(0, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000));
     if (!minutes) continue;
@@ -1045,6 +1068,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       prev.totalMinutes += minutes;
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
+      if (chargedExcused) prev.chargedExcusedSessions += 1;
     } else {
       comboMap.set(key, {
         courseId,
@@ -1058,6 +1082,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
         totalHours: toHours(minutes),
         hourlyRateCents,
         amountCents,
+        chargedExcusedSessions: chargedExcused ? 1 : 0,
       });
     }
 
@@ -1075,6 +1100,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       hourlyRateCents,
       amountCents,
       isCompleted: completed,
+      isChargedExcused: chargedExcused,
     });
 
     totalMinutes += minutes;

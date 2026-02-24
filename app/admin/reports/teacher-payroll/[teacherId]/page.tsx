@@ -138,6 +138,7 @@ export default async function TeacherPayrollDetailPage({
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
+              <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
@@ -149,6 +150,7 @@ export default async function TeacherPayrollDetailPage({
               <tr key={`${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.sessionCount}</td>
+                <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents)}</td>
                 <td>{formatMoneyCents(row.amountCents)}</td>
@@ -172,6 +174,7 @@ export default async function TeacherPayrollDetailPage({
               <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
+              <th align="left">{t(lang, "Special", "特别标记")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
             </tr>
           </thead>
@@ -185,6 +188,13 @@ export default async function TeacherPayrollDetailPage({
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents)}</td>
+                <td>
+                  {row.isChargedExcused ? (
+                    <span style={{ color: "#9a3412", fontWeight: 700 }}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
                 <td>
                   <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                     {row.isCompleted ? t(lang, "Completed", "已完成") : t(lang, "Pending", "未完成")}

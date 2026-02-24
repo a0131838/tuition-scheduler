@@ -405,6 +405,7 @@ export default async function TeacherPayrollPage({
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Teacher", "老师")}</th>
               <th align="left">{t(lang, "Sessions", "课次数")}</th>
+              <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
               <th align="left">{t(lang, "Completed", "已完成")}</th>
               <th align="left">{t(lang, "Pending", "未完成")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
@@ -428,6 +429,7 @@ export default async function TeacherPayrollPage({
                   </a>
                 </td>
                 <td>{row.totalSessions}</td>
+                <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
                 <td style={{ color: "#166534", fontWeight: 700 }}>{row.completedSessions}</td>
                 <td style={{ color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
                 <td>{row.totalHours}</td>

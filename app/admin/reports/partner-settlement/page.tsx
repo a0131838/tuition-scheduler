@@ -21,6 +21,10 @@ const DEFAULT_ONLINE_RATE_PER_45 = 70;
 const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
 
+function isAttendanceSettlementEligible(a: { status: string; excusedCharge?: boolean | null }) {
+  return ATTENDED_STATUSES.includes(a.status as any) || (a.status === "EXCUSED" && Boolean(a.excusedCharge));
+}
+
 type Mode = "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | "";
 
 function monthKey(d: Date) {
@@ -250,7 +254,6 @@ async function createOfflineSettlementAction(formData: FormData) {
   const rows = await prisma.attendance.findMany({
     where: {
       studentId,
-      status: { in: ATTENDED_STATUSES as any },
       package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
       session: {
         startAt: { gte: range.start, lt: range.end },
@@ -262,10 +265,12 @@ async function createOfflineSettlementAction(formData: FormData) {
       package: { select: { course: { select: { name: true } } } },
     },
   });
+  const eligibleRows = rows.filter((r) => isAttendanceSettlementEligible(r));
+  const chargedExcusedCount = eligibleRows.filter((r) => r.status === "EXCUSED" && r.excusedCharge).length;
 
   let totalMinutes = 0;
   const courseNames = new Set<string>();
-  for (const r of rows) {
+  for (const r of eligibleRows) {
     const min = Math.max(0, Math.round((r.session.endAt.getTime() - r.session.startAt.getTime()) / 60000));
     totalMinutes += min;
     const courseName = r.package?.course?.name?.trim();
@@ -283,7 +288,9 @@ async function createOfflineSettlementAction(formData: FormData) {
         status: "PENDING",
         hours: Number(toHours(totalMinutes).toFixed(2)),
         amount: calcAmountByRatePer45(totalMinutes, rates.offlineRatePer45),
-        note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}`,
+        note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}${
+          chargedExcusedCount > 0 ? ` | Charged excused sessions: ${chargedExcusedCount}` : ""
+        }`,
       },
     });
   } catch (err) {
@@ -469,7 +476,7 @@ export default async function PartnerSettlementPage({
     status: string;
     totalMinutes: number | null;
   }> = [];
-  let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number }> = [];
+  let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number; chargedExcusedSessions: number }> = [];
   let settlementApprovalMap = new Map<string, {
     managerApprovedBy: string[];
     financeApprovedBy: string[];
@@ -531,7 +538,6 @@ export default async function PartnerSettlementPage({
     const [offlineAttendanceRows, offlineSettledRows] = await Promise.all([
       prisma.attendance.findMany({
         where: {
-          status: { in: ATTENDED_STATUSES as any },
           package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
           student: { sourceChannelId: source.id },
           session: {
@@ -568,18 +574,22 @@ export default async function PartnerSettlementPage({
     ]);
 
     const offlineSettledSet = new Set(offlineSettledRows.map((x) => x.studentId));
-    const offlineAgg = new Map<string, { studentName: string; sessions: number; totalMinutes: number }>();
+    const offlineAgg = new Map<string, { studentName: string; sessions: number; totalMinutes: number; chargedExcusedSessions: number }>();
     for (const row of offlineAttendanceRows) {
+      if (!isAttendanceSettlementEligible(row)) continue;
       const prev = offlineAgg.get(row.studentId);
       const minutes = Math.max(0, Math.round((row.session.endAt.getTime() - row.session.startAt.getTime()) / 60000));
+      const chargedExcusedDelta = row.status === "EXCUSED" && row.excusedCharge ? 1 : 0;
       if (prev) {
         prev.sessions += 1;
         prev.totalMinutes += minutes;
+        prev.chargedExcusedSessions += chargedExcusedDelta;
       } else {
         offlineAgg.set(row.studentId, {
           studentName: row.student?.name ?? "-",
           sessions: 1,
           totalMinutes: minutes,
+          chargedExcusedSessions: chargedExcusedDelta,
         });
       }
     }
@@ -592,6 +602,7 @@ export default async function PartnerSettlementPage({
         sessions: agg.sessions,
         totalMinutes: agg.totalMinutes,
         hours: toHours(agg.totalMinutes),
+        chargedExcusedSessions: agg.chargedExcusedSessions,
       }))
       .sort((a, b) => a.studentName.localeCompare(b.studentName));
 
@@ -767,8 +778,8 @@ export default async function PartnerSettlementPage({
       <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
         {t(
           lang,
-          "Rule: include attendances where status in (PRESENT, LATE), package mode = OFFLINE_MONTHLY, session start time is within selected month (UTC+8 business month), and session has non-empty feedback. Sessions = attendance count. Hours = sum of (endAt - startAt) in minutes / 60.",
-          "统计口径：仅纳入 status in (PRESENT, LATE)、课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空的记录。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。"
+          "Rule: include attendances where status in (PRESENT, LATE) OR (EXCUSED with charged deduction), package mode = OFFLINE_MONTHLY, session start time is within selected month (UTC+8 business month), and session has non-empty feedback. Sessions = attendance count. Hours = sum of (endAt - startAt) in minutes / 60. Charged EXCUSED count is additionally marked.",
+          "统计口径：纳入 status in (PRESENT, LATE) 或（EXCUSED 且已扣课时），课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。并额外标记“取消但扣课时”数量。"
         )}
       </div>
       {offlinePending.length === 0 ? (
@@ -780,6 +791,7 @@ export default async function PartnerSettlementPage({
               <th align="left">{t(lang, "Student", "学生")}</th>
               <th align="left">{t(lang, "Month", "月份")}</th>
               <th align="left">{t(lang, "Sessions", "课次")}</th>
+              <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
@@ -793,6 +805,7 @@ export default async function PartnerSettlementPage({
                 </td>
                 <td>{month}</td>
                 <td>{r.sessions}</td>
+                <td style={{ color: r.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{r.chargedExcusedSessions}</td>
                 <td>{r.hours}</td>
                 <td>{calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45)}</td>
                 <td>
