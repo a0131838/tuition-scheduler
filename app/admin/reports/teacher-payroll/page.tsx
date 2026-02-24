@@ -2,7 +2,8 @@
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover, saveApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
 import {
-  financeFinalizeTeacherPayroll,
+  financeConfirmTeacherPayroll,
+  financeMarkTeacherPayrollPaid,
   financeRejectTeacherPayroll,
   formatComboLabel,
   formatMoneyCents,
@@ -159,18 +160,30 @@ async function financeApprovePayrollAction(formData: FormData) {
   if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
   }
-  const ok = await financeFinalizeTeacherPayroll({
-    teacherId,
-    month,
-    scope,
-    financeEmail: user.email,
-    allManagerApproverEmails: cfg.managerApproverEmails,
-  });
+  const ok = await financeConfirmTeacherPayroll({ teacherId, month, scope });
   if (!ok) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-approve`);
   }
   revalidatePath("/admin/reports/teacher-payroll");
-  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finok=1`);
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&fincfm=1`);
+}
+
+async function financeMarkPaidPayrollAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
+  const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
+  const cfg = await getApprovalRoleConfig();
+  if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
+  }
+  const ok = await financeMarkTeacherPayrollPaid({ teacherId, month, scope, financeEmail: user.email });
+  if (!ok) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-paid`);
+  }
+  revalidatePath("/admin/reports/teacher-payroll");
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finpaid=1`);
 }
 
 async function financeRejectPayrollAction(formData: FormData) {
@@ -198,7 +211,7 @@ async function financeRejectPayrollAction(formData: FormData) {
 export default async function TeacherPayrollPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; cfg?: string; mgr?: string; finok?: string; finrej?: string; error?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; cfg?: string; mgr?: string; finpaid?: string; fincfm?: string; finrej?: string; error?: string }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -212,7 +225,8 @@ export default async function TeacherPayrollPage({
   const revoked = sp?.revoked === "1";
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
-  const finApprovedDone = sp?.finok === "1";
+  const finPaidDone = sp?.finpaid === "1";
+  const finConfirmDone = sp?.fincfm === "1";
   const finRejectedDone = sp?.finrej === "1";
   const sendError = sp?.error === "send";
   const revokeError = sp?.error === "revoke";
@@ -317,7 +331,8 @@ export default async function TeacherPayrollPage({
       {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
       {cfgSaved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Approval role config saved.", "审批角色配置已保存。")}</div> : null}
       {mgrDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Manager approval recorded.", "管理审批已记录。")}</div> : null}
-      {finApprovedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance approval recorded.", "财务最终审批已记录。")}</div> : null}
+      {finConfirmDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance confirmation recorded.", "财务确认已记录。")}</div> : null}
+      {finPaidDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance payout recorded.", "财务发薪已记录。")}</div> : null}
       {finRejectedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance rejection recorded.", "财务驳回已记录。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
@@ -328,6 +343,7 @@ export default async function TeacherPayrollPage({
       {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
       {sp?.error === "fin-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance approval failed.", "财务审批失败。")}</div> : null}
+      {sp?.error === "fin-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance payout failed.", "财务发薪失败。")}</div> : null}
       {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
       {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
@@ -400,8 +416,8 @@ export default async function TeacherPayrollPage({
                     <>
                       <div>{t(lang, "Teacher", "老师")}: {publish.confirmedAt ? t(lang, "Confirmed", "已确认") : t(lang, "Pending", "待确认")}</div>
                       <div>{t(lang, "Manager", "管理")}: {managerAllConfirmed ? t(lang, "Confirmed", "已确认") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
-                      <div>{t(lang, "Finance Paid", "财务发薪")}: {publish.financePaidAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
                       <div>{t(lang, "Finance Confirm", "财务确认")}: {publish.financeConfirmedAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
+                      <div>{t(lang, "Finance Paid", "财务发薪")}: {publish.financePaidAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
                       {publish.financeRejectedAt ? (
                         <div style={{ color: "#b91c1c" }}>
                           {t(lang, "Finance Rejected", "财务驳回")}: {publish.financeRejectReason ?? "-"}
@@ -446,7 +462,15 @@ export default async function TeacherPayrollPage({
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
                         <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Finance Approve", "财务最终审批")}</button>
+                        <button type="submit">{t(lang, "Finance Confirm", "财务确认")}</button>
+                      </form>
+                    ) : null}
+                    {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) && !publish.financePaidAt ? (
+                      <form action={financeMarkPaidPayrollAction}>
+                        <input type="hidden" name="month" value={month} />
+                        <input type="hidden" name="scope" value={scope} />
+                        <input type="hidden" name="teacherId" value={row.teacherId} />
+                        <button type="submit">{t(lang, "Mark Paid", "标记已发薪")}</button>
                       </form>
                     ) : null}
                     {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (

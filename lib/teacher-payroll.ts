@@ -378,6 +378,7 @@ export async function financeMarkTeacherPayrollPaid(input: {
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (!existing) return false;
   if (!existing.managerApprovedAt) return false;
+  if (!existing.financeConfirmedAt) return false;
   existing.financePaidAt = new Date().toISOString();
   existing.financePaidBy = input.financeEmail.trim().toLowerCase();
   await savePayrollPublishItems(items);
@@ -395,8 +396,13 @@ export async function financeConfirmTeacherPayroll(input: {
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
   if (!existing) return false;
-  if (!existing.financePaidAt) return false;
+  if (!existing.managerApprovedAt) return false;
+  const hadLegacyPaidWithoutConfirm = Boolean(existing.financePaidAt) && !existing.financeConfirmedAt;
   existing.financeConfirmedAt = new Date().toISOString();
+  if (hadLegacyPaidWithoutConfirm) {
+    existing.financePaidAt = null;
+    existing.financePaidBy = null;
+  }
   await savePayrollPublishItems(items);
   return true;
 }
