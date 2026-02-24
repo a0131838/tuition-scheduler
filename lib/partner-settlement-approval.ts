@@ -7,6 +7,9 @@ export type PartnerSettlementApprovalItem = {
   managerApprovedBy: string[];
   financeApprovedBy: string[];
   exportedAt: string | null;
+  financeRejectedAt: string | null;
+  financeRejectedBy: string | null;
+  financeRejectReason: string | null;
 };
 
 function normalizeEmail(email: string) {
@@ -33,6 +36,11 @@ function parseItems(raw?: string | null): PartnerSettlementApprovalItem[] {
           ? x.financeApprovedBy.map((v) => normalizeEmail(String(v ?? ""))).filter(Boolean)
           : [],
         exportedAt: typeof x.exportedAt === "string" && x.exportedAt.trim() ? x.exportedAt : null,
+        financeRejectedAt: typeof x.financeRejectedAt === "string" && x.financeRejectedAt.trim() ? x.financeRejectedAt : null,
+        financeRejectedBy:
+          typeof x.financeRejectedBy === "string" && x.financeRejectedBy.trim() ? normalizeEmail(x.financeRejectedBy) : null,
+        financeRejectReason:
+          typeof x.financeRejectReason === "string" && x.financeRejectReason.trim() ? x.financeRejectReason.trim() : null,
       });
     }
     return out;
@@ -65,6 +73,9 @@ function ensureItem(items: PartnerSettlementApprovalItem[], settlementId: string
     managerApprovedBy: [],
     financeApprovedBy: [],
     exportedAt: null,
+    financeRejectedAt: null,
+    financeRejectedBy: null,
+    financeRejectReason: null,
   };
   items.push(created);
   return created;
@@ -91,15 +102,21 @@ export async function financeApprovePartnerSettlement(settlementId: string, appr
   const items = await loadItems();
   const item = ensureItem(items, settlementId);
   item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
+  item.financeRejectedAt = null;
+  item.financeRejectedBy = null;
+  item.financeRejectReason = null;
   await saveItems(items);
 }
 
-export async function financeRejectPartnerSettlement(settlementId: string, approverEmail: string) {
+export async function financeRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
   const items = await loadItems();
   const item = ensureItem(items, settlementId);
   const email = normalizeEmail(approverEmail);
   item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
   item.exportedAt = null;
+  item.financeRejectedAt = new Date().toISOString();
+  item.financeRejectedBy = email;
+  item.financeRejectReason = reason.trim();
   await saveItems(items);
 }
 

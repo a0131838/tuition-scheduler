@@ -173,11 +173,15 @@ async function financeRejectPayrollAction(formData: FormData) {
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
   const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
+  const rejectReason = typeof formData.get("rejectReason") === "string" ? String(formData.get("rejectReason")).trim() : "";
   const cfg = await getApprovalRoleConfig();
   if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
   }
-  const ok = await financeRejectTeacherPayroll({ teacherId, month, scope });
+  if (!rejectReason) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-reason`);
+  }
+  const ok = await financeRejectTeacherPayroll({ teacherId, month, scope, financeEmail: user.email, reason: rejectReason });
   if (!ok) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-reject`);
   }
@@ -319,6 +323,7 @@ export default async function TeacherPayrollPage({
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
       {sp?.error === "fin-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance approval failed.", "财务审批失败。")}</div> : null}
       {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
+      {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
       {!isFinanceOnlyUser ? <h3>{t(lang, "Approval Role Config", "审批角色配置")}</h3> : null}
@@ -391,6 +396,11 @@ export default async function TeacherPayrollPage({
                       <div>{t(lang, "Manager", "管理")}: {managerAllConfirmed ? t(lang, "Confirmed", "已确认") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
                       <div>{t(lang, "Finance Paid", "财务发薪")}: {publish.financePaidAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
                       <div>{t(lang, "Finance Confirm", "财务确认")}: {publish.financeConfirmedAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
+                      {publish.financeRejectedAt ? (
+                        <div style={{ color: "#b91c1c" }}>
+                          {t(lang, "Finance Rejected", "财务驳回")}: {publish.financeRejectReason ?? "-"}
+                        </div>
+                      ) : null}
                     </>
                   )}
                 </td>
@@ -434,10 +444,17 @@ export default async function TeacherPayrollPage({
                       </form>
                     ) : null}
                     {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (
-                      <form action={financeRejectPayrollAction}>
+                      <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
                         <input type="hidden" name="teacherId" value={row.teacherId} />
+                        <input
+                          type="text"
+                          name="rejectReason"
+                          required
+                          placeholder={t(lang, "Reject reason", "驳回原因")}
+                          style={{ width: 180 }}
+                        />
                         <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
                       </form>
                     ) : null}

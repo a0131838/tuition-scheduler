@@ -102,6 +102,9 @@ export type PayrollPublishItem = {
   financePaidAt: string | null;
   financePaidBy: string | null;
   financeConfirmedAt: string | null;
+  financeRejectedAt: string | null;
+  financeRejectedBy: string | null;
+  financeRejectReason: string | null;
 };
 
 export function parseMonth(s?: string | null) {
@@ -234,6 +237,12 @@ function parsePayrollPublishItems(raw: string | null): PayrollPublishItem[] {
       const financePaidBy = typeof x.financePaidBy === "string" && x.financePaidBy.trim() ? x.financePaidBy : null;
       const financeConfirmedAt =
         typeof x.financeConfirmedAt === "string" && x.financeConfirmedAt.trim() ? x.financeConfirmedAt : null;
+      const financeRejectedAt =
+        typeof x.financeRejectedAt === "string" && x.financeRejectedAt.trim() ? x.financeRejectedAt : null;
+      const financeRejectedBy =
+        typeof x.financeRejectedBy === "string" && x.financeRejectedBy.trim() ? x.financeRejectedBy.trim().toLowerCase() : null;
+      const financeRejectReason =
+        typeof x.financeRejectReason === "string" && x.financeRejectReason.trim() ? x.financeRejectReason.trim() : null;
       if (!teacherId || !parseMonth(month) || !sentAt) continue;
       out.push({
         teacherId,
@@ -246,6 +255,9 @@ function parsePayrollPublishItems(raw: string | null): PayrollPublishItem[] {
         financePaidAt,
         financePaidBy,
         financeConfirmedAt,
+        financeRejectedAt,
+        financeRejectedBy,
+        financeRejectReason,
       });
     }
     return out;
@@ -295,6 +307,9 @@ export async function markTeacherPayrollSent(input: { teacherId: string; month: 
       financePaidAt: null,
       financePaidBy: null,
       financeConfirmedAt: null,
+      financeRejectedAt: null,
+      financeRejectedBy: null,
+      financeRejectReason: null,
     });
   }
   await savePayrollPublishItems(items);
@@ -403,6 +418,9 @@ export async function financeFinalizeTeacherPayroll(input: {
   existing.financePaidAt = existing.financePaidAt ?? now;
   existing.financePaidBy = input.financeEmail.trim().toLowerCase();
   existing.financeConfirmedAt = now;
+  existing.financeRejectedAt = null;
+  existing.financeRejectedBy = null;
+  existing.financeRejectReason = null;
   await savePayrollPublishItems(items);
   return true;
 }
@@ -411,9 +429,11 @@ export async function financeRejectTeacherPayroll(input: {
   teacherId: string;
   month: string;
   scope?: string | null;
+  financeEmail: string;
+  reason: string;
 }) {
   const scope = normalizePayrollScope(input.scope);
-  if (!input.teacherId || !parseMonth(input.month)) return false;
+  if (!input.teacherId || !parseMonth(input.month) || !input.financeEmail || !input.reason.trim()) return false;
   const items = await loadPayrollPublishItems();
   const key = payrollPublishKey(input.teacherId, input.month, scope);
   const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
@@ -422,6 +442,9 @@ export async function financeRejectTeacherPayroll(input: {
   existing.financePaidAt = null;
   existing.financePaidBy = null;
   existing.financeConfirmedAt = null;
+  existing.financeRejectedAt = new Date().toISOString();
+  existing.financeRejectedBy = input.financeEmail.trim().toLowerCase();
+  existing.financeRejectReason = input.reason.trim();
   await savePayrollPublishItems(items);
   return true;
 }
