@@ -61,6 +61,22 @@ function canTeachClass(teacher: any, courseId?: string | null, subjectId?: strin
   return false;
 }
 
+function isFullyCancelledSessionForConflict(s: any) {
+  const cancelledSet = new Set(
+    Array.isArray(s.attendances) ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string) : []
+  );
+  if (cancelledSet.size === 0) return false;
+
+  if (s.class?.capacity === 1) {
+    const sid = (s.studentId as string | null) ?? (s.class?.oneOnOneStudentId as string | null) ?? (s.class?.enrollments?.[0]?.studentId as string | null);
+    return !!sid && cancelledSet.has(sid);
+  }
+
+  const expected = Array.isArray(s.class?.enrollments) ? s.class.enrollments.map((e: any) => e.studentId as string) : [];
+  if (expected.length === 0) return false;
+  return expected.every((sid: string) => cancelledSet.has(sid));
+}
+
 // Server actions were removed; conflict resolution now uses client fetch + /api routes.
 
 export default async function ConflictsPage({
@@ -91,13 +107,24 @@ export default async function ConflictsPage({
   const toSafeStr = ymd(to);
   to.setHours(23, 59, 59, 999);
 
-  const [sessions, appointments, teachers, rooms, courses, subjects] = await Promise.all([
+  const [sessionsRaw, appointments, teachers, rooms, courses, subjects] = await Promise.all([
     prisma.session.findMany({
       where: { startAt: { lte: to }, endAt: { gte: from } },
       include: {
         teacher: true,
         student: true,
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        attendances: { select: { studentId: true, status: true } },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
       },
       orderBy: { startAt: "asc" },
     }),
@@ -111,6 +138,7 @@ export default async function ConflictsPage({
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
   ]);
+  const sessions = sessionsRaw.filter((s) => !isFullyCancelledSessionForConflict(s));
 
   const byTeacher = new Map<string, typeof sessions>();
   const byRoom = new Map<string, typeof sessions>();
