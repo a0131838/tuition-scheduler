@@ -88,7 +88,7 @@ export default async function ConflictsPage({
   const today = new Date();
   const defaultFrom = ymd(today);
   const toDefault = new Date(today);
-  toDefault.setDate(toDefault.getDate() + 14);
+  toDefault.setDate(toDefault.getDate() + 30);
   const defaultTo = ymd(toDefault);
 
   const sp = await searchParams;

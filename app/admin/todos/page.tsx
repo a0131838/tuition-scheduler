@@ -760,7 +760,10 @@ export default async function AdminTodosPage({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <a
-              href="/admin/conflicts"
+              href={`/admin/conflicts?${new URLSearchParams({
+                from: dailyConflictAudit.scannedFrom,
+                to: dailyConflictAudit.scannedTo,
+              }).toString()}`}
               style={{
                 display: "inline-block",
                 padding: "6px 10px",
