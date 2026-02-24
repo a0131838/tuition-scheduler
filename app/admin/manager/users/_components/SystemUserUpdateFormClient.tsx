@@ -70,6 +70,7 @@ export default function SystemUserUpdateFormClient({
         <div style={{ display: "flex", gap: 6 }}>
           <select name="role" defaultValue={user.role} disabled={busy}>
             <option value="ADMIN">ADMIN</option>
+            <option value="FINANCE">FINANCE</option>
             <option value="TEACHER">TEACHER</option>
             <option value="STUDENT">STUDENT</option>
           </select>
@@ -94,4 +95,3 @@ export default function SystemUserUpdateFormClient({
     </div>
   );
 }
-

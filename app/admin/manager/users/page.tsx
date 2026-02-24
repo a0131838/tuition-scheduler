@@ -13,7 +13,7 @@ import SystemUserCreateClient from "./_components/SystemUserCreateClient";
 import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient";
 import SystemUserActionsClient from "./_components/SystemUserActionsClient";
 
-type BasicUser = { id: string; email: string; role: "ADMIN" | "TEACHER" | "STUDENT" };
+type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
 
 function canEditTargetUser(
   actor: BasicUser,
@@ -83,7 +83,7 @@ export default async function ManagerUsersPage({
       acc[x.role] += 1;
       return acc;
     },
-    { ADMIN: 0, TEACHER: 0, STUDENT: 0 } as Record<string, number>
+    { ADMIN: 0, FINANCE: 0, TEACHER: 0, STUDENT: 0 } as Record<string, number>
   );
 
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
@@ -127,6 +127,7 @@ export default async function ManagerUsersPage({
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
           <div><b>{t(lang, "Total Users", "用户总数")}</b>: {users.length}</div>
           <div><b>ADMIN</b>: {roleCount.ADMIN}</div>
+          <div><b>FINANCE</b>: {roleCount.FINANCE}</div>
           <div><b>TEACHER</b>: {roleCount.TEACHER}</div>
           <div><b>STUDENT</b>: {roleCount.STUDENT}</div>
           <div><b>{t(lang, "Active Sessions", "活跃会话")}</b>: {sessions.length}</div>

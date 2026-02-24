@@ -13,7 +13,7 @@ type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "TEACHER" | "STUDENT";
+  role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT";
   language: "BILINGUAL" | "ZH" | "EN";
   teacherId: string | null;
 };
@@ -133,7 +133,7 @@ export async function requireAdmin() {
     redirect("/admin/login");
     throw new Error("unreachable");
   }
-  if (user.role === "ADMIN") return user;
+  if (user.role === "ADMIN" || user.role === "FINANCE") return user;
   if (await isManagerUser(user)) return user;
   redirect("/admin/login");
   throw new Error("unreachable");

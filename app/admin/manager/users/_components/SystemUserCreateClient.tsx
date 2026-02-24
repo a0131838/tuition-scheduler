@@ -87,6 +87,7 @@ export default function SystemUserCreateClient({
           <span style={{ fontSize: 12 }}>{labels.role}</span>
           <select name="role" defaultValue="ADMIN" disabled={busy}>
             <option value="ADMIN">ADMIN</option>
+            <option value="FINANCE">FINANCE</option>
             <option value="TEACHER">TEACHER</option>
             <option value="STUDENT">STUDENT</option>
           </select>
@@ -121,4 +122,3 @@ export default function SystemUserCreateClient({
     </div>
   );
 }
-

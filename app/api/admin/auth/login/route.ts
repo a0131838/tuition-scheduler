@@ -27,7 +27,10 @@ export async function POST(req: Request) {
   const ok = await verifyPassword(password, user.passwordSalt, user.passwordHash);
   if (!ok) return bad("Invalid credentials", 401);
 
-  const canEnterAdmin = user.role === "ADMIN" || (await isManagerUser({ role: user.role as any, email: user.email }));
+  const canEnterAdmin =
+    user.role === "ADMIN" ||
+    user.role === "FINANCE" ||
+    (await isManagerUser({ role: user.role as any, email: user.email }));
 
   await createSession(user.id);
 
@@ -52,4 +55,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true, redirectTo: "/admin" });
 }
-

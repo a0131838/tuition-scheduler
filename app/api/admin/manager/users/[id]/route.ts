@@ -6,14 +6,14 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 }
 
 function pickRole(v: string) {
-  return v === "ADMIN" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
+  return v === "ADMIN" || v === "FINANCE" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
 }
 
 function pickLang(v: string) {
   return v === "BILINGUAL" || v === "ZH" || v === "EN" ? v : "BILINGUAL";
 }
 
-type BasicUser = { id: string; email: string; role: "ADMIN" | "TEACHER" | "STUDENT" };
+type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
 
 function canEditTargetUser(
   actor: BasicUser,
@@ -112,4 +112,3 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   return Response.json({ ok: true, message: "User deleted" });
 }
-

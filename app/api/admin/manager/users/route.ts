@@ -6,7 +6,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 }
 
 function pickRole(v: string) {
-  return v === "ADMIN" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
+  return v === "ADMIN" || v === "FINANCE" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
 }
 
 function pickLang(v: string) {
@@ -59,4 +59,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true, message: "User created" }, { status: 201 });
 }
-

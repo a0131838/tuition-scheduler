@@ -5,7 +5,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
-type BasicUser = { id: string; email: string; role: "ADMIN" | "TEACHER" | "STUDENT" };
+type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
 
 function canEditTargetUser(
   actor: BasicUser,
@@ -73,4 +73,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json({ ok: true, message: "Password reset (all sessions revoked)" });
 }
-
