@@ -12,12 +12,26 @@ function fmtRange(startAt: Date, endAt: Date) {
 }
 
 function getStudentNames(session: any) {
+  const cancelledSet = new Set(
+    Array.isArray(session.attendances)
+      ? session.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
+      : []
+  );
   const classStudentNames = session.class.enrollments.map((e: any) => e.student.name).filter(Boolean);
   if (session.class.capacity === 1) {
+    const oneOnOneId = session.studentId ?? session.class.oneOnOneStudentId ?? session.class.enrollments?.[0]?.studentId ?? null;
+    if (oneOnOneId && cancelledSet.has(oneOnOneId)) return [];
     const onlyStudent = session.student?.name ?? session.class.oneOnOneStudent?.name ?? (classStudentNames[0] ?? null);
     return onlyStudent ? [onlyStudent] : [];
   }
-  return Array.from(new Set(classStudentNames));
+  return Array.from(
+    new Set(
+      session.class.enrollments
+        .filter((e: any) => !cancelledSet.has(e.studentId))
+        .map((e: any) => e.student.name)
+        .filter(Boolean)
+    )
+  );
 }
 
 function buildForwardText(row: any) {
@@ -94,6 +108,7 @@ export default async function AdminFeedbacksPage({
       session: {
         include: {
           student: true,
+          attendances: { select: { studentId: true, status: true } },
           class: {
             include: {
               course: true,
@@ -139,15 +154,16 @@ export default async function AdminFeedbacksPage({
       class: {
         include: {
           teacher: true,
+          oneOnOneStudent: true,
           course: true,
           subject: true,
           level: true,
           campus: true,
           room: true,
-          oneOnOneStudent: true,
           enrollments: { include: { student: true } },
         },
       },
+      attendances: { select: { studentId: true, status: true } },
       feedbacks: true,
     },
     orderBy: { endAt: "desc" },
@@ -158,6 +174,7 @@ export default async function AdminFeedbacksPage({
     .map((s) => {
       const responsibleTeacherId = s.teacherId ?? s.class.teacherId;
       const responsibleTeacherName = s.teacher?.name ?? s.class.teacher.name;
+      if (getStudentNames(s).length === 0) return null;
       const feedback = s.feedbacks.find((f) => f.teacherId === responsibleTeacherId) ?? null;
       if (feedback && isFinalTeacherFeedback(feedback)) return null;
       return {

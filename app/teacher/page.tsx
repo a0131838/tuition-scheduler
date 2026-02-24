@@ -16,11 +16,21 @@ function toDateInputValue(d: Date) {
 }
 
 function sessionStudentNames(s: any) {
+  const cancelledSet = new Set(
+    Array.isArray(s.attendances)
+      ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
+      : []
+  );
   if (s.class?.capacity === 1) {
+    const sid = s.student?.id ?? s.class?.oneOnOneStudent?.id ?? s.class?.enrollments?.[0]?.student?.id ?? null;
+    if (sid && cancelledSet.has(sid)) return [];
     const one = s.student?.name ?? s.class?.oneOnOneStudent?.name ?? s.class?.enrollments?.[0]?.student?.name ?? null;
     return one ? [one] : [];
   }
-  return (s.class?.enrollments ?? []).map((e: any) => e.student?.name).filter(Boolean);
+  return (s.class?.enrollments ?? [])
+    .filter((e: any) => !cancelledSet.has(e.studentId))
+    .map((e: any) => e.student?.name)
+    .filter(Boolean);
 }
 
 // Teacher self-confirm is handled via client fetch to avoid page jump/flash.
@@ -67,6 +77,7 @@ export default async function TeacherHomePage({
         OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
       },
       include: {
+        attendances: { select: { studentId: true, status: true } },
         student: { select: { id: true, name: true } },
         class: {
           include: {
@@ -88,6 +99,7 @@ export default async function TeacherHomePage({
         OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
       },
       include: {
+        attendances: { select: { studentId: true, status: true } },
         student: { select: { id: true, name: true } },
         class: {
           include: {
@@ -112,6 +124,8 @@ export default async function TeacherHomePage({
       select: { createdAt: true },
     } as any),
   ]);
+  const todaySessionsVisible = todaySessions.filter((s) => sessionStudentNames(s).length > 0);
+  const tomorrowSessionsVisible = tomorrowSessions.filter((s) => sessionStudentNames(s).length > 0);
 
   return (
     <div>
@@ -145,7 +159,7 @@ export default async function TeacherHomePage({
       <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
         <div style={{ border: "1px solid #fcd34d", borderRadius: 10, padding: 12, background: "#fffbeb" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")} ({todaySessions.length})</h3>
+            <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")} ({todaySessionsVisible.length})</h3>
             {todayConfirmed ? (
               <span style={{ color: "#166534", fontWeight: 700 }}>
                 {t(lang, "Confirmed", "已确认")}: {(todayConfirmed as any).createdAt.toLocaleTimeString()}
@@ -163,11 +177,11 @@ export default async function TeacherHomePage({
               />
             )}
           </div>
-          {todaySessions.length === 0 ? (
+          {todaySessionsVisible.length === 0 ? (
             <div style={{ color: "#666", marginTop: 8 }}>{t(lang, "No courses today.", "今天没有课程。")}</div>
           ) : (
             <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-              {todaySessions.map((s) => {
+              {todaySessionsVisible.map((s) => {
                 const students = sessionStudentNames(s);
                 return (
                 <div key={s.id} style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
@@ -198,7 +212,7 @@ export default async function TeacherHomePage({
 
         <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, padding: 12, background: "#eff6ff" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow's Courses", "明日课程")} ({tomorrowSessions.length})</h3>
+            <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow's Courses", "明日课程")} ({tomorrowSessionsVisible.length})</h3>
             {tomorrowConfirmed ? (
               <span style={{ color: "#166534", fontWeight: 700 }}>
                 {t(lang, "Confirmed", "已确认")}: {(tomorrowConfirmed as any).createdAt.toLocaleTimeString()}
@@ -216,11 +230,11 @@ export default async function TeacherHomePage({
               />
             )}
           </div>
-          {tomorrowSessions.length === 0 ? (
+          {tomorrowSessionsVisible.length === 0 ? (
             <div style={{ color: "#666", marginTop: 8 }}>{t(lang, "No courses tomorrow.", "明天没有课程。")}</div>
           ) : (
             <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-              {tomorrowSessions.map((s) => {
+              {tomorrowSessionsVisible.map((s) => {
                 const students = sessionStudentNames(s);
                 return (
                 <div key={s.id} style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 8, background: "#fff" }}>

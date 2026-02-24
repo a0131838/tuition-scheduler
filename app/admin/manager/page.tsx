@@ -83,14 +83,29 @@ type SessionLite = {
   };
 };
 
-function expectedStudentIdsForSession(s: SessionLite, enrollmentsByClass: Map<string, string[]>) {
+function expectedStudentIdsForSession(
+  s: SessionLite,
+  enrollmentsByClass: Map<string, string[]>,
+  attendanceBySession?: Map<string, Array<{ studentId: string; status: string }>>
+) {
   const enrolled = enrollmentsByClass.get(s.classId) ?? [];
-  if (s.class.capacity === 1) {
-    if (s.studentId) return [s.studentId];
-    if (s.class.oneOnOneStudentId) return [s.class.oneOnOneStudentId];
-    return enrolled.length > 0 ? [enrolled[0]] : [];
-  }
-  return enrolled;
+  const expectedRaw =
+    s.class.capacity === 1
+      ? s.studentId
+        ? [s.studentId]
+        : s.class.oneOnOneStudentId
+        ? [s.class.oneOnOneStudentId]
+        : enrolled.length > 0
+        ? [enrolled[0]]
+        : []
+      : enrolled;
+  if (!attendanceBySession) return expectedRaw;
+  const cancelledSet = new Set(
+    (attendanceBySession.get(s.id) ?? [])
+      .filter((a) => a.status === "EXCUSED")
+      .map((a) => a.studentId)
+  );
+  return expectedRaw.filter((sid) => !cancelledSet.has(sid));
 }
 
 function calcUnmarkedCount(
@@ -98,7 +113,7 @@ function calcUnmarkedCount(
   enrollmentsByClass: Map<string, string[]>,
   attendanceBySession: Map<string, Array<{ studentId: string; status: string }>>
 ) {
-  const expected = expectedStudentIdsForSession(s, enrollmentsByClass);
+  const expected = expectedStudentIdsForSession(s, enrollmentsByClass, attendanceBySession);
   if (!expected.length) return 0;
   const expectedSet = new Set(expected);
   const rows = (attendanceBySession.get(s.id) ?? []).filter((a) => expectedSet.has(a.studentId));
@@ -324,7 +339,7 @@ export default async function AdminManagerPage({
   const studentScheduleMap = new Map<string, { name: string; scheduled: number; attended: number; missed: number }>();
   for (const s of weekSessions) {
     const enrolled = enrollmentsByClassWithStudent.get(s.classId) ?? [];
-    const expected =
+    const expectedRaw =
       s.class.capacity === 1
         ? (() => {
             const id = s.studentId ?? s.class.oneOnOneStudentId ?? enrolled[0]?.studentId ?? null;
@@ -333,6 +348,12 @@ export default async function AdminManagerPage({
             return [{ studentId: id, studentName: s.student?.name ?? hit?.studentName ?? id }];
           })()
         : enrolled;
+    const cancelledSet = new Set(
+      (attendanceBySession.get(s.id) ?? [])
+        .filter((a) => a.status === "EXCUSED")
+        .map((a) => a.studentId)
+    );
+    const expected = expectedRaw.filter((st) => !cancelledSet.has(st.studentId));
     if (!expected.length) continue;
 
     const rows = attendanceBySession.get(s.id) ?? [];
@@ -362,8 +383,21 @@ export default async function AdminManagerPage({
     arr.push(e.studentId);
     tomorrowEnrollmentsByClass.set(e.classId, arr);
   }
+  const tomorrowSessionIds = tomorrowSessionsFiltered.map((s) => s.id);
+  const tomorrowAttendances = tomorrowSessionIds.length
+    ? await prisma.attendance.findMany({
+        where: { sessionId: { in: tomorrowSessionIds } },
+        select: { sessionId: true, studentId: true, status: true },
+      })
+    : [];
+  const tomorrowAttendanceBySession = new Map<string, Array<{ studentId: string; status: string }>>();
+  for (const a of tomorrowAttendances) {
+    const arr = tomorrowAttendanceBySession.get(a.sessionId) ?? [];
+    arr.push({ studentId: a.studentId, status: a.status });
+    tomorrowAttendanceBySession.set(a.sessionId, arr);
+  }
   const studentIdsTomorrow = Array.from(
-    new Set(tomorrowSessionsFiltered.flatMap((s) => expectedStudentIdsForSession(s, tomorrowEnrollmentsByClass)))
+    new Set(tomorrowSessionsFiltered.flatMap((s) => expectedStudentIdsForSession(s, tomorrowEnrollmentsByClass, tomorrowAttendanceBySession)))
   );
   const confirmDate = new Date(tomorrowStart.getFullYear(), tomorrowStart.getMonth(), tomorrowStart.getDate(), 0, 0, 0, 0);
   const [teacherConfirms, studentConfirms] = await Promise.all([

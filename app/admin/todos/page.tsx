@@ -90,6 +90,22 @@ function expectedStudentsForReminder(session: any, enrollmentsByClass: Map<strin
   return roster.filter((x) => !cancelledSet.has(x.id));
 }
 
+function expectedStudentIdsForAttendanceTask(
+  session: any,
+  enrollmentsByClass: Map<string, Array<{ classId: string; studentId: string }>>,
+  attendanceBySession: Map<string, Array<{ sessionId: string; studentId: string; status: string }>>
+) {
+  const enrolledStudentIds = (enrollmentsByClass.get(session.classId) ?? []).map((e) => e.studentId);
+  const oneOnOneId = session.studentId ?? session.class?.oneOnOneStudentId ?? enrolledStudentIds[0] ?? null;
+  const expectedStudentIds = session.class.capacity === 1 ? (oneOnOneId ? [oneOnOneId] : []) : enrolledStudentIds;
+  const cancelledSet = new Set(
+    (attendanceBySession.get(session.id) ?? [])
+      .filter((a) => a.status === "EXCUSED")
+      .map((a) => a.studentId)
+  );
+  return expectedStudentIds.filter((sid) => !cancelledSet.has(sid));
+}
+
 async function confirmReminder(kind: "teacher" | "student", formData: FormData) {
   "use server";
   const dateStr = String(formData.get("date") ?? "");
@@ -263,8 +279,7 @@ export default async function AdminTodosPage({
   }
   const unmarkedMap = new Map<string, number>();
   const sessionsToday = sessionsTodayAll.filter((s) => {
-    const enrolledStudentIds = (todayEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
-    const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+    const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, todayEnrollmentsByClass, todayAttendanceBySession);
     if (expectedStudentIds.length === 0) return false;
 
     const expectedSet = new Set(expectedStudentIds);
@@ -308,8 +323,7 @@ export default async function AdminTodosPage({
   }
   const unmarkedYesterdayMap = new Map<string, number>();
   const sessionsYesterday = sessionsYesterdayAll.filter((s) => {
-    const enrolledStudentIds = (yesterdayEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
-    const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+    const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, yesterdayEnrollmentsByClass, yesterdayAttendanceBySession);
     if (expectedStudentIds.length === 0) return false;
 
     const expectedSet = new Set(expectedStudentIds);
@@ -354,8 +368,7 @@ export default async function AdminTodosPage({
   }
   const pastCalculated = pastSessionsAll
     .map((s) => {
-      const enrolledStudentIds = (pastEnrollmentsByClass.get(s.classId) ?? []).map((e) => e.studentId);
-      const expectedStudentIds = s.class.capacity === 1 && s.studentId ? [s.studentId] : enrolledStudentIds;
+      const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, pastEnrollmentsByClass, pastAttendanceBySession);
       if (expectedStudentIds.length === 0) return null;
 
       const expectedSet = new Set(expectedStudentIds);

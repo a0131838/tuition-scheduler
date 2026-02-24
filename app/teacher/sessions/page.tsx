@@ -18,7 +18,7 @@ type SessionWithMeta = {
     room: { name: string } | null;
   };
   student: { id: string; name: string } | null;
-  attendances: Array<{ status: string }>;
+  attendances: Array<{ studentId: string; status: string }>;
   feedbacks: Array<{ isProxyDraft: boolean; status: string }>;
 };
 
@@ -31,12 +31,18 @@ function classLabel(s: SessionWithMeta) {
   return `${s.class.course.name}${s.class.subject ? ` / ${s.class.subject.name}` : ""}${s.class.level ? ` / ${s.class.level.name}` : ""}`;
 }
 
-function sessionStudentNames(s: SessionWithMeta) {
+function sessionStudents(s: SessionWithMeta) {
+  const cancelledSet = new Set(s.attendances.filter((a) => a.status === "EXCUSED").map((a) => a.studentId));
   if (s.class.capacity === 1) {
+    const oneId = s.student?.id ?? s.class.oneOnOneStudent?.id ?? s.class.enrollments[0]?.student?.id ?? null;
+    if (oneId && cancelledSet.has(oneId)) return [];
     const one = s.student?.name ?? s.class.oneOnOneStudent?.name ?? s.class.enrollments[0]?.student?.name ?? null;
-    return one ? [one] : [];
+    return one ? [{ id: oneId ?? one, name: one }] : [];
   }
-  return s.class.enrollments.map((e) => e.student.name).filter(Boolean);
+  return s.class.enrollments
+    .filter((e) => !cancelledSet.has(e.studentId))
+    .map((e) => ({ id: e.student.id, name: e.student.name }))
+    .filter((x) => !!x.name);
 }
 
 function attendancePill(marked: number, total: number) {
@@ -99,7 +105,7 @@ export default async function TeacherSessionsPage() {
           enrollments: { include: { student: { select: { id: true, name: true } } } },
         },
       },
-      attendances: { select: { status: true } },
+      attendances: { select: { studentId: true, status: true } },
       feedbacks: { where: { teacherId: teacher.id }, select: { isProxyDraft: true, status: true } },
     },
     orderBy: { startAt: "asc" },
@@ -142,9 +148,11 @@ export default async function TeacherSessionsPage() {
 
               <div style={{ padding: 12 }}>
                 {items.map((s, idx) => {
-                  const studentNames = sessionStudentNames(s);
-                  const total = s.attendances.length;
-                  const marked = s.attendances.filter((a) => a.status !== "UNMARKED").length;
+                  const students = sessionStudents(s);
+                  const studentNames = students.map((x) => x.name);
+                  const statusByStudentId = new Map(s.attendances.map((a) => [a.studentId, a.status]));
+                  const total = students.length;
+                  const marked = students.filter((st) => (statusByStudentId.get(st.id) ?? "UNMARKED") !== "UNMARKED").length;
                   const feedback = s.feedbacks[0] ?? null;
                   const overdue = new Date() > new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000);
                   const att = attendancePill(marked, total);

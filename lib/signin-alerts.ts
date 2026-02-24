@@ -105,10 +105,20 @@ export async function setSignInAlertThresholdMin(min: number) {
 }
 
 function sessionExpectedStudentIds(s: SessionForAlert) {
-  if (s.class.capacity === 1 && s.studentId) return [s.studentId];
-  if (s.class.capacity === 1 && s.class.oneOnOneStudentId) return [s.class.oneOnOneStudentId];
-  if (s.class.capacity === 1 && s.class.enrollments.length > 0) return [s.class.enrollments[0].studentId];
-  return s.class.enrollments.map((e) => e.studentId);
+  const expected =
+    s.class.capacity === 1 && s.studentId
+      ? [s.studentId]
+      : s.class.capacity === 1 && s.class.oneOnOneStudentId
+      ? [s.class.oneOnOneStudentId]
+      : s.class.capacity === 1 && s.class.enrollments.length > 0
+      ? [s.class.enrollments[0].studentId]
+      : s.class.enrollments.map((e) => e.studentId);
+  const cancelledSet = new Set(
+    s.attendances
+      .filter((a) => a.status === "EXCUSED")
+      .map((a) => a.studentId)
+  );
+  return expected.filter((sid) => !cancelledSet.has(sid));
 }
 
 function teacherSignedIn(s: SessionForAlert) {
@@ -162,6 +172,7 @@ export async function syncSignInAlerts(now = new Date()) {
   for (const s of sessions) {
     const actualTeacherId = s.teacherId ?? s.class.teacherId;
     const expected = sessionExpectedStudentIds(s);
+    if (expected.length === 0) continue;
     const markedSet = new Set(
       s.attendances.filter((a) => a.status !== "UNMARKED").map((a) => a.studentId)
     );
