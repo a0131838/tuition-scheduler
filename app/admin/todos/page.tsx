@@ -191,14 +191,51 @@ export default async function AdminTodosPage({
   tomorrowEnd.setDate(dayEnd.getDate() + 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+  const pastSince = new Date(dayStart);
+  pastSince.setDate(dayStart.getDate() - pastDays);
 
-  const sessionsTodayAll = await prisma.session.findMany({
-    where: { startAt: { gte: dayStart, lte: dayEnd } },
-    include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-    orderBy: { startAt: "asc" },
-  });
+  const [sessionsTodayAll, sessionsYesterdayAll, pastSessionsAll, sessionsTomorrow, sessionsTomorrowAll] = await Promise.all([
+    prisma.session.findMany({
+      where: { startAt: { gte: dayStart, lte: dayEnd } },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.session.findMany({
+      where: { startAt: { gte: yesterdayStart, lte: yesterdayEnd } },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.session.findMany({
+      where: { startAt: { lt: dayStart, gte: pastSince } },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+      orderBy: { startAt: "desc" },
+    }),
+    prisma.session.findMany({
+      where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
+      include: {
+        teacher: true,
+        student: true,
+        attendances: { select: { studentId: true, status: true } },
+        class: {
+          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent: true },
+        },
+      },
+      orderBy: { startAt: "asc" },
+    }),
+    prisma.session.findMany({
+      where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
+      include: {
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
+      orderBy: { startAt: "asc" },
+    }),
+  ]);
   const todayClassIds = Array.from(new Set(sessionsTodayAll.map((s) => s.classId)));
   const todayEnrollments = todayClassIds.length
     ? await prisma.enrollment.findMany({
@@ -243,13 +280,6 @@ export default async function AdminTodosPage({
     if (unmarkedCount <= 0) return false;
     unmarkedMap.set(s.id, unmarkedCount);
     return true;
-  });
-  const sessionsYesterdayAll = await prisma.session.findMany({
-    where: { startAt: { gte: yesterdayStart, lte: yesterdayEnd } },
-    include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-    orderBy: { startAt: "asc" },
   });
   const yesterdayClassIds = Array.from(new Set(sessionsYesterdayAll.map((s) => s.classId)));
   const yesterdayEnrollments = yesterdayClassIds.length
@@ -297,16 +327,6 @@ export default async function AdminTodosPage({
     return true;
   });
 
-  const pastSince = new Date(dayStart);
-  pastSince.setDate(dayStart.getDate() - pastDays);
-
-  const pastSessionsAll = await prisma.session.findMany({
-    where: { startAt: { lt: dayStart, gte: pastSince } },
-    include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-    orderBy: { startAt: "desc" },
-  });
   const pastClassIds = Array.from(new Set(pastSessionsAll.map((s) => s.classId)));
   const pastEnrollments = pastClassIds.length
     ? await prisma.enrollment.findMany({
@@ -358,25 +378,6 @@ export default async function AdminTodosPage({
   const pastSessions = pastSlice.map((x) => x.session);
   const pastUnmarkedMap = new Map(pastSlice.map((x) => [x.session.id, x.unmarkedCount]));
 
-  const sessionsTomorrow = await prisma.session.findMany({
-    where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
-    include: {
-      teacher: true,
-      student: true,
-      attendances: { select: { studentId: true, status: true } },
-      class: {
-        include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, oneOnOneStudent: true },
-      },
-    },
-    orderBy: { startAt: "asc" },
-  });
-  const sessionsTomorrowAll = await prisma.session.findMany({
-    where: { startAt: { gte: tomorrowStart, lte: tomorrowEnd } },
-    include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-    },
-    orderBy: { startAt: "asc" },
-  });
   const tomorrowClassIds = Array.from(new Set(sessionsTomorrow.map((s) => s.classId)));
   const tomorrowEnrollments = tomorrowClassIds.length
     ? await prisma.enrollment.findMany({
@@ -436,46 +437,48 @@ export default async function AdminTodosPage({
 
   const confirmDate = toDateOnly(tomorrowStart);
   const todayConfirmDate = toDateOnly(dayStart);
-  const teacherConfirmations = teacherReminders.length
-    ? await prisma.todoReminderConfirm.findMany({
-        where: {
-          type: "TEACHER_TOMORROW",
-          date: confirmDate,
-          targetId: { in: teacherReminders.map((r) => r.id) },
-        },
-        select: { targetId: true },
-      })
-    : [];
-  const teacherSelfTodayConfirmations = teacherTodayReminders.length
-    ? await prisma.todoReminderConfirm.findMany({
-        where: {
-          type: TEACHER_SELF_CONFIRM_TODAY,
-          date: todayConfirmDate,
-          targetId: { in: teacherTodayReminders.map((r) => r.id) },
-        },
-        select: { targetId: true, createdAt: true },
-      })
-    : [];
-  const teacherSelfTomorrowConfirmations = teacherReminders.length
-    ? await prisma.todoReminderConfirm.findMany({
-        where: {
-          type: TEACHER_SELF_CONFIRM_TOMORROW,
-          date: confirmDate,
-          targetId: { in: teacherReminders.map((r) => r.id) },
-        },
-        select: { targetId: true, createdAt: true },
-      })
-    : [];
-  const studentConfirmations = studentReminders.length
-    ? await prisma.todoReminderConfirm.findMany({
-        where: {
-          type: "STUDENT_TOMORROW",
-          date: confirmDate,
-          targetId: { in: studentReminders.map((r) => r.id) },
-        },
-        select: { targetId: true },
-      })
-    : [];
+  const [teacherConfirmations, teacherSelfTodayConfirmations, teacherSelfTomorrowConfirmations, studentConfirmations] = await Promise.all([
+    teacherReminders.length
+      ? prisma.todoReminderConfirm.findMany({
+          where: {
+            type: "TEACHER_TOMORROW",
+            date: confirmDate,
+            targetId: { in: teacherReminders.map((r) => r.id) },
+          },
+          select: { targetId: true },
+        })
+      : Promise.resolve([]),
+    teacherTodayReminders.length
+      ? prisma.todoReminderConfirm.findMany({
+          where: {
+            type: TEACHER_SELF_CONFIRM_TODAY,
+            date: todayConfirmDate,
+            targetId: { in: teacherTodayReminders.map((r) => r.id) },
+          },
+          select: { targetId: true, createdAt: true },
+        })
+      : Promise.resolve([]),
+    teacherReminders.length
+      ? prisma.todoReminderConfirm.findMany({
+          where: {
+            type: TEACHER_SELF_CONFIRM_TOMORROW,
+            date: confirmDate,
+            targetId: { in: teacherReminders.map((r) => r.id) },
+          },
+          select: { targetId: true, createdAt: true },
+        })
+      : Promise.resolve([]),
+    studentReminders.length
+      ? prisma.todoReminderConfirm.findMany({
+          where: {
+            type: "STUDENT_TOMORROW",
+            date: confirmDate,
+            targetId: { in: studentReminders.map((r) => r.id) },
+          },
+          select: { targetId: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const teacherConfirmed = new Set(teacherConfirmations.map((x) => x.targetId));
   const teacherSelfTodayMap = new Map(teacherSelfTodayConfirmations.map((x) => [x.targetId, x.createdAt]));
   const teacherSelfTomorrowMap = new Map(teacherSelfTomorrowConfirmations.map((x) => [x.targetId, x.createdAt]));
@@ -486,18 +489,20 @@ export default async function AdminTodosPage({
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const dailyConflictAudit = await getOrRunDailyConflictAudit(now);
-  const lastAutoFix = await getLatestAutoFixResult();
-  const packages = await prisma.coursePackage.findMany({
-    where: {
-      type: "HOURS",
-      status: "ACTIVE",
-      remainingMinutes: { gt: 0 },
-    },
-    include: { student: true, course: true },
-    orderBy: { updatedAt: "desc" },
-    take: 500,
-  });
+  const [dailyConflictAudit, lastAutoFix, packages] = await Promise.all([
+    getOrRunDailyConflictAudit(now),
+    getLatestAutoFixResult(),
+    prisma.coursePackage.findMany({
+      where: {
+        type: "HOURS",
+        status: "ACTIVE",
+        remainingMinutes: { gt: 0 },
+      },
+      include: { student: true, course: true },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    }),
+  ]);
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
     ? await prisma.packageTxn.groupBy({
