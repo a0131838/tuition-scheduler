@@ -1,8 +1,9 @@
-﻿import { requireAdmin } from "@/lib/auth";
+﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
 import {
   financeApprovePartnerSettlement,
+  financeRejectPartnerSettlement,
   getPartnerSettlementApprovalMap,
   managerApprovePartnerSettlement,
 } from "@/lib/partner-settlement-approval";
@@ -107,7 +108,10 @@ function studentAttendanceHref(studentId: string) {
 
 async function updateRateSettingsAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const onlineRaw = typeof formData.get("onlineRatePer45") === "string" ? String(formData.get("onlineRatePer45")) : "";
@@ -137,7 +141,10 @@ async function updateRateSettingsAction(formData: FormData) {
 
 async function createOnlineSettlementAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
 
   const packageId = typeof formData.get("packageId") === "string" ? String(formData.get("packageId")) : "";
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
@@ -209,7 +216,10 @@ async function createOnlineSettlementAction(formData: FormData) {
 
 async function createOfflineSettlementAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
 
   const studentId = typeof formData.get("studentId") === "string" ? String(formData.get("studentId")) : "";
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
@@ -287,7 +297,10 @@ async function createOfflineSettlementAction(formData: FormData) {
 
 async function clearSettlementRecordsAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const source = await findPartnerSource();
@@ -306,6 +319,9 @@ async function clearSettlementRecordsAction(formData: FormData) {
 async function managerApproveSettlementAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")) : "";
   const cfg = await getApprovalRoleConfig();
@@ -331,12 +347,27 @@ async function financeApproveSettlementAction(formData: FormData) {
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=finance-approved`);
 }
 
+async function financeRejectSettlementAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")) : "";
+  const cfg = await getApprovalRoleConfig();
+  if (!settlementId || !isRoleApprover(user.email, cfg.financeApproverEmails)) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=finance-reject-forbidden`);
+  }
+  await financeRejectPartnerSettlement(settlementId, user.email);
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=finance-rejected`);
+}
+
 export default async function PartnerSettlementPage({
   searchParams,
 }: {
   searchParams?: Promise<{ month?: string; msg?: string; err?: string }>;
 }) {
   const admin = await requireAdmin();
+  const current = await getCurrentUser();
   const lang = await getLang();
   const sp = await searchParams;
   const month = sp?.month ?? monthKey(new Date());
@@ -346,6 +377,7 @@ export default async function PartnerSettlementPage({
   const roleConfig = await getApprovalRoleConfig();
   const isManagerApprover = isRoleApprover(admin.email, roleConfig.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(admin.email, roleConfig.financeApproverEmails);
+  const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
   const monthRange = toBizMonthRange(month);
   if (!monthRange) {
@@ -565,6 +597,7 @@ export default async function PartnerSettlementPage({
 
       {msg ? <div style={{ marginBottom: 8, color: "#166534" }}>{msg}</div> : null}
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
+      {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
       <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
         <label>
@@ -573,8 +606,8 @@ export default async function PartnerSettlementPage({
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
 
-      <h3>{t(lang, "Rate Settings", "费率设置")}</h3>
-      <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+      {!isFinanceOnlyUser ? <h3>{t(lang, "Rate Settings", "费率设置")}</h3> : null}
+      {!isFinanceOnlyUser ? <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
         <input type="hidden" name="month" value={month} />
         <label>
           {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
@@ -585,14 +618,14 @@ export default async function PartnerSettlementPage({
           <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
         </label>
         <button type="submit">{t(lang, "Save Rates", "保存费率")}</button>
-      </form>
-      <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
+      </form> : null}
+      {!isFinanceOnlyUser ? <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
         {t(
           lang,
           "Bill amount formula: amount = (minutes / 45) x rate.",
           "账单金额公式：金额 = （总分钟 / 45）x 单价。"
         )}
-      </div>
+      </div> : null}
 
       <h3>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
@@ -646,11 +679,15 @@ export default async function PartnerSettlementPage({
                 <td>{toHours(p.totalMinutes ?? 0)}</td>
                 <td>{calcAmountByRatePer45(Number(p.totalMinutes ?? 0), rates.onlineRatePer45)}</td>
                 <td>
-                  <form action={createOnlineSettlementAction}>
-                    <input type="hidden" name="month" value={month} />
-                    <input type="hidden" name="packageId" value={p.id} />
-                    <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
-                  </form>
+                  {!isFinanceOnlyUser ? (
+                    <form action={createOnlineSettlementAction}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="packageId" value={p.id} />
+                      <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
+                    </form>
+                  ) : (
+                    <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -691,11 +728,15 @@ export default async function PartnerSettlementPage({
                 <td>{r.hours}</td>
                 <td>{calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45)}</td>
                 <td>
-                  <form action={createOfflineSettlementAction}>
-                    <input type="hidden" name="studentId" value={r.studentId} />
-                    <input type="hidden" name="month" value={month} />
-                    <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
-                  </form>
+                  {!isFinanceOnlyUser ? (
+                    <form action={createOfflineSettlementAction}>
+                      <input type="hidden" name="studentId" value={r.studentId} />
+                      <input type="hidden" name="month" value={month} />
+                      <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
+                    </form>
+                  ) : (
+                    <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -704,12 +745,12 @@ export default async function PartnerSettlementPage({
       )}
 
       <h3>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
-      <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
+      {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
         <input type="hidden" name="month" value={month} />
         <button type="submit" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239" }}>
           {t(lang, "Clear Test Records", "清空测试结算记录")}
         </button>
-      </form>
+      </form> : null}
       {recentSettlements.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "暂无结算记录。")}</div>
       ) : (
@@ -766,6 +807,13 @@ export default async function PartnerSettlementPage({
                       <button type="submit">{t(lang, "Approve", "确认")}</button>
                     </form>
                   ) : null}
+                  {isFinanceApprover && approval.financeApprovedBy.includes(admin.email.toLowerCase()) ? (
+                    <form action={financeRejectSettlementAction}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="settlementId" value={r.id} />
+                      <button type="submit">{t(lang, "Reject", "驳回")}</button>
+                    </form>
+                  ) : null}
                 </td>
                 <td>
                   {exportReady ? (
@@ -784,5 +832,6 @@ export default async function PartnerSettlementPage({
     </div>
   );
 }
+
 
 

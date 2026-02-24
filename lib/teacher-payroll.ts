@@ -386,6 +386,46 @@ export async function financeConfirmTeacherPayroll(input: {
   return true;
 }
 
+export async function financeFinalizeTeacherPayroll(input: {
+  teacherId: string;
+  month: string;
+  scope?: string | null;
+  financeEmail: string;
+}) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month) || !input.financeEmail) return false;
+  const items = await loadPayrollPublishItems();
+  const key = payrollPublishKey(input.teacherId, input.month, scope);
+  const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
+  if (!existing) return false;
+  if (!existing.managerApprovedAt) return false;
+  const now = new Date().toISOString();
+  existing.financePaidAt = existing.financePaidAt ?? now;
+  existing.financePaidBy = input.financeEmail.trim().toLowerCase();
+  existing.financeConfirmedAt = now;
+  await savePayrollPublishItems(items);
+  return true;
+}
+
+export async function financeRejectTeacherPayroll(input: {
+  teacherId: string;
+  month: string;
+  scope?: string | null;
+}) {
+  const scope = normalizePayrollScope(input.scope);
+  if (!input.teacherId || !parseMonth(input.month)) return false;
+  const items = await loadPayrollPublishItems();
+  const key = payrollPublishKey(input.teacherId, input.month, scope);
+  const existing = items.find((x) => payrollPublishKey(x.teacherId, x.month, x.scope) === key);
+  if (!existing) return false;
+  if (!existing.managerApprovedAt) return false;
+  existing.financePaidAt = null;
+  existing.financePaidBy = null;
+  existing.financeConfirmedAt = null;
+  await savePayrollPublishItems(items);
+  return true;
+}
+
 export async function getTeacherPayrollPublishStatus(month: string, scopeInput?: string | null) {
   const scope = normalizePayrollScope(scopeInput);
   if (!parseMonth(month)) return new Map<string, PayrollPublishItem>();

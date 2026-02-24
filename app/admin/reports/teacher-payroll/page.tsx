@@ -2,8 +2,8 @@
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover, saveApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
 import {
-  financeConfirmTeacherPayroll,
-  financeMarkTeacherPayrollPaid,
+  financeFinalizeTeacherPayroll,
+  financeRejectTeacherPayroll,
   formatComboLabel,
   formatMoneyCents,
   getTeacherPayrollPublishStatus,
@@ -32,7 +32,10 @@ function normalizeOptionalId(v: FormDataEntryValue | null) {
 
 async function saveRateAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
@@ -62,7 +65,10 @@ async function saveRateAction(formData: FormData) {
 
 async function sendPayrollAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
@@ -81,7 +87,10 @@ async function sendPayrollAction(formData: FormData) {
 
 async function revokePayrollAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
@@ -100,7 +109,10 @@ async function revokePayrollAction(formData: FormData) {
 
 async function saveApprovalConfigAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
   const managerEmailsRaw = typeof formData.get("managerEmails") === "string" ? String(formData.get("managerEmails")) : "";
@@ -113,6 +125,9 @@ async function saveApprovalConfigAction(formData: FormData) {
 async function managerApprovePayrollAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/teacher-payroll?error=forbidden");
+  }
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
   const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
@@ -134,7 +149,7 @@ async function managerApprovePayrollAction(formData: FormData) {
   redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&mgr=1`);
 }
 
-async function financePaidPayrollAction(formData: FormData) {
+async function financeApprovePayrollAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
@@ -144,15 +159,15 @@ async function financePaidPayrollAction(formData: FormData) {
   if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
   }
-  const ok = await financeMarkTeacherPayrollPaid({ teacherId, month, scope, financeEmail: user.email });
+  const ok = await financeFinalizeTeacherPayroll({ teacherId, month, scope, financeEmail: user.email });
   if (!ok) {
-    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-paid`);
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-approve`);
   }
   revalidatePath("/admin/reports/teacher-payroll");
-  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finpaid=1`);
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finok=1`);
 }
 
-async function financeConfirmPayrollAction(formData: FormData) {
+async function financeRejectPayrollAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
@@ -162,18 +177,18 @@ async function financeConfirmPayrollAction(formData: FormData) {
   if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
     redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
   }
-  const ok = await financeConfirmTeacherPayroll({ teacherId, month, scope });
+  const ok = await financeRejectTeacherPayroll({ teacherId, month, scope });
   if (!ok) {
-    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-confirm`);
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-reject`);
   }
   revalidatePath("/admin/reports/teacher-payroll");
-  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&fincfm=1`);
+  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finrej=1`);
 }
 
 export default async function TeacherPayrollPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; cfg?: string; mgr?: string; finpaid?: string; fincfm?: string; error?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; cfg?: string; mgr?: string; finok?: string; finrej?: string; error?: string }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -187,13 +202,14 @@ export default async function TeacherPayrollPage({
   const revoked = sp?.revoked === "1";
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
-  const finPaidDone = sp?.finpaid === "1";
-  const finCfmDone = sp?.fincfm === "1";
+  const finApprovedDone = sp?.finok === "1";
+  const finRejectedDone = sp?.finrej === "1";
   const sendError = sp?.error === "send";
   const revokeError = sp?.error === "revoke";
   const roleConfig = await getApprovalRoleConfig();
   const isManagerApprover = isRoleApprover(current?.email ?? admin.email, roleConfig.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(current?.email ?? admin.email, roleConfig.financeApproverEmails);
+  const isFinanceOnlyUser = admin.role === "FINANCE";
 
   if (!parseMonth(month)) {
     return (
@@ -291,8 +307,8 @@ export default async function TeacherPayrollPage({
       {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
       {cfgSaved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Approval role config saved.", "审批角色配置已保存。")}</div> : null}
       {mgrDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Manager approval recorded.", "管理审批已记录。")}</div> : null}
-      {finPaidDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance payout recorded.", "财务发薪已记录。")}</div> : null}
-      {finCfmDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance confirmation recorded.", "财务确认已记录。")}</div> : null}
+      {finApprovedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance approval recorded.", "财务最终审批已记录。")}</div> : null}
+      {finRejectedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance rejection recorded.", "财务驳回已记录。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
       {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
@@ -301,11 +317,12 @@ export default async function TeacherPayrollPage({
       {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
       {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
-      {sp?.error === "fin-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance payout step failed.", "财务发薪步骤失败。")}</div> : null}
-      {sp?.error === "fin-confirm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance confirm step failed.", "财务确认步骤失败。")}</div> : null}
+      {sp?.error === "fin-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance approval failed.", "财务审批失败。")}</div> : null}
+      {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
+      {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
-      <h3>{t(lang, "Approval Role Config", "审批角色配置")}</h3>
-      <form action={saveApprovalConfigAction} style={{ marginBottom: 16, display: "grid", gap: 8, maxWidth: 900 }}>
+      {!isFinanceOnlyUser ? <h3>{t(lang, "Approval Role Config", "审批角色配置")}</h3> : null}
+      {!isFinanceOnlyUser ? <form action={saveApprovalConfigAction} style={{ marginBottom: 16, display: "grid", gap: 8, maxWidth: 900 }}>
         <input type="hidden" name="month" value={month} />
         <input type="hidden" name="scope" value={scope} />
         <label>
@@ -320,7 +337,7 @@ export default async function TeacherPayrollPage({
           {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
         </div>
         <div><button type="submit">{t(lang, "Save", "保存")}</button></div>
-      </form>
+      </form> : null}
 
       <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
         <div>
@@ -384,13 +401,15 @@ export default async function TeacherPayrollPage({
                 </td>
                 <td>
                   <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
-                    <form action={sendPayrollAction}>
-                      <input type="hidden" name="month" value={month} />
-                      <input type="hidden" name="scope" value={scope} />
-                      <input type="hidden" name="teacherId" value={row.teacherId} />
-                      <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
-                    </form>
-                    {publish ? (
+                    {!isFinanceOnlyUser ? (
+                      <form action={sendPayrollAction}>
+                        <input type="hidden" name="month" value={month} />
+                        <input type="hidden" name="scope" value={scope} />
+                        <input type="hidden" name="teacherId" value={row.teacherId} />
+                        <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
+                      </form>
+                    ) : null}
+                    {!isFinanceOnlyUser && publish ? (
                       <form action={revokePayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
@@ -406,20 +425,20 @@ export default async function TeacherPayrollPage({
                         <button type="submit">{t(lang, "Manager Approve", "管理审批")}</button>
                       </form>
                     ) : null}
-                    {publish && isFinanceApprover && managerAllConfirmed && !publish.financePaidAt ? (
-                      <form action={financePaidPayrollAction}>
+                    {publish && isFinanceApprover && managerAllConfirmed && !publish.financeConfirmedAt ? (
+                      <form action={financeApprovePayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
                         <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Mark Paid", "标记已发薪")}</button>
+                        <button type="submit">{t(lang, "Finance Approve", "财务最终审批")}</button>
                       </form>
                     ) : null}
-                    {publish && isFinanceApprover && Boolean(publish.financePaidAt) && !publish.financeConfirmedAt ? (
-                      <form action={financeConfirmPayrollAction}>
+                    {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (
+                      <form action={financeRejectPayrollAction}>
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="scope" value={scope} />
                         <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Finance Confirm", "财务确认")}</button>
+                        <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
                       </form>
                     ) : null}
                   </div>
@@ -430,7 +449,7 @@ export default async function TeacherPayrollPage({
         </table>
       )}
 
-      <h3>{t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}</h3>
+      {!isFinanceOnlyUser ? <h3>{t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}</h3> : null}
       <div style={{ marginBottom: 10, color: "#666" }}>
         {t(
           lang,
@@ -439,9 +458,10 @@ export default async function TeacherPayrollPage({
         )}
       </div>
 
-      {data.rateEditorRows.length === 0 ? (
+      {!isFinanceOnlyUser && data.rateEditorRows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>
-      ) : (
+      ) : null}
+      {!isFinanceOnlyUser ? (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
@@ -482,7 +502,7 @@ export default async function TeacherPayrollPage({
             ))}
           </tbody>
         </table>
-      )}
+      ) : null}
     </div>
   );
 }

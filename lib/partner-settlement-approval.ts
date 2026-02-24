@@ -94,10 +94,18 @@ export async function financeApprovePartnerSettlement(settlementId: string, appr
   await saveItems(items);
 }
 
+export async function financeRejectPartnerSettlement(settlementId: string, approverEmail: string) {
+  const items = await loadItems();
+  const item = ensureItem(items, settlementId);
+  const email = normalizeEmail(approverEmail);
+  item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
+  item.exportedAt = null;
+  await saveItems(items);
+}
+
 export async function markPartnerSettlementExported(settlementId: string) {
   const items = await loadItems();
   const item = ensureItem(items, settlementId);
   item.exportedAt = new Date().toISOString();
   await saveItems(items);
 }
-
