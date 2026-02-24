@@ -1596,7 +1596,13 @@ export default async function StudentDetailPage({
                             {s.class.course.name}
                             {s.class.subject ? ` / ${s.class.subject.name}` : ""}{" "}
                             {s.class.level ? ` / ${s.class.level.name}` : ""}
-                            {cancelled ? ` (${tl(lang, "Cancelled")})` : ""}
+                            <span
+                              data-session-cancel-suffix="1"
+                              style={{ display: cancelled ? "inline" : "none" }}
+                            >
+                              {" "}
+                              ({tl(lang, "Cancelled")})
+                            </span>
                             {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                           </div>
                           <div
@@ -1614,22 +1620,21 @@ export default async function StudentDetailPage({
                               {tl(lang, "Change Teacher")}: {teacherChange.fromTeacher.name} -&gt; {teacherChange.toTeacher.name}
                             </div>
                           ) : null}
-                          {cancelled ? (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                marginTop: 4,
-                                padding: "1px 6px",
-                                borderRadius: 999,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: "#fff",
-                                background: "#999",
-                              }}
-                            >
-                              {tl(lang, "Cancelled")}
-                            </span>
-                          ) : null}
+                          <span
+                            data-session-cancel-only="1"
+                            style={{
+                              display: cancelled ? "inline-block" : "none",
+                              marginTop: 4,
+                              padding: "1px 6px",
+                              borderRadius: 999,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: "#fff",
+                              background: "#999",
+                            }}
+                          >
+                            {tl(lang, "Cancelled")}
+                          </span>
                           <div style={{ marginTop: 4 }}>
                             <SessionCancelRestoreClient
                               studentId={studentId}
@@ -1953,6 +1958,7 @@ export default async function StudentDetailPage({
                 </div>
                 <div style={{ marginTop: 6 }}>
                   <span
+                    data-session-status-pill="1"
                     style={{
                       display: "inline-block",
                       padding: "2px 8px",
@@ -1963,7 +1969,13 @@ export default async function StudentDetailPage({
                       color: cancelled ? "#b42318" : "#027a48",
                     }}
                   >
-                    {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                    <span
+                      data-session-status-text="1"
+                      data-cancelled-text={tl(lang, "Cancelled")}
+                      data-active-text={tl(lang, "Scheduled")}
+                    >
+                      {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                    </span>
                   </span>
                 </div>
                 <div data-session-strike="1" style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
@@ -1979,7 +1991,13 @@ export default async function StudentDetailPage({
                   </span>
                 </div>
                 <div data-session-strike="1" style={{ marginTop: 6, color: cancelled ? "#b00" : "#555", fontWeight: cancelled ? 700 : 400 }}>
-                  {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                  <span
+                    data-session-status-text="1"
+                    data-cancelled-text={tl(lang, "Cancelled")}
+                    data-active-text={tl(lang, "Scheduled")}
+                  >
+                    {cancelled ? tl(lang, "Cancelled") : tl(lang, "Scheduled")}
+                  </span>
                   {att?.excusedCharge ? ` (${tl(lang, "Charged")})` : ""}
                 </div>
                 {teacherChange && teacherChange.fromTeacherId !== teacherChange.toTeacherId ? (

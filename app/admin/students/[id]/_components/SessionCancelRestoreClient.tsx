@@ -23,6 +23,29 @@ function applySessionVisualState(sessionId: string, cancelled: boolean) {
       if (cancelled) item.style.color = "#888";
       else item.style.color = "";
     });
+
+    const cancelOnlyNodes = node.querySelectorAll<HTMLElement>('[data-session-cancel-only="1"]');
+    cancelOnlyNodes.forEach((item) => {
+      item.style.display = cancelled ? "inline-block" : "none";
+    });
+
+    const cancelSuffixNodes = node.querySelectorAll<HTMLElement>('[data-session-cancel-suffix="1"]');
+    cancelSuffixNodes.forEach((item) => {
+      item.style.display = cancelled ? "inline" : "none";
+    });
+
+    const statusTextNodes = node.querySelectorAll<HTMLElement>('[data-session-status-text="1"]');
+    statusTextNodes.forEach((item) => {
+      const cancelledText = item.dataset.cancelledText ?? "Cancelled";
+      const activeText = item.dataset.activeText ?? "Scheduled";
+      item.textContent = cancelled ? cancelledText : activeText;
+    });
+
+    const statusPills = node.querySelectorAll<HTMLElement>('[data-session-status-pill="1"]');
+    statusPills.forEach((item) => {
+      item.style.background = cancelled ? "#fef2f2" : "#ecfdf3";
+      item.style.color = cancelled ? "#b42318" : "#027a48";
+    });
   });
 }
 
