@@ -89,13 +89,13 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
           })
         : await findStudentCourseEnrollment(studentId, courseId);
     if (existingEnrollment) {
-      const existingClass = await prisma.class.findUnique({
+        const existingClass = await prisma.class.findUnique({
         where: { id: existingEnrollment.classId },
       });
       if (existingClass) {
         const subjectMismatch = subjectId != null && existingClass.subjectId !== subjectId;
-        const levelMismatch = levelId != null && existingClass.levelId !== levelId;
-        if (existingClass.capacity !== 1 || subjectMismatch || levelMismatch) {
+        // Keep strict subject consistency, but allow level differences for existing 1-on-1 enrollments.
+        if (existingClass.capacity !== 1 || subjectMismatch) {
           throw new Error("COURSE_ENROLLMENT_CONFLICT");
         }
         return existingClass;
