@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 async function jsonOrNull(res: Response) {
   try {
@@ -24,6 +25,7 @@ export default function SessionCancelRestoreClient(props: {
     note: string;
   };
 }) {
+  const router = useRouter();
   const { studentId, sessionId, initialCancelled, initialCharge, variant, labels } = props;
   const [cancelled, setCancelled] = useState(initialCancelled);
   const [charge, setCharge] = useState(Boolean(initialCharge));
@@ -47,6 +49,7 @@ export default function SessionCancelRestoreClient(props: {
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Cancel failed"));
       setCancelled(true);
       setDoneMsg("OK");
+      router.refresh();
     } catch (e: any) {
       setError(String(e?.message ?? "Cancel failed"));
     } finally {
@@ -70,6 +73,7 @@ export default function SessionCancelRestoreClient(props: {
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Restore failed"));
       setCancelled(false);
       setDoneMsg("OK");
+      router.refresh();
     } catch (e: any) {
       setError(String(e?.message ?? "Restore failed"));
     } finally {
@@ -128,4 +132,3 @@ export default function SessionCancelRestoreClient(props: {
     </span>
   );
 }
-
