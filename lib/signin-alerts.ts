@@ -5,7 +5,7 @@ export const SIGNIN_THRESHOLD_KEY = "signin_alert_threshold_min";
 export const DEFAULT_SIGNIN_ALERT_THRESHOLD_MIN = 10;
 const SIGNIN_ALERT_SYNC_LAST_AT_KEY = "signin_alert_sync_last_at";
 const SIGNIN_ALERT_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
-const SIGNIN_LOOKBACK_DAYS = 7;
+const SIGNIN_LOOKBACK_DAYS = 60;
 const FEEDBACK_ALERT_LOOKBACK_DAYS = 60;
 
 export const ALERT_TYPE_TEACHER = "TEACHER_SIGNIN_MISSED";
