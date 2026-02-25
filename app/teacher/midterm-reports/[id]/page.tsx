@@ -279,18 +279,33 @@ export default async function TeacherMidtermReportDetailPage({
         </div>
 
         <div style={{ border: "1px solid #fbcfe8", borderRadius: 10, background: "#fdf2f8", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 2 }}>{t(lang, "iTEP Predicted (Optional)", "iTEP 预估分（可选）")}</div>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>{t(lang, "Exam Score Block (Optional)", "考试成绩板块（可选）")}</div>
           <div style={{ fontSize: 12, color: "#7c2d12", marginBottom: 6 }}>
-            {t(lang, "Fill only if this student uses iTEP path.", "仅当该学生走 iTEP 路径时填写。")}
+            {t(
+              lang,
+              "Customize exam name and score items (e.g. iTEP / WIDA / IELTS). Leave blank to hide this section in PDF.",
+              "可自定义考试名称与分项（如 iTEP / WIDA / IELTS）；若不填写，PDF 中将不显示该板块。"
+            )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(100px, 1fr))", gap: 8 }}>
-            <label>Grammar<input name="itepGrammar" defaultValue={draft.itepGrammar} /></label>
-            <label>Vocab<input name="itepVocab" defaultValue={draft.itepVocab} /></label>
-            <label>Listening<input name="itepListening" defaultValue={draft.itepListening} /></label>
-            <label>Reading<input name="itepReading" defaultValue={draft.itepReading} /></label>
-            <label>Writing<input name="itepWriting" defaultValue={draft.itepWriting} /></label>
-            <label>Speaking<input name="itepSpeaking" defaultValue={draft.itepSpeaking} /></label>
-            <label>Total<input name="itepTotal" defaultValue={draft.itepTotal} /></label>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            {t(lang, "Exam Name", "考试名称")}
+            <input name="examName" defaultValue={draft.examName} placeholder="iTEP / WIDA / IELTS..." style={{ width: "100%" }} />
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(220px, 1fr))", gap: 8 }}>
+            <label>{t(lang, "Item 1 Name", "分项1名称")}<input name="examMetric1Label" defaultValue={draft.examMetric1Label} /></label>
+            <label>{t(lang, "Item 1 Score", "分项1分数")}<input name="examMetric1Value" defaultValue={draft.examMetric1Value} /></label>
+            <label>{t(lang, "Item 2 Name", "分项2名称")}<input name="examMetric2Label" defaultValue={draft.examMetric2Label} /></label>
+            <label>{t(lang, "Item 2 Score", "分项2分数")}<input name="examMetric2Value" defaultValue={draft.examMetric2Value} /></label>
+            <label>{t(lang, "Item 3 Name", "分项3名称")}<input name="examMetric3Label" defaultValue={draft.examMetric3Label} /></label>
+            <label>{t(lang, "Item 3 Score", "分项3分数")}<input name="examMetric3Value" defaultValue={draft.examMetric3Value} /></label>
+            <label>{t(lang, "Item 4 Name", "分项4名称")}<input name="examMetric4Label" defaultValue={draft.examMetric4Label} /></label>
+            <label>{t(lang, "Item 4 Score", "分项4分数")}<input name="examMetric4Value" defaultValue={draft.examMetric4Value} /></label>
+            <label>{t(lang, "Item 5 Name", "分项5名称")}<input name="examMetric5Label" defaultValue={draft.examMetric5Label} /></label>
+            <label>{t(lang, "Item 5 Score", "分项5分数")}<input name="examMetric5Value" defaultValue={draft.examMetric5Value} /></label>
+            <label>{t(lang, "Item 6 Name", "分项6名称")}<input name="examMetric6Label" defaultValue={draft.examMetric6Label} /></label>
+            <label>{t(lang, "Item 6 Score", "分项6分数")}<input name="examMetric6Value" defaultValue={draft.examMetric6Value} /></label>
+            <label>{t(lang, "Total Label", "总分名称")}<input name="examTotalLabel" defaultValue={draft.examTotalLabel} placeholder="Total" /></label>
+            <label>{t(lang, "Total Score", "总分")}<input name="examTotalValue" defaultValue={draft.examTotalValue} /></label>
           </div>
         </div>
 

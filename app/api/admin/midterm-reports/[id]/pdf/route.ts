@@ -121,29 +121,35 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   y = drawParagraph(doc, `Suggested Practice Load / 建议练习时长: ${draft.suggestedPracticeLoad || "-"}`, y);
   y = drawParagraph(doc, `Target Level / Target Score / 目标等级或分数: ${draft.targetLevelScore || "-"}`, y);
 
-  y = ensurePage(doc, y, 120);
-  y = drawSectionTitle(doc, "iTEP Predicted (Optional) / iTEP 预估分（可选）", y);
-  const hasAnyItep =
-    String(draft.itepGrammar || "").trim() ||
-    String(draft.itepVocab || "").trim() ||
-    String(draft.itepListening || "").trim() ||
-    String(draft.itepReading || "").trim() ||
-    String(draft.itepWriting || "").trim() ||
-    String(draft.itepSpeaking || "").trim() ||
-    String(draft.itepTotal || "").trim();
-  if (!hasAnyItep) {
-    y = drawParagraph(doc, "Not provided (optional) / 未提供（可选）", y, "#6b7280");
-  } else {
-    y = drawParagraph(
+  const examRows = [
+    { label: draft.examMetric1Label, value: draft.examMetric1Value },
+    { label: draft.examMetric2Label, value: draft.examMetric2Value },
+    { label: draft.examMetric3Label, value: draft.examMetric3Value },
+    { label: draft.examMetric4Label, value: draft.examMetric4Value },
+    { label: draft.examMetric5Label, value: draft.examMetric5Value },
+    { label: draft.examMetric6Label, value: draft.examMetric6Value },
+    { label: draft.examTotalLabel, value: draft.examTotalValue },
+  ].filter((r) => String(r.label || "").trim() || String(r.value || "").trim());
+  const hasExamBlock = String(draft.examName || "").trim() || examRows.length > 0;
+  if (hasExamBlock) {
+    y = ensurePage(doc, y, 120);
+    const examTitle = String(draft.examName || "").trim();
+    y = drawSectionTitle(
       doc,
-      `Grammar: ${draft.itepGrammar || "-"}   Vocab: ${draft.itepVocab || "-"}   Listening: ${draft.itepListening || "-"}`,
+      examTitle
+        ? `${examTitle} Score Breakdown (Optional) / ${examTitle} 成绩分项（可选）`
+        : "Exam Score Breakdown (Optional) / 考试成绩分项（可选）",
       y
     );
-    y = drawParagraph(
-      doc,
-      `Reading: ${draft.itepReading || "-"}   Writing: ${draft.itepWriting || "-"}   Speaking: ${draft.itepSpeaking || "-"}   Total: ${draft.itepTotal || "-"}`,
-      y
-    );
+    if (examRows.length === 0) {
+      y = drawParagraph(doc, "No score items provided. / 未填写分项分数。", y, "#6b7280");
+    } else {
+      for (const row of examRows) {
+        const name = String(row.label || "").trim() || "-";
+        const score = String(row.value || "").trim() || "-";
+        y = drawParagraph(doc, `${name}: ${score}`, y);
+      }
+    }
   }
 
   setPdfFont(doc);

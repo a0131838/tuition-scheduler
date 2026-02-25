@@ -40,14 +40,22 @@ export type MidtermReportDraft = {
   suggestedPracticeLoad: string;
   targetLevelScore: string;
 
-  // Optional block
-  itepGrammar: string;
-  itepVocab: string;
-  itepListening: string;
-  itepReading: string;
-  itepWriting: string;
-  itepSpeaking: string;
-  itepTotal: string;
+  // Optional exam block (fully customizable)
+  examName: string;
+  examMetric1Label: string;
+  examMetric1Value: string;
+  examMetric2Label: string;
+  examMetric2Value: string;
+  examMetric3Label: string;
+  examMetric3Value: string;
+  examMetric4Label: string;
+  examMetric4Value: string;
+  examMetric5Label: string;
+  examMetric5Value: string;
+  examMetric6Label: string;
+  examMetric6Value: string;
+  examTotalLabel: string;
+  examTotalValue: string;
 };
 
 export const DEFAULT_WARNING_NOTE =
@@ -98,13 +106,21 @@ export const EMPTY_REPORT_DRAFT: MidtermReportDraft = {
   suggestedPracticeLoad: "",
   targetLevelScore: "",
 
-  itepGrammar: "",
-  itepVocab: "",
-  itepListening: "",
-  itepReading: "",
-  itepWriting: "",
-  itepSpeaking: "",
-  itepTotal: "",
+  examName: "",
+  examMetric1Label: "",
+  examMetric1Value: "",
+  examMetric2Label: "",
+  examMetric2Value: "",
+  examMetric3Label: "",
+  examMetric3Value: "",
+  examMetric4Label: "",
+  examMetric4Value: "",
+  examMetric5Label: "",
+  examMetric5Value: "",
+  examMetric6Label: "",
+  examMetric6Value: "",
+  examTotalLabel: "",
+  examTotalValue: "",
 };
 
 function asString(v: unknown) {
@@ -158,13 +174,21 @@ export function parseReportDraft(raw: unknown): MidtermReportDraft {
     suggestedPracticeLoad: asString(row.suggestedPracticeLoad),
     targetLevelScore: asString(row.targetLevelScore),
 
-    itepGrammar: asString(row.itepGrammar),
-    itepVocab: asString(row.itepVocab),
-    itepListening: asString(row.itepListening),
-    itepReading: asString(row.itepReading),
-    itepWriting: asString(row.itepWriting),
-    itepSpeaking: asString(row.itepSpeaking),
-    itepTotal: asString(row.itepTotal),
+    examName: asString(row.examName),
+    examMetric1Label: asString(row.examMetric1Label) || (asString(row.itepGrammar) ? "Grammar" : ""),
+    examMetric1Value: asString(row.examMetric1Value) || asString(row.itepGrammar),
+    examMetric2Label: asString(row.examMetric2Label) || (asString(row.itepVocab) ? "Vocab" : ""),
+    examMetric2Value: asString(row.examMetric2Value) || asString(row.itepVocab),
+    examMetric3Label: asString(row.examMetric3Label) || (asString(row.itepListening) ? "Listening" : ""),
+    examMetric3Value: asString(row.examMetric3Value) || asString(row.itepListening),
+    examMetric4Label: asString(row.examMetric4Label) || (asString(row.itepReading) ? "Reading" : ""),
+    examMetric4Value: asString(row.examMetric4Value) || asString(row.itepReading),
+    examMetric5Label: asString(row.examMetric5Label) || (asString(row.itepWriting) ? "Writing" : ""),
+    examMetric5Value: asString(row.examMetric5Value) || asString(row.itepWriting),
+    examMetric6Label: asString(row.examMetric6Label) || (asString(row.itepSpeaking) ? "Speaking" : ""),
+    examMetric6Value: asString(row.examMetric6Value) || asString(row.itepSpeaking),
+    examTotalLabel: asString(row.examTotalLabel) || (asString(row.itepTotal) ? "Total" : ""),
+    examTotalValue: asString(row.examTotalValue) || asString(row.itepTotal),
   };
 }
 
@@ -208,13 +232,21 @@ export function parseDraftFromFormData(formData: FormData): MidtermReportDraft {
     suggestedPracticeLoad: read("suggestedPracticeLoad"),
     targetLevelScore: read("targetLevelScore"),
 
-    itepGrammar: read("itepGrammar"),
-    itepVocab: read("itepVocab"),
-    itepListening: read("itepListening"),
-    itepReading: read("itepReading"),
-    itepWriting: read("itepWriting"),
-    itepSpeaking: read("itepSpeaking"),
-    itepTotal: read("itepTotal"),
+    examName: read("examName"),
+    examMetric1Label: read("examMetric1Label"),
+    examMetric1Value: read("examMetric1Value"),
+    examMetric2Label: read("examMetric2Label"),
+    examMetric2Value: read("examMetric2Value"),
+    examMetric3Label: read("examMetric3Label"),
+    examMetric3Value: read("examMetric3Value"),
+    examMetric4Label: read("examMetric4Label"),
+    examMetric4Value: read("examMetric4Value"),
+    examMetric5Label: read("examMetric5Label"),
+    examMetric5Value: read("examMetric5Value"),
+    examMetric6Label: read("examMetric6Label"),
+    examMetric6Value: read("examMetric6Value"),
+    examTotalLabel: read("examTotalLabel"),
+    examTotalValue: read("examTotalValue"),
   });
 }
 
