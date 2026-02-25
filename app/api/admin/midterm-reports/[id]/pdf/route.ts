@@ -61,8 +61,6 @@ function normalizeText(input: string | null | undefined) {
   return raw || "-";
 }
 
-const LEADING_PUNCTUATION = /^[，。；：！？、,.!?;:]/;
-
 function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, fontSize: number) {
   const source = normalizeText(text);
   setPdfFont(doc);
@@ -104,20 +102,18 @@ function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, f
 
   const truncated = lines.slice(0, maxLines);
 
-  // Avoid punctuation at the beginning of a new line.
+  // Avoid single-character dangling lines by borrowing one char from previous line.
   for (let i = 1; i < truncated.length; i += 1) {
-    let cur = truncated[i];
-    while (cur.length > 0 && LEADING_PUNCTUATION.test(cur[0])) {
-      const lead = cur[0];
-      const prev = truncated[i - 1];
-      if (doc.widthOfString(`${prev}${lead}`) <= width + 0.5) {
-        truncated[i - 1] = `${prev}${lead}`;
-        cur = cur.slice(1);
-      } else {
-        break;
+    const cur = truncated[i] ?? "";
+    const prev = truncated[i - 1] ?? "";
+    if (cur.length <= 1 && prev.length >= 2) {
+      const borrow = prev.slice(-1);
+      const candidate = `${borrow}${cur}`;
+      if (doc.widthOfString(candidate) <= width + 0.5) {
+        truncated[i - 1] = prev.slice(0, -1);
+        truncated[i] = candidate;
       }
     }
-    truncated[i] = cur;
   }
 
   return truncated.length > 0 ? truncated : ["-"];
