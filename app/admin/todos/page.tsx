@@ -268,7 +268,14 @@ export default async function AdminTodosPage({
   const todayAttendances = sessionsTodayAll.length
     ? await prisma.attendance.findMany({
         where: { sessionId: { in: sessionsTodayAll.map((s) => s.id) } },
-        select: { sessionId: true, studentId: true, status: true },
+        select: {
+          sessionId: true,
+          studentId: true,
+          status: true,
+          deductedMinutes: true,
+          deductedCount: true,
+          excusedCharge: true,
+        },
       })
     : [];
   const todayAttendanceBySession = new Map<string, typeof todayAttendances>();
@@ -278,6 +285,9 @@ export default async function AdminTodosPage({
     todayAttendanceBySession.set(a.sessionId, arr);
   }
   const unmarkedMap = new Map<string, number>();
+  const deductRequiredMap = new Map<string, number>();
+  const deductDoneMap = new Map<string, number>();
+  const deductPendingMap = new Map<string, number>();
   const sessionsToday = sessionsTodayAll.filter((s) => {
     const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, todayEnrollmentsByClass, todayAttendanceBySession);
     if (expectedStudentIds.length === 0) return false;
@@ -296,6 +306,41 @@ export default async function AdminTodosPage({
     unmarkedMap.set(s.id, unmarkedCount);
     return true;
   });
+  for (const s of sessionsTodayAll) {
+    const expectedStudentIds = expectedStudentIdsForAttendanceTask(s, todayEnrollmentsByClass, todayAttendanceBySession);
+    if (expectedStudentIds.length === 0) {
+      deductRequiredMap.set(s.id, 0);
+      deductDoneMap.set(s.id, 0);
+      deductPendingMap.set(s.id, 0);
+      continue;
+    }
+
+    const rowsByStudent = new Map((todayAttendanceBySession.get(s.id) ?? []).map((a) => [a.studentId, a]));
+    const isGroupClass = s.class.capacity !== 1;
+    let required = 0;
+    let done = 0;
+
+    for (const sid of expectedStudentIds) {
+      const row = rowsByStudent.get(sid);
+      if (!row) continue;
+      const status = row.status;
+      const requiresDeduct =
+        status === "PRESENT" ||
+        status === "LATE" ||
+        (status === "EXCUSED" && Boolean((row as any).excusedCharge));
+      if (!requiresDeduct) continue;
+
+      required += 1;
+      const hasDeduct = isGroupClass
+        ? Number((row as any).deductedCount ?? 0) > 0
+        : Number((row as any).deductedMinutes ?? 0) > 0;
+      if (hasDeduct) done += 1;
+    }
+
+    deductRequiredMap.set(s.id, required);
+    deductDoneMap.set(s.id, done);
+    deductPendingMap.set(s.id, Math.max(0, required - done));
+  }
   const yesterdayClassIds = Array.from(new Set(sessionsYesterdayAll.map((s) => s.classId)));
   const yesterdayEnrollments = yesterdayClassIds.length
     ? await prisma.enrollment.findMany({
@@ -1129,6 +1174,32 @@ export default async function AdminTodosPage({
                     <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>
                       {t(lang, "Unmarked", "未点名")}: {unmarkedMap.get(s.id) ?? 0}
                     </span>
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 12 }}>
+                    {(() => {
+                      const required = deductRequiredMap.get(s.id) ?? 0;
+                      const done = deductDoneMap.get(s.id) ?? 0;
+                      const pending = deductPendingMap.get(s.id) ?? 0;
+                      if (required <= 0) {
+                        return (
+                          <span style={{ color: "#6b7280" }}>
+                            {t(lang, "Deduct", "减扣")}: {t(lang, "No deduction required", "无需减扣")}
+                          </span>
+                        );
+                      }
+                      if (pending > 0) {
+                        return (
+                          <span style={{ color: "#b91c1c", fontWeight: 700 }}>
+                            {t(lang, "Deduct", "减扣")}: {t(lang, "Pending", "待减扣")} {pending} ({done}/{required})
+                          </span>
+                        );
+                      }
+                      return (
+                        <span style={{ color: "#166534", fontWeight: 700 }}>
+                          {t(lang, "Deduct", "减扣")}: {t(lang, "Completed", "已减扣")} ({done}/{required})
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
