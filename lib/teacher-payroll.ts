@@ -84,7 +84,14 @@ export type PayrollTeacherDetailSessionRow = {
   amountCents: number;
   isCompleted: boolean;
   isChargedExcused: boolean;
+  pendingReason: PayrollPendingReason | null;
 };
+
+export type PayrollPendingReason =
+  | "ATTENDANCE_MISSING"
+  | "ATTENDANCE_UNMARKED"
+  | "FEEDBACK_MISSING"
+  | "ATTENDANCE_AND_FEEDBACK_MISSING";
 
 type PayrollRateItem = {
   teacherId: string;
@@ -959,14 +966,37 @@ function isSessionCompleted(
   },
   teacherId: string
 ) {
-  if (isFullyCancelledSessionForPayroll(session)) return false;
-  if (!session.attendances.length) return false;
+  const state = getSessionCompletionState(session, teacherId);
+  return state.completed;
+}
+
+function getSessionCompletionState(
+  session: {
+    studentId?: string | null;
+    teacherId: string | null;
+    class: { teacherId: string; capacity?: number | null; oneOnOneStudentId?: string | null; enrollments?: Array<{ studentId?: string | null }> };
+    attendances: Array<{ studentId?: string | null; status: string; excusedCharge?: boolean | null; deductedMinutes?: number | null; deductedCount?: number | null }>;
+    feedbacks: Array<{ teacherId: string; content: string }>;
+  },
+  teacherId: string
+): { completed: boolean; pendingReason: PayrollPendingReason | null } {
+  if (isFullyCancelledSessionForPayroll(session)) return { completed: false, pendingReason: "ATTENDANCE_MISSING" };
+  const hasAttendanceRows = session.attendances.length > 0;
   const allMarked = session.attendances.every((a) => a.status !== "UNMARKED");
-  if (!allMarked) return false;
   const effectiveTeacherId = session.teacherId ?? session.class.teacherId;
   const feedbackTeacherId = effectiveTeacherId || teacherId;
   const hasFeedback = session.feedbacks.some((f) => f.teacherId === feedbackTeacherId && String(f.content ?? "").trim().length > 0);
-  return hasFeedback;
+  const attendanceReady = hasAttendanceRows && allMarked;
+  const completed = attendanceReady && hasFeedback;
+  if (completed) return { completed: true, pendingReason: null };
+  if (!attendanceReady && !hasFeedback) {
+    return { completed: false, pendingReason: "ATTENDANCE_AND_FEEDBACK_MISSING" };
+  }
+  if (!attendanceReady) {
+    if (!hasAttendanceRows) return { completed: false, pendingReason: "ATTENDANCE_MISSING" };
+    return { completed: false, pendingReason: "ATTENDANCE_UNMARKED" };
+  }
+  return { completed: false, pendingReason: "FEEDBACK_MISSING" };
 }
 
 export async function loadTeacherPayrollDetail(month: string, teacherId: string, scopeInput?: string | null) {
@@ -1045,7 +1075,8 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     if (isFullyCancelledSessionForPayroll(s)) continue;
     const effectiveTeacherId = s.teacherId ?? s.class.teacherId;
     if (effectiveTeacherId !== teacherId) continue;
-    const completed = isSessionCompleted(s, teacherId);
+    const completion = getSessionCompletionState(s, teacherId);
+    const completed = completion.completed;
     if (scope === "completed" && !completed) continue;
     const chargedExcused = hasChargedExcusedAttendance(s);
 
@@ -1101,6 +1132,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       amountCents,
       isCompleted: completed,
       isChargedExcused: chargedExcused,
+      pendingReason: completion.pendingReason,
     });
 
     totalMinutes += minutes;
