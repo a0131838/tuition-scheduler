@@ -277,48 +277,46 @@ export async function syncSignInAlerts(now = new Date()) {
       },
     });
 
-    await prisma.$transaction(async (tx) => {
-      for (const d of desiredList) {
-        await tx.signInAlert.upsert({
-          where: {
-            sessionId_alertType_targetRole_scopeKey: {
-              sessionId: d.sessionId,
-              alertType: d.alertType,
-              targetRole: d.targetRole,
-              scopeKey: d.scopeKey,
-            },
-          },
-          create: {
+    for (const d of desiredList) {
+      await prisma.signInAlert.upsert({
+        where: {
+          sessionId_alertType_targetRole_scopeKey: {
             sessionId: d.sessionId,
             alertType: d.alertType,
             targetRole: d.targetRole,
-            targetUserId: d.targetUserId,
-            studentId: d.studentId,
             scopeKey: d.scopeKey,
-            thresholdMin,
-            firstTriggeredAt: now,
-            lastTriggeredAt: now,
           },
-          update: {
-            targetUserId: d.targetUserId,
-            studentId: d.studentId,
-            thresholdMin,
-            lastTriggeredAt: now,
-            resolvedAt: null,
-          },
+        },
+        create: {
+          sessionId: d.sessionId,
+          alertType: d.alertType,
+          targetRole: d.targetRole,
+          targetUserId: d.targetUserId,
+          studentId: d.studentId,
+          scopeKey: d.scopeKey,
+          thresholdMin,
+          firstTriggeredAt: now,
+          lastTriggeredAt: now,
+        },
+        update: {
+          targetUserId: d.targetUserId,
+          studentId: d.studentId,
+          thresholdMin,
+          lastTriggeredAt: now,
+          resolvedAt: null,
+        },
+      });
+    }
+
+    for (const e of existingOpen) {
+      const key = `${e.sessionId}|${e.alertType}|${e.targetRole}|${e.scopeKey}`;
+      if (!desiredKeySet.has(key)) {
+        await prisma.signInAlert.update({
+          where: { id: e.id },
+          data: { resolvedAt: now },
         });
       }
-
-      for (const e of existingOpen) {
-        const key = `${e.sessionId}|${e.alertType}|${e.targetRole}|${e.scopeKey}`;
-        if (!desiredKeySet.has(key)) {
-          await tx.signInAlert.update({
-            where: { id: e.id },
-            data: { resolvedAt: now },
-          });
-        }
-      }
-    });
+    }
   } catch (err) {
     if (isMissingTableError(err)) return { thresholdMin, activeCount: 0 };
     throw err;
