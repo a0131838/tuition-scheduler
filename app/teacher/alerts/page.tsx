@@ -109,7 +109,15 @@ export default async function TeacherAlertsPage({
   const msg = decode(sp?.msg);
   const err = decode(sp?.err);
 
-  await syncSignInAlerts();
+  let syncDegraded = false;
+  let syncDegradedText = "";
+  try {
+    await syncSignInAlerts();
+  } catch (e: any) {
+    syncDegraded = true;
+    syncDegradedText = String(e?.code ?? e?.name ?? "SYNC_FAILED");
+  }
+
   const alerts = await getTeacherVisibleSignInAlerts(user.id, { limit: 500, keepResolvedHours: 72 });
 
   const grouped = new Map<string, { session: any; items: (typeof alerts)[number][] }>();
@@ -213,6 +221,25 @@ export default async function TeacherAlertsPage({
 
       {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ color: "#087" }}>{msg}</div> : null}
+      {syncDegraded ? (
+        <div
+          style={{
+            border: "1px solid #f59e0b",
+            background: "#fffbeb",
+            color: "#92400e",
+            borderRadius: 10,
+            padding: "8px 10px",
+            fontSize: 13,
+          }}
+        >
+          {t(
+            lang,
+            "Alert sync is temporarily unavailable. Showing existing records in read-only mode; please refresh later.",
+            "告警同步暂时不可用，当前以只读模式显示已有记录，请稍后刷新重试。"
+          )}
+          {syncDegradedText ? ` (${syncDegradedText})` : ""}
+        </div>
+      ) : null}
 
       {visibleRows.length === 0 ? (
         <div style={{ color: "#999" }}>
