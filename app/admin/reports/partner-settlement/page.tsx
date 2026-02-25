@@ -477,6 +477,14 @@ export default async function PartnerSettlementPage({
     totalMinutes: number | null;
   }> = [];
   let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number; chargedExcusedSessions: number }> = [];
+  let offlineWarnings: Array<{
+    studentId: string;
+    studentName: string;
+    totalAttendances: number;
+    eligibleAttendances: number;
+    missingFeedbackCount: number;
+    statusExcludedCount: number;
+  }> = [];
   let settlementApprovalMap = new Map<string, {
     managerApprovedBy: string[];
     financeApprovedBy: string[];
@@ -535,7 +543,7 @@ export default async function PartnerSettlementPage({
     });
     onlinePending = onlinePackages.filter((p) => p.settlements.length === 0);
 
-    const [offlineAttendanceRows, offlineSettledRows] = await Promise.all([
+    const [offlineAttendanceRows, offlineSettledRows, offlineAuditRows] = await Promise.all([
       prisma.attendance.findMany({
         where: {
           package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
@@ -571,6 +579,30 @@ export default async function PartnerSettlementPage({
         },
         select: { id: true, studentId: true },
       }),
+      prisma.attendance.findMany({
+        where: {
+          package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
+          student: { sourceChannelId: source.id },
+          session: {
+            startAt: { gte: monthRange.start, lt: monthRange.end },
+          },
+        },
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          student: { select: { name: true } },
+          session: {
+            select: {
+              feedbacks: {
+                where: { content: { not: "" } },
+                select: { id: true },
+                take: 1,
+              },
+            },
+          },
+        },
+      }),
     ]);
 
     const offlineSettledSet = new Set(offlineSettledRows.map((x) => x.studentId));
@@ -604,6 +636,37 @@ export default async function PartnerSettlementPage({
         hours: toHours(agg.totalMinutes),
         chargedExcusedSessions: agg.chargedExcusedSessions,
       }))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+    const warningAgg = new Map<string, {
+      studentName: string;
+      totalAttendances: number;
+      eligibleAttendances: number;
+      missingFeedbackCount: number;
+      statusExcludedCount: number;
+    }>();
+    for (const row of offlineAuditRows) {
+      const hasFeedback = row.session.feedbacks.length > 0;
+      const eligibleStatus = isAttendanceSettlementEligible(row);
+      const prev = warningAgg.get(row.studentId);
+      if (prev) {
+        prev.totalAttendances += 1;
+        if (hasFeedback && eligibleStatus) prev.eligibleAttendances += 1;
+        if (!hasFeedback) prev.missingFeedbackCount += 1;
+        if (!eligibleStatus) prev.statusExcludedCount += 1;
+      } else {
+        warningAgg.set(row.studentId, {
+          studentName: row.student?.name ?? "-",
+          totalAttendances: 1,
+          eligibleAttendances: hasFeedback && eligibleStatus ? 1 : 0,
+          missingFeedbackCount: hasFeedback ? 0 : 1,
+          statusExcludedCount: eligibleStatus ? 0 : 1,
+        });
+      }
+    }
+    offlineWarnings = Array.from(warningAgg.entries())
+      .filter(([studentId, agg]) => !offlineSettledSet.has(studentId) && agg.totalAttendances !== agg.eligibleAttendances)
+      .map(([studentId, agg]) => ({ studentId, ...agg }))
       .sort((a, b) => a.studentName.localeCompare(b.studentName));
 
     recentSettlements = await prisma.partnerSettlement.findMany({
@@ -782,6 +845,54 @@ export default async function PartnerSettlementPage({
           "统计口径：纳入 status in (PRESENT, LATE) 或（EXCUSED 且已扣课时），课包模式 = OFFLINE_MONTHLY、课次开始时间在所选月份（按 UTC+8 业务月）且该课次反馈不为空。课次 = 点名记录数；课时 = 所有课次（结束时间-开始时间）分钟总和 / 60。并额外标记“取消但扣课时”数量。"
         )}
       </div>
+      {offlineWarnings.length > 0 ? (
+        <div
+          style={{
+            marginBottom: 12,
+            border: "1px solid #f59e0b",
+            background: "#fffbeb",
+            borderRadius: 8,
+            padding: "10px 12px",
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
+            {t(lang, "Settlement Warnings", "结算预警")} ({offlineWarnings.length})
+          </div>
+          <div style={{ color: "#92400e", fontSize: 13, marginBottom: 8 }}>
+            {t(
+              lang,
+              "Monthly attendance count differs from settlement count for these pending students. Please verify feedback/status before billing.",
+              "以下待结算学生存在“月内点名数”与“可结算数”不一致，请先核对反馈与状态后再生成账单。"
+            )}
+          </div>
+          <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr style={{ background: "#fef3c7" }}>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Attendance Total", "点名总数")}</th>
+                <th align="left">{t(lang, "Settlement Eligible", "可结算数")}</th>
+                <th align="left">{t(lang, "Gap", "差额")}</th>
+                <th align="left">{t(lang, "Missing Feedback", "缺反馈")}</th>
+                <th align="left">{t(lang, "Status Excluded", "状态不纳入")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {offlineWarnings.map((w) => (
+                <tr key={w.studentId} style={{ borderTop: "1px solid #fde68a" }}>
+                  <td>
+                    <a href={studentAttendanceHref(w.studentId)}>{w.studentName}</a>
+                  </td>
+                  <td>{w.totalAttendances}</td>
+                  <td>{w.eligibleAttendances}</td>
+                  <td style={{ color: "#b45309", fontWeight: 700 }}>{w.totalAttendances - w.eligibleAttendances}</td>
+                  <td>{w.missingFeedbackCount}</td>
+                  <td>{w.statusExcludedCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
       {offlinePending.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "暂无线下待结算项。")}</div>
       ) : (
