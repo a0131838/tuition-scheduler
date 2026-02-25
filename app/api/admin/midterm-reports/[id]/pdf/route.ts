@@ -86,8 +86,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const contentH = pageH - top * 2;
 
   setPdfBoldFont(doc);
-  doc.fillColor("#7f1d1d").fontSize(13).text("MID-TERM / PROGRESS ASSESSMENT REPORT", left, top);
-  doc.fontSize(10.5).text("阶段性学习评估报告", left + 360, top + 1);
+  doc.fillColor("#7f1d1d").fontSize(14).text("阶段性学习评估报告", left, top);
   setPdfFont(doc);
 
   // Row 1: Student info + Important note
@@ -96,15 +95,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const gap = 8;
   const w1a = Math.floor(contentW * 0.52);
   const w1b = contentW - w1a - gap;
-  drawTitleBlock(doc, left, y1, w1a, h1, "Student Information / 学生基本信息");
-  drawKeyValue(doc, left + 8, y1 + 20, 160, "Student / 学生", report.student.name);
-  drawKeyValue(doc, left + 176, y1 + 20, 140, "Date / 日期", new Date().toLocaleDateString());
-  drawKeyValue(doc, left + 324, y1 + 20, w1a - 332, "Period / 评估阶段", report.reportPeriodLabel || "-");
-  drawKeyValue(doc, left + 8, y1 + 46, 220, "Tool / 评估工具", draft.assessmentTool || "-");
-  drawKeyValue(doc, left + 236, y1 + 46, 120, "Score / 综合成绩", String(report.overallScore ?? "-"));
-  drawKeyValue(doc, left + 364, y1 + 46, w1a - 372, "Estimated CEFR / 预估CEFR", report.examTargetStatus || "-");
+  drawTitleBlock(doc, left, y1, w1a, h1, "学生基本信息");
+  drawKeyValue(doc, left + 8, y1 + 20, 160, "学生姓名", report.student.name);
+  drawKeyValue(doc, left + 176, y1 + 20, 140, "报告日期", new Date().toLocaleDateString());
+  drawKeyValue(doc, left + 324, y1 + 20, w1a - 332, "评估阶段", report.reportPeriodLabel || "-");
+  drawKeyValue(doc, left + 8, y1 + 46, 220, "评估工具", draft.assessmentTool || "-");
+  drawKeyValue(doc, left + 236, y1 + 46, 120, "综合成绩", String(report.overallScore ?? "-"));
+  drawKeyValue(doc, left + 364, y1 + 46, w1a - 372, "预估CEFR等级", report.examTargetStatus || "-");
 
-  drawTitleBlock(doc, left + w1a + gap, y1, w1b, h1, "Important Note / 重要声明");
+  drawTitleBlock(doc, left + w1a + gap, y1, w1b, h1, "重要声明");
   setPdfFont(doc);
   doc.fillColor("#7f1d1d").fontSize(7.2).text(fitText(doc, draft.warningNote, w1b - 14, 8, 7.2), left + w1a + gap + 7, y1 + 20, {
     width: w1b - 14,
@@ -116,21 +115,21 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const h2 = 170;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
-  drawTitleBlock(doc, left, y2, w2a, h2, "Overall Evaluation / 总体评估");
-  drawKeyValue(doc, left + 8, y2 + 20, w2a - 16, "Estimated Level / 整体水平", draft.overallEstimatedLevel || "-", 2);
-  drawKeyValue(doc, left + 8, y2 + 54, w2a - 16, "Summary / 综合表现", draft.overallSummary || "-", 10);
+  drawTitleBlock(doc, left, y2, w2a, h2, "总体评估");
+  drawKeyValue(doc, left + 8, y2 + 20, w2a - 16, "整体水平", draft.overallEstimatedLevel || "-", 2);
+  drawKeyValue(doc, left + 8, y2 + 54, w2a - 16, "综合表现概述", draft.overallSummary || "-", 10);
 
-  drawTitleBlock(doc, left + w2a + gap, y2, w2b, h2, "Skill-Based Evaluation / 分项能力评估");
+  drawTitleBlock(doc, left + w2a + gap, y2, w2b, h2, "分项能力评估");
   const cardGap = 6;
   const cardW = Math.floor((w2b - cardGap) / 2);
   const cardH = Math.floor((h2 - 24 - cardGap) / 2);
   const sx = left + w2a + gap + 6;
   const sy = y2 + 18;
   const skillCards = [
-    { t: "Listening / 听力", l: draft.listeningLevel, p: draft.listeningPerformance, s: draft.listeningStrengths, d: draft.listeningImprovements, x: sx, y: sy },
-    { t: "Reading / 阅读", l: draft.readingLevel, p: draft.readingPerformance, s: draft.readingStrengths, d: draft.readingImprovements, x: sx + cardW + cardGap, y: sy },
-    { t: "Writing / 写作", l: draft.writingLevel, p: draft.writingPerformance, s: draft.writingStrengths, d: draft.writingImprovements, x: sx, y: sy + cardH + cardGap },
-    { t: "Speaking / 口语", l: draft.speakingLevel, p: draft.speakingPerformance, s: draft.speakingStrengths, d: draft.speakingImprovements, x: sx + cardW + cardGap, y: sy + cardH + cardGap },
+    { t: "听力", l: draft.listeningLevel, p: draft.listeningPerformance, s: draft.listeningStrengths, d: draft.listeningImprovements, x: sx, y: sy },
+    { t: "阅读", l: draft.readingLevel, p: draft.readingPerformance, s: draft.readingStrengths, d: draft.readingImprovements, x: sx + cardW + cardGap, y: sy },
+    { t: "写作", l: draft.writingLevel, p: draft.writingPerformance, s: draft.writingStrengths, d: draft.writingImprovements, x: sx, y: sy + cardH + cardGap },
+    { t: "口语", l: draft.speakingLevel, p: draft.speakingPerformance, s: draft.speakingStrengths, d: draft.speakingImprovements, x: sx + cardW + cardGap, y: sy + cardH + cardGap },
   ];
   for (const c of skillCards) {
     doc.save();
@@ -139,32 +138,32 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     setPdfBoldFont(doc);
     doc.fillColor("#0f172a").fontSize(8).text(c.t, c.x + 5, c.y + 4, { width: cardW - 16 });
     setPdfFont(doc);
-    doc.fillColor("#334155").fontSize(7).text(`Level: ${c.l || "-"}`, c.x + 5, c.y + 16, { width: cardW - 16 });
+    doc.fillColor("#334155").fontSize(7).text(`当前水平: ${c.l || "-"}`, c.x + 5, c.y + 16, { width: cardW - 16 });
     doc
       .fontSize(6.7)
       .fillColor("#111827")
-      .text(`Performance Summary / 表现概述: ${fitText(doc, c.p || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 28, { width: cardW - 16 });
-    doc.text(`Strengths Observed / 优势表现: ${fitText(doc, c.s || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 43, { width: cardW - 16 });
-    doc.text(`Areas for Development / 待提升方向: ${fitText(doc, c.d || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 58, { width: cardW - 16 });
+      .text(`表现概述: ${fitText(doc, c.p || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 28, { width: cardW - 16 });
+    doc.text(`优势表现: ${fitText(doc, c.s || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 43, { width: cardW - 16 });
+    doc.text(`待提升方向: ${fitText(doc, c.d || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 58, { width: cardW - 16 });
   }
 
   // Row 3: disposition + recommendation + optional exam
   const y3 = y2 + h2 + gap;
   const h3 = contentH - (y3 - top);
   const colW = Math.floor((contentW - gap * 2) / 3);
-  drawTitleBlock(doc, left, y3, colW, h3, "Learning Disposition / 学习态度与课堂表现");
-  drawKeyValue(doc, left + 8, y3 + 20, colW - 16, "Class Participation / 课堂参与度", draft.classParticipation, 3);
-  drawKeyValue(doc, left + 8, y3 + 50, colW - 16, "Focus & Engagement / 专注度", draft.focusEngagement, 3);
-  drawKeyValue(doc, left + 8, y3 + 80, colW - 16, "Homework / 作业完成", draft.homeworkPreparation, 3);
-  drawKeyValue(doc, left + 8, y3 + 110, colW - 16, "General Attitude / 学习态度", draft.attitudeGeneral, 3);
+  drawTitleBlock(doc, left, y3, colW, h3, "学习态度与课堂表现");
+  drawKeyValue(doc, left + 8, y3 + 20, colW - 16, "课堂参与度", draft.classParticipation, 3);
+  drawKeyValue(doc, left + 8, y3 + 50, colW - 16, "专注度与投入度", draft.focusEngagement, 3);
+  drawKeyValue(doc, left + 8, y3 + 80, colW - 16, "作业完成情况", draft.homeworkPreparation, 3);
+  drawKeyValue(doc, left + 8, y3 + 110, colW - 16, "学习态度总体评价", draft.attitudeGeneral, 3);
 
   const c2x = left + colW + gap;
-  drawTitleBlock(doc, c2x, y3, colW, h3, "Summary & Recommendations / 总结与学习建议");
-  drawKeyValue(doc, c2x + 8, y3 + 20, colW - 16, "Key Strengths / 核心优势", draft.keyStrengths, 3);
-  drawKeyValue(doc, c2x + 8, y3 + 50, colW - 16, "Primary Bottlenecks / 主要瓶颈", draft.primaryBottlenecks, 3);
-  drawKeyValue(doc, c2x + 8, y3 + 80, colW - 16, "Next Phase Focus / 下一阶段重点", draft.nextPhaseFocus, 3);
-  drawKeyValue(doc, c2x + 8, y3 + 110, colW - 16, "Practice Load / 建议练习时长", draft.suggestedPracticeLoad, 2);
-  drawKeyValue(doc, c2x + 8, y3 + 136, colW - 16, "Target Level/Score / 目标等级或分数", draft.targetLevelScore, 2);
+  drawTitleBlock(doc, c2x, y3, colW, h3, "总结与学习建议");
+  drawKeyValue(doc, c2x + 8, y3 + 20, colW - 16, "核心优势", draft.keyStrengths, 3);
+  drawKeyValue(doc, c2x + 8, y3 + 50, colW - 16, "主要瓶颈", draft.primaryBottlenecks, 3);
+  drawKeyValue(doc, c2x + 8, y3 + 80, colW - 16, "下一阶段重点方向", draft.nextPhaseFocus, 3);
+  drawKeyValue(doc, c2x + 8, y3 + 110, colW - 16, "建议练习时长", draft.suggestedPracticeLoad, 2);
+  drawKeyValue(doc, c2x + 8, y3 + 136, colW - 16, "目标等级或分数", draft.targetLevelScore, 2);
 
   const c3x = c2x + colW + gap;
   const examRows = [
@@ -184,8 +183,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     colW,
     h3,
     hasExamBlock
-      ? `${draft.examName || "Exam"} Score (Optional) / 考试成绩（可选）`
-      : "Exam Score (Optional) / 考试成绩（可选）- Hidden in final if blank"
+      ? `${draft.examName || "考试"} 成绩分项（可选）`
+      : "考试成绩（可选）- 未填写时隐藏"
   );
   if (hasExamBlock) {
     let ey = y3 + 24;
@@ -195,12 +194,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     }
   } else {
     setPdfFont(doc);
-    doc.fillColor("#64748b").fontSize(7.5).text("No exam metrics provided.", c3x + 8, y3 + 30, { width: colW - 16 });
+    doc.fillColor("#64748b").fontSize(7.5).text("未填写考试分项。", c3x + 8, y3 + 30, { width: colW - 16 });
   }
 
   setPdfFont(doc);
   doc.fillColor("#64748b").fontSize(6.8).text(
-    `Generated at ${new Date().toLocaleString()} | One-page compressed export`,
+    `生成时间：${new Date().toLocaleString()}  |  单页导出`,
     left,
     pageH - 14,
     { width: contentW, align: "right" }
