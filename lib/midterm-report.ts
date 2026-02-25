@@ -60,9 +60,6 @@ export type MidtermReportDraft = {
 
 export const DEFAULT_WARNING_NOTE =
   [
-    "This report reflects the students current English performance based on internal assessment and classroom observation.",
-    "It does not represent an official external examination result.",
-    "The purpose of this evaluation is to guide improvement and provide targeted academic support.",
     "本报告基于内部评估及课堂观察所形成，仅反映学生当前英语能力水平。",
     "该成绩不代表任何官方外部考试结果。",
     "本评估旨在为后续学习提供针对性指导与改进方向。",
