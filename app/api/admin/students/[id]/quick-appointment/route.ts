@@ -152,7 +152,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const teacherSessionConflict = await prisma.session.findFirst({
     where: {
-      class: { teacherId },
+      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
       startAt: { lt: endAt },
       endAt: { gt: startAt },
       NOT: {
@@ -262,7 +262,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   if (!dupSession) {
     await prisma.session.create({
-      data: { classId: cls.id, startAt, endAt, studentId },
+      data: { classId: cls.id, startAt, endAt, studentId, teacherId: teacherId === cls.teacherId ? null : teacherId },
     });
   }
 

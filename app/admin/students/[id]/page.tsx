@@ -519,7 +519,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
 
     const teacherSessionConflict = await prisma.session.findFirst({
       where: {
-        class: { teacherId },
+        OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
         startAt: { lt: endAt },
         endAt: { gt: startAt },
         NOT: {
@@ -641,7 +641,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     });
     if (!dupSession) {
       await prisma.session.create({
-        data: { classId: cls.id, startAt, endAt, studentId },
+        data: { classId: cls.id, startAt, endAt, studentId, teacherId: teacherId === cls.teacherId ? null : teacherId },
       });
     }
 
