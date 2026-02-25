@@ -61,11 +61,7 @@ function normalizeText(input: string | null | undefined) {
   return raw || "-";
 }
 
-function tokenizeLine(text: string) {
-  return text
-    .split(/([，。；：！？、,.!?;:\s]+)/)
-    .filter((token) => token !== "");
-}
+const LEADING_PUNCTUATION = /^[，。；：！？、,.!?;:]/;
 
 function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, fontSize: number) {
   const source = normalizeText(text);
@@ -76,16 +72,16 @@ function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, f
   const paragraphs = source.split("\n");
 
   for (const paragraph of paragraphs) {
-    const tokens = tokenizeLine(paragraph);
-    if (tokens.length === 0) {
+    const chars = Array.from(paragraph);
+    if (chars.length === 0) {
       lines.push("");
       if (lines.length >= maxLines) break;
       continue;
     }
 
     let line = "";
-    for (const token of tokens) {
-      const next = `${line}${token}`;
+    for (const ch of chars) {
+      const next = `${line}${ch}`;
       if (doc.widthOfString(next) <= width) {
         line = next;
         continue;
@@ -96,25 +92,7 @@ function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, f
         if (lines.length >= maxLines) break;
       }
 
-      if (doc.widthOfString(token) <= width) {
-        line = token;
-      } else {
-        // Fallback for very long token: break by char
-        let chunk = "";
-        for (const ch of token) {
-          const candidate = `${chunk}${ch}`;
-          if (doc.widthOfString(candidate) <= width) {
-            chunk = candidate;
-          } else {
-            if (chunk) {
-              lines.push(chunk);
-              if (lines.length >= maxLines) break;
-            }
-            chunk = ch;
-          }
-        }
-        line = chunk;
-      }
+      line = ch;
 
       if (lines.length >= maxLines) break;
     }
@@ -124,7 +102,24 @@ function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, f
     if (lines.length >= maxLines) break;
   }
 
-  const truncated = lines.length > maxLines ? lines.slice(0, maxLines) : lines.slice(0, maxLines);
+  const truncated = lines.slice(0, maxLines);
+
+  // Avoid punctuation at the beginning of a new line.
+  for (let i = 1; i < truncated.length; i += 1) {
+    let cur = truncated[i];
+    while (cur.length > 0 && LEADING_PUNCTUATION.test(cur[0])) {
+      const lead = cur[0];
+      const prev = truncated[i - 1];
+      if (doc.widthOfString(`${prev}${lead}`) <= width + 0.5) {
+        truncated[i - 1] = `${prev}${lead}`;
+        cur = cur.slice(1);
+      } else {
+        break;
+      }
+    }
+    truncated[i] = cur;
+  }
+
   return truncated.length > 0 ? truncated : ["-"];
 }
 
@@ -247,9 +242,9 @@ function drawSkillCard(
     w: w - 12,
     h: h - 22,
     text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    fontSize: 6.6,
-    maxLines: 9,
-    lineGap: 0.8,
+    fontSize: 6.2,
+    maxLines: 12,
+    lineGap: 0.7,
     color: "#0f172a",
   });
 }
@@ -308,13 +303,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 226;
+  const h2 = 250;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
   panel(doc, left, y2, w2a, h2, ZH.overall);
-  kv(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 16, 2);
-  kvCompact(doc, left + 8, y2 + 54, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 64, 14, 6.5);
+  kvCompact(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 28, 4, 6.6);
+  kvCompact(doc, left + 8, y2 + 58, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 68, 18, 6.4);
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills);
   const cardGap = 8;
@@ -374,7 +369,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + 16;
+  const y3 = y2 + h2 + 20;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
