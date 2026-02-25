@@ -3,19 +3,44 @@ import { prisma } from "@/lib/prisma";
 export type MidtermLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "";
 
 export type MidtermReportDraft = {
+  assessmentTool: string;
   warningNote: string;
-  overallComment: string;
+
+  overallEstimatedLevel: string;
+  overallSummary: string;
+
   listeningLevel: MidtermLevel;
-  listeningComment: string;
-  vocabularyLevel: MidtermLevel;
-  vocabularyComment: string;
+  listeningPerformance: string;
+  listeningStrengths: string;
+  listeningImprovements: string;
+
   readingLevel: MidtermLevel;
-  readingComment: string;
+  readingPerformance: string;
+  readingStrengths: string;
+  readingImprovements: string;
+
   writingLevel: MidtermLevel;
-  writingComment: string;
+  writingPerformance: string;
+  writingStrengths: string;
+  writingImprovements: string;
+
   speakingLevel: MidtermLevel;
-  speakingComment: string;
-  summaryComment: string;
+  speakingPerformance: string;
+  speakingStrengths: string;
+  speakingImprovements: string;
+
+  classParticipation: string;
+  focusEngagement: string;
+  homeworkPreparation: string;
+  attitudeGeneral: string;
+
+  keyStrengths: string;
+  primaryBottlenecks: string;
+  nextPhaseFocus: string;
+  suggestedPracticeLoad: string;
+  targetLevelScore: string;
+
+  // Optional block
   itepGrammar: string;
   itepVocab: string;
   itepListening: string;
@@ -23,31 +48,49 @@ export type MidtermReportDraft = {
   itepWriting: string;
   itepSpeaking: string;
   itepTotal: string;
-  disciplineSubject: string;
-  disciplinePages: string;
-  disciplineProgress: string;
-  disciplineStrengths: string;
-  disciplineClassBehavior: string;
-  disciplineNextStep: string;
 };
 
 export const DEFAULT_WARNING_NOTE =
-  "本报告中的评分不代表任何正式考试成绩，仅反映学生阶段性表现，供家长参考。";
+  "本报告基于内部评估及课堂观察，仅反映学生当前英语能力。该成绩不代表官方外部考试结果，评估用于指导后续学习改进。";
 
 export const EMPTY_REPORT_DRAFT: MidtermReportDraft = {
+  assessmentTool: "",
   warningNote: DEFAULT_WARNING_NOTE,
-  overallComment: "",
+
+  overallEstimatedLevel: "",
+  overallSummary: "",
+
   listeningLevel: "",
-  listeningComment: "",
-  vocabularyLevel: "",
-  vocabularyComment: "",
+  listeningPerformance: "",
+  listeningStrengths: "",
+  listeningImprovements: "",
+
   readingLevel: "",
-  readingComment: "",
+  readingPerformance: "",
+  readingStrengths: "",
+  readingImprovements: "",
+
   writingLevel: "",
-  writingComment: "",
+  writingPerformance: "",
+  writingStrengths: "",
+  writingImprovements: "",
+
   speakingLevel: "",
-  speakingComment: "",
-  summaryComment: "",
+  speakingPerformance: "",
+  speakingStrengths: "",
+  speakingImprovements: "",
+
+  classParticipation: "",
+  focusEngagement: "",
+  homeworkPreparation: "",
+  attitudeGeneral: "",
+
+  keyStrengths: "",
+  primaryBottlenecks: "",
+  nextPhaseFocus: "",
+  suggestedPracticeLoad: "",
+  targetLevelScore: "",
+
   itepGrammar: "",
   itepVocab: "",
   itepListening: "",
@@ -55,12 +98,6 @@ export const EMPTY_REPORT_DRAFT: MidtermReportDraft = {
   itepWriting: "",
   itepSpeaking: "",
   itepTotal: "",
-  disciplineSubject: "",
-  disciplinePages: "",
-  disciplineProgress: "",
-  disciplineStrengths: "",
-  disciplineClassBehavior: "",
-  disciplineNextStep: "",
 };
 
 function asString(v: unknown) {
@@ -77,19 +114,43 @@ export function parseReportDraft(raw: unknown): MidtermReportDraft {
   if (!raw || typeof raw !== "object") return { ...EMPTY_REPORT_DRAFT };
   const row = raw as Record<string, unknown>;
   return {
+    assessmentTool: asString(row.assessmentTool),
     warningNote: asString(row.warningNote) || DEFAULT_WARNING_NOTE,
-    overallComment: asString(row.overallComment),
+
+    overallEstimatedLevel: asString(row.overallEstimatedLevel),
+    overallSummary: asString(row.overallSummary || row.overallComment),
+
     listeningLevel: asLevel(row.listeningLevel),
-    listeningComment: asString(row.listeningComment),
-    vocabularyLevel: asLevel(row.vocabularyLevel),
-    vocabularyComment: asString(row.vocabularyComment),
+    listeningPerformance: asString(row.listeningPerformance || row.listeningComment),
+    listeningStrengths: asString(row.listeningStrengths),
+    listeningImprovements: asString(row.listeningImprovements),
+
     readingLevel: asLevel(row.readingLevel),
-    readingComment: asString(row.readingComment),
+    readingPerformance: asString(row.readingPerformance || row.readingComment),
+    readingStrengths: asString(row.readingStrengths),
+    readingImprovements: asString(row.readingImprovements),
+
     writingLevel: asLevel(row.writingLevel),
-    writingComment: asString(row.writingComment),
+    writingPerformance: asString(row.writingPerformance || row.writingComment),
+    writingStrengths: asString(row.writingStrengths),
+    writingImprovements: asString(row.writingImprovements),
+
     speakingLevel: asLevel(row.speakingLevel),
-    speakingComment: asString(row.speakingComment),
-    summaryComment: asString(row.summaryComment),
+    speakingPerformance: asString(row.speakingPerformance || row.speakingComment),
+    speakingStrengths: asString(row.speakingStrengths),
+    speakingImprovements: asString(row.speakingImprovements),
+
+    classParticipation: asString(row.classParticipation),
+    focusEngagement: asString(row.focusEngagement),
+    homeworkPreparation: asString(row.homeworkPreparation),
+    attitudeGeneral: asString(row.attitudeGeneral),
+
+    keyStrengths: asString(row.keyStrengths),
+    primaryBottlenecks: asString(row.primaryBottlenecks),
+    nextPhaseFocus: asString(row.nextPhaseFocus),
+    suggestedPracticeLoad: asString(row.suggestedPracticeLoad),
+    targetLevelScore: asString(row.targetLevelScore),
+
     itepGrammar: asString(row.itepGrammar),
     itepVocab: asString(row.itepVocab),
     itepListening: asString(row.itepListening),
@@ -97,31 +158,49 @@ export function parseReportDraft(raw: unknown): MidtermReportDraft {
     itepWriting: asString(row.itepWriting),
     itepSpeaking: asString(row.itepSpeaking),
     itepTotal: asString(row.itepTotal),
-    disciplineSubject: asString(row.disciplineSubject),
-    disciplinePages: asString(row.disciplinePages),
-    disciplineProgress: asString(row.disciplineProgress),
-    disciplineStrengths: asString(row.disciplineStrengths),
-    disciplineClassBehavior: asString(row.disciplineClassBehavior),
-    disciplineNextStep: asString(row.disciplineNextStep),
   };
 }
 
 export function parseDraftFromFormData(formData: FormData): MidtermReportDraft {
   const read = (key: keyof MidtermReportDraft) => asString(formData.get(key));
   return parseReportDraft({
+    assessmentTool: read("assessmentTool"),
     warningNote: read("warningNote") || DEFAULT_WARNING_NOTE,
-    overallComment: read("overallComment"),
+
+    overallEstimatedLevel: read("overallEstimatedLevel"),
+    overallSummary: read("overallSummary"),
+
     listeningLevel: read("listeningLevel"),
-    listeningComment: read("listeningComment"),
-    vocabularyLevel: read("vocabularyLevel"),
-    vocabularyComment: read("vocabularyComment"),
+    listeningPerformance: read("listeningPerformance"),
+    listeningStrengths: read("listeningStrengths"),
+    listeningImprovements: read("listeningImprovements"),
+
     readingLevel: read("readingLevel"),
-    readingComment: read("readingComment"),
+    readingPerformance: read("readingPerformance"),
+    readingStrengths: read("readingStrengths"),
+    readingImprovements: read("readingImprovements"),
+
     writingLevel: read("writingLevel"),
-    writingComment: read("writingComment"),
+    writingPerformance: read("writingPerformance"),
+    writingStrengths: read("writingStrengths"),
+    writingImprovements: read("writingImprovements"),
+
     speakingLevel: read("speakingLevel"),
-    speakingComment: read("speakingComment"),
-    summaryComment: read("summaryComment"),
+    speakingPerformance: read("speakingPerformance"),
+    speakingStrengths: read("speakingStrengths"),
+    speakingImprovements: read("speakingImprovements"),
+
+    classParticipation: read("classParticipation"),
+    focusEngagement: read("focusEngagement"),
+    homeworkPreparation: read("homeworkPreparation"),
+    attitudeGeneral: read("attitudeGeneral"),
+
+    keyStrengths: read("keyStrengths"),
+    primaryBottlenecks: read("primaryBottlenecks"),
+    nextPhaseFocus: read("nextPhaseFocus"),
+    suggestedPracticeLoad: read("suggestedPracticeLoad"),
+    targetLevelScore: read("targetLevelScore"),
+
     itepGrammar: read("itepGrammar"),
     itepVocab: read("itepVocab"),
     itepListening: read("itepListening"),
@@ -129,12 +208,6 @@ export function parseDraftFromFormData(formData: FormData): MidtermReportDraft {
     itepWriting: read("itepWriting"),
     itepSpeaking: read("itepSpeaking"),
     itepTotal: read("itepTotal"),
-    disciplineSubject: read("disciplineSubject"),
-    disciplinePages: read("disciplinePages"),
-    disciplineProgress: read("disciplineProgress"),
-    disciplineStrengths: read("disciplineStrengths"),
-    disciplineClassBehavior: read("disciplineClassBehavior"),
-    disciplineNextStep: read("disciplineNextStep"),
   });
 }
 
@@ -192,59 +265,58 @@ export async function loadMidtermCandidates() {
     take: 500,
   });
 
-  const rows = packages
-    .map((pkg) => {
-      const total = safePositiveInt(pkg.totalMinutes);
-      const remaining = safePositiveInt(pkg.remainingMinutes);
-      const used = Math.max(0, total - remaining);
-      if (total <= 0 || used <= 0) return null;
-      const progress = Math.round((used / total) * 100);
-      if (progress < 45 || progress > 70) return null;
+  const rows = packages.map((pkg) => {
+    const total = safePositiveInt(pkg.totalMinutes);
+    const remaining = safePositiveInt(pkg.remainingMinutes);
+    const used = Math.max(0, total - remaining);
+    if (total <= 0 || used <= 0) return null;
+    const progress = Math.round((used / total) * 100);
+    if (progress < 45 || progress > 70) return null;
 
-      const latestReport = pkg.midtermReports[0] ?? null;
-      if (latestReport && latestReport.status === "SUBMITTED") return null;
+    const latestReport = pkg.midtermReports[0] ?? null;
+    if (latestReport && latestReport.status === "SUBMITTED") return null;
 
-      const teacherMap = new Map<
-        string,
-        { id: string; name: string; subjectId: string | null; subjectName: string | null; latestStartAt: Date }
-      >();
-      for (const a of pkg.attendances) {
-        const teacher = a.session.teacher ?? a.session.class.teacher;
-        if (!teacher?.id) continue;
-        const subjectId = a.session.class.subject?.id ?? null;
-        const subjectName = a.session.class.subject?.name ?? null;
-        const prev = teacherMap.get(teacher.id);
-        if (!prev || prev.latestStartAt < a.session.startAt) {
-          teacherMap.set(teacher.id, {
-            id: teacher.id,
-            name: teacher.name,
-            subjectId,
-            subjectName,
-            latestStartAt: a.session.startAt,
-          });
-        }
+    const teacherMap = new Map<
+      string,
+      { id: string; name: string; subjectId: string | null; subjectName: string | null; latestStartAt: Date }
+    >();
+    for (const a of pkg.attendances) {
+      const teacher = a.session.teacher ?? a.session.class.teacher;
+      if (!teacher?.id) continue;
+      const subjectId = a.session.class.subject?.id ?? null;
+      const subjectName = a.session.class.subject?.name ?? null;
+      const prev = teacherMap.get(teacher.id);
+      if (!prev || prev.latestStartAt < a.session.startAt) {
+        teacherMap.set(teacher.id, {
+          id: teacher.id,
+          name: teacher.name,
+          subjectId,
+          subjectName,
+          latestStartAt: a.session.startAt,
+        });
       }
+    }
 
-      const teacherOptions = Array.from(teacherMap.values()).sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
-      const topTeacher = teacherOptions[0] ?? null;
-      if (!topTeacher) return null;
+    const teacherOptions = Array.from(teacherMap.values()).sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
+    const topTeacher = teacherOptions[0] ?? null;
+    if (!topTeacher) return null;
 
-      return {
-        packageId: pkg.id,
-        studentId: pkg.studentId,
-        studentName: pkg.student.name,
-        courseId: pkg.courseId,
-        courseName: pkg.course.name,
-        totalMinutes: total,
-        consumedMinutes: used,
-        progressPercent: progress,
-        consumedSessions: pkg.txns.length,
-        teacherOptions,
-        defaultTeacherId: topTeacher.id,
-        defaultSubjectId: topTeacher.subjectId,
-        latestReportStatus: latestReport?.status ?? null,
-      };
-    });
+    return {
+      packageId: pkg.id,
+      studentId: pkg.studentId,
+      studentName: pkg.student.name,
+      courseId: pkg.courseId,
+      courseName: pkg.course.name,
+      totalMinutes: total,
+      consumedMinutes: used,
+      progressPercent: progress,
+      consumedSessions: pkg.txns.length,
+      teacherOptions,
+      defaultTeacherId: topTeacher.id,
+      defaultSubjectId: topTeacher.subjectId,
+      latestReportStatus: latestReport?.status ?? null,
+    };
+  });
 
   const result: Array<{
     packageId: string;

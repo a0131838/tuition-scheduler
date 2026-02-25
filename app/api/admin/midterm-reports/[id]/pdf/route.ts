@@ -18,34 +18,6 @@ function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
-function drawHeader(doc: PDFDoc, report: any) {
-  const left = doc.page.margins.left;
-  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const right = left + width;
-  doc.save();
-  doc.roundedRect(left, 36, width, 86, 12).fill("#fff1f2");
-  doc.restore();
-
-  setPdfBoldFont(doc);
-  doc.fillColor("#991b1b").fontSize(23).text("Midterm Report / 中期报告", left + 14, 48);
-  setPdfFont(doc);
-  doc.fillColor("#374151").fontSize(11);
-  doc.text(`Student 学生: ${report.student.name}`, left + 14, 84);
-  doc.text(`Teacher 老师: ${report.teacher.name}`, left + 14, 102);
-  doc.text(
-    `Course 课程: ${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}`,
-    left + 260,
-    84,
-    { width: right - (left + 260) - 10 }
-  );
-  doc.text(
-    `Score 总分: ${report.overallScore ?? "-"}   Exam 准备状态: ${report.examTargetStatus || "-"}`,
-    left + 260,
-    102,
-    { width: right - (left + 260) - 10 }
-  );
-}
-
 function drawSectionTitle(doc: PDFDoc, title: string, y: number) {
   const left = doc.page.margins.left;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -67,27 +39,19 @@ function drawParagraph(doc: PDFDoc, text: string, y: number, color = "#1f2937") 
   return doc.y + 6;
 }
 
-function drawSkillRow(doc: PDFDoc, label: string, level: string, comment: string, y: number) {
-  const left = doc.page.margins.left;
-  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const levelW = 70;
-  const rowPad = 8;
-  const blockH = Math.max(30, doc.heightOfString(comment || "-", { width: width - levelW - 20, lineGap: 2 }) + 10);
-  doc.save();
-  doc.roundedRect(left, y, width, blockH, 8).fill("#ffffff").stroke("#e5e7eb");
-  doc.restore();
-  setPdfBoldFont(doc);
-  doc.fillColor("#111827").fontSize(10.5).text(label, left + rowPad, y + 8);
-  setPdfFont(doc);
-  doc.fillColor("#4b5563").fontSize(10).text(level || "-", left + width - levelW, y + 8, { width: levelW - rowPad, align: "right" });
-  doc.fillColor("#1f2937").fontSize(10).text(comment || "-", left + rowPad, y + 24, { width: width - rowPad * 2, lineGap: 2 });
-  return y + blockH + 6;
-}
-
 function ensurePage(doc: PDFDoc, y: number, need = 90) {
   if (y + need <= doc.page.height - doc.page.margins.bottom) return y;
   doc.addPage();
   return doc.page.margins.top;
+}
+
+function drawSkillBlock(doc: PDFDoc, y: number, title: string, level: string, performance: string, strengths: string, improvements: string) {
+  y = drawSectionTitle(doc, title, y);
+  y = drawParagraph(doc, `Current Level / 当前水平: ${level || "-"}`, y);
+  y = drawParagraph(doc, `Performance Summary / 表现概述: ${performance || "-"}`, y);
+  y = drawParagraph(doc, `Strengths Observed / 优势表现: ${strengths || "-"}`, y);
+  y = drawParagraph(doc, `Areas for Development / 待提升方向: ${improvements || "-"}`, y);
+  return y;
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -107,31 +71,58 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const doc = new PDFDocument({ size: "A4", margin: 40 });
   setPdfFont(doc);
-  drawHeader(doc, report);
-  let y = 132;
 
-  y = ensurePage(doc, y, 60);
-  y = drawSectionTitle(doc, "Important Notice / 重要免责声明", y);
+  setPdfBoldFont(doc);
+  doc.fillColor("#7f1d1d").fontSize(18).text("MID-TERM / PROGRESS ASSESSMENT REPORT");
+  doc.fontSize(14).text("阶段性学习评估报告");
+  setPdfFont(doc);
+  doc.moveDown(0.5);
+
+  let y = doc.y + 2;
+  y = drawSectionTitle(doc, "Student Information / 学生基本信息", y);
+  y = drawParagraph(doc, `Student Name / 学生姓名: ${report.student.name}`, y);
+  y = drawParagraph(doc, `Date of Report / 报告日期: ${new Date().toLocaleDateString()}`, y);
+  y = drawParagraph(doc, `Assessment Period / 评估阶段: ${report.reportPeriodLabel || "-"}`, y);
+  y = drawParagraph(doc, `Assessment Tool Used / 评估工具: ${draft.assessmentTool || "-"}`, y);
+  y = drawParagraph(doc, `Overall Score (if applicable) / 综合成绩（如适用）: ${report.overallScore ?? "-"}`, y);
+  y = drawParagraph(doc, `Estimated CEFR Level / 预估CEFR等级: ${report.examTargetStatus || "-"}`, y);
+
+  y = ensurePage(doc, y, 80);
+  y = drawSectionTitle(doc, "Important Note / 重要声明", y);
   y = drawParagraph(doc, draft.warningNote, y, "#7f1d1d");
 
   y = ensurePage(doc, y, 120);
-  y = drawSectionTitle(doc, "Overall Evaluation / 总评", y);
-  y = drawParagraph(doc, draft.overallComment, y);
+  y = drawSectionTitle(doc, "Overall Evaluation / 总体评估", y);
+  y = drawParagraph(doc, `Estimated overall level / 整体水平: ${draft.overallEstimatedLevel || "-"}`, y);
+  y = drawParagraph(doc, `Summary of Performance / 综合表现概述: ${draft.overallSummary || "-"}`, y);
 
-  y = ensurePage(doc, y, 260);
-  y = drawSectionTitle(doc, "Skill Breakdown / 分项能力", y);
-  y = drawSkillRow(doc, "Vocabulary & Grammar / 词汇与语法", draft.vocabularyLevel, draft.vocabularyComment, y);
-  y = drawSkillRow(doc, "Listening / 听力", draft.listeningLevel, draft.listeningComment, y);
-  y = drawSkillRow(doc, "Reading / 阅读", draft.readingLevel, draft.readingComment, y);
-  y = drawSkillRow(doc, "Writing / 写作", draft.writingLevel, draft.writingComment, y);
-  y = drawSkillRow(doc, "Speaking / 口语", draft.speakingLevel, draft.speakingComment, y);
+  y = ensurePage(doc, y, 200);
+  y = drawSectionTitle(doc, "Skill-Based Evaluation / 分项能力评估", y);
+  y = drawSkillBlock(doc, y, "Listening / 听力", draft.listeningLevel, draft.listeningPerformance, draft.listeningStrengths, draft.listeningImprovements);
+  y = ensurePage(doc, y, 160);
+  y = drawSkillBlock(doc, y, "Reading / 阅读", draft.readingLevel, draft.readingPerformance, draft.readingStrengths, draft.readingImprovements);
+  y = ensurePage(doc, y, 160);
+  y = drawSkillBlock(doc, y, "Writing / 写作", draft.writingLevel, draft.writingPerformance, draft.writingStrengths, draft.writingImprovements);
+  y = ensurePage(doc, y, 160);
+  y = drawSkillBlock(doc, y, "Speaking / 口语", draft.speakingLevel, draft.speakingPerformance, draft.speakingStrengths, draft.speakingImprovements);
 
-  y = ensurePage(doc, y, 110);
-  y = drawSectionTitle(doc, "Summary / 总结", y);
-  y = drawParagraph(doc, draft.summaryComment, y);
+  y = ensurePage(doc, y, 150);
+  y = drawSectionTitle(doc, "Learning Disposition & Classroom Performance / 学习态度与课堂表现", y);
+  y = drawParagraph(doc, `Class Participation / 课堂参与度: ${draft.classParticipation || "-"}`, y);
+  y = drawParagraph(doc, `Focus & Engagement / 专注度与投入度: ${draft.focusEngagement || "-"}`, y);
+  y = drawParagraph(doc, `Homework Completion & Preparation / 作业完成情况: ${draft.homeworkPreparation || "-"}`, y);
+  y = drawParagraph(doc, `General Attitude Toward Learning / 学习态度总体评价: ${draft.attitudeGeneral || "-"}`, y);
+
+  y = ensurePage(doc, y, 170);
+  y = drawSectionTitle(doc, "Summary & Recommendations / 总结与学习建议", y);
+  y = drawParagraph(doc, `Key Strengths / 核心优势: ${draft.keyStrengths || "-"}`, y);
+  y = drawParagraph(doc, `Primary Bottlenecks / 主要瓶颈: ${draft.primaryBottlenecks || "-"}`, y);
+  y = drawParagraph(doc, `Recommended Focus for Next Phase / 下一阶段重点方向: ${draft.nextPhaseFocus || "-"}`, y);
+  y = drawParagraph(doc, `Suggested Practice Load / 建议练习时长: ${draft.suggestedPracticeLoad || "-"}`, y);
+  y = drawParagraph(doc, `Target Level / Target Score / 目标等级或分数: ${draft.targetLevelScore || "-"}`, y);
 
   y = ensurePage(doc, y, 120);
-  y = drawSectionTitle(doc, "iTEP Predicted / iTEP 预估分", y);
+  y = drawSectionTitle(doc, "iTEP Predicted (Optional) / iTEP 预估分（可选）", y);
   const hasAnyItep =
     String(draft.itepGrammar || "").trim() ||
     String(draft.itepVocab || "").trim() ||
@@ -145,23 +136,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   } else {
     y = drawParagraph(
       doc,
-      `Grammar 语法: ${draft.itepGrammar || "-"}   Vocab 词汇: ${draft.itepVocab || "-"}   Listening 听力: ${draft.itepListening || "-"}`,
+      `Grammar: ${draft.itepGrammar || "-"}   Vocab: ${draft.itepVocab || "-"}   Listening: ${draft.itepListening || "-"}`,
       y
     );
     y = drawParagraph(
       doc,
-      `Reading 阅读: ${draft.itepReading || "-"}   Writing 写作: ${draft.itepWriting || "-"}   Speaking 口语: ${draft.itepSpeaking || "-"}   Total 总分: ${draft.itepTotal || "-"}`,
+      `Reading: ${draft.itepReading || "-"}   Writing: ${draft.itepWriting || "-"}   Speaking: ${draft.itepSpeaking || "-"}   Total: ${draft.itepTotal || "-"}`,
       y
     );
   }
-
-  y = ensurePage(doc, y, 160);
-  y = drawSectionTitle(doc, "Class Discipline / 课堂纪律", y);
-  y = drawParagraph(doc, `Subject 科目: ${draft.disciplineSubject || "-"}    Scope 范围: ${draft.disciplinePages || "-"}`, y);
-  y = drawParagraph(doc, `Progress 进度: ${draft.disciplineProgress || "-"}`, y);
-  y = drawParagraph(doc, `Strengths 优点: ${draft.disciplineStrengths || "-"}`, y);
-  y = drawParagraph(doc, `Behavior 课堂表现: ${draft.disciplineClassBehavior || "-"}`, y);
-  y = drawParagraph(doc, `Next Steps 建议: ${draft.disciplineNextStep || "-"}`, y);
 
   setPdfFont(doc);
   doc.fillColor("#6b7280").fontSize(9).text(`Generated at ${new Date().toLocaleString()}`, doc.page.margins.left, doc.page.height - 30, {

@@ -15,6 +15,54 @@ function asScore(v: string) {
   return Number(n.toFixed(2));
 }
 
+function SkillBlock({
+  title,
+  levelName,
+  performanceName,
+  strengthsName,
+  improvementsName,
+  draft,
+  lang,
+}: {
+  title: string;
+  levelName: "listeningLevel" | "readingLevel" | "writingLevel" | "speakingLevel";
+  performanceName: "listeningPerformance" | "readingPerformance" | "writingPerformance" | "speakingPerformance";
+  strengthsName: "listeningStrengths" | "readingStrengths" | "writingStrengths" | "speakingStrengths";
+  improvementsName: "listeningImprovements" | "readingImprovements" | "writingImprovements" | "speakingImprovements";
+  draft: ReturnType<typeof parseReportDraft>;
+  lang: "BILINGUAL" | "ZH" | "EN";
+}) {
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 10 }}>
+      <div style={{ fontWeight: 800, marginBottom: 6 }}>{title}</div>
+      <div style={{ marginBottom: 6 }}>
+        <label>
+          {t(lang, "Current Level", "当前水平")}
+          <select name={levelName} defaultValue={draft[levelName]} style={{ marginLeft: 8 }}>
+            {LEVEL_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt || "-"}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label style={{ display: "block", marginBottom: 6 }}>
+        {t(lang, "Performance Summary", "表现概述")}
+        <textarea name={performanceName} defaultValue={draft[performanceName]} rows={3} style={{ width: "100%" }} />
+      </label>
+      <label style={{ display: "block", marginBottom: 6 }}>
+        {t(lang, "Strengths Observed", "优势表现")}
+        <textarea name={strengthsName} defaultValue={draft[strengthsName]} rows={3} style={{ width: "100%" }} />
+      </label>
+      <label style={{ display: "block" }}>
+        {t(lang, "Areas for Development", "待提升方向")}
+        <textarea name={improvementsName} defaultValue={draft[improvementsName]} rows={3} style={{ width: "100%" }} />
+      </label>
+    </div>
+  );
+}
+
 export default async function TeacherMidtermReportDetailPage({
   params,
   searchParams,
@@ -43,6 +91,7 @@ export default async function TeacherMidtermReportDetailPage({
   if (!report || report.teacherId !== teacher.id) {
     return <div style={{ color: "#b91c1c" }}>{t(lang, "Report not found.", "报告不存在或无权限访问。")}</div>;
   }
+
   const reportId = report.id;
   const ownerTeacherId = report.teacherId;
   const currentStatus = report.status;
@@ -56,7 +105,7 @@ export default async function TeacherMidtermReportDetailPage({
     }
     const intent = String(formData.get("intent") ?? "save");
     const draft = parseDraftFromFormData(formData);
-    const examTargetStatus = String(formData.get("examTargetStatus") ?? "").trim();
+    const estimatedCefr = String(formData.get("examTargetStatus") ?? "").trim();
     const periodLabel = String(formData.get("reportPeriodLabel") ?? "").trim();
     const score = asScore(String(formData.get("overallScore") ?? ""));
 
@@ -64,7 +113,7 @@ export default async function TeacherMidtermReportDetailPage({
       where: { id: reportId },
       data: {
         reportJson: draft as any,
-        examTargetStatus: examTargetStatus || null,
+        examTargetStatus: estimatedCefr || null,
         reportPeriodLabel: periodLabel || null,
         overallScore: score,
         status: intent === "submit" ? "SUBMITTED" : currentStatus,
@@ -83,7 +132,7 @@ export default async function TeacherMidtermReportDetailPage({
   return (
     <div>
       <a href="/teacher/midterm-reports">{t(lang, "Back", "返回中期报告列表")}</a>
-      <h2 style={{ marginBottom: 4 }}>{t(lang, "Midterm Report Form", "中期报告填写")}</h2>
+      <h2 style={{ marginBottom: 4 }}>{t(lang, "MID-TERM / PROGRESS ASSESSMENT REPORT", "阶段性学习评估报告")}</h2>
       <div style={{ color: "#666", marginBottom: 10 }}>
         {report.student.name} | {report.course.name}
         {report.subject ? ` / ${report.subject.name}` : ""}
@@ -97,142 +146,158 @@ export default async function TeacherMidtermReportDetailPage({
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#eff6ff", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Basic", "基础信息")}</div>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Student Information", "学生基本信息")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 8 }}>
             <label>
-              {t(lang, "Period Label", "报告周期")}
-              <input name="reportPeriodLabel" defaultValue={report.reportPeriodLabel ?? ""} placeholder="e.g. 1/29/2026 Midterm" style={{ width: "100%" }} />
+              {t(lang, "Date of Report", "报告日期")}
+              <input value={new Date().toLocaleDateString()} readOnly style={{ width: "100%", background: "#f8fafc" }} />
             </label>
             <label>
-              {t(lang, "Exam Readiness", "考试准备状态")}
-              <input name="examTargetStatus" defaultValue={report.examTargetStatus ?? ""} placeholder="e.g. 中 / Ready for A2" style={{ width: "100%" }} />
+              {t(lang, "Assessment Period", "评估阶段")}
+              <input name="reportPeriodLabel" defaultValue={report.reportPeriodLabel ?? ""} style={{ width: "100%" }} />
             </label>
             <label>
-              {t(lang, "Overall Score", "总分")}
+              {t(lang, "Assessment Tool Used", "评估工具")}
+              <input name="assessmentTool" defaultValue={draft.assessmentTool} placeholder="iTEP / Internal Placement Test / CEFR..." style={{ width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Overall Score (if applicable)", "综合成绩（如适用）")}
               <input name="overallScore" defaultValue={report.overallScore?.toString() ?? ""} placeholder="4.2" style={{ width: "100%" }} />
             </label>
+            <label>
+              {t(lang, "Estimated CEFR Level", "预估CEFR等级")}
+              <input name="examTargetStatus" defaultValue={report.examTargetStatus ?? ""} placeholder="A2 / B1..." style={{ width: "100%" }} />
+            </label>
           </div>
-          <label style={{ display: "block", marginTop: 8 }}>
-            {t(lang, "Important Note", "重要免责声明")}
-            <textarea name="warningNote" defaultValue={draft.warningNote} rows={2} style={{ width: "100%" }} />
-          </label>
+        </div>
+
+        <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff1f2", padding: 10 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Important Note", "重要声明")}</div>
+          <textarea name="warningNote" defaultValue={draft.warningNote} rows={3} style={{ width: "100%" }} />
         </div>
 
         <div style={{ border: "1px solid #fde68a", borderRadius: 10, background: "#fffbeb", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Overall Evaluation", "总评")}</div>
-          <textarea name="overallComment" defaultValue={draft.overallComment} rows={5} style={{ width: "100%" }} />
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Overall Evaluation", "总体评估")}</div>
+          <label style={{ display: "block", marginBottom: 6 }}>
+            {t(lang, "Estimated Level Statement", "整体水平陈述")}
+            <input name="overallEstimatedLevel" defaultValue={draft.overallEstimatedLevel} style={{ width: "100%" }} />
+          </label>
+          <label style={{ display: "block" }}>
+            {t(lang, "Summary of Performance", "综合表现概述")}
+            <textarea name="overallSummary" defaultValue={draft.overallSummary} rows={4} style={{ width: "100%" }} />
+          </label>
         </div>
 
-        {[
-          ["listeningLevel", "listeningComment", t(lang, "Listening", "听力")],
-          ["vocabularyLevel", "vocabularyComment", t(lang, "Vocabulary & Grammar", "词汇与语法")],
-          ["readingLevel", "readingComment", t(lang, "Reading", "阅读")],
-          ["writingLevel", "writingComment", t(lang, "Writing", "写作")],
-          ["speakingLevel", "speakingComment", t(lang, "Speaking", "口语")],
-        ].map(([levelKey, commentKey, title]) => (
-          <div key={String(levelKey)} style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 10 }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>{title}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 8 }}>
-              <label>
-                {t(lang, "Level", "等级")}
-                <select name={String(levelKey)} defaultValue={(draft as any)[levelKey]}>
-                  {LEVEL_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt || "-"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t(lang, "Comment", "评语")}
-                <textarea name={String(commentKey)} defaultValue={(draft as any)[commentKey]} rows={3} style={{ width: "100%" }} />
-              </label>
-            </div>
-          </div>
-        ))}
-
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Summary", "总结")}</div>
-          <textarea name="summaryComment" defaultValue={draft.summaryComment} rows={4} style={{ width: "100%" }} />
-        </div>
-
-        <div style={{ border: "1px solid #fbcfe8", borderRadius: 10, background: "#fdf2f8", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 2 }}>{t(lang, "iTEP Predicted", "iTEP 预估分")}</div>
-          <div style={{ fontSize: 12, color: "#7c2d12", marginBottom: 6 }}>
-            {t(lang, "Optional: fill only when applicable for this student.", "可选项：仅当该学生适用时填写。")}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(100px, 1fr))", gap: 8 }}>
-            <label>
-              Grammar
-              <input name="itepGrammar" defaultValue={draft.itepGrammar} />
-            </label>
-            <label>
-              Vocab
-              <input name="itepVocab" defaultValue={draft.itepVocab} />
-            </label>
-            <label>
-              Listening
-              <input name="itepListening" defaultValue={draft.itepListening} />
-            </label>
-            <label>
-              Reading
-              <input name="itepReading" defaultValue={draft.itepReading} />
-            </label>
-            <label>
-              Writing
-              <input name="itepWriting" defaultValue={draft.itepWriting} />
-            </label>
-            <label>
-              Speaking
-              <input name="itepSpeaking" defaultValue={draft.itepSpeaking} />
-            </label>
-            <label>
-              Total
-              <input name="itepTotal" defaultValue={draft.itepTotal} />
-            </label>
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#f8fafc", padding: 10 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Skill-Based Evaluation", "分项能力评估")}</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <SkillBlock
+              title={t(lang, "Listening", "听力")}
+              levelName="listeningLevel"
+              performanceName="listeningPerformance"
+              strengthsName="listeningStrengths"
+              improvementsName="listeningImprovements"
+              draft={draft}
+              lang={lang}
+            />
+            <SkillBlock
+              title={t(lang, "Reading", "阅读")}
+              levelName="readingLevel"
+              performanceName="readingPerformance"
+              strengthsName="readingStrengths"
+              improvementsName="readingImprovements"
+              draft={draft}
+              lang={lang}
+            />
+            <SkillBlock
+              title={t(lang, "Writing", "写作")}
+              levelName="writingLevel"
+              performanceName="writingPerformance"
+              strengthsName="writingStrengths"
+              improvementsName="writingImprovements"
+              draft={draft}
+              lang={lang}
+            />
+            <SkillBlock
+              title={t(lang, "Speaking", "口语")}
+              levelName="speakingLevel"
+              performanceName="speakingPerformance"
+              strengthsName="speakingStrengths"
+              improvementsName="speakingImprovements"
+              draft={draft}
+              lang={lang}
+            />
           </div>
         </div>
 
         <div style={{ border: "1px solid #c7d2fe", borderRadius: 10, background: "#eef2ff", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Class Discipline", "课堂纪律")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(220px, 1fr))", gap: 8 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Learning Disposition & Classroom Performance", "学习态度与课堂表现")}</div>
+          <div style={{ display: "grid", gap: 6 }}>
             <label>
-              {t(lang, "Subject", "科目")}
-              <input name="disciplineSubject" defaultValue={draft.disciplineSubject} />
+              {t(lang, "Class Participation", "课堂参与度")}
+              <textarea name="classParticipation" defaultValue={draft.classParticipation} rows={2} style={{ width: "100%" }} />
             </label>
             <label>
-              {t(lang, "Pages / Unit", "学习范围")}
-              <input name="disciplinePages" defaultValue={draft.disciplinePages} />
+              {t(lang, "Focus & Engagement", "专注度与投入度")}
+              <textarea name="focusEngagement" defaultValue={draft.focusEngagement} rows={2} style={{ width: "100%" }} />
             </label>
             <label>
-              {t(lang, "Progress", "进度表现")}
-              <textarea name="disciplineProgress" defaultValue={draft.disciplineProgress} rows={3} style={{ width: "100%" }} />
+              {t(lang, "Homework Completion & Preparation", "作业完成情况")}
+              <textarea name="homeworkPreparation" defaultValue={draft.homeworkPreparation} rows={2} style={{ width: "100%" }} />
             </label>
             <label>
-              {t(lang, "Strengths", "课堂优点")}
-              <textarea name="disciplineStrengths" defaultValue={draft.disciplineStrengths} rows={3} style={{ width: "100%" }} />
-            </label>
-            <label>
-              {t(lang, "Class Behavior", "课堂纪律表现")}
-              <textarea name="disciplineClassBehavior" defaultValue={draft.disciplineClassBehavior} rows={3} style={{ width: "100%" }} />
-            </label>
-            <label>
-              {t(lang, "Next Steps", "改进建议")}
-              <textarea name="disciplineNextStep" defaultValue={draft.disciplineNextStep} rows={3} style={{ width: "100%" }} />
+              {t(lang, "General Attitude Toward Learning", "学习态度总体评价")}
+              <textarea name="attitudeGeneral" defaultValue={draft.attitudeGeneral} rows={2} style={{ width: "100%" }} />
             </label>
           </div>
         </div>
 
+        <div style={{ border: "1px solid #bbf7d0", borderRadius: 10, background: "#f0fdf4", padding: 10 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Summary & Recommendations", "总结与学习建议")}</div>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label>
+              {t(lang, "Key Strengths", "核心优势")}
+              <textarea name="keyStrengths" defaultValue={draft.keyStrengths} rows={3} style={{ width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Primary Bottlenecks", "主要瓶颈")}
+              <textarea name="primaryBottlenecks" defaultValue={draft.primaryBottlenecks} rows={3} style={{ width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Recommended Focus for Next Phase", "下一阶段重点方向")}
+              <textarea name="nextPhaseFocus" defaultValue={draft.nextPhaseFocus} rows={3} style={{ width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Suggested Practice Load", "建议练习时长")}
+              <input name="suggestedPracticeLoad" defaultValue={draft.suggestedPracticeLoad} style={{ width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Target Level / Target Score", "目标等级或分数")}
+              <input name="targetLevelScore" defaultValue={draft.targetLevelScore} style={{ width: "100%" }} />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid #fbcfe8", borderRadius: 10, background: "#fdf2f8", padding: 10 }}>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>{t(lang, "iTEP Predicted (Optional)", "iTEP 预估分（可选）")}</div>
+          <div style={{ fontSize: 12, color: "#7c2d12", marginBottom: 6 }}>
+            {t(lang, "Fill only if this student uses iTEP path.", "仅当该学生走 iTEP 路径时填写。")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(100px, 1fr))", gap: 8 }}>
+            <label>Grammar<input name="itepGrammar" defaultValue={draft.itepGrammar} /></label>
+            <label>Vocab<input name="itepVocab" defaultValue={draft.itepVocab} /></label>
+            <label>Listening<input name="itepListening" defaultValue={draft.itepListening} /></label>
+            <label>Reading<input name="itepReading" defaultValue={draft.itepReading} /></label>
+            <label>Writing<input name="itepWriting" defaultValue={draft.itepWriting} /></label>
+            <label>Speaking<input name="itepSpeaking" defaultValue={draft.itepSpeaking} /></label>
+            <label>Total<input name="itepTotal" defaultValue={draft.itepTotal} /></label>
+          </div>
+        </div>
+
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="submit" name="intent" value="save">
-            {t(lang, "Save Draft", "保存草稿")}
-          </button>
-          <button type="submit" name="intent" value="submit">
-            {t(lang, "Submit Report", "提交报告")}
-          </button>
-          {report.status === "SUBMITTED" ? (
-            <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span>
-          ) : null}
+          <button type="submit" name="intent" value="save">{t(lang, "Save Draft", "保存草稿")}</button>
+          <button type="submit" name="intent" value="submit">{t(lang, "Submit Report", "提交报告")}</button>
+          {report.status === "SUBMITTED" ? <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span> : null}
         </div>
       </form>
     </div>
