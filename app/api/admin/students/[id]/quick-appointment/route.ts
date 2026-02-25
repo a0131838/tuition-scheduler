@@ -3,7 +3,7 @@ import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
-import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -188,16 +188,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   if (roomId) {
-    const roomConflict = await prisma.session.findFirst({
+    const roomConflicts = await prisma.session.findMany({
       where: {
         class: { roomId },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
       include: {
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
       },
     });
+    const roomConflict = pickTeacherSessionConflict(roomConflicts);
     if (roomConflict) return bad(`Room conflict: ${formatSessionConflictLabel(roomConflict)}`, 409);
   }
 

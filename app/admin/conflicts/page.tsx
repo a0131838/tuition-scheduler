@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import NoticeBanner from "../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
@@ -61,22 +62,6 @@ function canTeachClass(teacher: any, courseId?: string | null, subjectId?: strin
   return false;
 }
 
-function isFullyCancelledSessionForConflict(s: any) {
-  const cancelledSet = new Set(
-    Array.isArray(s.attendances) ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string) : []
-  );
-  if (cancelledSet.size === 0) return false;
-
-  if (s.class?.capacity === 1) {
-    const sid = (s.studentId as string | null) ?? (s.class?.oneOnOneStudentId as string | null) ?? (s.class?.enrollments?.[0]?.studentId as string | null);
-    return !!sid && cancelledSet.has(sid);
-  }
-
-  const expected = Array.isArray(s.class?.enrollments) ? s.class.enrollments.map((e: any) => e.studentId as string) : [];
-  if (expected.length === 0) return false;
-  return expected.every((sid: string) => cancelledSet.has(sid));
-}
-
 // Server actions were removed; conflict resolution now uses client fetch + /api routes.
 
 export default async function ConflictsPage({
@@ -116,7 +101,15 @@ export default async function ConflictsPage({
       include: {
         teacher: true,
         student: true,
-        attendances: { select: { studentId: true, status: true } },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
         class: {
           include: {
             course: true,
@@ -141,7 +134,7 @@ export default async function ConflictsPage({
     prisma.course.findMany({ orderBy: { name: "asc" } }),
     prisma.subject.findMany({ include: { course: true }, orderBy: [{ courseId: "asc" }, { name: "asc" }] }),
   ]);
-  const sessions = sessionsRaw.filter((s) => !isFullyCancelledSessionForConflict(s));
+  const sessions = sessionsRaw.filter((s) => !shouldIgnoreTeacherConflictSession(s));
 
   const byTeacher = new Map<string, typeof sessions>();
   const byRoom = new Map<string, typeof sessions>();

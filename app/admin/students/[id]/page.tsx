@@ -13,7 +13,7 @@ import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
-import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -561,16 +561,36 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     }
 
     if (roomId) {
-      const roomConflict = await prisma.session.findFirst({
+      const roomConflicts = await prisma.session.findMany({
         where: {
           class: { roomId },
           startAt: { lt: endAt },
           endAt: { gt: startAt },
         },
         include: {
-          class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+          class: {
+            include: {
+              course: true,
+              subject: true,
+              level: true,
+              teacher: true,
+              campus: true,
+              room: true,
+              enrollments: { select: { studentId: true } },
+            },
+          },
+          attendances: {
+            select: {
+              studentId: true,
+              status: true,
+              excusedCharge: true,
+              deductedMinutes: true,
+              deductedCount: true,
+            },
+          },
         },
       });
+      const roomConflict = pickTeacherSessionConflict(roomConflicts);
       if (roomConflict) {
         const cls = roomConflict.class;
         const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
@@ -1270,16 +1290,37 @@ export default async function StudentDetailPage({
     }
     if (!quickPackageWarn) {
       const roomConflict = quickRoomId
-        ? await prisma.session.findFirst({
-            where: {
-              class: { roomId: quickRoomId },
-              startAt: { lt: endAt },
-              endAt: { gt: startAt },
-            },
-            include: {
-              class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
-            },
-          })
+        ? pickTeacherSessionConflict(
+            await prisma.session.findMany({
+              where: {
+                class: { roomId: quickRoomId },
+                startAt: { lt: endAt },
+                endAt: { gt: startAt },
+              },
+              include: {
+                class: {
+                  include: {
+                    course: true,
+                    subject: true,
+                    level: true,
+                    teacher: true,
+                    campus: true,
+                    room: true,
+                    enrollments: { select: { studentId: true } },
+                  },
+                },
+                attendances: {
+                  select: {
+                    studentId: true,
+                    status: true,
+                    excusedCharge: true,
+                    deductedMinutes: true,
+                    deductedCount: true,
+                  },
+                },
+              },
+            })
+          )
         : null;
       const eligible = teachers.filter(
         (tch) => tch.subjectCourseId === quickSubjectId || tch.subjects.some((s) => s.id === quickSubjectId)

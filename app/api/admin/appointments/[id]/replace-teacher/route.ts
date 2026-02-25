@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -138,15 +139,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const availErr = await checkTeacherAvailability(newTeacherId, appt.startAt, appt.endAt);
   if (availErr) return bad(availErr, 409, { code: "AVAIL_CONFLICT" });
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
       id: sessionMatch ? { not: sessionMatch.id } : undefined,
       startAt: { lt: appt.endAt },
       endAt: { gt: appt.startAt },
       OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
     },
-    select: { id: true, classId: true },
+    select: {
+      id: true,
+      classId: true,
+      studentId: true,
+      class: { select: { capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+    },
   });
+  const teacherSessionConflict = pickTeacherSessionConflict(teacherSessionConflicts, appt.studentId);
   if (teacherSessionConflict) {
     return bad(`Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`, 409, {
       code: "TIME_CONFLICT",

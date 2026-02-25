@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
 const CONFLICT_AUDIT_LAST_DAY_KEY = "conflict_audit_last_day";
 const CONFLICT_AUDIT_LAST_RESULT_KEY = "conflict_audit_last_result";
@@ -38,20 +39,7 @@ function overlaps(a: { startAt: Date; endAt: Date }, b: { startAt: Date; endAt: 
 }
 
 function isFullyCancelledSessionForConflict(s: any) {
-  const cancelledSet = new Set(
-    Array.isArray(s.attendances) ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string) : []
-  );
-  if (cancelledSet.size === 0) return false;
-
-  if (s.class?.capacity === 1) {
-    const sid =
-      (s.studentId as string | null) ?? (s.class?.oneOnOneStudentId as string | null) ?? (s.class?.enrollments?.[0]?.studentId as string | null);
-    return !!sid && cancelledSet.has(sid);
-  }
-
-  const expected = Array.isArray(s.class?.enrollments) ? s.class.enrollments.map((e: any) => e.studentId as string) : [];
-  if (expected.length === 0) return false;
-  return expected.every((sid: string) => cancelledSet.has(sid));
+  return shouldIgnoreTeacherConflictSession(s);
 }
 
 function collectOverlapPairs<T extends { startAt: Date; endAt: Date }>(groups: Map<string, T[]>) {
@@ -78,7 +66,15 @@ export async function runConflictAuditSnapshot(referenceDate = new Date(), horiz
     prisma.session.findMany({
       where: { startAt: { gte: dayStart, lte: dayEnd } },
       include: {
-        attendances: { select: { studentId: true, status: true } },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
         class: {
           select: {
             id: true,
@@ -314,7 +310,15 @@ export async function autoResolveTeacherConflicts(referenceDate = new Date(), ho
     prisma.session.findMany({
       where: { startAt: { gte: dayStart, lte: dayEnd } },
       include: {
-        attendances: { select: { studentId: true, status: true } },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
         class: {
           select: {
             teacherId: true,

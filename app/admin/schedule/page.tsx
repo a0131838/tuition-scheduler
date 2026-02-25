@@ -2,6 +2,7 @@ import React from "react";
 import { prisma } from "@/lib/prisma";
 import { PackageStatus, PackageType } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import NoticeBanner from "../_components/NoticeBanner";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
@@ -265,6 +266,15 @@ export default async function SchedulePage({
           endAt: { gt: weekStart },
         },
         include: {
+          attendances: {
+            select: {
+              studentId: true,
+              status: true,
+              excusedCharge: true,
+              deductedMinutes: true,
+              deductedCount: true,
+            },
+          },
           teacher: true,
           student: true,
           class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
@@ -280,7 +290,7 @@ export default async function SchedulePage({
     const teacherName = teachers.find((t) => t.id === teacherId)?.name ?? "Teacher";
 
     events = [
-      ...sessions.map((s) => ({
+      ...sessions.filter((s) => !shouldIgnoreTeacherConflictSession(s)).map((s) => ({
         id: s.id,
         kind: "session" as const,
         startAt: s.startAt,
@@ -319,11 +329,24 @@ export default async function SchedulePage({
         startAt: { lt: weekEnd },
         endAt: { gt: weekStart },
       },
-      include: { teacher: true, student: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+      include: {
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+        teacher: true,
+        student: true,
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
       orderBy: { startAt: "asc" },
     });
 
-    events = sessions.map((s) => ({
+    events = sessions.filter((s) => !shouldIgnoreTeacherConflictSession(s)).map((s) => ({
       id: s.id,
       kind: "session" as const,
       startAt: s.startAt,
@@ -349,11 +372,24 @@ export default async function SchedulePage({
         startAt: { lt: weekEnd },
         endAt: { gt: weekStart },
       },
-      include: { teacher: true, student: true, class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } } },
+      include: {
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+        teacher: true,
+        student: true,
+        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      },
       orderBy: { startAt: "asc" },
     });
 
-    events = sessions.map((s) => ({
+    events = sessions.filter((s) => !shouldIgnoreTeacherConflictSession(s)).map((s) => ({
       id: s.id,
       kind: "session" as const,
       startAt: s.startAt,

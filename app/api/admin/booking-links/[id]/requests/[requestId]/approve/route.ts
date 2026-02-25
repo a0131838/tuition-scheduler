@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -29,14 +30,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
   if (!reqRow || reqRow.linkId !== linkId) return bad("Request not found", 404);
   if (reqRow.status !== "PENDING") return bad("Request already processed", 409);
 
-  const teacherSession = await prisma.session.findFirst({
+  const teacherSessions = await prisma.session.findMany({
     where: {
       startAt: { lt: reqRow.endAt },
       endAt: { gt: reqRow.startAt },
       OR: [{ teacherId: reqRow.teacherId }, { teacherId: null, class: { teacherId: reqRow.teacherId } }],
     },
-    select: { id: true, classId: true, startAt: true, endAt: true },
+    select: {
+      id: true,
+      classId: true,
+      startAt: true,
+      endAt: true,
+      studentId: true,
+      class: { select: { capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+    },
   });
+  const teacherSession = pickTeacherSessionConflict(teacherSessions, reqRow.studentId);
   if (teacherSession) {
     return bad(
       `Teacher conflict with session ${teacherSession.id} (class ${teacherSession.classId}) ${fmt(teacherSession.startAt)} - ${fmt(teacherSession.endAt)}`,
@@ -60,14 +78,29 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     return bad(`Student conflict with appointment ${fmt(studentAppt.startAt)} - ${fmt(studentAppt.endAt)}`, 409);
   }
 
-  const studentSessionConflict = await prisma.session.findFirst({
+  const studentSessionConflicts = await prisma.session.findMany({
     where: {
       startAt: { lt: reqRow.endAt },
       endAt: { gt: reqRow.startAt },
       class: { enrollments: { some: { studentId: reqRow.studentId } } },
     },
-    select: { id: true, classId: true },
+    select: {
+      id: true,
+      classId: true,
+      studentId: true,
+      class: { select: { capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+    },
   });
+  const studentSessionConflict = pickTeacherSessionConflict(studentSessionConflicts, reqRow.studentId);
   if (studentSessionConflict) {
     return bad(`Student conflict with session ${studentSessionConflict.id} (class ${studentSessionConflict.classId})`, 409);
   }

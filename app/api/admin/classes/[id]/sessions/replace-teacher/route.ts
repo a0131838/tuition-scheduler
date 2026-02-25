@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -86,18 +87,34 @@ async function findTeacherConflict(opts: {
   startAt: Date;
   endAt: Date;
   excludeSessionIds: string[];
+  schedulingStudentId?: string | null;
 }) {
-  const { teacherId, startAt, endAt, excludeSessionIds } = opts;
+  const { teacherId, startAt, endAt, excludeSessionIds, schedulingStudentId } = opts;
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
       id: excludeSessionIds.length ? { notIn: excludeSessionIds } : undefined,
       startAt: { lt: endAt },
       endAt: { gt: startAt },
       OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
     },
-    select: { id: true, classId: true },
+    select: {
+      id: true,
+      classId: true,
+      studentId: true,
+      class: { select: { capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+    },
   });
+  const teacherSessionConflict = pickTeacherSessionConflict(teacherSessionConflicts, schedulingStudentId);
   if (teacherSessionConflict) {
     return `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`;
   }
@@ -177,6 +194,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       startAt: s.startAt,
       endAt: s.endAt,
       excludeSessionIds: targetIds,
+      schedulingStudentId: s.studentId,
     });
     if (conflict) {
       return bad(`Time conflict on ${ymd(s.startAt)} ${fmtHHMM(s.startAt)}-${fmtHHMM(s.endAt)}: ${conflict}`, 409, {
@@ -212,4 +230,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     replaced: targetSessions.length,
   });
 }
-

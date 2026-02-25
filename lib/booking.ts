@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
 export function parseMonth(s?: string | null) {
   if (!s) return null;
@@ -104,7 +105,23 @@ export async function listBookingSlotsForMonth(opts: {
         endAt: { gt: windowStart },
         OR: [{ teacherId: { in: teacherIds } }, { teacherId: null, class: { teacherId: { in: teacherIds } } }],
       },
-      select: { id: true, startAt: true, endAt: true, teacherId: true, class: { select: { teacherId: true } } },
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        teacherId: true,
+        studentId: true,
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+        class: { select: { teacherId: true, capacity: true, oneOnOneStudentId: true } },
+      },
     }),
     prisma.appointment.findMany({
       where: { teacherId: { in: teacherIds }, startAt: { lt: windowEnd }, endAt: { gt: windowStart } },
@@ -130,6 +147,7 @@ export async function listBookingSlotsForMonth(opts: {
 
   const busyByTeacher = new Map<string, { startAt: Date; endAt: Date }[]>();
   for (const s of sessions) {
+    if (shouldIgnoreTeacherConflictSession(s)) continue;
     const teacherId = s.teacherId ?? s.class.teacherId;
     if (!teacherId) continue;
     const arr = busyByTeacher.get(teacherId) ?? [];

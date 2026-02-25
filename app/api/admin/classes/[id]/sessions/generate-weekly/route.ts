@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -88,8 +89,9 @@ async function findConflictForSession(opts: {
   roomId: string | null;
   startAt: Date;
   endAt: Date;
+  schedulingStudentId?: string | null;
 }) {
-  const { classId, teacherId, roomId, startAt, endAt } = opts;
+  const { classId, teacherId, roomId, startAt, endAt, schedulingStudentId } = opts;
 
   const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
   if (availErr) return availErr;
@@ -100,14 +102,29 @@ async function findConflictForSession(opts: {
   });
   if (dup) return `Session already exists at ${ymd(startAt)} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}`;
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
-      class: { teacherId },
+      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
-    select: { id: true, classId: true },
+    select: {
+      id: true,
+      classId: true,
+      studentId: true,
+      class: { select: { capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+    },
   });
+  const teacherSessionConflict = pickTeacherSessionConflict(teacherSessionConflicts, schedulingStudentId);
   if (teacherSessionConflict) {
     return `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`;
   }
@@ -127,14 +144,29 @@ async function findConflictForSession(opts: {
   }
 
   if (roomId) {
-    const roomSessionConflict = await prisma.session.findFirst({
+    const roomSessionConflicts = await prisma.session.findMany({
       where: {
         class: { roomId },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
-      select: { id: true, classId: true },
+      select: {
+        id: true,
+        classId: true,
+        studentId: true,
+        class: { select: { capacity: true, oneOnOneStudentId: true, enrollments: { select: { studentId: true } } } },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+      },
     });
+    const roomSessionConflict = pickTeacherSessionConflict(roomSessionConflicts);
     if (roomSessionConflict) {
       return `Room conflict with session ${roomSessionConflict.id} (class ${roomSessionConflict.classId})`;
     }
@@ -220,6 +252,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       roomId: cls.roomId ?? null,
       startAt,
       endAt,
+      schedulingStudentId: cls.capacity === 1 ? studentId : null,
     });
 
     if (conflict) {
@@ -249,4 +282,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json({ ok: true, created, skipped, msg, skippedSamples });
 }
-

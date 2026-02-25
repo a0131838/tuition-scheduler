@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import AdminClassSessionsClient from "./AdminClassSessionsClient";
 
@@ -127,8 +128,9 @@ async function findConflictForSession(opts: {
   roomId: string | null;
   startAt: Date;
   endAt: Date;
+  schedulingStudentId?: string | null;
 }) {
-  const { classId, teacherId, roomId, startAt, endAt } = opts;
+  const { classId, teacherId, roomId, startAt, endAt, schedulingStudentId } = opts;
 
   const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
   if (availErr) return availErr;
@@ -139,17 +141,37 @@ async function findConflictForSession(opts: {
   });
   if (dup) return `Session already exists at ${fmtRange(startAt, endAt)}`;
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
-      class: { teacherId },
+      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     },
     include: {
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
       teacher: true,
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      class: {
+        include: {
+          course: true,
+          subject: true,
+          level: true,
+          teacher: true,
+          campus: true,
+          room: true,
+          enrollments: { select: { studentId: true } },
+        },
+      },
     },
   });
+  const teacherSessionConflict = pickTeacherSessionConflict(teacherSessionConflicts, schedulingStudentId);
   if (teacherSessionConflict) {
     return `Teacher conflict / 老师冲突: ${formatSessionConflictLabel(teacherSessionConflict)}`;
   }
@@ -165,17 +187,37 @@ async function findConflictForSession(opts: {
   if (teacherApptConflict) return `Teacher conflict / 老师冲突: ${formatAppointmentConflictLabel(teacherApptConflict)}`;
 
   if (roomId) {
-    const roomSessionConflict = await prisma.session.findFirst({
+    const roomSessionConflicts = await prisma.session.findMany({
       where: {
         class: { roomId },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
       include: {
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
         teacher: true,
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
       },
     });
+    const roomSessionConflict = pickTeacherSessionConflict(roomSessionConflicts);
     if (roomSessionConflict) {
       return `Room conflict / 教室冲突: ${formatSessionConflictLabel(roomSessionConflict)}`;
     }
@@ -189,10 +231,11 @@ async function findTeacherConflict(opts: {
   startAt: Date;
   endAt: Date;
   excludeSessionIds: string[];
+  schedulingStudentId?: string | null;
 }) {
-  const { teacherId, startAt, endAt, excludeSessionIds } = opts;
+  const { teacherId, startAt, endAt, excludeSessionIds, schedulingStudentId } = opts;
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
       id: excludeSessionIds.length ? { notIn: excludeSessionIds } : undefined,
       startAt: { lt: endAt },
@@ -200,10 +243,30 @@ async function findTeacherConflict(opts: {
       OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
     },
     include: {
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
       teacher: true,
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      class: {
+        include: {
+          course: true,
+          subject: true,
+          level: true,
+          teacher: true,
+          campus: true,
+          room: true,
+          enrollments: { select: { studentId: true } },
+        },
+      },
     },
   });
+  const teacherSessionConflict = pickTeacherSessionConflict(teacherSessionConflicts, schedulingStudentId);
   if (teacherSessionConflict) {
     return `Teacher conflict / 老师冲突: ${formatSessionConflictLabel(teacherSessionConflict)}`;
   }
@@ -264,6 +327,7 @@ async function createOneSession(classId: string, formData: FormData) {
     roomId: cls.roomId ?? null,
     startAt,
     endAt,
+    schedulingStudentId: cls.capacity === 1 ? studentId : null,
   });
 
   if (conflict) redirect(buildRedirect(classId, { err: conflict }));
@@ -343,6 +407,7 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
       roomId: cls.roomId ?? null,
       startAt,
       endAt,
+      schedulingStudentId: cls.capacity === 1 ? studentId : null,
     });
 
     if (conflict) {
@@ -440,6 +505,7 @@ async function replaceSessionTeacher(classId: string, formData: FormData) {
       startAt: s.startAt,
       endAt: s.endAt,
       excludeSessionIds: targetIds,
+      schedulingStudentId: s.studentId,
     });
     if (conflict) {
       redirect(

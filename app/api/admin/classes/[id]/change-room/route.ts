@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -95,15 +96,38 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     for (const s of classSessions) {
-      const conflict = await prisma.session.findFirst({
+      const conflicts = await prisma.session.findMany({
         where: {
           id: { not: s.id },
           class: { roomId },
           startAt: { lt: s.endAt },
           endAt: { gt: s.startAt },
         },
-        select: { id: true, classId: true, startAt: true, endAt: true },
+        select: {
+          id: true,
+          classId: true,
+          startAt: true,
+          endAt: true,
+          studentId: true,
+          class: {
+            select: {
+              capacity: true,
+              oneOnOneStudentId: true,
+              enrollments: { select: { studentId: true } },
+            },
+          },
+          attendances: {
+            select: {
+              studentId: true,
+              status: true,
+              excusedCharge: true,
+              deductedMinutes: true,
+              deductedCount: true,
+            },
+          },
+        },
       });
+      const conflict = pickTeacherSessionConflict(conflicts);
       if (conflict) {
         const conflictClass = await prisma.class.findUnique({
           where: { id: conflict.classId },
@@ -125,4 +149,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return Response.json({ ok: true, message: `Room updated: ${label} | ${oldRoomLabel} -> ${nextRoomLabel}` });
 }
-

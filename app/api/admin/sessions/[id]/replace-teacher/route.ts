@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -138,15 +139,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const availErr = await checkTeacherAvailability(newTeacherId, session.startAt, session.endAt);
   if (availErr) return bad(`Availability conflict: ${availErr}`, 409, { code: "AVAIL_CONFLICT" });
 
-  const conflict = await prisma.session.findFirst({
+  const conflicts = await prisma.session.findMany({
     where: {
       id: { not: session.id },
       startAt: { lt: session.endAt },
       endAt: { gt: session.startAt },
       OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
     },
-    include: { class: { include: { course: true, subject: true, level: true } } },
+    include: {
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+      class: { include: { course: true, subject: true, level: true } },
+    },
   });
+  const conflict = pickTeacherSessionConflict(conflicts, session.studentId);
   if (conflict) {
     const label = classLabel(conflict.class as any);
     const time = fmtRange(conflict.startAt, conflict.endAt);
@@ -193,4 +206,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const toName = teacher.name;
   return Response.json({ ok: true, message: `Teacher updated: ${label} | ${time} | ${fromName} -> ${toName}` });
 }
-

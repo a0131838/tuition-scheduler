@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { TeachingLanguage } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import TeacherCreateForm from "../../_components/TeacherCreateForm";
 import OneOnOneTemplateForm from "../../_components/OneOnOneTemplateForm";
 import NoticeBanner from "../../_components/NoticeBanner";
@@ -106,9 +107,20 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
     where: {
       startAt: { lte: rangeEnd },
       endAt: { gte: rangeStart },
-      class: { teacherId },
+      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
     },
-    include: { class: true },
+    include: {
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+      class: { select: { roomId: true, capacity: true, oneOnOneStudentId: true, enrollments: { select: { studentId: true } } } },
+    },
   });
 
   const roomIds = Array.from(new Set(templates.map((t) => t.class.roomId).filter(Boolean))) as string[];
@@ -147,8 +159,8 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
       continue;
     }
 
-    const teacherConflict = teacherSessions.find((s) =>
-      overlaps(occ.startAt, occ.endAt, s.startAt, s.endAt)
+    const teacherConflict = teacherSessions.find(
+      (s) => overlaps(occ.startAt, occ.endAt, s.startAt, s.endAt) && !shouldIgnoreTeacherConflictSession(s, occ.studentId)
     );
     if (teacherConflict) {
       conflicts.push({ occ, reason: "Teacher conflict", existing: teacherConflict });
