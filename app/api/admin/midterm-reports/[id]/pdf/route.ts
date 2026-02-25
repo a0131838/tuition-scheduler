@@ -190,6 +190,47 @@ function kv(doc: PDFDoc, x: number, y: number, w: number, k: string, v: string, 
   });
 }
 
+function kvCompact(
+  doc: PDFDoc,
+  x: number,
+  y: number,
+  w: number,
+  k: string,
+  v: string,
+  boxH: number,
+  lines: number,
+  fontSize = 6.6,
+) {
+  setPdfBoldFont(doc);
+  doc.fillColor("#334155").fontSize(6.8).text(k, x, y, { width: w });
+  drawTextBox(doc, {
+    x,
+    y: y + 8,
+    w,
+    h: boxH,
+    text: normalizeText(v),
+    fontSize,
+    maxLines: lines,
+    lineGap: 0.8,
+    color: "#0f172a",
+  });
+}
+
+function drawInfoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string) {
+  setPdfBoldFont(doc);
+  doc.fillColor("#334155").fontSize(7.1).text(label, x, y, { width: w });
+  drawTextBox(doc, {
+    x,
+    y: y + 9,
+    w,
+    h: 13,
+    text: normalizeText(value),
+    fontSize: 7.2,
+    maxLines: 1,
+    lineGap: 0.8,
+  });
+}
+
 function drawSkillCard(
   doc: PDFDoc,
   x: number,
@@ -209,31 +250,17 @@ function drawSkillCard(
   setPdfBoldFont(doc);
   doc.fillColor("#0f172a").fontSize(8.2).text(title, x + 6, y + 5, { width: w - 12 });
 
-  let rowY = y + 18;
-  const rowGap = 2;
-  const contentW = w - 12;
-
-  const rows = [
-    { label: ZH.current, value: level, height: 12, lines: 1 },
-    { label: ZH.perf, value: perf, height: 23, lines: 2 },
-    { label: ZH.strength, value: strength, height: 23, lines: 2 },
-    { label: ZH.improve, value: improve, height: 23, lines: 2 },
-  ];
-
-  for (const row of rows) {
-    drawTextBox(doc, {
-      x: x + 6,
-      y: rowY,
-      w: contentW,
-      h: row.height,
-      text: `${row.label}：${normalizeText(row.value)}`,
-      fontSize: 7,
-      maxLines: row.lines,
-      lineGap: 1,
-      color: "#0f172a",
-    });
-    rowY += row.height + rowGap;
-  }
+  drawTextBox(doc, {
+    x: x + 6,
+    y: y + 17,
+    w: w - 12,
+    h: h - 22,
+    text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
+    fontSize: 6.6,
+    maxLines: 9,
+    lineGap: 0.8,
+    color: "#0f172a",
+  });
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -261,17 +288,21 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   doc.fillColor("#7f1d1d").fontSize(14).text(ZH.title, left, top);
 
   const y1 = top + 20;
-  const h1 = 84;
+  const h1 = 76;
   const w1a = Math.floor(contentW * 0.52);
   const w1b = contentW - w1a - gap;
 
   panel(doc, left, y1, w1a, h1, ZH.base);
-  kv(doc, left + 8, y1 + 20, 160, ZH.name, report.student.name, 15, 1);
-  kv(doc, left + 176, y1 + 20, 140, ZH.date, new Date().toLocaleDateString(), 15, 1);
-  kv(doc, left + 324, y1 + 20, w1a - 332, ZH.period, report.reportPeriodLabel || "-", 15, 1);
-  kv(doc, left + 8, y1 + 46, 220, ZH.tool, draft.assessmentTool || "-", 15, 1);
-  kv(doc, left + 236, y1 + 46, 120, ZH.score, String(report.overallScore ?? "-"), 15, 1);
-  kv(doc, left + 364, y1 + 46, w1a - 372, ZH.cefr, report.examTargetStatus || "-", 15, 1);
+  const cGap = 12;
+  const colW = Math.floor((w1a - 16 - cGap * 2) / 3);
+  const row1Y = y1 + 20;
+  const row2Y = y1 + 44;
+  drawInfoCell(doc, left + 8, row1Y, colW, ZH.name, report.student.name);
+  drawInfoCell(doc, left + 8 + colW + cGap, row1Y, colW, ZH.date, new Date().toLocaleDateString());
+  drawInfoCell(doc, left + 8 + (colW + cGap) * 2, row1Y, colW, ZH.period, report.reportPeriodLabel || "-");
+  drawInfoCell(doc, left + 8, row2Y, colW, ZH.tool, draft.assessmentTool || "-");
+  drawInfoCell(doc, left + 8 + colW + cGap, row2Y, colW, ZH.score, String(report.overallScore ?? "-"));
+  drawInfoCell(doc, left + 8 + (colW + cGap) * 2, row2Y, colW, ZH.cefr, report.examTargetStatus || "-");
 
   panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note);
   drawTextBox(doc, {
@@ -286,13 +317,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 178;
+  const h2 = 194;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
   panel(doc, left, y2, w2a, h2, ZH.overall);
   kv(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 16, 2);
-  kv(doc, left + 8, y2 + 54, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 64, 12);
+  kvCompact(doc, left + 8, y2 + 54, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 64, 14, 6.5);
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills);
   const cardGap = 8;
@@ -352,7 +383,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + gap;
+  const y3 = y2 + h2 + 12;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
@@ -373,15 +404,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const c2x = left + w + gap;
 
     panel(doc, left, y3, w, h3, ZH.learning);
-    kv(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 24, 3);
-    kv(doc, left + 8, y3 + 50, w - 16, ZH.focus, draft.focusEngagement, 24, 3);
-    kv(doc, left + 8, y3 + 80, w - 16, ZH.homework, draft.homeworkPreparation, 24, 3);
-    kv(doc, left + 8, y3 + 110, w - 16, ZH.attitude, draft.attitudeGeneral, 24, 3);
+    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 24, 3);
+    kvCompact(doc, left + 8, y3 + 50, w - 16, ZH.focus, draft.focusEngagement, 24, 3);
+    kvCompact(doc, left + 8, y3 + 80, w - 16, ZH.homework, draft.homeworkPreparation, 24, 3);
+    kvCompact(doc, left + 8, y3 + 110, w - 16, ZH.attitude, draft.attitudeGeneral, 24, 3);
 
     panel(doc, c2x, y3, w, h3, ZH.rec);
-    kv(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 24, 3);
-    kv(doc, c2x + 8, y3 + 50, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 24, 3);
-    kv(doc, c2x + 8, y3 + 80, w - 16, ZH.next, draft.nextPhaseFocus, 24, 3);
+    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 24, 3);
+    kvCompact(doc, c2x + 8, y3 + 50, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 24, 3);
+    kvCompact(doc, c2x + 8, y3 + 80, w - 16, ZH.next, draft.nextPhaseFocus, 24, 3);
     kv(doc, c2x + 8, y3 + 110, w - 16, ZH.load, draft.suggestedPracticeLoad, 16, 1);
     kv(doc, c2x + 8, y3 + 132, w - 16, ZH.target, draft.targetLevelScore, 16, 1);
   } else {
@@ -390,15 +421,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const c3x = c2x + w + gap;
 
     panel(doc, left, y3, w, h3, ZH.learning);
-    kv(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 20, 2);
-    kv(doc, left + 8, y3 + 45, w - 16, ZH.focus, draft.focusEngagement, 20, 2);
-    kv(doc, left + 8, y3 + 70, w - 16, ZH.homework, draft.homeworkPreparation, 20, 2);
-    kv(doc, left + 8, y3 + 95, w - 16, ZH.attitude, draft.attitudeGeneral, 20, 2);
+    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 20, 2, 6.4);
+    kvCompact(doc, left + 8, y3 + 45, w - 16, ZH.focus, draft.focusEngagement, 20, 2, 6.4);
+    kvCompact(doc, left + 8, y3 + 70, w - 16, ZH.homework, draft.homeworkPreparation, 20, 2, 6.4);
+    kvCompact(doc, left + 8, y3 + 95, w - 16, ZH.attitude, draft.attitudeGeneral, 20, 2, 6.4);
 
     panel(doc, c2x, y3, w, h3, ZH.rec);
-    kv(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 20, 2);
-    kv(doc, c2x + 8, y3 + 45, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 20, 2);
-    kv(doc, c2x + 8, y3 + 70, w - 16, ZH.next, draft.nextPhaseFocus, 20, 2);
+    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 20, 2, 6.4);
+    kvCompact(doc, c2x + 8, y3 + 45, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 20, 2, 6.4);
+    kvCompact(doc, c2x + 8, y3 + 70, w - 16, ZH.next, draft.nextPhaseFocus, 20, 2, 6.4);
     kv(doc, c2x + 8, y3 + 95, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
     kv(doc, c2x + 8, y3 + 114, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
 
