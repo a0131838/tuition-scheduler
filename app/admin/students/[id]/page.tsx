@@ -630,6 +630,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       campusId,
       roomId,
       ensureEnrollment: true,
+      preferTeacherClass: true,
     });
     if (!cls) {
       redirect(backWithQuickParams({ err: "Invalid subject or level" }));

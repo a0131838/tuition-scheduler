@@ -242,6 +242,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campusId,
       roomId,
       ensureEnrollment: true,
+      preferTeacherClass: true,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";

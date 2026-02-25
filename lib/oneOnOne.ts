@@ -10,6 +10,7 @@ type OneOnOneClassInput = {
   campusId: string;
   roomId?: string | null;
   ensureEnrollment?: boolean;
+  preferTeacherClass?: boolean;
 };
 
 export async function getOrCreateOneOnOneGroup(input: {
@@ -53,6 +54,7 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
     campusId,
     roomId = null,
     ensureEnrollment = false,
+    preferTeacherClass = false,
   } = input;
 
   let courseId = input.courseId ?? null;
@@ -78,6 +80,29 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
   }
 
   if (ensureEnrollment) {
+    const preferredEnrollment =
+      subjectId != null
+        ? await prisma.enrollment.findFirst({
+            where: {
+              studentId,
+              class: { courseId, subjectId, teacherId },
+            },
+            select: { classId: true },
+          })
+        : await prisma.enrollment.findFirst({
+            where: {
+              studentId,
+              class: { courseId, teacherId },
+            },
+            select: { classId: true },
+          });
+    if (preferredEnrollment) {
+      const preferredClass = await prisma.class.findUnique({ where: { id: preferredEnrollment.classId } });
+      if (preferredClass && preferredClass.capacity === 1) {
+        return preferredClass;
+      }
+    }
+
     const existingEnrollment =
       subjectId != null
         ? await prisma.enrollment.findFirst({
@@ -98,7 +123,9 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
         if (existingClass.capacity !== 1 || subjectMismatch) {
           throw new Error("COURSE_ENROLLMENT_CONFLICT");
         }
-        return existingClass;
+        if (!preferTeacherClass || existingClass.teacherId === teacherId) {
+          return existingClass;
+        }
       }
     }
   }
