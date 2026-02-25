@@ -233,7 +233,7 @@ export default async function TeacherAlertsPage({
         {t(
           lang,
           "Tip: Teacher not signed = teacher has not handled this session yet. Student not signed = one or more students are still UNMARKED. Open session and complete attendance (PRESENT/ABSENT/LATE/EXCUSED) or submit feedback.",
-          "Tip: Teacher not signed = teacher has not handled this session yet. Student not signed = one or more students are still UNMARKED. Open session and complete attendance (PRESENT/ABSENT/LATE/EXCUSED) or submit feedback."
+          "说明：老师未签到 = 该课次老师还未处理；学生未签到 = 还有学生是未点名（UNMARKED）。请打开课次，完成点名（出勤/缺勤/迟到/请假）或提交反馈。"
         )}
       </div>
 
