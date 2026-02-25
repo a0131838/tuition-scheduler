@@ -108,8 +108,9 @@ function offlineCourseFromNote(note?: string | null) {
   return m?.[1]?.trim() ?? "";
 }
 
-function studentAttendanceHref(studentId: string) {
-  return `/admin/students/${encodeURIComponent(studentId)}?focus=attendance&limit=500#attendance`;
+function studentAttendanceHref(studentId: string, attendanceMonth?: string | null) {
+  const monthPart = attendanceMonth ? `&attendanceMonth=${encodeURIComponent(attendanceMonth)}` : "";
+  return `/admin/students/${encodeURIComponent(studentId)}?focus=attendance&limit=500${monthPart}#attendance`;
 }
 
 async function updateRateSettingsAction(formData: FormData) {
@@ -814,7 +815,7 @@ export default async function PartnerSettlementPage({
             {onlinePending.map((p) => (
               <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>
-                  {p.student ? <a href={studentAttendanceHref(p.student.id)}>{p.student.name}</a> : "-"}
+                  {p.student ? <a href={studentAttendanceHref(p.student.id, month)}>{p.student.name}</a> : "-"}
                 </td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>{p.status}</td>
@@ -880,7 +881,7 @@ export default async function PartnerSettlementPage({
               {offlineWarnings.map((w) => (
                 <tr key={w.studentId} style={{ borderTop: "1px solid #fde68a" }}>
                   <td>
-                    <a href={studentAttendanceHref(w.studentId)}>{w.studentName}</a>
+                    <a href={studentAttendanceHref(w.studentId, month)}>{w.studentName}</a>
                   </td>
                   <td>{w.totalAttendances}</td>
                   <td>{w.eligibleAttendances}</td>
@@ -912,7 +913,7 @@ export default async function PartnerSettlementPage({
             {offlinePending.map((r) => (
               <tr key={`${r.studentId}-${month}`} style={{ borderTop: "1px solid #eee" }}>
                 <td>
-                  <a href={studentAttendanceHref(r.studentId)}>{r.studentName}</a>
+                  <a href={studentAttendanceHref(r.studentId, month)}>{r.studentName}</a>
                 </td>
                 <td>{month}</td>
                 <td>{r.sessions}</td>
@@ -984,7 +985,7 @@ export default async function PartnerSettlementPage({
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{new Date(r.createdAt).toLocaleString()}</td>
                 <td>
-                  {r.student ? <a href={studentAttendanceHref(r.student.id)}>{r.student.name}</a> : "-"}
+                  {r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}
                 </td>
                 <td>{r.mode}</td>
                 <td>{r.monthKey ?? "-"}</td>

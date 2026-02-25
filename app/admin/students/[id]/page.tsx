@@ -19,6 +19,9 @@ const zhMap: Record<string, string> = {
   "All": "\u5168\u90e8",
   "Amount": "\u91d1\u989d",
   "Apply": "\u5e94\u7528",
+  "Feedback": "\u53cd\u9988",
+  "Submitted": "\u5df2\u63d0\u4ea4",
+  "Missing": "\u672a\u63d0\u4ea4",
   "Appt": "\u9884\u7ea6",
   "Attendance": "\u70b9\u540d",
   "Available": "\u53ef\u6392",
@@ -982,6 +985,7 @@ export default async function StudentDetailPage({
   const quickCampusId = sp?.quickCampusId ?? "";
   const quickRoomId = sp?.quickRoomId ?? "";
   const monthParam = sp?.month ?? "";
+  const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
   const focus = sp?.focus ?? "";
   const attendanceOpen = focus === "attendance";
@@ -997,6 +1001,13 @@ export default async function StudentDetailPage({
   if (days > 0) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     sessionWhere.startAt = { gte: since };
+  }
+  const attendanceMonthParsed = parseMonth(attendanceMonthParam);
+  if (attendanceMonthParsed) {
+    const monthStartForAttendance = new Date(Date.UTC(attendanceMonthParsed.year, attendanceMonthParsed.month - 1, 1, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    const monthEndForAttendance = new Date(Date.UTC(attendanceMonthParsed.year, attendanceMonthParsed.month, 1, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    const prevStart = sessionWhere.startAt ?? {};
+    sessionWhere.startAt = { ...prevStart, gte: monthStartForAttendance, lt: monthEndForAttendance };
   }
   const classWhere: any = {};
   if (courseId) classWhere.courseId = courseId;
@@ -1067,11 +1078,12 @@ export default async function StudentDetailPage({
         session: {
           include: {
             teacher: true,
+            feedbacks: { where: { content: { not: "" } }, select: { id: true }, take: 1 },
             class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
           },
         },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { session: { startAt: "desc" } },
       take: limit,
     }),
     prisma.course.findMany({ orderBy: { name: "asc" } }),
@@ -1934,6 +1946,9 @@ export default async function StudentDetailPage({
               </div>
               <div style={{ marginTop: 4 }}>
                 {tl(lang, "Note")}: {a.note ?? "-"}
+              </div>
+              <div style={{ marginTop: 4, color: a.session.feedbacks.length > 0 ? "#027a48" : "#b45309", fontWeight: 700 }}>
+                {tl(lang, "Feedback")}: {a.session.feedbacks.length > 0 ? tl(lang, "Submitted") : tl(lang, "Missing")}
               </div>
             </div>
           ))}
