@@ -7,6 +7,8 @@ import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 
+const FEEDBACK_LOOKBACK_DAYS = 90;
+
 function fmtRange(startAt: Date, endAt: Date) {
   return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
@@ -91,7 +93,7 @@ export default async function AdminFeedbacksPage({
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-  const lookback = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const lookback = new Date(now.getTime() - FEEDBACK_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const studentScopeWhere = studentId
     ? {

@@ -5,6 +5,8 @@ export const SIGNIN_THRESHOLD_KEY = "signin_alert_threshold_min";
 export const DEFAULT_SIGNIN_ALERT_THRESHOLD_MIN = 10;
 const SIGNIN_ALERT_SYNC_LAST_AT_KEY = "signin_alert_sync_last_at";
 const SIGNIN_ALERT_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
+const SIGNIN_LOOKBACK_DAYS = 7;
+const FEEDBACK_ALERT_LOOKBACK_DAYS = 60;
 
 export const ALERT_TYPE_TEACHER = "TEACHER_SIGNIN_MISSED";
 export const ALERT_TYPE_STUDENT = "STUDENT_SIGNIN_MISSED";
@@ -135,11 +137,12 @@ export async function syncSignInAlerts(now = new Date()) {
 
   const thresholdMin = await getSignInAlertThresholdMin();
   const thresholdAt = new Date(now.getTime() - thresholdMin * 60 * 1000);
-  const lookback = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const lookbackSignIn = new Date(now.getTime() - SIGNIN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const lookbackFeedback = new Date(now.getTime() - FEEDBACK_ALERT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const sessions = (await prisma.session.findMany({
     where: {
-      startAt: { gte: lookback, lte: thresholdAt },
+      startAt: { gte: lookbackFeedback, lte: thresholdAt },
     },
     include: {
       attendances: { select: { studentId: true, status: true } },
@@ -170,14 +173,15 @@ export async function syncSignInAlerts(now = new Date()) {
 
   const desired: DesiredAlert[] = [];
   for (const s of sessions) {
+    const inSignInWindow = s.startAt >= lookbackSignIn;
     const actualTeacherId = s.teacherId ?? s.class.teacherId;
     const expected = sessionExpectedStudentIds(s);
     if (expected.length === 0) continue;
     const markedSet = new Set(
       s.attendances.filter((a) => a.status !== "UNMARKED").map((a) => a.studentId)
     );
-    const missingStudents = expected.filter((sid) => !markedSet.has(sid));
-    const missTeacher = !teacherSignedIn(s);
+    const missingStudents = inSignInWindow ? expected.filter((sid) => !markedSet.has(sid)) : [];
+    const missTeacher = inSignInWindow && !teacherSignedIn(s);
     const feedbackDueAt = new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000);
     const teacherFeedback = s.feedbacks.find((f) => f.teacherId === actualTeacherId) ?? null;
     const missFeedback = now > feedbackDueAt && (!teacherFeedback || teacherFeedback.status === "PROXY_DRAFT");

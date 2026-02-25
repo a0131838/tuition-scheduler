@@ -29,6 +29,15 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
   hour12: false,
 });
 
+function pendingReasonLabel(lang: Awaited<ReturnType<typeof getLang>>, reason: string | null) {
+  if (!reason) return "-";
+  if (reason === "ATTENDANCE_MISSING") return t(lang, "No attendance record", "未点名");
+  if (reason === "ATTENDANCE_UNMARKED") return t(lang, "Attendance not fully marked", "点名未完成");
+  if (reason === "FEEDBACK_MISSING") return t(lang, "Teacher feedback missing", "未提交反馈");
+  if (reason === "ATTENDANCE_AND_FEEDBACK_MISSING") return t(lang, "Attendance and feedback missing", "点名与反馈均未完成");
+  return "-";
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -211,6 +220,7 @@ async function TeacherPayrollBody({
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
+              <th align="left">{t(lang, "Pending Reason", "未完成原因")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
             </tr>
           </thead>
@@ -228,6 +238,9 @@ async function TeacherPayrollBody({
                   <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                     {row.isCompleted ? t(lang, "Completed", "已完成") : t(lang, "Pending", "未完成")}
                   </span>
+                </td>
+                <td style={{ color: row.isCompleted ? "#64748b" : "#b45309", fontWeight: row.isCompleted ? 400 : 700 }}>
+                  {row.isCompleted ? "-" : pendingReasonLabel(lang, row.pendingReason)}
                 </td>
                 <td>{formatMoneyCents(row.amountCents)}</td>
               </tr>

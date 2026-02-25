@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
+const FEEDBACK_LOOKBACK_DAYS = 90;
+
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-  const lookback = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const lookback = new Date(now.getTime() - FEEDBACK_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const sessions = await prisma.session.findMany({
     where: {
