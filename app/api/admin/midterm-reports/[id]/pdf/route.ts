@@ -132,16 +132,28 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   y = ensurePage(doc, y, 120);
   y = drawSectionTitle(doc, "iTEP Predicted / iTEP 预估分", y);
-  y = drawParagraph(
-    doc,
-    `Grammar 语法: ${draft.itepGrammar || "-"}   Vocab 词汇: ${draft.itepVocab || "-"}   Listening 听力: ${draft.itepListening || "-"}`,
-    y
-  );
-  y = drawParagraph(
-    doc,
-    `Reading 阅读: ${draft.itepReading || "-"}   Writing 写作: ${draft.itepWriting || "-"}   Speaking 口语: ${draft.itepSpeaking || "-"}   Total 总分: ${draft.itepTotal || "-"}`,
-    y
-  );
+  const hasAnyItep =
+    String(draft.itepGrammar || "").trim() ||
+    String(draft.itepVocab || "").trim() ||
+    String(draft.itepListening || "").trim() ||
+    String(draft.itepReading || "").trim() ||
+    String(draft.itepWriting || "").trim() ||
+    String(draft.itepSpeaking || "").trim() ||
+    String(draft.itepTotal || "").trim();
+  if (!hasAnyItep) {
+    y = drawParagraph(doc, "Not provided (optional) / 未提供（可选）", y, "#6b7280");
+  } else {
+    y = drawParagraph(
+      doc,
+      `Grammar 语法: ${draft.itepGrammar || "-"}   Vocab 词汇: ${draft.itepVocab || "-"}   Listening 听力: ${draft.itepListening || "-"}`,
+      y
+    );
+    y = drawParagraph(
+      doc,
+      `Reading 阅读: ${draft.itepReading || "-"}   Writing 写作: ${draft.itepWriting || "-"}   Speaking 口语: ${draft.itepSpeaking || "-"}   Total 总分: ${draft.itepTotal || "-"}`,
+      y
+    );
+  }
 
   y = ensurePage(doc, y, 160);
   y = drawSectionTitle(doc, "Class Discipline / 课堂纪律", y);

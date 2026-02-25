@@ -157,7 +157,10 @@ export default async function TeacherMidtermReportDetailPage({
         </div>
 
         <div style={{ border: "1px solid #fbcfe8", borderRadius: 10, background: "#fdf2f8", padding: 10 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "iTEP Predicted", "iTEP 预估分")}</div>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>{t(lang, "iTEP Predicted", "iTEP 预估分")}</div>
+          <div style={{ fontSize: 12, color: "#7c2d12", marginBottom: 6 }}>
+            {t(lang, "Optional: fill only when applicable for this student.", "可选项：仅当该学生适用时填写。")}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(100px, 1fr))", gap: 8 }}>
             <label>
               Grammar
