@@ -61,64 +61,6 @@ function normalizeText(input: string | null | undefined) {
   return raw || "-";
 }
 
-function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, fontSize: number) {
-  const source = normalizeText(text);
-  setPdfFont(doc);
-  doc.fontSize(fontSize);
-
-  const lines: string[] = [];
-  const paragraphs = source.split("\n");
-
-  for (const paragraph of paragraphs) {
-    const chars = Array.from(paragraph);
-    if (chars.length === 0) {
-      lines.push("");
-      if (lines.length >= maxLines) break;
-      continue;
-    }
-
-    let line = "";
-    for (const ch of chars) {
-      const next = `${line}${ch}`;
-      if (doc.widthOfString(next) <= width) {
-        line = next;
-        continue;
-      }
-
-      if (line) {
-        lines.push(line.trimEnd());
-        if (lines.length >= maxLines) break;
-      }
-
-      line = ch;
-
-      if (lines.length >= maxLines) break;
-    }
-
-    if (lines.length >= maxLines) break;
-    lines.push((line || "").trimEnd());
-    if (lines.length >= maxLines) break;
-  }
-
-  const truncated = lines.slice(0, maxLines);
-
-  // Avoid single-character dangling lines by borrowing one char from previous line.
-  for (let i = 1; i < truncated.length; i += 1) {
-    const cur = truncated[i] ?? "";
-    const prev = truncated[i - 1] ?? "";
-    if (cur.length <= 1 && prev.length >= 2) {
-      const borrow = prev.slice(-1);
-      const candidate = `${borrow}${cur}`;
-      if (doc.widthOfString(candidate) <= width + 0.5) {
-        truncated[i - 1] = prev.slice(0, -1);
-        truncated[i] = candidate;
-      }
-    }
-  }
-
-  return truncated.length > 0 ? truncated : ["-"];
-}
-
 type DrawBoxOptions = {
   x: number;
   y: number;
@@ -136,14 +78,18 @@ function drawTextBox(doc: PDFDoc, options: DrawBoxOptions) {
   const lineGap = options.lineGap ?? 1;
   const maxByHeight = Math.max(1, Math.floor(options.h / (fontSize + lineGap + 0.6)));
   const maxLines = Math.max(1, Math.min(options.maxLines ?? maxByHeight, maxByHeight));
-  const lines = wrapLines(doc, options.text, options.w, maxLines, fontSize);
+  const text = normalizeText(options.text);
+  const maxHeight = maxLines * (fontSize + lineGap + 0.6);
 
   doc.save();
   doc.rect(options.x, options.y, options.w, options.h).clip();
   setPdfFont(doc);
   doc.fillColor(options.color ?? "#0f172a").fontSize(fontSize);
-  doc.text(lines.join("\n"), options.x, options.y, {
+  doc.text(text, options.x, options.y, {
     width: options.w,
+    height: maxHeight,
+    lineBreak: true,
+    ellipsis: false,
     lineGap,
   });
   doc.restore();
