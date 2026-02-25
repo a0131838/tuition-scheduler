@@ -125,15 +125,6 @@ function wrapLines(doc: PDFDoc, text: string, width: number, maxLines: number, f
   }
 
   const truncated = lines.length > maxLines ? lines.slice(0, maxLines) : lines.slice(0, maxLines);
-  const originalCompact = source.replace(/\s+/g, "");
-  const renderedCompact = truncated.join("").replace(/\s+/g, "");
-
-  if (renderedCompact.length < originalCompact.length && truncated.length > 0) {
-    const i = truncated.length - 1;
-    const tail = truncated[i].replace(/\.{3}$/, "");
-    truncated[i] = `${tail}...`;
-  }
-
   return truncated.length > 0 ? truncated : ["-"];
 }
 
@@ -317,7 +308,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 194;
+  const h2 = 226;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
@@ -383,7 +374,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + 12;
+  const y3 = y2 + h2 + 16;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
