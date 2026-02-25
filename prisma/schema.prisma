@@ -75,6 +75,11 @@ enum PartnerSettlementStatus {
   CANCELLED
 }
 
+enum MidtermReportStatus {
+  ASSIGNED
+  SUBMITTED
+}
+
 model Campus {
   id             String          @id @default(uuid())
   name           String
@@ -129,6 +134,7 @@ model Teacher {
   selectedBookingSlots      StudentBookingLinkSelectedSlot[]
   bookingRequestSlotLocks   StudentBookingRequestSlotLock[]
   courseRates               TeacherCourseRate[]
+  midtermReports            MidtermReport[]
 }
 
 model TeacherCourseRate {
@@ -225,6 +231,7 @@ model Course {
   packages       CoursePackage[]
   oneOnOneGroups OneOnOneGroup[]
   teacherRates   TeacherCourseRate[]
+  midtermReports MidtermReport[]
 }
 
 model Subject {
@@ -237,6 +244,7 @@ model Subject {
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
   teacherRates   TeacherCourseRate[]
+  midtermReports MidtermReport[]
 
   subjectTeachers      Teacher[] @relation("SubjectCourse")
   subjectTeachersMulti Teacher[] @relation("TeacherSubjects")
@@ -377,6 +385,41 @@ model SessionFeedback {
   @@index([status, dueAt])
 }
 
+model MidtermReport {
+  id                String              @id @default(uuid())
+  status            MidtermReportStatus @default(ASSIGNED)
+  studentId         String
+  teacherId         String
+  courseId          String
+  subjectId         String?
+  packageId         String?
+  assignedByUserId  String?
+  assignedAt        DateTime            @default(now())
+  submittedAt       DateTime?
+  progressPercent   Int
+  consumedMinutes   Int
+  totalMinutes      Int
+  reportPeriodLabel String?
+  examTargetStatus  String?
+  overallScore      Decimal?            @db.Decimal(5, 2)
+  reportJson        Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher        Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  package        CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  assignedByUser User?         @relation("MidtermReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, status, assignedAt])
+  @@index([studentId, createdAt])
+  @@index([courseId, createdAt])
+  @@index([status, createdAt])
+  @@index([packageId, createdAt])
+}
+
 model SessionTeacherChange {
   id            String   @id @default(uuid())
   sessionId     String
@@ -415,6 +458,7 @@ model Student {
   oneOnOneTemplates  TeacherOneOnOneTemplate[]    @relation("TeacherOneOnOneTemplateStudent")
   oneOnOneClasses    Class[]                      @relation("OneOnOneStudentClass")
   sessions           Session[]                    @relation("SessionStudent")
+  midtermReports     MidtermReport[]
   sourceChannel      StudentSourceChannel?        @relation(fields: [sourceChannelId], references: [id])
   studentType        StudentType?                 @relation(fields: [studentTypeId], references: [id])
   bookingLinks       StudentBookingLink[]
@@ -485,6 +529,7 @@ model User {
 
   teacher  Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   sessions AuthSession[]
+  midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
 }
 
 model AuditLog {
@@ -697,6 +742,7 @@ model CoursePackage {
   attendances    Attendance[]
   sharedStudents CoursePackageSharedStudent[]
   settlements    PartnerSettlement[]
+  midtermReports MidtermReport[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])

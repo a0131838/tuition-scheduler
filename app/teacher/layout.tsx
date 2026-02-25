@@ -23,6 +23,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
             <a href="/teacher/alerts">{t(lang, "Sign-in Alerts", "签到告警")}</a>
             <a href="/teacher/availability">{t(lang, "My Availability", "我的可上课时间")}</a>
             <a href="/teacher/sessions">{t(lang, "My Sessions", "我的课次")}</a>
+            <a href="/teacher/midterm-reports">{t(lang, "Midterm Reports", "中期报告")}</a>
             <a href="/teacher/payroll">{t(lang, "My Payroll", "我的工资单")}</a>
             <a href="/teacher/card">{t(lang, "My Teacher Card", "我的老师名片")}</a>
           </nav>
