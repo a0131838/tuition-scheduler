@@ -219,6 +219,24 @@ export default async function TeacherAlertsPage({
         </div>
       </div>
 
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "#eff6ff",
+          borderRadius: 10,
+          padding: "8px 10px",
+          color: "#1e3a8a",
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        {t(
+          lang,
+          "Tip: Teacher not signed = teacher has not handled this session yet. Student not signed = one or more students are still UNMARKED. Open session and complete attendance (PRESENT/ABSENT/LATE/EXCUSED) or submit feedback.",
+          "Tip: Teacher not signed = teacher has not handled this session yet. Student not signed = one or more students are still UNMARKED. Open session and complete attendance (PRESENT/ABSENT/LATE/EXCUSED) or submit feedback."
+        )}
+      </div>
+
       {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ color: "#087" }}>{msg}</div> : null}
       {syncDegraded ? (
