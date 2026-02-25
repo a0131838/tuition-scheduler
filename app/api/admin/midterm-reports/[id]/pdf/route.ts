@@ -140,9 +140,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     doc.fillColor("#0f172a").fontSize(8).text(c.t, c.x + 5, c.y + 4, { width: cardW - 16 });
     setPdfFont(doc);
     doc.fillColor("#334155").fontSize(7).text(`Level: ${c.l || "-"}`, c.x + 5, c.y + 16, { width: cardW - 16 });
-    doc.fontSize(6.7).fillColor("#111827").text(`P: ${fitText(doc, c.p || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 28, { width: cardW - 16 });
-    doc.text(`S: ${fitText(doc, c.s || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 43, { width: cardW - 16 });
-    doc.text(`D: ${fitText(doc, c.d || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 58, { width: cardW - 16 });
+    doc
+      .fontSize(6.7)
+      .fillColor("#111827")
+      .text(`Performance Summary / 表现概述: ${fitText(doc, c.p || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 28, { width: cardW - 16 });
+    doc.text(`Strengths Observed / 优势表现: ${fitText(doc, c.s || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 43, { width: cardW - 16 });
+    doc.text(`Areas for Development / 待提升方向: ${fitText(doc, c.d || "-", cardW - 22, 2, 6.7)}`, c.x + 5, c.y + 58, { width: cardW - 16 });
   }
 
   // Row 3: disposition + recommendation + optional exam
