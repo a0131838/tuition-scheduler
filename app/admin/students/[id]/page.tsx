@@ -13,6 +13,7 @@ import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -517,24 +518,21 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       }
     }
 
-    const teacherSessionConflict = await prisma.session.findFirst({
+    const teacherSessionConflicts = await prisma.session.findMany({
       where: {
         OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
         startAt: { lt: endAt },
         endAt: { gt: startAt },
-        NOT: {
-          attendances: {
-            some: {
-              studentId,
-              status: "EXCUSED",
-            },
-          },
-        },
       },
       include: {
         class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        attendances: {
+          select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+        },
       },
+      orderBy: { startAt: "asc" },
     });
+    const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
     if (teacherSessionConflict) {
       const cls = teacherSessionConflict.class;
       const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
@@ -709,15 +707,22 @@ async function replaceSessionTeacherForStudent(studentId: string, formData: Form
     redirect(`${returnTo}&err=${encodeURIComponent(availErr)}`);
   }
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
       id: { not: session.id },
       startAt: { lt: session.endAt },
       endAt: { gt: session.startAt },
       OR: [{ teacherId: newTeacherId }, { teacherId: null, class: { teacherId: newTeacherId } }],
     },
-    select: { id: true, classId: true },
+    include: {
+      class: { select: { id: true, capacity: true, oneOnOneStudentId: true } },
+      attendances: {
+        select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+      },
+    },
+    orderBy: { startAt: "asc" },
   });
+  const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
   if (teacherSessionConflict) {
     redirect(
       `${returnTo}&err=${encodeURIComponent(
@@ -1296,24 +1301,21 @@ export default async function StudentDetailPage({
             continue;
           }
         }
-        const sessionConflict = await prisma.session.findFirst({
+        const sessionConflicts = await prisma.session.findMany({
           where: {
-            class: { teacherId: tch.id },
+            OR: [{ teacherId: tch.id }, { teacherId: null, class: { teacherId: tch.id } }],
             startAt: { lt: endAt },
             endAt: { gt: startAt },
-            NOT: {
-              attendances: {
-                some: {
-                  studentId,
-                  status: "EXCUSED",
-                },
-              },
-            },
           },
           include: {
             class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+            attendances: {
+              select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+            },
           },
+          orderBy: { startAt: "asc" },
         });
+        const sessionConflict = sessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
         if (sessionConflict) {
           quickCandidates.push({
             id: tch.id,

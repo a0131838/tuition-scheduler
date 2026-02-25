@@ -3,6 +3,7 @@ import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -150,24 +151,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (availErr) return bad(availErr, 409);
   }
 
-  const teacherSessionConflict = await prisma.session.findFirst({
+  const teacherSessionConflicts = await prisma.session.findMany({
     where: {
       OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
       startAt: { lt: endAt },
       endAt: { gt: startAt },
-      NOT: {
-        attendances: {
-          some: {
-            studentId,
-            status: "EXCUSED",
-          },
-        },
-      },
     },
     include: {
-      class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+      class: {
+        include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+      },
+      attendances: {
+        select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+      },
     },
+    orderBy: { startAt: "asc" },
   });
+  const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
   if (teacherSessionConflict) {
     return bad(`Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`, 409);
   }
