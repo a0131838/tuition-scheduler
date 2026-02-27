@@ -174,17 +174,17 @@ function drawSkillCard(
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#0f172a").fontSize(8.2).text(title, x + 6, y + 5, { width: w - 12 });
+  doc.fillColor("#0f172a").fontSize(8.8).text(title, x + 6, y + 5, { width: w - 12 });
 
   drawTextBox(doc, {
     x: x + 6,
-    y: y + 17,
+    y: y + 15,
     w: w - 12,
-    h: h - 22,
+    h: h - 18,
     text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    fontSize: 5.0,
-    maxLines: 16,
-    lineGap: 0.2,
+    fontSize: 5.8,
+    maxLines: 15,
+    lineGap: 0.4,
     color: "#0f172a",
   });
 }
@@ -243,7 +243,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 238;
+  const h2 = 252;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
@@ -309,7 +309,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + 8;
+  const y3 = y2 + h2 + 6;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
