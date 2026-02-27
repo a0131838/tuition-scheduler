@@ -362,13 +362,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note, TONES.note);
   drawFitText(doc, {
     x: left + w1a + gap + 8,
-    y: y1 + 24,
-    w: w1b - 12,
-    h: h1 - 28,
+    y: y1 + 22,
+    w: w1b - 14,
+    h: h1 - 24,
     text: draft.warningNote,
-    preferredSize: 11.5,
-    minSize: 9.4,
-    lineGap: 2,
+    preferredSize: 9.4,
+    minSize: 7.8,
+    lineGap: 1,
     color: "#374151",
   });
 
