@@ -308,8 +308,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + 36;
   const h1 = 124;
-  const w1a = Math.floor(contentW * 0.53);
-  const w1b = contentW - w1a - gap;
+  const row1Total = 3; // 2fr + 1fr
+  const w1a = (contentW - gap) * (2 / row1Total);
+  const w1b = (contentW - gap) * (1 / row1Total);
 
   panel(doc, left, y1, w1a, h1, ZH.base, TONES.normal);
   const cGap = 12;
@@ -340,8 +341,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y2 = y1 + h1 + gap;
   const h2 = 318;
-  const w2a = Math.floor(contentW * 0.34);
-  const w2b = contentW - w2a - gap;
+  const row2Total = 3; // 1fr + 2fr
+  const w2a = (contentW - gap) * (1 / row2Total);
+  const w2b = (contentW - gap) * (2 / row2Total);
 
   panel(doc, left, y2, w2a, h2, ZH.overall, TONES.normal);
   const overallInnerX = left + 12;
@@ -377,55 +379,36 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   ];
 
   const examRows = examRowsRaw.filter((row) => String(row.value || "").trim());
-  const hasExamBlock = examRows.length > 0;
 
-  if (!hasExamBlock) {
-    const w = (contentW - gap) / 2;
-    const x2 = left + w + gap;
+  // Fixed ratio: 1fr 1fr 0.6fr
+  const row3Total = 2.6;
+  const baseUnit = (contentW - gap * 2) / row3Total;
+  const w3a = baseUnit;
+  const w3b = baseUnit;
+  const w3c = baseUnit * 0.6;
+  const x3b = left + w3a + gap;
+  const x3c = x3b + w3b + gap;
 
-    panel(doc, left, y3, w, h3, ZH.learning, TONES.normal);
-    stackedFields(doc, left + 12, y3 + 36, w - 24, h3 - 48, [
-      { label: ZH.participation, value: draft.classParticipation },
-      { label: ZH.focus, value: draft.focusEngagement },
-      { label: ZH.homework, value: draft.homeworkPreparation },
-      { label: ZH.attitude, value: draft.attitudeGeneral },
-    ]);
+  panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
+  stackedFields(doc, left + 12, y3 + 36, w3a - 24, h3 - 48, [
+    { label: ZH.participation, value: draft.classParticipation },
+    { label: ZH.focus, value: draft.focusEngagement },
+    { label: ZH.homework, value: draft.homeworkPreparation },
+    { label: ZH.attitude, value: draft.attitudeGeneral },
+  ]);
 
-    panel(doc, x2, y3, w, h3, ZH.rec, TONES.normal);
-    stackedFields(doc, x2 + 12, y3 + 36, w - 24, h3 - 48, [
-      { label: ZH.key, value: draft.keyStrengths },
-      { label: ZH.bottleneck, value: draft.primaryBottlenecks },
-      { label: ZH.next, value: draft.nextPhaseFocus },
-      { label: ZH.load, value: draft.suggestedPracticeLoad },
-      { label: ZH.target, value: draft.targetLevelScore },
-    ]);
-  } else {
-    const examW = Math.max(110, Math.floor(contentW * 0.17));
-    const mainW = (contentW - examW - gap * 2) / 2;
-    const x2 = left + mainW + gap;
-    const x3 = x2 + mainW + gap;
+  panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
+  stackedFields(doc, x3b + 12, y3 + 36, w3b - 24, h3 - 48, [
+    { label: ZH.key, value: draft.keyStrengths },
+    { label: ZH.bottleneck, value: draft.primaryBottlenecks },
+    { label: ZH.next, value: draft.nextPhaseFocus },
+    { label: ZH.load, value: draft.suggestedPracticeLoad },
+    { label: ZH.target, value: draft.targetLevelScore },
+  ]);
 
-    panel(doc, left, y3, mainW, h3, ZH.learning, TONES.normal);
-    stackedFields(doc, left + 12, y3 + 36, mainW - 24, h3 - 48, [
-      { label: ZH.participation, value: draft.classParticipation },
-      { label: ZH.focus, value: draft.focusEngagement },
-      { label: ZH.homework, value: draft.homeworkPreparation },
-      { label: ZH.attitude, value: draft.attitudeGeneral },
-    ]);
-
-    panel(doc, x2, y3, mainW, h3, ZH.rec, TONES.normal);
-    stackedFields(doc, x2 + 12, y3 + 36, mainW - 24, h3 - 48, [
-      { label: ZH.key, value: draft.keyStrengths },
-      { label: ZH.bottleneck, value: draft.primaryBottlenecks },
-      { label: ZH.next, value: draft.nextPhaseFocus },
-      { label: ZH.load, value: draft.suggestedPracticeLoad },
-      { label: ZH.target, value: draft.targetLevelScore },
-    ]);
-
-    const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
-    panel(doc, x3, y3, examW, h3, examTitle, TONES.normal);
-    examCards(doc, x3, y3, examW, h3, examRows.slice(0, 7));
-  }
+  const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
+  panel(doc, x3c, y3, w3c, h3, examTitle, TONES.normal);
+  examCards(doc, x3c, y3, w3c, h3, examRows.slice(0, 7));
 
   const stream = streamPdf(doc);
   const filename = `midterm-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
