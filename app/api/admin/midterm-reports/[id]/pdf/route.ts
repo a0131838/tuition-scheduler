@@ -104,32 +104,9 @@ function drawFitText(doc: PDFDoc, options: FitTextOptions) {
     fontSize -= 0.25;
   }
 
-  // If still too tall at minimum size, clamp content to avoid PDF page spillover.
+  // Do not inject ellipsis. Keep full content and rely on clipping if minimum font still overflows.
   doc.fontSize(Math.max(fontSize, min));
-  let finalText = text;
-  let needed = doc.heightOfString(finalText, { width: options.w, lineGap, align: "left" });
-  if (needed > options.h) {
-    const src = finalText;
-    let lo = 0;
-    let hi = src.length;
-    let best = "";
-    while (lo <= hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      const probe = `${src.slice(0, mid).trimEnd()}…`;
-      const h = doc.heightOfString(probe, { width: options.w, lineGap, align: "left" });
-      if (h <= options.h) {
-        best = probe;
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
-    }
-    finalText = best || "…";
-    needed = doc.heightOfString(finalText, { width: options.w, lineGap, align: "left" });
-    if (needed > options.h) {
-      finalText = "…";
-    }
-  }
+  const finalText = text;
 
   doc.save();
   doc.rect(options.x, options.y, options.w, options.h).clip();
