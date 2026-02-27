@@ -226,9 +226,9 @@ function skillCard(
     w: w - 14,
     h: h - 19,
     text: `${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    preferredSize: 9.2,
-    minSize: 7.1,
-    lineGap: 0.7,
+    preferredSize: 8.8,
+    minSize: 6.8,
+    lineGap: 0.4,
     color: "#1F2937",
   });
 }
@@ -240,13 +240,14 @@ function stackedFields(
   w: number,
   h: number,
   fields: Array<{ label: string; value: string }>,
-  gap = 4,
+  gap = 2,
+  bodyPreferred = 9,
 ) {
   const available = Math.max(0, h - gap * (fields.length - 1));
   const each = fields.length > 0 ? available / fields.length : 0;
   let cy = y;
   for (const field of fields) {
-    fieldBox(doc, x, cy, w, each, field.label, field.value, 10);
+    fieldBox(doc, x, cy, w, each, field.label, field.value, bodyPreferred);
     cy += each + gap;
   }
 }
@@ -339,7 +340,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + titleH + 8;
   const usableH = contentH - (y1 - top) - gap * 2;
-  const h1 = Math.floor(usableH * 0.18);
+  const h1 = Math.floor(usableH * 0.13);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -372,7 +373,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.floor(usableH * 0.54);
+  const h2 = Math.floor(usableH * 0.58);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
@@ -421,21 +422,21 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const x3c = x3b + w3b + gap;
 
   panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
-    stackedFields(doc, left + 8, y3 + 26, w3a - 16, h3 - 32, [
+  stackedFields(doc, left + 8, y3 + 22, w3a - 16, h3 - 26, [
     { label: ZH.participation, value: draft.classParticipation },
     { label: ZH.focus, value: draft.focusEngagement },
     { label: ZH.homework, value: draft.homeworkPreparation },
     { label: ZH.attitude, value: draft.attitudeGeneral },
-  ]);
+  ], 2, 8.4);
 
   panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
-    stackedFields(doc, x3b + 8, y3 + 26, w3b - 16, h3 - 32, [
+  stackedFields(doc, x3b + 8, y3 + 22, w3b - 16, h3 - 26, [
     { label: ZH.key, value: draft.keyStrengths },
     { label: ZH.bottleneck, value: draft.primaryBottlenecks },
     { label: ZH.next, value: draft.nextPhaseFocus },
     { label: ZH.load, value: draft.suggestedPracticeLoad },
     { label: ZH.target, value: draft.targetLevelScore },
-  ]);
+  ], 2, 8.2);
 
   if (hasExamBlock) {
     const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
