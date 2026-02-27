@@ -342,32 +342,35 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     kv(doc, c2x + 8, y3 + 110, w - 16, ZH.load, draft.suggestedPracticeLoad, 16, 1);
     kv(doc, c2x + 8, y3 + 132, w - 16, ZH.target, draft.targetLevelScore, 16, 1);
   } else {
-    const w = Math.floor((contentW - gap * 2) / 3);
+    // Keep exam metrics as a compact optional sidebar so core narrative panels have enough room.
+    const examW = Math.max(120, Math.floor(contentW * 0.12));
+    const mainW = Math.floor((contentW - examW - gap * 2) / 2);
+    const w = mainW;
     const c2x = left + w + gap;
     const c3x = c2x + w + gap;
 
     panel(doc, left, y3, w, h3, ZH.learning);
-    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 20, 2, 6.4);
-    kvCompact(doc, left + 8, y3 + 45, w - 16, ZH.focus, draft.focusEngagement, 20, 2, 6.4);
-    kvCompact(doc, left + 8, y3 + 70, w - 16, ZH.homework, draft.homeworkPreparation, 20, 2, 6.4);
-    kvCompact(doc, left + 8, y3 + 95, w - 16, ZH.attitude, draft.attitudeGeneral, 20, 2, 6.4);
+    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 24, 3, 6.4);
+    kvCompact(doc, left + 8, y3 + 48, w - 16, ZH.focus, draft.focusEngagement, 24, 3, 6.4);
+    kvCompact(doc, left + 8, y3 + 76, w - 16, ZH.homework, draft.homeworkPreparation, 24, 3, 6.4);
+    kvCompact(doc, left + 8, y3 + 104, w - 16, ZH.attitude, draft.attitudeGeneral, 24, 3, 6.4);
 
     panel(doc, c2x, y3, w, h3, ZH.rec);
-    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 20, 2, 6.4);
-    kvCompact(doc, c2x + 8, y3 + 45, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 20, 2, 6.4);
-    kvCompact(doc, c2x + 8, y3 + 70, w - 16, ZH.next, draft.nextPhaseFocus, 20, 2, 6.4);
-    kv(doc, c2x + 8, y3 + 95, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
-    kv(doc, c2x + 8, y3 + 114, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
+    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 24, 3, 6.4);
+    kvCompact(doc, c2x + 8, y3 + 48, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 24, 3, 6.4);
+    kvCompact(doc, c2x + 8, y3 + 76, w - 16, ZH.next, draft.nextPhaseFocus, 24, 3, 6.4);
+    kv(doc, c2x + 8, y3 + 104, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
+    kv(doc, c2x + 8, y3 + 124, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
 
     const examTitle = `${normalizeText(draft.examName || "\u8003\u8bd5")}${ZH.examSuffix}`;
-    panel(doc, c3x, y3, w, h3, examTitle);
+    panel(doc, c3x, y3, examW, h3, examTitle);
 
     let ey = y3 + 20;
     for (const row of examRows.slice(0, 7)) {
       const label = normalizeText(row.label || "\u5206\u9879");
       const value = normalizeText(row.value || "-");
-      kv(doc, c3x + 8, ey, w - 16, label, value, 14, 1);
-      ey += 19;
+      kv(doc, c3x + 8, ey, examW - 16, label, value, 12, 1);
+      ey += 16;
     }
   }
 
