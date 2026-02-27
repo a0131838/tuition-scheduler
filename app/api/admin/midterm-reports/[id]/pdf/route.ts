@@ -182,9 +182,9 @@ function drawSkillCard(
     w: w - 12,
     h: h - 22,
     text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    fontSize: 5.8,
-    maxLines: 14,
-    lineGap: 0.5,
+    fontSize: 5.0,
+    maxLines: 16,
+    lineGap: 0.2,
     color: "#0f172a",
   });
 }
@@ -243,7 +243,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 228;
+  const h2 = 238;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
@@ -309,7 +309,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + 10;
+  const y3 = y2 + h2 + 8;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
@@ -343,7 +343,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     kv(doc, c2x + 8, y3 + 132, w - 16, ZH.target, draft.targetLevelScore, 16, 1);
   } else {
     // Keep exam metrics as a compact optional sidebar so core narrative panels have enough room.
-    const examW = Math.max(86, Math.floor(contentW * 0.09));
+    const examW = Math.max(78, Math.floor(contentW * 0.08));
     const mainW = Math.floor((contentW - examW - gap * 2) / 2);
     const w = mainW;
     const c2x = left + w + gap;
@@ -359,8 +359,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 28, 4, 6.3);
     kvCompact(doc, c2x + 8, y3 + 52, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 28, 4, 6.3);
     kvCompact(doc, c2x + 8, y3 + 84, w - 16, ZH.next, draft.nextPhaseFocus, 28, 4, 6.3);
-    kv(doc, c2x + 8, y3 + 116, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
-    kv(doc, c2x + 8, y3 + 136, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
+    kvCompact(doc, c2x + 8, y3 + 116, w - 16, ZH.load, draft.suggestedPracticeLoad, 22, 2, 6.2);
+    kvCompact(doc, c2x + 8, y3 + 142, w - 16, ZH.target, draft.targetLevelScore, 22, 2, 6.2);
 
     const examTitle = `${normalizeText(draft.examName || "\u8003\u8bd5")}${ZH.examSuffix}`;
     panel(doc, c3x, y3, examW, h3, examTitle);
