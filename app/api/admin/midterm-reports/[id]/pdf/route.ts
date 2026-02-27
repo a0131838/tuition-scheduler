@@ -147,27 +147,27 @@ function drawFitText(doc: PDFDoc, options: FitTextOptions) {
 function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string, tone: PanelTone) {
   doc.save();
   doc.lineWidth(0.8);
-  doc.roundedRect(x, y, w, h, 8).fill(tone.bg).stroke(tone.border);
+  doc.roundedRect(x, y, w, h, 6).fill(tone.bg).stroke(tone.border);
   if (tone.accentBar) {
-    doc.roundedRect(x + 1.5, y + 8, 4, h - 16, 2).fill(tone.accentBar);
+    doc.roundedRect(x + 1.2, y + 6, 3, h - 12, 2).fill(tone.accentBar);
   }
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor(tone.title).fontSize(14).text(title, x + 10, y + 8, { width: w - 20 });
+  doc.fillColor(tone.title).fontSize(12.2).text(title, x + 8, y + 6, { width: w - 16 });
 }
 
 function infoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string) {
   setPdfBoldFont(doc);
-  doc.fillColor("#475569").fontSize(10.2).text(label, x, y, { width: w });
+  doc.fillColor("#475569").fontSize(9).text(label, x, y, { width: w });
   drawFitText(doc, {
     x,
-    y: y + 14,
+    y: y + 11,
     w,
-    h: 20,
+    h: 16,
     text: normalizeText(value),
-    preferredSize: 12,
-    minSize: 9.2,
+    preferredSize: 10.2,
+    minSize: 8,
     lineGap: 1,
     color: "#0F172A",
   });
@@ -175,16 +175,16 @@ function infoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, v
 
 function fieldBox(doc: PDFDoc, x: number, y: number, w: number, h: number, label: string, value: string, bodyPreferred = 11.8) {
   setPdfBoldFont(doc);
-  doc.fillColor("#334155").fontSize(10.4).text(label, x, y, { width: w });
+  doc.fillColor("#334155").fontSize(9.2).text(label, x, y, { width: w });
   drawFitText(doc, {
     x,
-    y: y + 13,
+    y: y + 11,
     w,
-    h: Math.max(10, h - 13),
+    h: Math.max(8, h - 11),
     text: normalizeText(value),
     preferredSize: bodyPreferred,
-    minSize: 8.4,
-    lineGap: 2,
+    minSize: 7.2,
+    lineGap: 1.2,
     color: "#111827",
   });
 }
@@ -203,32 +203,32 @@ function skillCard(
 ) {
   doc.save();
   doc.lineWidth(0.8);
-  doc.roundedRect(x, y, w, h, 7).fill("#FFFFFF").stroke("#E6ECF2");
+  doc.roundedRect(x, y, w, h, 6).fill("#FFFFFF").stroke("#E6ECF2");
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#1E3A8A").fontSize(12.4).text(title, x + 8, y + 7, { width: w - 16 });
+  doc.fillColor("#1E3A8A").fontSize(10.8).text(title, x + 7, y + 5, { width: w - 14 });
 
   const levelLabel = `${ZH.current}`;
   const levelVal = normalizeText(level);
   setPdfFont(doc);
-  doc.fillColor("#475569").fontSize(8.8).text(levelLabel, x + w - 134, y + 8, { width: 50, align: "right" });
+  doc.fillColor("#475569").fontSize(7.6).text(levelLabel, x + w - 108, y + 6, { width: 38, align: "right" });
   doc.save();
   doc.lineWidth(0.8);
-  doc.roundedRect(x + w - 78, y + 7, 64, 18, 9).fill("#DBEAFE").stroke("#BFDBFE");
+  doc.roundedRect(x + w - 66, y + 5, 54, 14, 7).fill("#DBEAFE").stroke("#BFDBFE");
   doc.restore();
   setPdfBoldFont(doc);
-  doc.fillColor("#1E40AF").fontSize(10).text(levelVal, x + w - 78, y + 11, { width: 64, align: "center" });
+  doc.fillColor("#1E40AF").fontSize(8.8).text(levelVal, x + w - 66, y + 8, { width: 54, align: "center" });
 
   drawFitText(doc, {
-    x: x + 8,
-    y: y + 29,
-    w: w - 16,
-    h: h - 33,
+    x: x + 7,
+    y: y + 21,
+    w: w - 14,
+    h: h - 24,
     text: `${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    preferredSize: 10.6,
-    minSize: 8.2,
-    lineGap: 1.5,
+    preferredSize: 9.4,
+    minSize: 7.1,
+    lineGap: 1,
     color: "#1F2937",
   });
 }
@@ -240,13 +240,13 @@ function stackedFields(
   w: number,
   h: number,
   fields: Array<{ label: string; value: string }>,
-  gap = 6,
+  gap = 4,
 ) {
   const available = Math.max(0, h - gap * (fields.length - 1));
   const each = fields.length > 0 ? available / fields.length : 0;
   let cy = y;
   for (const field of fields) {
-    fieldBox(doc, x, cy, w, each, field.label, field.value, 11.2);
+    fieldBox(doc, x, cy, w, each, field.label, field.value, 10);
     cy += each + gap;
   }
 }
@@ -280,15 +280,15 @@ function examCards(
     const cy = innerY + r * (cardH + g);
 
     doc.save();
-    doc.roundedRect(cx, cy, cardW, cardH, 7).fill("#FFFFFF").stroke("#E6ECF2");
+    doc.roundedRect(cx, cy, cardW, cardH, 5).fill("#FFFFFF").stroke("#E6ECF2");
     doc.restore();
 
     setPdfBoldFont(doc);
-    doc.fillColor("#334155").fontSize(10.2).text(normalizeText(row.label), cx + 8, cy + 7, { width: cardW - 16 });
+    doc.fillColor("#334155").fontSize(8.8).text(normalizeText(row.label), cx + 6, cy + 5, { width: cardW - 12 });
 
     setPdfBoldFont(doc);
-    doc.fillColor("#0F172A").fontSize(19).text(normalizeText(row.value), cx + 8, cy + 24, {
-      width: cardW - 16,
+    doc.fillColor("#0F172A").fontSize(14).text(normalizeText(row.value), cx + 6, cy + 18, {
+      width: cardW - 12,
       align: "center",
     });
   });
@@ -309,7 +309,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const doc = new PDFDocument({
     size: "A4",
     layout: "landscape",
-    margin: mm(16),
+    margin: mm(10),
   });
   setPdfFont(doc);
 
@@ -326,7 +326,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const contentW = doc.page.width - left - right;
   const contentH = doc.page.height - top - bottom;
 
-  const gap = 12;
+  const gap = 8;
 
   const TONES = {
     normal: { bg: "#FFFFFF", border: "#E6ECF2", title: "#0F172A" } satisfies PanelTone,
@@ -334,35 +334,35 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   };
 
   setPdfBoldFont(doc);
-  doc.fillColor("#111827").fontSize(21).text(ZH.title, left, top, { width: contentW });
+  doc.fillColor("#111827").fontSize(17).text(ZH.title, left, top, { width: contentW });
 
-  const y1 = top + 26;
-  const usableH = contentH - 26 - gap * 2;
+  const y1 = top + 18;
+  const usableH = contentH - 18 - gap * 2;
   const h1 = Math.floor(usableH * 0.22);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
 
   panel(doc, left, y1, w1a, h1, ZH.base, TONES.normal);
-  const cGap = 12;
-  const infoInnerW = w1a - 20;
+  const cGap = 8;
+  const infoInnerW = w1a - 16;
   const colW = (infoInnerW - cGap * 2) / 3;
-  const r1 = y1 + 30;
-  const r2 = y1 + 64;
+  const r1 = y1 + 24;
+  const r2 = y1 + 52;
 
-  infoCell(doc, left + 10, r1, colW, ZH.name, report.student.name);
-  infoCell(doc, left + 10 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
-  infoCell(doc, left + 10 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
-  infoCell(doc, left + 10, r2, colW, ZH.tool, draft.assessmentTool || "-");
-  infoCell(doc, left + 10 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));
-  infoCell(doc, left + 10 + (colW + cGap) * 2, r2, colW, ZH.cefr, report.examTargetStatus || "-");
+  infoCell(doc, left + 8, r1, colW, ZH.name, report.student.name);
+  infoCell(doc, left + 8 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
+  infoCell(doc, left + 8 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
+  infoCell(doc, left + 8, r2, colW, ZH.tool, draft.assessmentTool || "-");
+  infoCell(doc, left + 8 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));
+  infoCell(doc, left + 8 + (colW + cGap) * 2, r2, colW, ZH.cefr, report.examTargetStatus || "-");
 
   panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note, TONES.note);
   drawFitText(doc, {
-    x: left + w1a + gap + 10,
-    y: y1 + 30,
-    w: w1b - 16,
-    h: h1 - 36,
+    x: left + w1a + gap + 8,
+    y: y1 + 24,
+    w: w1b - 12,
+    h: h1 - 28,
     text: draft.warningNote,
     preferredSize: 11.5,
     minSize: 9.4,
@@ -377,17 +377,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const w2b = (contentW - gap) * (2 / row2Total);
 
   panel(doc, left, y2, w2a, h2, ZH.overall, TONES.normal);
-  const overallInnerX = left + 10;
-  const overallW = w2a - 20;
-  fieldBox(doc, overallInnerX, y2 + 32, overallW, 112, ZH.level, draft.overallEstimatedLevel || "-", 11.6);
-  fieldBox(doc, overallInnerX, y2 + 152, overallW, h2 - 162, ZH.summary, draft.overallSummary || "-", 11);
+  const overallInnerX = left + 8;
+  const overallW = w2a - 16;
+  fieldBox(doc, overallInnerX, y2 + 24, overallW, 100, ZH.level, draft.overallEstimatedLevel || "-", 10.4);
+  fieldBox(doc, overallInnerX, y2 + 130, overallW, h2 - 136, ZH.summary, draft.overallSummary || "-", 9.8);
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills, TONES.normal);
-  const sx = left + w2a + gap + 8;
-  const sy = y2 + 34;
-  const sw = w2b - 16;
-  const sh = h2 - 40;
-  const sg = 8;
+  const sx = left + w2a + gap + 6;
+  const sy = y2 + 28;
+  const sw = w2b - 12;
+  const sh = h2 - 32;
+  const sg = 6;
   const cardW = (sw - sg) / 2;
   const cardH = (sh - sg) / 2;
 
@@ -421,7 +421,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const x3c = x3b + w3b + gap;
 
   panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
-    stackedFields(doc, left + 10, y3 + 32, w3a - 20, h3 - 40, [
+    stackedFields(doc, left + 8, y3 + 26, w3a - 16, h3 - 32, [
     { label: ZH.participation, value: draft.classParticipation },
     { label: ZH.focus, value: draft.focusEngagement },
     { label: ZH.homework, value: draft.homeworkPreparation },
@@ -429,7 +429,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   ]);
 
   panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
-    stackedFields(doc, x3b + 10, y3 + 32, w3b - 20, h3 - 40, [
+    stackedFields(doc, x3b + 8, y3 + 26, w3b - 16, h3 - 32, [
     { label: ZH.key, value: draft.keyStrengths },
     { label: ZH.bottleneck, value: draft.primaryBottlenecks },
     { label: ZH.next, value: draft.nextPhaseFocus },
