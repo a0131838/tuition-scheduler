@@ -207,28 +207,28 @@ function skillCard(
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#1E3A8A").fontSize(10.8).text(title, x + 7, y + 5, { width: w - 14 });
+  doc.fillColor("#1E3A8A").fontSize(10.4).text(title, x + 7, y + 4, { width: w - 14 });
 
   const levelLabel = `${ZH.current}`;
   const levelVal = normalizeText(level);
   setPdfFont(doc);
-  doc.fillColor("#475569").fontSize(7.6).text(levelLabel, x + w - 108, y + 6, { width: 38, align: "right" });
+  doc.fillColor("#475569").fontSize(7.4).text(levelLabel, x + w - 108, y + 5, { width: 38, align: "right" });
   doc.save();
   doc.lineWidth(0.8);
-  doc.roundedRect(x + w - 66, y + 5, 54, 14, 7).fill("#DBEAFE").stroke("#BFDBFE");
+  doc.roundedRect(x + w - 66, y + 4, 54, 13, 7).fill("#DBEAFE").stroke("#BFDBFE");
   doc.restore();
   setPdfBoldFont(doc);
-  doc.fillColor("#1E40AF").fontSize(8.8).text(levelVal, x + w - 66, y + 8, { width: 54, align: "center" });
+  doc.fillColor("#1E40AF").fontSize(8.5).text(levelVal, x + w - 66, y + 6.8, { width: 54, align: "center" });
 
   drawFitText(doc, {
     x: x + 7,
-    y: y + 21,
+    y: y + 18,
     w: w - 14,
-    h: h - 24,
+    h: h - 19,
     text: `${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    preferredSize: 9.4,
+    preferredSize: 9.2,
     minSize: 7.1,
-    lineGap: 1,
+    lineGap: 0.7,
     color: "#1F2937",
   });
 }
@@ -339,7 +339,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + titleH + 8;
   const usableH = contentH - (y1 - top) - gap * 2;
-  const h1 = Math.floor(usableH * 0.22);
+  const h1 = Math.floor(usableH * 0.18);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -372,7 +372,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.floor(usableH * 0.45);
+  const h2 = Math.floor(usableH * 0.54);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
@@ -385,9 +385,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills, TONES.normal);
   const sx = left + w2a + gap + 6;
-  const sy = y2 + 28;
+  const sy = y2 + 24;
   const sw = w2b - 12;
-  const sh = h2 - 32;
+  const sh = h2 - 26;
   const sg = 6;
   const cardW = (sw - sg) / 2;
   const cardH = (sh - sg) / 2;
