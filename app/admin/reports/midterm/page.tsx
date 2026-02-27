@@ -5,6 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+function readForwardMeta(raw: unknown): { forwardedAt: string | null; forwardedByName: string | null; locked: boolean } {
+  if (!raw || typeof raw !== "object") return { forwardedAt: null, forwardedByName: null, locked: false };
+  const meta = (raw as any)?._meta;
+  if (!meta || typeof meta !== "object") return { forwardedAt: null, forwardedByName: null, locked: false };
+  const forwardedAt = typeof meta.forwardedAt === "string" && meta.forwardedAt.trim() ? meta.forwardedAt.trim() : null;
+  const forwardedByName = typeof meta.forwardedByName === "string" && meta.forwardedByName.trim() ? meta.forwardedByName.trim() : null;
+  const locked = Boolean(meta.lockedAfterForwarded);
+  return { forwardedAt, forwardedByName, locked };
+}
+
 async function assignMidtermReport(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -76,6 +86,43 @@ async function assignMidtermReport(formData: FormData) {
   redirect("/admin/reports/midterm?ok=assigned");
 }
 
+async function markForwardedAndLock(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/midterm?err=missing");
+
+  const row = await prisma.midtermReport.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true, reportJson: true },
+  });
+  if (!row || row.status !== "SUBMITTED") redirect("/admin/reports/midterm?err=status");
+
+  const nowIso = new Date().toISOString();
+  const prev = row.reportJson && typeof row.reportJson === "object" ? (row.reportJson as Record<string, unknown>) : {};
+  const prevMeta = prev._meta && typeof prev._meta === "object" ? (prev._meta as Record<string, unknown>) : {};
+
+  await prisma.midtermReport.update({
+    where: { id: row.id },
+    data: {
+      reportJson: {
+        ...prev,
+        _meta: {
+          ...prevMeta,
+          forwardedAt: nowIso,
+          forwardedByUserId: user.id,
+          forwardedByName: user.name,
+          lockedAfterForwarded: true,
+        },
+      } as any,
+    },
+  });
+
+  revalidatePath("/admin/reports/midterm");
+  revalidatePath("/teacher/midterm-reports");
+  redirect("/admin/reports/midterm?ok=forwarded");
+}
+
 export default async function AdminMidtermReportCenterPage({
   searchParams,
 }: {
@@ -115,6 +162,10 @@ export default async function AdminMidtermReportCenterPage({
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Assigned successfully.", "已成功推送给老师。")}
         </div>
+      ) : ok === "forwarded" ? (
+        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Marked as forwarded and locked.", "已标记为已转发并已锁定。")}
+        </div>
       ) : null}
       {err ? (
         <div style={{ background: "#fff1f2", border: "1px solid #fb7185", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
@@ -131,9 +182,7 @@ export default async function AdminMidtermReportCenterPage({
           marginBottom: 16,
         }}
       >
-        <div style={{ fontWeight: 800, color: "#9a3412", marginBottom: 8 }}>
-          {t(lang, "Candidates Near Midpoint", "接近中期报告节点")}
-        </div>
+        <div style={{ fontWeight: 800, color: "#9a3412", marginBottom: 8 }}>{t(lang, "Candidates Near Midpoint", "接近中期报告节点")}</div>
         {candidates.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No candidates for now.", "当前没有候选学生。")}</div>
         ) : (
@@ -194,9 +243,7 @@ export default async function AdminMidtermReportCenterPage({
       </div>
 
       <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
-        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>
-          {t(lang, "Assigned & Submitted Reports", "已推送与已提交报告")}
-        </div>
+        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Assigned & Submitted Reports", "已推送与已提交报告")}</div>
         {reports.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No report records.", "暂无报告记录。")}</div>
         ) : (
@@ -224,31 +271,47 @@ export default async function AdminMidtermReportCenterPage({
               </tr>
             </thead>
             <tbody>
-              {reports.map((r) => (
-                <tr key={r.id} style={{ borderTop: "1px solid #dbeafe" }}>
-                  <td style={{ padding: 6, fontWeight: 700 }}>{r.student.name}</td>
-                  <td style={{ padding: 6 }}>{r.teacher.name}</td>
-                  <td style={{ padding: 6 }}>
-                    {r.course.name}
-                    {r.subject ? ` / ${r.subject.name}` : ""}
-                  </td>
-                  <td style={{ padding: 6 }}>
-                    {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)
-                  </td>
-                  <td style={{ padding: 6 }}>
-                    {r.status === "SUBMITTED" ? (
-                      <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span>
-                    ) : (
-                      <span style={{ color: "#92400e", fontWeight: 700 }}>{t(lang, "Assigned", "待老师填写")}</span>
-                    )}
-                  </td>
-                  <td style={{ padding: 6 }}>
-                    <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>
-                      {t(lang, "Download PDF", "下载PDF")}
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {reports.map((r) => {
+                const forwardMeta = readForwardMeta(r.reportJson);
+                return (
+                  <tr key={r.id} style={{ borderTop: "1px solid #dbeafe" }}>
+                    <td style={{ padding: 6, fontWeight: 700 }}>{r.student.name}</td>
+                    <td style={{ padding: 6 }}>{r.teacher.name}</td>
+                    <td style={{ padding: 6 }}>
+                      {r.course.name}
+                      {r.subject ? ` / ${r.subject.name}` : ""}
+                    </td>
+                    <td style={{ padding: 6 }}>
+                      {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)
+                    </td>
+                    <td style={{ padding: 6 }}>
+                      {forwardMeta.locked ? (
+                        <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Forwarded & Locked", "已转发已锁定")}</span>
+                      ) : r.status === "SUBMITTED" ? (
+                        <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span>
+                      ) : (
+                        <span style={{ color: "#92400e", fontWeight: 700 }}>{t(lang, "Assigned", "待老师填写")}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: 6 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
+                        {forwardMeta.locked ? (
+                          <span style={{ color: "#1d4ed8", fontSize: 12 }}>
+                            {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? new Date(forwardMeta.forwardedAt).toLocaleString() : "-"} (
+                            {forwardMeta.forwardedByName || "-"})
+                          </span>
+                        ) : r.status === "SUBMITTED" ? (
+                          <form action={markForwardedAndLock}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <button type="submit">{t(lang, "Mark Forwarded + Lock", "标记已转发并锁定")}</button>
+                          </form>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -256,3 +319,4 @@ export default async function AdminMidtermReportCenterPage({
     </div>
   );
 }
+

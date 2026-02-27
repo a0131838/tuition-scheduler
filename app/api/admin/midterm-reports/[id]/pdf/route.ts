@@ -222,10 +222,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     note: { bg: "#fff1f2", border: "#fecdd3", title: "#9f1239" },
     overall: { bg: "#fff7ed", border: "#fed7aa", title: "#9a3412" },
     skills: { bg: "#ecfeff", border: "#a5f3fc", title: "#155e75" },
-    listening: { bg: "#eef2ff", border: "#c7d2fe", title: "#3730a3" },
-    reading: { bg: "#f0fdf4", border: "#bbf7d0", title: "#166534" },
-    writing: { bg: "#fff7ed", border: "#fed7aa", title: "#9a3412" },
-    speaking: { bg: "#fdf4ff", border: "#f5d0fe", title: "#86198f" },
+    skillCard: { bg: "#f8fafc", border: "#cbd5e1", title: "#155e75" },
     learning: { bg: "#f5f3ff", border: "#ddd6fe", title: "#5b21b6" },
     rec: { bg: "#f0fdf4", border: "#bbf7d0", title: "#166534" },
     exam: { bg: "#f8fafc", border: "#cbd5e1", title: "#0f172a" },
@@ -292,7 +289,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.listeningPerformance,
     draft.listeningStrengths,
     draft.listeningImprovements,
-    TONES.listening,
+    TONES.skillCard,
   );
   drawSkillCard(
     doc,
@@ -305,7 +302,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.readingPerformance,
     draft.readingStrengths,
     draft.readingImprovements,
-    TONES.reading,
+    TONES.skillCard,
   );
   drawSkillCard(
     doc,
@@ -318,7 +315,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.writingPerformance,
     draft.writingStrengths,
     draft.writingImprovements,
-    TONES.writing,
+    TONES.skillCard,
   );
   drawSkillCard(
     doc,
@@ -331,7 +328,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingPerformance,
     draft.speakingStrengths,
     draft.speakingImprovements,
-    TONES.speaking,
+    TONES.skillCard,
   );
 
   const y3 = y2 + h2 + 6;
