@@ -183,8 +183,8 @@ function fieldBox(doc: PDFDoc, x: number, y: number, w: number, h: number, label
     h: Math.max(8, h - 11),
     text: normalizeText(value),
     preferredSize: bodyPreferred,
-    minSize: 7.2,
-    lineGap: 1.2,
+    minSize: 6.2,
+    lineGap: 0.8,
     color: "#111827",
   });
 }
@@ -340,7 +340,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + titleH + 8;
   const usableH = contentH - (y1 - top) - gap * 2;
-  const h1 = Math.floor(usableH * 0.145);
+  const h1 = Math.floor(usableH * 0.16);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -366,14 +366,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     w: w1b - 14,
     h: h1 - 24,
     text: draft.warningNote,
-    preferredSize: 9.4,
-    minSize: 7.8,
-    lineGap: 1,
+    preferredSize: 8.6,
+    minSize: 6.2,
+    lineGap: 0.6,
     color: "#374151",
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.floor(usableH * 0.525);
+  const h2 = Math.floor(usableH * 0.50);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
