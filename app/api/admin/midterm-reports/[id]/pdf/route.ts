@@ -6,6 +6,7 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
+type PanelTone = { bg: string; border: string; title: string };
 
 const ZH = {
   title: "\u9636\u6bb5\u6027\u5b66\u4e60\u8bc4\u4f30\u62a5\u544a",
@@ -93,12 +94,15 @@ function drawTextBox(doc: PDFDoc, options: DrawBoxOptions) {
   doc.restore();
 }
 
-function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string) {
+function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string, tone?: PanelTone) {
+  const bg = tone?.bg ?? "#f8fafc";
+  const border = tone?.border ?? "#cbd5e1";
+  const titleColor = tone?.title ?? "#0f172a";
   doc.save();
-  doc.roundedRect(x, y, w, h, 6).fill("#f8fafc").stroke("#cbd5e1");
+  doc.roundedRect(x, y, w, h, 6).fill(bg).stroke(border);
   doc.restore();
   setPdfBoldFont(doc);
-  doc.fillColor("#0f172a").fontSize(9.4).text(title, x + 6, y + 5, { width: w - 12 });
+  doc.fillColor(titleColor).fontSize(9.6).text(title, x + 6, y + 5, { width: w - 12 });
 }
 
 function kv(doc: PDFDoc, x: number, y: number, w: number, k: string, v: string, boxH = 16, lines = 1) {
@@ -168,13 +172,17 @@ function drawSkillCard(
   perf: string,
   strength: string,
   improve: string,
+  tone?: PanelTone,
 ) {
+  const bg = tone?.bg ?? "#ffffff";
+  const border = tone?.border ?? "#e2e8f0";
+  const titleColor = tone?.title ?? "#0f172a";
   doc.save();
-  doc.roundedRect(x, y, w, h, 5).fill("#ffffff").stroke("#e2e8f0");
+  doc.roundedRect(x, y, w, h, 5).fill(bg).stroke(border);
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#0f172a").fontSize(9.4).text(title, x + 6, y + 5, { width: w - 12 });
+  doc.fillColor(titleColor).fontSize(9.2).text(title, x + 6, y + 5, { width: w - 12 });
 
   drawTextBox(doc, {
     x: x + 6,
@@ -209,16 +217,29 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const contentW = pageW - left * 2;
   const contentH = pageH - top * 2;
   const gap = 8;
+  const TONES = {
+    base: { bg: "#eff6ff", border: "#bfdbfe", title: "#1e3a8a" },
+    note: { bg: "#fff1f2", border: "#fecdd3", title: "#9f1239" },
+    overall: { bg: "#fff7ed", border: "#fed7aa", title: "#9a3412" },
+    skills: { bg: "#ecfeff", border: "#a5f3fc", title: "#155e75" },
+    listening: { bg: "#eef2ff", border: "#c7d2fe", title: "#3730a3" },
+    reading: { bg: "#f0fdf4", border: "#bbf7d0", title: "#166534" },
+    writing: { bg: "#fff7ed", border: "#fed7aa", title: "#9a3412" },
+    speaking: { bg: "#fdf4ff", border: "#f5d0fe", title: "#86198f" },
+    learning: { bg: "#f5f3ff", border: "#ddd6fe", title: "#5b21b6" },
+    rec: { bg: "#f0fdf4", border: "#bbf7d0", title: "#166534" },
+    exam: { bg: "#f8fafc", border: "#cbd5e1", title: "#0f172a" },
+  } satisfies Record<string, PanelTone>;
 
   setPdfBoldFont(doc);
-  doc.fillColor("#7f1d1d").fontSize(14).text(ZH.title, left, top);
+  doc.fillColor("#7f1d1d").fontSize(16).text(ZH.title, left, top);
 
   const y1 = top + 20;
   const h1 = 76;
   const w1a = Math.floor(contentW * 0.52);
   const w1b = contentW - w1a - gap;
 
-  panel(doc, left, y1, w1a, h1, ZH.base);
+  panel(doc, left, y1, w1a, h1, ZH.base, TONES.base);
   const cGap = 12;
   const colW = Math.floor((w1a - 16 - cGap * 2) / 3);
   const row1Y = y1 + 20;
@@ -230,7 +251,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   drawInfoCell(doc, left + 8 + colW + cGap, row2Y, colW, ZH.score, String(report.overallScore ?? "-"));
   drawInfoCell(doc, left + 8 + (colW + cGap) * 2, row2Y, colW, ZH.cefr, report.examTargetStatus || "-");
 
-  panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note);
+  panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note, TONES.note);
   drawTextBox(doc, {
     x: left + w1a + gap + 7,
     y: y1 + 20,
@@ -247,11 +268,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
-  panel(doc, left, y2, w2a, h2, ZH.overall);
+  panel(doc, left, y2, w2a, h2, ZH.overall, TONES.overall);
   kvCompact(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 28, 4, 6.6);
   kvCompact(doc, left + 8, y2 + 58, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 68, 18, 6.4);
 
-  panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills);
+  panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills, TONES.skills);
   const cardGap = 8;
   const innerX = left + w2a + gap + 6;
   const innerY = y2 + 18;
@@ -271,6 +292,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.listeningPerformance,
     draft.listeningStrengths,
     draft.listeningImprovements,
+    TONES.listening,
   );
   drawSkillCard(
     doc,
@@ -283,6 +305,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.readingPerformance,
     draft.readingStrengths,
     draft.readingImprovements,
+    TONES.reading,
   );
   drawSkillCard(
     doc,
@@ -295,6 +318,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.writingPerformance,
     draft.writingStrengths,
     draft.writingImprovements,
+    TONES.writing,
   );
   drawSkillCard(
     doc,
@@ -307,6 +331,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingPerformance,
     draft.speakingStrengths,
     draft.speakingImprovements,
+    TONES.speaking,
   );
 
   const y3 = y2 + h2 + 6;
@@ -329,13 +354,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const w = Math.floor((contentW - gap) / 2);
     const c2x = left + w + gap;
 
-    panel(doc, left, y3, w, h3, ZH.learning);
+    panel(doc, left, y3, w, h3, ZH.learning, TONES.learning);
     kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 24, 3);
     kvCompact(doc, left + 8, y3 + 50, w - 16, ZH.focus, draft.focusEngagement, 24, 3);
     kvCompact(doc, left + 8, y3 + 80, w - 16, ZH.homework, draft.homeworkPreparation, 24, 3);
     kvCompact(doc, left + 8, y3 + 110, w - 16, ZH.attitude, draft.attitudeGeneral, 24, 3);
 
-    panel(doc, c2x, y3, w, h3, ZH.rec);
+    panel(doc, c2x, y3, w, h3, ZH.rec, TONES.rec);
     kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 24, 3);
     kvCompact(doc, c2x + 8, y3 + 50, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 24, 3);
     kvCompact(doc, c2x + 8, y3 + 80, w - 16, ZH.next, draft.nextPhaseFocus, 24, 3);
@@ -349,13 +374,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const c2x = left + w + gap;
     const c3x = c2x + w + gap;
 
-    panel(doc, left, y3, w, h3, ZH.learning);
+    panel(doc, left, y3, w, h3, ZH.learning, TONES.learning);
     kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 28, 4, 6.3);
     kvCompact(doc, left + 8, y3 + 52, w - 16, ZH.focus, draft.focusEngagement, 28, 4, 6.3);
     kvCompact(doc, left + 8, y3 + 84, w - 16, ZH.homework, draft.homeworkPreparation, 28, 4, 6.3);
     kvCompact(doc, left + 8, y3 + 116, w - 16, ZH.attitude, draft.attitudeGeneral, 28, 4, 6.3);
 
-    panel(doc, c2x, y3, w, h3, ZH.rec);
+    panel(doc, c2x, y3, w, h3, ZH.rec, TONES.rec);
     kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 28, 4, 6.3);
     kvCompact(doc, c2x + 8, y3 + 52, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 28, 4, 6.3);
     kvCompact(doc, c2x + 8, y3 + 84, w - 16, ZH.next, draft.nextPhaseFocus, 28, 4, 6.3);
@@ -363,7 +388,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     kvCompact(doc, c2x + 8, y3 + 142, w - 16, ZH.target, draft.targetLevelScore, 22, 2, 6.2);
 
     const examTitle = `${normalizeText(draft.examName || "\u8003\u8bd5")}${ZH.examSuffix}`;
-    panel(doc, c3x, y3, examW, h3, examTitle);
+    panel(doc, c3x, y3, examW, h3, examTitle, TONES.exam);
 
     let ey = y3 + 20;
     for (const row of examRows.slice(0, 7)) {
