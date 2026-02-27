@@ -20,19 +20,13 @@ async function assignMidtermReport(formData: FormData) {
   const user = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
-  if (!packageId || !teacherId) {
-    redirect("/admin/reports/midterm?err=missing");
-  }
+  if (!packageId || !teacherId) redirect("/admin/reports/midterm?err=missing");
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
-    include: {
-      txns: { where: { kind: "DEDUCT" }, select: { id: true } },
-    },
+    include: { txns: { where: { kind: "DEDUCT" }, select: { id: true } } },
   });
-  if (!pkg || pkg.type !== "HOURS") {
-    redirect("/admin/reports/midterm?err=pkg");
-  }
+  if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/midterm?err=pkg");
 
   const total = Math.max(0, Number(pkg.totalMinutes ?? 0));
   const remaining = Math.max(0, Number(pkg.remainingMinutes ?? 0));
@@ -46,15 +40,19 @@ async function assignMidtermReport(formData: FormData) {
   });
   const subjectId = latestAttendance?.session.class.subjectId ?? null;
 
-  const pending = await prisma.midtermReport.findFirst({
-    where: { packageId, status: "ASSIGNED" },
+  const latestForTeacher = await prisma.midtermReport.findFirst({
+    where: { packageId, teacherId },
     orderBy: { createdAt: "desc" },
   });
-  if (pending) {
+
+  if (latestForTeacher?.status === "SUBMITTED") {
+    redirect("/admin/reports/midterm?ok=exists");
+  }
+
+  if (latestForTeacher?.status === "ASSIGNED") {
     await prisma.midtermReport.update({
-      where: { id: pending.id },
+      where: { id: latestForTeacher.id },
       data: {
-        teacherId,
         subjectId,
         assignedByUserId: user.id,
         assignedAt: new Date(),
@@ -137,12 +135,7 @@ export default async function AdminMidtermReportCenterPage({
   const [candidates, reports] = await Promise.all([
     loadMidtermCandidates(),
     prisma.midtermReport.findMany({
-      include: {
-        student: true,
-        teacher: true,
-        course: true,
-        subject: true,
-      },
+      include: { student: true, teacher: true, course: true, subject: true },
       orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
       take: 300,
     }),
@@ -155,18 +148,24 @@ export default async function AdminMidtermReportCenterPage({
         {t(
           lang,
           "Detect students near half-package progress and assign report writing to the subject teacher.",
-          "系统会自动识别接近课时包半程的学生，教务可一键指派给任课老师填写中期报告。"
+          "系统会识别接近课时包中点的学生，教务可按任课老师分别推送中期报告。"
         )}
       </div>
+
       {ok === "assigned" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Assigned successfully.", "已成功推送给老师。")}
         </div>
+      ) : ok === "exists" ? (
+        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "This teacher already submitted this midterm report.", "该老师已提交此中期报告，无需重复推送。")}
+        </div>
       ) : ok === "forwarded" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
-          {t(lang, "Marked as forwarded and locked.", "已标记为已转发并已锁定。")}
+          {t(lang, "Marked as forwarded and locked.", "已标记为已转发并锁定。")}
         </div>
       ) : null}
+
       {err ? (
         <div style={{ background: "#fff1f2", border: "1px solid #fb7185", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Operation failed. Please retry.", "操作失败，请重试。")}
@@ -189,21 +188,11 @@ export default async function AdminMidtermReportCenterPage({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#fff" }}>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Student", "学生")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Course", "课程")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Progress", "进度")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Teacher", "推送老师")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Action", "操作")}
-                </th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Student", "学生")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Course", "课程")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Progress", "进度")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Teacher", "推送老师")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Action", "操作")}</th>
               </tr>
             </thead>
             <tbody>
@@ -222,6 +211,7 @@ export default async function AdminMidtermReportCenterPage({
                           <option key={opt.id} value={opt.id}>
                             {opt.name}
                             {opt.subjectName ? ` (${opt.subjectName})` : ""}
+                            {opt.latestReportStatus === "ASSIGNED" ? " - Assigned" : opt.latestReportStatus === "SUBMITTED" ? " - Submitted" : ""}
                           </option>
                         ))}
                       </select>
@@ -229,11 +219,13 @@ export default async function AdminMidtermReportCenterPage({
                     </form>
                   </td>
                   <td style={{ padding: 6 }}>
-                    {row.latestReportStatus === "ASSIGNED" ? (
-                      <span style={{ color: "#a16207", fontWeight: 700 }}>{t(lang, "Already assigned", "已推送待提交")}</span>
-                    ) : (
-                      "-"
-                    )}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {row.teacherOptions.map((opt) => (
+                        <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
+                          {opt.name}: {opt.latestReportStatus === "ASSIGNED" ? t(lang, "Assigned", "已推送") : opt.latestReportStatus === "SUBMITTED" ? t(lang, "Submitted", "已提交") : t(lang, "Not pushed", "未推送")}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -250,24 +242,12 @@ export default async function AdminMidtermReportCenterPage({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#fff" }}>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Student", "学生")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Teacher", "老师")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Course", "课程")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Progress", "进度快照")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Status", "状态")}
-                </th>
-                <th align="left" style={{ padding: 6 }}>
-                  {t(lang, "Action", "操作")}
-                </th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Student", "学生")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Teacher", "老师")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Course", "课程")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Progress", "进度快照")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Status", "状态")}</th>
+                <th align="left" style={{ padding: 6 }}>{t(lang, "Action", "操作")}</th>
               </tr>
             </thead>
             <tbody>
@@ -277,16 +257,11 @@ export default async function AdminMidtermReportCenterPage({
                   <tr key={r.id} style={{ borderTop: "1px solid #dbeafe" }}>
                     <td style={{ padding: 6, fontWeight: 700 }}>{r.student.name}</td>
                     <td style={{ padding: 6 }}>{r.teacher.name}</td>
-                    <td style={{ padding: 6 }}>
-                      {r.course.name}
-                      {r.subject ? ` / ${r.subject.name}` : ""}
-                    </td>
-                    <td style={{ padding: 6 }}>
-                      {r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)
-                    </td>
+                    <td style={{ padding: 6 }}>{r.course.name}{r.subject ? ` / ${r.subject.name}` : ""}</td>
+                    <td style={{ padding: 6 }}>{r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)</td>
                     <td style={{ padding: 6 }}>
                       {forwardMeta.locked ? (
-                        <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Forwarded & Locked", "已转发已锁定")}</span>
+                        <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Forwarded & Locked", "已转发并锁定")}</span>
                       ) : r.status === "SUBMITTED" ? (
                         <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span>
                       ) : (
@@ -298,8 +273,7 @@ export default async function AdminMidtermReportCenterPage({
                         <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
                         {forwardMeta.locked ? (
                           <span style={{ color: "#1d4ed8", fontSize: 12 }}>
-                            {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? new Date(forwardMeta.forwardedAt).toLocaleString() : "-"} (
-                            {forwardMeta.forwardedByName || "-"})
+                            {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? new Date(forwardMeta.forwardedAt).toLocaleString() : "-"} ({forwardMeta.forwardedByName || "-"})
                           </span>
                         ) : r.status === "SUBMITTED" ? (
                           <form action={markForwardedAndLock}>
@@ -319,4 +293,3 @@ export default async function AdminMidtermReportCenterPage({
     </div>
   );
 }
-

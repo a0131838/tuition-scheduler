@@ -58,12 +58,11 @@ export type MidtermReportDraft = {
   examTotalValue: string;
 };
 
-export const DEFAULT_WARNING_NOTE =
-  [
-    "本报告基于内部评估及课堂观察所形成，仅反映学生当前英语能力水平。",
-    "该成绩不代表任何官方外部考试结果。",
-    "本评估旨在为后续学习提供针对性指导与改进方向。",
-  ].join("\n");
+export const DEFAULT_WARNING_NOTE = [
+  "本报告基于内部评估及课堂观察所形成，仅反映学生当前英语能力水平。",
+  "该成绩不代表任何官方外部考试结果。",
+  "本评估旨在为后续学习提供针对性指导与改进方向。",
+].join("\n");
 
 export const EMPTY_REPORT_DRAFT: MidtermReportDraft = {
   assessmentTool: "",
@@ -294,7 +293,12 @@ export async function loadMidtermCandidates() {
       },
       midtermReports: {
         orderBy: { createdAt: "desc" },
-        take: 1,
+        take: 200,
+        select: {
+          teacherId: true,
+          status: true,
+          createdAt: true,
+        },
       },
     },
     orderBy: { updatedAt: "desc" },
@@ -309,13 +313,27 @@ export async function loadMidtermCandidates() {
     const progress = Math.round((used / total) * 100);
     if (progress < 45 || progress > 70) return null;
 
-    const latestReport = pkg.midtermReports[0] ?? null;
-    if (latestReport && latestReport.status === "SUBMITTED") return null;
-
     const teacherMap = new Map<
       string,
-      { id: string; name: string; subjectId: string | null; subjectName: string | null; latestStartAt: Date }
+      {
+        id: string;
+        name: string;
+        subjectId: string | null;
+        subjectName: string | null;
+        latestStartAt: Date;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | null;
+      }
     >();
+
+    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED">();
+    for (const report of pkg.midtermReports) {
+      if (!report.teacherId) continue;
+      if (latestReportByTeacher.has(report.teacherId)) continue;
+      if (report.status === "ASSIGNED" || report.status === "SUBMITTED") {
+        latestReportByTeacher.set(report.teacherId, report.status);
+      }
+    }
+
     for (const a of pkg.attendances) {
       const teacher = a.session.teacher ?? a.session.class.teacher;
       if (!teacher?.id) continue;
@@ -329,6 +347,7 @@ export async function loadMidtermCandidates() {
           subjectId,
           subjectName,
           latestStartAt: a.session.startAt,
+          latestReportStatus: latestReportByTeacher.get(teacher.id) ?? null,
         });
       }
     }
@@ -350,7 +369,6 @@ export async function loadMidtermCandidates() {
       teacherOptions,
       defaultTeacherId: topTeacher.id,
       defaultSubjectId: topTeacher.subjectId,
-      latestReportStatus: latestReport?.status ?? null,
     };
   });
 
@@ -364,19 +382,30 @@ export async function loadMidtermCandidates() {
     consumedMinutes: number;
     progressPercent: number;
     consumedSessions: number;
-    teacherOptions: Array<{ id: string; name: string; subjectId: string | null; subjectName: string | null; latestStartAt: Date }>;
+    teacherOptions: Array<{
+      id: string;
+      name: string;
+      subjectId: string | null;
+      subjectName: string | null;
+      latestStartAt: Date;
+      latestReportStatus: "ASSIGNED" | "SUBMITTED" | null;
+    }>;
     defaultTeacherId: string;
     defaultSubjectId: string | null;
-    latestReportStatus: "ASSIGNED" | "SUBMITTED" | null;
   }> = [];
 
   for (const row of rows) {
     if (!row) continue;
     result.push({
       ...row,
-      latestReportStatus: row.latestReportStatus === "ASSIGNED" || row.latestReportStatus === "SUBMITTED" ? row.latestReportStatus : null,
+      teacherOptions: row.teacherOptions.map((opt) => ({
+        ...opt,
+        latestReportStatus:
+          opt.latestReportStatus === "ASSIGNED" || opt.latestReportStatus === "SUBMITTED" ? opt.latestReportStatus : null,
+      })),
     });
   }
   result.sort((a, b) => b.progressPercent - a.progressPercent);
   return result;
 }
+
