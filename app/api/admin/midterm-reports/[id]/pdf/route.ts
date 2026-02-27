@@ -159,16 +159,16 @@ function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: s
 
 function infoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string) {
   setPdfBoldFont(doc);
-  doc.fillColor("#475569").fontSize(9).text(label, x, y, { width: w });
+  doc.fillColor("#475569").fontSize(8.6).text(label, x, y, { width: w });
   drawFitText(doc, {
     x,
-    y: y + 11,
+    y: y + 10,
     w,
-    h: 16,
+    h: 15,
     text: normalizeText(value),
-    preferredSize: 10.2,
-    minSize: 8,
-    lineGap: 1,
+    preferredSize: 9.6,
+    minSize: 7.6,
+    lineGap: 0.8,
     color: "#0F172A",
   });
 }
@@ -340,7 +340,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + titleH + 8;
   const usableH = contentH - (y1 - top) - gap * 2;
-  const h1 = Math.floor(usableH * 0.12);
+  const h1 = Math.floor(usableH * 0.145);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -349,8 +349,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const cGap = 8;
   const infoInnerW = w1a - 16;
   const colW = (infoInnerW - cGap * 2) / 3;
-  const r1 = y1 + 24;
-  const r2 = y1 + 52;
+  const r1 = y1 + 20;
+  const r2 = y1 + 42;
 
   infoCell(doc, left + 8, r1, colW, ZH.name, report.student.name);
   infoCell(doc, left + 8 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
@@ -373,7 +373,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.floor(usableH * 0.54);
+  const h2 = Math.floor(usableH * 0.525);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
