@@ -174,7 +174,7 @@ function drawSkillCard(
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#0f172a").fontSize(8.8).text(title, x + 6, y + 5, { width: w - 12 });
+  doc.fillColor("#0f172a").fontSize(9.4).text(title, x + 6, y + 5, { width: w - 12 });
 
   drawTextBox(doc, {
     x: x + 6,
@@ -182,9 +182,9 @@ function drawSkillCard(
     w: w - 12,
     h: h - 18,
     text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    fontSize: 5.8,
-    maxLines: 15,
-    lineGap: 0.4,
+    fontSize: 6.2,
+    maxLines: 14,
+    lineGap: 0.45,
     color: "#0f172a",
   });
 }
