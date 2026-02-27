@@ -41,8 +41,6 @@ const ZH = {
   load: "\u5efa\u8bae\u7ec3\u4e60\u65f6\u957f",
   target: "\u76ee\u6807\u7b49\u7ea7\u6216\u5206\u6570",
   examSuffix: "\u6210\u7ee9\u5206\u9879",
-  generated: "\u751f\u6210\u65f6\u95f4",
-  onePage: "\u5355\u9875\u5bfc\u51fa",
 };
 
 function streamPdf(doc: PDFDoc) {
@@ -372,12 +370,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       ey += 19;
     }
   }
-
-  setPdfFont(doc);
-  doc.fillColor("#64748b").fontSize(6.8).text(`${ZH.generated}\uff1a${new Date().toLocaleString()} | ${ZH.onePage}`, left, pageH - 14, {
-    width: contentW,
-    align: "right",
-  });
 
   const stream = streamPdf(doc);
   const filename = `midterm-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
