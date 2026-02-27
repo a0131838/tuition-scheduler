@@ -239,8 +239,8 @@ function stackedFields(
   fields: Array<{ label: string; value: string }>,
   gap = 10,
 ) {
-  const available = h - gap * (fields.length - 1);
-  const each = Math.max(40, available / fields.length);
+  const available = Math.max(0, h - gap * (fields.length - 1));
+  const each = fields.length > 0 ? available / fields.length : 0;
   let cy = y;
   for (const field of fields) {
     fieldBox(doc, x, cy, w, each, field.label, field.value, 11.2);
@@ -333,9 +333,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   setPdfBoldFont(doc);
   doc.fillColor("#111827").fontSize(23).text(ZH.title, left, top, { width: contentW });
 
-  const y1 = top + 36;
-  const usableH = contentH - 36 - gap * 2;
-  const h1 = Math.max(110, Math.floor(usableH * 0.2));
+  const y1 = top + 30;
+  const usableH = contentH - 30 - gap * 2;
+  const h1 = Math.floor(usableH * 0.22);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -368,7 +368,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.max(220, Math.floor(usableH * 0.46));
+  const h2 = Math.floor(usableH * 0.45);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
@@ -394,7 +394,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   skillCard(doc, sx + cardW + sg, sy + cardH + sg, cardW, cardH, ZH.speaking, draft.speakingLevel, draft.speakingPerformance, draft.speakingStrengths, draft.speakingImprovements);
 
   const y3 = y2 + h2 + gap;
-  const h3 = Math.max(120, usableH - h1 - h2);
+  const h3 = Math.max(0, usableH - h1 - h2);
 
   const examRowsRaw = [
     { label: draft.examMetric1Label, value: draft.examMetric1Value },
