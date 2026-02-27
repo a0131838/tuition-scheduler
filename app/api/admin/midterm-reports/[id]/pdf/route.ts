@@ -104,11 +104,38 @@ function drawFitText(doc: PDFDoc, options: FitTextOptions) {
     fontSize -= 0.25;
   }
 
+  // If still too tall at minimum size, clamp content to avoid PDF page spillover.
+  doc.fontSize(Math.max(fontSize, min));
+  let finalText = text;
+  let needed = doc.heightOfString(finalText, { width: options.w, lineGap, align: "left" });
+  if (needed > options.h) {
+    const src = finalText;
+    let lo = 0;
+    let hi = src.length;
+    let best = "";
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const probe = `${src.slice(0, mid).trimEnd()}…`;
+      const h = doc.heightOfString(probe, { width: options.w, lineGap, align: "left" });
+      if (h <= options.h) {
+        best = probe;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    finalText = best || "…";
+    needed = doc.heightOfString(finalText, { width: options.w, lineGap, align: "left" });
+    if (needed > options.h) {
+      finalText = "…";
+    }
+  }
+
   doc.save();
   doc.rect(options.x, options.y, options.w, options.h).clip();
   setPdfFont(doc);
   doc.fillColor(options.color ?? "#1F2937").fontSize(Math.max(fontSize, min));
-  doc.text(text, options.x, options.y, {
+  doc.text(finalText, options.x, options.y, {
     width: options.w,
     height: options.h,
     lineGap,
