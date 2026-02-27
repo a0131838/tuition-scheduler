@@ -266,8 +266,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const w2b = contentW - w2a - gap;
 
   panel(doc, left, y2, w2a, h2, ZH.overall, TONES.overall);
-  kvCompact(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 28, 4, 6.6);
-  kvCompact(doc, left + 8, y2 + 58, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 68, 18, 6.4);
+  kvCompact(doc, left + 8, y2 + 20, w2a - 16, ZH.level, draft.overallEstimatedLevel || "-", 54, 9, 7.2);
+  kvCompact(doc, left + 8, y2 + 82, w2a - 16, ZH.summary, draft.overallSummary || "-", h2 - 92, 24, 6.9);
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills, TONES.skills);
   const cardGap = 8;
