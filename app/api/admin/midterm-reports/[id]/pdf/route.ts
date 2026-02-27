@@ -278,7 +278,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const doc = new PDFDocument({
     size: "A4",
-    layout: "portrait",
+    layout: "landscape",
     margin: mm(16),
   });
   setPdfFont(doc);
@@ -307,7 +307,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   doc.fillColor("#111827").fontSize(23).text(ZH.title, left, top, { width: contentW });
 
   const y1 = top + 36;
-  const h1 = 124;
+  const usableH = contentH - 36 - gap * 2;
+  const h1 = Math.max(110, Math.floor(usableH * 0.2));
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -340,7 +341,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 318;
+  const h2 = Math.max(220, Math.floor(usableH * 0.46));
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
@@ -366,7 +367,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   skillCard(doc, sx + cardW + sg, sy + cardH + sg, cardW, cardH, ZH.speaking, draft.speakingLevel, draft.speakingPerformance, draft.speakingStrengths, draft.speakingImprovements);
 
   const y3 = y2 + h2 + gap;
-  const h3 = contentH - (y3 - top);
+  const h3 = Math.max(120, usableH - h1 - h2);
 
   const examRowsRaw = [
     { label: draft.examMetric1Label, value: draft.examMetric1Value },
