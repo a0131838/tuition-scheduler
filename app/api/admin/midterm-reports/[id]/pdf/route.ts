@@ -340,7 +340,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const y1 = top + titleH + 8;
   const usableH = contentH - (y1 - top) - gap * 2;
-  const h1 = Math.floor(usableH * 0.13);
+  const h1 = Math.floor(usableH * 0.12);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
   const w1b = (contentW - gap) * (1 / row1Total);
@@ -373,7 +373,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = Math.floor(usableH * 0.58);
+  const h2 = Math.floor(usableH * 0.54);
   const row2Total = 3; // 1fr + 2fr
   const w2a = (contentW - gap) * (1 / row2Total);
   const w2b = (contentW - gap) * (2 / row2Total);
@@ -422,21 +422,21 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const x3c = x3b + w3b + gap;
 
   panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
-  stackedFields(doc, left + 8, y3 + 22, w3a - 16, h3 - 26, [
+  stackedFields(doc, left + 8, y3 + 20, w3a - 16, h3 - 22, [
     { label: ZH.participation, value: draft.classParticipation },
     { label: ZH.focus, value: draft.focusEngagement },
     { label: ZH.homework, value: draft.homeworkPreparation },
     { label: ZH.attitude, value: draft.attitudeGeneral },
-  ], 2, 8.4);
+  ], 1, 8.0);
 
   panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
-  stackedFields(doc, x3b + 8, y3 + 22, w3b - 16, h3 - 26, [
+  stackedFields(doc, x3b + 8, y3 + 20, w3b - 16, h3 - 22, [
     { label: ZH.key, value: draft.keyStrengths },
     { label: ZH.bottleneck, value: draft.primaryBottlenecks },
     { label: ZH.next, value: draft.nextPhaseFocus },
     { label: ZH.load, value: draft.suggestedPracticeLoad },
     { label: ZH.target, value: draft.targetLevelScore },
-  ], 2, 8.2);
+  ], 1, 7.8);
 
   if (hasExamBlock) {
     const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
