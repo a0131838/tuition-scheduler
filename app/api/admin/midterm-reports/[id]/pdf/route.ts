@@ -182,9 +182,9 @@ function drawSkillCard(
     w: w - 12,
     h: h - 22,
     text: `${ZH.current}：${normalizeText(level)}\n${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    fontSize: 6.2,
-    maxLines: 12,
-    lineGap: 0.7,
+    fontSize: 5.8,
+    maxLines: 14,
+    lineGap: 0.5,
     color: "#0f172a",
   });
 }
@@ -243,7 +243,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const y2 = y1 + h1 + gap;
-  const h2 = 250;
+  const h2 = 228;
   const w2a = Math.floor(contentW * 0.34);
   const w2b = contentW - w2a - gap;
 
@@ -309,7 +309,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     draft.speakingImprovements,
   );
 
-  const y3 = y2 + h2 + 20;
+  const y3 = y2 + h2 + 10;
   const h3 = contentH - (y3 - top);
 
   const examRowsRaw = [
@@ -343,24 +343,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     kv(doc, c2x + 8, y3 + 132, w - 16, ZH.target, draft.targetLevelScore, 16, 1);
   } else {
     // Keep exam metrics as a compact optional sidebar so core narrative panels have enough room.
-    const examW = Math.max(120, Math.floor(contentW * 0.12));
+    const examW = Math.max(86, Math.floor(contentW * 0.09));
     const mainW = Math.floor((contentW - examW - gap * 2) / 2);
     const w = mainW;
     const c2x = left + w + gap;
     const c3x = c2x + w + gap;
 
     panel(doc, left, y3, w, h3, ZH.learning);
-    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 24, 3, 6.4);
-    kvCompact(doc, left + 8, y3 + 48, w - 16, ZH.focus, draft.focusEngagement, 24, 3, 6.4);
-    kvCompact(doc, left + 8, y3 + 76, w - 16, ZH.homework, draft.homeworkPreparation, 24, 3, 6.4);
-    kvCompact(doc, left + 8, y3 + 104, w - 16, ZH.attitude, draft.attitudeGeneral, 24, 3, 6.4);
+    kvCompact(doc, left + 8, y3 + 20, w - 16, ZH.participation, draft.classParticipation, 28, 4, 6.3);
+    kvCompact(doc, left + 8, y3 + 52, w - 16, ZH.focus, draft.focusEngagement, 28, 4, 6.3);
+    kvCompact(doc, left + 8, y3 + 84, w - 16, ZH.homework, draft.homeworkPreparation, 28, 4, 6.3);
+    kvCompact(doc, left + 8, y3 + 116, w - 16, ZH.attitude, draft.attitudeGeneral, 28, 4, 6.3);
 
     panel(doc, c2x, y3, w, h3, ZH.rec);
-    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 24, 3, 6.4);
-    kvCompact(doc, c2x + 8, y3 + 48, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 24, 3, 6.4);
-    kvCompact(doc, c2x + 8, y3 + 76, w - 16, ZH.next, draft.nextPhaseFocus, 24, 3, 6.4);
-    kv(doc, c2x + 8, y3 + 104, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
-    kv(doc, c2x + 8, y3 + 124, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
+    kvCompact(doc, c2x + 8, y3 + 20, w - 16, ZH.key, draft.keyStrengths, 28, 4, 6.3);
+    kvCompact(doc, c2x + 8, y3 + 52, w - 16, ZH.bottleneck, draft.primaryBottlenecks, 28, 4, 6.3);
+    kvCompact(doc, c2x + 8, y3 + 84, w - 16, ZH.next, draft.nextPhaseFocus, 28, 4, 6.3);
+    kv(doc, c2x + 8, y3 + 116, w - 16, ZH.load, draft.suggestedPracticeLoad, 14, 1);
+    kv(doc, c2x + 8, y3 + 136, w - 16, ZH.target, draft.targetLevelScore, 14, 1);
 
     const examTitle = `${normalizeText(draft.examName || "\u8003\u8bd5")}${ZH.examSuffix}`;
     panel(doc, c3x, y3, examW, h3, examTitle);
