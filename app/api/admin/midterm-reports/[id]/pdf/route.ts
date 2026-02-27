@@ -335,9 +335,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   setPdfBoldFont(doc);
   doc.fillColor("#111827").fontSize(17).text(ZH.title, left, top, { width: contentW });
+  const titleH = doc.heightOfString(ZH.title, { width: contentW });
 
-  const y1 = top + 18;
-  const usableH = contentH - 18 - gap * 2;
+  const y1 = top + titleH + 8;
+  const usableH = contentH - (y1 - top) - gap * 2;
   const h1 = Math.floor(usableH * 0.22);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
@@ -411,12 +412,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const examRows = examRowsRaw.filter((row) => String(row.value || "").trim());
 
-  // Fixed ratio: 1fr 1fr 0.6fr
-  const row3Total = 2.6;
-  const baseUnit = (contentW - gap * 2) / row3Total;
-  const w3a = baseUnit;
-  const w3b = baseUnit;
-  const w3c = baseUnit * 0.6;
+  const hasExamBlock = examRows.length > 0;
+
+  const w3a = hasExamBlock ? (contentW - gap * 2) / 2.6 : (contentW - gap) / 2;
+  const w3b = hasExamBlock ? (contentW - gap * 2) / 2.6 : (contentW - gap) / 2;
+  const w3c = hasExamBlock ? ((contentW - gap * 2) / 2.6) * 0.6 : 0;
   const x3b = left + w3a + gap;
   const x3c = x3b + w3b + gap;
 
@@ -437,9 +437,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     { label: ZH.target, value: draft.targetLevelScore },
   ]);
 
-  const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
-  panel(doc, x3c, y3, w3c, h3, examTitle, TONES.normal);
-  examCards(doc, x3c, y3, w3c, h3, examRows.slice(0, 7));
+  if (hasExamBlock) {
+    const examTitle = `${normalizeText(draft.examName || "考试")}${ZH.examSuffix}`;
+    panel(doc, x3c, y3, w3c, h3, examTitle, TONES.normal);
+    examCards(doc, x3c, y3, w3c, h3, examRows.slice(0, 7));
+  }
 
   const stream = streamPdf(doc);
   const filename = `midterm-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;
