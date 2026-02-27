@@ -146,14 +146,15 @@ function drawFitText(doc: PDFDoc, options: FitTextOptions) {
 
 function panel(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string, tone: PanelTone) {
   doc.save();
-  doc.roundedRect(x, y, w, h, 9).fill(tone.bg).stroke(tone.border);
+  doc.lineWidth(0.8);
+  doc.roundedRect(x, y, w, h, 8).fill(tone.bg).stroke(tone.border);
   if (tone.accentBar) {
     doc.roundedRect(x + 1.5, y + 8, 4, h - 16, 2).fill(tone.accentBar);
   }
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor(tone.title).fontSize(15).text(title, x + 12, y + 10, { width: w - 24 });
+  doc.fillColor(tone.title).fontSize(14).text(title, x + 10, y + 8, { width: w - 20 });
 }
 
 function infoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string) {
@@ -174,12 +175,12 @@ function infoCell(doc: PDFDoc, x: number, y: number, w: number, label: string, v
 
 function fieldBox(doc: PDFDoc, x: number, y: number, w: number, h: number, label: string, value: string, bodyPreferred = 11.8) {
   setPdfBoldFont(doc);
-  doc.fillColor("#334155").fontSize(10.8).text(label, x, y, { width: w });
+  doc.fillColor("#334155").fontSize(10.4).text(label, x, y, { width: w });
   drawFitText(doc, {
     x,
-    y: y + 15,
+    y: y + 13,
     w,
-    h: Math.max(10, h - 15),
+    h: Math.max(10, h - 13),
     text: normalizeText(value),
     preferredSize: bodyPreferred,
     minSize: 8.4,
@@ -201,31 +202,33 @@ function skillCard(
   improve: string,
 ) {
   doc.save();
-  doc.roundedRect(x, y, w, h, 8).fill("#FFFFFF").stroke("#E6ECF2");
+  doc.lineWidth(0.8);
+  doc.roundedRect(x, y, w, h, 7).fill("#FFFFFF").stroke("#E6ECF2");
   doc.restore();
 
   setPdfBoldFont(doc);
-  doc.fillColor("#1E3A8A").fontSize(13.2).text(title, x + 10, y + 9, { width: w - 20 });
+  doc.fillColor("#1E3A8A").fontSize(12.4).text(title, x + 8, y + 7, { width: w - 16 });
 
   const levelLabel = `${ZH.current}`;
   const levelVal = normalizeText(level);
   setPdfFont(doc);
-  doc.fillColor("#475569").fontSize(9.4).text(levelLabel, x + w - 146, y + 10, { width: 56, align: "right" });
+  doc.fillColor("#475569").fontSize(8.8).text(levelLabel, x + w - 134, y + 8, { width: 50, align: "right" });
   doc.save();
-  doc.roundedRect(x + w - 84, y + 8, 70, 20, 10).fill("#DBEAFE").stroke("#BFDBFE");
+  doc.lineWidth(0.8);
+  doc.roundedRect(x + w - 78, y + 7, 64, 18, 9).fill("#DBEAFE").stroke("#BFDBFE");
   doc.restore();
   setPdfBoldFont(doc);
-  doc.fillColor("#1E40AF").fontSize(10.8).text(levelVal, x + w - 84, y + 13, { width: 70, align: "center" });
+  doc.fillColor("#1E40AF").fontSize(10).text(levelVal, x + w - 78, y + 11, { width: 64, align: "center" });
 
   drawFitText(doc, {
-    x: x + 10,
-    y: y + 34,
-    w: w - 20,
-    h: h - 42,
+    x: x + 8,
+    y: y + 29,
+    w: w - 16,
+    h: h - 33,
     text: `${ZH.perf}：${normalizeText(perf)}\n${ZH.strength}：${normalizeText(strength)}\n${ZH.improve}：${normalizeText(improve)}`,
-    preferredSize: 11,
+    preferredSize: 10.6,
     minSize: 8.2,
-    lineGap: 2,
+    lineGap: 1.5,
     color: "#1F2937",
   });
 }
@@ -237,7 +240,7 @@ function stackedFields(
   w: number,
   h: number,
   fields: Array<{ label: string; value: string }>,
-  gap = 10,
+  gap = 6,
 ) {
   const available = Math.max(0, h - gap * (fields.length - 1));
   const each = fields.length > 0 ? available / fields.length : 0;
@@ -323,7 +326,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const contentW = doc.page.width - left - right;
   const contentH = doc.page.height - top - bottom;
 
-  const gap = 16;
+  const gap = 12;
 
   const TONES = {
     normal: { bg: "#FFFFFF", border: "#E6ECF2", title: "#0F172A" } satisfies PanelTone,
@@ -331,10 +334,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   };
 
   setPdfBoldFont(doc);
-  doc.fillColor("#111827").fontSize(23).text(ZH.title, left, top, { width: contentW });
+  doc.fillColor("#111827").fontSize(21).text(ZH.title, left, top, { width: contentW });
 
-  const y1 = top + 30;
-  const usableH = contentH - 30 - gap * 2;
+  const y1 = top + 26;
+  const usableH = contentH - 26 - gap * 2;
   const h1 = Math.floor(usableH * 0.22);
   const row1Total = 3; // 2fr + 1fr
   const w1a = (contentW - gap) * (2 / row1Total);
@@ -342,24 +345,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   panel(doc, left, y1, w1a, h1, ZH.base, TONES.normal);
   const cGap = 12;
-  const infoInnerW = w1a - 24;
+  const infoInnerW = w1a - 20;
   const colW = (infoInnerW - cGap * 2) / 3;
-  const r1 = y1 + 34;
-  const r2 = y1 + 70;
+  const r1 = y1 + 30;
+  const r2 = y1 + 64;
 
-  infoCell(doc, left + 12, r1, colW, ZH.name, report.student.name);
-  infoCell(doc, left + 12 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
-  infoCell(doc, left + 12 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
-  infoCell(doc, left + 12, r2, colW, ZH.tool, draft.assessmentTool || "-");
-  infoCell(doc, left + 12 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));
-  infoCell(doc, left + 12 + (colW + cGap) * 2, r2, colW, ZH.cefr, report.examTargetStatus || "-");
+  infoCell(doc, left + 10, r1, colW, ZH.name, report.student.name);
+  infoCell(doc, left + 10 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
+  infoCell(doc, left + 10 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
+  infoCell(doc, left + 10, r2, colW, ZH.tool, draft.assessmentTool || "-");
+  infoCell(doc, left + 10 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));
+  infoCell(doc, left + 10 + (colW + cGap) * 2, r2, colW, ZH.cefr, report.examTargetStatus || "-");
 
   panel(doc, left + w1a + gap, y1, w1b, h1, ZH.note, TONES.note);
   drawFitText(doc, {
-    x: left + w1a + gap + 14,
-    y: y1 + 34,
-    w: w1b - 24,
-    h: h1 - 44,
+    x: left + w1a + gap + 10,
+    y: y1 + 30,
+    w: w1b - 16,
+    h: h1 - 36,
     text: draft.warningNote,
     preferredSize: 11.5,
     minSize: 9.4,
@@ -374,17 +377,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const w2b = (contentW - gap) * (2 / row2Total);
 
   panel(doc, left, y2, w2a, h2, ZH.overall, TONES.normal);
-  const overallInnerX = left + 12;
-  const overallW = w2a - 24;
-  fieldBox(doc, overallInnerX, y2 + 36, overallW, 118, ZH.level, draft.overallEstimatedLevel || "-", 12);
-  fieldBox(doc, overallInnerX, y2 + 164, overallW, h2 - 176, ZH.summary, draft.overallSummary || "-", 11.3);
+  const overallInnerX = left + 10;
+  const overallW = w2a - 20;
+  fieldBox(doc, overallInnerX, y2 + 32, overallW, 112, ZH.level, draft.overallEstimatedLevel || "-", 11.6);
+  fieldBox(doc, overallInnerX, y2 + 152, overallW, h2 - 162, ZH.summary, draft.overallSummary || "-", 11);
 
   panel(doc, left + w2a + gap, y2, w2b, h2, ZH.skills, TONES.normal);
-  const sx = left + w2a + gap + 10;
-  const sy = y2 + 38;
-  const sw = w2b - 20;
-  const sh = h2 - 48;
-  const sg = 10;
+  const sx = left + w2a + gap + 8;
+  const sy = y2 + 34;
+  const sw = w2b - 16;
+  const sh = h2 - 40;
+  const sg = 8;
   const cardW = (sw - sg) / 2;
   const cardH = (sh - sg) / 2;
 
@@ -418,7 +421,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const x3c = x3b + w3b + gap;
 
   panel(doc, left, y3, w3a, h3, ZH.learning, TONES.normal);
-  stackedFields(doc, left + 12, y3 + 36, w3a - 24, h3 - 48, [
+    stackedFields(doc, left + 10, y3 + 32, w3a - 20, h3 - 40, [
     { label: ZH.participation, value: draft.classParticipation },
     { label: ZH.focus, value: draft.focusEngagement },
     { label: ZH.homework, value: draft.homeworkPreparation },
@@ -426,7 +429,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   ]);
 
   panel(doc, x3b, y3, w3b, h3, ZH.rec, TONES.normal);
-  stackedFields(doc, x3b + 12, y3 + 36, w3b - 24, h3 - 48, [
+    stackedFields(doc, x3b + 10, y3 + 32, w3b - 20, h3 - 40, [
     { label: ZH.key, value: draft.keyStrengths },
     { label: ZH.bottleneck, value: draft.primaryBottlenecks },
     { label: ZH.next, value: draft.nextPhaseFocus },
