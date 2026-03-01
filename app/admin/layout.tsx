@@ -52,9 +52,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin" ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
-    pathname === "/admin/reports/partner-settlement" ||
+    pathname.startsWith("/admin/reports/partner-settlement") ||
     pathname === "/admin/reports/audit-logs" ||
-    pathname === "/admin/receipts-approvals";
+    pathname === "/admin/receipts-approvals" ||
+    (pathname.startsWith("/admin/packages/") && pathname.endsWith("/billing"));
 
   if (isFinance && !financeAllowedPath) {
     redirect("/admin/reports/teacher-payroll");

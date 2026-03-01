@@ -748,6 +748,11 @@ export default async function PartnerSettlementPage({
         </label>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
+      <div style={{ marginBottom: 14 }}>
+        <a href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}>
+          {t(lang, "Open Partner Invoice & Receipt Center", "打开合作方Invoice/Receipt中心")}
+        </a>
+      </div>
 
       {!isFinanceOnlyUser ? <h3>{t(lang, "Rate Settings", "费率设置")}</h3> : null}
       {!isFinanceOnlyUser ? <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
