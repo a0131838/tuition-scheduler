@@ -104,7 +104,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .map((r) => {
       const durationMins = Math.max(0, Math.round((r.session.endAt.getTime() - r.session.startAt.getTime()) / 60000));
       const qty45 = Number((durationMins / 45).toFixed(2));
-      const lineTotal = Number((qty45 * unitRate).toFixed(2));
+      // Keep settlement math consistent with billing list total: round((minutes/45) * ratePer45)
+      const lineTotal = Math.round((durationMins / 45) * unitRate);
       return {
         studentName: r.student?.name ?? "-",
         date: formatDateCN(r.session.startAt),
@@ -162,7 +163,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   sheet.addRow([]);
   const totalLessonRow = sheet.addRow([`合计：${totalLessonQty.toFixed(2)}课时`]);
-  const totalAmountRow = sheet.addRow([`合计：$${totalAmount.toFixed(2)} 钱`]);
+  const totalAmountRow = sheet.addRow([`合计：$${totalAmount.toFixed(2)}`]);
   totalLessonRow.getCell(1).font = { bold: true };
   totalAmountRow.getCell(1).font = { bold: true };
   totalLessonRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
