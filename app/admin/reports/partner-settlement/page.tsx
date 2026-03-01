@@ -313,6 +313,43 @@ async function clearSettlementRecordsAction(formData: FormData) {
   redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlements-cleared`);
 }
 
+async function revertSettlementRecordAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  if (user.role === "FINANCE") {
+    redirect("/admin/reports/partner-settlement?err=forbidden");
+  }
+
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")).trim() : "";
+  if (!settlementId) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-settlement`);
+  }
+
+  const source = await findPartnerSource();
+  if (!source) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=source-not-found`);
+  }
+
+  const row = await prisma.partnerSettlement.findUnique({
+    where: { id: settlementId },
+    select: { id: true, student: { select: { sourceChannelId: true } } },
+  });
+  if (!row || row.student?.sourceChannelId !== source.id) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-settlement`);
+  }
+
+  const billing = await listPartnerBilling();
+  const linked = billing.invoices.some((inv) => inv.settlementIds.includes(settlementId));
+  if (linked) {
+    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-invoiced`);
+  }
+
+  await prisma.partnerSettlement.delete({ where: { id: settlementId } });
+  revalidatePath("/admin/reports/partner-settlement");
+  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlement-reverted`);
+}
+
 export default async function PartnerSettlementPage({
   searchParams,
 }: {
@@ -386,6 +423,17 @@ export default async function PartnerSettlementPage({
     totalHours: number;
     totalAmount: number;
     receiptNo: string | null;
+  }> = [];
+  let recentPendingSettlements: Array<{
+    id: string;
+    createdAt: Date;
+    mode: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY";
+    monthKey: string | null;
+    student: { id: string; name: string } | null;
+    courseName: string;
+    hours: number;
+    amount: number;
+    status: string;
   }> = [];
 
   try {
@@ -549,6 +597,38 @@ export default async function PartnerSettlementPage({
 
     const billing = await listPartnerBilling();
     const settlementIdList = Array.from(new Set(billing.invoices.flatMap((x) => x.settlementIds)));
+    recentPendingSettlements = await prisma.partnerSettlement.findMany({
+      where: {
+        student: { sourceChannelId: source.id },
+        ...(settlementIdList.length ? { id: { notIn: settlementIdList } } : {}),
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        mode: true,
+        monthKey: true,
+        status: true,
+        hours: true,
+        amount: true,
+        student: { select: { id: true, name: true } },
+        package: { select: { course: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }).then((rows) =>
+      rows.map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        mode: r.mode as "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY",
+        monthKey: r.monthKey,
+        student: r.student,
+        courseName: r.package?.course?.name ?? "-",
+        hours: Number(r.hours ?? 0),
+        amount: Number(r.amount ?? 0),
+        status: r.status,
+      }))
+    );
+
     const settlementRows = settlementIdList.length
       ? await prisma.partnerSettlement.findMany({
           where: { id: { in: settlementIdList }, student: { sourceChannelId: source.id } },
@@ -639,6 +719,8 @@ export default async function PartnerSettlementPage({
       {msg ? <div style={{ marginBottom: 8, color: "#166534" }}>{msg}</div> : null}
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
       {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
+      {err === "invalid-settlement" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement record not found.", "未找到结算记录。")}</div> : null}
+      {err === "settlement-invoiced" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Cannot revert: this settlement is already linked to an invoice.", "不能撤回：该结算记录已关联Invoice。")}</div> : null}
       {err === "manager-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter manager reject reason.", "请填写管理驳回原因。")}</div> : null}
       {err === "finance-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
@@ -851,49 +933,100 @@ export default async function PartnerSettlementPage({
           {t(lang, "Clear Test Records", "清空测试结算记录")}
         </button>
       </form> : null}
-      {recentInvoiceStats.length === 0 ? (
+      {recentPendingSettlements.length === 0 && recentInvoiceStats.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "暂无结算记录。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Created", "创建时间")}</th>
-              <th align="left">Invoice No.</th>
-              <th align="left">{t(lang, "Mode", "模式")}</th>
-              <th align="left">{t(lang, "Month", "月份")}</th>
-              <th align="left">{t(lang, "Students", "学生列表")}</th>
-              <th align="left">{t(lang, "Settlement Items", "结算项")}</th>
-              <th align="left">{t(lang, "Invoice Lines", "Invoice条目")}</th>
-              <th align="left">{t(lang, "Hours", "课时")}</th>
-              <th align="left">{t(lang, "Amount", "金额")}</th>
-              <th align="left">{t(lang, "Status", "状态")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentInvoiceStats.map((r) => (
-              <tr key={r.invoiceId} style={{ borderTop: "1px solid #eee" }}>
-                <td>{new Date(r.createdAt).toLocaleString()}</td>
-                <td>
-                  <a
-                    href={`/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(r.mode)}&month=${encodeURIComponent(r.monthKey ?? month)}`}
-                  >
-                    {r.invoiceNo}
-                  </a>
-                </td>
-                <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
-                <td>{r.monthKey ?? "-"}</td>
-                <td style={{ maxWidth: 360 }}>
-                  {r.studentNames.length > 0 ? r.studentNames.join(", ") : "-"}
-                </td>
-                <td>{r.settlementCount}</td>
-                <td>{r.itemCount}</td>
-                <td>{r.totalHours}</td>
-                <td>{r.totalAmount}</td>
-                <td>{r.receiptNo ? t(lang, "Receipt Created", "已创建收据") : t(lang, "Invoiced", "已开Invoice")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          {recentPendingSettlements.length > 0 ? (
+            <>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Pending Settlement Records (Before Invoice)", "待开票结算记录（可撤回）")}</div>
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th align="left">{t(lang, "Created", "创建时间")}</th>
+                    <th align="left">{t(lang, "Student", "学生")}</th>
+                    <th align="left">{t(lang, "Mode", "模式")}</th>
+                    <th align="left">{t(lang, "Month", "月份")}</th>
+                    <th align="left">{t(lang, "Course", "课程")}</th>
+                    <th align="left">{t(lang, "Hours", "课时")}</th>
+                    <th align="left">{t(lang, "Amount", "金额")}</th>
+                    <th align="left">{t(lang, "Status", "状态")}</th>
+                    <th align="left">{t(lang, "Action", "操作")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentPendingSettlements.map((r) => (
+                    <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{new Date(r.createdAt).toLocaleString()}</td>
+                      <td>{r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}</td>
+                      <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
+                      <td>{r.monthKey ?? "-"}</td>
+                      <td>{r.courseName}</td>
+                      <td>{r.hours}</td>
+                      <td>{r.amount}</td>
+                      <td>{r.status}</td>
+                      <td>
+                        {!isFinanceOnlyUser ? (
+                          <form action={revertSettlementRecordAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="settlementId" value={r.id} />
+                            <button type="submit">{t(lang, "Revert", "撤回")}</button>
+                          </form>
+                        ) : (
+                          <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : null}
+
+          {recentInvoiceStats.length > 0 ? (
+            <>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced Records (Grouped by Invoice No.)", "已开票记录（按Invoice聚合）")}</div>
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th align="left">{t(lang, "Created", "创建时间")}</th>
+                    <th align="left">Invoice No.</th>
+                    <th align="left">{t(lang, "Mode", "模式")}</th>
+                    <th align="left">{t(lang, "Month", "月份")}</th>
+                    <th align="left">{t(lang, "Students", "学生列表")}</th>
+                    <th align="left">{t(lang, "Settlement Items", "结算项")}</th>
+                    <th align="left">{t(lang, "Invoice Lines", "Invoice条目")}</th>
+                    <th align="left">{t(lang, "Hours", "课时")}</th>
+                    <th align="left">{t(lang, "Amount", "金额")}</th>
+                    <th align="left">{t(lang, "Status", "状态")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentInvoiceStats.map((r) => (
+                    <tr key={r.invoiceId} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{new Date(r.createdAt).toLocaleString()}</td>
+                      <td>
+                        <a
+                          href={`/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(r.mode)}&month=${encodeURIComponent(r.monthKey ?? month)}`}
+                        >
+                          {r.invoiceNo}
+                        </a>
+                      </td>
+                      <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
+                      <td>{r.monthKey ?? "-"}</td>
+                      <td style={{ maxWidth: 360 }}>{r.studentNames.length > 0 ? r.studentNames.join(", ") : "-"}</td>
+                      <td>{r.settlementCount}</td>
+                      <td>{r.itemCount}</td>
+                      <td>{r.totalHours}</td>
+                      <td>{r.totalAmount}</td>
+                      <td>{r.receiptNo ? t(lang, "Receipt Created", "已创建收据") : t(lang, "Invoiced", "已开Invoice")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : null}
+        </>
       )}
     </div>
   );
