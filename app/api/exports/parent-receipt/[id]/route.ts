@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { getParentInvoiceById, getParentPaymentRecordById, getParentReceiptById } from "@/lib/student-parent-billing";
+import { getParentInvoiceById, getParentReceiptById } from "@/lib/student-parent-billing";
 import { prisma } from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
@@ -60,9 +60,6 @@ function drawTemplate(doc: PDFDoc, data: {
   gst: string;
   total: string;
   amountReceived: string;
-  paymentDate: string;
-  paymentMethod: string;
-  referenceNo: string;
 }) {
   const x = 16;
   const y = 16;
@@ -146,22 +143,6 @@ function drawTemplate(doc: PDFDoc, data: {
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
 
-  const noteY = y + h + 18;
-  text(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
-  text(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
-  text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
-  text(doc, 'Please e-mail remittance advice to "sggreatthinker@gmail.com".', x + 4, noteY + 54, 10, true);
-
-  text(doc, "Account name: Reshape Great Thinkers Pte Ltd.", x + 4, noteY + 94, 10);
-  text(doc, "Bankname: OCBC Bank Singapore", x + 4, noteY + 112, 10);
-  text(doc, "Bankaddress: 65 Chulia Street #01-40 OCBC Centre Singapore, S049513", x + 4, noteY + 130, 10);
-  text(doc, "Account number: 595214891001", x + 4, noteY + 148, 10);
-  text(doc, "Swift code: OCBCSGSG", x + 4, noteY + 166, 10);
-  text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
-
-  text(doc, `Payment Date: ${data.paymentDate}`, x + 320, noteY + 94, 10, true);
-  text(doc, `Payment Method: ${data.paymentMethod}`, x + 320, noteY + 112, 10, true);
-  text(doc, `Reference No.: ${data.referenceNo}`, x + 320, noteY + 130, 10, true);
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -189,9 +170,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     include: { student: true, course: true },
   });
   if (!pkg) return new Response("Package not found", { status: 404 });
-  const [linkedInvoice, paymentRecord] = await Promise.all([
+  const [linkedInvoice] = await Promise.all([
     receipt.invoiceId ? getParentInvoiceById(receipt.invoiceId) : Promise.resolve(null),
-    receipt.paymentRecordId ? getParentPaymentRecordById(receipt.paymentRecordId) : Promise.resolve(null),
   ]);
 
   const doc = new PDFDocument({ size: "A4", margin: 0 });
@@ -211,9 +191,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     gst: money(receipt.gstAmount),
     total: money(receipt.totalAmount),
     amountReceived: money(receipt.amountReceived),
-    paymentDate: fmtDate(paymentRecord?.paymentDate ?? null),
-    paymentMethod: paymentRecord?.paymentMethod || receipt.paidBy || "-",
-    referenceNo: paymentRecord?.referenceNo || "-",
   });
 
   const stream = streamPdf(doc);
