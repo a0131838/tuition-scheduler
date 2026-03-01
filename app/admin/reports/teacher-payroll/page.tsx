@@ -225,7 +225,22 @@ async function financeRejectPayrollAction(formData: FormData) {
 export default async function TeacherPayrollPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; scope?: string; saved?: string; sent?: string; revoked?: string; cfg?: string; mgr?: string; finpaid?: string; fincfm?: string; finrej?: string; error?: string }>;
+  searchParams?: Promise<{
+    month?: string;
+    scope?: string;
+    saved?: string;
+    sent?: string;
+    revoked?: string;
+    cfg?: string;
+    mgr?: string;
+    finpaid?: string;
+    fincfm?: string;
+    finrej?: string;
+    error?: string;
+    q?: string;
+    pendingOnly?: string;
+    unsentOnly?: string;
+  }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -237,6 +252,9 @@ export default async function TeacherPayrollPage({
   const hasError = sp?.error === "rate";
   const sent = sp?.sent === "1";
   const revoked = sp?.revoked === "1";
+  const q = String(sp?.q ?? "").trim().toLowerCase();
+  const pendingOnly = sp?.pendingOnly === "1";
+  const unsentOnly = sp?.unsentOnly === "1";
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
   const finPaidDone = sp?.finpaid === "1";
@@ -279,59 +297,68 @@ export default async function TeacherPayrollPage({
     ? `${parsedMonth.month === 12 ? parsedMonth.year + 1 : parsedMonth.year}-${String(parsedMonth.month === 12 ? 1 : parsedMonth.month + 1).padStart(2, "0")}-05`
     : "";
 
+  const payrollRows = data.summaryRows.filter((row) => {
+    const publish = publishMap.get(row.teacherId) ?? null;
+    const managerAllConfirmed = publish
+      ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
+      : false;
+    const hasPendingWorkflow = publish
+      ? !publish.confirmedAt || !managerAllConfirmed || !publish.financeConfirmedAt || !publish.financePaidAt
+      : false;
+    if (pendingOnly && !hasPendingWorkflow) return false;
+    if (unsentOnly && Boolean(publish)) return false;
+    if (q && !row.teacherName.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const shownHours = payrollRows.reduce((sum, row) => sum + row.totalHours, 0);
+  const shownSalaryCents = payrollRows.reduce((sum, row) => sum + row.totalAmountCents, 0);
+  const shownPending = payrollRows.reduce((sum, row) => sum + row.pendingSessions, 0);
+  const shownCompleted = payrollRows.reduce((sum, row) => sum + row.completedSessions, 0);
+
   return (
     <div>
       <h2>{t(lang, "Teacher Payroll", "老师工资单")}</h2>
-      <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(
-          lang,
-          "Payroll period rule: from last month 15th to this month 14th.",
-          "计薪周期规则：上月15日到当月14日。"
-        )}
-      </div>
-      <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(
-          lang,
-          `Payout note: salary for ${payrollMonthLabel} is paid on ${payDateLabel}, and covers ${periodText}. Example: paid on March 5 for February payroll; February payroll covers Jan 15 to Feb 14.`,
-          `发薪说明：${payrollMonthLabel} 工资在 ${payDateLabel} 发放，统计区间为 ${periodText}。例如：3月5日发2月工资，2月工资统计1月15日到2月14日。`
-        )}
-      </div>
-
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-        <label>
-          {t(lang, "Payroll Month", "工资月份")}:
-          <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
-        </label>
-        <label>
-          {t(lang, "Scope", "统计口径")}:
-          <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
-            <option value="all">{t(lang, "All Scheduled Sessions (exclude fully cancelled)", "全部排课课次（排除整节取消）")}</option>
-            <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
-          </select>
-        </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
-      </form>
-
-      <div style={{ marginBottom: 12 }}>
-        <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
-      </div>
-      <div
-        style={{
-          marginBottom: 12,
-          padding: "8px 10px",
-          border: "1px solid #bfdbfe",
-          background: "#eff6ff",
-          borderRadius: 8,
-          color: "#1e3a8a",
-          fontSize: 13,
-          lineHeight: 1.5,
-        }}
-      >
-        {t(
-          lang,
-          "Completion rule: session is Completed only when attendance is marked (no UNMARKED) and teacher feedback has been submitted.",
-          "完成判定规则：整节取消课次不计入；其余课次仅当已完成点名（无UNMARKED）且老师已提交课后反馈，才算已完成。"
-        )}
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 12, background: "#f8fafc" }}>
+        <form method="GET" style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <label>
+              {t(lang, "Payroll Month", "工资月份")}:
+              <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
+            </label>
+            <label>
+              {t(lang, "Scope", "统计口径")}:
+              <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
+                <option value="all">{t(lang, "All Scheduled Sessions (exclude fully cancelled)", "全部排课课次（排除整节取消）")}</option>
+                <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
+              </select>
+            </label>
+            <button type="submit">{t(lang, "Apply", "应用")}</button>
+          </div>
+          <div style={{ fontSize: 13, color: "#334155" }}>
+            <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
+          </div>
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "Rule Notes", "规则说明")}</summary>
+            <div style={{ marginTop: 6, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
+              <div>{t(lang, "Payroll period rule: from last month 15th to this month 14th.", "计薪周期规则：上月15日到当月14日。")}</div>
+              <div>
+                {t(
+                  lang,
+                  `Payout note: salary for ${payrollMonthLabel} is paid on ${payDateLabel}, and covers ${periodText}. Example: paid on March 5 for February payroll; February payroll covers Jan 15 to Feb 14.`,
+                  `发薪说明：${payrollMonthLabel} 工资在 ${payDateLabel} 发放，统计区间为 ${periodText}。例如：3月5日发2月工资，2月工资统计1月15日到2月14日。`
+                )}
+              </div>
+              <div>
+                {t(
+                  lang,
+                  "Completion rule: session is Completed only when attendance is marked (no UNMARKED) and teacher feedback has been submitted.",
+                  "完成判定规则：整节取消课次不计入；其余课次仅当已完成点名（无UNMARKED）且老师已提交课后反馈，才算已完成。"
+                )}
+              </div>
+            </div>
+          </details>
+        </form>
       </div>
       {data.usingRateFallback ? (
         <div style={{ marginBottom: 12, color: "#92400e" }}>
@@ -366,38 +393,84 @@ export default async function TeacherPayrollPage({
       {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only zhao hongwei can edit approval role config.", "只有 zhao hongwei 可以修改审批角色配置。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
-      {!isFinanceOnlyUser ? <h3>{t(lang, "Approval Role Config", "审批角色配置")}</h3> : null}
-      {!isFinanceOnlyUser ? <form action={saveApprovalConfigAction} style={{ marginBottom: 16, display: "grid", gap: 8, maxWidth: 900 }}>
-        <input type="hidden" name="month" value={month} />
-        <input type="hidden" name="scope" value={scope} />
-        <label>
-          {t(lang, "Manager approver emails (comma-separated)", "管理审批人邮箱（逗号分隔）")}:
-          <input name="managerEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
-        </label>
-        <label>
-          {t(lang, "Finance approver emails (comma-separated)", "财务审批人邮箱（逗号分隔）")}:
-          <input name="financeEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
-        </label>
-        <div style={{ color: "#666", fontSize: 13 }}>
-          {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
+      {!isFinanceOnlyUser ? (
+        <div style={{ marginBottom: 14, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Approval Role Config", "审批角色配置")}</h3>
+          </div>
+          <form action={saveApprovalConfigAction} style={{ display: "grid", gap: 8, maxWidth: 980 }}>
+            <input type="hidden" name="month" value={month} />
+            <input type="hidden" name="scope" value={scope} />
+            <label>
+              {t(lang, "Manager approver emails (comma-separated)", "管理审批人邮箱（逗号分隔）")}:
+              <input name="managerEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+            </label>
+            <label>
+              {t(lang, "Finance approver emails (comma-separated)", "财务审批人邮箱（逗号分隔）")}:
+              <input name="financeEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+            </label>
+            <div style={{ color: "#64748b", fontSize: 13 }}>
+              {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
+            </div>
+            {!canEditApprovalConfig ? (
+              <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "Read-only for non-owner accounts.", "非负责人账号只读。")}</div>
+            ) : null}
+            <div><button type="submit" disabled={!canEditApprovalConfig}>{t(lang, "Save", "保存")}</button></div>
+          </form>
         </div>
-        {!canEditApprovalConfig ? (
-          <div style={{ color: "#666", fontSize: 13 }}>{t(lang, "Read-only for non-owner accounts.", "非负责人账号只读。")}</div>
-        ) : null}
-        <div><button type="submit" disabled={!canEditApprovalConfig}>{t(lang, "Save", "保存")}</button></div>
-      </form> : null}
+      ) : null}
 
-      <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
-        <div>
-          <b>{t(lang, "Grand Total Hours", "总课时")}</b>: {data.grandTotalHours}
+      <div
+        style={{
+          marginBottom: 14,
+          display: "grid",
+          gap: 10,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
+      >
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Teachers", "教师数")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{payrollRows.length}</div>
         </div>
-        <div>
-          <b>{t(lang, "Grand Total Salary", "总工资")}</b>: {formatMoneyCents(data.grandTotalAmountCents)}
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Total Hours", "总课时")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{shownHours}</div>
+        </div>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Completed", "已完成")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#166534" }}>{shownCompleted}</div>
+        </div>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Estimated Salary", "预估工资")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{formatMoneyCents(shownSalaryCents)}</div>
+        </div>
+        <div style={{ border: "1px solid #fcd34d", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
+          <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Pending Sessions", "待完成课次")}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#b45309" }}>{shownPending}</div>
         </div>
       </div>
 
       <h3>{t(lang, "Salary Slips by Teacher", "按老师工资单")}</h3>
-      {data.summaryRows.length === 0 ? (
+      <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+        <input type="hidden" name="month" value={month} />
+        <input type="hidden" name="scope" value={scope} />
+        <input
+          type="text"
+          name="q"
+          placeholder={t(lang, "Teacher Search", "老师搜索")}
+          defaultValue={String(sp?.q ?? "")}
+          style={{ minWidth: 220 }}
+        />
+        <label>
+          <input type="checkbox" name="pendingOnly" value="1" defaultChecked={pendingOnly} /> {t(lang, "Only Pending", "仅看待处理")}
+        </label>
+        <label>
+          <input type="checkbox" name="unsentOnly" value="1" defaultChecked={unsentOnly} /> {t(lang, "Only Unsent", "仅看未发送")}
+        </label>
+        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Clear", "清除")}</a>
+      </form>
+      {payrollRows.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No sessions in this payroll period.", "当前计薪周期没有课次。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
@@ -416,7 +489,7 @@ export default async function TeacherPayrollPage({
             </tr>
           </thead>
           <tbody>
-            {data.summaryRows.map((row) => {
+            {payrollRows.map((row) => {
               const publish = publishMap.get(row.teacherId) ?? null;
               const managerAllConfirmed = publish
                 ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
@@ -435,7 +508,11 @@ export default async function TeacherPayrollPage({
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.totalAmountCents)}</td>
                 <td>
-                  {!publish ? t(lang, "Not sent", "未发送") : (
+                  {!publish ? (
+                    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569" }}>
+                      {t(lang, "Not sent", "未发送")}
+                    </span>
+                  ) : (
                     <>
                       <div>{t(lang, "Teacher", "老师")}: {publish.confirmedAt ? t(lang, "Confirmed", "已确认") : t(lang, "Pending", "待确认")}</div>
                       <div>{t(lang, "Manager", "管理")}: {managerAllConfirmed ? t(lang, "Confirmed", "已确认") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
@@ -455,7 +532,9 @@ export default async function TeacherPayrollPage({
                   </a>
                 </td>
                 <td>
-                  <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
+                  <details>
+                    <summary style={{ cursor: "pointer" }}>{t(lang, "Open Actions", "展开操作")}</summary>
+                    <div style={{ display: "grid", gap: 6, justifyItems: "start", marginTop: 6 }}>
                     {!isFinanceOnlyUser && (!publish?.financePaidAt || canEditApprovalConfig) ? (
                       <form action={sendPayrollAction}>
                         <input type="hidden" name="month" value={month} />
@@ -511,7 +590,8 @@ export default async function TeacherPayrollPage({
                         <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
                       </form>
                     ) : null}
-                  </div>
+                    </div>
+                  </details>
                 </td>
               </tr>
             )})}
