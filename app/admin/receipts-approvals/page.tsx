@@ -379,9 +379,6 @@ export default async function ReceiptsApprovalsPage({
   return (
     <div>
       <h2>{t(lang, "Parent Receipt Approvals", "家长收据审批")}</h2>
-      <div style={{ marginBottom: 10 }}>
-        <a href="/admin/packages">{t(lang, "Back to Packages", "返回课时包列表")}</a>
-      </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
