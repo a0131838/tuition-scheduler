@@ -32,6 +32,7 @@ import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from 
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const PARTNER_SOURCE_NAME = "新东方学生";
+const PARTNER_CUSTOMER_NAME = "北京新东方前途出国咨询有限公司";
 
 type Mode = PartnerBillingMode;
 
@@ -116,17 +117,23 @@ async function createPartnerInvoiceAction(formData: FormData) {
   const invoiceNoInput = String(formData.get("invoiceNo") ?? "").trim();
   const invoiceNo = invoiceNoInput || (await getNextPartnerInvoiceNo(issueDate));
 
-  const settlementLines = candidates.map((r) => ({
+  const settlementLines = candidates.map((r) => {
+    const hours = Number(r.hours ?? 0);
+    const normalizedHours = Number.isFinite(hours) && hours > 0 ? Number(hours.toFixed(2)) : 1;
+    const totalAmount = Number(r.amount || 0);
+    const unitPrice = normalizedHours > 0 ? Number((totalAmount / normalizedHours).toFixed(2)) : totalAmount;
+    return {
     type: "SETTLEMENT" as const,
     settlementId: r.id,
     description: mode === "ONLINE_PACKAGE_END"
-      ? `Package settlement - ${r.student?.name ?? "-"} - ${r.package?.course?.name ?? "-"}`
-      : `Monthly settlement ${month} - ${r.student?.name ?? "-"}`,
-    quantity: 1,
-    amount: Number(r.amount || 0),
+      ? `${r.student?.name ?? "-"}`
+      : `${r.student?.name ?? "-"}`,
+    quantity: normalizedHours,
+    amount: unitPrice,
     gstAmount: 0,
-    totalAmount: Number(r.amount || 0),
-  }));
+    totalAmount,
+  };
+  });
   const manualLines = manualItems.map((m) => ({ type: "MANUAL" as const, settlementId: null, description: m.description, quantity: 1, amount: m.amount, gstAmount: 0, totalAmount: m.amount }));
 
   try {
@@ -138,7 +145,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
       invoiceNo,
       issueDate,
       dueDate: String(formData.get("dueDate") ?? "").trim() || issueDate,
-      billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_SOURCE_NAME,
+      billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_CUSTOMER_NAME,
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim() || "Immediate",
       description: String(formData.get("description") ?? "").trim() || `Partner settlement ${mode === "ONLINE_PACKAGE_END" ? "Online batch" : `Offline monthly ${month}`}`,
       lines: [...settlementLines, ...manualLines],
@@ -415,7 +422,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           <label>Issue Date<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
-          <label>Bill To<input name="billTo" defaultValue={PARTNER_SOURCE_NAME} style={{ width: "100%" }} /></label>
+          <label>Bill To<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 3" }}>Description<input name="description" defaultValue={`Partner settlement ${mode === "ONLINE_PACKAGE_END" ? "Online batch" : `Offline monthly ${month}`}`} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>Manual Extra Items (Description|Amount per line)<textarea name="manualItems" rows={4} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>

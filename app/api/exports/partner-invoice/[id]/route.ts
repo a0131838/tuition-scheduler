@@ -32,6 +32,12 @@ function money(n: number) {
   return `SGD ${Number(n || 0).toFixed(2)}`;
 }
 
+function fmtQty(n: number) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x) || x <= 0) return "1";
+  return x % 1 === 0 ? String(Math.round(x)) : x.toFixed(2).replace(/\.?0+$/, "");
+}
+
 function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
@@ -99,7 +105,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const billY = y + 180;
   doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
   text(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
-  text(doc, `Invoice To:   ${invoice.billTo || invoice.partnerName}`, x + 8, billY + 36, 10, true);
+  text(doc, `Customer Name   ${invoice.billTo || invoice.partnerName}`, x + 8, billY + 36, 10, true);
 
   const tableY = y + 258;
   const colX = [x + 10, x + 54, x + 292, x + 372, x + 450];
@@ -114,7 +120,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const lines = invoice.lines.slice(0, maxRows);
   lines.forEach((line, idx) => {
     const yy = tableY + 24 + idx * 22;
-    text(doc, String(Math.max(1, Math.floor(line.quantity || 1))), colX[0] + 8, yy, 9);
+    text(doc, fmtQty(line.quantity), colX[0] + 8, yy, 9);
     text(doc, line.description, colX[1], yy, 9, false, "#111827", colW[1]);
     text(doc, money(line.amount), colX[2], yy, 9);
     text(doc, money(line.gstAmount), colX[3], yy, 9);

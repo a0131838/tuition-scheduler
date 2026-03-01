@@ -94,6 +94,12 @@ function parseNumber(v: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function normalizeQuantity(v: unknown, fallback = 1) {
+  const n = parseNumber(v, fallback);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Number(n.toFixed(2));
+}
+
 function sanitizeLine(input: unknown): PartnerInvoiceLine | null {
   if (!input || typeof input !== "object") return null;
   const x = input as Record<string, unknown>;
@@ -104,7 +110,7 @@ function sanitizeLine(input: unknown): PartnerInvoiceLine | null {
     type: String(x.type ?? "").trim() === "MANUAL" ? "MANUAL" : "SETTLEMENT",
     settlementId: String(x.settlementId ?? "").trim() || null,
     description,
-    quantity: Math.max(1, Math.floor(parseNumber(x.quantity, 1))),
+    quantity: normalizeQuantity(x.quantity, 1),
     amount: parseNumber(x.amount, 0),
     gstAmount: parseNumber(x.gstAmount, 0),
     totalAmount: parseNumber(x.totalAmount, 0),
@@ -143,7 +149,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
       courseEndDate: String(x.courseEndDate ?? "").trim() || null,
       description: String(x.description ?? "").trim() || "",
       lines,
-      amount: parseNumber(x.amount, lines.reduce((a, b) => a + b.amount, 0)),
+      amount: parseNumber(x.amount, lines.reduce((a, b) => a + Math.max(0, b.totalAmount - b.gstAmount), 0)),
       gstAmount: parseNumber(x.gstAmount, lines.reduce((a, b) => a + b.gstAmount, 0)),
       totalAmount: parseNumber(x.totalAmount, lines.reduce((a, b) => a + b.totalAmount, 0)),
       note: String(x.note ?? "").trim() || null,
@@ -384,7 +390,7 @@ export async function createPartnerInvoice(input: {
       type: (x.type === "MANUAL" ? "MANUAL" : "SETTLEMENT") as "MANUAL" | "SETTLEMENT",
       settlementId: x.settlementId?.trim() || null,
       description: String(x.description ?? "").trim(),
-      quantity: Math.max(1, Math.floor(Number(x.quantity) || 1)),
+      quantity: normalizeQuantity(x.quantity, 1),
       amount: Number(x.amount) || 0,
       gstAmount: Number(x.gstAmount) || 0,
       totalAmount: Number(x.totalAmount) || 0,
@@ -392,7 +398,7 @@ export async function createPartnerInvoice(input: {
     .filter((x) => x.description);
   if (lines.length === 0) throw new Error("Invoice must contain at least one line item");
 
-  const amount = lines.reduce((a, b) => a + b.amount, 0);
+  const amount = lines.reduce((a, b) => a + Math.max(0, b.totalAmount - b.gstAmount), 0);
   const gstAmount = lines.reduce((a, b) => a + b.gstAmount, 0);
   const totalAmount = lines.reduce((a, b) => a + b.totalAmount, 0);
 
