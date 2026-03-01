@@ -711,6 +711,11 @@ export default async function PartnerSettlementPage({
     0,
   );
   const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
+  const primaryBtn = { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1e3a8a", borderRadius: 8, padding: "4px 10px", fontWeight: 700 };
+  const dangerBtn = { border: "1px solid #fecdd3", background: "#fff1f2", color: "#9f1239", borderRadius: 8, padding: "4px 10px", fontWeight: 700 };
+  const thCell = { position: "sticky", top: 0, background: "#f5f5f5", zIndex: 1 } as const;
+  const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
+  const donePill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
 
   return (
     <div>
@@ -756,7 +761,7 @@ export default async function PartnerSettlementPage({
           <label>
             {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
           </label>
-          <button type="submit">{t(lang, "Apply", "应用")}</button>
+          <button type="submit" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
           <a
             href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}
             style={{ marginLeft: 8, fontWeight: 700 }}
@@ -803,7 +808,7 @@ export default async function PartnerSettlementPage({
           {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
           <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
         </label>
-        <button type="submit">{t(lang, "Save Rates", "保存费率")}</button>
+        <button type="submit" style={primaryBtn}>{t(lang, "Save Rates", "保存费率")}</button>
       </form> : null}
       {!isFinanceOnlyUser ? <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
         {t(
@@ -815,15 +820,16 @@ export default async function PartnerSettlementPage({
 
       <div style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
+      <div style={{ overflowX: "auto" }}>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
-            <th align="left">{t(lang, "Student", "学生")}</th>
-            <th align="left">{t(lang, "Course", "课程")}</th>
-            <th align="left">{t(lang, "Type", "类型")}</th>
-            <th align="left">{t(lang, "Remaining", "剩余")}</th>
-            <th align="left">{t(lang, "Status", "状态")}</th>
-            <th align="left">{t(lang, "Mode", "模式")}</th>
+            <th align="left" style={thCell}>{t(lang, "Student", "学生")}</th>
+            <th align="left" style={thCell}>{t(lang, "Course", "课程")}</th>
+            <th align="left" style={thCell}>{t(lang, "Type", "类型")}</th>
+            <th align="left" style={thCell}>{t(lang, "Remaining", "剩余")}</th>
+            <th align="left" style={thCell}>{t(lang, "Status", "状态")}</th>
+            <th align="left" style={thCell}>{t(lang, "Mode", "模式")}</th>
           </tr>
         </thead>
         <tbody>
@@ -840,6 +846,7 @@ export default async function PartnerSettlementPage({
         </tbody>
       </table>
       </div>
+      </div>
 
       <div style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
@@ -853,15 +860,16 @@ export default async function PartnerSettlementPage({
       {onlinePending.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No online pending items.", "暂无线上待结算项。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
+        <div style={{ overflowX: "auto" }}>
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Course", "课程")}</th>
-              <th align="left">{t(lang, "Package Status", "课包状态")}</th>
-              <th align="left">{t(lang, "Hours", "课时")}</th>
-              <th align="left">{t(lang, "Amount", "金额")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
+              <th align="left" style={thCell}>{t(lang, "Student", "学生")}</th>
+              <th align="left" style={thCell}>{t(lang, "Course", "课程")}</th>
+              <th align="left" style={thCell}>{t(lang, "Package Status", "课包状态")}</th>
+              <th align="left" style={thCell}>{t(lang, "Hours", "课时")}</th>
+              <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
+              <th align="left" style={thCell}>{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -879,7 +887,7 @@ export default async function PartnerSettlementPage({
                     <form action={createOnlineSettlementAction}>
                       <input type="hidden" name="month" value={month} />
                       <input type="hidden" name="packageId" value={p.id} />
-                      <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
+                      <button type="submit" style={primaryBtn}>{t(lang, "Create Bill", "生成账单")}</button>
                     </form>
                   ) : (
                     <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
@@ -889,6 +897,7 @@ export default async function PartnerSettlementPage({
             ))}
           </tbody>
         </table>
+        </div>
       )}
       </div>
 
@@ -921,7 +930,8 @@ export default async function PartnerSettlementPage({
               "以下待结算学生存在“月内点名数”与“可结算数”不一致，请先核对反馈与状态后再生成账单。"
             )}
           </div>
-          <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+          <div style={{ overflowX: "auto" }}>
+          <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
             <thead>
               <tr style={{ background: "#fef3c7" }}>
                 <th align="left">{t(lang, "Student", "学生")}</th>
@@ -947,21 +957,23 @@ export default async function PartnerSettlementPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : null}
       {offlinePending.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "暂无线下待结算项。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
+        <div style={{ overflowX: "auto" }}>
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Month", "月份")}</th>
-              <th align="left">{t(lang, "Sessions", "课次")}</th>
-              <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
-              <th align="left">{t(lang, "Hours", "课时")}</th>
-              <th align="left">{t(lang, "Amount", "金额")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
+              <th align="left" style={thCell}>{t(lang, "Student", "学生")}</th>
+              <th align="left" style={thCell}>{t(lang, "Month", "月份")}</th>
+              <th align="left" style={thCell}>{t(lang, "Sessions", "课次")}</th>
+              <th align="left" style={thCell}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
+              <th align="left" style={thCell}>{t(lang, "Hours", "课时")}</th>
+              <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
+              <th align="left" style={thCell}>{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -980,7 +992,7 @@ export default async function PartnerSettlementPage({
                     <form action={createOfflineSettlementAction}>
                       <input type="hidden" name="studentId" value={r.studentId} />
                       <input type="hidden" name="month" value={month} />
-                      <button type="submit">{t(lang, "Create Bill", "生成账单")}</button>
+                      <button type="submit" style={primaryBtn}>{t(lang, "Create Bill", "生成账单")}</button>
                     </form>
                   ) : (
                     <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
@@ -990,6 +1002,7 @@ export default async function PartnerSettlementPage({
             ))}
           </tbody>
         </table>
+        </div>
       )}
       </div>
 
@@ -997,7 +1010,7 @@ export default async function PartnerSettlementPage({
       <h3 style={{ marginTop: 0 }}>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
       {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
         <input type="hidden" name="month" value={month} />
-        <button type="submit" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239" }}>
+        <button type="submit" style={dangerBtn}>
           {t(lang, "Clear Test Records", "清空测试结算记录")}
         </button>
       </form> : null}
@@ -1008,7 +1021,8 @@ export default async function PartnerSettlementPage({
           {recentPendingSettlements.length > 0 ? (
             <>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Pending Settlement Records (Before Invoice)", "待开票结算记录（可撤回）")}</div>
-              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+              <div style={{ overflowX: "auto" }}>
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12, minWidth: 1100 }}>
                 <thead>
                   <tr style={{ background: "#f5f5f5" }}>
                     <th align="left">{t(lang, "Created", "创建时间")}</th>
@@ -1032,13 +1046,13 @@ export default async function PartnerSettlementPage({
                       <td>{r.courseName}</td>
                       <td>{r.hours}</td>
                       <td>{r.amount}</td>
-                      <td>{r.status}</td>
+                      <td><span style={pendingPill}>{r.status}</span></td>
                       <td>
                         {!isFinanceOnlyUser ? (
                           <form action={revertSettlementRecordAction}>
                             <input type="hidden" name="month" value={month} />
                             <input type="hidden" name="settlementId" value={r.id} />
-                            <button type="submit">{t(lang, "Revert", "撤回")}</button>
+                            <button type="submit" style={dangerBtn}>{t(lang, "Revert", "撤回")}</button>
                           </form>
                         ) : (
                           <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
@@ -1048,13 +1062,15 @@ export default async function PartnerSettlementPage({
                   ))}
                 </tbody>
               </table>
+              </div>
             </>
           ) : null}
 
           {recentInvoiceStats.length > 0 ? (
             <>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced Records (Grouped by Invoice No.)", "已开票记录（按Invoice聚合）")}</div>
-              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+              <div style={{ overflowX: "auto" }}>
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
                 <thead>
                   <tr style={{ background: "#f5f5f5" }}>
                     <th align="left">{t(lang, "Created", "创建时间")}</th>
@@ -1087,11 +1103,12 @@ export default async function PartnerSettlementPage({
                       <td>{r.itemCount}</td>
                       <td>{r.totalHours}</td>
                       <td>{r.totalAmount}</td>
-                      <td>{r.receiptNo ? t(lang, "Receipt Created", "已创建收据") : t(lang, "Invoiced", "已开Invoice")}</td>
+                      <td><span style={r.receiptNo ? donePill : pendingPill}>{r.receiptNo ? t(lang, "Receipt Created", "已创建收据") : t(lang, "Invoiced", "已开Invoice")}</span></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </>
           ) : null}
         </>

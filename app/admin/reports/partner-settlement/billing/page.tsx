@@ -81,6 +81,26 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+const primaryBtn = {
+  border: "1px solid #93c5fd",
+  background: "#eff6ff",
+  color: "#1e3a8a",
+  borderRadius: 8,
+  padding: "4px 10px",
+  fontWeight: 700,
+};
+const dangerBtn = {
+  border: "1px solid #fecdd3",
+  background: "#fff1f2",
+  color: "#9f1239",
+  borderRadius: 8,
+  padding: "4px 10px",
+  fontWeight: 700,
+};
+const thCell = { position: "sticky", top: 0, background: "#f3f4f6", zIndex: 1 } as const;
+const completedPill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
+const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
+
 function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null) {
   const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
@@ -495,7 +515,7 @@ export default async function PartnerBillingPage({
           <label>Mode<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">Online: Package End</option><option value="OFFLINE_MONTHLY">Offline: Monthly</option></select></label>
           <label>Month<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
           <input type="hidden" name="tab" value={activeTab} />
-          <button type="submit">Apply</button>
+          <button type="submit" style={primaryBtn}>Apply</button>
         </form>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           {tabBtn("invoice", "Create Invoice")}
@@ -516,7 +536,7 @@ export default async function PartnerBillingPage({
       <h3 style={{ marginTop: 0 }}>Create Partner Invoice (Batch)</h3>
       <form action={createPartnerInvoiceAction}>
         <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
           <label>Invoice No.<input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} /></label>
           <label>Issue Date<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
@@ -534,7 +554,7 @@ export default async function PartnerBillingPage({
           </label>
           <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
         </div>
-        <div style={{ marginTop: 8 }}><button type="submit">Create Invoice (Batch)</button></div>
+        <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>Create Invoice (Batch)</button></div>
       </form>
       </div>
       ) : null}
@@ -545,7 +565,7 @@ export default async function PartnerBillingPage({
       {financeOpsEnabled ? (
         <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(160px, 1fr))", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
             <label>Payment Proof<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
             <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
             <label>Payment Method<select name="paymentMethod" defaultValue="" style={{ width: "100%" }}><option value="">(optional)</option><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">Bank transfer</option></select></label>
@@ -553,23 +573,24 @@ export default async function PartnerBillingPage({
             <label>Replace Existing<select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">(new record)</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
             <label style={{ gridColumn: "span 5" }}>Note<input name="paymentNote" style={{ width: "100%" }} /></label>
           </div>
-          <div style={{ marginTop: 8 }}><button type="submit">Upload</button></div>
+          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>Upload</button></div>
         </form>
       ) : <div style={{ color: "#92400e", marginBottom: 12 }}>Only finance can manage payment records.</div>}
       {billing.paymentRecords.length === 0 ? (
         <div style={{ color: "#666", marginBottom: 12 }}>No payment records yet.</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+        <div style={{ overflowX: "auto" }}>
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12, minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f3f4f6" }}>
-              <th align="left">Time</th>
-              <th align="left">Payment Date</th>
-              <th align="left">Method</th>
-              <th align="left">Reference</th>
-              <th align="left">File</th>
-              <th align="left">Note</th>
-              <th align="left">By</th>
-              <th align="left">Delete</th>
+              <th align="left" style={thCell}>Time</th>
+              <th align="left" style={thCell}>Payment Date</th>
+              <th align="left" style={thCell}>Method</th>
+              <th align="left" style={thCell}>Reference</th>
+              <th align="left" style={thCell}>File</th>
+              <th align="left" style={thCell}>Note</th>
+              <th align="left" style={thCell}>By</th>
+              <th align="left" style={thCell}>Delete</th>
             </tr>
           </thead>
           <tbody>
@@ -591,13 +612,14 @@ export default async function PartnerBillingPage({
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="recordId" value={r.id} />
-                    <button type="submit">Delete</button>
+                    <button type="submit" style={dangerBtn}>Delete</button>
                   </form>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
       </div>
       ) : null}
@@ -608,7 +630,7 @@ export default async function PartnerBillingPage({
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
             <label>Source Invoice<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? "(No available invoice)" : "Select an invoice"}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
             <label>Receipt No.<input name="receiptNo" placeholder="Leave blank to auto-generate: InvoiceNo-RC" style={{ width: "100%" }} /></label>
             <label>Receipt Date<input name="receiptDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
@@ -622,7 +644,7 @@ export default async function PartnerBillingPage({
             <label>Payment Record<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">(none)</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
             <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
           </div>
-          <div style={{ marginTop: 8 }}><button type="submit" disabled={availableInvoices.length === 0}>Create Receipt</button></div>
+          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn} disabled={availableInvoices.length === 0}>Create Receipt</button></div>
         </form>
       ) : <div style={{ color: "#92400e" }}>Only finance can create receipts.</div>}
       </div>
@@ -631,17 +653,18 @@ export default async function PartnerBillingPage({
       {activeTab === "invoices" ? (
       <div style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>Partner Invoices</h3>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
+      <div style={{ overflowX: "auto" }}>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 980 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
-            <th align="left">Invoice No.</th>
-            <th align="left">Issue</th>
-            <th align="left">Mode</th>
-            <th align="left">Month</th>
-            <th align="left">Total</th>
-            <th align="left">PDF</th>
-            <th align="left">Student Detail</th>
-            <th align="left">Delete</th>
+            <th align="left" style={thCell}>Invoice No.</th>
+            <th align="left" style={thCell}>Issue</th>
+            <th align="left" style={thCell}>Mode</th>
+            <th align="left" style={thCell}>Month</th>
+            <th align="left" style={thCell}>Total</th>
+            <th align="left" style={thCell}>PDF</th>
+            <th align="left" style={thCell}>Student Detail</th>
+            <th align="left" style={thCell}>Delete</th>
           </tr>
         </thead>
         <tbody>
@@ -665,7 +688,7 @@ export default async function PartnerBillingPage({
                   <input type="hidden" name="mode" value={mode} />
                   <input type="hidden" name="month" value={month} />
                   <input type="hidden" name="invoiceId" value={r.id} />
-                  <button type="submit">Delete</button>
+                  <button type="submit" style={dangerBtn}>Delete</button>
                 </form>
               </td>
             </tr>
@@ -673,24 +696,26 @@ export default async function PartnerBillingPage({
         </tbody>
       </table>
       </div>
+      </div>
       ) : null}
 
       {activeTab === "receipts" ? (
       <div style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>Partner Receipts</h3>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <div style={{ overflowX: "auto" }}>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
-            <th align="left">Receipt No.</th>
-            <th align="left">Date</th>
-            <th align="left">Invoice No.</th>
-            <th align="left">Payment Record</th>
-            <th align="left">Amount</th>
-            <th align="left">Manager</th>
-            <th align="left">Finance</th>
-            <th align="left">Actions</th>
-            <th align="left">PDF</th>
-            <th align="left">Delete</th>
+            <th align="left" style={thCell}>Receipt No.</th>
+            <th align="left" style={thCell}>Date</th>
+            <th align="left" style={thCell}>Invoice No.</th>
+            <th align="left" style={thCell}>Payment Record</th>
+            <th align="left" style={thCell}>Amount</th>
+            <th align="left" style={thCell}>Manager</th>
+            <th align="left" style={thCell}>Finance</th>
+            <th align="left" style={thCell}>Actions</th>
+            <th align="left" style={thCell}>PDF</th>
+            <th align="left" style={thCell}>Delete</th>
           </tr>
         </thead>
         <tbody>
@@ -723,21 +748,21 @@ export default async function PartnerBillingPage({
                 <td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td>
                 <td>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {exportReady ? <span style={{ color: "#166534" }}>Completed</span> : null}
+                    {exportReady ? <span style={completedPill}>Completed</span> : null}
                     {!exportReady && isManagerApprover ? (
                       <>
                         <form action={managerApproveReceiptAction}>
                           <input type="hidden" name="mode" value={mode} />
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="receiptId" value={r.id} />
-                          <button type="submit">Manager Approve</button>
+                          <button type="submit" style={primaryBtn}>Manager Approve</button>
                         </form>
                         <form action={managerRejectReceiptAction}>
                           <input type="hidden" name="mode" value={mode} />
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="receiptId" value={r.id} />
                           <input name="reason" placeholder="Manager reject reason" />
-                          <button type="submit">Manager Reject</button>
+                          <button type="submit" style={dangerBtn}>Manager Reject</button>
                         </form>
                       </>
                     ) : null}
@@ -747,14 +772,14 @@ export default async function PartnerBillingPage({
                           <input type="hidden" name="mode" value={mode} />
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="receiptId" value={r.id} />
-                          <button type="submit">Finance Approve</button>
+                          <button type="submit" style={primaryBtn}>Finance Approve</button>
                         </form>
                         <form action={financeRejectReceiptAction}>
                           <input type="hidden" name="mode" value={mode} />
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="receiptId" value={r.id} />
                           <input name="reason" placeholder="Finance reject reason" />
-                          <button type="submit">Finance Reject</button>
+                          <button type="submit" style={dangerBtn}>Finance Reject</button>
                         </form>
                       </>
                     ) : null}
@@ -764,7 +789,7 @@ export default async function PartnerBillingPage({
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="receiptId" value={r.id} />
                         <input name="reason" placeholder="Revoke reason (optional)" />
-                        <button type="submit">Revoke To Redo</button>
+                        <button type="submit" style={dangerBtn}>Revoke To Redo</button>
                       </form>
                     ) : null}
                   </div>
@@ -773,7 +798,7 @@ export default async function PartnerBillingPage({
                   {exportReady ? (
                     <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
                   ) : (
-                    <span style={{ color: "#b45309" }}>Pending approval</span>
+                    <span style={pendingPill}>Pending approval</span>
                   )}
                 </td>
                 <td>
@@ -781,7 +806,7 @@ export default async function PartnerBillingPage({
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="receiptId" value={r.id} />
-                    <button type="submit">Delete</button>
+                    <button type="submit" style={dangerBtn}>Delete</button>
                   </form>
                 </td>
               </tr>
@@ -789,6 +814,7 @@ export default async function PartnerBillingPage({
           })}
         </tbody>
       </table>
+      </div>
       </div>
       ) : null}
     </div>
