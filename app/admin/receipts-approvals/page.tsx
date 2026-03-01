@@ -317,7 +317,7 @@ async function financeRejectReceiptAction(formData: FormData) {
 export default async function ReceiptsApprovalsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; packageId?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; packageId?: string; month?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -325,6 +325,8 @@ export default async function ReceiptsApprovalsPage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
+  const monthRaw = sp?.month ? String(sp.month).trim() : "";
+  const monthFilter = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
 
   const [current, roleCfg, all] = await Promise.all([
     getCurrentUser(),
@@ -363,9 +365,22 @@ export default async function ReceiptsApprovalsPage({
     : [];
   const packageMap = new Map(packages.map((x) => [x.id, x]));
 
-  const rows = packageIdFilter
+  let rows = packageIdFilter
     ? all.receipts.filter((x) => x.packageId === packageIdFilter)
     : all.receipts;
+  if (monthFilter) {
+    rows = rows.filter((x) => {
+      const d = new Date(x.receiptDate);
+      if (Number.isNaN(+d)) return false;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return ym === monthFilter;
+    });
+  }
+  rows = rows.sort((a, b) => {
+    const tb = +new Date(b.receiptDate);
+    const ta = +new Date(a.receiptDate);
+    return tb - ta;
+  });
   const approvalMap = await getParentReceiptApprovalMap(rows.map((x) => x.id));
   const selectedPackage = packageIdFilter
     ? await prisma.coursePackage.findUnique({
@@ -391,6 +406,10 @@ export default async function ReceiptsApprovalsPage({
           Package ID
           <input name="packageId" defaultValue={packageIdFilter} style={{ marginLeft: 6, minWidth: 260 }} />
         </label>
+        <label>
+          Month
+          <input name="month" type="month" defaultValue={monthFilter} style={{ marginLeft: 6 }} />
+        </label>
         <button type="submit">Filter</button>
         <a href="/admin/receipts-approvals">Reset</a>
       </form>
@@ -409,6 +428,7 @@ export default async function ReceiptsApprovalsPage({
             flexWrap: "wrap",
           }}
         >
+          {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
           <label>
             Quick Select Package
             <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
@@ -624,6 +644,7 @@ export default async function ReceiptsApprovalsPage({
           <thead>
             <tr style={{ background: "#f3f4f6" }}>
               <th align="left">Receipt No.</th>
+              <th align="left">Receipt Date</th>
               <th align="left">Invoice No.</th>
               <th align="left">Student</th>
               <th align="left">Amount Received</th>
@@ -649,6 +670,7 @@ export default async function ReceiptsApprovalsPage({
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.receiptNo}</td>
+                  <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
                   <td>{invoice?.invoiceNo ?? "-"}</td>
                   <td>{pkg?.student?.name ?? "-"}</td>
                   <td>{money(r.amountReceived)}</td>
