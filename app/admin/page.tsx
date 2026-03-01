@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 
 export default async function AdminHome() {
@@ -28,8 +28,8 @@ export default async function AdminHome() {
           <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
             {t(
               lang,
-              "Use this workspace to process teacher payroll and partner settlement approvals.",
-              "此页面用于处理老师工资与合作方结算审批。"
+              "Use this workspace to process teacher payroll, partner settlement, and parent receipt operations.",
+              "此页面用于处理老师工资、合作方结算和家长收据相关流程。"
             )}
           </div>
         </section>
@@ -39,6 +39,14 @@ export default async function AdminHome() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <a href="/admin/reports/teacher-payroll">{t(lang, "Teacher Payroll", "老师工资单")}</a>
             <a href="/admin/reports/partner-settlement">{t(lang, "Partner Settlement", "合作方结算")}</a>
+            <a href="/admin/receipts-approvals">{t(lang, "Receipt Approvals & Operations", "收据审批与处理")}</a>
+          </div>
+          <div style={{ marginTop: 8, color: "#64748b", fontSize: 12 }}>
+            {t(
+              lang,
+              "For parent billing: upload payment records and create receipts in Receipt Approvals & Operations.",
+              "家长账单相关：请在“收据审批与处理”中上传缴费记录并创建收据。"
+            )}
           </div>
         </section>
       </div>
@@ -58,8 +66,8 @@ export default async function AdminHome() {
         <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
           {t(
             lang,
-            "Start from Campuses → Rooms → Teachers → Courses → Classes → Sessions to build base data.",
-            "先从 校区 → 教室 → 老师 → 课程 → 班级 → 课次 建基础数据。"
+            "Start from Campuses -> Rooms -> Teachers -> Courses -> Classes -> Sessions to build base data.",
+            "先从 校区 -> 教室 -> 老师 -> 课程 -> 班级 -> 课次 建基础数据。"
           )}
         </div>
       </section>
@@ -108,4 +116,3 @@ export default async function AdminHome() {
     </div>
   );
 }
-
