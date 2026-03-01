@@ -6,9 +6,15 @@ import {
   createParentInvoice,
   deleteParentInvoice,
   deleteParentReceipt,
-  getNextParentInvoiceNo,
+  getParentInvoiceById,
   listParentBillingForPackage,
 } from "@/lib/student-parent-billing";
+import {
+  assertGlobalInvoiceNoAvailable,
+  getNextGlobalInvoiceNo,
+  parseInvoiceNoParts,
+  resequenceGlobalInvoiceNumbersForMonth,
+} from "@/lib/global-invoice-sequence";
 import {
   deleteParentReceiptApproval,
   getParentReceiptApprovalMap,
@@ -52,7 +58,14 @@ async function createInvoiceAction(formData: FormData) {
   const totalAmount = Number.isFinite(totalAmountRaw) ? totalAmountRaw : amount + gstAmount;
   const issueDate = String(formData.get("issueDate") ?? "").trim() || new Date().toISOString();
   const invoiceNoInput = String(formData.get("invoiceNo") ?? "").trim();
-  const invoiceNo = invoiceNoInput || (await getNextParentInvoiceNo(issueDate));
+  const invoiceNo = invoiceNoInput || (await getNextGlobalInvoiceNo(issueDate));
+
+  try {
+    await assertGlobalInvoiceNoAvailable(invoiceNo);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Invoice No. already exists";
+    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
+  }
 
   try {
     await createParentInvoice({
@@ -93,7 +106,12 @@ async function deleteInvoiceAction(formData: FormData) {
     redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=Missing+invoice+id`);
   }
   try {
+    const existing = await getParentInvoiceById(invoiceId);
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
+    const mk = existing ? parseInvoiceNoParts(existing.invoiceNo)?.monthKey : null;
+    if (mk) {
+      await resequenceGlobalInvoiceNumbersForMonth(mk);
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete invoice failed";
     redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
@@ -144,7 +162,7 @@ export default async function PackageBillingPage({
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
   const today = ymd(new Date());
-  const defaultInvoiceNo = await getNextParentInvoiceNo(today);
+  const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
 
   return (

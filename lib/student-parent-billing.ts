@@ -226,6 +226,17 @@ function parseInvoiceNo(invoiceNo: string): { monthKey: string; seq: number } | 
   return { monthKey: m[1], seq: Number(m[2]) };
 }
 
+function rebuildInvoiceSeqByMonth(store: ParentBillingStore) {
+  const out: Record<string, number> = {};
+  for (const inv of store.invoices) {
+    const parsed = parseInvoiceNo(inv.invoiceNo);
+    if (!parsed) continue;
+    const current = Number(out[parsed.monthKey] || 0);
+    if (parsed.seq > current) out[parsed.monthKey] = parsed.seq;
+  }
+  store.invoiceSeqByMonth = out;
+}
+
 function ensureUniqueInvoiceNo(store: ParentBillingStore, invoiceNo: string) {
   const key = invoiceNo.trim().toLowerCase();
   if (!key) throw new Error("Invoice No. is required");
@@ -573,6 +584,7 @@ export async function deleteParentInvoice(input: { invoiceId: string; actorEmail
     throw new Error("Cannot delete invoice: linked receipt exists");
   }
   store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
+  rebuildInvoiceSeqByMonth(store);
   await saveStore(store);
   await logAudit({
     actor: { email: input.actorEmail, role: "ADMIN" },
@@ -582,6 +594,67 @@ export async function deleteParentInvoice(input: { invoiceId: string; actorEmail
     entityId: invoiceId,
     meta: { invoiceNo: invoice.invoiceNo, packageId: invoice.packageId, studentId: invoice.studentId },
   });
+}
+
+export async function applyParentInvoiceNumberAssignments(
+  assignments: Array<{ invoiceId: string; invoiceNo: string }>,
+) {
+  if (!Array.isArray(assignments) || assignments.length === 0) return 0;
+  const map = new Map<string, string>();
+  for (const item of assignments) {
+    const invoiceId = String(item.invoiceId ?? "").trim();
+    const invoiceNo = String(item.invoiceNo ?? "").trim();
+    if (!invoiceId || !invoiceNo) continue;
+    map.set(invoiceId, invoiceNo);
+  }
+  if (map.size === 0) return 0;
+
+  const store = await loadStore();
+  const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
+  for (const [invoiceId, invoiceNo] of map.entries()) {
+    if (!invoiceById.has(invoiceId)) throw new Error(`Parent invoice not found: ${invoiceId}`);
+    if (!/^RGT-\d{6}-\d{4}$/i.test(invoiceNo)) throw new Error(`Invalid invoice number format: ${invoiceNo}`);
+  }
+
+  const originalNoById = new Map<string, string>();
+  for (const inv of store.invoices) originalNoById.set(inv.id, inv.invoiceNo);
+
+  let changed = 0;
+  for (const inv of store.invoices) {
+    const nextNo = map.get(inv.id);
+    if (!nextNo) continue;
+    if (inv.invoiceNo !== nextNo) {
+      inv.invoiceNo = nextNo;
+      inv.updatedAt = new Date().toISOString();
+      changed += 1;
+    }
+  }
+
+  if (changed > 0) {
+    const used = new Set<string>();
+    for (const inv of store.invoices) {
+      const key = inv.invoiceNo.trim().toLowerCase();
+      if (!key) throw new Error(`Empty invoice number on parent invoice: ${inv.id}`);
+      if (used.has(key)) throw new Error(`Duplicate parent invoice number after reassignment: ${inv.invoiceNo}`);
+      used.add(key);
+    }
+
+    for (const rec of store.receipts) {
+      if (!rec.invoiceId) continue;
+      const beforeNo = originalNoById.get(rec.invoiceId);
+      const afterNo = map.get(rec.invoiceId);
+      if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
+      const expectedOld = `${beforeNo}-RC`.toLowerCase();
+      if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
+        rec.receiptNo = `${afterNo}-RC`;
+        rec.updatedAt = new Date().toISOString();
+      }
+    }
+  }
+
+  rebuildInvoiceSeqByMonth(store);
+  await saveStore(store);
+  return changed;
 }
 
 export async function deleteParentReceipt(input: { receiptId: string; actorEmail: string }) {

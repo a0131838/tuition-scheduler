@@ -13,13 +13,18 @@ import {
   deletePartnerInvoice,
   deletePartnerPaymentRecord,
   deletePartnerReceipt,
-  getNextPartnerInvoiceNo,
   getPartnerBilledSettlementIdSet,
   getPartnerInvoiceById,
   listPartnerBillingByMode,
   replacePartnerPaymentRecord,
   type PartnerBillingMode,
 } from "@/lib/partner-billing";
+import {
+  assertGlobalInvoiceNoAvailable,
+  getNextGlobalInvoiceNo,
+  parseInvoiceNoParts,
+  resequenceGlobalInvoiceNumbersForMonth,
+} from "@/lib/global-invoice-sequence";
 import {
   deletePartnerReceiptApproval,
   financeApprovePartnerReceipt,
@@ -115,7 +120,13 @@ async function createPartnerInvoiceAction(formData: FormData) {
 
   const issueDate = String(formData.get("issueDate") ?? "").trim() || ymd(new Date());
   const invoiceNoInput = String(formData.get("invoiceNo") ?? "").trim();
-  const invoiceNo = invoiceNoInput || (await getNextPartnerInvoiceNo(issueDate));
+  const invoiceNo = invoiceNoInput || (await getNextGlobalInvoiceNo(issueDate));
+  try {
+    await assertGlobalInvoiceNoAvailable(invoiceNo);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Invoice No. already exists";
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+  }
 
   const settlementLines = candidates.map((r) => {
     const hours = Number(r.hours ?? 0);
@@ -268,6 +279,10 @@ async function deleteInvoiceAction(formData: FormData) {
   const inv = await getPartnerInvoiceById(invoiceId);
   try {
     await deletePartnerInvoice({ invoiceId, actorEmail: admin.email });
+    const mk = inv ? parseInvoiceNoParts(inv.invoiceNo)?.monthKey : null;
+    if (mk) {
+      await resequenceGlobalInvoiceNumbersForMonth(mk);
+    }
     if (inv?.settlementIds?.length) {
       await prisma.partnerSettlement.updateMany({ where: { id: { in: inv.settlementIds } }, data: { status: "PENDING" } });
     }
@@ -395,7 +410,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
   const candidatesAmount = candidates.reduce((a, b) => a + Number(b.amount || 0), 0);
-  const defaultInvoiceNo = await getNextPartnerInvoiceNo(today);
+  const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const usedInvoiceIds = new Set(billing.receipts.map((x) => x.invoiceId));
   const availableInvoices = billing.invoices.filter((x) => !usedInvoiceIds.has(x.id));
   const invoiceMap = new Map(billing.invoices.map((x) => [x.id, x]));
