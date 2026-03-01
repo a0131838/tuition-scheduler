@@ -121,15 +121,18 @@ async function createPartnerInvoiceAction(formData: FormData) {
     const hours = Number(r.hours ?? 0);
     const normalizedHours = Number.isFinite(hours) && hours > 0 ? Number(hours.toFixed(2)) : 1;
     const totalAmount = Number(r.amount || 0);
-    const unitPrice = normalizedHours > 0 ? Number((totalAmount / normalizedHours).toFixed(2)) : totalAmount;
+    const qtyBy45 = Number((((normalizedHours * 60) / 45) || 0).toFixed(2));
+    const normalizedQtyBy45 = Number.isFinite(qtyBy45) && qtyBy45 > 0 ? qtyBy45 : 1;
+    const hourlyUnitPrice = normalizedHours > 0 ? Number((totalAmount / normalizedHours).toFixed(2)) : totalAmount;
+    const per45UnitPrice = normalizedQtyBy45 > 0 ? Number((totalAmount / normalizedQtyBy45).toFixed(2)) : totalAmount;
     return {
     type: "SETTLEMENT" as const,
     settlementId: r.id,
     description: mode === "ONLINE_PACKAGE_END"
       ? `${r.student?.name ?? "-"}`
       : `${r.student?.name ?? "-"}`,
-    quantity: normalizedHours,
-    amount: unitPrice,
+    quantity: mode === "ONLINE_PACKAGE_END" ? normalizedQtyBy45 : normalizedHours,
+    amount: mode === "ONLINE_PACKAGE_END" ? per45UnitPrice : hourlyUnitPrice,
     gstAmount: 0,
     totalAmount,
   };
