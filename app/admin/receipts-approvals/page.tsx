@@ -2,7 +2,19 @@ import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
-import { listAllParentBilling } from "@/lib/student-parent-billing";
+import path from "path";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import crypto from "crypto";
+import {
+  addParentPaymentRecord,
+  buildParentReceiptNoForInvoice,
+  createParentReceipt,
+  deleteParentPaymentRecord,
+  getParentInvoiceById,
+  listAllParentBilling,
+  listParentBillingForPackage,
+  replaceParentPaymentRecord,
+} from "@/lib/student-parent-billing";
 import {
   financeApproveParentReceipt,
   financeRejectParentReceipt,
@@ -16,6 +28,25 @@ import {
   isRoleApprover,
 } from "@/lib/approval-flow";
 
+const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
+
+function canFinanceOperate(email: string, role: string) {
+  const e = String(email ?? "").trim().toLowerCase();
+  return role === "FINANCE" || e === SUPER_ADMIN_EMAIL;
+}
+
+function ymd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseNum(v: FormDataEntryValue | null, fallback = 0) {
+  const n = Number(String(v ?? "").trim());
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
@@ -25,6 +56,190 @@ function withQuery(base: string, packageId?: string) {
   if (!packageId) return base;
   const q = `packageId=${encodeURIComponent(packageId)}`;
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
+}
+
+async function uploadPaymentRecordAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) {
+    redirect("/admin/receipts-approvals?err=Only+finance+can+manage+payment+records");
+  }
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  if (!packageId) redirect("/admin/receipts-approvals?err=Missing+package+id");
+
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id: packageId },
+    include: { student: true },
+  });
+  if (!pkg) redirect(withQuery("/admin/receipts-approvals?err=Package+not+found", packageId));
+
+  const file = formData.get("paymentProof");
+  if (!(file instanceof File) || !file.size) {
+    redirect(withQuery("/admin/receipts-approvals?err=Please+choose+a+file", packageId));
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    redirect(withQuery("/admin/receipts-approvals?err=File+too+large+(max+10MB)", packageId));
+  }
+
+  const ext = path.extname(file.name || "").slice(0, 10) || ".bin";
+  const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : ".bin";
+  const storeName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${safeExt}`;
+  const relDir = path.join("uploads", "payment-proofs", packageId);
+  const absDir = path.join(process.cwd(), "public", relDir);
+  await mkdir(absDir, { recursive: true });
+  const absPath = path.join(absDir, storeName);
+  const buf = Buffer.from(await file.arrayBuffer());
+  await writeFile(absPath, buf);
+  const relPath = `/${path.posix.join("uploads", "payment-proofs", packageId, storeName)}`;
+  const paymentDate = String(formData.get("paymentDate") ?? "").trim() || null;
+  const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
+  const referenceNo = String(formData.get("referenceNo") ?? "").trim() || null;
+  const paymentNote = String(formData.get("paymentNote") ?? "").trim() || null;
+  const replaceRecordId = String(formData.get("replacePaymentRecordId") ?? "").trim();
+
+  if (replaceRecordId) {
+    try {
+      const { oldItem } = await replaceParentPaymentRecord({
+        recordId: replaceRecordId,
+        packageId,
+        paymentDate,
+        paymentMethod,
+        referenceNo,
+        originalFileName: file.name || "payment-proof",
+        storedFileName: storeName,
+        relativePath: relPath,
+        note: paymentNote,
+        uploadedBy: admin.email,
+      });
+      if (oldItem.relativePath?.startsWith("/")) {
+        const oldAbsPath = path.join(
+          process.cwd(),
+          "public",
+          oldItem.relativePath.replace(/^\//, "").replace(/\//g, path.sep),
+        );
+        await unlink(oldAbsPath).catch(() => {});
+      }
+      redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+replaced", packageId));
+    } catch (e) {
+      await unlink(absPath).catch(() => {});
+      const msg = e instanceof Error ? e.message : "Replace payment record failed";
+      redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+    }
+  }
+
+  await addParentPaymentRecord({
+    packageId,
+    studentId: pkg.studentId,
+    paymentDate,
+    paymentMethod,
+    referenceNo,
+    originalFileName: file.name || "payment-proof",
+    storedFileName: storeName,
+    relativePath: relPath,
+    note: paymentNote,
+    uploadedBy: admin.email,
+  });
+
+  redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+uploaded", packageId));
+}
+
+async function deletePaymentRecordAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) {
+    redirect("/admin/receipts-approvals?err=Only+finance+can+delete+payment+records");
+  }
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  if (!packageId || !recordId) {
+    redirect(withQuery("/admin/receipts-approvals?err=Missing+payment+record+id", packageId));
+  }
+  try {
+    const row = await deleteParentPaymentRecord({ recordId, actorEmail: admin.email });
+    if (row.relativePath?.startsWith("/")) {
+      const absPath = path.join(process.cwd(), "public", row.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
+      await unlink(absPath).catch(() => {});
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Delete payment record failed";
+    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+  }
+  redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+deleted", packageId));
+}
+
+async function createReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) {
+    redirect("/admin/receipts-approvals?err=Only+finance+can+create+receipts");
+  }
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  if (!packageId) redirect("/admin/receipts-approvals?err=Missing+package+id");
+
+  const pkg = await prisma.coursePackage.findUnique({
+    where: { id: packageId },
+    include: { student: true, course: true },
+  });
+  if (!pkg) redirect(withQuery("/admin/receipts-approvals?err=Package+not+found", packageId));
+
+  const amount = parseNum(formData.get("amount"), 0);
+  const gstAmount = parseNum(formData.get("gstAmount"), 0);
+  const totalAmountRaw = parseNum(formData.get("totalAmount"), Number.NaN);
+  const totalAmount = Number.isFinite(totalAmountRaw) ? totalAmountRaw : amount + gstAmount;
+  const amountReceivedRaw = parseNum(formData.get("amountReceived"), Number.NaN);
+  const amountReceived = Number.isFinite(amountReceivedRaw) ? amountReceivedRaw : totalAmount;
+  const invoiceId = String(formData.get("invoiceId") ?? "").trim();
+  if (!invoiceId) {
+    redirect(withQuery("/admin/receipts-approvals?err=Please+select+an+invoice+for+this+receipt", packageId));
+  }
+  const linkedInvoice = await getParentInvoiceById(invoiceId);
+  if (!linkedInvoice) {
+    redirect(withQuery("/admin/receipts-approvals?err=Selected+invoice+not+found", packageId));
+  }
+  const receiptNoInput = String(formData.get("receiptNo") ?? "").trim();
+  let receiptNo = receiptNoInput;
+  if (!receiptNo) {
+    try {
+      receiptNo = await buildParentReceiptNoForInvoice(invoiceId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to generate receipt no";
+      redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+    }
+  }
+  const receivedFrom = String(formData.get("receivedFrom") ?? "").trim();
+  const paidBy = String(formData.get("paidBy") ?? "").trim();
+  if (!receivedFrom) {
+    redirect(withQuery("/admin/receipts-approvals?err=Received+From+is+required", packageId));
+  }
+  if (!paidBy) {
+    redirect(withQuery("/admin/receipts-approvals?err=Paid+By+is+required", packageId));
+  }
+
+  try {
+    await createParentReceipt({
+      packageId,
+      studentId: pkg.studentId,
+      invoiceId,
+      paymentRecordId: String(formData.get("paymentRecordId") ?? "").trim() || null,
+      receiptNo,
+      receiptDate: String(formData.get("receiptDate") ?? "").trim() || new Date().toISOString(),
+      receivedFrom,
+      paidBy,
+      quantity: Math.max(1, Math.floor(parseNum(formData.get("quantity"), 1))),
+      description: `For Invoice no. ${linkedInvoice.invoiceNo}`,
+      amount,
+      gstAmount,
+      totalAmount,
+      amountReceived,
+      note: String(formData.get("note") ?? "").trim() || null,
+      createdBy: admin.email,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Create receipt failed";
+    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+  }
+
+  redirect(withQuery("/admin/receipts-approvals?msg=Receipt+created", packageId));
 }
 
 async function managerApproveReceiptAction(formData: FormData) {
@@ -113,8 +328,10 @@ export default async function ReceiptsApprovalsPage({
     listAllParentBilling(),
   ]);
   const actorEmail = current?.email ?? "";
+  const financeOpsEnabled = canFinanceOperate(actorEmail, current?.role ?? "");
   const isManagerApprover = isRoleApprover(actorEmail, roleCfg.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(actorEmail, roleCfg.financeApproverEmails);
+  const today = ymd(new Date());
 
   const invoiceMap = new Map(all.invoices.map((x) => [x.id, x]));
   const packageIds = Array.from(new Set(all.receipts.map((x) => x.packageId)));
@@ -130,6 +347,18 @@ export default async function ReceiptsApprovalsPage({
     ? all.receipts.filter((x) => x.packageId === packageIdFilter)
     : all.receipts;
   const approvalMap = await getParentReceiptApprovalMap(rows.map((x) => x.id));
+  const selectedPackage = packageIdFilter
+    ? await prisma.coursePackage.findUnique({
+        where: { id: packageIdFilter },
+        include: { student: true, course: true },
+      })
+    : null;
+  const selectedBilling = packageIdFilter
+    ? await listParentBillingForPackage(packageIdFilter).catch(() => null)
+    : null;
+  const availableInvoices = selectedBilling
+    ? selectedBilling.invoices.filter((inv) => !selectedBilling.receipts.some((r) => r.invoiceId === inv.id))
+    : [];
 
   return (
     <div>
@@ -148,6 +377,159 @@ export default async function ReceiptsApprovalsPage({
         <button type="submit">Filter</button>
         <a href="/admin/receipts-approvals">Reset</a>
       </form>
+
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Finance Receipt Operations</h3>
+        {!packageIdFilter ? (
+          <div style={{ color: "#666" }}>Enter a Package ID above to upload payment records and create receipts.</div>
+        ) : !selectedPackage ? (
+          <div style={{ color: "#b00" }}>Package not found: {packageIdFilter}</div>
+        ) : !financeOpsEnabled ? (
+          <div style={{ color: "#92400e" }}>Only finance can manage payment records and create receipts.</div>
+        ) : !selectedBilling ? (
+          <div style={{ color: "#b00" }}>Unable to load billing data for this package.</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 10 }}>
+              <b>Student:</b> {selectedPackage.student.name} | <b>Course:</b> {selectedPackage.course.name}
+            </div>
+
+            <h4>Payment Records</h4>
+            <form
+              action={uploadPaymentRecordAction}
+              encType="multipart/form-data"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}
+            >
+              <input type="hidden" name="packageId" value={packageIdFilter} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(160px, 1fr))", gap: 8 }}>
+                <label>Payment Proof<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
+                <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
+                <label>Payment Method
+                  <select name="paymentMethod" defaultValue="" style={{ width: "100%" }}>
+                    <option value="">(optional)</option>
+                    <option value="Paynow">Paynow</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank transfer">Bank transfer</option>
+                  </select>
+                </label>
+                <label>Reference No.<input name="referenceNo" placeholder="UTR / Txn Id" style={{ width: "100%" }} /></label>
+                <label>Replace Existing
+                  <select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}>
+                    <option value="">(new record)</option>
+                    {selectedBilling.paymentRecords.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ gridColumn: "span 5" }}>Note
+                  <input name="paymentNote" placeholder={t(lang, "Note", "备注")} style={{ width: "100%" }} />
+                </label>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <button type="submit">{t(lang, "Upload", "上传")}</button>
+              </div>
+            </form>
+
+            {selectedBilling.paymentRecords.length === 0 ? (
+              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无缴费记录")}</div>
+            ) : (
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+                <thead>
+                  <tr style={{ background: "#f3f4f6" }}>
+                    <th align="left">Time</th>
+                    <th align="left">Payment Date</th>
+                    <th align="left">Method</th>
+                    <th align="left">Reference</th>
+                    <th align="left">File</th>
+                    <th align="left">Note</th>
+                    <th align="left">By</th>
+                    <th align="left">Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedBilling.paymentRecords.map((r) => (
+                    <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{new Date(r.uploadedAt).toLocaleString()}</td>
+                      <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
+                      <td>{r.paymentMethod || "-"}</td>
+                      <td>{r.referenceNo || "-"}</td>
+                      <td><a href={r.relativePath} target="_blank">{r.originalFileName}</a></td>
+                      <td>{r.note ?? "-"}</td>
+                      <td>{r.uploadedBy}</td>
+                      <td>
+                        <form action={deletePaymentRecordAction}>
+                          <input type="hidden" name="packageId" value={packageIdFilter} />
+                          <input type="hidden" name="recordId" value={r.id} />
+                          <button type="submit">Delete</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <h4>Create Receipt</h4>
+            <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+              <input type="hidden" name="packageId" value={packageIdFilter} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+                <label>Source Invoice
+                  <select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}>
+                    <option value="" disabled>{availableInvoices.length === 0 ? "(No available invoice)" : "Select an invoice"}</option>
+                    {availableInvoices.map((inv) => (
+                      <option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>Receipt No.
+                  <input name="receiptNo" placeholder="Leave blank to auto-generate: InvoiceNo-RC" style={{ width: "100%" }} />
+                  <div style={{ fontSize: 12, color: "#666" }}>Must match selected invoice number + "-RC"</div>
+                </label>
+                <label>Receipt Date<input name="receiptDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+                <label>Received From<input name="receivedFrom" required placeholder="Please enter payer name" style={{ width: "100%" }} /></label>
+                <label>Paid By
+                  <select name="paidBy" required defaultValue="Paynow" style={{ width: "100%" }}>
+                    <option value="Paynow">Paynow</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank transfer">Bank transfer</option>
+                  </select>
+                </label>
+                <label>Quantity<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
+                <label>Amount<input name="amount" type="number" step="0.01" defaultValue={selectedPackage.paidAmount ?? ""} style={{ width: "100%" }} /></label>
+                <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={0} style={{ width: "100%" }} /></label>
+                <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={selectedPackage.paidAmount ?? ""} style={{ width: "100%" }} /></label>
+                <label>Amount Received<input name="amountReceived" type="number" step="0.01" defaultValue={selectedPackage.paidAmount ?? ""} style={{ width: "100%" }} /></label>
+                <label>Payment Record
+                  <select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}>
+                    <option value="">(none)</option>
+                    {selectedBilling.paymentRecords.map((r) => (
+                      <option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ gridColumn: "span 4" }}>Description
+                  <input
+                    value={availableInvoices[0] ? `For Invoice no. ${availableInvoices[0].invoiceNo}` : "Auto generated from linked invoice number"}
+                    readOnly
+                    style={{ width: "100%", color: "#666", background: "#f9fafb" }}
+                  />
+                </label>
+                <label style={{ gridColumn: "span 4" }}>Note
+                  <input name="note" style={{ width: "100%" }} />
+                </label>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <button type="submit" disabled={availableInvoices.length === 0}>Create Receipt</button>
+                {availableInvoices.length === 0 ? (
+                  <span style={{ marginLeft: 8, color: "#92400e" }}>All invoices already have linked receipts.</span>
+                ) : null}
+              </div>
+            </form>
+          </>
+        )}
+      </div>
 
       {rows.length === 0 ? (
         <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
