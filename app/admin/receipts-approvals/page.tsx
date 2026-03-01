@@ -334,6 +334,22 @@ export default async function ReceiptsApprovalsPage({
   const today = ymd(new Date());
 
   const invoiceMap = new Map(all.invoices.map((x) => [x.id, x]));
+  const invoiceCountByPackage = new Map<string, number>();
+  for (const inv of all.invoices) {
+    invoiceCountByPackage.set(inv.packageId, (invoiceCountByPackage.get(inv.packageId) ?? 0) + 1);
+  }
+  const receiptCountByPackage = new Map<string, number>();
+  for (const rc of all.receipts) {
+    receiptCountByPackage.set(rc.packageId, (receiptCountByPackage.get(rc.packageId) ?? 0) + 1);
+  }
+  const packageIdsFromInvoices = Array.from(new Set(all.invoices.map((x) => x.packageId)));
+  const invoicePackages = packageIdsFromInvoices.length
+    ? await prisma.coursePackage.findMany({
+        where: { id: { in: packageIdsFromInvoices } },
+        include: { student: true, course: true },
+      })
+    : [];
+  const invoicePackageMap = new Map(invoicePackages.map((x) => [x.id, x]));
   const packageIds = Array.from(new Set(all.receipts.map((x) => x.packageId)));
   const packages = packageIds.length
     ? await prisma.coursePackage.findMany({
@@ -377,6 +393,49 @@ export default async function ReceiptsApprovalsPage({
         <button type="submit">Filter</button>
         <a href="/admin/receipts-approvals">Reset</a>
       </form>
+
+      {!packageIdFilter ? (
+        <form
+          method="get"
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 12,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <label>
+            Quick Select Package
+            <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
+              <option value="" disabled>
+                Select package to open finance operations
+              </option>
+              {packageIdsFromInvoices
+                .map((id) => {
+                  const pkg = invoicePackageMap.get(id);
+                  const invoiceCount = invoiceCountByPackage.get(id) ?? 0;
+                  const receiptCount = receiptCountByPackage.get(id) ?? 0;
+                  const remaining = Math.max(0, invoiceCount - receiptCount);
+                  return {
+                    id,
+                    label: `${pkg?.student?.name ?? "Unknown"} | ${pkg?.course?.name ?? "-"} | ${id.slice(0, 8)}... | Invoices ${invoiceCount}, Receipts ${receiptCount}, Pending ${remaining}`,
+                  };
+                })
+                .sort((a, b) => a.label.localeCompare(b.label))
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <button type="submit">Open Finance Operations</button>
+        </form>
+      ) : null}
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>Finance Receipt Operations</h3>
