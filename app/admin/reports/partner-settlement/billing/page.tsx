@@ -113,6 +113,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
     }),
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
+  const candidatesAmount = candidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const manualItems = parseManualItems(String(formData.get("manualItems") ?? ""));
   if (candidates.length === 0 && manualItems.length === 0) {
     redirect(withQuery("/admin/reports/partner-settlement/billing?err=no-settlement-items", mode, month));
@@ -149,6 +150,21 @@ async function createPartnerInvoiceAction(formData: FormData) {
   };
   });
   const manualLines = manualItems.map((m) => ({ type: "MANUAL" as const, settlementId: null, description: m.description, quantity: 1, amount: m.amount, gstAmount: 0, totalAmount: m.amount }));
+  const monthNo = Number(String(month).split("-")[1] || "0");
+  const offlineSummaryDesc = `星辅优学${monthNo || month}月线下一对一产品服务费`;
+  const offlineSummaryLine = {
+    type: "SETTLEMENT" as const,
+    settlementId: null,
+    description: offlineSummaryDesc,
+    quantity: 1,
+    amount: Number(candidatesAmount.toFixed(2)),
+    gstAmount: 0,
+    totalAmount: Number(candidatesAmount.toFixed(2)),
+  };
+  const linesToCreate =
+    mode === "OFFLINE_MONTHLY"
+      ? [offlineSummaryLine, ...manualLines]
+      : [...settlementLines, ...manualLines];
 
   try {
     const invoice = await createPartnerInvoice({
@@ -161,8 +177,8 @@ async function createPartnerInvoiceAction(formData: FormData) {
       dueDate: String(formData.get("dueDate") ?? "").trim() || issueDate,
       billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_CUSTOMER_NAME,
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim() || "Immediate",
-      description: String(formData.get("description") ?? "").trim() || `Partner settlement ${mode === "ONLINE_PACKAGE_END" ? "Online batch" : `Offline monthly ${month}`}`,
-      lines: [...settlementLines, ...manualLines],
+      description: String(formData.get("description") ?? "").trim() || (mode === "OFFLINE_MONTHLY" ? offlineSummaryDesc : `Partner settlement Online batch`),
+      lines: linesToCreate,
       note: String(formData.get("note") ?? "").trim() || null,
       createdBy: admin.email,
     });
@@ -441,7 +457,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
           <label>Bill To<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 3" }}>Description<input name="description" defaultValue={`Partner settlement ${mode === "ONLINE_PACKAGE_END" ? "Online batch" : `Offline monthly ${month}`}`} style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 3" }}>Description<input name="description" defaultValue={mode === "OFFLINE_MONTHLY" ? `星辅优学${Number(String(month).split("-")[1] || "0") || month}月线下一对一产品服务费` : "Partner settlement Online batch"} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>Manual Extra Items (Description|Amount per line)<textarea name="manualItems" rows={4} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
         </div>
@@ -487,7 +503,47 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
       ) : null}
 
       <h3>Partner Invoices</h3>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}><thead><tr style={{ background: "#f3f4f6" }}><th align="left">Invoice No.</th><th align="left">Issue</th><th align="left">Mode</th><th align="left">Month</th><th align="left">Total</th><th align="left">PDF</th><th align="left">Delete</th></tr></thead><tbody>{billing.invoices.map((r) => (<tr key={r.id} style={{ borderTop: "1px solid #eee" }}><td>{r.invoiceNo}</td><td>{new Date(r.issueDate).toLocaleDateString()}</td><td>{r.mode}</td><td>{r.monthKey ?? "-"}</td><td>{money(r.totalAmount)}</td><td><a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td><td><form action={deleteInvoiceAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="invoiceId" value={r.id} /><button type="submit">Delete</button></form></td></tr>))}</tbody></table>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
+        <thead>
+          <tr style={{ background: "#f3f4f6" }}>
+            <th align="left">Invoice No.</th>
+            <th align="left">Issue</th>
+            <th align="left">Mode</th>
+            <th align="left">Month</th>
+            <th align="left">Total</th>
+            <th align="left">PDF</th>
+            <th align="left">Student Detail</th>
+            <th align="left">Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {billing.invoices.map((r) => (
+            <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+              <td>{r.invoiceNo}</td>
+              <td>{new Date(r.issueDate).toLocaleDateString()}</td>
+              <td>{r.mode}</td>
+              <td>{r.monthKey ?? "-"}</td>
+              <td>{money(r.totalAmount)}</td>
+              <td><a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
+              <td>
+                {r.mode === "OFFLINE_MONTHLY" ? (
+                  <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}`}>Export XLSX</a>
+                ) : (
+                  <span style={{ color: "#9ca3af" }}>-</span>
+                )}
+              </td>
+              <td>
+                <form action={deleteInvoiceAction}>
+                  <input type="hidden" name="mode" value={mode} />
+                  <input type="hidden" name="month" value={month} />
+                  <input type="hidden" name="invoiceId" value={r.id} />
+                  <button type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <h3>Partner Receipts</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f3f4f6" }}><th align="left">Receipt No.</th><th align="left">Date</th><th align="left">Invoice No.</th><th align="left">Amount</th><th align="left">Manager</th><th align="left">Finance</th><th align="left">Actions</th><th align="left">PDF</th><th align="left">Delete</th></tr></thead><tbody>{billing.receipts.map((r) => {
