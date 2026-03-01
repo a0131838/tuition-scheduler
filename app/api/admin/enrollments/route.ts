@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { isGroupPackNote } from "@/lib/package-mode";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const candidatePkgs = await prisma.coursePackage.findMany({
     where: {
       ...coursePackageAccessibleByStudent(studentId),
-      courseId: cls.courseId,
+      AND: [coursePackageMatchesCourse(cls.courseId)],
       status: "ACTIVE",
       validFrom: { lte: now },
       OR: [{ validTo: null }, { validTo: { gte: now } }],

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
-import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -626,11 +626,13 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       const activePkg = await prisma.coursePackage.findFirst({
         where: {
           ...coursePackageAccessibleByStudent(studentId),
-          courseId,
           status: "ACTIVE",
           validFrom: { lte: packageCheckAt },
           OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
-          AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+          AND: [
+            coursePackageMatchesCourse(courseId),
+            { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] },
+          ],
         },
         select: { id: true },
       });
@@ -824,7 +826,7 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
           ...coursePackageAccessibleByStudent(studentId),
-          courseId: session.class.courseId,
+          AND: [coursePackageMatchesCourse(session.class.courseId)],
           type: "HOURS",
           status: "ACTIVE",
           remainingMinutes: { gte: delta },
@@ -845,7 +847,7 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
       where: {
         id: packageId,
         ...coursePackageAccessibleByStudent(studentId),
-        courseId: session.class.courseId,
+        AND: [coursePackageMatchesCourse(session.class.courseId)],
         status: "ACTIVE",
         validFrom: { lte: session.startAt },
         OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
@@ -1094,7 +1096,7 @@ export default async function StudentDetailPage({
     }),
     prisma.coursePackage.findMany({
       where: { ...coursePackageAccessibleByStudent(studentId) },
-      include: { course: true },
+      include: { course: true, sharedCourses: { select: { courseId: true } } },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
@@ -1205,9 +1207,9 @@ export default async function StudentDetailPage({
     deductedRows.map((r) => [r.packageId, Math.abs(Math.min(0, r._sum.deltaMinutes ?? 0))])
   );
   const purchasedCourseIds = new Set(
-    packages
-      .map((p) => p.courseId)
-      .filter((id): id is string => Boolean(id))
+    packages.flatMap((p) =>
+      [p.courseId, ...p.sharedCourses.map((c) => c.courseId)].filter((id): id is string => Boolean(id))
+    )
   );
   const quickSubjects = subjects.filter((s) => purchasedCourseIds.has(s.courseId));
   const quickSubjectIds = new Set(quickSubjects.map((s) => s.id));
@@ -1272,11 +1274,13 @@ export default async function StudentDetailPage({
       const pkg = await prisma.coursePackage.findFirst({
         where: {
           ...coursePackageAccessibleByStudent(studentId),
-          courseId: quickSubject?.courseId ?? "",
           status: "ACTIVE",
           validFrom: { lte: startAt },
           OR: [{ validTo: null }, { validTo: { gte: startAt } }],
-          AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+          AND: [
+            coursePackageMatchesCourse(quickSubject?.courseId ?? ""),
+            { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] },
+          ],
         },
         select: { id: true },
       });

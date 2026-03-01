@@ -67,6 +67,10 @@ export async function POST(req: Request) {
     ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
     : [];
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((id) => id !== studentId);
+  const sharedCourseIdsRaw: string[] = Array.isArray(body?.sharedCourseIds)
+    ? (body.sharedCourseIds as any[]).map((v) => String(v)).filter(Boolean)
+    : [];
+  const sharedCourseIds = Array.from(new Set(sharedCourseIdsRaw)).filter((id) => id !== courseId);
 
   const totalMinutes = Number(body?.totalMinutes ?? 0);
 
@@ -81,6 +85,16 @@ export async function POST(req: Request) {
     });
     if (rows.length !== sharedStudentIds.length) {
       return bad("Invalid sharedStudentIds", 409);
+    }
+  }
+
+  if (sharedCourseIds.length > 0) {
+    const rows = await prisma.course.findMany({
+      where: { id: { in: sharedCourseIds } },
+      select: { id: true },
+    });
+    if (rows.length !== sharedCourseIds.length) {
+      return bad("Invalid sharedCourseIds", 409);
     }
   }
 
@@ -143,6 +157,9 @@ export async function POST(req: Request) {
         sharedStudents: sharedStudentIds.length
           ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
           : undefined,
+        sharedCourses: sharedCourseIds.length
+          ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
+          : undefined,
         txns: {
           create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: packageNote || null },
         },
@@ -170,6 +187,9 @@ export async function POST(req: Request) {
       note: packageNote || null,
       sharedStudents: sharedStudentIds.length
         ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
+        : undefined,
+      sharedCourses: sharedCourseIds.length
+        ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
         : undefined,
       txns: {
         create: { kind: "PURCHASE", deltaMinutes: 0, note: packageNote || null },

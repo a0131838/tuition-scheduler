@@ -442,21 +442,38 @@ export default async function SchedulePage({
     const packages = studentIds.length
       ? await prisma.coursePackage.findMany({
           where: {
-            studentId: { in: studentIds },
-            courseId: { in: courseIds },
+            OR: [
+              { studentId: { in: studentIds } },
+              { sharedStudents: { some: { studentId: { in: studentIds } } } },
+            ],
+            AND: [{ OR: [{ courseId: { in: courseIds } }, { sharedCourses: { some: { courseId: { in: courseIds } } } }] }],
             type: PackageType.HOURS,
             status: PackageStatus.ACTIVE,
           },
-          select: { studentId: true, courseId: true, remainingMinutes: true, validFrom: true, validTo: true },
+          select: {
+            studentId: true,
+            courseId: true,
+            remainingMinutes: true,
+            validFrom: true,
+            validTo: true,
+            sharedStudents: { select: { studentId: true } },
+            sharedCourses: { select: { courseId: true } },
+          },
         })
       : [];
 
     const pkgMap = new Map<string, typeof packages>();
     for (const p of packages) {
-      const key = `${p.studentId}|${p.courseId}`;
-      const arr = pkgMap.get(key) ?? [];
-      arr.push(p);
-      pkgMap.set(key, arr);
+      const targetStudents = [p.studentId, ...p.sharedStudents.map((s) => s.studentId)];
+      const targetCourses = [p.courseId, ...p.sharedCourses.map((c) => c.courseId)];
+      for (const sid of targetStudents) {
+        for (const cid of targetCourses) {
+          const key = `${sid}|${cid}`;
+          const arr = pkgMap.get(key) ?? [];
+          arr.push(p);
+          pkgMap.set(key, arr);
+        }
+      }
     }
 
     for (const e of sessionEvents) {

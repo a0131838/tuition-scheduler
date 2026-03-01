@@ -146,25 +146,47 @@ export default async function AdminEnrollmentsPage({
   }));
 
   const activePackages = students.length
-    ? await prisma.coursePackage.findMany({
+      ? await prisma.coursePackage.findMany({
         where: {
-          studentId: { in: students.map((s) => s.id) },
           status: "ACTIVE",
           validFrom: { lte: new Date() },
-          OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
-          AND: [{ OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] }],
+          AND: [
+            {
+              OR: [
+                { studentId: { in: students.map((s) => s.id) } },
+                { sharedStudents: { some: { studentId: { in: students.map((s) => s.id) } } } },
+              ],
+            },
+            { OR: [{ validTo: null }, { validTo: { gte: new Date() } }] },
+            { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] },
+          ],
         },
-        select: { studentId: true, courseId: true, course: { select: { name: true } } },
+        select: {
+          studentId: true,
+          courseId: true,
+          course: { select: { name: true } },
+          sharedStudents: { select: { studentId: true } },
+          sharedCourses: { select: { courseId: true, course: { select: { name: true } } } },
+        },
       })
     : [];
 
   const studentCourseMap = new Map<string, Set<string>>();
   const studentCourseIdMap = new Map<string, Set<string>>();
   for (const p of activePackages) {
-    if (!studentCourseMap.has(p.studentId)) studentCourseMap.set(p.studentId, new Set());
-    studentCourseMap.get(p.studentId)!.add(p.course.name);
-    if (!studentCourseIdMap.has(p.studentId)) studentCourseIdMap.set(p.studentId, new Set());
-    studentCourseIdMap.get(p.studentId)!.add(p.courseId);
+    const targetStudents = [p.studentId, ...p.sharedStudents.map((s) => s.studentId)];
+    const coursePairs = [
+      { id: p.courseId, name: p.course.name },
+      ...p.sharedCourses.map((sc) => ({ id: sc.courseId, name: sc.course.name })),
+    ];
+    for (const sid of targetStudents) {
+      if (!studentCourseMap.has(sid)) studentCourseMap.set(sid, new Set());
+      if (!studentCourseIdMap.has(sid)) studentCourseIdMap.set(sid, new Set());
+      for (const c of coursePairs) {
+        studentCourseMap.get(sid)!.add(c.name);
+        studentCourseIdMap.get(sid)!.add(c.id);
+      }
+    }
   }
 
   const enrollmentsByClass = new Map<string, typeof enrollments>();

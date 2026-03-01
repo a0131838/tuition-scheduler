@@ -229,6 +229,7 @@ model Course {
   subjects       Subject[]
   classes        Class[]
   packages       CoursePackage[]
+  sharedPackages CoursePackageSharedCourse[]
   oneOnOneGroups OneOnOneGroup[]
   teacherRates   TeacherCourseRate[]
   midtermReports MidtermReport[]
@@ -742,6 +743,7 @@ model CoursePackage {
   txns           PackageTxn[]
   attendances    Attendance[]
   sharedStudents CoursePackageSharedStudent[]
+  sharedCourses  CoursePackageSharedCourse[]
   settlements    PartnerSettlement[]
   midtermReports MidtermReport[]
 
@@ -762,6 +764,19 @@ model CoursePackageSharedStudent {
 
   @@unique([packageId, studentId])
   @@index([studentId])
+}
+
+model CoursePackageSharedCourse {
+  id        String   @id @default(uuid())
+  packageId String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  course  Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, courseId])
+  @@index([courseId])
 }
 
 model PackageTxn {

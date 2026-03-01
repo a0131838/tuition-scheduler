@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import PackageEditModal from "../_components/PackageEditModal";
 import SimpleModal from "../_components/SimpleModal";
@@ -100,6 +100,7 @@ export default async function AdminPackagesPage({
         },
         course: true,
         sharedStudents: { include: { student: true } },
+        sharedCourses: { include: { course: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 200,
@@ -119,6 +120,7 @@ export default async function AdminPackagesPage({
             },
             course: true,
             sharedStudents: { include: { student: true } },
+            sharedCourses: { include: { course: true } },
           },
           orderBy: { createdAt: "desc" },
           take: 200,
@@ -240,6 +242,7 @@ export default async function AdminPackagesPage({
                 paidAmount: t(lang, "Paid Amount", "付款金额"),
                 paidNote: t(lang, "Paid Note", "付款备注"),
                 sharedStudents: t(lang, "Shared Students", "共享学生"),
+                sharedCourses: t(lang, "Shared Courses", "共享课程"),
                 note: t(lang, "Note", "备注"),
                 create: t(lang, "Create", "创建"),
                 confirmCreate: t(lang, "Create this package?", "确认创建课包？"),
@@ -306,6 +309,7 @@ export default async function AdminPackagesPage({
               <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Paid Note", "付款备注")}</th>
               <th align="left">{t(lang, "Shared Students", "共享学生")}</th>
+              <th align="left">{t(lang, "Shared Courses", "共享课程")}</th>
               <th align="left">{t(lang, "Note", "备注")}</th>
               <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
@@ -395,12 +399,14 @@ export default async function AdminPackagesPage({
                 <td>{p.paidAmount ?? "-"}</td>
                 <td>{p.paidNote ?? "-"}</td>
                 <td>{p.sharedStudents.map((x: any) => x.student.name).join(", ") || "-"}</td>
+                <td>{p.sharedCourses.map((x: any) => x.course.name).join(", ") || "-"}</td>
                 <td>{stripGroupPackTag(p.note) || "-"}</td>
                 <td>{new Date(p.createdAt).toLocaleDateString()}</td>
                 <td>
                   <PackageEditModal
                     pkg={p}
                     students={students.map((s) => ({ id: s.id, name: s.name }))}
+                    courses={courses.map((c) => ({ id: c.id, name: c.name }))}
                     labels={{
                       edit: t(lang, "Edit", "编辑"),
                       update: t(lang, "Update", "更新"),
@@ -414,6 +420,7 @@ export default async function AdminPackagesPage({
                       paidAmount: t(lang, "Amount", "金额"),
                       paidNote: t(lang, "Paid Note", "付款备注"),
                       sharedStudents: t(lang, "Shared Students", "共享学生"),
+                      sharedCourses: t(lang, "Shared Courses", "共享课程"),
                       remaining: t(lang, "Remaining", "剩余"),
                       validFrom: t(lang, "validFrom", "生效日期"),
                       validTo: t(lang, "validTo", "失效日期"),
@@ -445,3 +452,5 @@ export default async function AdminPackagesPage({
     </div>
   );
 }
+
+

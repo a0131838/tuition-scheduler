@@ -4,6 +4,7 @@ import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../_components/NoticeBanner";
 import { isGroupPackNote } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import ClassEnrollmentsClient from "./ClassEnrollmentsClient";
 import DeleteClassClient from "./DeleteClassClient";
 import ClassEditClient from "./ClassEditClient";
@@ -94,8 +95,8 @@ async function addEnrollment(classId: string, formData: FormData) {
   const now = new Date();
   const pkgs = await prisma.coursePackage.findMany({
     where: {
-      studentId,
-      courseId: cls.courseId,
+      ...coursePackageAccessibleByStudent(studentId),
+      AND: [coursePackageMatchesCourse(cls.courseId)],
       status: "ACTIVE",
       validFrom: { lte: now },
       OR: [{ validTo: null }, { validTo: { gte: now } }],
@@ -173,24 +174,35 @@ export default async function ClassDetailPage({
 
   const activePkgs = await prisma.coursePackage.findMany({
     where: {
-      studentId: { in: students.map((s) => s.id) },
-      courseId: cls.courseId,
+      AND: [
+        {
+          OR: [
+            { studentId: { in: students.map((s) => s.id) } },
+            { sharedStudents: { some: { studentId: { in: students.map((s) => s.id) } } } },
+          ],
+        },
+        coursePackageMatchesCourse(cls.courseId),
+      ],
       status: "ACTIVE",
       validFrom: { lte: new Date() },
       OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
     },
-    select: { studentId: true, type: true, remainingMinutes: true, note: true },
+    select: {
+      studentId: true,
+      type: true,
+      remainingMinutes: true,
+      note: true,
+      sharedStudents: { select: { studentId: true } },
+    },
   });
-  const eligibleStudentSet = new Set(
-    activePkgs
-      .filter((p) => {
-        if (p.type === "MONTHLY") return true;
-        if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
-        if (cls.capacity === 1) return !isGroupPackNote(p.note);
-        return true;
-      })
-      .map((p) => p.studentId)
-  );
+  const eligibleStudentSet = new Set<string>();
+  for (const p of activePkgs) {
+    const validForClass =
+      p.type === "MONTHLY" || (p.type === "HOURS" && (p.remainingMinutes ?? 0) > 0 && (cls.capacity !== 1 || !isGroupPackNote(p.note)));
+    if (!validForClass) continue;
+    eligibleStudentSet.add(p.studentId);
+    for (const s of p.sharedStudents) eligibleStudentSet.add(s.studentId);
+  }
 
   const enrolledSet = new Set(enrollments.map((e) => e.studentId));
   const availableStudents = students.filter((s) => !enrolledSet.has(s.id) && eligibleStudentSet.has(s.id));

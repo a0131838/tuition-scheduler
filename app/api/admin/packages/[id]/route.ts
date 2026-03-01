@@ -64,6 +64,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
     ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
     : [];
+  const sharedCourseIdsRaw: string[] = Array.isArray(body?.sharedCourseIds)
+    ? (body.sharedCourseIds as any[]).map((v) => String(v)).filter(Boolean)
+    : [];
 
   if (!validFromStr) return bad("Missing validFrom", 409);
 
@@ -73,6 +76,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   });
   if (!pkg) return bad("Package not found", 404);
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
+  const sharedCourseIds = Array.from(new Set(sharedCourseIdsRaw)).filter((cid) => cid !== pkg.courseId);
 
   const validFrom = parseDateStart(validFromStr);
   const validTo = validToStr ? parseDateEnd(validToStr) : null;
@@ -108,6 +112,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (rows.length !== sharedStudentIds.length) return bad("Invalid sharedStudentIds", 409);
   }
 
+  if (sharedCourseIds.length > 0) {
+    const rows = await prisma.course.findMany({
+      where: { id: { in: sharedCourseIds } },
+      select: { id: true },
+    });
+    if (rows.length !== sharedCourseIds.length) return bad("Invalid sharedCourseIds", 409);
+  }
+
   if (status === "ACTIVE" && updateMode === "MONTHLY") {
     const overlap = await prisma.coursePackage.findFirst({
       where: {
@@ -141,6 +153,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         deleteMany: {},
         ...(sharedStudentIds.length
           ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
+          : {}),
+      },
+      sharedCourses: {
+        deleteMany: {},
+        ...(sharedCourseIds.length
+          ? { createMany: { data: sharedCourseIds.map((courseId) => ({ courseId })) } }
           : {}),
       },
     },

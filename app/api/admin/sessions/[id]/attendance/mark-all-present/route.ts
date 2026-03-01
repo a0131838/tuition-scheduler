@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { AttendanceStatus, PackageStatus, PackageType, Prisma } from "@prisma/client";
 import { isGroupPackNote } from "@/lib/package-mode";
-import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
+import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { logAudit } from "@/lib/audit-log";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -28,7 +28,7 @@ async function pickHoursPackageId(
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
       ...coursePackageAccessibleByStudent(studentId),
-      courseId,
+      AND: [coursePackageMatchesCourse(courseId)],
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
       remainingMinutes: { gte: Math.max(1, needMinutes) },
@@ -50,7 +50,7 @@ async function pickGroupPackPackageId(
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
       ...coursePackageAccessibleByStudent(studentId),
-      courseId,
+      AND: [coursePackageMatchesCourse(courseId)],
       type: PackageType.HOURS,
       status: PackageStatus.ACTIVE,
       remainingMinutes: { gte: Math.max(1, needCount) },
@@ -126,7 +126,7 @@ async function applyOneStudentAttendanceAndDeduct(
       where: {
         id: packageId,
         ...coursePackageAccessibleByStudent(studentId),
-        courseId,
+        AND: [coursePackageMatchesCourse(courseId)],
         status: PackageStatus.ACTIVE,
         validFrom: { lte: at },
         OR: [{ validTo: null }, { validTo: { gte: at } }],

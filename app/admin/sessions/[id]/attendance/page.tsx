@@ -80,14 +80,19 @@ export default async function AttendancePage({
             { sharedStudents: { some: { studentId: { in: studentIds } } } },
           ],
         },
+        {
+          OR: [
+            { courseId: session.class.courseId },
+            { sharedCourses: { some: { courseId: session.class.courseId } } },
+          ],
+        },
         { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
       ],
-      courseId: session.class.courseId,
       status: PackageStatus.ACTIVE,
       validFrom: { lte: session.startAt },
     },
     orderBy: [{ studentId: "asc" }, { validTo: "asc" }],
-    include: { sharedStudents: { select: { studentId: true } } },
+    include: { sharedStudents: { select: { studentId: true } }, sharedCourses: { select: { courseId: true } } },
   });
 
   const pkgMap = new Map<string, typeof packages>();

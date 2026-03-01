@@ -6,3 +6,17 @@ export function coursePackageAccessibleByStudent(studentId: string): Prisma.Cour
   };
 }
 
+export function coursePackageMatchesCourse(courseId: string): Prisma.CoursePackageWhereInput {
+  return {
+    OR: [{ courseId }, { sharedCourses: { some: { courseId } } }],
+  };
+}
+
+export function coursePackageAccessibleByStudentAndCourse(
+  studentId: string,
+  courseId: string
+): Prisma.CoursePackageWhereInput {
+  return {
+    AND: [coursePackageAccessibleByStudent(studentId), coursePackageMatchesCourse(courseId)],
+  };
+}
