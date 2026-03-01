@@ -1,6 +1,16 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
+import { listPartnerBilling } from "@/lib/partner-billing";
+
+const PARTNER_SOURCE_NAME = "新东方学生";
+
+function isPartnerOnlinePackage(pkg: {
+  settlementMode: string | null;
+  student?: { sourceChannel?: { name: string | null } | null } | null;
+}) {
+  return pkg.settlementMode === "ONLINE_PACKAGE_END" && pkg.student?.sourceChannel?.name === PARTNER_SOURCE_NAME;
+}
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -29,33 +39,70 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
 
   const txn = await prisma.packageTxn.findFirst({
     where: { id: txnId, packageId },
-    select: { id: true, deltaMinutes: true, packageId: true },
+    select: { id: true, kind: true, deltaMinutes: true, packageId: true },
   });
   if (!txn) return bad("Ledger record not found", 404);
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
-    select: { id: true, remainingMinutes: true },
+    select: {
+      id: true,
+      remainingMinutes: true,
+      totalMinutes: true,
+      settlementMode: true,
+      student: { select: { sourceChannel: { select: { name: true } } } },
+    },
   });
   if (!pkg) return bad("Package not found", 404);
 
   const diff = Math.round(deltaMinutes) - txn.deltaMinutes;
   const nextRemaining = (pkg.remainingMinutes ?? 0) + diff;
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
+  const isPurchase = txn.kind === "PURCHASE";
+  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
+  const nextTotal = isPurchase ? curTotal + diff : curTotal;
+  if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
-  await prisma.$transaction([
-    prisma.packageTxn.update({
+  let settlementIdsToDelete: string[] = [];
+  if (isPurchase && diff < 0 && isPartnerOnlinePackage(pkg)) {
+    const overSnapshots = await prisma.partnerSettlement.findMany({
+      where: {
+        packageId,
+        mode: "ONLINE_PACKAGE_END",
+        onlineSnapshotTotalMinutes: { gt: nextTotal },
+      },
+      select: { id: true },
+    });
+    if (overSnapshots.length > 0) {
+      const removeIds = overSnapshots.map((x) => x.id);
+      const billing = await listPartnerBilling();
+      const linkedInvoices = billing.invoices.filter((inv) => inv.settlementIds.some((sid) => removeIds.includes(sid)));
+      if (linkedInvoices.length > 0) {
+        return bad(
+          `Cannot reduce top-up: settlements already linked to invoice(s): ${linkedInvoices.map((x) => x.invoiceNo).join(", ")}`,
+          409
+        );
+      }
+      settlementIdsToDelete = removeIds;
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (settlementIdsToDelete.length > 0) {
+      await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
+    }
+    await tx.packageTxn.update({
       where: { id: txn.id },
       data: {
         deltaMinutes: Math.round(deltaMinutes),
         note: note || null,
       },
-    }),
-    prisma.coursePackage.update({
+    });
+    await tx.coursePackage.update({
       where: { id: packageId },
-      data: { remainingMinutes: nextRemaining },
-    }),
-  ]);
+      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
+    });
+  });
 
   await logAudit({
     actor: admin,
@@ -63,7 +110,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     action: "TXN_UPDATE",
     entityType: "PackageTxn",
     entityId: txn.id,
-    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), note: note || null, diff },
+    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), note: note || null, diff, totalChanged: isPurchase, settlementIdsToDelete },
   });
 
   return Response.json({ ok: true, remainingMinutes: nextRemaining });
@@ -87,20 +134,57 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
-    select: { id: true, remainingMinutes: true },
+    select: {
+      id: true,
+      remainingMinutes: true,
+      totalMinutes: true,
+      settlementMode: true,
+      student: { select: { sourceChannel: { select: { name: true } } } },
+    },
   });
   if (!pkg) return bad("Package not found", 404);
 
   const nextRemaining = (pkg.remainingMinutes ?? 0) - txn.deltaMinutes;
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
+  const isPurchase = txn.kind === "PURCHASE";
+  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
+  const nextTotal = isPurchase ? curTotal - txn.deltaMinutes : curTotal;
+  if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
-  await prisma.$transaction([
-    prisma.packageTxn.delete({ where: { id: txn.id } }),
-    prisma.coursePackage.update({
+  let settlementIdsToDelete: string[] = [];
+  if (isPurchase && isPartnerOnlinePackage(pkg)) {
+    const overSnapshots = await prisma.partnerSettlement.findMany({
+      where: {
+        packageId,
+        mode: "ONLINE_PACKAGE_END",
+        onlineSnapshotTotalMinutes: { gt: nextTotal },
+      },
+      select: { id: true },
+    });
+    if (overSnapshots.length > 0) {
+      const removeIds = overSnapshots.map((x) => x.id);
+      const billing = await listPartnerBilling();
+      const linkedInvoices = billing.invoices.filter((inv) => inv.settlementIds.some((sid) => removeIds.includes(sid)));
+      if (linkedInvoices.length > 0) {
+        return bad(
+          `Cannot rollback top-up: settlements already linked to invoice(s): ${linkedInvoices.map((x) => x.invoiceNo).join(", ")}`,
+          409
+        );
+      }
+      settlementIdsToDelete = removeIds;
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (settlementIdsToDelete.length > 0) {
+      await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
+    }
+    await tx.packageTxn.delete({ where: { id: txn.id } });
+    await tx.coursePackage.update({
       where: { id: packageId },
-      data: { remainingMinutes: nextRemaining },
-    }),
-  ]);
+      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
+    });
+  });
 
   await logAudit({
     actor: admin,
@@ -108,7 +192,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     action: "TXN_DELETE",
     entityType: "PackageTxn",
     entityId: txn.id,
-    meta: { packageId, deltaMinutes: txn.deltaMinutes, kind: txn.kind },
+    meta: { packageId, deltaMinutes: txn.deltaMinutes, kind: txn.kind, totalChanged: isPurchase, settlementIdsToDelete },
   });
 
   return Response.json({
@@ -156,12 +240,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
-    select: { id: true, remainingMinutes: true },
+    select: { id: true, remainingMinutes: true, totalMinutes: true },
   });
   if (!pkg) return bad("Package not found", 404);
 
   const nextRemaining = (pkg.remainingMinutes ?? 0) + Math.round(deltaMinutes);
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
+  const isPurchase = kind === "PURCHASE";
+  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
+  const nextTotal = isPurchase ? curTotal + Math.round(deltaMinutes) : curTotal;
+  if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
   await prisma.$transaction([
     prisma.packageTxn.create({
@@ -177,7 +265,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
     }),
     prisma.coursePackage.update({
       where: { id: packageId },
-      data: { remainingMinutes: nextRemaining },
+      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
     }),
   ]);
 
