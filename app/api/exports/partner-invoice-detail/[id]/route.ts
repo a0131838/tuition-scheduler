@@ -116,6 +116,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       };
     });
 
+  const totalLessonQty = Number(detailRows.reduce((sum, r) => sum + r.lessonQty, 0).toFixed(2));
+  const totalAmount = Number(detailRows.reduce((sum, r) => sum + r.lineTotal, 0).toFixed(2));
+
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("明细");
   sheet.columns = [
@@ -156,6 +159,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     row.getCell(6).numFmt = "0.00";
     row.getCell(7).numFmt = "0.00";
   }
+
+  sheet.addRow([]);
+  const totalLessonRow = sheet.addRow([`合计：${totalLessonQty.toFixed(2)}课时`]);
+  const totalAmountRow = sheet.addRow([`合计：$${totalAmount.toFixed(2)} 钱`]);
+  totalLessonRow.getCell(1).font = { bold: true };
+  totalAmountRow.getCell(1).font = { bold: true };
+  totalLessonRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+  totalAmountRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber < 3) return;
