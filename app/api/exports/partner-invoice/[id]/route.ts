@@ -55,7 +55,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const x = 16;
   const y = 16;
   const w = 554;
-  const h = 780;
+  const h = 620;
   doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, h).stroke();
 
   try {
@@ -110,7 +110,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   text(doc, "GST", colX[3], tableY, 10, true);
   text(doc, "Total", colX[4], tableY, 10, true);
 
-  const maxRows = 12;
+  const maxRows = 10;
   const lines = invoice.lines.slice(0, maxRows);
   lines.forEach((line, idx) => {
     const yy = tableY + 24 + idx * 22;
@@ -126,7 +126,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const totalBoxX = x + 338;
-  const totalBoxY = y + 642;
+  const totalBoxY = y + h - 90;
   const totalLabelW = 94;
   const totalValueW = 84;
   const totalRows: Array<[string, string]> = [
@@ -140,6 +140,19 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     doc.fillColor("#f3dfd1").rect(totalBoxX + totalLabelW, yy, totalValueW, 24).fill();
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
+
+  const noteY = y + h + 18;
+  text(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
+  text(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
+  text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
+  text(doc, 'Please e-mail remittance advice to "sggreatthinker@gmail.com".', x + 4, noteY + 54, 10, true);
+
+  text(doc, "Account name: Reshape Great Thinkers Pte Ltd.", x + 4, noteY + 94, 10);
+  text(doc, "Bankname: OCBC Bank Singapore", x + 4, noteY + 112, 10);
+  text(doc, "Bankaddress: 65 Chulia Street #01-40 OCBC Centre Singapore, S049513", x + 4, noteY + 130, 10);
+  text(doc, "Account number: 595214891001", x + 4, noteY + 148, 10);
+  text(doc, "Swift code: OCBCSGSG", x + 4, noteY + 166, 10);
+  text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
 
   const stream = streamPdf(doc);
   const fileName = `partner_invoice_${safeName(invoice.invoiceNo)}.pdf`;
