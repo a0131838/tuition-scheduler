@@ -27,14 +27,9 @@ import {
 } from "@/lib/global-invoice-sequence";
 import {
   deletePartnerReceiptApproval,
-  financeApprovePartnerReceipt,
-  financeRejectPartnerReceipt,
   getPartnerReceiptApprovalMap,
-  managerApprovePartnerReceipt,
-  managerRejectPartnerReceipt,
-  revokePartnerReceiptApprovalForRedo,
 } from "@/lib/partner-receipt-approval";
-import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
+import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const PARTNER_SOURCE_NAME = "新东方学生";
@@ -376,69 +371,6 @@ async function deletePaymentRecordAction(formData: FormData) {
   redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-record-deleted", mode, month));
 }
 
-async function managerApproveReceiptAction(formData: FormData) { "use server";
-  const admin = await requireAdmin();
-  const mode = parseMode(String(formData.get("mode") ?? ""));
-  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !isRoleApprover(admin.email, cfg.managerApproverEmails)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=not-allowed", mode, month));
-  await managerApprovePartnerReceipt(receiptId, admin.email);
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=manager-approved", mode, month));
-}
-
-async function managerRejectReceiptAction(formData: FormData) { "use server";
-  const admin = await requireAdmin();
-  const mode = parseMode(String(formData.get("mode") ?? ""));
-  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !reason || !isRoleApprover(admin.email, cfg.managerApproverEmails)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=reject-reason-required", mode, month));
-  await managerRejectPartnerReceipt(receiptId, admin.email, reason);
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=manager-rejected", mode, month));
-}
-
-async function financeApproveReceiptAction(formData: FormData) { "use server";
-  const admin = await requireAdmin();
-  const mode = parseMode(String(formData.get("mode") ?? ""));
-  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !isRoleApprover(admin.email, cfg.financeApproverEmails)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=not-allowed", mode, month));
-  const approvalMap = await getPartnerReceiptApprovalMap([receiptId]);
-  const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
-  if (!managerReady) redirect(withQuery("/admin/reports/partner-settlement/billing?err=manager-approval-required", mode, month));
-  await financeApprovePartnerReceipt(receiptId, admin.email);
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=finance-approved", mode, month));
-}
-
-async function financeRejectReceiptAction(formData: FormData) { "use server";
-  const admin = await requireAdmin();
-  const mode = parseMode(String(formData.get("mode") ?? ""));
-  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !reason || !isRoleApprover(admin.email, cfg.financeApproverEmails)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=reject-reason-required", mode, month));
-  await financeRejectPartnerReceipt(receiptId, admin.email, reason);
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=finance-rejected", mode, month));
-}
-
-async function revokeReceiptForRedoAction(formData: FormData) { "use server";
-  const admin = await requireAdmin();
-  const mode = parseMode(String(formData.get("mode") ?? ""));
-  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
-  const actor = admin.email.trim().toLowerCase();
-  if (!receiptId || actor !== SUPER_ADMIN_EMAIL) {
-    redirect(withQuery("/admin/reports/partner-settlement/billing?err=not-allowed", mode, month));
-  }
-  await revokePartnerReceiptApprovalForRedo(receiptId, actor, reason || "Super admin revoke to redo");
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-reopened", mode, month));
-}
 export default async function PartnerBillingPage({
   searchParams,
 }: {
@@ -459,11 +391,8 @@ export default async function PartnerBillingPage({
   if (!source) return <div style={{ color: "#b00" }}>Partner source not found: {PARTNER_SOURCE_NAME}</div>;
 
   const financeOpsEnabled = canFinanceOperate(current?.email ?? admin.email, current?.role ?? admin.role);
-  const canSuperRevoke = (current?.email ?? admin.email).trim().toLowerCase() === SUPER_ADMIN_EMAIL;
   const roleCfg = await getApprovalRoleConfig();
-  const isManagerApprover = isRoleApprover(admin.email, roleCfg.managerApproverEmails);
-  const isFinanceApprover = isRoleApprover(admin.email, roleCfg.financeApproverEmails);
-  const defaultTab: BillingTab = financeOpsEnabled ? "payments" : isManagerApprover || isFinanceApprover ? "receipts" : "invoice";
+  const defaultTab: BillingTab = financeOpsEnabled ? "payments" : "receipts";
   const activeTab: BillingTab = requestedTab ?? defaultTab;
   const tabHref = (tab: BillingTab) =>
     `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}&tab=${encodeURIComponent(tab)}`;
@@ -702,6 +631,11 @@ export default async function PartnerBillingPage({
       {activeTab === "receipts" ? (
       <div style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>Partner Receipts</h3>
+      <div style={{ marginBottom: 10 }}>
+        <a href="/admin/receipts-approvals" style={{ fontWeight: 700 }}>
+          Open Receipt Approval Center
+        </a>
+      </div>
       <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
         <thead>
@@ -747,52 +681,7 @@ export default async function PartnerBillingPage({
                 <td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td>
                 <td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td>
                 <td>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {exportReady ? <span style={completedPill}>Completed</span> : null}
-                    {!exportReady && isManagerApprover ? (
-                      <>
-                        <form action={managerApproveReceiptAction}>
-                          <input type="hidden" name="mode" value={mode} />
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <button type="submit" style={primaryBtn}>Manager Approve</button>
-                        </form>
-                        <form action={managerRejectReceiptAction}>
-                          <input type="hidden" name="mode" value={mode} />
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <input name="reason" placeholder="Manager reject reason" />
-                          <button type="submit" style={dangerBtn}>Manager Reject</button>
-                        </form>
-                      </>
-                    ) : null}
-                    {!exportReady && isFinanceApprover ? (
-                      <>
-                        <form action={financeApproveReceiptAction}>
-                          <input type="hidden" name="mode" value={mode} />
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <button type="submit" style={primaryBtn}>Finance Approve</button>
-                        </form>
-                        <form action={financeRejectReceiptAction}>
-                          <input type="hidden" name="mode" value={mode} />
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <input name="reason" placeholder="Finance reject reason" />
-                          <button type="submit" style={dangerBtn}>Finance Reject</button>
-                        </form>
-                      </>
-                    ) : null}
-                    {canSuperRevoke ? (
-                      <form action={revokeReceiptForRedoAction}>
-                        <input type="hidden" name="mode" value={mode} />
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="receiptId" value={r.id} />
-                        <input name="reason" placeholder="Revoke reason (optional)" />
-                        <button type="submit" style={dangerBtn}>Revoke To Redo</button>
-                      </form>
-                    ) : null}
-                  </div>
+                  {exportReady ? <span style={completedPill}>Completed</span> : <span style={pendingPill}>Go to Approval Center</span>}
                 </td>
                 <td>
                   {exportReady ? (
