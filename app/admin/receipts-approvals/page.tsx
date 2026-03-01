@@ -626,7 +626,6 @@ export default async function ReceiptsApprovalsPage({
               <th align="left">Receipt No.</th>
               <th align="left">Invoice No.</th>
               <th align="left">Student</th>
-              <th align="left">Package</th>
               <th align="left">Amount Received</th>
               <th align="left">Manager</th>
               <th align="left">Finance</th>
@@ -652,9 +651,6 @@ export default async function ReceiptsApprovalsPage({
                   <td>{r.receiptNo}</td>
                   <td>{invoice?.invoiceNo ?? "-"}</td>
                   <td>{pkg?.student?.name ?? "-"}</td>
-                  <td>
-                    <a href={`/admin/packages/${encodeURIComponent(r.packageId)}/billing`}>{r.packageId.slice(0, 8)}...</a>
-                  </td>
                   <td>{money(r.amountReceived)}</td>
                   <td>
                     {roleCfg.managerApproverEmails.length === 0
