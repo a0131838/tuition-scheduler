@@ -52,6 +52,10 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function isImageFile(pathOrName: string) {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(pathOrName);
+}
+
 function withQuery(base: string, packageId?: string) {
   if (!packageId) return base;
   const q = `packageId=${encodeURIComponent(packageId)}`;
@@ -458,7 +462,15 @@ export default async function ReceiptsApprovalsPage({
             >
               <input type="hidden" name="packageId" value={packageIdFilter} />
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(160px, 1fr))", gap: 8 }}>
-                <label>Payment Proof<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
+                <label>Payment Proof
+                  <input
+                    name="paymentProof"
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    required
+                    style={{ width: "100%" }}
+                  />
+                </label>
                 <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
                 <label>Payment Method
                   <select name="paymentMethod" defaultValue="" style={{ width: "100%" }}>
@@ -499,6 +511,7 @@ export default async function ReceiptsApprovalsPage({
                     <th align="left">Method</th>
                     <th align="left">Reference</th>
                     <th align="left">File</th>
+                    <th align="left">Preview</th>
                     <th align="left">Note</th>
                     <th align="left">By</th>
                     <th align="left">Delete</th>
@@ -511,7 +524,24 @@ export default async function ReceiptsApprovalsPage({
                       <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
                       <td>{r.paymentMethod || "-"}</td>
                       <td>{r.referenceNo || "-"}</td>
-                      <td><a href={r.relativePath} target="_blank">{r.originalFileName}</a></td>
+                      <td>
+                        <a href={r.relativePath} target="_blank" rel="noreferrer">
+                          Open File
+                        </a>
+                      </td>
+                      <td>
+                        {isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
+                          <a href={r.relativePath} target="_blank" rel="noreferrer">
+                            <img
+                              src={r.relativePath}
+                              alt={r.originalFileName}
+                              style={{ width: 56, height: 56, objectFit: "cover", border: "1px solid #ddd", borderRadius: 4 }}
+                            />
+                          </a>
+                        ) : (
+                          <span style={{ color: "#666" }}>No preview</span>
+                        )}
+                      </td>
                       <td>{r.note ?? "-"}</td>
                       <td>{r.uploadedBy}</td>
                       <td>
