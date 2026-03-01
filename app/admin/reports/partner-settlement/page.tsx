@@ -157,7 +157,7 @@ async function createOnlineSettlementAction(formData: FormData) {
       where: { id: packageId },
       include: {
         student: { select: { id: true, name: true, sourceChannelId: true } },
-        settlements: { where: { mode: "ONLINE_PACKAGE_END" } },
+        settlements: { where: { mode: "ONLINE_PACKAGE_END" }, select: { onlineSnapshotTotalMinutes: true } },
       },
     });
   } catch (err) {
@@ -178,23 +178,28 @@ async function createOnlineSettlementAction(formData: FormData) {
   if (pkg.type !== "HOURS" || remainingMinutes > 0) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=package-not-completed`);
   }
-  if (pkg.settlements.length > 0) {
+  const rates = await getSettlementRates();
+  const totalMinutes = Math.max(0, Number(pkg.totalMinutes ?? 0));
+  const snapshotTotals = pkg.settlements
+    .map((s: { onlineSnapshotTotalMinutes?: number | null }) => Number(s.onlineSnapshotTotalMinutes))
+    .filter((x: number) => Number.isFinite(x) && x >= 0);
+  const settledUpTo = snapshotTotals.length > 0 ? Math.max(...snapshotTotals) : 0;
+  const pendingMinutes = Math.max(0, totalMinutes - settledUpTo);
+  if (pendingMinutes <= 0) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
-
-  const rates = await getSettlementRates();
-  const totalMinutes = Number(pkg.totalMinutes ?? 0);
 
   try {
     await prisma.partnerSettlement.create({
       data: {
         studentId: pkg.studentId,
         packageId: pkg.id,
+        onlineSnapshotTotalMinutes: totalMinutes,
         mode: "ONLINE_PACKAGE_END",
         status: "PENDING",
-        hours: Number(toHours(totalMinutes).toFixed(2)),
-        amount: calcAmountByRatePer45(totalMinutes, rates.onlineRatePer45),
-        note: `Online package completed: ${pkg.course?.name ?? pkg.courseId} | packageId=${pkg.id}`,
+        hours: Number(toHours(pendingMinutes).toFixed(2)),
+        amount: calcAmountByRatePer45(pendingMinutes, rates.onlineRatePer45),
+        note: `Online package completed: ${pkg.course?.name ?? pkg.courseId} | packageId=${pkg.id} | settled ${settledUpTo}->${totalMinutes} mins`,
       },
     });
   } catch (err) {
@@ -400,7 +405,7 @@ export default async function PartnerSettlementPage({
     student: { id: string; name: string } | null;
     course: { name: string } | null;
     status: string;
-    totalMinutes: number | null;
+    pendingMinutes: number;
   }> = [];
   let offlinePending: Array<{ studentId: string; studentName: string; sessions: number; totalMinutes: number; hours: number; chargedExcusedSessions: number }> = [];
   let offlineWarnings: Array<{
@@ -462,12 +467,22 @@ export default async function PartnerSettlementPage({
       include: {
         student: { select: { id: true, name: true } },
         course: { select: { name: true } },
-        settlements: { where: { mode: "ONLINE_PACKAGE_END" }, select: { id: true } },
+        settlements: { where: { mode: "ONLINE_PACKAGE_END" }, select: { id: true, onlineSnapshotTotalMinutes: true } },
       },
       orderBy: { updatedAt: "desc" },
       take: 500,
     });
-    onlinePending = onlinePackages.filter((p) => p.settlements.length === 0);
+    onlinePending = onlinePackages
+      .map((p) => {
+        const totalMinutes = Math.max(0, Number(p.totalMinutes ?? 0));
+        const snapshotTotals = p.settlements
+          .map((s) => Number(s.onlineSnapshotTotalMinutes))
+          .filter((x) => Number.isFinite(x) && x >= 0);
+        const settledUpTo = snapshotTotals.length > 0 ? Math.max(...snapshotTotals) : 0;
+        const pendingMinutes = Math.max(0, totalMinutes - settledUpTo);
+        return { ...p, pendingMinutes };
+      })
+      .filter((p) => p.pendingMinutes > 0);
 
     const [offlineAttendanceRows, offlineSettledRows, offlineAuditRows] = await Promise.all([
       prisma.attendance.findMany({
@@ -815,8 +830,8 @@ export default async function PartnerSettlementPage({
                 </td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>{p.status}</td>
-                <td>{toHours(p.totalMinutes ?? 0)}</td>
-                <td>{calcAmountByRatePer45(Number(p.totalMinutes ?? 0), rates.onlineRatePer45)}</td>
+                <td>{toHours(p.pendingMinutes ?? 0)}</td>
+                <td>{calcAmountByRatePer45(Number(p.pendingMinutes ?? 0), rates.onlineRatePer45)}</td>
                 <td>
                   {!isFinanceOnlyUser ? (
                     <form action={createOnlineSettlementAction}>

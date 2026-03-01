@@ -474,6 +474,7 @@ model PartnerSettlement {
   studentId  String
   packageId  String?
   monthKey   String?
+  onlineSnapshotTotalMinutes Int?
   mode       PartnerSettlementMode
   status     PartnerSettlementStatus @default(PENDING)
   hours      Decimal                 @default(0) @db.Decimal(10, 2)
@@ -485,8 +486,8 @@ model PartnerSettlement {
   student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   package CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
 
-  @@unique([packageId, mode])
   @@unique([studentId, monthKey, mode])
+  @@unique([packageId, mode, onlineSnapshotTotalMinutes])
   @@index([mode, status, createdAt])
   @@index([studentId, createdAt])
 }
