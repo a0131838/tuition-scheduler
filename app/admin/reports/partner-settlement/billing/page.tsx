@@ -488,6 +488,49 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           <div style={{ marginTop: 8 }}><button type="submit">Upload</button></div>
         </form>
       ) : <div style={{ color: "#92400e", marginBottom: 12 }}>Only finance can manage payment records.</div>}
+      {billing.paymentRecords.length === 0 ? (
+        <div style={{ color: "#666", marginBottom: 12 }}>No payment records yet.</div>
+      ) : (
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+          <thead>
+            <tr style={{ background: "#f3f4f6" }}>
+              <th align="left">Time</th>
+              <th align="left">Payment Date</th>
+              <th align="left">Method</th>
+              <th align="left">Reference</th>
+              <th align="left">File</th>
+              <th align="left">Note</th>
+              <th align="left">By</th>
+              <th align="left">Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {billing.paymentRecords.map((r) => (
+              <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                <td>{new Date(r.uploadedAt).toLocaleString()}</td>
+                <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
+                <td>{r.paymentMethod || "-"}</td>
+                <td>{r.referenceNo || "-"}</td>
+                <td>
+                  <a href={r.relativePath} target="_blank" rel="noreferrer">
+                    {r.originalFileName}
+                  </a>
+                </td>
+                <td>{r.note || "-"}</td>
+                <td>{r.uploadedBy}</td>
+                <td>
+                  <form action={deletePaymentRecordAction}>
+                    <input type="hidden" name="mode" value={mode} />
+                    <input type="hidden" name="month" value={month} />
+                    <input type="hidden" name="recordId" value={r.id} />
+                    <button type="submit">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <h3>Create Receipt</h3>
       {financeOpsEnabled ? (

@@ -1,4 +1,4 @@
-import { getCurrentUser, requireAdmin } from "@/lib/auth";
+﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
@@ -15,6 +15,7 @@ import {
   listParentBillingForPackage,
   replaceParentPaymentRecord,
 } from "@/lib/student-parent-billing";
+import { listPartnerBilling } from "@/lib/partner-billing";
 import {
   financeApproveParentReceipt,
   financeRejectParentReceipt,
@@ -22,6 +23,13 @@ import {
   managerApproveParentReceipt,
   managerRejectParentReceipt,
 } from "@/lib/parent-receipt-approval";
+import {
+  financeApprovePartnerReceipt,
+  financeRejectPartnerReceipt,
+  getPartnerReceiptApprovalMap,
+  managerApprovePartnerReceipt,
+  managerRejectPartnerReceipt,
+} from "@/lib/partner-receipt-approval";
 import {
   areAllApproversConfirmed,
   getApprovalRoleConfig,
@@ -314,6 +322,70 @@ async function financeRejectReceiptAction(formData: FormData) {
   redirect(withQuery("/admin/receipts-approvals?msg=Finance+rejected", packageId));
 }
 
+async function managerApprovePartnerReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = current?.email ?? admin.email;
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const cfg = await getApprovalRoleConfig();
+  if (!receiptId || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
+    redirect("/admin/receipts-approvals?err=Not+allowed");
+  }
+  await managerApprovePartnerReceipt(receiptId, actorEmail);
+  redirect("/admin/receipts-approvals?msg=Partner+manager+approved");
+}
+
+async function managerRejectPartnerReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = current?.email ?? admin.email;
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const cfg = await getApprovalRoleConfig();
+  if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
+    redirect("/admin/receipts-approvals?err=Partner+reject+reason+required");
+  }
+  await managerRejectPartnerReceipt(receiptId, actorEmail, reason);
+  redirect("/admin/receipts-approvals?msg=Partner+manager+rejected");
+}
+
+async function financeApprovePartnerReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = current?.email ?? admin.email;
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const cfg = await getApprovalRoleConfig();
+  if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
+    redirect("/admin/receipts-approvals?err=Not+allowed");
+  }
+  const approvalMap = await getPartnerReceiptApprovalMap([receiptId]);
+  const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
+  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
+  if (!managerReady) {
+    redirect("/admin/receipts-approvals?err=Partner+manager+approval+is+required+first");
+  }
+  await financeApprovePartnerReceipt(receiptId, actorEmail);
+  redirect("/admin/receipts-approvals?msg=Partner+finance+approved");
+}
+
+async function financeRejectPartnerReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = current?.email ?? admin.email;
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const cfg = await getApprovalRoleConfig();
+  if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
+    redirect("/admin/receipts-approvals?err=Partner+reject+reason+required");
+  }
+  await financeRejectPartnerReceipt(receiptId, actorEmail, reason);
+  redirect("/admin/receipts-approvals?msg=Partner+finance+rejected");
+}
+
 export default async function ReceiptsApprovalsPage({
   searchParams,
 }: {
@@ -328,10 +400,11 @@ export default async function ReceiptsApprovalsPage({
   const monthRaw = sp?.month ? String(sp.month).trim() : "";
   const monthFilter = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
 
-  const [current, roleCfg, all] = await Promise.all([
+  const [current, roleCfg, all, partnerAll] = await Promise.all([
     getCurrentUser(),
     getApprovalRoleConfig(),
     listAllParentBilling(),
+    listPartnerBilling(),
   ]);
   const actorEmail = current?.email ?? "";
   const financeOpsEnabled = canFinanceOperate(actorEmail, current?.role ?? "");
@@ -382,6 +455,18 @@ export default async function ReceiptsApprovalsPage({
     return tb - ta;
   });
   const approvalMap = await getParentReceiptApprovalMap(rows.map((x) => x.id));
+  let partnerRows = partnerAll.receipts;
+  if (monthFilter) {
+    partnerRows = partnerRows.filter((x) => {
+      const d = new Date(x.receiptDate);
+      if (Number.isNaN(+d)) return false;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return ym === monthFilter;
+    });
+  }
+  partnerRows = partnerRows.sort((a, b) => +new Date(b.receiptDate) - +new Date(a.receiptDate));
+  const partnerInvoiceMap = new Map(partnerAll.invoices.map((x) => [x.id, x]));
+  const partnerApprovalMap = await getPartnerReceiptApprovalMap(partnerRows.map((x) => x.id));
   const selectedPackage = packageIdFilter
     ? await prisma.coursePackage.findUnique({
         where: { id: packageIdFilter },
@@ -397,7 +482,7 @@ export default async function ReceiptsApprovalsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Parent Receipt Approvals", "家长收据审批")}</h2>
+      <h2>{t(lang, "Parent Receipt Approvals", "瀹堕暱鏀舵嵁瀹℃壒")}</h2>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
@@ -512,16 +597,16 @@ export default async function ReceiptsApprovalsPage({
                   </select>
                 </label>
                 <label style={{ gridColumn: "span 5" }}>Note
-                  <input name="paymentNote" placeholder={t(lang, "Note", "备注")} style={{ width: "100%" }} />
+                  <input name="paymentNote" placeholder={t(lang, "Note", "澶囨敞")} style={{ width: "100%" }} />
                 </label>
               </div>
               <div style={{ marginTop: 8 }}>
-                <button type="submit">{t(lang, "Upload", "上传")}</button>
+                <button type="submit">{t(lang, "Upload", "涓婁紶")}</button>
               </div>
             </form>
 
             {selectedBilling.paymentRecords.length === 0 ? (
-              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无缴费记录")}</div>
+              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "鏆傛棤缂磋垂璁板綍")}</div>
             ) : (
               <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
                 <thead>
@@ -638,7 +723,7 @@ export default async function ReceiptsApprovalsPage({
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
+        <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "鏆傛棤鏀舵嵁")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
@@ -737,6 +822,105 @@ export default async function ReceiptsApprovalsPage({
           </tbody>
         </table>
       )}
+      <h3 style={{ marginTop: 20 }}>Partner Receipt Approvals / 合作方收据审批</h3>
+      {partnerRows.length === 0 ? (
+        <div style={{ color: "#666" }}>No partner receipts found. / 暂无合作方收据</div>
+      ) : (
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+          <thead>
+            <tr style={{ background: "#f3f4f6" }}>
+              <th align="left">Receipt No.</th>
+              <th align="left">Receipt Date</th>
+              <th align="left">Invoice No.</th>
+              <th align="left">Mode</th>
+              <th align="left">Amount Received</th>
+              <th align="left">Manager</th>
+              <th align="left">Finance</th>
+              <th align="left">Actions</th>
+              <th align="left">PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {partnerRows.map((r) => {
+              const inv = partnerInvoiceMap.get(r.invoiceId);
+              const approval = partnerApprovalMap.get(r.id) ?? {
+                managerApprovedBy: [],
+                financeApprovedBy: [],
+                managerRejectReason: null,
+                financeRejectReason: null,
+              };
+              const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+              const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+              const exportReady = managerReady && financeReady;
+              return (
+                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>{r.receiptNo}</td>
+                  <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
+                  <td>{inv?.invoiceNo ?? "-"}</td>
+                  <td>{r.mode}</td>
+                  <td>{money(r.amountReceived)}</td>
+                  <td>
+                    {roleCfg.managerApproverEmails.length === 0
+                      ? "No approver config"
+                      : `${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
+                    {approval.managerRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.managerRejectReason}</div> : null}
+                  </td>
+                  <td>
+                    {roleCfg.financeApproverEmails.length === 0
+                      ? "No approver config"
+                      : `${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
+                    {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
+                  </td>
+                  <td>
+                    {exportReady ? (
+                      <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {isManagerApprover ? (
+                          <>
+                            <form action={managerApprovePartnerReceiptAction}>
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <button type="submit">Manager Approve</button>
+                            </form>
+                            <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <input name="reason" placeholder="Manager reject reason" />
+                              <button type="submit">Manager Reject</button>
+                            </form>
+                          </>
+                        ) : null}
+                        {isFinanceApprover ? (
+                          <>
+                            <form action={financeApprovePartnerReceiptAction}>
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <button type="submit">Finance Approve</button>
+                            </form>
+                            <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <input name="reason" placeholder="Finance reject reason" />
+                              <button type="submit">Finance Reject</button>
+                            </form>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    {exportReady ? (
+                      <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                    ) : (
+                      <span style={{ color: "#b45309" }}>Pending approval</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
+
+
+
