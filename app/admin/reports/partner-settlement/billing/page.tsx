@@ -458,7 +458,15 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
           <label>Bill To<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 3" }}>Description<input name="description" defaultValue={mode === "OFFLINE_MONTHLY" ? `星辅优学${Number(String(month).split("-")[1] || "0") || month}月线下一对一产品服务费` : "Partner settlement Online batch"} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 4" }}>Manual Extra Items (Description|Amount per line)<textarea name="manualItems" rows={4} style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 4" }}>
+            Manual Extra Items / 手动附加项目（每行：描述|金额）
+            <textarea
+              name="manualItems"
+              rows={4}
+              placeholder={"教材费|200\n交通补贴|150.50"}
+              style={{ width: "100%" }}
+            />
+          </label>
           <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
         </div>
         <div style={{ marginTop: 8 }}><button type="submit">Create Invoice (Batch)</button></div>
