@@ -702,6 +702,16 @@ export default async function PartnerSettlementPage({
     }
   }
 
+  const onlinePendingTotalAmount = onlinePending.reduce(
+    (acc, p) => acc + calcAmountByRatePer45(Number(p.pendingMinutes ?? 0), rates.onlineRatePer45),
+    0,
+  );
+  const offlinePendingTotalAmount = offlinePending.reduce(
+    (acc, r) => acc + calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45),
+    0,
+  );
+  const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
+
   return (
     <div>
       <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
@@ -741,19 +751,48 @@ export default async function PartnerSettlementPage({
       {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
       {err === "settlement-locked" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement already exported and locked.", "该结算单已导出并锁定。")}</div> : null}
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
-        <label>
-          {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
-        </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
-      </form>
-      <div style={{ marginBottom: 14 }}>
-        <a href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}>
-          {t(lang, "Open Partner Invoice & Receipt Center", "打开合作方Invoice/Receipt中心")}
-        </a>
+      <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
+        <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <label>
+            {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
+          </label>
+          <button type="submit">{t(lang, "Apply", "应用")}</button>
+          <a
+            href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}
+            style={{ marginLeft: 8, fontWeight: 700 }}
+          >
+            {t(lang, "Open Billing Workspace", "打开账单工作区")}
+          </a>
+        </form>
       </div>
 
-      {!isFinanceOnlyUser ? <h3>{t(lang, "Rate Settings", "费率设置")}</h3> : null}
+      <div style={{ ...cardStyle, background: "#f8fafc" }}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Pending Overview", "待结算概览")}</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+            <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Online Pending", "线上待结算")}</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{onlinePending.length}</div>
+            <div style={{ color: "#334155" }}>SGD {onlinePendingTotalAmount.toFixed(2)}</div>
+          </div>
+          <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+            <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Offline Pending", "线下待结算")}</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{offlinePending.length}</div>
+            <div style={{ color: "#334155" }}>SGD {offlinePendingTotalAmount.toFixed(2)}</div>
+          </div>
+          <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+            <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Pending Records", "待开票记录")}</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{recentPendingSettlements.length}</div>
+            <div style={{ color: "#334155" }}>{t(lang, "Can be reverted", "可撤回")}</div>
+          </div>
+          <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+            <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Invoiced Records", "已开票记录")}</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{recentInvoiceStats.length}</div>
+            <div style={{ color: "#334155" }}>{t(lang, "Grouped by invoice", "按Invoice聚合")}</div>
+          </div>
+        </div>
+      </div>
+
+      {!isFinanceOnlyUser ? <div style={cardStyle}><h3 style={{ marginTop: 0 }}>{t(lang, "Rate Settings", "费率设置")}</h3>
       {!isFinanceOnlyUser ? <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
         <input type="hidden" name="month" value={month} />
         <label>
@@ -772,9 +811,10 @@ export default async function PartnerSettlementPage({
           "Bill amount formula: amount = (minutes / 45) x rate.",
           "账单金额公式：金额 = （总分钟 / 45）x 单价。"
         )}
-      </div> : null}
+      </div> : null}</div> : null}
 
-      <h3>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
@@ -799,8 +839,10 @@ export default async function PartnerSettlementPage({
           ))}
         </tbody>
       </table>
+      </div>
 
-      <h3>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
       <div style={{ marginBottom: 8, color: "#4b5563", fontSize: 13 }}>
         {t(
           lang,
@@ -848,8 +890,10 @@ export default async function PartnerSettlementPage({
           </tbody>
         </table>
       )}
+      </div>
 
-      <h3>{t(lang, "Offline Pending (Monthly)", "线下待结算（按月）")}</h3>
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Offline Pending (Monthly)", "线下待结算（按月）")}</h3>
       <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
         {t(
           lang,
@@ -947,8 +991,10 @@ export default async function PartnerSettlementPage({
           </tbody>
         </table>
       )}
+      </div>
 
-      <h3>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
       {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
         <input type="hidden" name="month" value={month} />
         <button type="submit" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239" }}>
@@ -1050,6 +1096,7 @@ export default async function PartnerSettlementPage({
           ) : null}
         </>
       )}
+      </div>
     </div>
   );
 }

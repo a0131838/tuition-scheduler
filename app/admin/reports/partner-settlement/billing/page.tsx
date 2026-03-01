@@ -41,6 +41,7 @@ const PARTNER_SOURCE_NAME = "新东方学生";
 const PARTNER_CUSTOMER_NAME = "北京新东方前途出国咨询有限公司";
 
 type Mode = PartnerBillingMode;
+type BillingTab = "invoice" | "payments" | "receipt" | "invoices" | "receipts";
 
 function canFinanceOperate(email: string, role: string) {
   const e = String(email ?? "").trim().toLowerCase();
@@ -49,6 +50,12 @@ function canFinanceOperate(email: string, role: string) {
 
 function parseMode(v: string | null | undefined): Mode {
   return v === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END";
+}
+
+function parseBillingTab(v: string | null | undefined): BillingTab | null {
+  const x = String(v ?? "").trim();
+  if (x === "invoice" || x === "payments" || x === "receipt" || x === "invoices" || x === "receipts") return x;
+  return null;
 }
 
 function monthKey(d: Date) {
@@ -74,8 +81,8 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
-function withQuery(base: string, mode: Mode, month: string) {
-  const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}`;
+function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null) {
+  const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
 }
 
@@ -412,13 +419,18 @@ async function revokeReceiptForRedoAction(formData: FormData) { "use server";
   await revokePartnerReceiptApprovalForRedo(receiptId, actor, reason || "Super admin revoke to redo");
   redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-reopened", mode, month));
 }
-export default async function PartnerBillingPage({ searchParams }: { searchParams?: Promise<{ mode?: string; month?: string; msg?: string; err?: string }> }) {
+export default async function PartnerBillingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ mode?: string; month?: string; tab?: string; msg?: string; err?: string }>;
+}) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
   const lang = await getLang();
   const sp = await searchParams;
   const mode = parseMode(sp?.mode ?? "ONLINE_PACKAGE_END");
   const month = String(sp?.month ?? monthKey(new Date())).trim();
+  const requestedTab = parseBillingTab(sp?.tab ?? null);
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
   const today = ymd(new Date());
@@ -431,6 +443,10 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
   const roleCfg = await getApprovalRoleConfig();
   const isManagerApprover = isRoleApprover(admin.email, roleCfg.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(admin.email, roleCfg.financeApproverEmails);
+  const defaultTab: BillingTab = financeOpsEnabled ? "payments" : isManagerApprover || isFinanceApprover ? "receipts" : "invoice";
+  const activeTab: BillingTab = requestedTab ?? defaultTab;
+  const tabHref = (tab: BillingTab) =>
+    `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}&tab=${encodeURIComponent(tab)}`;
 
   const [billedSet, settlementRows, billing] = await Promise.all([
     getPartnerBilledSettlementIdSet(),
@@ -449,6 +465,23 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
   const invoiceMap = new Map(billing.invoices.map((x) => [x.id, x]));
   const paymentRecordMap = new Map(billing.paymentRecords.map((x) => [x.id, x]));
   const approvalMap = await getPartnerReceiptApprovalMap(billing.receipts.map((x) => x.id));
+  const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
+  const tabBtn = (tab: BillingTab, label: string) => (
+    <a
+      href={tabHref(tab)}
+      style={{
+        textDecoration: "none",
+        border: "1px solid #cbd5e1",
+        borderRadius: 999,
+        padding: "6px 12px",
+        fontWeight: 700,
+        color: activeTab === tab ? "#1d4ed8" : "#334155",
+        background: activeTab === tab ? "#eff6ff" : "#fff",
+      }}
+    >
+      {label}
+    </a>
+  );
 
   return (
     <div>
@@ -457,17 +490,31 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
-      <form method="get" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
-        <label>Mode<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">Online: Package End</option><option value="OFFLINE_MONTHLY">Offline: Monthly</option></select></label>
-        <label>Month<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
-        <button type="submit">Apply</button>
-      </form>
+      <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
+        <form method="get" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <label>Mode<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">Online: Package End</option><option value="OFFLINE_MONTHLY">Offline: Monthly</option></select></label>
+          <label>Month<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
+          <input type="hidden" name="tab" value={activeTab} />
+          <button type="submit">Apply</button>
+        </form>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {tabBtn("invoice", "Create Invoice")}
+          {tabBtn("payments", "Payment Records")}
+          {tabBtn("receipt", "Create Receipt")}
+          {tabBtn("invoices", "Invoices")}
+          {tabBtn("receipts", "Receipts & Approval")}
+        </div>
+      </div>
 
-      <h3>Pending Settlement Items ({mode === "ONLINE_PACKAGE_END" ? "Online" : `Offline ${month}`})</h3>
-      <div style={{ marginBottom: 8, color: "#374151" }}>Items: {candidates.length} | Total: SGD {money(candidatesAmount)}</div>
+      <div style={{ ...cardStyle, background: "#f8fafc" }}>
+        <h3 style={{ marginTop: 0 }}>Pending Settlement Items ({mode === "ONLINE_PACKAGE_END" ? "Online" : `Offline ${month}`})</h3>
+        <div style={{ color: "#374151" }}>Items: {candidates.length} | Total: SGD {money(candidatesAmount)}</div>
+      </div>
 
-      <h3>Create Partner Invoice (Batch)</h3>
-      <form action={createPartnerInvoiceAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+      {activeTab === "invoice" ? (
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>Create Partner Invoice (Batch)</h3>
+      <form action={createPartnerInvoiceAction}>
         <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
           <label>Invoice No.<input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} /></label>
@@ -489,8 +536,12 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
         </div>
         <div style={{ marginTop: 8 }}><button type="submit">Create Invoice (Batch)</button></div>
       </form>
+      </div>
+      ) : null}
 
-      <h3>Payment Records</h3>
+      {activeTab === "payments" ? (
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>Payment Records</h3>
       {financeOpsEnabled ? (
         <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
@@ -548,10 +599,14 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           </tbody>
         </table>
       )}
+      </div>
+      ) : null}
 
-      <h3>Create Receipt</h3>
+      {activeTab === "receipt" ? (
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>Create Receipt</h3>
       {financeOpsEnabled ? (
-        <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+        <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
             <label>Source Invoice<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? "(No available invoice)" : "Select an invoice"}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
@@ -569,9 +624,13 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           </div>
           <div style={{ marginTop: 8 }}><button type="submit" disabled={availableInvoices.length === 0}>Create Receipt</button></div>
         </form>
+      ) : <div style={{ color: "#92400e" }}>Only finance can create receipts.</div>}
+      </div>
       ) : null}
 
-      <h3>Partner Invoices</h3>
+      {activeTab === "invoices" ? (
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>Partner Invoices</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
@@ -613,8 +672,12 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           ))}
         </tbody>
       </table>
+      </div>
+      ) : null}
 
-      <h3>Partner Receipts</h3>
+      {activeTab === "receipts" ? (
+      <div style={cardStyle}>
+      <h3 style={{ marginTop: 0 }}>Partner Receipts</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
@@ -726,6 +789,8 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
           })}
         </tbody>
       </table>
+      </div>
+      ) : null}
     </div>
   );
 }
