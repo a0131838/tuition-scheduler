@@ -194,7 +194,7 @@ async function createOnlineSettlementAction(formData: FormData) {
         status: "PENDING",
         hours: Number(toHours(totalMinutes).toFixed(2)),
         amount: calcAmountByRatePer45(totalMinutes, rates.onlineRatePer45),
-        note: `Online package completed: ${pkg.courseId}`,
+        note: `Online package completed: ${pkg.course?.name ?? pkg.courseId} | packageId=${pkg.id}`,
       },
     });
   } catch (err) {
@@ -786,6 +786,13 @@ export default async function PartnerSettlementPage({
       </table>
 
       <h3>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
+      <div style={{ marginBottom: 8, color: "#4b5563", fontSize: 13 }}>
+        {t(
+          lang,
+          "Rule: one completed package = one settlement item. New purchased packages are settled separately, even for the same student.",
+          "规则：每个完结课包对应一条独立结算。即使同一学生再次购买新课包，也必须分开结算。"
+        )}
+      </div>
       {onlinePending.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No online pending items.", "暂无线上待结算项。")}</div>
       ) : (
