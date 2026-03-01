@@ -695,112 +695,133 @@ export default async function ReceiptsApprovalsPage({
             <div style={{ marginBottom: 10 }}>
               <b>{t(lang, "Student", "学生")}:</b> {selectedPackage.student.name} | <b>{t(lang, "Course", "课程")}:</b> {selectedPackage.course.name}
             </div>
+            <div style={{ marginBottom: 10, color: "#666" }}>
+              {t(
+                lang,
+                "This area is split into 3 blocks: upload payment proof, check existing records, create receipt.",
+                "该区域已拆分为3个模块：上传缴费凭证、查看已上传记录、创建收据。"
+              )}
+            </div>
 
-            <h4>Payment Records</h4>
-            <form
-              action={uploadPaymentRecordAction}
-              encType="multipart/form-data"
-              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}
-            >
-              <input type="hidden" name="packageId" value={packageIdFilter} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(160px, 1fr))", gap: 8 }}>
-                <label>Payment Proof
-                  <input
-                    name="paymentProof"
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                    required
-                    style={{ width: "100%" }}
-                  />
-                </label>
-                <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
-                <label>Payment Method
-                  <select name="paymentMethod" defaultValue="" style={{ width: "100%" }}>
-                    <option value="">(optional)</option>
-                    <option value="Paynow">Paynow</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Bank transfer">Bank transfer</option>
-                  </select>
-                </label>
-                <label>Reference No.<input name="referenceNo" placeholder="UTR / Txn Id" style={{ width: "100%" }} /></label>
-                <label>Replace Existing
-                  <select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}>
-                    <option value="">(new record)</option>
-                    {selectedBilling.paymentRecords.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={{ gridColumn: "span 5" }}>Note / 备注
-                  <input name="paymentNote" placeholder={t(lang, "Note", "备注")} style={{ width: "100%" }} />
-                </label>
-              </div>
+            <details style={{ marginBottom: 10 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                {t(lang, "1) Upload Payment Record", "1）上传缴费记录")}
+              </summary>
+              <form
+                action={uploadPaymentRecordAction}
+                encType="multipart/form-data"
+                style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginTop: 8 }}
+              >
+                <input type="hidden" name="packageId" value={packageIdFilter} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 8 }}>
+                  <label>Payment Proof
+                    <input
+                      name="paymentProof"
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                      required
+                      style={{ width: "100%" }}
+                    />
+                  </label>
+                  <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
+                  <label>Payment Method
+                    <select name="paymentMethod" defaultValue="" style={{ width: "100%" }}>
+                      <option value="">(optional)</option>
+                      <option value="Paynow">Paynow</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank transfer">Bank transfer</option>
+                    </select>
+                  </label>
+                  <label>Reference No.<input name="referenceNo" placeholder="UTR / Txn Id" style={{ width: "100%" }} /></label>
+                  <label>Replace Existing
+                    <select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}>
+                      <option value="">(new record)</option>
+                      {selectedBilling.paymentRecords.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>Note / 备注
+                    <input name="paymentNote" placeholder={t(lang, "Note", "备注")} style={{ width: "100%" }} />
+                  </label>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <button type="submit">{t(lang, "Upload", "上传")}</button>
+                </div>
+              </form>
+            </details>
+
+            <details style={{ marginBottom: 10 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                {t(lang, "2) Existing Payment Records", "2）已上传缴费记录")}
+              </summary>
               <div style={{ marginTop: 8 }}>
-                <button type="submit">{t(lang, "Upload", "上传")}</button>
+                {selectedBilling.paymentRecords.length === 0 ? (
+                  <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无缴费记录")}</div>
+                ) : (
+                  <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#f3f4f6" }}>
+                        <th align="left">Time</th>
+                        <th align="left">Payment Date</th>
+                        <th align="left">Method</th>
+                        <th align="left">Reference</th>
+                        <th align="left">File</th>
+                        <th align="left">Preview</th>
+                        <th align="left">Note</th>
+                        <th align="left">By</th>
+                        <th align="left">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBilling.paymentRecords.map((r) => (
+                        <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                          <td>{new Date(r.uploadedAt).toLocaleString()}</td>
+                          <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
+                          <td>{r.paymentMethod || "-"}</td>
+                          <td>{r.referenceNo || "-"}</td>
+                          <td>
+                            <a href={r.relativePath} target="_blank" rel="noreferrer">
+                              Open File
+                            </a>
+                          </td>
+                          <td>
+                            {isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
+                              <a href={r.relativePath} target="_blank" rel="noreferrer">
+                                <img
+                                  src={r.relativePath}
+                                  alt={r.originalFileName}
+                                  style={{ width: 56, height: 56, objectFit: "cover", border: "1px solid #ddd", borderRadius: 4 }}
+                                />
+                              </a>
+                            ) : (
+                              <span style={{ color: "#666" }}>No preview</span>
+                            )}
+                          </td>
+                          <td>{r.note ?? "-"}</td>
+                          <td>{r.uploadedBy}</td>
+                          <td>
+                            <form action={deletePaymentRecordAction}>
+                              <input type="hidden" name="packageId" value={packageIdFilter} />
+                              <input type="hidden" name="recordId" value={r.id} />
+                              <button type="submit">Delete</button>
+                            </form>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            </form>
+            </details>
 
-            {selectedBilling.paymentRecords.length === 0 ? (
-              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无缴费记录")}</div>
-            ) : (
-              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
-                <thead>
-                  <tr style={{ background: "#f3f4f6" }}>
-                    <th align="left">Time</th>
-                    <th align="left">Payment Date</th>
-                    <th align="left">Method</th>
-                    <th align="left">Reference</th>
-                    <th align="left">File</th>
-                    <th align="left">Preview</th>
-                    <th align="left">Note</th>
-                    <th align="left">By</th>
-                    <th align="left">Delete</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedBilling.paymentRecords.map((r) => (
-                    <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{new Date(r.uploadedAt).toLocaleString()}</td>
-                      <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
-                      <td>{r.paymentMethod || "-"}</td>
-                      <td>{r.referenceNo || "-"}</td>
-                      <td>
-                        <a href={r.relativePath} target="_blank" rel="noreferrer">
-                          Open File
-                        </a>
-                      </td>
-                      <td>
-                        {isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
-                          <a href={r.relativePath} target="_blank" rel="noreferrer">
-                            <img
-                              src={r.relativePath}
-                              alt={r.originalFileName}
-                              style={{ width: 56, height: 56, objectFit: "cover", border: "1px solid #ddd", borderRadius: 4 }}
-                            />
-                          </a>
-                        ) : (
-                          <span style={{ color: "#666" }}>No preview</span>
-                        )}
-                      </td>
-                      <td>{r.note ?? "-"}</td>
-                      <td>{r.uploadedBy}</td>
-                      <td>
-                        <form action={deletePaymentRecordAction}>
-                          <input type="hidden" name="packageId" value={packageIdFilter} />
-                          <input type="hidden" name="recordId" value={r.id} />
-                          <button type="submit">Delete</button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            <h4>Create Receipt</h4>
-            <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+            <details>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                {t(lang, "3) Create Receipt", "3）创建收据")}
+              </summary>
+              <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginTop: 8 }}>
               <input type="hidden" name="packageId" value={packageIdFilter} />
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
                 <label>Source Invoice
@@ -855,6 +876,7 @@ export default async function ReceiptsApprovalsPage({
                 ) : null}
               </div>
             </form>
+            </details>
           </details>
         )}
       </div>
