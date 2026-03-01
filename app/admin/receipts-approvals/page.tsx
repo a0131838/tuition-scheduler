@@ -420,7 +420,7 @@ async function revokePartnerReceiptForRedoAction(formData: FormData) {
 export default async function ReceiptsApprovalsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; packageId?: string; month?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; packageId?: string; month?: string; view?: string; selectedType?: string; selectedId?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -430,6 +430,11 @@ export default async function ReceiptsApprovalsPage({
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
   const monthRaw = sp?.month ? String(sp.month).trim() : "";
   const monthFilter = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
+  const viewRaw = String(sp?.view ?? "ALL").trim().toUpperCase();
+  const viewMode = viewRaw === "PARENT" || viewRaw === "PARTNER" ? viewRaw : "ALL";
+  const selectedTypeRaw = String(sp?.selectedType ?? "").trim().toUpperCase();
+  const selectedType = selectedTypeRaw === "PARENT" || selectedTypeRaw === "PARTNER" ? selectedTypeRaw : "";
+  const selectedId = String(sp?.selectedId ?? "").trim();
 
   const [current, roleCfg, all, partnerAll] = await Promise.all([
     getCurrentUser(),
@@ -499,6 +504,7 @@ export default async function ReceiptsApprovalsPage({
   }
   partnerRows = partnerRows.sort((a, b) => +new Date(b.receiptDate) - +new Date(a.receiptDate));
   const partnerInvoiceMap = new Map(partnerAll.invoices.map((x) => [x.id, x]));
+  const partnerPaymentRecordMap = new Map(partnerAll.paymentRecords.map((x) => [x.id, x]));
   const partnerApprovalMap = await getPartnerReceiptApprovalMap(partnerRows.map((x) => x.id));
   const selectedPackage = packageIdFilter
     ? await prisma.coursePackage.findUnique({
@@ -513,23 +519,113 @@ export default async function ReceiptsApprovalsPage({
     ? selectedBilling.invoices.filter((inv) => !selectedBilling.receipts.some((r) => r.invoiceId === inv.id))
     : [];
 
+  const baseQuery = new URLSearchParams();
+  if (packageIdFilter) baseQuery.set("packageId", packageIdFilter);
+  if (monthFilter) baseQuery.set("month", monthFilter);
+  if (viewMode !== "ALL") baseQuery.set("view", viewMode);
+  const openHref = (type: "PARENT" | "PARTNER", id: string) => {
+    const q = new URLSearchParams(baseQuery.toString());
+    q.set("selectedType", type);
+    q.set("selectedId", id);
+    return `/admin/receipts-approvals?${q.toString()}`;
+  };
+
+  const parentQueue = rows.map((r) => {
+    const pkg = packageMap.get(r.packageId);
+    const inv = r.invoiceId ? invoiceMap.get(r.invoiceId) : null;
+    const pay = r.paymentRecordId ? parentPaymentRecordMap.get(r.paymentRecordId) : null;
+    const approval = approvalMap.get(r.id) ?? {
+      managerApprovedBy: [],
+      financeApprovedBy: [],
+      managerRejectReason: null,
+      financeRejectReason: null,
+    };
+    const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+    const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+    const status: "COMPLETED" | "REJECTED" | "PENDING" = managerReady && financeReady
+      ? "COMPLETED"
+      : approval.managerRejectReason || approval.financeRejectReason
+        ? "REJECTED"
+        : "PENDING";
+    return {
+      id: r.id,
+      type: "PARENT" as const,
+      receiptNo: r.receiptNo,
+      receiptDate: r.receiptDate,
+      invoiceNo: inv?.invoiceNo ?? "-",
+      partyName: pkg?.student?.name ?? "-",
+      mode: "-",
+      amountReceived: r.amountReceived,
+      approval,
+      status,
+      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
+      packageId: r.packageId,
+      exportHref: `/api/exports/parent-receipt/${encodeURIComponent(r.id)}`,
+    };
+  });
+
+  const partnerQueue = partnerRows.map((r) => {
+    const inv = partnerInvoiceMap.get(r.invoiceId);
+    const pay = r.paymentRecordId ? partnerPaymentRecordMap.get(r.paymentRecordId) : null;
+    const approval = partnerApprovalMap.get(r.id) ?? {
+      managerApprovedBy: [],
+      financeApprovedBy: [],
+      managerRejectReason: null,
+      financeRejectReason: null,
+    };
+    const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+    const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+    const status: "COMPLETED" | "REJECTED" | "PENDING" = managerReady && financeReady
+      ? "COMPLETED"
+      : approval.managerRejectReason || approval.financeRejectReason
+        ? "REJECTED"
+        : "PENDING";
+    return {
+      id: r.id,
+      type: "PARTNER" as const,
+      receiptNo: r.receiptNo,
+      receiptDate: r.receiptDate,
+      invoiceNo: inv?.invoiceNo ?? "-",
+      partyName: inv?.billTo || "Partner",
+      mode: r.mode,
+      amountReceived: r.amountReceived,
+      approval,
+      status,
+      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
+      packageId: "",
+      exportHref: `/api/exports/partner-receipt/${encodeURIComponent(r.id)}`,
+    };
+  });
+
+  let unifiedQueue = viewMode === "PARENT" ? parentQueue : viewMode === "PARTNER" ? partnerQueue : [...parentQueue, ...partnerQueue];
+  unifiedQueue = unifiedQueue.sort((a, b) => +new Date(b.receiptDate) - +new Date(a.receiptDate));
+  const selectedRow = unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ?? unifiedQueue[0] ?? null;
+
   return (
     <div>
-      <h2>{t(lang, "Parent Receipt Approvals", "家长收据审批")}</h2>
+      <h2>{t(lang, "Receipt Approval Center", "收据审批中心")}</h2>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
       <form method="get" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <label>
-          Package ID
+          {t(lang, "Package ID", "课包ID")}
           <input name="packageId" defaultValue={packageIdFilter} style={{ marginLeft: 6, minWidth: 260 }} />
         </label>
         <label>
-          Month
+          {t(lang, "Month", "月份")}
           <input name="month" type="month" defaultValue={monthFilter} style={{ marginLeft: 6 }} />
         </label>
-        <button type="submit">Filter</button>
-        <a href="/admin/receipts-approvals">Reset</a>
+        <label>
+          {t(lang, "View", "视图")}
+          <select name="view" defaultValue={viewMode} style={{ marginLeft: 6 }}>
+            <option value="ALL">{t(lang, "All", "全部")}</option>
+            <option value="PARENT">{t(lang, "Parent", "家长")}</option>
+            <option value="PARTNER">{t(lang, "Partner", "合作方")}</option>
+          </select>
+        </label>
+        <button type="submit">{t(lang, "Filter", "筛选")}</button>
+        <a href="/admin/receipts-approvals">{t(lang, "Reset", "重置")}</a>
       </form>
 
       {!packageIdFilter ? (
@@ -546,12 +642,13 @@ export default async function ReceiptsApprovalsPage({
             flexWrap: "wrap",
           }}
         >
+          {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
           {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
           <label>
-            Quick Select Package
+            {t(lang, "Quick Select Package", "快捷选择课包")}
             <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
               <option value="" disabled>
-                Select package to open finance operations
+                {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
               </option>
               {packageIdsFromInvoices
                 .map((id) => {
@@ -572,24 +669,31 @@ export default async function ReceiptsApprovalsPage({
                 ))}
             </select>
           </label>
-          <button type="submit">Open Finance Operations</button>
+          <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
         </form>
       ) : null}
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Finance Receipt Operations</h3>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Finance Receipt Operations", "财务收据操作")}</h3>
         {!packageIdFilter ? (
-          <div style={{ color: "#666" }}>Enter a Package ID above to upload payment records and create receipts.</div>
+          <div style={{ color: "#666" }}>
+            {t(lang, "Enter a Package ID above to upload payment records and create receipts.", "请先输入课包ID，再上传缴费记录和创建收据。")}
+          </div>
         ) : !selectedPackage ? (
-          <div style={{ color: "#b00" }}>Package not found: {packageIdFilter}</div>
+          <div style={{ color: "#b00" }}>{t(lang, "Package not found", "课包不存在")}: {packageIdFilter}</div>
         ) : !financeOpsEnabled ? (
-          <div style={{ color: "#92400e" }}>Only finance can manage payment records and create receipts.</div>
+          <div style={{ color: "#92400e" }}>
+            {t(lang, "Only finance can manage payment records and create receipts.", "仅财务可管理缴费记录并创建收据。")}
+          </div>
         ) : !selectedBilling ? (
-          <div style={{ color: "#b00" }}>Unable to load billing data for this package.</div>
+          <div style={{ color: "#b00" }}>{t(lang, "Unable to load billing data for this package.", "无法加载该课包账单数据。")}</div>
         ) : (
-          <>
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 8 }}>
+              {t(lang, "Open Parent Finance Operations", "展开家长财务操作")}
+            </summary>
             <div style={{ marginBottom: 10 }}>
-              <b>Student:</b> {selectedPackage.student.name} | <b>Course:</b> {selectedPackage.course.name}
+              <b>{t(lang, "Student", "学生")}:</b> {selectedPackage.student.name} | <b>{t(lang, "Course", "课程")}:</b> {selectedPackage.course.name}
             </div>
 
             <h4>Payment Records</h4>
@@ -629,17 +733,17 @@ export default async function ReceiptsApprovalsPage({
                     ))}
                   </select>
                 </label>
-                <label style={{ gridColumn: "span 5" }}>Note
-                  <input name="paymentNote" placeholder={t(lang, "Note", "澶囨敞")} style={{ width: "100%" }} />
+                <label style={{ gridColumn: "span 5" }}>Note / 备注
+                  <input name="paymentNote" placeholder={t(lang, "Note", "备注")} style={{ width: "100%" }} />
                 </label>
               </div>
               <div style={{ marginTop: 8 }}>
-                <button type="submit">{t(lang, "Upload", "涓婁紶")}</button>
+                <button type="submit">{t(lang, "Upload", "上传")}</button>
               </div>
             </form>
 
             {selectedBilling.paymentRecords.length === 0 ? (
-              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "鏆傛棤缂磋垂璁板綍")}</div>
+              <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无缴费记录")}</div>
             ) : (
               <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
                 <thead>
@@ -751,229 +855,184 @@ export default async function ReceiptsApprovalsPage({
                 ) : null}
               </div>
             </form>
-          </>
+          </details>
         )}
       </div>
 
-      {rows.length === 0 ? (
-        <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f3f4f6" }}>
-              <th align="left">Receipt No.</th>
-              <th align="left">Receipt Date</th>
-              <th align="left">Invoice No.</th>
-              <th align="left">Student</th>
-              <th align="left">Payment Record</th>
-              <th align="left">Amount Received</th>
-              <th align="left">Manager</th>
-              <th align="left">Finance</th>
-              <th align="left">Actions</th>
-              <th align="left">PDF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const pkg = packageMap.get(r.packageId);
-              const invoice = r.invoiceId ? invoiceMap.get(r.invoiceId) : null;
-              const paymentRecord = r.paymentRecordId ? parentPaymentRecordMap.get(r.paymentRecordId) : null;
-              const approval = approvalMap.get(r.id) ?? {
-                managerApprovedBy: [],
-                financeApprovedBy: [],
-                managerRejectReason: null,
-                financeRejectReason: null,
-              };
-              const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-              const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-              const exportReady = managerReady && financeReady;
-              return (
-                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{r.receiptNo}</td>
-                  <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
-                  <td>{invoice?.invoiceNo ?? "-"}</td>
-                  <td>{pkg?.student?.name ?? "-"}</td>
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Unified Receipt Queue", "统一收据队列")}</h3>
+        {unifiedQueue.length === 0 ? (
+          <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
+        ) : (
+          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr style={{ background: "#f3f4f6" }}>
+                <th align="left">{t(lang, "Type", "类型")}</th>
+                <th align="left">{t(lang, "Receipt No.", "收据号")}</th>
+                <th align="left">{t(lang, "Date", "日期")}</th>
+                <th align="left">{t(lang, "Invoice No.", "发票号")}</th>
+                <th align="left">{t(lang, "Name / Party", "学生/对象")}</th>
+                <th align="left">{t(lang, "Payment Record", "缴费记录")}</th>
+                <th align="left">{t(lang, "Amount", "金额")}</th>
+                <th align="left">{t(lang, "Manager", "管理")}</th>
+                <th align="left">{t(lang, "Finance", "财务")}</th>
+                <th align="left">{t(lang, "Status", "状态")}</th>
+                <th align="left">{t(lang, "Open", "打开")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {unifiedQueue.map((x) => (
+                <tr
+                  key={`${x.type}-${x.id}`}
+                  style={{ borderTop: "1px solid #eee", background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : undefined }}
+                >
+                  <td>{x.type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")}</td>
+                  <td>{x.receiptNo}</td>
+                  <td>{new Date(x.receiptDate).toLocaleDateString()}</td>
+                  <td>{x.invoiceNo}</td>
+                  <td>{x.partyName}</td>
                   <td>
-                    {paymentRecord ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span>{new Date(paymentRecord.uploadedAt).toLocaleDateString()}</span>
-                        <a href={paymentRecord.relativePath} target="_blank" rel="noreferrer">
-                          {paymentRecord.originalFileName}
-                        </a>
-                      </div>
+                    {x.paymentRecord ? (
+                      <a href={x.paymentRecord.path} target="_blank" rel="noreferrer">{x.paymentRecord.name}</a>
                     ) : (
-                      <span style={{ color: "#6b7280" }}>(none)</span>
+                      <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
                     )}
                   </td>
-                  <td>{money(r.amountReceived)}</td>
+                  <td>{money(x.amountReceived)}</td>
                   <td>
                     {roleCfg.managerApproverEmails.length === 0
-                      ? "No approver config"
-                      : `${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
-                    {approval.managerRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.managerRejectReason}</div> : null}
+                      ? t(lang, "No config", "未配置")
+                      : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
                   </td>
                   <td>
                     {roleCfg.financeApproverEmails.length === 0
-                      ? "No approver config"
-                      : `${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
-                    {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
+                      ? t(lang, "No config", "未配置")
+                      : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
                   </td>
                   <td>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {exportReady ? <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span> : null}
-                      {!exportReady && isManagerApprover ? (
-                        <>
-                          <form action={managerApproveReceiptAction}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Manager Approve</button>
-                          </form>
-                          <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Manager reject reason" />
-                            <button type="submit">Manager Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                      {!exportReady && isFinanceApprover ? (
-                        <>
-                          <form action={financeApproveReceiptAction}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Finance Approve</button>
-                          </form>
-                          <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Finance reject reason" />
-                            <button type="submit">Finance Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                      {canSuperRevoke ? (
-                        <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
-                          <input type="hidden" name="packageId" value={r.packageId} />
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <input name="reason" placeholder="Revoke reason (optional)" />
-                          <button type="submit">Revoke To Redo</button>
-                        </form>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td>
-                    {exportReady ? (
-                      <a href={`/api/exports/parent-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                    {x.status === "COMPLETED" ? (
+                      <span style={{ color: "#166534", fontWeight: 600 }}>{t(lang, "Completed", "已完成")}</span>
+                    ) : x.status === "REJECTED" ? (
+                      <span style={{ color: "#b00", fontWeight: 600 }}>{t(lang, "Rejected", "已驳回")}</span>
                     ) : (
-                      <span style={{ color: "#b45309" }}>Pending approval</span>
+                      <span style={{ color: "#b45309", fontWeight: 600 }}>{t(lang, "Pending", "待审批")}</span>
                     )}
                   </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-      <h3 style={{ marginTop: 20 }}>Partner Receipt Approvals / 合作方收据审批</h3>
-      {partnerRows.length === 0 ? (
-        <div style={{ color: "#666" }}>No partner receipts found. / 暂无合作方收据</div>
-      ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f3f4f6" }}>
-              <th align="left">Receipt No.</th>
-              <th align="left">Receipt Date</th>
-              <th align="left">Invoice No.</th>
-              <th align="left">Mode</th>
-              <th align="left">Amount Received</th>
-              <th align="left">Manager</th>
-              <th align="left">Finance</th>
-              <th align="left">Actions</th>
-              <th align="left">PDF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {partnerRows.map((r) => {
-              const inv = partnerInvoiceMap.get(r.invoiceId);
-              const approval = partnerApprovalMap.get(r.id) ?? {
-                managerApprovedBy: [],
-                financeApprovedBy: [],
-                managerRejectReason: null,
-                financeRejectReason: null,
-              };
-              const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-              const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-              const exportReady = managerReady && financeReady;
-              return (
-                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td>{r.receiptNo}</td>
-                  <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
-                  <td>{inv?.invoiceNo ?? "-"}</td>
-                  <td>{r.mode}</td>
-                  <td>{money(r.amountReceived)}</td>
                   <td>
-                    {roleCfg.managerApproverEmails.length === 0
-                      ? "No approver config"
-                      : `${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
-                    {approval.managerRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.managerRejectReason}</div> : null}
-                  </td>
-                  <td>
-                    {roleCfg.financeApproverEmails.length === 0
-                      ? "No approver config"
-                      : `${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
-                    {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {exportReady ? <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span> : null}
-                      {!exportReady && isManagerApprover ? (
-                        <>
-                          <form action={managerApprovePartnerReceiptAction}>
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Manager Approve</button>
-                          </form>
-                          <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Manager reject reason" />
-                            <button type="submit">Manager Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                      {!exportReady && isFinanceApprover ? (
-                        <>
-                          <form action={financeApprovePartnerReceiptAction}>
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Finance Approve</button>
-                          </form>
-                          <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Finance reject reason" />
-                            <button type="submit">Finance Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                      {canSuperRevoke ? (
-                        <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
-                          <input type="hidden" name="receiptId" value={r.id} />
-                          <input name="reason" placeholder="Revoke reason (optional)" />
-                          <button type="submit">Revoke To Redo</button>
-                        </form>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td>
-                    {exportReady ? (
-                      <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
-                    ) : (
-                      <span style={{ color: "#b45309" }}>Pending approval</span>
-                    )}
+                    <a href={openHref(x.type, x.id)}>{t(lang, "Open", "打开")}</a>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>
+        {!selectedRow ? (
+          <div style={{ color: "#666" }}>{t(lang, "Please select one row from the queue above.", "请从上方队列选择一条记录。")}</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 10 }}>
+              <b>{t(lang, "Type", "类型")}:</b> {selectedRow.type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")} |{" "}
+              <b>{t(lang, "Receipt No.", "收据号")}:</b> {selectedRow.receiptNo} | <b>{t(lang, "Invoice No.", "发票号")}:</b> {selectedRow.invoiceNo}
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <b>{t(lang, "Payment Record", "缴费记录")}:</b>{" "}
+              {selectedRow.paymentRecord ? (
+                <a href={selectedRow.paymentRecord.path} target="_blank" rel="noreferrer">{selectedRow.paymentRecord.name}</a>
+              ) : (
+                <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
+              )}
+            </div>
+            {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Manager Rejected:", "管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
+            {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isManagerApprover ? (
+                <>
+                  <form action={managerApproveReceiptAction}>
+                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <button type="submit">{t(lang, "Manager Approve", "管理审批通过")}</button>
+                  </form>
+                  <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input name="reason" placeholder={t(lang, "Manager reject reason", "管理驳回原因")} />
+                    <button type="submit">{t(lang, "Manager Reject", "管理驳回")}</button>
+                  </form>
+                </>
+              ) : null}
+              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isFinanceApprover ? (
+                <>
+                  <form action={financeApproveReceiptAction}>
+                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <button type="submit">{t(lang, "Finance Approve", "财务审批通过")}</button>
+                  </form>
+                  <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input name="reason" placeholder={t(lang, "Finance reject reason", "财务驳回原因")} />
+                    <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
+                  </form>
+                </>
+              ) : null}
+              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARTNER" && isManagerApprover ? (
+                <>
+                  <form action={managerApprovePartnerReceiptAction}>
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <button type="submit">{t(lang, "Manager Approve", "管理审批通过")}</button>
+                  </form>
+                  <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input name="reason" placeholder={t(lang, "Manager reject reason", "管理驳回原因")} />
+                    <button type="submit">{t(lang, "Manager Reject", "管理驳回")}</button>
+                  </form>
+                </>
+              ) : null}
+              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARTNER" && isFinanceApprover ? (
+                <>
+                  <form action={financeApprovePartnerReceiptAction}>
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <button type="submit">{t(lang, "Finance Approve", "财务审批通过")}</button>
+                  </form>
+                  <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                    <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input name="reason" placeholder={t(lang, "Finance reject reason", "财务驳回原因")} />
+                    <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
+                  </form>
+                </>
+              ) : null}
+              {canSuperRevoke && selectedRow.type === "PARENT" ? (
+                <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
+                  <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                  <input type="hidden" name="receiptId" value={selectedRow.id} />
+                  <input name="reason" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
+                  <button type="submit">{t(lang, "Revoke To Redo", "撤回重做")}</button>
+                </form>
+              ) : null}
+              {canSuperRevoke && selectedRow.type === "PARTNER" ? (
+                <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
+                  <input type="hidden" name="receiptId" value={selectedRow.id} />
+                  <input name="reason" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
+                  <button type="submit">{t(lang, "Revoke To Redo", "撤回重做")}</button>
+                </form>
+              ) : null}
+              <div>
+                <b>PDF:</b>{" "}
+                {selectedRow.status === "COMPLETED" ? (
+                  <a href={selectedRow.exportHref}>{t(lang, "Export PDF", "导出PDF")}</a>
+                ) : (
+                  <span style={{ color: "#b45309" }}>{t(lang, "Pending approval", "等待审批")}</span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
