@@ -482,7 +482,7 @@ export default async function ReceiptsApprovalsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Parent Receipt Approvals", "瀹堕暱鏀舵嵁瀹℃壒")}</h2>
+      <h2>{t(lang, "Parent Receipt Approvals", "家长收据审批")}</h2>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
@@ -723,7 +723,7 @@ export default async function ReceiptsApprovalsPage({
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "鏆傛棤鏀舵嵁")}</div>
+        <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
