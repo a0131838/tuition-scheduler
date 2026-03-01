@@ -447,6 +447,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
   const usedInvoiceIds = new Set(billing.receipts.map((x) => x.invoiceId));
   const availableInvoices = billing.invoices.filter((x) => !usedInvoiceIds.has(x.id));
   const invoiceMap = new Map(billing.invoices.map((x) => [x.id, x]));
+  const paymentRecordMap = new Map(billing.paymentRecords.map((x) => [x.id, x]));
   const approvalMap = await getPartnerReceiptApprovalMap(billing.receipts.map((x) => x.id));
 
   return (
@@ -614,14 +615,117 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
       </table>
 
       <h3>Partner Receipts</h3>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f3f4f6" }}><th align="left">Receipt No.</th><th align="left">Date</th><th align="left">Invoice No.</th><th align="left">Amount</th><th align="left">Manager</th><th align="left">Finance</th><th align="left">Actions</th><th align="left">PDF</th><th align="left">Delete</th></tr></thead><tbody>{billing.receipts.map((r) => {
-        const inv = invoiceMap.get(r.invoiceId);
-        const approval = approvalMap.get(r.id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-        const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-        const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-        const exportReady = managerReady && financeReady;
-        return (<tr key={r.id} style={{ borderTop: "1px solid #eee" }}><td>{r.receiptNo}</td><td>{new Date(r.receiptDate).toLocaleDateString()}</td><td>{inv?.invoiceNo ?? "-"}</td><td>{money(r.amountReceived)}</td><td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td><td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td><td><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{exportReady ? <span style={{ color: "#166534" }}>Completed</span> : null}{!exportReady && isManagerApprover ? <><form action={managerApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Manager Approve</button></form><form action={managerRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Manager reject reason" /><button type="submit">Manager Reject</button></form></> : null}{!exportReady && isFinanceApprover ? <><form action={financeApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Finance Approve</button></form><form action={financeRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Finance reject reason" /><button type="submit">Finance Reject</button></form></> : null}{canSuperRevoke ? <form action={revokeReceiptForRedoAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Revoke reason (optional)" /><button type="submit">Revoke To Redo</button></form> : null}</div></td><td>{exportReady ? <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a> : <span style={{ color: "#b45309" }}>Pending approval</span>}</td><td><form action={deleteReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Delete</button></form></td></tr>);
-      })}</tbody></table>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <thead>
+          <tr style={{ background: "#f3f4f6" }}>
+            <th align="left">Receipt No.</th>
+            <th align="left">Date</th>
+            <th align="left">Invoice No.</th>
+            <th align="left">Payment Record</th>
+            <th align="left">Amount</th>
+            <th align="left">Manager</th>
+            <th align="left">Finance</th>
+            <th align="left">Actions</th>
+            <th align="left">PDF</th>
+            <th align="left">Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {billing.receipts.map((r) => {
+            const inv = invoiceMap.get(r.invoiceId);
+            const paymentRecord = r.paymentRecordId ? paymentRecordMap.get(r.paymentRecordId) : null;
+            const approval = approvalMap.get(r.id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
+            const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+            const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+            const exportReady = managerReady && financeReady;
+            return (
+              <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                <td>{r.receiptNo}</td>
+                <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
+                <td>{inv?.invoiceNo ?? "-"}</td>
+                <td>
+                  {paymentRecord ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span>{new Date(paymentRecord.uploadedAt).toLocaleDateString()}</span>
+                      <a href={paymentRecord.relativePath} target="_blank" rel="noreferrer">
+                        {paymentRecord.originalFileName}
+                      </a>
+                    </div>
+                  ) : (
+                    <span style={{ color: "#6b7280" }}>(none)</span>
+                  )}
+                </td>
+                <td>{money(r.amountReceived)}</td>
+                <td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td>
+                <td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td>
+                <td>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {exportReady ? <span style={{ color: "#166534" }}>Completed</span> : null}
+                    {!exportReady && isManagerApprover ? (
+                      <>
+                        <form action={managerApproveReceiptAction}>
+                          <input type="hidden" name="mode" value={mode} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <button type="submit">Manager Approve</button>
+                        </form>
+                        <form action={managerRejectReceiptAction}>
+                          <input type="hidden" name="mode" value={mode} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <input name="reason" placeholder="Manager reject reason" />
+                          <button type="submit">Manager Reject</button>
+                        </form>
+                      </>
+                    ) : null}
+                    {!exportReady && isFinanceApprover ? (
+                      <>
+                        <form action={financeApproveReceiptAction}>
+                          <input type="hidden" name="mode" value={mode} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <button type="submit">Finance Approve</button>
+                        </form>
+                        <form action={financeRejectReceiptAction}>
+                          <input type="hidden" name="mode" value={mode} />
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <input name="reason" placeholder="Finance reject reason" />
+                          <button type="submit">Finance Reject</button>
+                        </form>
+                      </>
+                    ) : null}
+                    {canSuperRevoke ? (
+                      <form action={revokeReceiptForRedoAction}>
+                        <input type="hidden" name="mode" value={mode} />
+                        <input type="hidden" name="month" value={month} />
+                        <input type="hidden" name="receiptId" value={r.id} />
+                        <input name="reason" placeholder="Revoke reason (optional)" />
+                        <button type="submit">Revoke To Redo</button>
+                      </form>
+                    ) : null}
+                  </div>
+                </td>
+                <td>
+                  {exportReady ? (
+                    <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                  ) : (
+                    <span style={{ color: "#b45309" }}>Pending approval</span>
+                  )}
+                </td>
+                <td>
+                  <form action={deleteReceiptAction}>
+                    <input type="hidden" name="mode" value={mode} />
+                    <input type="hidden" name="month" value={month} />
+                    <input type="hidden" name="receiptId" value={r.id} />
+                    <button type="submit">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
