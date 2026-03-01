@@ -639,38 +639,42 @@ export default async function ReceiptsApprovalsPage({
                     {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
                   </td>
                   <td>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {isManagerApprover ? (
-                        <>
-                          <form action={managerApproveReceiptAction}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Manager Approve</button>
-                          </form>
-                          <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Manager reject reason" />
-                            <button type="submit">Manager Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                      {isFinanceApprover ? (
-                        <>
-                          <form action={financeApproveReceiptAction}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <button type="submit">Finance Approve</button>
-                          </form>
-                          <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                            <input type="hidden" name="packageId" value={r.packageId} />
-                            <input type="hidden" name="receiptId" value={r.id} />
-                            <input name="reason" placeholder="Finance reject reason" />
-                            <button type="submit">Finance Reject</button>
-                          </form>
-                        </>
-                      ) : null}
-                    </div>
+                    {exportReady ? (
+                      <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {isManagerApprover ? (
+                          <>
+                            <form action={managerApproveReceiptAction}>
+                              <input type="hidden" name="packageId" value={r.packageId} />
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <button type="submit">Manager Approve</button>
+                            </form>
+                            <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                              <input type="hidden" name="packageId" value={r.packageId} />
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <input name="reason" placeholder="Manager reject reason" />
+                              <button type="submit">Manager Reject</button>
+                            </form>
+                          </>
+                        ) : null}
+                        {isFinanceApprover ? (
+                          <>
+                            <form action={financeApproveReceiptAction}>
+                              <input type="hidden" name="packageId" value={r.packageId} />
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <button type="submit">Finance Approve</button>
+                            </form>
+                            <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                              <input type="hidden" name="packageId" value={r.packageId} />
+                              <input type="hidden" name="receiptId" value={r.id} />
+                              <input name="reason" placeholder="Finance reject reason" />
+                              <button type="submit">Finance Reject</button>
+                            </form>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
                   </td>
                   <td>
                     {exportReady ? (
