@@ -487,6 +487,7 @@ export default async function ReceiptsApprovalsPage({
     return tb - ta;
   });
   const approvalMap = await getParentReceiptApprovalMap(rows.map((x) => x.id));
+  const parentPaymentRecordMap = new Map(all.paymentRecords.map((x) => [x.id, x]));
   let partnerRows = partnerAll.receipts;
   if (monthFilter) {
     partnerRows = partnerRows.filter((x) => {
@@ -764,6 +765,7 @@ export default async function ReceiptsApprovalsPage({
               <th align="left">Receipt Date</th>
               <th align="left">Invoice No.</th>
               <th align="left">Student</th>
+              <th align="left">Payment Record</th>
               <th align="left">Amount Received</th>
               <th align="left">Manager</th>
               <th align="left">Finance</th>
@@ -775,6 +777,7 @@ export default async function ReceiptsApprovalsPage({
             {rows.map((r) => {
               const pkg = packageMap.get(r.packageId);
               const invoice = r.invoiceId ? invoiceMap.get(r.invoiceId) : null;
+              const paymentRecord = r.paymentRecordId ? parentPaymentRecordMap.get(r.paymentRecordId) : null;
               const approval = approvalMap.get(r.id) ?? {
                 managerApprovedBy: [],
                 financeApprovedBy: [],
@@ -790,6 +793,18 @@ export default async function ReceiptsApprovalsPage({
                   <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
                   <td>{invoice?.invoiceNo ?? "-"}</td>
                   <td>{pkg?.student?.name ?? "-"}</td>
+                  <td>
+                    {paymentRecord ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span>{new Date(paymentRecord.uploadedAt).toLocaleDateString()}</span>
+                        <a href={paymentRecord.relativePath} target="_blank" rel="noreferrer">
+                          {paymentRecord.originalFileName}
+                        </a>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#6b7280" }}>(none)</span>
+                    )}
+                  </td>
                   <td>{money(r.amountReceived)}</td>
                   <td>
                     {roleCfg.managerApproverEmails.length === 0
