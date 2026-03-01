@@ -53,7 +53,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname === "/admin/reports/partner-settlement" ||
-    pathname === "/admin/reports/audit-logs";
+    pathname === "/admin/reports/audit-logs" ||
+    pathname === "/admin/receipts-approvals";
 
   if (isFinance && !financeAllowedPath) {
     redirect("/admin/reports/teacher-payroll");
@@ -121,6 +122,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   </a>
                   <a href="/admin/reports/partner-settlement" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                     {t(lang, "Partner Settlement", "合作方结算")}
+                  </a>
+                  <a href="/admin/receipts-approvals" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Receipt Approvals", "收据审批")}
                   </a>
                 </div>
               </>
@@ -255,6 +259,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   </a>
                   <a href="/admin/reports/partner-settlement" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                     {t(lang, "Partner Settlement", "合作方结算")}
+                  </a>
+                  <a href="/admin/receipts-approvals" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                    {t(lang, "Receipt Approvals", "收据审批")}
                   </a>
                   <a href="/admin/reports/midterm" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                     {t(lang, "Midterm Reports", "中期报告")}

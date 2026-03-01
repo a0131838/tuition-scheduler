@@ -309,6 +309,7 @@ export default async function AdminPackagesPage({
               <th align="left">{t(lang, "Note", "备注")}</th>
               <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
+              <th align="left">{t(lang, "Billing", "账单")}</th>
               <th align="left">{t(lang, "Ledger", "对账单")}</th>
             </tr>
           </thead>
@@ -426,6 +427,9 @@ export default async function AdminPackagesPage({
                       ),
                     }}
                   />
+                </td>
+                <td>
+                  <a href={`/admin/packages/${p.id}/billing`}>{t(lang, "Billing", "账单")}</a>
                 </td>
                 <td>
                   <a href={`/admin/packages/${p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
