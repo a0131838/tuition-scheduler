@@ -341,6 +341,9 @@ export default async function AdminTodosPage({
     deductDoneMap.set(s.id, done);
     deductPendingMap.set(s.id, Math.max(0, required - done));
   }
+  const sessionsTodayVisible = sessionsTodayAll.filter(
+    (s) => expectedStudentIdsForAttendanceTask(s, todayEnrollmentsByClass, todayAttendanceBySession).length > 0
+  );
   const yesterdayClassIds = Array.from(new Set(sessionsYesterdayAll.map((s) => s.classId)));
   const yesterdayEnrollments = yesterdayClassIds.length
     ? await prisma.enrollment.findMany({
@@ -1138,14 +1141,14 @@ export default async function AdminTodosPage({
           <div style={sectionHeaderStyle}>
             <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")}</h3>
             <span style={{ color: "#666", fontSize: 12 }}>
-              {t(lang, "Count", "数量")}: {sessionsTodayAll.length}
+              {t(lang, "Count", "数量")}: {sessionsTodayVisible.length}
             </span>
           </div>
-          {sessionsTodayAll.length === 0 ? (
+          {sessionsTodayVisible.length === 0 ? (
             <div style={{ color: "#999" }}>{t(lang, "No sessions today.", "今天没有课程。")}</div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
-              {sessionsTodayAll.map((s) => (
+              {sessionsTodayVisible.map((s) => (
                 <div
                   key={s.id}
                   style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 10, background: "#fffdf3" }}
