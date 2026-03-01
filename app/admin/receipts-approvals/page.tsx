@@ -22,6 +22,7 @@ import {
   getParentReceiptApprovalMap,
   managerApproveParentReceipt,
   managerRejectParentReceipt,
+  revokeParentReceiptApprovalForRedo,
 } from "@/lib/parent-receipt-approval";
 import {
   financeApprovePartnerReceipt,
@@ -29,6 +30,7 @@ import {
   getPartnerReceiptApprovalMap,
   managerApprovePartnerReceipt,
   managerRejectPartnerReceipt,
+  revokePartnerReceiptApprovalForRedo,
 } from "@/lib/partner-receipt-approval";
 import {
   areAllApproversConfirmed,
@@ -322,6 +324,21 @@ async function financeRejectReceiptAction(formData: FormData) {
   redirect(withQuery("/admin/receipts-approvals?msg=Finance+rejected", packageId));
 }
 
+async function revokeParentReceiptForRedoAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = (current?.email ?? admin.email).trim().toLowerCase();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (actorEmail !== SUPER_ADMIN_EMAIL || !receiptId) {
+    redirect(withQuery("/admin/receipts-approvals?err=Not+allowed", packageId));
+  }
+  await revokeParentReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
+  redirect(withQuery("/admin/receipts-approvals?msg=Receipt+reopened+for+redo", packageId));
+}
+
 async function managerApprovePartnerReceiptAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -386,6 +403,20 @@ async function financeRejectPartnerReceiptAction(formData: FormData) {
   redirect("/admin/receipts-approvals?msg=Partner+finance+rejected");
 }
 
+async function revokePartnerReceiptForRedoAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = (current?.email ?? admin.email).trim().toLowerCase();
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (actorEmail !== SUPER_ADMIN_EMAIL || !receiptId) {
+    redirect("/admin/receipts-approvals?err=Not+allowed");
+  }
+  await revokePartnerReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
+  redirect("/admin/receipts-approvals?msg=Partner+receipt+reopened+for+redo");
+}
+
 export default async function ReceiptsApprovalsPage({
   searchParams,
 }: {
@@ -407,6 +438,7 @@ export default async function ReceiptsApprovalsPage({
     listPartnerBilling(),
   ]);
   const actorEmail = current?.email ?? "";
+  const canSuperRevoke = actorEmail.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
   const financeOpsEnabled = canFinanceOperate(actorEmail, current?.role ?? "");
   const isManagerApprover = isRoleApprover(actorEmail, roleCfg.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(actorEmail, roleCfg.financeApproverEmails);
@@ -772,42 +804,47 @@ export default async function ReceiptsApprovalsPage({
                     {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
                   </td>
                   <td>
-                    {exportReady ? (
-                      <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {isManagerApprover ? (
-                          <>
-                            <form action={managerApproveReceiptAction}>
-                              <input type="hidden" name="packageId" value={r.packageId} />
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <button type="submit">Manager Approve</button>
-                            </form>
-                            <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                              <input type="hidden" name="packageId" value={r.packageId} />
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <input name="reason" placeholder="Manager reject reason" />
-                              <button type="submit">Manager Reject</button>
-                            </form>
-                          </>
-                        ) : null}
-                        {isFinanceApprover ? (
-                          <>
-                            <form action={financeApproveReceiptAction}>
-                              <input type="hidden" name="packageId" value={r.packageId} />
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <button type="submit">Finance Approve</button>
-                            </form>
-                            <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
-                              <input type="hidden" name="packageId" value={r.packageId} />
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <input name="reason" placeholder="Finance reject reason" />
-                              <button type="submit">Finance Reject</button>
-                            </form>
-                          </>
-                        ) : null}
-                      </div>
-                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {exportReady ? <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span> : null}
+                      {!exportReady && isManagerApprover ? (
+                        <>
+                          <form action={managerApproveReceiptAction}>
+                            <input type="hidden" name="packageId" value={r.packageId} />
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <button type="submit">Manager Approve</button>
+                          </form>
+                          <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                            <input type="hidden" name="packageId" value={r.packageId} />
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <input name="reason" placeholder="Manager reject reason" />
+                            <button type="submit">Manager Reject</button>
+                          </form>
+                        </>
+                      ) : null}
+                      {!exportReady && isFinanceApprover ? (
+                        <>
+                          <form action={financeApproveReceiptAction}>
+                            <input type="hidden" name="packageId" value={r.packageId} />
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <button type="submit">Finance Approve</button>
+                          </form>
+                          <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6 }}>
+                            <input type="hidden" name="packageId" value={r.packageId} />
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <input name="reason" placeholder="Finance reject reason" />
+                            <button type="submit">Finance Reject</button>
+                          </form>
+                        </>
+                      ) : null}
+                      {canSuperRevoke ? (
+                        <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
+                          <input type="hidden" name="packageId" value={r.packageId} />
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <input name="reason" placeholder="Revoke reason (optional)" />
+                          <button type="submit">Revoke To Redo</button>
+                        </form>
+                      ) : null}
+                    </div>
                   </td>
                   <td>
                     {exportReady ? (
@@ -872,38 +909,42 @@ export default async function ReceiptsApprovalsPage({
                     {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
                   </td>
                   <td>
-                    {exportReady ? (
-                      <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {isManagerApprover ? (
-                          <>
-                            <form action={managerApprovePartnerReceiptAction}>
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <button type="submit">Manager Approve</button>
-                            </form>
-                            <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <input name="reason" placeholder="Manager reject reason" />
-                              <button type="submit">Manager Reject</button>
-                            </form>
-                          </>
-                        ) : null}
-                        {isFinanceApprover ? (
-                          <>
-                            <form action={financeApprovePartnerReceiptAction}>
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <button type="submit">Finance Approve</button>
-                            </form>
-                            <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
-                              <input type="hidden" name="receiptId" value={r.id} />
-                              <input name="reason" placeholder="Finance reject reason" />
-                              <button type="submit">Finance Reject</button>
-                            </form>
-                          </>
-                        ) : null}
-                      </div>
-                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {exportReady ? <span style={{ color: "#166534", fontWeight: 600 }}>Completed</span> : null}
+                      {!exportReady && isManagerApprover ? (
+                        <>
+                          <form action={managerApprovePartnerReceiptAction}>
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <button type="submit">Manager Approve</button>
+                          </form>
+                          <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <input name="reason" placeholder="Manager reject reason" />
+                            <button type="submit">Manager Reject</button>
+                          </form>
+                        </>
+                      ) : null}
+                      {!exportReady && isFinanceApprover ? (
+                        <>
+                          <form action={financeApprovePartnerReceiptAction}>
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <button type="submit">Finance Approve</button>
+                          </form>
+                          <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6 }}>
+                            <input type="hidden" name="receiptId" value={r.id} />
+                            <input name="reason" placeholder="Finance reject reason" />
+                            <button type="submit">Finance Reject</button>
+                          </form>
+                        </>
+                      ) : null}
+                      {canSuperRevoke ? (
+                        <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6 }}>
+                          <input type="hidden" name="receiptId" value={r.id} />
+                          <input name="reason" placeholder="Revoke reason (optional)" />
+                          <button type="submit">Revoke To Redo</button>
+                        </form>
+                      ) : null}
+                    </div>
                   </td>
                   <td>
                     {exportReady ? (

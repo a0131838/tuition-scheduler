@@ -32,6 +32,7 @@ import {
   getPartnerReceiptApprovalMap,
   managerApprovePartnerReceipt,
   managerRejectPartnerReceipt,
+  revokePartnerReceiptApprovalForRedo,
 } from "@/lib/partner-receipt-approval";
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover } from "@/lib/approval-flow";
 
@@ -397,6 +398,20 @@ async function financeRejectReceiptAction(formData: FormData) { "use server";
   await financeRejectPartnerReceipt(receiptId, admin.email, reason);
   redirect(withQuery("/admin/reports/partner-settlement/billing?msg=finance-rejected", mode, month));
 }
+
+async function revokeReceiptForRedoAction(formData: FormData) { "use server";
+  const admin = await requireAdmin();
+  const mode = parseMode(String(formData.get("mode") ?? ""));
+  const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const actor = admin.email.trim().toLowerCase();
+  if (!receiptId || actor !== SUPER_ADMIN_EMAIL) {
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=not-allowed", mode, month));
+  }
+  await revokePartnerReceiptApprovalForRedo(receiptId, actor, reason || "Super admin revoke to redo");
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-reopened", mode, month));
+}
 export default async function PartnerBillingPage({ searchParams }: { searchParams?: Promise<{ mode?: string; month?: string; msg?: string; err?: string }> }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -412,6 +427,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
   if (!source) return <div style={{ color: "#b00" }}>Partner source not found: {PARTNER_SOURCE_NAME}</div>;
 
   const financeOpsEnabled = canFinanceOperate(current?.email ?? admin.email, current?.role ?? admin.role);
+  const canSuperRevoke = (current?.email ?? admin.email).trim().toLowerCase() === SUPER_ADMIN_EMAIL;
   const roleCfg = await getApprovalRoleConfig();
   const isManagerApprover = isRoleApprover(admin.email, roleCfg.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(admin.email, roleCfg.financeApproverEmails);
@@ -604,7 +620,7 @@ export default async function PartnerBillingPage({ searchParams }: { searchParam
         const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
         const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
         const exportReady = managerReady && financeReady;
-        return (<tr key={r.id} style={{ borderTop: "1px solid #eee" }}><td>{r.receiptNo}</td><td>{new Date(r.receiptDate).toLocaleDateString()}</td><td>{inv?.invoiceNo ?? "-"}</td><td>{money(r.amountReceived)}</td><td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td><td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td><td>{exportReady ? <span style={{ color: "#166534" }}>Completed</span> : (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{isManagerApprover ? <><form action={managerApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Manager Approve</button></form><form action={managerRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Manager reject reason" /><button type="submit">Manager Reject</button></form></> : null}{isFinanceApprover ? <><form action={financeApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Finance Approve</button></form><form action={financeRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Finance reject reason" /><button type="submit">Finance Reject</button></form></> : null}</div>)}</td><td>{exportReady ? <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a> : <span style={{ color: "#b45309" }}>Pending approval</span>}</td><td><form action={deleteReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Delete</button></form></td></tr>);
+        return (<tr key={r.id} style={{ borderTop: "1px solid #eee" }}><td>{r.receiptNo}</td><td>{new Date(r.receiptDate).toLocaleDateString()}</td><td>{inv?.invoiceNo ?? "-"}</td><td>{money(r.amountReceived)}</td><td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td><td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td><td><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{exportReady ? <span style={{ color: "#166534" }}>Completed</span> : null}{!exportReady && isManagerApprover ? <><form action={managerApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Manager Approve</button></form><form action={managerRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Manager reject reason" /><button type="submit">Manager Reject</button></form></> : null}{!exportReady && isFinanceApprover ? <><form action={financeApproveReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Finance Approve</button></form><form action={financeRejectReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Finance reject reason" /><button type="submit">Finance Reject</button></form></> : null}{canSuperRevoke ? <form action={revokeReceiptForRedoAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><input name="reason" placeholder="Revoke reason (optional)" /><button type="submit">Revoke To Redo</button></form> : null}</div></td><td>{exportReady ? <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a> : <span style={{ color: "#b45309" }}>Pending approval</span>}</td><td><form action={deleteReceiptAction}><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} /><input type="hidden" name="receiptId" value={r.id} /><button type="submit">Delete</button></form></td></tr>);
       })}</tbody></table>
     </div>
   );

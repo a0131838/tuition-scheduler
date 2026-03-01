@@ -161,3 +161,27 @@ export async function deletePartnerReceiptApproval(receiptId: string) {
   if (next.length === items.length) return;
   await saveItems(next);
 }
+
+export async function revokePartnerReceiptApprovalForRedo(receiptId: string, actorEmail: string, reason?: string) {
+  const id = String(receiptId ?? "").trim();
+  if (!id) return;
+  const items = await loadItems();
+  const item = ensureItem(items, id);
+  item.managerApprovedBy = [];
+  item.financeApprovedBy = [];
+  item.managerRejectedAt = null;
+  item.managerRejectedBy = null;
+  item.managerRejectReason = null;
+  item.financeRejectedAt = null;
+  item.financeRejectedBy = null;
+  item.financeRejectReason = null;
+  await saveItems(items);
+  await logAudit({
+    actor: { email: actorEmail, role: "ADMIN" },
+    module: "PARTNER_BILLING",
+    action: "REVOKE_RECEIPT_APPROVAL_FOR_REDO",
+    entityType: "PartnerReceipt",
+    entityId: id,
+    meta: { reason: String(reason ?? "").trim() || null },
+  });
+}
