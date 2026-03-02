@@ -85,13 +85,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           transform: translateY(0);
         }
       `}</style>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         <aside
           style={{
             width: 240,
             padding: 16,
             borderRight: "1px solid #eee",
             background: "#fafafa",
+            overflowY: "auto",
           }}
         >
           <div
@@ -289,7 +290,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </a>
         </aside>
 
-        <main style={{ flex: 1, padding: 24 }}>
+        <main style={{ flex: 1, padding: 24, overflowY: "auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ color: "#666" }}>
               {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
