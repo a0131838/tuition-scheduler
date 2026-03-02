@@ -119,10 +119,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
   if (!oneOnOneClass) {
     const pkg = await prisma.coursePackage.findFirst({
       where: {
-        ...coursePackageAccessibleByStudent(reqRow.studentId),
-        status: "ACTIVE",
-        validFrom: { lte: reqRow.startAt },
-        OR: [{ validTo: null }, { validTo: { gte: reqRow.startAt } }],
+        AND: [
+          coursePackageAccessibleByStudent(reqRow.studentId),
+          { status: "ACTIVE" },
+          { validFrom: { lte: reqRow.startAt } },
+          { OR: [{ validTo: null }, { validTo: { gte: reqRow.startAt } }] },
+        ],
       },
       orderBy: { updatedAt: "desc" },
       select: { courseId: true },

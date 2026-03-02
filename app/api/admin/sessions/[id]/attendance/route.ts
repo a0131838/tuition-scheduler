@@ -24,13 +24,15 @@ async function pickHoursPackageId(
 
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(courseId)],
-      type: PackageType.HOURS,
-      status: PackageStatus.ACTIVE,
-      remainingMinutes: { gte: Math.max(1, needMinutes) },
-      validFrom: { lte: at },
-      OR: [{ validTo: null }, { validTo: { gte: at } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(courseId),
+        { type: PackageType.HOURS },
+        { status: PackageStatus.ACTIVE },
+        { remainingMinutes: { gte: Math.max(1, needMinutes) } },
+        { validFrom: { lte: at } },
+        { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+      ],
     },
     orderBy: [{ createdAt: "asc" }],
     select: { id: true, note: true },
@@ -46,13 +48,15 @@ async function pickGroupPackPackageId(
   const { studentId, courseId, at, needCount } = opts;
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(courseId)],
-      type: PackageType.HOURS,
-      status: PackageStatus.ACTIVE,
-      remainingMinutes: { gte: Math.max(1, needCount) },
-      validFrom: { lte: at },
-      OR: [{ validTo: null }, { validTo: { gte: at } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(courseId),
+        { type: PackageType.HOURS },
+        { status: PackageStatus.ACTIVE },
+        { remainingMinutes: { gte: Math.max(1, needCount) } },
+        { validFrom: { lte: at } },
+        { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+      ],
     },
     orderBy: [{ createdAt: "asc" }],
     select: { id: true, note: true },
@@ -132,11 +136,13 @@ async function applyOneStudentAttendanceAndDeduct(
     const pkg = await tx.coursePackage.findFirst({
       where: {
         id: packageId,
-        ...coursePackageAccessibleByStudent(studentId),
-        AND: [coursePackageMatchesCourse(courseId)],
-        status: PackageStatus.ACTIVE,
-        validFrom: { lte: at },
-        OR: [{ validTo: null }, { validTo: { gte: at } }],
+        AND: [
+          coursePackageAccessibleByStudent(studentId),
+          coursePackageMatchesCourse(courseId),
+          { status: PackageStatus.ACTIVE },
+          { validFrom: { lte: at } },
+          { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+        ],
       },
       select: { id: true, type: true, status: true, remainingMinutes: true, note: true },
     });

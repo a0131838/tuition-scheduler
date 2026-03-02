@@ -17,12 +17,14 @@ export async function hasSchedulablePackage(
 
   const monthly = await db.coursePackage.findFirst({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(courseId)],
-      type: PackageType.MONTHLY,
-      status: PackageStatus.ACTIVE,
-      validFrom: { lte: at },
-      OR: [{ validTo: null }, { validTo: { gte: at } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(courseId),
+        { type: PackageType.MONTHLY },
+        { status: PackageStatus.ACTIVE },
+        { validFrom: { lte: at } },
+        { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+      ],
     },
     select: { id: true },
   });
@@ -30,16 +32,17 @@ export async function hasSchedulablePackage(
 
   const hours = await db.coursePackage.findFirst({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(courseId)],
-      type: PackageType.HOURS,
-      status: PackageStatus.ACTIVE,
-      remainingMinutes: { gte: needMinutes },
-      validFrom: { lte: at },
-      OR: [{ validTo: null }, { validTo: { gte: at } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(courseId),
+        { type: PackageType.HOURS },
+        { status: PackageStatus.ACTIVE },
+        { remainingMinutes: { gte: needMinutes } },
+        { validFrom: { lte: at } },
+        { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+      ],
     },
     select: { id: true },
   });
   return Boolean(hours);
 }
-

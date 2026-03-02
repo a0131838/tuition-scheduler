@@ -817,13 +817,15 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     if (!packageId && delta > 0) {
       const pkg = await prisma.coursePackage.findFirst({
         where: {
-          ...coursePackageAccessibleByStudent(studentId),
-          AND: [coursePackageMatchesCourse(session.class.courseId)],
-          type: "HOURS",
-          status: "ACTIVE",
-          remainingMinutes: { gte: delta },
-          validFrom: { lte: session.startAt },
-          OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
+          AND: [
+            coursePackageAccessibleByStudent(studentId),
+            coursePackageMatchesCourse(session.class.courseId),
+            { type: "HOURS" },
+            { status: "ACTIVE" },
+            { remainingMinutes: { gte: delta } },
+            { validFrom: { lte: session.startAt } },
+            { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
+          ],
         },
         orderBy: [{ createdAt: "asc" }],
         select: { id: true },
@@ -838,11 +840,13 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     const pkg = await prisma.coursePackage.findFirst({
       where: {
         id: packageId,
-        ...coursePackageAccessibleByStudent(studentId),
-        AND: [coursePackageMatchesCourse(session.class.courseId)],
-        status: "ACTIVE",
-        validFrom: { lte: session.startAt },
-        OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
+        AND: [
+          coursePackageAccessibleByStudent(studentId),
+          coursePackageMatchesCourse(session.class.courseId),
+          { status: "ACTIVE" },
+          { validFrom: { lte: session.startAt } },
+          { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
+        ],
       },
       select: { id: true, type: true, status: true, remainingMinutes: true },
     });

@@ -95,11 +95,13 @@ async function addEnrollment(classId: string, formData: FormData) {
   const now = new Date();
   const pkgs = await prisma.coursePackage.findMany({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(cls.courseId)],
-      status: "ACTIVE",
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gte: now } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(cls.courseId),
+        { status: "ACTIVE" },
+        { validFrom: { lte: now } },
+        { OR: [{ validTo: null }, { validTo: { gte: now } }] },
+      ],
     },
     select: { type: true, remainingMinutes: true, note: true },
   });

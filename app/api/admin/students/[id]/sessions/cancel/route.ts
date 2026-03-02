@@ -48,13 +48,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!packageId && delta > 0) {
           const pkg = await tx.coursePackage.findFirst({
             where: {
-              ...coursePackageAccessibleByStudent(studentId),
-              AND: [coursePackageMatchesCourse(session.class.courseId)],
-              type: "HOURS",
-              status: "ACTIVE",
-              remainingMinutes: { gte: delta },
-              validFrom: { lte: session.startAt },
-              OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
+              AND: [
+                coursePackageAccessibleByStudent(studentId),
+                coursePackageMatchesCourse(session.class.courseId),
+                { type: "HOURS" },
+                { status: "ACTIVE" },
+                { remainingMinutes: { gte: delta } },
+                { validFrom: { lte: session.startAt } },
+                { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
+              ],
             },
             orderBy: [{ createdAt: "asc" }],
             select: { id: true },
@@ -69,11 +71,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const pkg = await tx.coursePackage.findFirst({
           where: {
             id: packageId,
-            ...coursePackageAccessibleByStudent(studentId),
-            AND: [coursePackageMatchesCourse(session.class.courseId)],
-            status: "ACTIVE",
-            validFrom: { lte: session.startAt },
-            OR: [{ validTo: null }, { validTo: { gte: session.startAt } }],
+            AND: [
+              coursePackageAccessibleByStudent(studentId),
+              coursePackageMatchesCourse(session.class.courseId),
+              { status: "ACTIVE" },
+              { validFrom: { lte: session.startAt } },
+              { OR: [{ validTo: null }, { validTo: { gte: session.startAt } }] },
+            ],
           },
           select: { id: true, type: true, remainingMinutes: true },
         });

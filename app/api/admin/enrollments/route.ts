@@ -34,11 +34,13 @@ export async function POST(req: Request) {
   const now = new Date();
   const candidatePkgs = await prisma.coursePackage.findMany({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(cls.courseId)],
-      status: "ACTIVE",
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gte: now } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(cls.courseId),
+        { status: "ACTIVE" },
+        { validFrom: { lte: now } },
+        { OR: [{ validTo: null }, { validTo: { gte: now } }] },
+      ],
     },
     select: { id: true, type: true, remainingMinutes: true, note: true },
   });

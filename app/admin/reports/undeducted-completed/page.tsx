@@ -123,13 +123,15 @@ async function pickRepairPackage(
   const { studentId, courseId, at, needUnits, isGroupClass } = input;
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
-      ...coursePackageAccessibleByStudent(studentId),
-      AND: [coursePackageMatchesCourse(courseId)],
-      type: PackageType.HOURS,
-      status: PackageStatus.ACTIVE,
-      remainingMinutes: { gte: Math.max(1, needUnits) },
-      validFrom: { lte: at },
-      OR: [{ validTo: null }, { validTo: { gte: at } }],
+      AND: [
+        coursePackageAccessibleByStudent(studentId),
+        coursePackageMatchesCourse(courseId),
+        { type: PackageType.HOURS },
+        { status: PackageStatus.ACTIVE },
+        { remainingMinutes: { gte: Math.max(1, needUnits) } },
+        { validFrom: { lte: at } },
+        { OR: [{ validTo: null }, { validTo: { gte: at } }] },
+      ],
     },
     orderBy: [{ createdAt: "asc" }],
     select: {
