@@ -326,6 +326,8 @@ export default async function TeacherStudentFeedbacksPage({
   const selectedTimeline = onlyUnreadOthers
     ? selectedTimelineAll.filter((x) => x.teacherId !== teacher.id && !readSet.has(x.feedbackId))
     : selectedTimelineAll;
+  const selectedTimelineHead = selectedTimeline.slice(0, 3);
+  const selectedTimelineRest = selectedTimeline.slice(3);
 
   const summaryItems = selectedTimelineAll
     .filter((x) => x.teacherId !== teacher.id && x.sessionStartAt >= recentThreshold)
@@ -348,6 +350,9 @@ export default async function TeacherStudentFeedbacksPage({
           flex-wrap: wrap;
           align-items: center;
         }
+        .page-shell.with-drawer {
+          padding-right: 0;
+        }
         .desktop-only { display: block; }
         .mobile-only { display: none; }
         .compare-grid {
@@ -358,6 +363,58 @@ export default async function TeacherStudentFeedbacksPage({
         .read-btn {
           min-height: 34px;
           padding: 6px 10px;
+        }
+        .timeline-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.18);
+          z-index: 60;
+        }
+        .timeline-drawer {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          bottom: 10px;
+          width: min(520px, calc(100vw - 20px));
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+          overflow: auto;
+          z-index: 70;
+          animation: timelinePulse 0.7s ease-out 1;
+          box-shadow: 0 10px 32px rgba(2, 6, 23, 0.2);
+        }
+        .drawer-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .drawer-action {
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          background: #f8fafc;
+          padding: 4px 8px;
+          font-size: 12px;
+          text-decoration: none;
+          color: #0f172a;
+        }
+        .drawer-float-top {
+          position: sticky;
+          bottom: 8px;
+          margin-left: auto;
+          width: fit-content;
+          z-index: 3;
+        }
+        @keyframes timelinePulse {
+          0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+          100% { box-shadow: 0 10px 32px rgba(2, 6, 23, 0.2); }
+        }
+        @media (min-width: 901px) {
+          .page-shell.with-drawer {
+            padding-right: 540px;
+          }
         }
         @media (max-width: 900px) {
           .filter-bar {
@@ -384,9 +441,23 @@ export default async function TeacherStudentFeedbacksPage({
           .read-btn {
             width: 100%;
           }
+          .timeline-overlay {
+            background: rgba(15, 23, 42, 0.25);
+          }
+          .timeline-drawer {
+            top: auto;
+            right: 0;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: min(78vh, 680px);
+            border-radius: 14px 14px 0 0;
+            padding-bottom: 18px;
+          }
         }
       `}</style>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Feedbacks", "学生课后反馈")}</h2>
+      <div className={`page-shell${selectedStudentId ? " with-drawer" : ""}`} style={{ display: "grid", gap: 14 }}>
+      <h2 id="feedback-list-top" style={{ marginBottom: 0 }}>{t(lang, "Student Feedbacks", "学生课后反馈")}</h2>
       {sp?.msg === "marked-read" ? <div style={{ color: "#166534" }}>{t(lang, "Marked as read.", "已标记为已读。")}</div> : null}
       {sp?.err ? <div style={{ color: "#b91c1c" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
@@ -444,7 +515,7 @@ export default async function TeacherStudentFeedbacksPage({
               </thead>
               <tbody>
                 {pageStudents.map((s) => (
-                  <tr key={s.studentId} style={{ borderTop: "1px solid #eee" }}>
+                  <tr id={`student-${s.studentId}`} key={s.studentId} style={{ borderTop: "1px solid #eee" }}>
                     <td>{s.studentName}</td>
                     <td>{new Date(s.latest.sessionStartAt).toLocaleString()}</td>
                     <td>
@@ -460,7 +531,7 @@ export default async function TeacherStudentFeedbacksPage({
                       {s.hasHandoffRisk ? <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11 }}>{t(lang, "Risk", "风险")}</span> : null}
                     </td>
                     <td>
-                      <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}`}>
+                      <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}#timeline-drawer`}>
                         {t(lang, "Open Timeline", "查看时间线")}
                       </a>
                     </td>
@@ -471,7 +542,7 @@ export default async function TeacherStudentFeedbacksPage({
           </div>
           <div className="mobile-only">
             {pageStudents.map((s) => (
-              <article key={s.studentId} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+              <article id={`student-${s.studentId}`} key={s.studentId} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <b>{s.studentName}</b>
                   <span style={{ color: s.unreadOtherCount > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>
@@ -486,7 +557,7 @@ export default async function TeacherStudentFeedbacksPage({
                 </div>
                 <div style={{ marginTop: 4 }}>{summarize(s.latest.content, 90)}</div>
                 <div style={{ marginTop: 8 }}>
-                  <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}`}>
+                  <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}#timeline-drawer`}>
                     {t(lang, "Open Timeline", "查看时间线")}
                   </a>
                 </div>
@@ -505,10 +576,28 @@ export default async function TeacherStudentFeedbacksPage({
       ) : null}
 
       {selectedStudentId ? (
-        <section style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
+        <>
+        <a
+          className="timeline-overlay"
+          href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`}
+          aria-label={t(lang, "Close timeline", "关闭时间线")}
+        />
+        <section id="timeline-drawer" className="timeline-drawer">
+          <div id="timeline-top" />
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-            <h3 style={{ margin: 0 }}>{t(lang, "Feedback Timeline", "反馈时间线")}</h3>
-            <a href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`}>{t(lang, "Close", "关闭")}</a>
+            <h3 style={{ margin: 0 }}>
+              {t(lang, "Feedback Timeline", "反馈时间线")}
+              {selectedTimelineAll[0] ? ` - ${selectedTimelineAll[0].studentName}` : ""}
+            </h3>
+            <div className="drawer-actions">
+              <a className="drawer-action" href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}#student-${encodeURIComponent(selectedStudentId)}`}>
+                {t(lang, "Back to List", "回到列表")}
+              </a>
+              <a className="drawer-action" href="#timeline-top">
+                {t(lang, "Top", "回到顶部")}
+              </a>
+              <a className="drawer-action" href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`}>{t(lang, "Close", "关闭")}</a>
+            </div>
           </div>
 
           <div style={{ marginTop: 10, border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 8, padding: 10 }}>
@@ -560,7 +649,7 @@ export default async function TeacherStudentFeedbacksPage({
             <div style={{ color: "#999", marginTop: 8 }}>{t(lang, "No feedback timeline.", "暂无反馈时间线。")}</div>
           ) : (
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-              {selectedTimeline.slice(0, 150).map((item) => {
+              {selectedTimelineHead.map((item) => {
                 const isOtherUnread = item.teacherId !== teacher.id && !readSet.has(item.feedbackId);
                 return (
                   <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
@@ -603,10 +692,67 @@ export default async function TeacherStudentFeedbacksPage({
                   </article>
                 );
               })}
+              {selectedTimelineRest.length > 0 ? (
+                <details>
+                  <summary style={{ cursor: "pointer", color: "#334155", fontWeight: 700 }}>
+                    {t(lang, `Show More (${selectedTimelineRest.length})`, `查看更多（${selectedTimelineRest.length} 条）`)}
+                  </summary>
+                  <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                    {selectedTimelineRest.slice(0, 147).map((item) => {
+                      const isOtherUnread = item.teacherId !== teacher.id && !readSet.has(item.feedbackId);
+                      return (
+                        <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
+                          <div className="timeline-head" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ fontWeight: 700 }}>
+                              {new Date(item.sessionStartAt).toLocaleString()} - {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                              <span>
+                                {item.teacherName}
+                                {item.teacherId !== teacher.id ? <span style={{ marginLeft: 6, color: "#b45309", fontSize: 12 }}>{t(lang, "(Other)", "（其他老师）")}</span> : null}
+                                {isOtherUnread ? <span style={{ marginLeft: 6, color: "#b91c1c", fontSize: 12, fontWeight: 700 }}>{t(lang, "NEW", "未读")}</span> : null}
+                              </span>
+                              {isOtherUnread ? (
+                                <form action={markFeedbackReadAction} style={{ width: "auto" }}>
+                                  <input type="hidden" name="feedbackId" value={item.feedbackId} />
+                                  <input type="hidden" name="studentId" value={item.studentId} />
+                                  <input type="hidden" name="back" value={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(selectedStudentId)}&page=${safePage}`} />
+                                  <button type="submit" className="read-btn">{t(lang, "Mark Read", "标为已读")}</button>
+                                </form>
+                              ) : null}
+                            </div>
+                          </div>
+                          <details style={{ marginTop: 6 }} open={isOtherUnread}>
+                            <summary style={{ cursor: "pointer", color: "#334155" }}>
+                              {item.courseName} / {item.subjectName ?? "-"} / {item.levelName ?? "-"} | {summarize(item.content, 60)}
+                            </summary>
+                            <div style={{ color: "#475569", fontSize: 12, marginTop: 6 }}>
+                              {item.courseName} / {item.subjectName ?? "-"} / {item.levelName ?? "-"} | {item.campusName}
+                              {item.roomName ? ` / ${item.roomName}` : ""}
+                            </div>
+                            <div style={{ color: "#0f766e", fontSize: 12, marginTop: 2 }}>{t(lang, "Attendance", "出勤")}: {item.attendanceStatus}</div>
+                            <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{item.content || "-"}</div>
+                            <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+                              {item.classPerformance ? `${t(lang, "Performance", "课堂表现")}: ${item.classPerformance} | ` : ""}
+                              {item.homework ? `${t(lang, "Homework", "作业")}: ${item.homework} | ` : ""}
+                              {t(lang, "Submitted", "提交")}: {new Date(item.submittedAt).toLocaleString()}
+                            </div>
+                          </details>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </details>
+              ) : null}
+              <div className="drawer-float-top">
+                <a className="drawer-action" href="#timeline-top">{t(lang, "Top", "回到顶部")}</a>
+              </div>
             </div>
           )}
         </section>
+        </>
       ) : null}
+      </div>
     </div>
   );
 }
