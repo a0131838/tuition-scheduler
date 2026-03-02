@@ -64,31 +64,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div style={{ fontFamily: "system-ui", margin: 0, fontSize: 12.5 }}>
       <style>{`
-        .admin-shell {
-          display: flex;
-          height: 100vh;
-          overflow: hidden;
-        }
-        .admin-sidebar {
-          width: 240px;
-          padding: 16px;
-          border-right: 1px solid #eee;
-          background: #fafafa;
-          overflow-y: auto;
-        }
-        .admin-main {
-          flex: 1;
-          padding: 24px;
-          overflow-y: auto;
-          min-width: 0;
-        }
-        .admin-main-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-          gap: 8px;
-        }
         .nav-button {
           display: block;
           text-decoration: none;
@@ -109,34 +84,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         .nav-button:active {
           transform: translateY(0);
         }
-        @media (max-width: 900px) {
-          .admin-shell {
-            display: block;
-            height: auto;
-            overflow: visible;
-          }
-          .admin-sidebar {
-            width: auto;
-            border-right: 0;
-            border-bottom: 1px solid #eee;
-            overflow: visible;
-            padding: 12px;
-          }
-          .admin-main {
-            width: 100%;
-            overflow: visible;
-            padding: 12px;
-          }
-          .admin-main-head {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-        }
       `}</style>
-      <div className="admin-shell">
-        <aside
-          className="admin-sidebar"
-        >
+      <div className="app-shell">
+        <aside className="app-sidebar">
           <div
             style={{
               padding: "8px 10px",
@@ -332,8 +282,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </a>
         </aside>
 
-        <main className="admin-main">
-          <div className="admin-main-head">
+        <main className="app-main">
+          <div className="app-main-head">
             <div style={{ color: "#666" }}>
               {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
             </div>

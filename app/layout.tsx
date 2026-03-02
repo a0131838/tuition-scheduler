@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import FlashAlert from "./_components/FlashAlert";
 import ScrollManager from "./_components/ScrollManager";
 import "@/lib/date-format-global";
+import "./responsive-layout.css";
 export default function RootLayout({
   children,
 }: {
