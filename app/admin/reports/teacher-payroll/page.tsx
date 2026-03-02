@@ -240,6 +240,7 @@ export default async function TeacherPayrollPage({
     q?: string;
     pendingOnly?: string;
     unsentOnly?: string;
+    rateMissingOnly?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -255,6 +256,7 @@ export default async function TeacherPayrollPage({
   const q = String(sp?.q ?? "").trim().toLowerCase();
   const pendingOnly = sp?.pendingOnly === "1";
   const unsentOnly = sp?.unsentOnly === "1";
+  const rateMissingOnly = sp?.rateMissingOnly === "1";
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
   const finPaidDone = sp?.finpaid === "1";
@@ -315,6 +317,13 @@ export default async function TeacherPayrollPage({
   const shownSalaryCents = payrollRows.reduce((sum, row) => sum + row.totalAmountCents, 0);
   const shownPending = payrollRows.reduce((sum, row) => sum + row.pendingSessions, 0);
   const shownCompleted = payrollRows.reduce((sum, row) => sum + row.completedSessions, 0);
+  const missingRateTeacherSet = new Set(
+    data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).map((r) => r.teacherId)
+  );
+  const unconfiguredRateCount = data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).length;
+  const rateRows = rateMissingOnly
+    ? data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0)
+    : data.rateEditorRows;
 
   return (
     <div>
@@ -451,9 +460,90 @@ export default async function TeacherPayrollPage({
       </div>
 
       <h3>{t(lang, "Salary Slips by Teacher", "按老师工资单")}</h3>
+      {!isFinanceOnlyUser ? (
+        <details
+          open={rateMissingOnly || unconfiguredRateCount > 0}
+          style={{ marginBottom: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff" }}
+        >
+          <summary style={{ cursor: "pointer", padding: "10px 12px", fontWeight: 700 }}>
+            {t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}{" "}
+            {unconfiguredRateCount > 0 ? (
+              <span style={{ color: "#b91c1c", marginLeft: 8 }}>
+                {t(lang, "Unconfigured", "未配置")}: {unconfiguredRateCount}
+              </span>
+            ) : null}
+          </summary>
+          <div style={{ padding: "0 12px 12px" }}>
+            <div style={{ marginBottom: 10, color: "#666" }}>
+              {t(
+                lang,
+                "If no matching rate is found, hourly rate defaults to 0.",
+                "若没有匹配费率，默认课时费为 0。"
+              )}
+            </div>
+            <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="q" value={String(sp?.q ?? "")} />
+              {pendingOnly ? <input type="hidden" name="pendingOnly" value="1" /> : null}
+              {unsentOnly ? <input type="hidden" name="unsentOnly" value="1" /> : null}
+              <label>
+                <input type="checkbox" name="rateMissingOnly" value="1" defaultChecked={rateMissingOnly} />{" "}
+                {t(lang, "Only Unconfigured", "仅看未配置")}
+              </label>
+              <button type="submit">{t(lang, "Apply", "应用")}</button>
+            </form>
+            {rateRows.length === 0 ? (
+              <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>
+            ) : (
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th align="left">{t(lang, "Teacher", "老师")}</th>
+                    <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
+                    <th align="left">{t(lang, "Matched Sessions", "匹配课次")}</th>
+                    <th align="left">{t(lang, "Matched Hours", "匹配课时")}</th>
+                    <th align="left">{t(lang, "Edit Hourly Rate", "编辑课时费")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rateRows.map((row) => (
+                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{row.teacherName}</td>
+                      <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
+                      <td>{row.matchedSessions}</td>
+                      <td>{row.matchedHours}</td>
+                      <td>
+                        <form action={saveRateAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="scope" value={scope} />
+                          <input type="hidden" name="teacherId" value={row.teacherId} />
+                          <input type="hidden" name="courseId" value={row.courseId} />
+                          <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
+                          <input type="hidden" name="levelId" value={row.levelId ?? ""} />
+                          <input
+                            name="hourlyRate"
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            defaultValue={(row.hourlyRateCents / 100).toFixed(2)}
+                            style={{ width: 100 }}
+                          />
+                          <button type="submit">{t(lang, "Save", "保存")}</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </details>
+      ) : null}
       <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
         <input type="hidden" name="month" value={month} />
         <input type="hidden" name="scope" value={scope} />
+        {rateMissingOnly ? <input type="hidden" name="rateMissingOnly" value="1" /> : null}
         <input
           type="text"
           name="q"
@@ -506,7 +596,12 @@ export default async function TeacherPayrollPage({
                 <td style={{ color: "#166534", fontWeight: 700 }}>{row.completedSessions}</td>
                 <td style={{ color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
                 <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.totalAmountCents)}</td>
+                <td>
+                  {formatMoneyCents(row.totalAmountCents)}
+                  {missingRateTeacherSet.has(row.teacherId) ? (
+                    <div style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "Rate Missing", "费率缺失")}</div>
+                  ) : null}
+                </td>
                 <td>
                   {!publish ? (
                     <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569" }}>
@@ -599,60 +694,6 @@ export default async function TeacherPayrollPage({
         </table>
       )}
 
-      {!isFinanceOnlyUser ? <h3>{t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}</h3> : null}
-      <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(
-          lang,
-          "If no matching rate is found, hourly rate defaults to 0.",
-          "若没有匹配费率，默认课时费为 0。"
-        )}
-      </div>
-
-      {!isFinanceOnlyUser && data.rateEditorRows.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>
-      ) : null}
-      {!isFinanceOnlyUser ? (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Teacher", "老师")}</th>
-              <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
-              <th align="left">{t(lang, "Matched Sessions", "匹配课次")}</th>
-              <th align="left">{t(lang, "Matched Hours", "匹配课时")}</th>
-              <th align="left">{t(lang, "Edit Hourly Rate", "编辑课时费")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.rateEditorRows.map((row) => (
-              <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
-                <td>{row.teacherName}</td>
-                <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
-                <td>{row.matchedSessions}</td>
-                <td>{row.matchedHours}</td>
-                <td>
-                  <form action={saveRateAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input type="hidden" name="month" value={month} />
-                    <input type="hidden" name="scope" value={scope} />
-                    <input type="hidden" name="teacherId" value={row.teacherId} />
-                    <input type="hidden" name="courseId" value={row.courseId} />
-                    <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
-                    <input type="hidden" name="levelId" value={row.levelId ?? ""} />
-                    <input
-                      name="hourlyRate"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      defaultValue={(row.hourlyRateCents / 100).toFixed(2)}
-                      style={{ width: 100 }}
-                    />
-                    <button type="submit">{t(lang, "Save", "保存")}</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
     </div>
   );
 }
