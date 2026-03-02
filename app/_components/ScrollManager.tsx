@@ -112,6 +112,8 @@ export default function ScrollManager() {
       }
 
       e.preventDefault();
+      // Match native GET submit behavior for filter forms: replace query by submitted fields.
+      dest.search = "";
       const fd = new FormData(form);
       if (
         guessedSubmitter &&

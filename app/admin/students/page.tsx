@@ -29,17 +29,24 @@ const GRADE_OPTIONS = [
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sourceChannelId?: string; studentTypeId?: string; q?: string; page?: string; pageSize?: string }>;
+  searchParams?: Promise<{
+    sourceChannelId?: string | string[];
+    studentTypeId?: string | string[];
+    q?: string | string[];
+    page?: string | string[];
+    pageSize?: string | string[];
+  }>;
 }) {
   const lang = await getLang();
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
+  const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] ?? "" : v ?? "");
   const sp = await searchParams;
-  const sourceChannelId = sp?.sourceChannelId ?? "";
-  const studentTypeId = sp?.studentTypeId ?? "";
-  const q = (sp?.q ?? "").trim();
-  const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
-  const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
+  const sourceChannelId = first(sp?.sourceChannelId);
+  const studentTypeId = first(sp?.studentTypeId);
+  const q = first(sp?.q).trim();
+  const requestedPage = Math.max(1, Number.parseInt(first(sp?.page) || "1", 10) || 1);
+  const pageSizeRaw = Number.parseInt(first(sp?.pageSize) || "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
 
   const where: any = {};
