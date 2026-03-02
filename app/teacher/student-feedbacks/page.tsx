@@ -461,7 +461,7 @@ export default async function TeacherStudentFeedbacksPage({
       {sp?.msg === "marked-read" ? <div style={{ color: "#166534" }}>{t(lang, "Marked as read.", "已标记为已读。")}</div> : null}
       {sp?.err ? <div style={{ color: "#b91c1c" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
-      <form method="GET" className="filter-bar">
+      <form method="GET" className="filter-bar ts-filter-bar">
         <input
           name="q"
           defaultValue={q}
@@ -500,7 +500,7 @@ export default async function TeacherStudentFeedbacksPage({
         <div style={{ color: "#999" }}>{t(lang, "No matching feedbacks.", "没有匹配的反馈记录。")}</div>
       ) : (
         <>
-          <div className="desktop-only">
+          <div className="desktop-only table-scroll">
             <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
               <thead>
                 <tr style={{ background: "#f5f5f5" }}>
@@ -578,11 +578,11 @@ export default async function TeacherStudentFeedbacksPage({
       {selectedStudentId ? (
         <>
         <a
-          className="timeline-overlay"
+          className="timeline-overlay ts-drawer-overlay"
           href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`}
           aria-label={t(lang, "Close timeline", "关闭时间线")}
         />
-        <section id="timeline-drawer" className="timeline-drawer">
+        <section id="timeline-drawer" className="timeline-drawer ts-drawer">
           <div id="timeline-top" />
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0 }}>

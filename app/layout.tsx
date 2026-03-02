@@ -57,6 +57,7 @@ export default function RootLayout({
             align-items: center;
             gap: 6px;
             padding: 5px 8px;
+            min-height: 40px;
             border-radius: 7px;
             border: 1px solid var(--btn-border);
             background: var(--btn-bg);
@@ -80,6 +81,7 @@ export default function RootLayout({
             align-items: center;
             gap: 6px;
             padding: 5px 8px;
+            min-height: 40px;
             border-radius: 7px;
             border: 1px solid var(--btn-border);
             background: var(--btn-bg);
@@ -104,6 +106,11 @@ export default function RootLayout({
             cursor: not-allowed;
             box-shadow: none;
             transform: none;
+          }
+          input,
+          select,
+          textarea {
+            min-height: 40px;
           }
         `}</style>
         <Suspense fallback={null}>

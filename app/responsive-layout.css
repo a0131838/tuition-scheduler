@@ -27,6 +27,75 @@
   gap: 8px;
 }
 
+.app-nav-mobile {
+  display: none;
+}
+
+.app-nav-mobile > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.app-nav-mobile > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-nav-mobile > summary::after {
+  content: "▾";
+  float: right;
+  color: #475569;
+}
+
+.app-nav-mobile[open] > summary::after {
+  content: "▴";
+}
+
+.ts-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ts-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.2);
+  z-index: 60;
+}
+
+.ts-drawer {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: min(560px, calc(100vw - 20px));
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  overflow: auto;
+  z-index: 70;
+  box-shadow: 0 10px 32px rgba(2, 6, 23, 0.2);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+.app-main table {
+  max-width: 100%;
+}
+
+/* Prefer explicit wrappers where available; fallback to table self-scroll on small screens. */
+.table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
 @media (max-width: 1200px) {
   .app-sidebar {
     width: 220px;
@@ -50,16 +119,70 @@
     border-bottom: 1px solid #eee;
     overflow: visible;
     padding: 12px;
+    position: static;
   }
 
   .app-main {
     width: 100%;
     overflow: visible;
     padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
   .app-main-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .app-nav-desktop {
+    display: none;
+  }
+
+  .app-nav-mobile {
+    display: block;
+  }
+
+  .ts-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ts-filter-bar input,
+  .ts-filter-bar select,
+  .ts-filter-bar button,
+  .ts-filter-bar a {
+    width: 100%;
+  }
+
+  .app-main table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .ts-drawer-overlay {
+    background: rgba(15, 23, 42, 0.28);
+  }
+
+  .ts-drawer {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: min(80vh, 700px);
+    border-radius: 14px 14px 0 0;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 901px) {
+  .app-nav-mobile {
+    display: none;
+  }
+
+  .app-nav-desktop {
+    display: block;
   }
 }
