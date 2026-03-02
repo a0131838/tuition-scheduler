@@ -33,6 +33,13 @@ type RepairPreviewItem = {
   ledgerNote: string;
 };
 
+type BatchFailureDetail = {
+  attendanceId: string;
+  studentName: string;
+  sessionAt: string;
+  reason: string;
+};
+
 function isCompletedSession(x: {
   session: {
     teacherId: string | null;
@@ -74,7 +81,34 @@ function previewReasonLabel(lang: Lang, reason: string | null) {
     case "insufficient-after-batch-order":
       return t(lang, "Insufficient after batch ordering", "批量顺序下余额不足");
     default:
-      return t(lang, "Blocked", "阻塞");
+      return reason ? `${t(lang, "Blocked", "阻塞")}: ${reason}` : t(lang, "Blocked", "阻塞");
+  }
+}
+
+function riskRank(reason: string | null, canApply: boolean) {
+  if (!canApply) {
+    if (reason === "no-package") return 0;
+    if (reason === "insufficient-package-balance" || reason === "insufficient-after-batch-order") return 1;
+    if (reason === "invalid-duration") return 2;
+    return 2;
+  }
+  return 3;
+}
+
+function encodeFailDetails(details: BatchFailureDetail[]) {
+  if (details.length === 0) return "";
+  const json = JSON.stringify(details.slice(0, 20));
+  return Buffer.from(json, "utf8").toString("base64url");
+}
+
+function decodeFailDetails(raw: string | undefined): BatchFailureDetail[] {
+  if (!raw) return [];
+  try {
+    const txt = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(txt) as BatchFailureDetail[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 }
 
@@ -366,11 +400,32 @@ async function batchAutoFixDeductAction(formData: FormData) {
     )
   );
   const limit = Math.max(50, Math.min(2000, Number(formData.get("limit") ?? 200) || 200));
+  const confirmAt = Number(formData.get("confirmAt") ?? 0);
+  const cooldownMs = 5000;
+  if (!Number.isFinite(confirmAt) || confirmAt <= 0) {
+    redirect(`/admin/reports/undeducted-completed?limit=${limit}&err=missing-confirm-step`);
+  }
+  if (Date.now() - confirmAt < cooldownMs) {
+    redirect(`/admin/reports/undeducted-completed?limit=${limit}&err=cooldown-not-finished`);
+  }
   if (attendanceIds.length === 0) redirect(`/admin/reports/undeducted-completed?limit=${limit}&err=no-selected-rows`);
 
+  const batchId = crypto.randomUUID();
   let ok = 0;
   let fail = 0;
   const touchedPackages = new Set<string>();
+  const failDetails: BatchFailureDetail[] = [];
+  const infoRows = await prisma.attendance.findMany({
+    where: { id: { in: attendanceIds } },
+    select: {
+      id: true,
+      student: { select: { name: true } },
+      session: { select: { startAt: true } },
+    },
+  });
+  const infoMap = new Map(
+    infoRows.map((x) => [x.id, { studentName: x.student.name, sessionAt: x.session.startAt.toISOString() }])
+  );
 
   for (const attendanceId of attendanceIds) {
     try {
@@ -383,10 +438,17 @@ async function batchAutoFixDeductAction(formData: FormData) {
         action: "REPAIR_AUTO_DEDUCT_BATCH",
         entityType: "Attendance",
         entityId: attendanceId,
-        meta: { attendanceId, studentId: fixed.studentId, sessionId: fixed.sessionId },
+        meta: { attendanceId, studentId: fixed.studentId, sessionId: fixed.sessionId, batchId },
       });
-    } catch {
+    } catch (e: any) {
       fail += 1;
+      const info = infoMap.get(attendanceId);
+      failDetails.push({
+        attendanceId,
+        studentName: info?.studentName ?? "-",
+        sessionAt: info?.sessionAt ?? "",
+        reason: String(e?.message ?? "unknown"),
+      });
     }
   }
 
@@ -395,7 +457,10 @@ async function batchAutoFixDeductAction(formData: FormData) {
     revalidatePath(`/admin/packages/${packageId}/ledger`);
   }
 
-  redirect(`/admin/reports/undeducted-completed?limit=${limit}&msg=batch-fixed&ok=${ok}&fail=${fail}`);
+  const failDetailParam = encodeURIComponent(encodeFailDetails(failDetails));
+  redirect(
+    `/admin/reports/undeducted-completed?limit=${limit}&msg=batch-fixed&ok=${ok}&fail=${fail}&batchId=${encodeURIComponent(batchId)}&failDetail=${failDetailParam}`
+  );
 }
 
 async function markWaiveAction(formData: FormData) {
@@ -450,6 +515,9 @@ export default async function UndeductedCompletedReportPage({
     ids?: string | string[];
     ok?: string;
     fail?: string;
+    batchId?: string;
+    failDetail?: string;
+    confirmAt?: string;
   }>;
 }) {
   await requireAdmin();
@@ -461,6 +529,12 @@ export default async function UndeductedCompletedReportPage({
   const selectedIds = parseSearchMulti(sp?.ids);
   const selectedSet = new Set(selectedIds);
   const isBatchPreview = String(sp?.batch ?? "") === "1";
+  const nowMs = Date.now();
+  const cooldownMs = 5000;
+  const confirmAt = Number(sp?.confirmAt ?? 0);
+  const hasConfirmAt = Number.isFinite(confirmAt) && confirmAt > 0;
+  const remainMs = hasConfirmAt ? Math.max(0, cooldownMs - (nowMs - confirmAt)) : cooldownMs;
+  const failDetails = decodeFailDetails(sp?.failDetail);
 
   const rows = await loadCandidateRows(limit);
   const previewRow = previewAttendanceId ? rows.find((r) => r.id === previewAttendanceId) ?? null : null;
@@ -468,10 +542,17 @@ export default async function UndeductedCompletedReportPage({
 
   const batchRows = isBatchPreview ? rows.filter((r) => selectedSet.has(r.id)) : [];
   const batchPreviewRaw = await Promise.all(batchRows.map((r) => buildPreviewItem(r)));
-  const batchPreviewItems = applyBatchBalanceSimulation(batchPreviewRaw);
+  const batchPreviewItems = applyBatchBalanceSimulation(batchPreviewRaw).sort((a, b) => {
+    const r = riskRank(a.reason, a.canApply) - riskRank(b.reason, b.canApply);
+    if (r !== 0) return r;
+    return new Date(b.sessionAt).getTime() - new Date(a.sessionAt).getTime();
+  });
   const batchReadyItems = batchPreviewItems.filter((x) => x.canApply);
   const batchBlockedItems = batchPreviewItems.filter((x) => !x.canApply);
   const batchNeedTotal = batchReadyItems.reduce((sum, x) => sum + x.needUnits, 0);
+  const selectedQuery = selectedIds.map((id) => `ids=${encodeURIComponent(id)}`).join("&");
+  const confirmStepUrl = `/admin/reports/undeducted-completed?limit=${limit}&batch=1&confirmAt=${nowMs}${selectedQuery ? `&${selectedQuery}` : ""}`;
+  const confirmRefreshUrl = `/admin/reports/undeducted-completed?limit=${limit}&batch=1&confirmAt=${confirmAt}${selectedQuery ? `&${selectedQuery}` : ""}`;
 
   return (
     <div>
@@ -483,7 +564,40 @@ export default async function UndeductedCompletedReportPage({
       {sp?.msg === "waived" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Waive marked.", "已标记免扣。")}</div> : null}
       {sp?.msg === "batch-fixed" ? (
         <div style={{ marginBottom: 12, color: "#166534" }}>
-          {t(lang, "Batch auto-fix done.", "批量自动补扣完成。")} OK={Number(sp?.ok ?? 0)} / FAIL={Number(sp?.fail ?? 0)}
+          {t(lang, "Batch auto-fix done.", "批量自动补扣完成。")} OK={Number(sp?.ok ?? 0)} / FAIL={Number(sp?.fail ?? 0)} | batchId=
+          <code>{sp?.batchId ?? "-"}</code>
+        </div>
+      ) : null}
+      {sp?.msg === "batch-fixed" && failDetails.length > 0 ? (
+        <div style={{ marginBottom: 12, border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 8, padding: 10 }}>
+          <div style={{ fontWeight: 700, color: "#b91c1c", marginBottom: 6 }}>
+            {t(lang, "Batch failures", "批量失败明细")} ({failDetails.length})
+          </div>
+          <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr style={{ background: "#ffe4e6" }}>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Session", "课次")}</th>
+                <th align="left">{t(lang, "Reason", "原因")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {failDetails.map((f) => (
+                <tr key={f.attendanceId} style={{ borderTop: "1px solid #fecdd3" }}>
+                  <td>{f.studentName}</td>
+                  <td>{f.sessionAt ? new Date(f.sessionAt).toLocaleString() : "-"}</td>
+                  <td>{previewReasonLabel(lang, f.reason)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 12, color: "#881337", marginTop: 6 }}>
+            {t(
+              lang,
+              "Only first 20 failures are shown in this response.",
+              "本次响应最多展示前 20 条失败明细。"
+            )}
+          </div>
         </div>
       ) : null}
       {sp?.err ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
@@ -558,14 +672,31 @@ export default async function UndeductedCompletedReportPage({
           ) : null}
 
           {batchReadyItems.length > 0 ? (
-            <form action={batchAutoFixDeductAction} style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              {batchReadyItems.map((x) => (
-                <input key={x.attendanceId} type="hidden" name="attendanceIds" value={x.attendanceId} />
-              ))}
-              <input type="hidden" name="limit" value={String(limit)} />
-              <button type="submit">{t(lang, "Confirm Batch Auto Deduct", "确认批量自动补扣")} ({batchReadyItems.length})</button>
-              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "取消")}</a>
-            </form>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "#334155" }}>
+                {t(lang, "Summary", "摘要")}: {t(lang, "Rows", "条数")}={batchReadyItems.length} |{" "}
+                {t(lang, "Total Units", "总扣减")}={batchNeedTotal} | {t(lang, "Packages", "涉及课包")}=
+                {new Set(batchReadyItems.map((x) => x.packageId).filter(Boolean)).size}
+              </div>
+              {!hasConfirmAt ? (
+                <a href={confirmStepUrl}>{t(lang, "Enter second confirmation", "进入二次确认")}</a>
+              ) : remainMs > 0 ? (
+                <div style={{ color: "#92400e", fontSize: 12 }}>
+                  {t(lang, "Cooling down", "冷却中")}: {Math.ceil(remainMs / 1000)}s.{" "}
+                  <a href={confirmRefreshUrl}>{t(lang, "Refresh", "刷新")}</a>
+                </div>
+              ) : (
+                <form action={batchAutoFixDeductAction} style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  {batchReadyItems.map((x) => (
+                    <input key={x.attendanceId} type="hidden" name="attendanceIds" value={x.attendanceId} />
+                  ))}
+                  <input type="hidden" name="limit" value={String(limit)} />
+                  <input type="hidden" name="confirmAt" value={String(confirmAt)} />
+                  <button type="submit">{t(lang, "Confirm Batch Auto Deduct", "确认批量自动补扣")} ({batchReadyItems.length})</button>
+                  <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "取消")}</a>
+                </form>
+              )}
+            </div>
           ) : (
             <div style={{ color: "#b91c1c" }}>{t(lang, "No rows are ready to apply in this batch.", "本次批量预览无可执行记录。")}</div>
           )}
