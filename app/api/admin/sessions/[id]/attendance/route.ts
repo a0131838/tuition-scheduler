@@ -12,6 +12,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 const DEDUCTABLE_STATUS = new Set<AttendanceStatus>([
   AttendanceStatus.PRESENT,
   AttendanceStatus.LATE,
+  AttendanceStatus.ABSENT,
   AttendanceStatus.EXCUSED,
 ]);
 
@@ -67,6 +68,8 @@ type ExistingAttendance = {
   deductedCount: number;
   packageId: string | null;
   excusedCharge?: boolean;
+  waiveDeduction?: boolean;
+  waiveReason?: string | null;
 };
 
 type DesiredAttendance = {
@@ -76,6 +79,8 @@ type DesiredAttendance = {
   note: string | null;
   packageId: string | null;
   excusedCharge: boolean;
+  waiveDeduction: boolean;
+  waiveReason: string | null;
 };
 
 async function applyOneStudentAttendanceAndDeduct(
@@ -97,10 +102,14 @@ async function applyOneStudentAttendanceAndDeduct(
   const nextDmRaw = desired.deductedMinutes;
 
   const excusedCharge = desired.status === AttendanceStatus.EXCUSED ? desired.excusedCharge : false;
+  const waiveDeduction = Boolean(desired.waiveDeduction);
   const canDeduct =
-    desired.status === AttendanceStatus.EXCUSED ? excusedCharge : DEDUCTABLE_STATUS.has(desired.status);
+    !waiveDeduction && (desired.status === AttendanceStatus.EXCUSED ? excusedCharge : DEDUCTABLE_STATUS.has(desired.status));
   const normalizedNextDm = canDeduct ? nextDmRaw : 0;
   const normalizedNextDc = canDeduct ? (isGroupClass ? 1 : Math.max(0, desired.deductedCount)) : 0;
+  if (canDeduct && !isGroupClass && normalizedNextDm <= 0) {
+    throw new Error("Deducted minutes must be > 0 for deductible attendance unless waived.");
+  }
   const delta = isGroupClass ? normalizedNextDc - prevDc : normalizedNextDm - prevDm;
 
   let packageId: string | null = desired.packageId ?? existing?.packageId ?? null;
@@ -186,6 +195,9 @@ async function applyOneStudentAttendanceAndDeduct(
   const finalDeductedMinutes = isGroupClass ? 0 : normalizedNextDm;
   const finalDeductedCount = isGroupClass ? normalizedNextDc : desired.deductedCount;
   const finalPackageId = (isGroupClass ? finalDeductedCount > 0 : finalDeductedMinutes > 0) ? packageId : null;
+  if (canDeduct && !finalPackageId) {
+    throw new Error("Package binding is required for deductible attendance unless waived.");
+  }
 
   await tx.attendance.upsert({
     where: { sessionId_studentId: { sessionId, studentId } },
@@ -198,6 +210,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      waiveDeduction: waiveDeduction && !canDeduct,
+      waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
     update: {
       status: desired.status,
@@ -206,6 +220,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      waiveDeduction: waiveDeduction && !canDeduct,
+      waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
   });
 }
@@ -258,6 +274,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       deductedCount: true,
       packageId: true,
       excusedCharge: true,
+      waiveDeduction: true,
+      waiveReason: true,
     },
   });
   const existingMap = new Map(existingList.map((a) => [a.studentId, a]));
@@ -286,6 +304,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const note = String(it?.note ?? "").trim() || null;
     const packageId = String(it?.packageId ?? "").trim() || null;
     const excusedCharge = Boolean(it?.excusedCharge);
+    const waiveDeduction = Boolean(it?.waiveDeduction);
+    const waiveReason = waiveDeduction ? String(it?.waiveReason ?? "").trim() || null : null;
 
     const prevExcused = excusedCountMap.get(studentId) ?? 0;
     const nextExcusedCount = prevExcused + (status === AttendanceStatus.EXCUSED ? 1 : 0);
@@ -299,6 +319,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       note,
       packageId,
       excusedCharge: finalExcusedCharge,
+      waiveDeduction,
+      waiveReason,
     });
   }
 

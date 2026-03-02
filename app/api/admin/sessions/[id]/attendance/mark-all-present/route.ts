@@ -12,6 +12,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 const DEDUCTABLE_STATUS = new Set<AttendanceStatus>([
   AttendanceStatus.PRESENT,
   AttendanceStatus.LATE,
+  AttendanceStatus.ABSENT,
   AttendanceStatus.EXCUSED,
 ]);
 
@@ -70,6 +71,8 @@ type ExistingAttendance = {
   deductedMinutes: number;
   deductedCount: number;
   packageId: string | null;
+  waiveDeduction?: boolean;
+  waiveReason?: string | null;
 };
 
 type DesiredAttendance = {
@@ -79,6 +82,8 @@ type DesiredAttendance = {
   note: string | null;
   packageId: string | null;
   excusedCharge: boolean;
+  waiveDeduction: boolean;
+  waiveReason: string | null;
 };
 
 async function applyOneStudentAttendanceAndDeduct(
@@ -100,9 +105,13 @@ async function applyOneStudentAttendanceAndDeduct(
   const nextDmRaw = desired.deductedMinutes;
 
   const excusedCharge = false;
-  const canDeduct = DEDUCTABLE_STATUS.has(desired.status);
+  const waiveDeduction = Boolean(desired.waiveDeduction);
+  const canDeduct = !waiveDeduction && DEDUCTABLE_STATUS.has(desired.status);
   const normalizedNextDm = canDeduct ? nextDmRaw : 0;
   const normalizedNextDc = canDeduct ? (isGroupClass ? 1 : Math.max(0, desired.deductedCount)) : 0;
+  if (canDeduct && !isGroupClass && normalizedNextDm <= 0) {
+    throw new Error("Deducted minutes must be > 0 for deductible attendance unless waived.");
+  }
   const delta = isGroupClass ? normalizedNextDc - prevDc : normalizedNextDm - prevDm;
 
   let packageId: string | null = desired.packageId ?? existing?.packageId ?? null;
@@ -169,6 +178,9 @@ async function applyOneStudentAttendanceAndDeduct(
   const finalDeductedMinutes = isGroupClass ? 0 : normalizedNextDm;
   const finalDeductedCount = isGroupClass ? normalizedNextDc : desired.deductedCount;
   const finalPackageId = (isGroupClass ? finalDeductedCount > 0 : finalDeductedMinutes > 0) ? packageId : null;
+  if (canDeduct && !finalPackageId) {
+    throw new Error("Package binding is required for deductible attendance unless waived.");
+  }
 
   await tx.attendance.upsert({
     where: { sessionId_studentId: { sessionId, studentId } },
@@ -181,6 +193,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      waiveDeduction: waiveDeduction && !canDeduct,
+      waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
     update: {
       status: desired.status,
@@ -189,6 +203,8 @@ async function applyOneStudentAttendanceAndDeduct(
       packageId: finalPackageId,
       note: desired.note,
       excusedCharge,
+      waiveDeduction: waiveDeduction && !canDeduct,
+      waiveReason: waiveDeduction && !canDeduct ? desired.waiveReason : null,
     },
   });
 }
@@ -241,6 +257,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             note: null,
             packageId: null,
             excusedCharge: false,
+            waiveDeduction: false,
+            waiveReason: null,
           },
           existing: existingMap.get(studentId),
           isGroupClass,
