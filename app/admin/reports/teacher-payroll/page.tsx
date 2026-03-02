@@ -574,7 +574,6 @@ export default async function TeacherPayrollPage({
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Salary", "工资")}</th>
               <th align="left">{t(lang, "Workflow", "流程状态")}</th>
-              <th align="left">{t(lang, "Detail", "详情")}</th>
               <th align="left">{t(lang, "Actions", "操作")}</th>
             </tr>
           </thead>
@@ -622,14 +621,12 @@ export default async function TeacherPayrollPage({
                   )}
                 </td>
                 <td>
-                  <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
-                    {t(lang, "Open", "打开")}
-                  </a>
-                </td>
-                <td>
                   <details>
-                    <summary style={{ cursor: "pointer" }}>{t(lang, "Open Actions", "展开操作")}</summary>
+                    <summary style={{ cursor: "pointer" }}>{t(lang, "Actions", "操作")}</summary>
                     <div style={{ display: "grid", gap: 6, justifyItems: "start", marginTop: 6 }}>
+                    <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+                      {t(lang, "Open Detail", "打开详情")}
+                    </a>
                     {!isFinanceOnlyUser && (!publish?.financePaidAt || canEditApprovalConfig) ? (
                       <form action={sendPayrollAction}>
                         <input type="hidden" name="month" value={month} />
@@ -671,19 +668,22 @@ export default async function TeacherPayrollPage({
                       </form>
                     ) : null}
                     {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (
-                      <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <input
-                          type="text"
-                          name="rejectReason"
-                          required
-                          placeholder={t(lang, "Reject reason", "驳回原因")}
-                          style={{ width: 180 }}
-                        />
-                        <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
-                      </form>
+                      <details>
+                        <summary style={{ cursor: "pointer", color: "#b91c1c" }}>{t(lang, "Finance Reject", "财务驳回")}</summary>
+                        <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="scope" value={scope} />
+                          <input type="hidden" name="teacherId" value={row.teacherId} />
+                          <input
+                            type="text"
+                            name="rejectReason"
+                            required
+                            placeholder={t(lang, "Reject reason", "驳回原因")}
+                            style={{ width: 180 }}
+                          />
+                          <button type="submit">{t(lang, "Confirm Reject", "确认驳回")}</button>
+                        </form>
+                      </details>
                     ) : null}
                     </div>
                   </details>
