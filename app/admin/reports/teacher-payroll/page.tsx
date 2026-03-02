@@ -328,7 +328,19 @@ export default async function TeacherPayrollPage({
   return (
     <div>
       <h2>{t(lang, "Teacher Payroll", "老师工资单")}</h2>
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 12, background: "#f8fafc" }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 8,
+          zIndex: 20,
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          padding: 12,
+          marginBottom: 12,
+          background: "#f8fafc",
+          boxShadow: "0 1px 6px rgba(15, 23, 42, 0.08)",
+        }}
+      >
         <form method="GET" style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <label>
@@ -346,6 +358,11 @@ export default async function TeacherPayrollPage({
           </div>
           <div style={{ fontSize: 13, color: "#334155" }}>
             <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <a href="#salary-slips">{t(lang, "Go to Salary Slips", "跳到工资单")}</a>
+            {!isFinanceOnlyUser ? <a href="#rate-config">{t(lang, "Go to Rate Config", "跳到费率配置")}</a> : null}
+            {!isFinanceOnlyUser ? <a href="#approval-config">{t(lang, "Go to Approval Config", "跳到审批配置")}</a> : null}
           </div>
           <details>
             <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "Rule Notes", "规则说明")}</summary>
@@ -402,33 +419,6 @@ export default async function TeacherPayrollPage({
       {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only zhao hongwei can edit approval role config.", "只有 zhao hongwei 可以修改审批角色配置。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
-      {!isFinanceOnlyUser ? (
-        <div style={{ marginBottom: 14, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>{t(lang, "Approval Role Config", "审批角色配置")}</h3>
-          </div>
-          <form action={saveApprovalConfigAction} style={{ display: "grid", gap: 8, maxWidth: 980 }}>
-            <input type="hidden" name="month" value={month} />
-            <input type="hidden" name="scope" value={scope} />
-            <label>
-              {t(lang, "Manager approver emails (comma-separated)", "管理审批人邮箱（逗号分隔）")}:
-              <input name="managerEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
-            </label>
-            <label>
-              {t(lang, "Finance approver emails (comma-separated)", "财务审批人邮箱（逗号分隔）")}:
-              <input name="financeEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
-            </label>
-            <div style={{ color: "#64748b", fontSize: 13 }}>
-              {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
-            </div>
-            {!canEditApprovalConfig ? (
-              <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "Read-only for non-owner accounts.", "非负责人账号只读。")}</div>
-            ) : null}
-            <div><button type="submit" disabled={!canEditApprovalConfig}>{t(lang, "Save", "保存")}</button></div>
-          </form>
-        </div>
-      ) : null}
-
       <div
         style={{
           marginBottom: 14,
@@ -459,87 +449,7 @@ export default async function TeacherPayrollPage({
         </div>
       </div>
 
-      <h3>{t(lang, "Salary Slips by Teacher", "按老师工资单")}</h3>
-      {!isFinanceOnlyUser ? (
-        <details
-          open={rateMissingOnly || unconfiguredRateCount > 0}
-          style={{ marginBottom: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff" }}
-        >
-          <summary style={{ cursor: "pointer", padding: "10px 12px", fontWeight: 700 }}>
-            {t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}{" "}
-            {unconfiguredRateCount > 0 ? (
-              <span style={{ color: "#b91c1c", marginLeft: 8 }}>
-                {t(lang, "Unconfigured", "未配置")}: {unconfiguredRateCount}
-              </span>
-            ) : null}
-          </summary>
-          <div style={{ padding: "0 12px 12px" }}>
-            <div style={{ marginBottom: 10, color: "#666" }}>
-              {t(
-                lang,
-                "If no matching rate is found, hourly rate defaults to 0.",
-                "若没有匹配费率，默认课时费为 0。"
-              )}
-            </div>
-            <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
-              <input type="hidden" name="month" value={month} />
-              <input type="hidden" name="scope" value={scope} />
-              <input type="hidden" name="q" value={String(sp?.q ?? "")} />
-              {pendingOnly ? <input type="hidden" name="pendingOnly" value="1" /> : null}
-              {unsentOnly ? <input type="hidden" name="unsentOnly" value="1" /> : null}
-              <label>
-                <input type="checkbox" name="rateMissingOnly" value="1" defaultChecked={rateMissingOnly} />{" "}
-                {t(lang, "Only Unconfigured", "仅看未配置")}
-              </label>
-              <button type="submit">{t(lang, "Apply", "应用")}</button>
-            </form>
-            {rateRows.length === 0 ? (
-              <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>
-            ) : (
-              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                  <tr style={{ background: "#f5f5f5" }}>
-                    <th align="left">{t(lang, "Teacher", "老师")}</th>
-                    <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
-                    <th align="left">{t(lang, "Matched Sessions", "匹配课次")}</th>
-                    <th align="left">{t(lang, "Matched Hours", "匹配课时")}</th>
-                    <th align="left">{t(lang, "Edit Hourly Rate", "编辑课时费")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rateRows.map((row) => (
-                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{row.teacherName}</td>
-                      <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
-                      <td>{row.matchedSessions}</td>
-                      <td>{row.matchedHours}</td>
-                      <td>
-                        <form action={saveRateAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="scope" value={scope} />
-                          <input type="hidden" name="teacherId" value={row.teacherId} />
-                          <input type="hidden" name="courseId" value={row.courseId} />
-                          <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
-                          <input type="hidden" name="levelId" value={row.levelId ?? ""} />
-                          <input
-                            name="hourlyRate"
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            defaultValue={(row.hourlyRateCents / 100).toFixed(2)}
-                            style={{ width: 100 }}
-                          />
-                          <button type="submit">{t(lang, "Save", "保存")}</button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </details>
-      ) : null}
+      <h3 id="salary-slips" style={{ scrollMarginTop: 80 }}>{t(lang, "Salary Slips by Teacher", "按老师工资单")}</h3>
       <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
         <input type="hidden" name="month" value={month} />
         <input type="hidden" name="scope" value={scope} />
@@ -693,6 +603,120 @@ export default async function TeacherPayrollPage({
           </tbody>
         </table>
       )}
+
+      {!isFinanceOnlyUser ? (
+        <details
+          id="rate-config"
+          open={rateMissingOnly}
+          style={{ marginBottom: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", scrollMarginTop: 80 }}
+        >
+          <summary style={{ cursor: "pointer", padding: "10px 12px", fontWeight: 700 }}>
+            {t(lang, "Rate Config (Teacher + Course)", "费率配置（老师 + 课程）")}{" "}
+            {unconfiguredRateCount > 0 ? (
+              <span style={{ color: "#b91c1c", marginLeft: 8 }}>
+                {t(lang, "Unconfigured", "未配置")}: {unconfiguredRateCount}
+              </span>
+            ) : null}
+          </summary>
+          <div style={{ padding: "0 12px 12px" }}>
+            <div style={{ marginBottom: 10, color: "#666" }}>
+              {t(
+                lang,
+                "If no matching rate is found, hourly rate defaults to 0.",
+                "若没有匹配费率，默认课时费为 0。"
+              )}
+            </div>
+            <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="q" value={String(sp?.q ?? "")} />
+              {pendingOnly ? <input type="hidden" name="pendingOnly" value="1" /> : null}
+              {unsentOnly ? <input type="hidden" name="unsentOnly" value="1" /> : null}
+              <label>
+                <input type="checkbox" name="rateMissingOnly" value="1" defaultChecked={rateMissingOnly} />{" "}
+                {t(lang, "Only Unconfigured", "仅看未配置")}
+              </label>
+              <button type="submit">{t(lang, "Apply", "应用")}</button>
+            </form>
+            {rateRows.length === 0 ? (
+              <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>
+            ) : (
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th align="left">{t(lang, "Teacher", "老师")}</th>
+                    <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
+                    <th align="left">{t(lang, "Matched Sessions", "匹配课次")}</th>
+                    <th align="left">{t(lang, "Matched Hours", "匹配课时")}</th>
+                    <th align="left">{t(lang, "Edit Hourly Rate", "编辑课时费")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rateRows.map((row) => (
+                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{row.teacherName}</td>
+                      <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
+                      <td>{row.matchedSessions}</td>
+                      <td>{row.matchedHours}</td>
+                      <td>
+                        <form action={saveRateAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input type="hidden" name="month" value={month} />
+                          <input type="hidden" name="scope" value={scope} />
+                          <input type="hidden" name="teacherId" value={row.teacherId} />
+                          <input type="hidden" name="courseId" value={row.courseId} />
+                          <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
+                          <input type="hidden" name="levelId" value={row.levelId ?? ""} />
+                          <input
+                            name="hourlyRate"
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            defaultValue={(row.hourlyRateCents / 100).toFixed(2)}
+                            style={{ width: 100 }}
+                          />
+                          <button type="submit">{t(lang, "Save", "保存")}</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </details>
+      ) : null}
+
+      {!isFinanceOnlyUser ? (
+        <details
+          id="approval-config"
+          style={{ marginBottom: 14, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", scrollMarginTop: 80 }}
+        >
+          <summary style={{ cursor: "pointer", padding: "10px 12px", fontWeight: 700 }}>
+            {t(lang, "Approval Role Config", "审批角色配置")}
+          </summary>
+          <div style={{ padding: "0 12px 12px" }}>
+            <form action={saveApprovalConfigAction} style={{ display: "grid", gap: 8, maxWidth: 980 }}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <label>
+                {t(lang, "Manager approver emails (comma-separated)", "管理审批人邮箱（逗号分隔）")}:
+                <input name="managerEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.managerApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+              </label>
+              <label>
+                {t(lang, "Finance approver emails (comma-separated)", "财务审批人邮箱（逗号分隔）")}:
+                <input name="financeEmails" readOnly={!canEditApprovalConfig} defaultValue={roleConfig.financeApproverEmails.join(", ")} style={{ marginLeft: 6, width: "100%" }} />
+              </label>
+              <div style={{ color: "#64748b", fontSize: 13 }}>
+                {t(lang, "All approvers in each role must confirm before next gated step is enabled.", "每个角色列表中的全部人员都确认后，才能进入下一步。")}
+              </div>
+              {!canEditApprovalConfig ? (
+                <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "Read-only for non-owner accounts.", "非负责人账号只读。")}</div>
+              ) : null}
+              <div><button type="submit" disabled={!canEditApprovalConfig}>{t(lang, "Save", "保存")}</button></div>
+            </form>
+          </div>
+        </details>
+      ) : null}
 
     </div>
   );
