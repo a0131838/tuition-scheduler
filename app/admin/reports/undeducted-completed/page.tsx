@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { getLang, t } from "@/lib/i18n";
+import { getLang, t, type Lang } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { isGroupPackNote } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
@@ -61,6 +61,21 @@ function buildRepairLedgerNote(attendanceId: string) {
 function parseSearchMulti(v?: string | string[]) {
   if (!v) return [];
   return Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : [String(v).trim()].filter(Boolean);
+}
+
+function previewReasonLabel(lang: Lang, reason: string | null) {
+  switch (reason) {
+    case "invalid-duration":
+      return t(lang, "Invalid duration", "课时长度无效");
+    case "no-package":
+      return t(lang, "No package", "无可用课包");
+    case "insufficient-package-balance":
+      return t(lang, "Insufficient package balance", "课包余额不足");
+    case "insufficient-after-batch-order":
+      return t(lang, "Insufficient after batch ordering", "批量顺序下余额不足");
+    default:
+      return t(lang, "Blocked", "阻塞");
+  }
 }
 
 async function pickRepairPackage(
@@ -460,48 +475,48 @@ export default async function UndeductedCompletedReportPage({
 
   return (
     <div>
-      <h2>{t(lang, "Completed But Undeducted", "Completed But Undeducted")}</h2>
+      <h2>{t(lang, "Completed But Undeducted", "已完成但未减扣")}</h2>
       <div style={{ marginBottom: 12, color: "#64748b" }}>
-        {t(lang, "Count", "Count")}: <b>{rows.length}</b>
+        {t(lang, "Count", "数量")}: <b>{rows.length}</b>
       </div>
-      {sp?.msg === "auto-fixed" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Auto fix applied.", "Auto fix applied.")}</div> : null}
-      {sp?.msg === "waived" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Waive marked.", "Waive marked.")}</div> : null}
+      {sp?.msg === "auto-fixed" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Auto fix applied.", "已自动补扣。")}</div> : null}
+      {sp?.msg === "waived" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Waive marked.", "已标记免扣。")}</div> : null}
       {sp?.msg === "batch-fixed" ? (
         <div style={{ marginBottom: 12, color: "#166534" }}>
-          {t(lang, "Batch auto-fix done.", "Batch auto-fix done.")} OK={Number(sp?.ok ?? 0)} / FAIL={Number(sp?.fail ?? 0)}
+          {t(lang, "Batch auto-fix done.", "批量自动补扣完成。")} OK={Number(sp?.ok ?? 0)} / FAIL={Number(sp?.fail ?? 0)}
         </div>
       ) : null}
-      {sp?.err ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Error", "Error")}: {sp.err}</div> : null}
+      {sp?.err ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
       <form method="GET" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <label>
-          Limit:
+          {t(lang, "Limit", "数量上限")}:
           <input name="limit" type="number" min={50} max={2000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "Apply")}</button>
+        <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
 
       {previewItem ? (
         <div style={{ marginBottom: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", padding: 10 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Deduct Preview", "Auto Deduct Preview")}</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Deduct Preview", "自动补扣预览")}</div>
           <div style={{ marginBottom: 4 }}>
-            {t(lang, "Student", "Student")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "Session")}: {new Date(previewItem.sessionAt).toLocaleString()}
+            {t(lang, "Student", "学生")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "课次")}: {new Date(previewItem.sessionAt).toLocaleString()}
           </div>
           <div style={{ marginBottom: 8 }}>
-            {t(lang, "Units", "Units")}: <b>{previewItem.needUnits}</b> | {t(lang, "Target Package", "Target Package")}: <b>{previewItem.packageId ?? "-"}</b>
+            {t(lang, "Units", "扣减单位")}: <b>{previewItem.needUnits}</b> | {t(lang, "Target Package", "目标课包")}: <b>{previewItem.packageId ?? "-"}</b>
           </div>
           <div style={{ marginBottom: 8, color: "#334155" }}>
-            {t(lang, "Balance", "Balance")}: <b>{previewItem.beforeRemaining ?? "-"} {"->"} {previewItem.afterRemaining ?? "-"}</b> | {t(lang, "Ledger Note", "Ledger Note")}: <code>{previewItem.ledgerNote}</code>
+            {t(lang, "Balance", "余额")}: <b>{previewItem.beforeRemaining ?? "-"} {"->"} {previewItem.afterRemaining ?? "-"}</b> | {t(lang, "Ledger Note", "流水备注")}: <code>{previewItem.ledgerNote}</code>
           </div>
           {previewItem.canApply ? (
             <form action={autoFixDeductAction} style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input type="hidden" name="attendanceId" value={previewItem.attendanceId} />
-              <button type="submit">{t(lang, "Confirm Auto Deduct", "Confirm Auto Deduct")}</button>
-              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "Cancel")}</a>
+              <button type="submit">{t(lang, "Confirm Auto Deduct", "确认自动补扣")}</button>
+              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "取消")}</a>
             </form>
           ) : (
             <div style={{ color: "#b91c1c" }}>
-              {t(lang, "No eligible package found for this row.", "No eligible package found for this row.")} ({previewItem.reason ?? "blocked"})
+              {t(lang, "No eligible package found for this row.", "该记录没有可用课包。")} ({previewReasonLabel(lang, previewItem.reason)})
             </div>
           )}
         </div>
@@ -509,20 +524,20 @@ export default async function UndeductedCompletedReportPage({
 
       {isBatchPreview ? (
         <div style={{ marginBottom: 12, border: "1px solid #7c3aed", borderRadius: 8, background: "#f5f3ff", padding: 10 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Batch Auto Deduct Preview", "Batch Auto Deduct Preview")}</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Batch Auto Deduct Preview", "批量自动补扣预览")}</div>
           <div style={{ marginBottom: 6, color: "#1e293b" }}>
-            {t(lang, "Selected", "Selected")}: <b>{batchPreviewItems.length}</b> | {t(lang, "Ready", "Ready")}: <b>{batchReadyItems.length}</b> | {t(lang, "Blocked", "Blocked")}: <b>{batchBlockedItems.length}</b> | {t(lang, "Total Units", "Total Units")}: <b>{batchNeedTotal}</b>
+            {t(lang, "Selected", "已选")}: <b>{batchPreviewItems.length}</b> | {t(lang, "Ready", "可执行")}: <b>{batchReadyItems.length}</b> | {t(lang, "Blocked", "阻塞")}: <b>{batchBlockedItems.length}</b> | {t(lang, "Total Units", "总扣减")}: <b>{batchNeedTotal}</b>
           </div>
           {batchPreviewItems.length > 0 ? (
             <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 8 }}>
               <thead>
                 <tr style={{ background: "#ede9fe" }}>
-                  <th align="left">Student</th>
-                  <th align="left">Session</th>
-                  <th align="left">Units</th>
-                  <th align="left">Package</th>
-                  <th align="left">Balance</th>
-                  <th align="left">Status</th>
+                  <th align="left">{t(lang, "Student", "学生")}</th>
+                  <th align="left">{t(lang, "Session", "课次")}</th>
+                  <th align="left">{t(lang, "Units", "扣减单位")}</th>
+                  <th align="left">{t(lang, "Package", "课包")}</th>
+                  <th align="left">{t(lang, "Balance", "余额")}</th>
+                  <th align="left">{t(lang, "Status", "状态")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -533,7 +548,9 @@ export default async function UndeductedCompletedReportPage({
                     <td>{item.needUnits}</td>
                     <td>{item.packageId ?? "-"}</td>
                     <td>{item.beforeRemaining ?? "-"} {"->"} {item.afterRemaining ?? "-"}</td>
-                    <td style={{ color: item.canApply ? "#166534" : "#b91c1c" }}>{item.canApply ? "READY" : item.reason ?? "BLOCKED"}</td>
+                    <td style={{ color: item.canApply ? "#166534" : "#b91c1c" }}>
+                      {item.canApply ? t(lang, "READY", "可执行") : previewReasonLabel(lang, item.reason)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -546,17 +563,17 @@ export default async function UndeductedCompletedReportPage({
                 <input key={x.attendanceId} type="hidden" name="attendanceIds" value={x.attendanceId} />
               ))}
               <input type="hidden" name="limit" value={String(limit)} />
-              <button type="submit">{t(lang, "Confirm Batch Auto Deduct", "Confirm Batch Auto Deduct")} ({batchReadyItems.length})</button>
-              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "Cancel")}</a>
+              <button type="submit">{t(lang, "Confirm Batch Auto Deduct", "确认批量自动补扣")} ({batchReadyItems.length})</button>
+              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "取消")}</a>
             </form>
           ) : (
-            <div style={{ color: "#b91c1c" }}>{t(lang, "No rows are ready to apply in this batch.", "No rows are ready to apply in this batch.")}</div>
+            <div style={{ color: "#b91c1c" }}>{t(lang, "No rows are ready to apply in this batch.", "本次批量预览无可执行记录。")}</div>
           )}
         </div>
       ) : null}
 
       {rows.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No anomaly rows.", "No anomaly rows.")}</div>
+        <div style={{ color: "#999" }}>{t(lang, "No anomaly rows.", "暂无异常记录。")}</div>
       ) : (
         <div>
           <form id="batchPreviewForm" method="GET">
@@ -564,22 +581,22 @@ export default async function UndeductedCompletedReportPage({
           </form>
           <div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button type="submit" name="batch" value="1" form="batchPreviewForm">
-              {t(lang, "Preview Selected", "Preview Selected")}
+              {t(lang, "Preview Selected", "预览已选")}
             </button>
-            <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Clear Selection", "Clear Selection")}</a>
+            <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Clear Selection", "清空选择")}</a>
           </div>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr style={{ background: "#f5f5f5" }}>
-                <th align="left">{t(lang, "Pick", "Pick")}</th>
-                <th align="left">{t(lang, "Session Time", "Session Time")}</th>
-                <th align="left">{t(lang, "Student", "Student")}</th>
-                <th align="left">{t(lang, "Teacher", "Teacher")}</th>
-                <th align="left">{t(lang, "Course", "Course")}</th>
-                <th align="left">{t(lang, "Campus/Room", "Campus/Room")}</th>
-                <th align="left">{t(lang, "Status", "Status")}</th>
-                <th align="left">{t(lang, "Deduct", "Deduct")}</th>
-                <th align="left">{t(lang, "Fix", "Fix")}</th>
+                <th align="left">{t(lang, "Pick", "勾选")}</th>
+                <th align="left">{t(lang, "Session Time", "课次时间")}</th>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Teacher", "老师")}</th>
+                <th align="left">{t(lang, "Course", "课程")}</th>
+                <th align="left">{t(lang, "Campus/Room", "校区/教室")}</th>
+                <th align="left">{t(lang, "Status", "状态")}</th>
+                <th align="left">{t(lang, "Deduct", "减扣")}</th>
+                <th align="left">{t(lang, "Fix", "修复")}</th>
               </tr>
             </thead>
             <tbody>
@@ -600,11 +617,11 @@ export default async function UndeductedCompletedReportPage({
                   <td style={{ color: "#b91c1c", fontWeight: 700 }}>{r.deductedCount} / {r.deductedMinutes}</td>
                   <td>
                     <div style={{ display: "grid", gap: 6, alignItems: "start" }}>
-                      <a href={`/admin/reports/undeducted-completed?limit=${limit}&preview=${encodeURIComponent(r.id)}`}>{t(lang, "Preview Auto Fix", "Preview Auto Fix")}</a>
+                      <a href={`/admin/reports/undeducted-completed?limit=${limit}&preview=${encodeURIComponent(r.id)}`}>{t(lang, "Preview Auto Fix", "预览自动补扣")}</a>
                       <form action={markWaiveAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                         <input type="hidden" name="attendanceId" value={r.id} />
-                        <input name="waiveReason" required placeholder={t(lang, "Waive reason", "Waive reason")} style={{ width: 180 }} />
-                        <button type="submit">{t(lang, "Mark Waive", "Mark Waive")}</button>
+                        <input name="waiveReason" required placeholder={t(lang, "Waive reason", "免扣原因")} style={{ width: 180 }} />
+                        <button type="submit">{t(lang, "Mark Waive", "标记免扣")}</button>
                       </form>
                     </div>
                   </td>
