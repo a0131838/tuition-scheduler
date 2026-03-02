@@ -131,6 +131,8 @@ export default function ScrollManager() {
       }
       const next = `${dest.pathname}${dest.search}`;
       router.replace(next, { scroll: false });
+      // Ensure server-rendered filter results update immediately.
+      router.refresh();
     };
 
     const onClickCapture = (e: MouseEvent) => {
