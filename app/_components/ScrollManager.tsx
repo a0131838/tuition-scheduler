@@ -11,6 +11,22 @@ function keyForPath(pathname: string) {
 export default function ScrollManager() {
   const pathname = usePathname();
 
+  const getMainScrollTop = () => {
+    const main = document.querySelector(".app-main") as HTMLElement | null;
+    if (main) return main.scrollTop || 0;
+    return window.scrollY || 0;
+  };
+
+  const applyScrollTop = (y: number) => {
+    const top = Math.max(0, y);
+    const main = document.querySelector(".app-main") as HTMLElement | null;
+    if (main) {
+      main.scrollTop = top;
+      return;
+    }
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+  };
+
   useLayoutEffect(() => {
     try {
       const key = keyForPath(pathname);
@@ -19,22 +35,22 @@ export default function ScrollManager() {
       sessionStorage.removeItem(key);
       const y = Number(raw);
       if (!Number.isFinite(y)) return;
-      window.scrollTo({ top: Math.max(0, y), left: 0, behavior: "auto" });
+      applyScrollTop(y);
     } catch {
       // ignore
     }
   }, [pathname]);
 
   useEffect(() => {
-    const save = () => {
+    const saveForPath = (path: string) => {
       try {
-        sessionStorage.setItem(keyForPath(pathname), String(window.scrollY || 0));
+        sessionStorage.setItem(keyForPath(path), String(getMainScrollTop()));
       } catch {
         // ignore
       }
     };
 
-    const onSubmit = () => save();
+    const onSubmit = () => saveForPath(pathname);
 
     const onClickCapture = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
@@ -51,12 +67,23 @@ export default function ScrollManager() {
       // That matches "stay where I am" expectations, and avoids surprising behavior across pages.
       let destPath = "";
       try {
-        destPath = new URL(a.href, window.location.href).pathname;
+        const dest = new URL(a.href, window.location.href);
+        if (dest.origin !== window.location.origin) return;
+        destPath = dest.pathname;
       } catch {
         return;
       }
-      if (destPath !== pathname) return;
-      save();
+
+      const isSidebarNav = Boolean(a.closest(".app-sidebar"));
+      if (isSidebarNav) {
+        saveForPath(destPath || pathname);
+        return;
+      }
+
+      // Same-path interactions (query toggles, in-page actions) should keep position.
+      if (destPath === pathname) {
+        saveForPath(pathname);
+      }
     };
 
     document.addEventListener("submit", onSubmit, true);
@@ -69,4 +96,3 @@ export default function ScrollManager() {
 
   return null;
 }
-
