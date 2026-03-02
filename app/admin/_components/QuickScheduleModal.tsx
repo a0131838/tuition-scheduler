@@ -36,6 +36,9 @@ type RoomOption = {
 type Labels = {
   title: string;
   open: string;
+  mode: string;
+  modeCreate: string;
+  modeReschedule: string;
   course: string;
   subject: string;
   level: string;
@@ -50,10 +53,30 @@ type Labels = {
   status: string;
   action: string;
   available: string;
+  preview: string;
+  previewTitle: string;
+  repeatWeeks: string;
+  onConflict: string;
+  rejectImmediately: string;
+  skipConflicts: string;
   noTeachers: string;
   chooseHint: string;
   schedule: string;
   roomRequiredOffline: string;
+  targetSession: string;
+  targetScope: string;
+  newStart: string;
+  newDuration: string;
+  thisSessionOnly: string;
+  futureSessions: string;
+};
+
+type SessionOption = {
+  id: string;
+  classId: string;
+  label: string;
+  startAt: string;
+  durationMin: number;
 };
 
 export default function QuickScheduleModal({
@@ -70,6 +93,7 @@ export default function QuickScheduleModal({
   campuses,
   rooms,
   candidates,
+  sessionOptions,
   scheduleUrl,
   labels,
   openOnLoad,
@@ -88,6 +112,7 @@ export default function QuickScheduleModal({
   campuses: CampusOption[];
   rooms: RoomOption[];
   candidates: { id: string; name: string; ok: boolean; reason?: string }[];
+  sessionOptions: SessionOption[];
   scheduleUrl: string;
   labels: Labels;
   openOnLoad: boolean;
@@ -114,6 +139,12 @@ export default function QuickScheduleModal({
   const [roomId, setRoomId] = useState(quickRoomId || "");
   const [startAt, setStartAt] = useState(quickStartAt || "");
   const [durationMin, setDurationMin] = useState(String(quickDurationMin || 60));
+  const [mode, setMode] = useState<"create" | "reschedule">("create");
+  const [repeatWeeks, setRepeatWeeks] = useState("1");
+  const [onConflict, setOnConflict] = useState<"reject" | "skip">("reject");
+  const [previewRows, setPreviewRows] = useState<Array<{ index: number; startAt: string; endAt: string; ok: boolean; reason?: string }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState(sessionOptions[0]?.id ?? "");
+  const [rescheduleScope, setRescheduleScope] = useState<"single" | "future">("single");
   const baseHref = useMemo(() => {
     const params = new URLSearchParams();
     if (month) params.set("month", month);
@@ -130,6 +161,12 @@ export default function QuickScheduleModal({
     setRoomId("");
     setStartAt("");
     setDurationMin("60");
+    setRepeatWeeks("1");
+    setOnConflict("reject");
+    setPreviewRows([]);
+    setMode("create");
+    setSelectedSessionId(sessionOptions[0]?.id ?? "");
+    setRescheduleScope("single");
   };
   const closeAndClear = () => {
     dialogRef.current?.close();
@@ -145,6 +182,7 @@ export default function QuickScheduleModal({
     if (!canSchedule) return;
     setScheduleErr("");
     setScheduleMsg("");
+    setPreviewRows([]);
     setIsScheduling(true);
     (async () => {
       try {
@@ -159,6 +197,9 @@ export default function QuickScheduleModal({
             roomId,
             startAt,
             durationMin: Number(durationMin),
+            mode: "create",
+            repeatWeeks: Number(repeatWeeks),
+            onConflict,
           }),
         });
         const raw = await res.text();
@@ -177,7 +218,7 @@ export default function QuickScheduleModal({
           setScheduleErr(detail ? `${message}: ${detail}` : message);
           return;
         }
-        setScheduleMsg("OK");
+        setScheduleMsg(`OK (${data?.created ?? 0}/${data?.total ?? Number(repeatWeeks)})`);
         dialogRef.current?.close();
         const params = new URLSearchParams(searchParams?.toString() ?? "");
         params.delete("err");
@@ -200,6 +241,82 @@ export default function QuickScheduleModal({
         setIsScheduling(false);
       }
     })();
+  }
+
+  function previewWithTeacher(teacherId: string) {
+    if (!canSchedule) return;
+    setScheduleErr("");
+    setScheduleMsg("");
+    setPreviewRows([]);
+    setIsScheduling(true);
+    (async () => {
+      try {
+        const res = await fetch(scheduleUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherId,
+            subjectId,
+            levelId,
+            campusId,
+            roomId,
+            startAt,
+            durationMin: Number(durationMin),
+            mode: "preview",
+            repeatWeeks: Number(repeatWeeks),
+            onConflict,
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as any;
+        if (!res.ok || !data?.ok) {
+          setScheduleErr(String(data?.message ?? `Preview failed (HTTP ${res.status})`));
+          return;
+        }
+        setPreviewRows(Array.isArray(data?.rows) ? data.rows : []);
+        setScheduleMsg(`Preview: ${data?.rows?.filter((r: any) => r.ok).length ?? 0}/${data?.total ?? Number(repeatWeeks)} OK`);
+      } catch {
+        setScheduleErr("Preview failed: network or server error");
+      } finally {
+        setIsScheduling(false);
+      }
+    })();
+  }
+
+  async function rescheduleSession() {
+    if (!selectedSessionId || !startAt || !durationMin) return;
+    const selected = sessionOptions.find((x) => x.id === selectedSessionId);
+    if (!selected) return;
+    setScheduleErr("");
+    setScheduleMsg("");
+    setIsScheduling(true);
+    try {
+      const res = await fetch(`/api/admin/classes/${encodeURIComponent(selected.classId)}/sessions/reschedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: selectedSessionId,
+          startAt,
+          durationMin: Number(durationMin),
+          scope: rescheduleScope,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !data?.ok) {
+        setScheduleErr(String(data?.message ?? `Reschedule failed (HTTP ${res.status})`));
+        return;
+      }
+      setScheduleMsg(`OK (${data?.rescheduled ?? 0})`);
+      dialogRef.current?.close();
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.set("msg", "Rescheduled");
+      const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(target, { scroll: false });
+      router.refresh();
+    } catch {
+      setScheduleErr("Reschedule failed: network or server error");
+    } finally {
+      setIsScheduling(false);
+    }
   }
   const campusIsOnline = useMemo(() => {
     if (!campusId) return false;
@@ -225,6 +342,16 @@ export default function QuickScheduleModal({
       dialogRef.current?.showModal();
     }
   }, [openOnLoad]);
+
+  useEffect(() => {
+    if (sessionOptions.length === 0) {
+      setSelectedSessionId("");
+      return;
+    }
+    if (!sessionOptions.some((s) => s.id === selectedSessionId)) {
+      setSelectedSessionId(sessionOptions[0]!.id);
+    }
+  }, [sessionOptions, selectedSessionId]);
 
   useEffect(() => {
     if (!courseId) return;
@@ -297,104 +424,139 @@ export default function QuickScheduleModal({
         <h3 style={{ marginTop: 0 }}>{labels.title}</h3>
         <form onSubmit={submitFind} style={{ display: "grid", gap: 10 }}>
           <label>
-            {labels.course}:
+            {labels.mode}:
             <select
-              name="quickCourseId"
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              style={{ marginLeft: 6, minWidth: 260 }}
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.subject}:
-            <select
-              name="quickSubjectId"
-              value={subjectId}
+              value={mode}
               onChange={(e) => {
-                const next = e.target.value;
-                setSubjectId(next);
-                if (levelId && !levels.some((l) => l.id === levelId && l.subjectId === next)) {
-                  setLevelId("");
-                }
-              }}
-              style={{ marginLeft: 6, minWidth: 260 }}
-            >
-              <option value="">{labels.subject}</option>
-              {subjects
-                .filter((s) => !courseId || s.courseId === courseId)
-                .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.courseName} - {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.level}:
-            <select
-              name="quickLevelId"
-              value={levelId}
-              onChange={(e) => setLevelId(e.target.value)}
-              style={{ marginLeft: 6, minWidth: 260 }}
-            >
-              <option value="">{labels.level}</option>
-              {levelOptions.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.courseName} - {l.subjectName} - {l.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.campus}:
-            <select
-              name="quickCampusId"
-              value={campusId}
-              onChange={(e) => {
-                const next = e.target.value;
-                setCampusId(next);
-                setFormWarn("");
-                if (next && roomId && !rooms.some((r) => r.id === roomId && r.campusId === next)) {
-                  setRoomId("");
-                }
+                setMode(e.target.value === "reschedule" ? "reschedule" : "create");
+                setScheduleErr("");
+                setScheduleMsg("");
+                setPreviewRows([]);
               }}
               style={{ marginLeft: 6, minWidth: 220 }}
             >
-              <option value="">{labels.campus}</option>
-              {campuses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <option value="create">{labels.modeCreate}</option>
+              <option value="reschedule">{labels.modeReschedule}</option>
             </select>
           </label>
+          {mode === "create" ? (
+            <>
+              <label>
+                {labels.course}:
+                <select
+                  name="quickCourseId"
+                  value={courseId}
+                  onChange={(e) => setCourseId(e.target.value)}
+                  style={{ marginLeft: 6, minWidth: 260 }}
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {labels.subject}:
+                <select
+                  name="quickSubjectId"
+                  value={subjectId}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setSubjectId(next);
+                    if (levelId && !levels.some((l) => l.id === levelId && l.subjectId === next)) {
+                      setLevelId("");
+                    }
+                  }}
+                  style={{ marginLeft: 6, minWidth: 260 }}
+                >
+                  <option value="">{labels.subject}</option>
+                  {subjects
+                    .filter((s) => !courseId || s.courseId === courseId)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.courseName} - {s.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                {labels.level}:
+                <select
+                  name="quickLevelId"
+                  value={levelId}
+                  onChange={(e) => setLevelId(e.target.value)}
+                  style={{ marginLeft: 6, minWidth: 260 }}
+                >
+                  <option value="">{labels.level}</option>
+                  {levelOptions.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.courseName} - {l.subjectName} - {l.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {labels.campus}:
+                <select
+                  name="quickCampusId"
+                  value={campusId}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCampusId(next);
+                    setFormWarn("");
+                    if (next && roomId && !rooms.some((r) => r.id === roomId && r.campusId === next)) {
+                      setRoomId("");
+                    }
+                  }}
+                  style={{ marginLeft: 6, minWidth: 220 }}
+                >
+                  <option value="">{labels.campus}</option>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {labels.room}:
+                <select
+                  name="quickRoomId"
+                  value={roomId}
+                  onChange={(e) => {
+                    setRoomId(e.target.value);
+                    setFormWarn("");
+                  }}
+                  style={{ marginLeft: 6, minWidth: 220 }}
+                >
+                  <option value="">{campusIsOnline ? `${labels.room} (${labels.roomOptional})` : labels.room}</option>
+                  {roomOptions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : (
+            <label>
+              {labels.targetSession}:
+              <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} style={{ marginLeft: 6, minWidth: 420 }}>
+                {sessionOptions.length === 0 ? (
+                  <option value="">-</option>
+                ) : (
+                  sessionOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          )}
           <label>
-            {labels.room}:
-            <select
-              name="quickRoomId"
-              value={roomId}
-              onChange={(e) => {
-                setRoomId(e.target.value);
-                setFormWarn("");
-              }}
-              style={{ marginLeft: 6, minWidth: 220 }}
-            >
-              <option value="">{campusIsOnline ? `${labels.room} (${labels.roomOptional})` : labels.room}</option>
-              {roomOptions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.start}:
+            {mode === "create" ? labels.start : labels.newStart}:
             <input
               type="datetime-local"
               value={startAt}
@@ -403,7 +565,7 @@ export default function QuickScheduleModal({
             />
           </label>
           <label>
-            {labels.duration}:
+            {mode === "create" ? labels.duration : labels.newDuration}:
             <input
               type="number"
               min={15}
@@ -413,6 +575,29 @@ export default function QuickScheduleModal({
               style={{ marginLeft: 6, width: 120 }}
             />
           </label>
+          {mode === "create" ? (
+            <>
+              <label>
+                {labels.repeatWeeks}:
+                <input type="number" min={1} max={16} value={repeatWeeks} onChange={(e) => setRepeatWeeks(e.target.value)} style={{ marginLeft: 6, width: 120 }} />
+              </label>
+              <label>
+                {labels.onConflict}:
+                <select value={onConflict} onChange={(e) => setOnConflict(e.target.value === "skip" ? "skip" : "reject")} style={{ marginLeft: 6, minWidth: 220 }}>
+                  <option value="reject">{labels.rejectImmediately}</option>
+                  <option value="skip">{labels.skipConflicts}</option>
+                </select>
+              </label>
+            </>
+          ) : (
+            <label>
+              {labels.targetScope}:
+              <select value={rescheduleScope} onChange={(e) => setRescheduleScope(e.target.value === "future" ? "future" : "single")} style={{ marginLeft: 6, minWidth: 220 }}>
+                <option value="single">{labels.thisSessionOnly}</option>
+                <option value="future">{labels.futureSessions}</option>
+              </select>
+            </label>
+          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -422,9 +607,15 @@ export default function QuickScheduleModal({
             >
               {labels.close}
             </button>
-            <button type="submit" disabled={isFinding}>
-              {isFinding ? `${labels.find}...` : labels.find}
-            </button>
+            {mode === "create" ? (
+              <button type="submit" disabled={isFinding}>
+                {isFinding ? `${labels.find}...` : labels.find}
+              </button>
+            ) : (
+              <button type="button" disabled={isScheduling || !selectedSessionId || !startAt} onClick={rescheduleSession}>
+                {isScheduling ? `${labels.modeReschedule}...` : labels.modeReschedule}
+              </button>
+            )}
           </div>
         </form>
         <div style={{ marginTop: 12 }}>
@@ -436,7 +627,29 @@ export default function QuickScheduleModal({
             <NoticeBanner type="error" title={labels.status} message={scheduleErr} />
           ) : scheduleMsg ? (
             <NoticeBanner type="success" title={labels.status} message={scheduleMsg} />
-          ) : subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
+          ) : mode === "create" && previewRows.length > 0 ? (
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{labels.previewTitle}</div>
+              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+                <thead>
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <th align="left">#</th>
+                    <th align="left">{labels.start}</th>
+                    <th align="left">{labels.status}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewRows.map((r) => (
+                    <tr key={r.index} style={{ borderTop: "1px solid #eee" }}>
+                      <td>{r.index}</td>
+                      <td>{new Date(r.startAt).toLocaleString()}</td>
+                      <td style={{ color: r.ok ? "#0a7" : "#b00" }}>{r.ok ? labels.available : r.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : mode === "create" && subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
             ) : (
@@ -457,9 +670,14 @@ export default function QuickScheduleModal({
                       </td>
                       <td>
                         {c.ok ? (
-                          <button type="button" onClick={() => scheduleWithTeacher(c.id)} disabled={isScheduling}>
-                            {isScheduling ? `${labels.schedule}...` : labels.schedule}
-                          </button>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button type="button" onClick={() => previewWithTeacher(c.id)} disabled={isScheduling}>
+                              {isScheduling ? `${labels.preview}...` : labels.preview}
+                            </button>
+                            <button type="button" onClick={() => scheduleWithTeacher(c.id)} disabled={isScheduling}>
+                              {isScheduling ? `${labels.schedule}...` : labels.schedule}
+                            </button>
+                          </div>
                         ) : (
                           "-"
                         )}

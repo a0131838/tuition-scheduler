@@ -81,6 +81,21 @@ const zhMap: Record<string, string> = {
   "Quick Schedule": "\u5feb\u901f\u6392\u8bfe",
   "Quick Schedule (by Student Time)": "\u5feb\u901f\u6392\u8bfe\uff08\u6309\u5b66\u751f\u65f6\u95f4\uff09",
   "Quick Schedule Calendar": "\u5feb\u901f\u6392\u8bfe\u65e5\u5386",
+  "Mode": "\u6a21\u5f0f",
+  "Create New Sessions": "\u65b0\u5efa\u8bfe\u6b21",
+  "Reschedule Existing Session": "\u8c03\u6574\u5df2\u6709\u8bfe\u6b21",
+  "Preview": "\u9884\u89c8",
+  "Preview Result": "\u9884\u89c8\u7ed3\u679c",
+  "Repeat Weeks": "\u91cd\u590d\u5468\u6570",
+  "On Conflict": "\u51b2\u7a81\u5904\u7406",
+  "Reject Immediately": "\u9047\u5230\u51b2\u7a81\u7acb\u5373\u62d2\u7edd",
+  "Skip Conflicts": "\u8df3\u8fc7\u51b2\u7a81\u8bfe\u6b21",
+  "Target Session": "\u76ee\u6807\u8bfe\u6b21",
+  "Reschedule Scope": "\u8c03\u6574\u8303\u56f4",
+  "New Start": "\u65b0\u5f00\u59cb\u65f6\u95f4",
+  "New Duration (minutes)": "\u65b0\u65f6\u957f(\u5206\u949f)",
+  "This Session Only": "\u4ec5\u672c\u6b21\u8bfe",
+  "This + Future Sessions": "\u672c\u6b21+\u540e\u7eed\u8bfe\u6b21",
   "Recent Attendance": "\u8fd1\u671f\u70b9\u540d",
   "Recent days": "\u6700\u8fd1\u5929\u6570",
   "Remaining": "\u5269\u4f59",
@@ -1150,6 +1165,24 @@ export default async function StudentDetailPage({
       })
     : [];
   const upcomingAttendanceMap = new Map(upcomingAttendance.map((a) => [a.sessionId, a]));
+  const quickRescheduleSessionOptions = upcomingSessions
+    .filter((s) => {
+      const att = upcomingAttendanceMap.get(s.id);
+      return att?.status !== "EXCUSED";
+    })
+    .map((s) => {
+      const teacherName = s.teacher?.name ?? s.class.teacher.name;
+      const label = `${new Date(s.startAt).toLocaleString()} | ${s.class.course.name}${
+        s.class.subject ? ` / ${s.class.subject.name}` : ""
+      }${s.class.level ? ` / ${s.class.level.name}` : ""} | ${teacherName}`;
+      return {
+        id: s.id,
+        classId: s.classId,
+        label,
+        startAt: s.startAt.toISOString(),
+        durationMin: Math.max(15, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000)),
+      };
+    });
 
   const teacherSessions = classIds.length
     ? await prisma.session.findMany({
@@ -2136,11 +2169,15 @@ export default async function StudentDetailPage({
           campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
           rooms={rooms.map((r) => ({ id: r.id, name: `${r.name} (${r.campus.name})`, campusId: r.campusId }))}
           candidates={quickCandidates}
+          sessionOptions={quickRescheduleSessionOptions}
           scheduleUrl={`/api/admin/students/${encodeURIComponent(studentId)}/quick-appointment`}
           warning={quickPackageWarn}
           labels={{
             title: tl(lang, "Quick Schedule"),
             open: tl(lang, "Open Modal"),
+            mode: tl(lang, "Mode"),
+            modeCreate: tl(lang, "Create New Sessions"),
+            modeReschedule: tl(lang, "Reschedule Existing Session"),
             course: tl(lang, "Course"),
             subject: tl(lang, "Subject"),
             level: tl(lang, "Level (optional)"),
@@ -2148,13 +2185,25 @@ export default async function StudentDetailPage({
             room: tl(lang, "Room"),
             roomOptional: tl(lang, "optional"),
             start: tl(lang, "Start"),
+            newStart: tl(lang, "New Start"),
             duration: tl(lang, "Duration (minutes)"),
+            newDuration: tl(lang, "New Duration (minutes)"),
             find: tl(lang, "Find Available Teachers"),
             close: tl(lang, "Close"),
             teacher: tl(lang, "Teacher"),
             status: tl(lang, "Status"),
             action: tl(lang, "Action"),
             available: tl(lang, "Available"),
+            preview: tl(lang, "Preview"),
+            previewTitle: tl(lang, "Preview Result"),
+            repeatWeeks: tl(lang, "Repeat Weeks"),
+            onConflict: tl(lang, "On Conflict"),
+            rejectImmediately: tl(lang, "Reject Immediately"),
+            skipConflicts: tl(lang, "Skip Conflicts"),
+            targetSession: tl(lang, "Target Session"),
+            targetScope: tl(lang, "Reschedule Scope"),
+            thisSessionOnly: tl(lang, "This Session Only"),
+            futureSessions: tl(lang, "This + Future Sessions"),
             noTeachers: tl(lang, "No eligible teachers found."),
             chooseHint: tl(lang, "Choose subject, campus, room and time to match teachers."),
             schedule: tl(lang, "Schedule"),

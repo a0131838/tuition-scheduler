@@ -121,10 +121,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const roomIdRaw = String(body?.roomId ?? "");
   const startAtStr = String(body?.startAt ?? "");
   const durationMin = Number(body?.durationMin ?? 60);
+  const mode = String(body?.mode ?? "create");
+  const repeatWeeksRaw = Number(body?.repeatWeeks ?? 1);
+  const repeatWeeks = Number.isFinite(repeatWeeksRaw) ? Math.max(1, Math.min(16, Math.floor(repeatWeeksRaw))) : 1;
+  const onConflict = String(body?.onConflict ?? "reject");
 
   if (!teacherId || !subjectId || !campusId || !startAtStr || !Number.isFinite(durationMin) || durationMin < 15) {
     return bad("Invalid input");
   }
+  if (mode !== "create" && mode !== "preview") return bad("Invalid mode");
+  if (onConflict !== "reject" && onConflict !== "skip") return bad("Invalid onConflict");
 
   const roomId = roomIdRaw || null;
   const campus = await prisma.campus.findUnique({ where: { id: campusId } });
@@ -137,7 +143,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const startAt = parseDatetimeLocal(startAtStr);
   if (Number.isNaN(startAt.getTime())) return bad("Invalid startAt", 409);
-  const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
@@ -145,81 +150,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   if (!teacher) return bad("Teacher not found", 404);
   if (!canTeachSubject(teacher, subjectId)) return bad("Teacher cannot teach this course", 409);
-
-  if (!bypassAvailabilityCheck) {
-    const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
-    if (availErr) return bad(availErr, 409);
-  }
-
-  const teacherSessionConflicts = await prisma.session.findMany({
-    where: {
-      OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-    },
-    include: {
-      class: {
-        include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
-      },
-      attendances: {
-        select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
-      },
-    },
-    orderBy: { startAt: "asc" },
-  });
-  const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
-  if (teacherSessionConflict) {
-    return bad(`Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`, 409);
-  }
-
-  const teacherApptConflict = await prisma.appointment.findFirst({
-    where: {
-      teacherId,
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-    },
-    select: { id: true, startAt: true, endAt: true },
-  });
-  if (teacherApptConflict) {
-    const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
-      teacherApptConflict.endAt
-    )}`;
-    return bad(`Teacher conflict: appointment ${timeLabel}`, 409);
-  }
-
-  if (roomId) {
-    const roomConflicts = await prisma.session.findMany({
-      where: {
-        class: { roomId },
-        startAt: { lt: endAt },
-        endAt: { gt: startAt },
-      },
-      include: {
-        attendances: {
-          select: {
-            studentId: true,
-            status: true,
-            excusedCharge: true,
-            deductedMinutes: true,
-            deductedCount: true,
-          },
-        },
-        class: {
-          include: {
-            course: true,
-            subject: true,
-            level: true,
-            teacher: true,
-            campus: true,
-            room: true,
-            enrollments: { select: { studentId: true } },
-          },
-        },
-      },
-    });
-    const roomConflict = pickTeacherSessionConflict(roomConflicts);
-    if (roomConflict) return bad(`Room conflict: ${formatSessionConflictLabel(roomConflict)}`, 409);
-  }
 
   const subject = await prisma.subject.findUnique({
     where: { id: subjectId },
@@ -235,15 +165,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const courseId = subject.courseId;
-  const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-  const hasPackage = await hasSchedulablePackage(prisma, {
-    studentId,
-    courseId,
-    at: packageCheckAt,
-    requiredHoursMinutes: durationMin,
-  });
-  if (!hasPackage) return bad("No active package for this course", 409, { code: "NO_ACTIVE_PACKAGE" });
-
   let cls: Awaited<ReturnType<typeof getOrCreateOneOnOneClassForStudent>>;
   try {
     cls = await getOrCreateOneOnOneClassForStudent({
@@ -270,15 +191,161 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (!cls) return bad("Failed to create class", 500);
 
-  const dupSession = await prisma.session.findFirst({
-    where: { classId: cls.id, startAt, endAt },
-    select: { id: true },
-  });
-  if (!dupSession) {
-    await prisma.session.create({
-      data: { classId: cls.id, startAt, endAt, studentId, teacherId: teacherId === cls.teacherId ? null : teacherId },
-    });
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+  const rows: Array<{ index: number; startAt: string; endAt: string; ok: boolean; reason?: string; created?: boolean }> = [];
+  let created = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < repeatWeeks; i++) {
+    const currentStart = new Date(startAt.getTime() + i * oneWeekMs);
+    const currentEnd = new Date(currentStart.getTime() + durationMin * 60 * 1000);
+    let reason = "";
+
+    if (!bypassAvailabilityCheck) {
+      const availErr = await checkTeacherAvailability(teacherId, currentStart, currentEnd);
+      if (availErr) reason = availErr;
+    }
+
+    if (!reason) {
+      const teacherSessionConflicts = await prisma.session.findMany({
+        where: {
+          OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
+          startAt: { lt: currentEnd },
+          endAt: { gt: currentStart },
+        },
+        include: {
+          class: {
+            include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+          },
+          attendances: {
+            select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+          },
+        },
+        orderBy: { startAt: "asc" },
+      });
+      const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
+      if (teacherSessionConflict) reason = `Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`;
+    }
+
+    if (!reason) {
+      const teacherApptConflict = await prisma.appointment.findFirst({
+        where: {
+          teacherId,
+          startAt: { lt: currentEnd },
+          endAt: { gt: currentStart },
+        },
+        select: { startAt: true, endAt: true },
+      });
+      if (teacherApptConflict) {
+        const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+          teacherApptConflict.endAt
+        )}`;
+        reason = `Teacher conflict: appointment ${timeLabel}`;
+      }
+    }
+
+    if (!reason && roomId) {
+      const roomConflicts = await prisma.session.findMany({
+        where: {
+          class: { roomId },
+          startAt: { lt: currentEnd },
+          endAt: { gt: currentStart },
+        },
+        include: {
+          attendances: {
+            select: {
+              studentId: true,
+              status: true,
+              excusedCharge: true,
+              deductedMinutes: true,
+              deductedCount: true,
+            },
+          },
+          class: {
+            include: {
+              course: true,
+              subject: true,
+              level: true,
+              teacher: true,
+              campus: true,
+              room: true,
+              enrollments: { select: { studentId: true } },
+            },
+          },
+        },
+      });
+      const roomConflict = pickTeacherSessionConflict(roomConflicts);
+      if (roomConflict) reason = `Room conflict: ${formatSessionConflictLabel(roomConflict)}`;
+    }
+
+    if (!reason) {
+      const packageCheckAt = currentStart.getTime() < Date.now() ? new Date() : currentStart;
+      const hasPackage = await hasSchedulablePackage(prisma, {
+        studentId,
+        courseId,
+        at: packageCheckAt,
+        requiredHoursMinutes: durationMin,
+      });
+      if (!hasPackage) reason = "No active package for this course";
+    }
+
+    if (!reason) {
+      const dupSession = await prisma.session.findFirst({
+        where: { classId: cls.id, startAt: currentStart, endAt: currentEnd },
+        select: { id: true },
+      });
+      if (dupSession) reason = "Session already exists at this time";
+    }
+
+    if (reason) {
+      rows.push({
+        index: i + 1,
+        startAt: currentStart.toISOString(),
+        endAt: currentEnd.toISOString(),
+        ok: false,
+        reason,
+      });
+      if (mode === "create" && onConflict === "reject") {
+        return bad(reason, 409);
+      }
+      skipped++;
+      continue;
+    }
+
+    if (mode === "create") {
+      await prisma.session.create({
+        data: {
+          classId: cls.id,
+          startAt: currentStart,
+          endAt: currentEnd,
+          studentId,
+          teacherId: teacherId === cls.teacherId ? null : teacherId,
+        },
+      });
+      created++;
+      rows.push({
+        index: i + 1,
+        startAt: currentStart.toISOString(),
+        endAt: currentEnd.toISOString(),
+        ok: true,
+        created: true,
+      });
+    } else {
+      rows.push({
+        index: i + 1,
+        startAt: currentStart.toISOString(),
+        endAt: currentEnd.toISOString(),
+        ok: true,
+      });
+    }
   }
 
-  return Response.json({ ok: true });
+  return Response.json({
+    ok: true,
+    mode,
+    created,
+    skipped,
+    total: repeatWeeks,
+    rows,
+  });
 }
