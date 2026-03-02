@@ -341,15 +341,61 @@ export default async function TeacherStudentFeedbacksPage({
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      <style>{`
+        .filter-bar {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .desktop-only { display: block; }
+        .mobile-only { display: none; }
+        .compare-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+        .read-btn {
+          min-height: 34px;
+          padding: 6px 10px;
+        }
+        @media (max-width: 900px) {
+          .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .search-input {
+            width: 100% !important;
+          }
+          .desktop-only {
+            display: none !important;
+          }
+          .mobile-only {
+            display: grid !important;
+            gap: 8px;
+          }
+          .compare-grid {
+            grid-template-columns: 1fr;
+          }
+          .timeline-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .read-btn {
+            width: 100%;
+          }
+        }
+      `}</style>
       <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Feedbacks", "学生课后反馈")}</h2>
       {sp?.msg === "marked-read" ? <div style={{ color: "#166534" }}>{t(lang, "Marked as read.", "已标记为已读。")}</div> : null}
       {sp?.err ? <div style={{ color: "#b91c1c" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
-      <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <form method="GET" className="filter-bar">
         <input
           name="q"
           defaultValue={q}
           placeholder={t(lang, "Search student / teacher / course / content", "搜索学生/老师/课程/反馈内容")}
+          className="search-input"
           style={{ width: 320 }}
         />
         <label>
@@ -382,44 +428,72 @@ export default async function TeacherStudentFeedbacksPage({
       {totalStudents === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No matching feedbacks.", "没有匹配的反馈记录。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Latest Session", "最近课次")}</th>
-              <th align="left">{t(lang, "Latest Teacher", "最近反馈老师")}</th>
-              <th align="left">{t(lang, "Summary", "摘要")}</th>
-              <th align="left">{t(lang, "Entries", "条数")}</th>
-              <th align="left">{t(lang, "Unread (others)", "他人未读")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          <div className="desktop-only">
+            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+              <thead>
+                <tr style={{ background: "#f5f5f5" }}>
+                  <th align="left">{t(lang, "Student", "学生")}</th>
+                  <th align="left">{t(lang, "Latest Session", "最近课次")}</th>
+                  <th align="left">{t(lang, "Latest Teacher", "最近反馈老师")}</th>
+                  <th align="left">{t(lang, "Summary", "摘要")}</th>
+                  <th align="left">{t(lang, "Entries", "条数")}</th>
+                  <th align="left">{t(lang, "Unread (others)", "他人未读")}</th>
+                  <th align="left">{t(lang, "Action", "操作")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageStudents.map((s) => (
+                  <tr key={s.studentId} style={{ borderTop: "1px solid #eee" }}>
+                    <td>{s.studentName}</td>
+                    <td>{new Date(s.latest.sessionStartAt).toLocaleString()}</td>
+                    <td>
+                      {s.latest.teacherName}
+                      {s.latest.teacherId !== teacher.id ? (
+                        <span style={{ marginLeft: 6, fontSize: 11, color: "#b45309" }}>{t(lang, "(Other)", "（其他老师）")}</span>
+                      ) : null}
+                    </td>
+                    <td>{summarize(s.latest.content)}</td>
+                    <td>{s.count}</td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: s.unreadOtherCount > 0 ? "#b91c1c" : "#64748b" }}>{s.unreadOtherCount}</span>
+                      {s.hasHandoffRisk ? <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11 }}>{t(lang, "Risk", "风险")}</span> : null}
+                    </td>
+                    <td>
+                      <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}`}>
+                        {t(lang, "Open Timeline", "查看时间线")}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-only">
             {pageStudents.map((s) => (
-              <tr key={s.studentId} style={{ borderTop: "1px solid #eee" }}>
-                <td>{s.studentName}</td>
-                <td>{new Date(s.latest.sessionStartAt).toLocaleString()}</td>
-                <td>
-                  {s.latest.teacherName}
-                  {s.latest.teacherId !== teacher.id ? (
-                    <span style={{ marginLeft: 6, fontSize: 11, color: "#b45309" }}>{t(lang, "(Other)", "（其他老师）")}</span>
-                  ) : null}
-                </td>
-                <td>{summarize(s.latest.content)}</td>
-                <td>{s.count}</td>
-                <td>
-                  <span style={{ fontWeight: 700, color: s.unreadOtherCount > 0 ? "#b91c1c" : "#64748b" }}>{s.unreadOtherCount}</span>
-                  {s.hasHandoffRisk ? <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11 }}>{t(lang, "Risk", "风险")}</span> : null}
-                </td>
-                <td>
+              <article key={s.studentId} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <b>{s.studentName}</b>
+                  <span style={{ color: s.unreadOtherCount > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>
+                    {t(lang, "Unread", "未读")}: {s.unreadOtherCount}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {t(lang, "Latest", "最近")}: {new Date(s.latest.sessionStartAt).toLocaleString()}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
+                  {t(lang, "Teacher", "老师")}: {s.latest.teacherName}
+                </div>
+                <div style={{ marginTop: 4 }}>{summarize(s.latest.content, 90)}</div>
+                <div style={{ marginTop: 8 }}>
                   <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}`}>
                     {t(lang, "Open Timeline", "查看时间线")}
                   </a>
-                </td>
-              </tr>
+                </div>
+              </article>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       )}
 
       {totalPages > 1 ? (
@@ -454,7 +528,7 @@ export default async function TeacherStudentFeedbacksPage({
 
           <div style={{ marginTop: 10, border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8, padding: 10 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Latest Feedback Compare", "最近反馈对比")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div className="compare-grid">
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(lang, "Mine", "我的")}</div>
                 {latestMine ? (
@@ -490,7 +564,7 @@ export default async function TeacherStudentFeedbacksPage({
                 const isOtherUnread = item.teacherId !== teacher.id && !readSet.has(item.feedbackId);
                 return (
                   <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <div className="timeline-head" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 700 }}>
                         {new Date(item.sessionStartAt).toLocaleString()} - {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -501,26 +575,31 @@ export default async function TeacherStudentFeedbacksPage({
                           {isOtherUnread ? <span style={{ marginLeft: 6, color: "#b91c1c", fontSize: 12, fontWeight: 700 }}>{t(lang, "NEW", "未读")}</span> : null}
                         </span>
                         {isOtherUnread ? (
-                          <form action={markFeedbackReadAction}>
+                          <form action={markFeedbackReadAction} style={{ width: "auto" }}>
                             <input type="hidden" name="feedbackId" value={item.feedbackId} />
                             <input type="hidden" name="studentId" value={item.studentId} />
                             <input type="hidden" name="back" value={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(selectedStudentId)}&page=${safePage}`} />
-                            <button type="submit">{t(lang, "Mark Read", "标为已读")}</button>
+                            <button type="submit" className="read-btn">{t(lang, "Mark Read", "标为已读")}</button>
                           </form>
                         ) : null}
                       </div>
                     </div>
-                    <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
-                      {item.courseName} / {item.subjectName ?? "-"} / {item.levelName ?? "-"} | {item.campusName}
-                      {item.roomName ? ` / ${item.roomName}` : ""}
-                    </div>
-                    <div style={{ color: "#0f766e", fontSize: 12, marginTop: 2 }}>{t(lang, "Attendance", "出勤")}: {item.attendanceStatus}</div>
-                    <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{item.content || "-"}</div>
-                    <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
-                      {item.classPerformance ? `${t(lang, "Performance", "课堂表现")}: ${item.classPerformance} | ` : ""}
-                      {item.homework ? `${t(lang, "Homework", "作业")}: ${item.homework} | ` : ""}
-                      {t(lang, "Submitted", "提交")}: {new Date(item.submittedAt).toLocaleString()}
-                    </div>
+                    <details style={{ marginTop: 6 }} open={isOtherUnread}>
+                      <summary style={{ cursor: "pointer", color: "#334155" }}>
+                        {item.courseName} / {item.subjectName ?? "-"} / {item.levelName ?? "-"} | {summarize(item.content, 60)}
+                      </summary>
+                      <div style={{ color: "#475569", fontSize: 12, marginTop: 6 }}>
+                        {item.courseName} / {item.subjectName ?? "-"} / {item.levelName ?? "-"} | {item.campusName}
+                        {item.roomName ? ` / ${item.roomName}` : ""}
+                      </div>
+                      <div style={{ color: "#0f766e", fontSize: 12, marginTop: 2 }}>{t(lang, "Attendance", "出勤")}: {item.attendanceStatus}</div>
+                      <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{item.content || "-"}</div>
+                      <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+                        {item.classPerformance ? `${t(lang, "Performance", "课堂表现")}: ${item.classPerformance} | ` : ""}
+                        {item.homework ? `${t(lang, "Homework", "作业")}: ${item.homework} | ` : ""}
+                        {t(lang, "Submitted", "提交")}: {new Date(item.submittedAt).toLocaleString()}
+                      </div>
+                    </details>
                   </article>
                 );
               })}
