@@ -294,7 +294,7 @@ async function repairAttendanceDeduction(attendanceId: string) {
 
   let fixedPackageId = "";
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${attendanceId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${attendanceId}))`;
     const current = await tx.attendance.findUnique({
       where: { id: attendanceId },
       select: {
