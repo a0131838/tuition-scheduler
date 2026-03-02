@@ -19,9 +19,9 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <Link scroll={false} href="/teacher/card">{t(lang, "My Teacher Card", "我的老师名片")}</Link>
       </nav>
       <hr style={{ margin: "16px 0" }} />
-      <Link scroll={false} href="/teacher/logout">
+      <a href="/teacher/logout">
         <button type="button">{t(lang, "Logout", "退出登录")}</button>
-      </Link>
+      </a>
     </>
   );
 

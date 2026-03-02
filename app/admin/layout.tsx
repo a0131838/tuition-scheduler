@@ -300,7 +300,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <LanguageSelectorClient initialLang={user.language} />
-              <Link scroll={false} href="/admin/logout">Logout</Link>
+              <a href="/admin/logout">Logout</a>
             </div>
           </div>
           {children}

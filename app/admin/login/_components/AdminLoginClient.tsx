@@ -1,11 +1,9 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 
 export default function AdminLoginClient({ next }: { next: string }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<"" | "admin" | "teacher">("");
@@ -26,7 +24,7 @@ export default function AdminLoginClient({ next }: { next: string }) {
         setErr(String(data?.message ?? `Request failed (${res.status})`));
         return;
       }
-      router.push(String(data?.redirectTo ?? "/admin"));
+      window.location.assign(String(data?.redirectTo ?? "/admin"));
     } finally {
       setBusy("");
     }
