@@ -213,6 +213,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link scroll={false} href="/admin/reports/undeducted-completed" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Undeducted Completed", "已完成未减扣")}
               </Link>
+              <Link scroll={false} href="/admin/reports/package-sharing-audit" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                {t(lang, "Package Sharing Audit", "共享课包审计")}
+              </Link>
               <Link scroll={false} href="/admin/reports/teacher-payroll" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Teacher Payroll", "老师工资单")}
               </Link>
