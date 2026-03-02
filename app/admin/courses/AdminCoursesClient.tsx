@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type LevelRow = { id: string; name: string };
 type SubjectRow = { id: string; name: string; levels: LevelRow[] };
@@ -41,6 +41,10 @@ export default function AdminCoursesClient({
   const [subjectDraft, setSubjectDraft] = useState<SubjectDraft>({});
   const [levelDraft, setLevelDraft] = useState<LevelDraft>({});
   const [busyKey, setBusyKey] = useState<string>(""); // action lock
+
+  useEffect(() => {
+    setCourses(initialCourses);
+  }, [initialCourses]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -324,4 +328,3 @@ export default function AdminCoursesClient({
     </>
   );
 }
-

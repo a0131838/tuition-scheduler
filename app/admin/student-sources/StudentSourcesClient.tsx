@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Row = { id: string; name: string; isActive: boolean };
 
@@ -30,6 +30,10 @@ export default function StudentSourcesClient({
   const [sources, setSources] = useState<Row[]>(initialSources);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSources(initialSources);
+  }, [initialSources]);
 
   const sorted = useMemo(() => {
     return [...sources].sort((a, b) => {
@@ -146,4 +150,3 @@ export default function StudentSourcesClient({
     </div>
   );
 }
-

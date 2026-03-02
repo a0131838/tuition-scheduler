@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CampusRow = { id: string; name: string; isOnline: boolean };
 
@@ -28,6 +28,10 @@ export default function CampusesClient({
   const [name, setName] = useState("");
   const [isOnline, setIsOnline] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setCampuses(initialCampuses);
+  }, [initialCampuses]);
 
   const sorted = useMemo(() => [...campuses].sort((a, b) => a.name.localeCompare(b.name)), [campuses]);
 
@@ -120,4 +124,3 @@ export default function CampusesClient({
     </div>
   );
 }
-

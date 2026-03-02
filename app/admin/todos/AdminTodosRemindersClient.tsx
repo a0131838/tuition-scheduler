@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ReminderSession = {
   startAt: string;
@@ -90,6 +90,14 @@ function ReminderCard(props: {
   const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({});
   const [loadingAll, setLoadingAll] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setPending(initialPending);
+    setConfirmed(initialConfirmed);
+    setLoadingIds({});
+    setLoadingAll(false);
+    setError("");
+  }, [initialPending, initialConfirmed]);
 
   const pendingIds = useMemo(() => pending.map((p) => p.id), [pending]);
 

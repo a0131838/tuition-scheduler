@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Row = { id: string; name: string; isActive: boolean };
 
@@ -30,6 +30,10 @@ export default function StudentTypesClient({
   const [types, setTypes] = useState<Row[]>(initialTypes);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setTypes(initialTypes);
+  }, [initialTypes]);
 
   const sorted = useMemo(() => {
     return [...types].sort((a, b) => {
@@ -146,4 +150,3 @@ export default function StudentTypesClient({
     </div>
   );
 }
-

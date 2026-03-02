@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
 
@@ -34,6 +34,10 @@ export default function RoomsClient({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    setRooms(initialRooms);
+  }, [initialRooms]);
 
   const sorted = useMemo(() => [...rooms].sort((a, b) => a.name.localeCompare(b.name)), [rooms]);
 
