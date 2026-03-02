@@ -116,7 +116,10 @@ export default function ScrollManager() {
       const guessedSubmitter =
         (submitEvent.submitter as HTMLElement | null) ??
         (form.querySelector("button[type='submit'],input[type='submit']") as HTMLElement | null);
-      if (!isApplySubmit(guessedSubmitter)) {
+      const markedApply =
+        form.getAttribute("data-apply-submit") === "1" ||
+        guessedSubmitter?.getAttribute("data-apply-submit") === "1";
+      if (!markedApply && !isApplySubmit(guessedSubmitter)) {
         saveForPath(pathname);
         return;
       }

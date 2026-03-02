@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Row = {
   studentId: string;
@@ -29,6 +29,10 @@ export default function TeacherAttendanceClient({
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    setRows(initialRows);
+  }, [initialRows]);
 
   const statusOptions = useMemo(
     () => ["UNMARKED", "PRESENT", "ABSENT", "LATE", "EXCUSED"] as const,

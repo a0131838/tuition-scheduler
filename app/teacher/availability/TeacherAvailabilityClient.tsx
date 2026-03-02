@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 
 type Lang = "BILINGUAL" | "ZH" | "EN";
@@ -107,6 +107,14 @@ export default function TeacherAvailabilityClient(props: {
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setSlots(props.initialSlots);
+  }, [props.initialSlots]);
+
+  useEffect(() => {
+    setUndoPayload(props.initialUndoPayload);
+  }, [props.initialUndoPayload]);
 
   const today = useMemo(() => new Date(), []);
   const start = useMemo(() => new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0), [today]);
