@@ -724,6 +724,35 @@ export default async function AdminTodosPage({
   ).padStart(2, "0")}`;
   const teacherIds = teacherRemindersPending.map((r) => r.id).join(",");
   const studentIds = studentRemindersPending.map((r) => r.id).join(",");
+  const undeductedRows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
+    WITH completed_sessions AS (
+      SELECT
+        s.id AS session_id,
+        COALESCE(s."teacherId", c."teacherId") AS effective_teacher_id
+      FROM "Session" s
+      JOIN "Class" c ON c.id = s."classId"
+      WHERE EXISTS (SELECT 1 FROM "Attendance" a WHERE a."sessionId" = s.id)
+        AND NOT EXISTS (
+          SELECT 1 FROM "Attendance" a
+          WHERE a."sessionId" = s.id
+            AND a.status = 'UNMARKED'
+        )
+        AND EXISTS (
+          SELECT 1 FROM "SessionFeedback" f
+          WHERE f."sessionId" = s.id
+            AND f."teacherId" = COALESCE(s."teacherId", c."teacherId")
+            AND length(trim(COALESCE(f.content, ''))) > 0
+        )
+    )
+    SELECT COUNT(*)::bigint AS cnt
+    FROM completed_sessions cs
+    JOIN "Attendance" a ON a."sessionId" = cs.session_id
+    WHERE a.status IN ('PRESENT', 'LATE', 'ABSENT')
+      AND COALESCE(a."deductedMinutes", 0) = 0
+      AND COALESCE(a."deductedCount", 0) = 0
+      AND COALESCE(a."waiveDeduction", false) = false
+  `;
+  const undeductedCompletedCount = Number(undeductedRows[0]?.cnt ?? 0n);
 
   const sectionStyle = {
     border: "1px solid #e5e7eb",
@@ -1135,6 +1164,20 @@ export default async function AdminTodosPage({
 
         <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 12, letterSpacing: 0.5 }}>
           {t(lang, "Other Tasks", "其他事项")}
+        </div>
+        <div style={{ ...sectionStyle, borderColor: undeductedCompletedCount > 0 ? "#fca5a5" : "#86efac", background: undeductedCompletedCount > 0 ? "#fff1f2" : "#f0fdf4" }}>
+          <div style={sectionHeaderStyle}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Completed But Undeducted", "已完成未减扣")}</h3>
+            <span style={{ color: undeductedCompletedCount > 0 ? "#b91c1c" : "#166534", fontWeight: 700 }}>
+              {t(lang, "Count", "数量")}: {undeductedCompletedCount}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>
+            {t(lang, "Completed sessions with zero deduction and no waive mark.", "已完成课次中，未减扣且未标记免扣的记录。")}
+          </div>
+          <a href="/admin/reports/undeducted-completed">
+            {t(lang, "Open Repair Queue", "打开修复队列")}
+          </a>
         </div>
 
         <div style={{ ...sectionStyle, borderColor: "#fde68a" }}>

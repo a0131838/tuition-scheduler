@@ -31,6 +31,53 @@ function durationMinutes(startAt: Date, endAt: Date) {
   return Math.max(0, Math.round((endAt.getTime() - startAt.getTime()) / 60000));
 }
 
+type RepairPackageCandidate = {
+  id: string;
+  note: string | null;
+  studentId: string;
+  sharedStudents: Array<{ id: string }>;
+};
+
+async function pickRepairPackage(
+  tx: {
+    coursePackage: {
+      findMany: typeof prisma.coursePackage.findMany;
+    };
+  },
+  input: { studentId: string; courseId: string; at: Date; needUnits: number; isGroupClass: boolean }
+) {
+  const { studentId, courseId, at, needUnits, isGroupClass } = input;
+  const pkgMatches = await tx.coursePackage.findMany({
+    where: {
+      ...coursePackageAccessibleByStudent(studentId),
+      AND: [coursePackageMatchesCourse(courseId)],
+      type: PackageType.HOURS,
+      status: PackageStatus.ACTIVE,
+      remainingMinutes: { gte: Math.max(1, needUnits) },
+      validFrom: { lte: at },
+      OR: [{ validTo: null }, { validTo: { gte: at } }],
+    },
+    orderBy: [{ createdAt: "asc" }],
+    select: {
+      id: true,
+      note: true,
+      studentId: true,
+      sharedStudents: {
+        where: { studentId },
+        select: { id: true },
+      },
+    },
+  });
+  const modeMatched = pkgMatches.filter((p) => (isGroupClass ? isGroupPackNote(p.note) : !isGroupPackNote(p.note)));
+  const picked =
+    modeMatched.find((p) => p.studentId === studentId) ??
+    modeMatched.find((p) => p.sharedStudents.length > 0) ??
+    null;
+  if (!picked) return null;
+  if (picked.studentId !== studentId && picked.sharedStudents.length === 0) return null;
+  return picked as RepairPackageCandidate;
+}
+
 async function autoFixDeductAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -83,36 +130,15 @@ async function autoFixDeductAction(formData: FormData) {
       if (!DEDUCT_STATUSES.has(current.status)) throw new Error("Attendance status not deductible");
       if ((current.deductedMinutes ?? 0) > 0 || (current.deductedCount ?? 0) > 0) throw new Error("Attendance already deducted");
 
-      const pkgMatches = await tx.coursePackage.findMany({
-        where: {
-          ...coursePackageAccessibleByStudent(current.studentId),
-          AND: [coursePackageMatchesCourse(row.session.class.courseId)],
-          type: PackageType.HOURS,
-          status: PackageStatus.ACTIVE,
-          remainingMinutes: { gte: Math.max(1, needUnits) },
-          validFrom: { lte: row.session.startAt },
-          OR: [{ validTo: null }, { validTo: { gte: row.session.startAt } }],
-        },
-        orderBy: [{ createdAt: "asc" }],
-        select: {
-          id: true,
-          note: true,
-          studentId: true,
-          sharedStudents: {
-            where: { studentId: current.studentId },
-            select: { id: true },
-          },
-        },
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${attendanceId}))`;
+      const picked = await pickRepairPackage(tx, {
+        studentId: current.studentId,
+        courseId: row.session.class.courseId,
+        at: row.session.startAt,
+        needUnits,
+        isGroupClass,
       });
-      const modeMatched = pkgMatches.filter((p) => (isGroupClass ? isGroupPackNote(p.note) : !isGroupPackNote(p.note)));
-      const picked =
-        modeMatched.find((p) => p.studentId === current.studentId) ??
-        modeMatched.find((p) => p.sharedStudents.length > 0) ??
-        null;
       if (!picked) throw new Error("No active package available for auto deduction");
-      if (picked.studentId !== current.studentId && picked.sharedStudents.length === 0) {
-        throw new Error("Auto pick package ownership validation failed");
-      }
       fixedPackageId = picked.id;
 
       await tx.coursePackage.update({
@@ -203,13 +229,14 @@ async function markWaiveAction(formData: FormData) {
 export default async function UndeductedCompletedReportPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; limit?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; limit?: string; preview?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const limitRaw = Number(sp?.limit ?? 200);
   const limit = Number.isFinite(limitRaw) ? Math.max(50, Math.min(2000, Math.floor(limitRaw))) : 200;
+  const previewAttendanceId = String(sp?.preview ?? "").trim() || null;
 
   const candidates = await prisma.attendance.findMany({
     where: {
@@ -231,6 +258,7 @@ export default async function UndeductedCompletedReportPage({
           class: {
             select: {
               id: true,
+              courseId: true,
               capacity: true,
               teacherId: true,
               teacher: { select: { id: true, name: true } },
@@ -251,6 +279,19 @@ export default async function UndeductedCompletedReportPage({
   });
 
   const rows = candidates.filter(isCompletedSession);
+  const previewRow = previewAttendanceId ? rows.find((r) => r.id === previewAttendanceId) ?? null : null;
+  const previewNeedUnits = previewRow
+    ? (previewRow.session.class.capacity !== 1 ? 1 : durationMinutes(previewRow.session.startAt, previewRow.session.endAt))
+    : 0;
+  const previewPicked = previewRow
+    ? await pickRepairPackage(prisma, {
+        studentId: previewRow.student.id,
+        courseId: previewRow.session.class.courseId,
+        at: previewRow.session.startAt,
+        needUnits: previewNeedUnits,
+        isGroupClass: previewRow.session.class.capacity !== 1,
+      })
+    : null;
 
   return (
     <div>
@@ -269,6 +310,30 @@ export default async function UndeductedCompletedReportPage({
         </label>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
+      {previewRow ? (
+        <div style={{ marginBottom: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", padding: 10 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Deduct Preview", "自动补扣预览")}</div>
+          <div style={{ marginBottom: 4 }}>
+            {t(lang, "Student", "学生")}: <b>{previewRow.student.name}</b> | {t(lang, "Session", "课次")}:{" "}
+            {new Date(previewRow.session.startAt).toLocaleString()}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            {t(lang, "Units", "扣减单位")}: <b>{previewNeedUnits}</b> | {t(lang, "Target Package", "目标课包")}:{" "}
+            <b>{previewPicked ? previewPicked.id : "-"}</b>
+          </div>
+          {previewPicked ? (
+            <form action={autoFixDeductAction} style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input type="hidden" name="attendanceId" value={previewRow.id} />
+              <button type="submit">{t(lang, "Confirm Auto Deduct", "确认自动补扣")}</button>
+              <a href={`/admin/reports/undeducted-completed?limit=${limit}`}>{t(lang, "Cancel", "取消")}</a>
+            </form>
+          ) : (
+            <div style={{ color: "#b91c1c" }}>
+              {t(lang, "No eligible package found for this row.", "该记录没有可用课包可自动补扣。")}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No anomaly rows.", "暂无异常记录。")}</div>
@@ -305,10 +370,9 @@ export default async function UndeductedCompletedReportPage({
                 </td>
                 <td>
                   <div style={{ display: "grid", gap: 6, alignItems: "start" }}>
-                    <form action={autoFixDeductAction}>
-                      <input type="hidden" name="attendanceId" value={r.id} />
-                      <button type="submit">{t(lang, "Auto Bind + Deduct", "自动绑定并补扣")}</button>
-                    </form>
+                    <a href={`/admin/reports/undeducted-completed?limit=${limit}&preview=${encodeURIComponent(r.id)}`}>
+                      {t(lang, "Preview Auto Fix", "预览自动补扣")}
+                    </a>
                     <form action={markWaiveAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <input type="hidden" name="attendanceId" value={r.id} />
                       <input name="waiveReason" required placeholder={t(lang, "Waive reason", "免扣原因")} style={{ width: 180 }} />
