@@ -25,6 +25,23 @@ function fmtSessionRange(startAtIso: string, endAtIso: string) {
   return `${startAt.toLocaleString()} - ${endAt.toLocaleTimeString()}`;
 }
 
+function toLocalDateTimeInput(iso: string) {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+}
+
+function durationMinutes(startIso: string, endIso: string) {
+  const s = new Date(startIso).getTime();
+  const e = new Date(endIso).getTime();
+  const mins = Math.round((e - s) / 60000);
+  return Number.isFinite(mins) && mins > 0 ? mins : 60;
+}
+
 export default function AdminClassSessionsClient({
   classId,
   classCapacity,
@@ -72,6 +89,10 @@ export default function AdminClassSessionsClient({
     attendance: string;
     delete: string;
     replaceTeacher: string;
+    reschedule: string;
+    rescheduleScope: string;
+    newStart: string;
+    rescheduleDurationMin: string;
     scope: string;
     thisSessionOnly: string;
     futureSessions: string;
@@ -192,6 +213,23 @@ export default function AdminClassSessionsClient({
     }
     await reloadSessions();
     setMsg(`OK (${data.replaced})`);
+  }
+
+  async function reschedule(form: { sessionId: string; startAt: string; durationMin: number; scope: string }) {
+    setErr("");
+    setMsg("");
+    const res = await fetch(`/api/admin/classes/${encodeURIComponent(classId)}/sessions/reschedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.ok) {
+      setErr(String(data?.message ?? "Reschedule failed"));
+      return;
+    }
+    await reloadSessions();
+    setMsg(`OK (${data.rescheduled})`);
   }
 
   async function assignStudent(form: { sessionId: string; studentId: string }) {
@@ -421,6 +459,47 @@ export default function AdminClassSessionsClient({
                 </form>
               </details>
 
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: "pointer" }}>{labels.reschedule}</summary>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    reschedule({
+                      sessionId: s.id,
+                      startAt: String(fd.get("startAt") ?? ""),
+                      durationMin: Number(fd.get("durationMin") ?? durationMinutes(s.startAt, s.endAt)),
+                      scope: String(fd.get("scope") ?? "single"),
+                    });
+                  }}
+                  style={{ display: "grid", gap: 6, marginTop: 6 }}
+                >
+                  <label>
+                    {labels.newStart}:
+                    <input name="startAt" type="datetime-local" defaultValue={toLocalDateTimeInput(s.startAt)} required style={{ marginLeft: 6 }} />
+                  </label>
+                  <label>
+                    {labels.rescheduleDurationMin}:
+                    <input
+                      name="durationMin"
+                      type="number"
+                      min={15}
+                      step={15}
+                      defaultValue={durationMinutes(s.startAt, s.endAt)}
+                      style={{ marginLeft: 6, width: 120 }}
+                    />
+                  </label>
+                  <label>
+                    {labels.rescheduleScope}:
+                    <select name="scope" defaultValue="single" style={{ marginLeft: 6 }}>
+                      <option value="single">{labels.thisSessionOnly}</option>
+                      <option value="future">{labels.futureSessions}</option>
+                    </select>
+                  </label>
+                  <button type="submit">{labels.confirm}</button>
+                </form>
+              </details>
+
               {classCapacity === 1 && !s.studentId && enrollments.length > 0 && (
                 <details style={{ marginTop: 8 }}>
                   <summary style={{ cursor: "pointer" }}>{labels.assignStudent}</summary>
@@ -453,4 +532,3 @@ export default function AdminClassSessionsClient({
     </div>
   );
 }
-
