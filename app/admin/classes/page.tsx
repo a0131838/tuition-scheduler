@@ -220,7 +220,11 @@ export default async function ClassesPage({
                   sessionsCount: sessionsByClassId.get(e.classId) ?? 0,
                 }));
               })
-              .filter((r) => (studentQNorm ? r.studentName.toLowerCase().includes(studentQNorm) : true))
+              .filter((r) =>
+                studentQNorm
+                  ? r.studentName.toLowerCase().includes(studentQNorm) || r.teacherLabel.toLowerCase().includes(studentQNorm)
+                  : true
+              )
               .sort((a, b) => {
                 const byStudent = a.studentName.localeCompare(b.studentName, "en", { sensitivity: "base" });
                 if (byStudent !== 0) return byStudent;
@@ -246,7 +250,7 @@ export default async function ClassesPage({
                       <input
                         name="studentQ"
                         defaultValue={studentQ}
-                        placeholder={t(lang, "Filter by student name", "按学生姓名筛选")}
+                        placeholder={t(lang, "Filter by student/teacher name", "按学生/老师姓名筛选")}
                         style={{ minWidth: 260 }}
                       />
                       <button type="submit">{t(lang, "Apply", "应用")}</button>
