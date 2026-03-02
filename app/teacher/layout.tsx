@@ -8,13 +8,14 @@ export default async function TeacherLayout({ children }: { children: React.Reac
 
   return (
     <div style={{ fontFamily: "system-ui", margin: 0 }}>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         <aside
           style={{
             width: 240,
             padding: 16,
             borderRight: "1px solid #eee",
             background: "#fafafa",
+            overflowY: "auto",
           }}
         >
           <h3 style={{ marginTop: 0 }}>{t(lang, "Teacher Portal", "老师端")}</h3>
@@ -32,7 +33,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
             <button type="button">{t(lang, "Logout", "退出登录")}</button>
           </a>
         </aside>
-        <main style={{ flex: 1, padding: 24 }}>
+        <main style={{ flex: 1, padding: 24, overflowY: "auto" }}>
           <div style={{ color: "#666", marginBottom: 16 }}>
             {user ? (
               <>
