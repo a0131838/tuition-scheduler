@@ -38,6 +38,27 @@ function pendingReasonLabel(lang: Awaited<ReturnType<typeof getLang>>, reason: s
   return "-";
 }
 
+function formatDMY(day: number, month: number, year: number) {
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+}
+
+function buildPayrollCycleInfo(monthKeyValue: string) {
+  const parsed = parseMonth(monthKeyValue);
+  if (!parsed) return null;
+  const { year, month } = parsed;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const salaryMonthZh = `${year}年${month}月`;
+  return {
+    salaryMonthZh,
+    payoutDate: formatDMY(5, nextMonth, nextYear),
+    periodStart: formatDMY(15, prevMonth, prevYear),
+    periodEnd: formatDMY(14, month, year),
+  };
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -140,6 +161,7 @@ async function TeacherPayrollBody({
   if (!data) {
     return <div style={{ color: "#b00" }}>{t(lang, "Payroll data not found.", "未找到工资数据。")}</div>;
   }
+  const cycleInfo = buildPayrollCycleInfo(month);
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
 
@@ -152,6 +174,21 @@ async function TeacherPayrollBody({
           ? `${t(lang, "Confirmed at", "确认时间")}: ${new Date(confirmedAt).toLocaleString()}`
           : t(lang, "Please review and confirm this payroll.", "请核对后确认此工资单。")}
       </div>
+      {cycleInfo ? (
+        <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #d1fae5", background: "#ecfdf5", borderRadius: 8, color: "#065f46" }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Payroll Cycle Notes", "工资周期说明")}</div>
+          <div>{t(lang, "Pay Date", "发放日期")}: <b>{cycleInfo.payoutDate}</b></div>
+          <div>{t(lang, "Salary Month", "对应工资月份")}: <b>{month}</b> ({cycleInfo.salaryMonthZh})</div>
+          <div>{t(lang, "Hours Count Window", "课时统计周期")}: <b>{cycleInfo.periodStart} - {cycleInfo.periodEnd}</b></div>
+          <div style={{ marginTop: 6, color: "#047857" }}>
+            {t(
+              lang,
+              `Example: ${cycleInfo.payoutDate} pays ${month} salary, counting hours from ${cycleInfo.periodStart} to ${cycleInfo.periodEnd}.`,
+              `示例：${cycleInfo.payoutDate} 发放 ${cycleInfo.salaryMonthZh} 工资，统计 ${cycleInfo.periodStart} - ${cycleInfo.periodEnd} 的上课课时。`
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {!confirmedAt ? (
         <form action={confirmPayrollAction} style={{ marginBottom: 12 }}>
