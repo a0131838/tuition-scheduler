@@ -41,7 +41,7 @@ export default async function TeacherHomePage({
   searchParams?: Promise<{ msg?: string; err?: string }>;
 }) {
   const lang = await getLang();
-  const { teacher } = await requireTeacherProfile();
+  const { teacher, user } = await requireTeacherProfile();
 
   if (!teacher) {
     return (
@@ -70,7 +70,8 @@ export default async function TeacherHomePage({
   const tomorrowEnd = new Date(todayEnd);
   tomorrowEnd.setDate(todayEnd.getDate() + 1);
 
-  const [todaySessions, tomorrowSessions, todayConfirmed, tomorrowConfirmed] = await Promise.all([
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const [todaySessions, tomorrowSessions, todayConfirmed, tomorrowConfirmed, riskStudentCount] = await Promise.all([
     prisma.session.findMany({
       where: {
         startAt: { gte: todayStart, lte: todayEnd },
@@ -123,6 +124,55 @@ export default async function TeacherHomePage({
       where: { type: TEACHER_SELF_CONFIRM_TOMORROW, targetId: teacher.id, date: toDateOnly(tomorrowStart) },
       select: { createdAt: true },
     } as any),
+    (async () => {
+      const taughtRows = await prisma.attendance.findMany({
+        where: {
+          session: {
+            OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+          },
+        },
+        select: { studentId: true },
+        distinct: ["studentId"],
+      });
+      const taughtStudentIds = taughtRows.map((x) => x.studentId);
+      if (taughtStudentIds.length === 0) return 0;
+
+      const recentOtherFeedbacks = await prisma.sessionFeedback.findMany({
+        where: {
+          teacherId: { not: teacher.id },
+          session: {
+            startAt: { gte: sevenDaysAgo },
+            attendances: { some: { studentId: { in: taughtStudentIds } } },
+          },
+        },
+        select: {
+          id: true,
+          session: {
+            select: {
+              attendances: {
+                where: { studentId: { in: taughtStudentIds } },
+                select: { studentId: true },
+              },
+            },
+          },
+        },
+        take: 2000,
+      });
+
+      if (recentOtherFeedbacks.length === 0) return 0;
+      const feedbackIds = recentOtherFeedbacks.map((x) => x.id);
+      const readRows = await prisma.teacherFeedbackRead.findMany({
+        where: { userId: user.id, feedbackId: { in: feedbackIds } },
+        select: { feedbackId: true },
+      });
+      const readSet = new Set(readRows.map((x) => x.feedbackId));
+      const riskStudents = new Set<string>();
+      for (const f of recentOtherFeedbacks) {
+        if (readSet.has(f.id)) continue;
+        for (const a of f.session.attendances) riskStudents.add(a.studentId);
+      }
+      return riskStudents.size;
+    })(),
   ]);
   const todaySessionsVisible = todaySessions.filter((s) => sessionStudentNames(s).length > 0);
   const tomorrowSessionsVisible = tomorrowSessions.filter((s) => sessionStudentNames(s).length > 0);
@@ -157,6 +207,32 @@ export default async function TeacherHomePage({
       </div>
 
       <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
+        <div
+          style={{
+            border: "1px solid #fecaca",
+            borderRadius: 10,
+            padding: 12,
+            background: "#fff1f2",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, color: "#9f1239" }}>
+              {t(lang, "Handoff Risk Students", "交接风险学生")}: {riskStudentCount}
+            </div>
+            <div style={{ color: "#881337", fontSize: 12 }}>
+              {t(lang, "Unread cross-teacher feedbacks in last 7 days.", "近7天其他老师反馈未读。")}
+            </div>
+          </div>
+          <a href="/teacher/student-feedbacks?handoffRisk=1&onlyUnreadOthers=1">
+            {t(lang, "Open Risk Queue", "打开风险队列")}
+          </a>
+        </div>
+
         <div style={{ border: "1px solid #fcd34d", borderRadius: 10, padding: 12, background: "#fffbeb" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")} ({todaySessionsVisible.length})</h3>
