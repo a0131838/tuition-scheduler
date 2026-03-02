@@ -8,15 +8,48 @@ export default async function TeacherLayout({ children }: { children: React.Reac
 
   return (
     <div style={{ fontFamily: "system-ui", margin: 0 }}>
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <style>{`
+        .teacher-shell {
+          display: flex;
+          height: 100vh;
+          overflow: hidden;
+        }
+        .teacher-sidebar {
+          width: 240px;
+          padding: 16px;
+          border-right: 1px solid #eee;
+          background: #fafafa;
+          overflow-y: auto;
+        }
+        .teacher-main {
+          flex: 1;
+          padding: 24px;
+          overflow-y: auto;
+          min-width: 0;
+        }
+        @media (max-width: 900px) {
+          .teacher-shell {
+            display: block;
+            height: auto;
+            overflow: visible;
+          }
+          .teacher-sidebar {
+            width: auto;
+            border-right: 0;
+            border-bottom: 1px solid #eee;
+            overflow: visible;
+            padding: 12px;
+          }
+          .teacher-main {
+            width: 100%;
+            overflow: visible;
+            padding: 12px;
+          }
+        }
+      `}</style>
+      <div className="teacher-shell">
         <aside
-          style={{
-            width: 240,
-            padding: 16,
-            borderRight: "1px solid #eee",
-            background: "#fafafa",
-            overflowY: "auto",
-          }}
+          className="teacher-sidebar"
         >
           <h3 style={{ marginTop: 0 }}>{t(lang, "Teacher Portal", "老师端")}</h3>
           <nav style={{ display: "grid", gap: 8 }}>
@@ -34,7 +67,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
             <button type="button">{t(lang, "Logout", "退出登录")}</button>
           </a>
         </aside>
-        <main style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+        <main className="teacher-main">
           <div style={{ color: "#666", marginBottom: 16 }}>
             {user ? (
               <>
