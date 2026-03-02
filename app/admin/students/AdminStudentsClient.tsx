@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
@@ -64,6 +64,10 @@ export default function AdminStudentsClient({
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [creating, startCreating] = useTransition();
+
+  useEffect(() => {
+    setStudents(initialStudents);
+  }, [initialStudents]);
 
   const formatId = useMemo(
     () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
