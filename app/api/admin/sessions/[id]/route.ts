@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { AttendanceStatus } from "@prisma/client";
 import { logAudit } from "@/lib/audit-log";
 
@@ -9,7 +9,9 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
-  if (user.role !== "ADMIN") return bad("Only admin can delete session", 403);
+  const canDelete =
+    user.role === "ADMIN" || (user.role === "TEACHER" && (await isManagerUser({ role: user.role, email: user.email })));
+  if (!canDelete || user.role === "FINANCE") return bad("Only admin can delete session", 403);
   const { id: sessionId } = await params;
   if (!sessionId) return bad("Missing sessionId");
 
