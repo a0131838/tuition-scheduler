@@ -273,7 +273,7 @@ export default function QuickScheduleModal({
           return;
         }
         setPreviewRows(Array.isArray(data?.rows) ? data.rows : []);
-        setScheduleMsg(`Preview: ${data?.rows?.filter((r: any) => r.ok).length ?? 0}/${data?.total ?? Number(repeatWeeks)} OK`);
+        setScheduleMsg("");
       } catch {
         setScheduleErr("Preview failed: network or server error");
       } finally {
@@ -619,16 +619,15 @@ export default function QuickScheduleModal({
           </div>
         </form>
         <div style={{ marginTop: 12 }}>
-          {warning ? (
-            <NoticeBanner type="warn" title={labels.status} message={warning} />
-          ) : formWarn ? (
-            <NoticeBanner type="warn" title={labels.status} message={formWarn} />
-          ) : scheduleErr ? (
-            <NoticeBanner type="error" title={labels.status} message={scheduleErr} />
-          ) : scheduleMsg ? (
+          {warning ? <NoticeBanner type="warn" title={labels.status} message={warning} /> : null}
+          {!warning && formWarn ? <NoticeBanner type="warn" title={labels.status} message={formWarn} /> : null}
+          {!warning && !formWarn && scheduleErr ? <NoticeBanner type="error" title={labels.status} message={scheduleErr} /> : null}
+          {!warning && !formWarn && !scheduleErr && scheduleMsg ? (
             <NoticeBanner type="success" title={labels.status} message={scheduleMsg} />
-          ) : mode === "create" && previewRows.length > 0 ? (
-            <div>
+          ) : null}
+
+          {mode === "create" && previewRows.length > 0 ? (
+            <div style={{ marginBottom: 10 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{labels.previewTitle}</div>
               <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
                 <thead>
@@ -649,7 +648,9 @@ export default function QuickScheduleModal({
                 </tbody>
               </table>
             </div>
-          ) : mode === "create" && subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
+          ) : null}
+
+          {mode === "create" && subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
             ) : (
@@ -687,9 +688,9 @@ export default function QuickScheduleModal({
                 </tbody>
               </table>
             )
-          ) : (
+          ) : mode === "create" ? (
             <div style={{ color: "#999" }}>{labels.chooseHint}</div>
-          )}
+          ) : null}
         </div>
       </dialog>
     </div>
