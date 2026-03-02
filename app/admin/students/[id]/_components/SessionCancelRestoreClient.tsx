@@ -59,6 +59,8 @@ export default function SessionCancelRestoreClient(props: {
     cancel: string;
     restore: string;
     restoreConfirm: string;
+    delete: string;
+    deleteConfirm: string;
     charge: string;
     note: string;
   };
@@ -121,11 +123,53 @@ export default function SessionCancelRestoreClient(props: {
     }
   };
 
+  const doDelete = async () => {
+    if (loading) return;
+    if (!window.confirm(labels.deleteConfirm)) return;
+    setLoading(true);
+    setError("");
+    setDoneMsg("");
+    try {
+      const res = await fetch(`/api/admin/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      });
+      const data = await jsonOrNull(res);
+      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Delete failed"));
+      setDoneMsg("OK");
+      router.refresh();
+    } catch (e: any) {
+      setError(String(e?.message ?? "Delete failed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (cancelled) {
     return (
       <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button type="button" onClick={doRestore} disabled={loading}>
           {loading ? "..." : labels.restore}
+        </button>
+        <button
+          type="button"
+          onClick={doDelete}
+          disabled={loading}
+          style={
+            variant === "compact"
+              ? {
+                  border: "1px solid #fca5a5",
+                  background: "#fef2f2",
+                  color: "#b42318",
+                  borderRadius: 6,
+                  padding: "2px 6px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }
+              : { background: "#fee2e2", borderColor: "#fca5a5" }
+          }
+        >
+          {loading ? "..." : variant === "compact" ? "del" : labels.delete}
         </button>
         {doneMsg ? <span style={{ color: "#166534", fontSize: 12 }}>{doneMsg}</span> : null}
         {error ? <span style={{ color: "#b00", fontSize: 12 }}>{error}</span> : null}
@@ -156,6 +200,28 @@ export default function SessionCancelRestoreClient(props: {
         }
       >
         {loading ? "..." : variant === "compact" ? "x" : labels.cancel}
+      </button>
+      <button
+        type="button"
+        title={variant === "compact" ? labels.delete : undefined}
+        onClick={doDelete}
+        disabled={loading}
+        style={
+          variant === "compact"
+            ? {
+                border: "1px solid #fca5a5",
+                background: "#fef2f2",
+                color: "#b42318",
+                borderRadius: 6,
+                padding: "2px 6px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+              }
+            : { background: "#fee2e2", borderColor: "#fca5a5" }
+        }
+      >
+        {loading ? "..." : variant === "compact" ? "del" : labels.delete}
       </button>
       <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: variant === "compact" ? 11 : 12 }}>
         <input type="checkbox" checked={charge} onChange={(e) => setCharge(e.target.checked)} />

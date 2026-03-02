@@ -46,7 +46,9 @@ const zhMap: Record<string, string> = {
   "Course": "\u8bfe\u7a0b",
   "Deduct": "\u6263\u51cf",
   "Delete Student": "\u5220\u9664\u5b66\u751f",
+  "Delete Session": "\u5220\u9664\u8bfe\u6b21",
   "Delete student? This also deletes enrollments/appointments/packages.": "\u5220\u9664\u5b66\u751f\uff1f\u5c06\u540c\u65f6\u5220\u9664\u62a5\u540d/\u9884\u7ea6/\u8bfe\u5305\u3002",
+  "Delete this session? This cannot be undone.": "\u5220\u9664\u8be5\u8bfe\u6b21\uff1f\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\u3002",
   "Detail": "\u8be6\u60c5",
   "Download PDF": "\u5bfc\u51faPDF",
   "Export Student Report": "\u5bfc\u51fa\u5b66\u751f\u62a5\u544a",
@@ -1728,6 +1730,8 @@ export default async function StudentDetailPage({
                                 cancel: tl(lang, "Cancel"),
                                 restore: tl(lang, "Restore"),
                                 restoreConfirm: tl(lang, "Restore this session?"),
+                                delete: tl(lang, "Delete Session"),
+                                deleteConfirm: tl(lang, "Delete this session? This cannot be undone."),
                                 charge: tl(lang, "Charge"),
                                 note: tl(lang, "Note"),
                               }}
@@ -2129,6 +2133,8 @@ export default async function StudentDetailPage({
                       cancel: tl(lang, "Cancel"),
                       restore: tl(lang, "Restore"),
                       restoreConfirm: tl(lang, "Restore this session?"),
+                      delete: tl(lang, "Delete Session"),
+                      deleteConfirm: tl(lang, "Delete this session? This cannot be undone."),
                       charge: tl(lang, "Charge"),
                       note: tl(lang, "Note"),
                     }}
