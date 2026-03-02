@@ -40,10 +40,17 @@ export default function ScrollManager() {
     try {
       const key = keyForPath(pathname);
       const raw = sessionStorage.getItem(key);
-      if (!raw) return;
       sessionStorage.removeItem(key);
+      if (!raw) {
+        // Cross-page navigation should start from top by default.
+        applyScrollTop(0);
+        return;
+      }
       const y = Number(raw);
-      if (!Number.isFinite(y)) return;
+      if (!Number.isFinite(y)) {
+        applyScrollTop(0);
+        return;
+      }
       applyScrollTop(y);
     } catch {
       // ignore
@@ -80,12 +87,6 @@ export default function ScrollManager() {
         if (dest.origin !== window.location.origin) return;
         destPath = dest.pathname;
       } catch {
-        return;
-      }
-
-      const isSidebarNav = Boolean(a.closest(".app-sidebar"));
-      if (isSidebarNav) {
-        saveForPath(destPath || pathname);
         return;
       }
 
