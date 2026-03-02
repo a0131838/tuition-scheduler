@@ -64,6 +64,7 @@ async function autoFixDeductAction(formData: FormData) {
   const isGroupClass = row.session.class.capacity !== 1;
   const needUnits = isGroupClass ? 1 : durationMinutes(row.session.startAt, row.session.endAt);
   if (needUnits <= 0) redirect("/admin/reports/undeducted-completed?err=invalid-duration");
+  let fixedPackageId = "";
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -93,10 +94,26 @@ async function autoFixDeductAction(formData: FormData) {
           OR: [{ validTo: null }, { validTo: { gte: row.session.startAt } }],
         },
         orderBy: [{ createdAt: "asc" }],
-        select: { id: true, note: true },
+        select: {
+          id: true,
+          note: true,
+          studentId: true,
+          sharedStudents: {
+            where: { studentId: current.studentId },
+            select: { id: true },
+          },
+        },
       });
-      const picked = pkgMatches.find((p) => (isGroupClass ? isGroupPackNote(p.note) : !isGroupPackNote(p.note)));
+      const modeMatched = pkgMatches.filter((p) => (isGroupClass ? isGroupPackNote(p.note) : !isGroupPackNote(p.note)));
+      const picked =
+        modeMatched.find((p) => p.studentId === current.studentId) ??
+        modeMatched.find((p) => p.sharedStudents.length > 0) ??
+        null;
       if (!picked) throw new Error("No active package available for auto deduction");
+      if (picked.studentId !== current.studentId && picked.sharedStudents.length === 0) {
+        throw new Error("Auto pick package ownership validation failed");
+      }
+      fixedPackageId = picked.id;
 
       await tx.coursePackage.update({
         where: { id: picked.id },
@@ -136,6 +153,10 @@ async function autoFixDeductAction(formData: FormData) {
     meta: { attendanceId, studentId: row.student.id, sessionId: row.session.id },
   });
   revalidatePath("/admin/reports/undeducted-completed");
+  if (fixedPackageId) {
+    revalidatePath(`/admin/packages/${fixedPackageId}/ledger`);
+    redirect(`/admin/packages/${fixedPackageId}/ledger?msg=${encodeURIComponent("Auto deduction fixed")}`);
+  }
   redirect("/admin/reports/undeducted-completed?msg=auto-fixed");
 }
 
