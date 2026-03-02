@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 function keyForPath(pathname: string) {
   // Only key by pathname so redirects that add/remove query params still restore scroll.
@@ -10,6 +10,7 @@ function keyForPath(pathname: string) {
 
 export default function ScrollManager() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const getMainScrollTop = () => {
     const main = document.querySelector(".app-main") as HTMLElement | null;
@@ -66,7 +67,69 @@ export default function ScrollManager() {
       }
     };
 
-    const onSubmit = () => saveForPath(pathname);
+    const isApplySubmit = (el: HTMLElement | null) => {
+      if (!el) return false;
+      if (el instanceof HTMLInputElement) {
+        return /(apply|应用)/i.test(String(el.value || "").trim());
+      }
+      const text = (el.textContent || "").trim();
+      return /(apply|应用)/i.test(text);
+    };
+
+    const onSubmit = (e: Event) => {
+      const form = e.target as HTMLFormElement | null;
+      if (!form || !(form instanceof HTMLFormElement)) return;
+
+      const method = String(form.getAttribute("method") || "get").toUpperCase();
+      if (method !== "GET") {
+        saveForPath(pathname);
+        return;
+      }
+      if (form.hasAttribute("data-native-submit")) {
+        saveForPath(pathname);
+        return;
+      }
+      if (form.target && form.target !== "_self") {
+        saveForPath(pathname);
+        return;
+      }
+
+      const submitEvent = e as SubmitEvent;
+      const guessedSubmitter =
+        (submitEvent.submitter as HTMLElement | null) ??
+        (form.querySelector("button[type='submit'],input[type='submit']") as HTMLElement | null);
+      if (!isApplySubmit(guessedSubmitter)) {
+        saveForPath(pathname);
+        return;
+      }
+
+      let dest: URL;
+      try {
+        dest = new URL(form.getAttribute("action") || window.location.href, window.location.href);
+        if (dest.origin !== window.location.origin) return;
+      } catch {
+        return;
+      }
+
+      e.preventDefault();
+      const fd = new FormData(form);
+      if (
+        guessedSubmitter &&
+        (guessedSubmitter instanceof HTMLButtonElement || guessedSubmitter instanceof HTMLInputElement) &&
+        guessedSubmitter.name
+      ) {
+        fd.append(guessedSubmitter.name, guessedSubmitter.value ?? "");
+      }
+      for (const [k, v] of fd.entries()) {
+        if (typeof v === "string") dest.searchParams.append(k, v);
+      }
+
+      if (dest.pathname === pathname) {
+        saveForPath(pathname);
+      }
+      const next = `${dest.pathname}${dest.search}`;
+      router.replace(next, { scroll: false });
+    };
 
     const onClickCapture = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
@@ -102,7 +165,7 @@ export default function ScrollManager() {
       document.removeEventListener("submit", onSubmit, true);
       document.removeEventListener("click", onClickCapture, true);
     };
-  }, [pathname]);
+  }, [pathname, router]);
 
   return null;
 }
