@@ -93,6 +93,10 @@ export default function PackageCreateFormClient({
             sharedCourseIds: fd.getAll("sharedCourseIds").map((v) => String(v)),
             note: String(fd.get("note") ?? ""),
           };
+          if (!payload.studentId) {
+            setErr("Please select a student explicitly.");
+            return;
+          }
 
           const res = await fetch("/api/admin/packages", {
             method: "POST",
