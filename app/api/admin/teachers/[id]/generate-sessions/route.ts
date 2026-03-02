@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -27,8 +28,10 @@ type Occurrence = {
   templateId: string;
   classId: string;
   studentId: string;
+  courseId: string;
   startAt: Date;
   endAt: Date;
+  requiredHoursMinutes: number;
 };
 
 async function computeGenerationPlan(teacherId: string, startDate: string, endDate: string) {
@@ -41,7 +44,7 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   const templates = await prisma.teacherOneOnOneTemplate.findMany({
     where: { teacherId },
     include: {
-      class: { select: { id: true, roomId: true } },
+      class: { select: { id: true, roomId: true, courseId: true } },
     },
     orderBy: [{ weekday: "asc" }, { startMin: "asc" }],
   });
@@ -59,8 +62,10 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
         templateId: t.id,
         classId: t.classId,
         studentId: t.studentId,
+        courseId: t.class.courseId,
         startAt,
         endAt,
+        requiredHoursMinutes: t.durationMin,
       });
     }
   }
@@ -114,6 +119,17 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   const toCreate: Occurrence[] = [];
 
   for (const occ of occurrences) {
+    const hasPackage = await hasSchedulablePackage(prisma, {
+      studentId: occ.studentId,
+      courseId: occ.courseId,
+      at: occ.startAt,
+      requiredHoursMinutes: occ.requiredHoursMinutes,
+    });
+    if (!hasPackage) {
+      conflicts.push({ occ, reason: "No active package" });
+      continue;
+    }
+
     const dup = teacherSessions.find(
       (s) =>
         s.classId === occ.classId &&

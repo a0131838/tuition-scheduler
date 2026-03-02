@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import AdminClassSessionsClient from "./AdminClassSessionsClient";
 
@@ -304,7 +305,7 @@ async function createOneSession(classId: string, formData: FormData) {
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    include: { teacher: true, room: true, course: true, subject: true, level: true },
+    include: { teacher: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
   });
   if (!cls) redirect(buildRedirect(classId, { err: "Class not found" }));
 
@@ -331,6 +332,20 @@ async function createOneSession(classId: string, formData: FormData) {
   });
 
   if (conflict) redirect(buildRedirect(classId, { err: conflict }));
+
+  const expectedStudentIds = cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
+  const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
+  for (const sid of expectedStudentIds) {
+    const ok = await hasSchedulablePackage(prisma, {
+      studentId: sid,
+      courseId: cls.courseId,
+      at: startAt,
+      requiredHoursMinutes,
+    });
+    if (!ok) {
+      redirect(buildRedirect(classId, { err: `Student ${sid} has no active package for this course` }));
+    }
+  }
 
   await prisma.session.create({ data: { classId, startAt, endAt, studentId: cls.capacity === 1 ? studentId : null } });
   redirect(buildRedirect(classId, { msg: "Created 1 session" }));
@@ -364,7 +379,7 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    include: { teacher: true, room: true, course: true, subject: true, level: true },
+    include: { teacher: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
   });
   if (!cls) redirect(buildRedirect(classId, { err: "Class not found" }));
 
@@ -393,6 +408,8 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
   let created = 0;
   let skipped = 0;
   const skippedSamples: string[] = [];
+  const expectedStudentIds = cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
+  const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
 
   for (let i = 0; i < weeks; i++) {
     const d = new Date(first);
@@ -400,6 +417,28 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
 
     const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
     const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
+
+    let packageErr: string | null = null;
+    for (const sid of expectedStudentIds) {
+      const ok = await hasSchedulablePackage(prisma, {
+        studentId: sid,
+        courseId: cls.courseId,
+        at: startAt,
+        requiredHoursMinutes,
+      });
+      if (!ok) {
+        packageErr = `Student ${sid} has no active package for this course`;
+        break;
+      }
+    }
+    if (packageErr) {
+      if (onConflict === "reject") {
+        redirect(buildRedirect(classId, { err: `Conflict on ${ymd(startAt)} ${timeStr}: ${packageErr}` }));
+      }
+      skipped++;
+      if (skippedSamples.length < 5) skippedSamples.push(`${ymd(startAt)} ${timeStr} - ${packageErr}`);
+      continue;
+    }
 
     const conflict = await findConflictForSession({
       classId,
