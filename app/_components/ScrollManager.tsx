@@ -11,6 +11,20 @@ function keyForPath(pathname: string) {
 export default function ScrollManager() {
   const pathname = usePathname();
   const router = useRouter();
+  const APPLY_INTERCEPT_PATHS: RegExp[] = [
+    /^\/admin\/students$/,
+    /^\/admin\/teachers$/,
+    /^\/admin\/enrollments$/,
+    /^\/admin\/schedule$/,
+    /^\/admin\/todos$/,
+    /^\/admin\/feedbacks$/,
+    /^\/admin\/packages$/,
+    /^\/admin\/classes$/,
+    /^\/admin\/conflicts$/,
+    /^\/admin\/reports\/.+$/,
+    /^\/teacher\/student-feedbacks$/,
+    /^\/teacher\/payroll$/,
+  ];
 
   const getMainScrollTop = () => {
     const main = document.querySelector(".app-main") as HTMLElement | null;
@@ -82,6 +96,10 @@ export default function ScrollManager() {
 
       const method = String(form.getAttribute("method") || "get").toUpperCase();
       if (method !== "GET") {
+        saveForPath(pathname);
+        return;
+      }
+      if (!APPLY_INTERCEPT_PATHS.some((re) => re.test(pathname))) {
         saveForPath(pathname);
         return;
       }
