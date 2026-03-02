@@ -820,3 +820,14 @@ model Attendance {
   @@unique([sessionId, studentId])
   @@index([studentId])
 }
+
+model TeacherFeedbackRead {
+  id         String   @id @default(uuid())
+  userId     String
+  feedbackId String
+  studentId  String
+  readAt     DateTime @default(now())
+
+  @@unique([userId, feedbackId])
+  @@index([userId, studentId, readAt])
+}

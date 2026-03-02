@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 
 type FeedbackFlatRow = {
   feedbackId: string;
-  sessionId: string;
   studentId: string;
   studentName: string;
   teacherId: string;
@@ -13,9 +12,6 @@ type FeedbackFlatRow = {
   content: string;
   classPerformance: string | null;
   homework: string | null;
-  previousHomeworkDone: boolean | null;
-  status: string;
-  isProxyDraft: boolean;
   sessionStartAt: Date;
   sessionEndAt: Date;
   attendanceStatus: string;
@@ -72,12 +68,13 @@ export default async function TeacherStudentFeedbacksPage({
     from?: string;
     to?: string;
     onlyOthers?: string;
+    handoffRisk?: string;
     studentId?: string;
     page?: string;
   }>;
 }) {
   const lang = await getLang();
-  const { teacher } = await requireTeacherProfile();
+  const { teacher, user } = await requireTeacherProfile();
   if (!teacher) {
     return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
   }
@@ -85,6 +82,7 @@ export default async function TeacherStudentFeedbacksPage({
   const sp = await searchParams;
   const q = String(sp?.q ?? "").trim();
   const onlyOthers = String(sp?.onlyOthers ?? "") === "1";
+  const handoffRisk = String(sp?.handoffRisk ?? "") === "1";
   const selectedStudentId = String(sp?.studentId ?? "").trim();
   const page = Math.max(1, Number(sp?.page ?? 1) || 1);
   const pageSize = 20;
@@ -132,7 +130,6 @@ export default async function TeacherStudentFeedbacksPage({
       teacher: { select: { id: true, name: true } },
       session: {
         select: {
-          id: true,
           startAt: true,
           endAt: true,
           class: {
@@ -163,7 +160,6 @@ export default async function TeacherStudentFeedbacksPage({
     for (const a of fb.session.attendances) {
       flat.push({
         feedbackId: fb.id,
-        sessionId: fb.sessionId,
         studentId: a.student.id,
         studentName: a.student.name,
         teacherId: fb.teacher.id,
@@ -172,9 +168,6 @@ export default async function TeacherStudentFeedbacksPage({
         content: fb.content ?? "",
         classPerformance: fb.classPerformance ?? null,
         homework: fb.homework ?? null,
-        previousHomeworkDone: fb.previousHomeworkDone ?? null,
-        status: fb.status,
-        isProxyDraft: fb.isProxyDraft,
         sessionStartAt: fb.session.startAt,
         sessionEndAt: fb.session.endAt,
         attendanceStatus: a.status,
@@ -188,20 +181,79 @@ export default async function TeacherStudentFeedbacksPage({
   }
 
   const filtered = flat.filter((r) => textMatch(r, q));
-  const byStudent = new Map<string, { studentId: string; studentName: string; latest: FeedbackFlatRow; count: number }>();
+
+  const selectedOtherFeedbackIds = selectedStudentId
+    ? Array.from(
+        new Set(
+          filtered
+            .filter((r) => r.studentId === selectedStudentId && r.teacherId !== teacher.id)
+            .map((r) => r.feedbackId)
+        )
+      )
+    : [];
+  if (selectedOtherFeedbackIds.length > 0) {
+    await prisma.teacherFeedbackRead.createMany({
+      data: selectedOtherFeedbackIds.map((feedbackId) => ({
+        userId: user.id,
+        feedbackId,
+        studentId: selectedStudentId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const uniqueFeedbackIds = Array.from(new Set(filtered.map((r) => r.feedbackId)));
+  const readRows =
+    uniqueFeedbackIds.length > 0
+      ? await prisma.teacherFeedbackRead.findMany({
+          where: { userId: user.id, feedbackId: { in: uniqueFeedbackIds } },
+          select: { feedbackId: true },
+        })
+      : [];
+  const readSet = new Set(readRows.map((x) => x.feedbackId));
+
+  const recentThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const byStudent = new Map<
+    string,
+    {
+      studentId: string;
+      studentName: string;
+      latest: FeedbackFlatRow;
+      count: number;
+      unreadOtherCount: number;
+      hasHandoffRisk: boolean;
+    }
+  >();
+
   for (const r of filtered) {
+    const isUnreadOther = r.teacherId !== teacher.id && !readSet.has(r.feedbackId);
+    const isRisk = isUnreadOther && r.sessionStartAt >= recentThreshold;
     const cur = byStudent.get(r.studentId);
     if (!cur) {
-      byStudent.set(r.studentId, { studentId: r.studentId, studentName: r.studentName, latest: r, count: 1 });
+      byStudent.set(r.studentId, {
+        studentId: r.studentId,
+        studentName: r.studentName,
+        latest: r,
+        count: 1,
+        unreadOtherCount: isUnreadOther ? 1 : 0,
+        hasHandoffRisk: isRisk,
+      });
       continue;
     }
     cur.count += 1;
+    if (isUnreadOther) cur.unreadOtherCount += 1;
+    if (isRisk) cur.hasHandoffRisk = true;
     if (r.submittedAt > cur.latest.submittedAt) cur.latest = r;
   }
 
-  const students = Array.from(byStudent.values()).sort(
-    (a, b) => b.latest.submittedAt.getTime() - a.latest.submittedAt.getTime()
-  );
+  const students = Array.from(byStudent.values())
+    .filter((s) => (handoffRisk ? s.hasHandoffRisk : true))
+    .sort((a, b) => {
+      if (a.hasHandoffRisk !== b.hasHandoffRisk) return a.hasHandoffRisk ? -1 : 1;
+      if (a.unreadOtherCount !== b.unreadOtherCount) return b.unreadOtherCount - a.unreadOtherCount;
+      return b.latest.submittedAt.getTime() - a.latest.submittedAt.getTime();
+    });
+
   const totalStudents = students.length;
   const totalPages = Math.max(1, Math.ceil(totalStudents / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -216,7 +268,9 @@ export default async function TeacherStudentFeedbacksPage({
 
   const queryBase = `q=${encodeURIComponent(q)}&from=${encodeURIComponent(
     sp?.from ?? from.toISOString().slice(0, 10)
-  )}&to=${encodeURIComponent(sp?.to ?? to.toISOString().slice(0, 10))}&onlyOthers=${onlyOthers ? "1" : "0"}`;
+  )}&to=${encodeURIComponent(sp?.to ?? to.toISOString().slice(0, 10))}&onlyOthers=${
+    onlyOthers ? "1" : "0"
+  }&handoffRisk=${handoffRisk ? "1" : "0"}`;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -248,6 +302,10 @@ export default async function TeacherStudentFeedbacksPage({
           <input type="checkbox" name="onlyOthers" value="1" defaultChecked={onlyOthers} />
           {t(lang, "Only other teachers", "仅看其他老师")}
         </label>
+        <label style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+          <input type="checkbox" name="handoffRisk" value="1" defaultChecked={handoffRisk} />
+          {t(lang, "Only handoff risks (7d unread)", "仅看交接风险（7天未读）")}
+        </label>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
       </form>
 
@@ -268,6 +326,7 @@ export default async function TeacherStudentFeedbacksPage({
               <th align="left">{t(lang, "Latest Teacher", "最近反馈老师")}</th>
               <th align="left">{t(lang, "Summary", "摘要")}</th>
               <th align="left">{t(lang, "Entries", "条数")}</th>
+              <th align="left">{t(lang, "Unread (others)", "他人未读")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -286,6 +345,16 @@ export default async function TeacherStudentFeedbacksPage({
                 </td>
                 <td>{summarize(s.latest.content)}</td>
                 <td>{s.count}</td>
+                <td>
+                  <span style={{ fontWeight: 700, color: s.unreadOtherCount > 0 ? "#b91c1c" : "#64748b" }}>
+                    {s.unreadOtherCount}
+                  </span>
+                  {s.hasHandoffRisk ? (
+                    <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11 }}>
+                      {t(lang, "Risk", "风险")}
+                    </span>
+                  ) : null}
+                </td>
                 <td>
                   <a href={`/teacher/student-feedbacks?${queryBase}&studentId=${encodeURIComponent(s.studentId)}&page=${safePage}`}>
                     {t(lang, "Open Timeline", "查看时间线")}
@@ -325,13 +394,19 @@ export default async function TeacherStudentFeedbacksPage({
                 <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <div style={{ fontWeight: 700 }}>
-                      {new Date(item.sessionStartAt).toLocaleString()} - {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(item.sessionStartAt).toLocaleString()} -{" "}
+                      {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                     <div>
                       {item.teacherName}
                       {item.teacherId !== teacher.id ? (
                         <span style={{ marginLeft: 6, color: "#b45309", fontSize: 12 }}>
                           {t(lang, "(Other Teacher)", "（其他老师）")}
+                        </span>
+                      ) : null}
+                      {item.teacherId !== teacher.id && !readSet.has(item.feedbackId) ? (
+                        <span style={{ marginLeft: 6, color: "#b91c1c", fontSize: 12, fontWeight: 700 }}>
+                          {t(lang, "NEW", "未读")}
                         </span>
                       ) : null}
                     </div>
