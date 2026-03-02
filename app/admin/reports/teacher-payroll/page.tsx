@@ -324,6 +324,34 @@ export default async function TeacherPayrollPage({
   const rateRows = rateMissingOnly
     ? data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0)
     : data.rateEditorRows;
+  const payrollTableHeaderCellStyle = {
+    position: "sticky" as const,
+    top: 0,
+    background: "#f8fafc",
+    zIndex: 5,
+    borderBottom: "1px solid #e2e8f0",
+    whiteSpace: "nowrap" as const,
+  };
+  const payrollTableFirstColHeaderStyle = {
+    ...payrollTableHeaderCellStyle,
+    left: 0,
+    zIndex: 7,
+    borderRight: "1px solid #e2e8f0",
+  };
+  const payrollTableFirstColCellStyle = {
+    position: "sticky" as const,
+    left: 0,
+    background: "#fff",
+    zIndex: 2,
+    borderRight: "1px solid #f1f5f9",
+    whiteSpace: "nowrap" as const,
+  };
+  const workflowChipStyle = (state: "done" | "pending" | "blocked" | "rejected") => {
+    if (state === "done") return { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" };
+    if (state === "pending") return { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" };
+    if (state === "rejected") return { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" };
+    return { background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" };
+  };
 
   return (
     <div>
@@ -473,135 +501,157 @@ export default async function TeacherPayrollPage({
       {payrollRows.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No sessions in this payroll period.", "当前计薪周期没有课次。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Teacher", "老师")}</th>
-              <th align="left">{t(lang, "Sessions", "课次数")}</th>
-              <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
-              <th align="left">{t(lang, "Completed", "已完成")}</th>
-              <th align="left">{t(lang, "Pending", "未完成")}</th>
-              <th align="left">{t(lang, "Hours", "课时")}</th>
-              <th align="left">{t(lang, "Salary", "工资")}</th>
-              <th align="left">{t(lang, "Workflow", "流程状态")}</th>
-              <th align="left">{t(lang, "Actions", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payrollRows.map((row) => {
-              const publish = publishMap.get(row.teacherId) ?? null;
-              const managerAllConfirmed = publish
-                ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
-                : false;
-              return (
-              <tr key={row.teacherId} style={{ borderTop: "1px solid #eee" }}>
-                <td>
-                  <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
-                    {row.teacherName}
-                  </a>
-                </td>
-                <td>{row.totalSessions}</td>
-                <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
-                <td style={{ color: "#166534", fontWeight: 700 }}>{row.completedSessions}</td>
-                <td style={{ color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
-                <td>{row.totalHours}</td>
-                <td>
-                  {formatMoneyCents(row.totalAmountCents)}
-                  {missingRateTeacherSet.has(row.teacherId) ? (
-                    <div style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "Rate Missing", "费率缺失")}</div>
-                  ) : null}
-                </td>
-                <td>
-                  {!publish ? (
-                    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569" }}>
-                      {t(lang, "Not sent", "未发送")}
-                    </span>
-                  ) : (
-                    <>
-                      <div>{t(lang, "Teacher", "老师")}: {publish.confirmedAt ? t(lang, "Confirmed", "已确认") : t(lang, "Pending", "待确认")}</div>
-                      <div>{t(lang, "Manager", "管理")}: {managerAllConfirmed ? t(lang, "Confirmed", "已确认") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}</div>
-                      <div>{t(lang, "Finance Confirm", "财务确认")}: {publish.financeConfirmedAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
-                      <div>{t(lang, "Finance Paid", "财务发薪")}: {publish.financePaidAt ? t(lang, "Done", "已完成") : t(lang, "Pending", "待处理")}</div>
-                      {publish.financeRejectedAt ? (
-                        <div style={{ color: "#b91c1c" }}>
-                          {t(lang, "Finance Rejected", "财务驳回")}: {publish.financeRejectReason ?? "-"}
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </td>
-                <td>
-                  <details>
-                    <summary style={{ cursor: "pointer" }}>{t(lang, "Actions", "操作")}</summary>
-                    <div style={{ display: "grid", gap: 6, justifyItems: "start", marginTop: 6 }}>
-                    <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
-                      {t(lang, "Open Detail", "打开详情")}
-                    </a>
-                    {!isFinanceOnlyUser && (!publish?.financePaidAt || canEditApprovalConfig) ? (
-                      <form action={sendPayrollAction}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
-                      </form>
-                    ) : null}
-                    {!isFinanceOnlyUser && publish && (!publish.financePaidAt || canEditApprovalConfig) ? (
-                      <form action={revokePayrollAction}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Revoke", "撤销发送")}</button>
-                      </form>
-                    ) : null}
-                    {publish && isManagerApprover && publish.confirmedAt && !managerAllConfirmed ? (
-                      <form action={managerApprovePayrollAction}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Manager Approve", "管理审批")}</button>
-                      </form>
-                    ) : null}
-                    {publish && isFinanceApprover && managerAllConfirmed && !publish.financeConfirmedAt ? (
-                      <form action={financeApprovePayrollAction}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Finance Confirm", "财务确认")}</button>
-                      </form>
-                    ) : null}
-                    {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) && !publish.financePaidAt ? (
-                      <form action={financeMarkPaidPayrollAction}>
-                        <input type="hidden" name="month" value={month} />
-                        <input type="hidden" name="scope" value={scope} />
-                        <input type="hidden" name="teacherId" value={row.teacherId} />
-                        <button type="submit">{t(lang, "Mark Paid", "标记已发薪")}</button>
-                      </form>
-                    ) : null}
-                    {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (
-                      <details>
-                        <summary style={{ cursor: "pointer", color: "#b91c1c" }}>{t(lang, "Finance Reject", "财务驳回")}</summary>
-                        <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
-                          <input type="hidden" name="month" value={month} />
-                          <input type="hidden" name="scope" value={scope} />
-                          <input type="hidden" name="teacherId" value={row.teacherId} />
-                          <input
-                            type="text"
-                            name="rejectReason"
-                            required
-                            placeholder={t(lang, "Reject reason", "驳回原因")}
-                            style={{ width: 180 }}
-                          />
-                          <button type="submit">{t(lang, "Confirm Reject", "确认驳回")}</button>
-                        </form>
-                      </details>
-                    ) : null}
-                    </div>
-                  </details>
-                </td>
+        <div style={{ overflowX: "auto", marginBottom: 20 }}>
+          <table cellPadding={8} style={{ borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: 980 }}>
+            <thead>
+              <tr>
+                <th align="left" style={payrollTableFirstColHeaderStyle}>{t(lang, "Teacher", "老师")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Sessions", "课次数")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Completed", "已完成")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Pending", "未完成")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Hours", "课时")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Salary", "工资")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Workflow", "流程状态")}</th>
+                <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Actions", "操作")}</th>
               </tr>
-            )})}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {payrollRows.map((row) => {
+                const publish = publishMap.get(row.teacherId) ?? null;
+                const managerAllConfirmed = publish
+                  ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
+                  : false;
+                const teacherState = publish?.confirmedAt ? "done" : "pending";
+                const managerState = !publish?.confirmedAt ? "blocked" : managerAllConfirmed ? "done" : "pending";
+                const financeConfirmState = !publish?.confirmedAt || !managerAllConfirmed
+                  ? "blocked"
+                  : publish.financeConfirmedAt
+                    ? "done"
+                    : "pending";
+                const financePaidState = !publish?.financeConfirmedAt
+                  ? "blocked"
+                  : publish.financePaidAt
+                    ? "done"
+                    : "pending";
+                return (
+                  <tr key={row.teacherId}>
+                    <td style={{ ...payrollTableFirstColCellStyle, borderTop: "1px solid #eee" }}>
+                      <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+                        {row.teacherName}
+                      </a>
+                    </td>
+                    <td style={{ borderTop: "1px solid #eee" }}>{row.totalSessions}</td>
+                    <td style={{ borderTop: "1px solid #eee", color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
+                    <td style={{ borderTop: "1px solid #eee", color: "#166534", fontWeight: 700 }}>{row.completedSessions}</td>
+                    <td style={{ borderTop: "1px solid #eee", color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
+                    <td style={{ borderTop: "1px solid #eee" }}>{row.totalHours}</td>
+                    <td style={{ borderTop: "1px solid #eee" }}>
+                      {formatMoneyCents(row.totalAmountCents)}
+                      {missingRateTeacherSet.has(row.teacherId) ? (
+                        <div style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "Rate Missing", "费率缺失")}</div>
+                      ) : null}
+                    </td>
+                    <td style={{ borderTop: "1px solid #eee" }}>
+                      {!publish ? (
+                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569" }}>
+                          {t(lang, "Not sent", "未发送")}
+                        </span>
+                      ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                          <span style={{ ...workflowChipStyle(teacherState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Teacher", "老师")}: {teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}
+                          </span>
+                          <span style={{ ...workflowChipStyle(managerState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Manager", "管理")}: {managerState === "done" ? t(lang, "Done", "完成") : managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}
+                          </span>
+                          <span style={{ ...workflowChipStyle(financeConfirmState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Finance Confirm", "财务确认")}: {financeConfirmState === "done" ? t(lang, "Done", "完成") : financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
+                          </span>
+                          <span style={{ ...workflowChipStyle(financePaidState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Finance Paid", "财务发薪")}: {financePaidState === "done" ? t(lang, "Done", "完成") : financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
+                          </span>
+                          {publish.financeRejectedAt ? (
+                            <span style={{ ...workflowChipStyle("rejected"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                              {t(lang, "Finance Rejected", "财务驳回")}: {publish.financeRejectReason ?? "-"}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ borderTop: "1px solid #eee" }}>
+                      <details>
+                        <summary style={{ cursor: "pointer" }}>{t(lang, "Actions", "操作")}</summary>
+                        <div style={{ display: "grid", gap: 6, justifyItems: "start", marginTop: 6 }}>
+                        <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+                          {t(lang, "Open Detail", "打开详情")}
+                        </a>
+                        {!isFinanceOnlyUser && (!publish?.financePaidAt || canEditApprovalConfig) ? (
+                          <form action={sendPayrollAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <input type="hidden" name="teacherId" value={row.teacherId} />
+                            <button type="submit">{publish ? t(lang, "Resend", "重新发送") : t(lang, "Send", "发送")}</button>
+                          </form>
+                        ) : null}
+                        {!isFinanceOnlyUser && publish && (!publish.financePaidAt || canEditApprovalConfig) ? (
+                          <form action={revokePayrollAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <input type="hidden" name="teacherId" value={row.teacherId} />
+                            <button type="submit">{t(lang, "Revoke", "撤销发送")}</button>
+                          </form>
+                        ) : null}
+                        {publish && isManagerApprover && publish.confirmedAt && !managerAllConfirmed ? (
+                          <form action={managerApprovePayrollAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <input type="hidden" name="teacherId" value={row.teacherId} />
+                            <button type="submit">{t(lang, "Manager Approve", "管理审批")}</button>
+                          </form>
+                        ) : null}
+                        {publish && isFinanceApprover && managerAllConfirmed && !publish.financeConfirmedAt ? (
+                          <form action={financeApprovePayrollAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <input type="hidden" name="teacherId" value={row.teacherId} />
+                            <button type="submit">{t(lang, "Finance Confirm", "财务确认")}</button>
+                          </form>
+                        ) : null}
+                        {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) && !publish.financePaidAt ? (
+                          <form action={financeMarkPaidPayrollAction}>
+                            <input type="hidden" name="month" value={month} />
+                            <input type="hidden" name="scope" value={scope} />
+                            <input type="hidden" name="teacherId" value={row.teacherId} />
+                            <button type="submit">{t(lang, "Mark Paid", "标记已发薪")}</button>
+                          </form>
+                        ) : null}
+                        {publish && isFinanceApprover && Boolean(publish.financeConfirmedAt) ? (
+                          <details>
+                            <summary style={{ cursor: "pointer", color: "#b91c1c" }}>{t(lang, "Finance Reject", "财务驳回")}</summary>
+                            <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+                              <input type="hidden" name="month" value={month} />
+                              <input type="hidden" name="scope" value={scope} />
+                              <input type="hidden" name="teacherId" value={row.teacherId} />
+                              <input
+                                type="text"
+                                name="rejectReason"
+                                required
+                                placeholder={t(lang, "Reject reason", "驳回原因")}
+                                style={{ width: 180 }}
+                              />
+                              <button type="submit">{t(lang, "Confirm Reject", "确认驳回")}</button>
+                            </form>
+                          </details>
+                        ) : null}
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+              )})}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!isFinanceOnlyUser ? (
