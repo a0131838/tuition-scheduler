@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -235,23 +235,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const courseId = subject.courseId;
-  if (!bypassAvailabilityCheck) {
-    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-    const activePkg = await prisma.coursePackage.findFirst({
-      where: {
-        ...coursePackageAccessibleByStudent(studentId),
-        status: "ACTIVE",
-        validFrom: { lte: packageCheckAt },
-        OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
-        AND: [
-          coursePackageMatchesCourse(courseId),
-          { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gte: durationMin } }] },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!activePkg) return bad("No active package for this course", 409);
-  }
+  const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
+  const hasPackage = await hasSchedulablePackage(prisma, {
+    studentId,
+    courseId,
+    at: packageCheckAt,
+    requiredHoursMinutes: durationMin,
+  });
+  if (!hasPackage) return bad("No active package for this course", 409, { code: "NO_ACTIVE_PACKAGE" });
 
   let cls: Awaited<ReturnType<typeof getOrCreateOneOnOneClassForStudent>>;
   try {

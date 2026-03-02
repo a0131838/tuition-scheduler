@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -177,6 +178,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     update: {},
     create: { classId: oneOnOneClass.id, studentId: reqRow.studentId },
   });
+
+  const durationMin = Math.max(1, Math.round((reqRow.endAt.getTime() - reqRow.startAt.getTime()) / 60000));
+  const hasPackage = await hasSchedulablePackage(prisma, {
+    studentId: reqRow.studentId,
+    courseId: oneOnOneClass.courseId,
+    at: reqRow.startAt,
+    requiredHoursMinutes: durationMin,
+  });
+  if (!hasPackage) return bad("No active package for this course", 409, { code: "NO_ACTIVE_PACKAGE" });
 
   const dupSession = await prisma.session.findFirst({
     where: { classId: oneOnOneClass.id, startAt: reqRow.startAt, endAt: reqRow.endAt },

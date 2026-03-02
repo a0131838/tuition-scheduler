@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -212,7 +213,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    include: { teacher: true, room: true, course: true, subject: true, level: true },
+    include: { teacher: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
   });
   if (!cls) return bad("Class not found", 404);
 
@@ -238,6 +239,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let created = 0;
   let skipped = 0;
   const skippedSamples: string[] = [];
+  const expectedStudentIds =
+    cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
+  const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
 
   for (let i = 0; i < weeks; i++) {
     const d = new Date(first);
@@ -245,6 +249,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
     const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
+
+    let packageErr: string | null = null;
+    for (const sid of expectedStudentIds) {
+      const ok = await hasSchedulablePackage(prisma, {
+        studentId: sid,
+        courseId: cls.courseId,
+        at: startAt,
+        requiredHoursMinutes,
+      });
+      if (!ok) {
+        packageErr = `Student ${sid} has no active package for this course`;
+        break;
+      }
+    }
+    if (packageErr) {
+      if (onConflict === "reject") {
+        return bad(`Conflict on ${ymd(startAt)} ${timeStr}: ${packageErr}`, 409, { code: "NO_ACTIVE_PACKAGE" });
+      }
+      skipped++;
+      if (skippedSamples.length < 5) skippedSamples.push(`${ymd(startAt)} ${timeStr} - ${packageErr}`);
+      continue;
+    }
 
     const conflict = await findConflictForSession({
       classId,

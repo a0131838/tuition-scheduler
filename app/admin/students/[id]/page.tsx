@@ -4,6 +4,7 @@ import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -621,24 +622,15 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     }
 
     const courseId = subject.courseId;
-    if (!bypassAvailabilityCheck) {
-      const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-      const activePkg = await prisma.coursePackage.findFirst({
-        where: {
-          ...coursePackageAccessibleByStudent(studentId),
-          status: "ACTIVE",
-          validFrom: { lte: packageCheckAt },
-          OR: [{ validTo: null }, { validTo: { gte: packageCheckAt } }],
-          AND: [
-            coursePackageMatchesCourse(courseId),
-            { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] },
-          ],
-        },
-        select: { id: true },
-      });
-      if (!activePkg) {
-        redirect(backWithQuickParams({ err: "No active package for this course" }));
-      }
+    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
+    const hasPackage = await hasSchedulablePackage(prisma, {
+      studentId,
+      courseId,
+      at: packageCheckAt,
+      requiredHoursMinutes: durationMin,
+    });
+    if (!hasPackage) {
+      redirect(backWithQuickParams({ err: "No active package for this course" }));
     }
 
     const cls = await getOrCreateOneOnOneClassForStudent({
@@ -1270,21 +1262,14 @@ export default async function StudentDetailPage({
         }
       }
     }
-    if (!quickPackageWarn && !bypassAvailabilityCheck) {
-      const pkg = await prisma.coursePackage.findFirst({
-        where: {
-          ...coursePackageAccessibleByStudent(studentId),
-          status: "ACTIVE",
-          validFrom: { lte: startAt },
-          OR: [{ validTo: null }, { validTo: { gte: startAt } }],
-          AND: [
-            coursePackageMatchesCourse(quickSubject?.courseId ?? ""),
-            { OR: [{ type: "MONTHLY" }, { type: "HOURS", remainingMinutes: { gt: 0 } }] },
-          ],
-        },
-        select: { id: true },
+    if (!quickPackageWarn) {
+      const hasPackage = await hasSchedulablePackage(prisma, {
+        studentId,
+        courseId: quickSubject?.courseId ?? "",
+        at: startAt,
+        requiredHoursMinutes: quickDurationMin,
       });
-      if (!pkg) {
+      if (!hasPackage) {
         quickPackageWarn = t(
           lang,
           "No active package for this course. Please create a package before scheduling.",

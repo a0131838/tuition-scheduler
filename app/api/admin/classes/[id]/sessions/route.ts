@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { hasSchedulablePackage } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -245,7 +246,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    include: { teacher: true, room: true, course: true, subject: true, level: true },
+    include: { teacher: true, room: true, course: true, subject: true, level: true, enrollments: { select: { studentId: true } } },
   });
   if (!cls) return bad("Class not found", 404);
 
@@ -256,6 +257,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       select: { id: true },
     });
     if (!enrolled) return bad("Student not enrolled in this class", 409);
+  }
+
+  const expectedStudentIds =
+    cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
+  const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
+  for (const sid of expectedStudentIds) {
+    const ok = await hasSchedulablePackage(prisma, {
+      studentId: sid,
+      courseId: cls.courseId,
+      at: startAt,
+      requiredHoursMinutes,
+    });
+    if (!ok) return bad(`Student ${sid} has no active package for this course`, 409, { code: "NO_ACTIVE_PACKAGE" });
   }
 
   const conflict = await findConflictForSession({
