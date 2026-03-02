@@ -761,7 +761,7 @@ export default async function PartnerSettlementPage({
           <label>
             {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
           </label>
-          <button type="submit" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
+          <button type="submit" data-apply-submit="1" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
           <a
             href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}
             style={{ marginLeft: 8, fontWeight: 700 }}

@@ -231,7 +231,7 @@ export default async function AdminFeedbacksPage({
             </option>
           ))}
         </select>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <a href={tabHref(status)}>{t(lang, "Clear", "清除")}</a>
         {selectedStudentName ? (
           <span style={{ color: "#334155", fontSize: 13 }}>

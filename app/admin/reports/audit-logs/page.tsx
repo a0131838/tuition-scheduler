@@ -88,7 +88,7 @@ export default async function AuditLogsPage({
           {t(lang, "Days", "天数")}:
           <input name="days" type="number" min={1} max={180} defaultValue={String(days)} style={{ marginLeft: 6, width: 84 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       {loadError ? <div style={{ color: "#b00", marginBottom: 8 }}>{loadError}</div> : null}

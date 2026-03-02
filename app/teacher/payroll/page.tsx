@@ -130,7 +130,7 @@ export default async function TeacherPayrollSelfPage({
             <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
           </select>
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       {!publish ? (

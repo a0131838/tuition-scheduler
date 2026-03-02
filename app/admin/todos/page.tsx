@@ -1315,7 +1315,7 @@ export default async function AdminTodosPage({
                     <option value="365">365</option>
                   </select>
                 </label>
-                <button type="submit">
+                <button type="submit" data-apply-submit="1">
                   {t(lang, "Apply", "应用")}
                 </button>
               </form>
@@ -1459,7 +1459,7 @@ export default async function AdminTodosPage({
                 </label>
                 <input type="hidden" name="pastDays" value={String(pastDays)} />
                 <input type="hidden" name="showConfirmed" value={showConfirmed ? "1" : ""} />
-                <button type="submit">{t(lang, "Apply", "应用")}</button>
+                <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
               </form>
 
               {renewAlerts.length === 0 ? (

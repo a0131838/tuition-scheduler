@@ -117,7 +117,7 @@ export default function TeacherFilterForm({
           <option value="language">{labels.groupLanguage}</option>
           <option value="linked">{labels.groupLinked}</option>
         </select>
-        <button type="submit">{labels.apply}</button>
+        <button type="submit" data-apply-submit="1">{labels.apply}</button>
         <a href="/admin/teachers">{labels.reset}</a>
       </div>
     </form>

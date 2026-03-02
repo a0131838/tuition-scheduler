@@ -257,7 +257,7 @@ export default async function PackageSharingAuditPage({
           {t(lang, "Limit", "数量上限")}:
           <input name="limit" type="number" min={10} max={1000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       {msg ? <div style={{ color: "#065f46", marginBottom: 8 }}>{msg}</div> : null}

@@ -444,7 +444,7 @@ export default async function PartnerBillingPage({
           <label>Mode<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">Online: Package End</option><option value="OFFLINE_MONTHLY">Offline: Monthly</option></select></label>
           <label>Month<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
           <input type="hidden" name="tab" value={activeTab} />
-          <button type="submit" style={primaryBtn}>Apply</button>
+          <button type="submit" data-apply-submit="1" style={primaryBtn}>Apply</button>
         </form>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           {tabBtn("invoice", "Create Invoice")}

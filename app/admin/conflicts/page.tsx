@@ -289,7 +289,7 @@ export default async function ConflictsPage({
               <option value="100">100</option>
             </select>
           </label>
-          <button type="submit">{t(lang, "Apply", "应用")}</button>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         </form>
         <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
           {t(lang, "Conflicts in range", "所选范围冲突")}: <b>{totalConflicts}</b> | {t(lang, "Page", "页")}: <b>{currentPage}</b> /{" "}

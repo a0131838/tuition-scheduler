@@ -253,7 +253,7 @@ export default async function ClassesPage({
                         placeholder={t(lang, "Filter by student/teacher name", "按学生/老师姓名筛选")}
                         style={{ minWidth: 260 }}
                       />
-                      <button type="submit">{t(lang, "Apply", "应用")}</button>
+                      <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
                       <a href={`/admin/classes?page=${page}&pageSize=${pageSize}`}>{t(lang, "Clear", "清除")}</a>
                     </form>
                     {oneOnOneRows.length === 0 ? (

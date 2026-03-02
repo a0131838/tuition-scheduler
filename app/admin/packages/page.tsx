@@ -278,7 +278,7 @@ export default async function AdminPackagesPage({
             <option value="">{t(lang, "All Alerts", "全部预警")}</option>
             <option value="alert">{t(lang, "Alert Only", "仅预警")}</option>
           </select>
-          <button type="submit">{t(lang, "Apply", "应用")}</button>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
           <a href="/admin/packages" style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
             {t(lang, "Clear", "清除")}
           </a>

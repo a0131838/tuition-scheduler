@@ -145,7 +145,7 @@ export default function EnrollmentFilterForm({
         <option value="one">{labels.classTypeOne}</option>
         <option value="group">{labels.classTypeGroup}</option>
       </select>
-      <button type="submit">{labels.apply}</button>
+      <button type="submit" data-apply-submit="1">{labels.apply}</button>
       <a href="/admin/enrollments">{labels.clear}</a>
       <a href={exportHref}>{labels.exportPdf}</a>
     </form>

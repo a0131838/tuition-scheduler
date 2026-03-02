@@ -382,7 +382,7 @@ export default async function TeacherPayrollPage({
                 <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
               </select>
             </label>
-            <button type="submit">{t(lang, "Apply", "应用")}</button>
+            <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
           </div>
           <div style={{ fontSize: 13, color: "#334155" }}>
             <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
@@ -495,7 +495,7 @@ export default async function TeacherPayrollPage({
         <label>
           <input type="checkbox" name="unsentOnly" value="1" defaultChecked={unsentOnly} /> {t(lang, "Only Unsent", "仅看未发送")}
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Clear", "清除")}</a>
       </form>
       {payrollRows.length === 0 ? (
@@ -686,7 +686,7 @@ export default async function TeacherPayrollPage({
                 <input type="checkbox" name="rateMissingOnly" value="1" defaultChecked={rateMissingOnly} />{" "}
                 {t(lang, "Only Unconfigured", "仅看未配置")}
               </label>
-              <button type="submit">{t(lang, "Apply", "应用")}</button>
+              <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
             </form>
             {rateRows.length === 0 ? (
               <div style={{ color: "#999" }}>{t(lang, "No editable rate rows.", "暂无可编辑费率项。")}</div>

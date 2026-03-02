@@ -692,7 +692,7 @@ export default async function SchedulePage({
               }}
             />
 
-            <button type="submit">{t(lang, "Apply", "应用")}</button>
+            <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
           </div>
 
           <div style={{ color: "#777", fontSize: 12 }}>

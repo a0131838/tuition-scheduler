@@ -489,7 +489,7 @@ export default async function TeacherStudentFeedbacksPage({
           <input type="checkbox" name="handoffRisk" value="1" defaultChecked={handoffRisk} />
           {t(lang, "Only handoff risks (7d unread)", "仅看交接风险（7天未读）")}
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       <div style={{ color: "#334155" }}>

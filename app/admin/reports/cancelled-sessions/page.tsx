@@ -177,7 +177,7 @@ export default async function CancelledSessionsReportPage({
           Limit:
           <input name="limit" type="number" min={100} max={5000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       <div style={{ marginBottom: 10, color: "#475569" }}>

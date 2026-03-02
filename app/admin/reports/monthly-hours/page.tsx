@@ -96,7 +96,7 @@ export default async function MonthlyHoursReportPage({
             ))}
           </select>
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <a href={csvHref}>{t(lang, "Export CSV", "导出CSV")}</a>
       </form>
 

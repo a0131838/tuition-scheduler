@@ -609,7 +609,7 @@ export default async function UndeductedCompletedReportPage({
           {t(lang, "Limit", "数量上限")}:
           <input name="limit" type="number" min={50} max={2000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
         </label>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
 
       {previewItem ? (

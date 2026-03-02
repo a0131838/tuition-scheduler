@@ -134,7 +134,7 @@ export default async function StudentsPage({
           <option value="50">50 / {t(lang, "page", "页")}</option>
           <option value="100">100 / {t(lang, "page", "页")}</option>
         </select>
-        <button type="submit">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <a href="/admin/students">{t(lang, "Clear", "清除")}</a>
       </form>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, fontSize: 13 }}>

@@ -143,7 +143,7 @@ export default async function MonthlyScheduleReportPage({
               ))}
             </select>
           </label>
-          <button type="submit">{choose(lang, "Apply", "应用")}</button>
+          <button type="submit" data-apply-submit="1">{choose(lang, "Apply", "应用")}</button>
           <a href={csvHref}>{choose(lang, "Export CSV", "导出CSV")}</a>
           <a href={pdfHref}>{choose(lang, "Export PDF", "导出PDF")}</a>
         </form>
