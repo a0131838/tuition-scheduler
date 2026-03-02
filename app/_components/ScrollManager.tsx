@@ -22,9 +22,18 @@ export default function ScrollManager() {
     const main = document.querySelector(".app-main") as HTMLElement | null;
     if (main) {
       main.scrollTop = top;
+      requestAnimationFrame(() => {
+        main.scrollTop = top;
+      });
+      setTimeout(() => {
+        main.scrollTop = top;
+      }, 120);
       return;
     }
     window.scrollTo({ top, left: 0, behavior: "auto" });
+    requestAnimationFrame(() => {
+      window.scrollTo({ top, left: 0, behavior: "auto" });
+    });
   };
 
   useLayoutEffect(() => {

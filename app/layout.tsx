@@ -11,23 +11,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <script
-          // Restore scroll position ASAP (before hydration) for same-path redirects/refreshes.
-          // This reduces the visible "jump to top" / flicker on server-action driven flows.
-          dangerouslySetInnerHTML={{
-            __html: `(() => {
-  try {
-    const key = "tuition-scheduler:scroll:" + (location && location.pathname ? location.pathname : "/");
-    const raw = sessionStorage.getItem(key);
-    if (!raw) return;
-    sessionStorage.removeItem(key);
-    const y = Number(raw);
-    if (!Number.isFinite(y)) return;
-    window.scrollTo(0, Math.max(0, y));
-  } catch {}
-})();`,
-          }}
-        />
+        {/* Scroll restore is handled by app/_components/ScrollManager to support .app-main containers. */}
         <script
           // Keep browser-side Date locale output aligned with server-side formatting.
           dangerouslySetInnerHTML={{
