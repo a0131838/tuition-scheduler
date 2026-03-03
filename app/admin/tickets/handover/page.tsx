@@ -22,6 +22,38 @@ function txt(formData: FormData, name: string, max = 3000) {
   return v ? v.slice(0, max) : "";
 }
 
+function composeNotes(unresolvedTop3: string, ownerDeadline: string, notesRaw: string | null) {
+  return [
+    `[UNRESOLVED_TOP3]\n${unresolvedTop3 || "-"}`,
+    `[OWNER_DEADLINE]\n${ownerDeadline || "-"}`,
+    `[NOTES]\n${notesRaw || ""}`,
+  ].join("\n\n");
+}
+
+function parseComposedNotes(raw: string | null | undefined) {
+  const src = String(raw ?? "");
+  if (!src.includes("[UNRESOLVED_TOP3]") || !src.includes("[OWNER_DEADLINE]")) {
+    return {
+      unresolvedTop3: src.trim(),
+      ownerDeadline: "",
+      notes: "",
+    };
+  }
+  const readBlock = (startTag: string, nextTag?: string) => {
+    const start = src.indexOf(startTag);
+    if (start < 0) return "";
+    const contentStart = start + startTag.length;
+    const end = nextTag ? src.indexOf(nextTag, contentStart) : -1;
+    const text = end >= 0 ? src.slice(contentStart, end) : src.slice(contentStart);
+    return text.trim();
+  };
+  return {
+    unresolvedTop3: readBlock("[UNRESOLVED_TOP3]", "[OWNER_DEADLINE]"),
+    ownerDeadline: readBlock("[OWNER_DEADLINE]", "[NOTES]"),
+    notes: readBlock("[NOTES]"),
+  };
+}
+
 async function saveHandoverAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -62,7 +94,7 @@ async function saveHandoverAction(formData: FormData) {
       waitingParentPartner: waitingParentRaw,
       tomorrowLessonsCheck: tomorrowRisk,
       exceptionsEscalations: exceptionsRaw,
-      notes: [unresolvedTop3, ownerDeadline, notesRaw].filter(Boolean).join("\n\n") || null,
+      notes: composeNotes(unresolvedTop3, ownerDeadline, notesRaw),
       createdByUserId: user.id,
     },
     update: {
@@ -73,7 +105,7 @@ async function saveHandoverAction(formData: FormData) {
       waitingParentPartner: waitingParentRaw,
       tomorrowLessonsCheck: tomorrowRisk,
       exceptionsEscalations: exceptionsRaw,
-      notes: [unresolvedTop3, ownerDeadline, notesRaw].filter(Boolean).join("\n\n") || null,
+      notes: composeNotes(unresolvedTop3, ownerDeadline, notesRaw),
       createdByUserId: user.id,
     },
   });
@@ -161,6 +193,7 @@ export default async function TicketHandoverPage({
       .slice(0, 5)
       .map((x) => `${x.ticketNo} | Owner:${x.owner ?? "-"} | Due:${x.nextActionDue ? x.nextActionDue.toLocaleString() : "-"}`)
       .join("\n") || "";
+  const parsedExistingNotes = parseComposedNotes(existing?.notes);
 
   return (
     <div>
@@ -190,6 +223,14 @@ export default async function TicketHandoverPage({
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
+      <div style={{ border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Quick Fill Tips / 快速填写建议</div>
+        {view === "cs" ? (
+          <div>1) Top3按家长催进度优先 2) 明日风险写未确认时间/未回消息 3) 负责人和截止请精确到分钟</div>
+        ) : (
+          <div>1) Top3按排课冲突优先 2) 明日风险写老师/教室/签到风险 3) 负责人和截止请精确到分钟</div>
+        )}
+      </div>
 
       <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, marginBottom: 12 }}>
         <div style={{ fontWeight: 700, marginBottom: 4 }}>自动汇总 / Auto Summary</div>
@@ -238,7 +279,12 @@ export default async function TicketHandoverPage({
 
         <label>
           未闭环Top3（必填）/ Unresolved Top3 (Required)
-          <textarea name="unresolvedTop3" rows={3} defaultValue={existing?.notes ?? defaultUnresolvedTop3} required />
+          <textarea
+            name="unresolvedTop3"
+            rows={3}
+            defaultValue={parsedExistingNotes.unresolvedTop3 || defaultUnresolvedTop3}
+            required
+          />
         </label>
 
         <label>
@@ -258,7 +304,12 @@ export default async function TicketHandoverPage({
 
         <label>
           责任人+截止时间（必填）/ Owner + Deadline (Required)
-          <textarea name="ownerDeadline" rows={3} defaultValue={defaultOwnerDeadline} required />
+          <textarea
+            name="ownerDeadline"
+            rows={3}
+            defaultValue={parsedExistingNotes.ownerDeadline || defaultOwnerDeadline}
+            required
+          />
         </label>
 
         {view === "cs" ? (
@@ -287,7 +338,7 @@ export default async function TicketHandoverPage({
 
         <label>
           Notes / 备注
-          <textarea name="notes" rows={2} defaultValue={existing?.notes ?? ""} />
+          <textarea name="notes" rows={2} defaultValue={parsedExistingNotes.notes} />
         </label>
         <button type="submit">{t(lang, "Save Handover", "保存交接")}</button>
       </form>
