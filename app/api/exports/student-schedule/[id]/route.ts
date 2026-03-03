@@ -115,7 +115,7 @@ function drawCompanyHeader(doc: PDFDoc, showLogo: boolean) {
 function drawPrintedTimeHeader(doc: PDFDoc, lang: Lang) {
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
-  doc.fontSize(8);
+  doc.fontSize(9);
   doc.text(`${choose(lang, "Printed", "\u6253\u5370\u65f6\u95f4")}: ${formatDate(new Date())}`, left, doc.y, {
     width: right - left,
     align: "right",
@@ -161,7 +161,7 @@ function drawMonthCalendar(
   const cellH = 64;
 
   const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  doc.fontSize(9);
+  doc.fontSize(10);
   for (let i = 0; i < 7; i += 1) {
     const x = offsetX + i * cellW;
     doc.rect(x, top, cellW, 16).fill(ORANGE);
@@ -183,7 +183,9 @@ function drawMonthCalendar(
 
   const overflowByDay = new Map<string, typeof sessions>();
 
-  doc.fontSize(7);
+  // Keep legacy row capacity to avoid adding overflow pages when we enlarge text slightly.
+  const legacyLineH = 7;
+  doc.fontSize(8);
   for (let row = 0; row < 6; row += 1) {
     for (let col = 0; col < 7; col += 1) {
       const idx = row * 7 + col;
@@ -203,8 +205,8 @@ function drawMonthCalendar(
       const daySessions = sessionsByDay.get(key) ?? [];
       let lineY = y + 14;
       const maxY = y + cellH - 6;
-      const lineH = 7;
-      const maxLines = Math.max(1, Math.floor((maxY - lineY) / lineH));
+      const lineH = legacyLineH;
+      const maxLines = Math.max(1, Math.floor((maxY - lineY) / legacyLineH));
 
       const entries = daySessions.map((s) => {
         const time = `${String(new Date(s.startAt).getHours()).padStart(2, "0")}:${String(
@@ -334,12 +336,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (year && month) {
     drawHeader(doc, lang, "Monthly Schedule", "\u6708\u8bfe\u8868", showLogo);
-    doc.fontSize(10);
+    doc.fontSize(11);
     doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
     doc.text(`${choose(lang, "Month", "\u6708\u4efd")}: ${year}-${String(month).padStart(2, "0")}`);
     doc.moveDown(0.6);
     if (sessions.length === 0) {
-      doc.fontSize(10).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
+      doc.fontSize(11).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
     } else {
       const overflow = drawMonthCalendar(doc, lang, sessions, attendanceMap, year, month);
       if (overflow && overflow.size > 0) {
@@ -348,7 +350,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         drawHeader(doc, lang, "Schedule (Overflow)", "\u8bfe\u8868\uff08\u7ee7\u7eed\uff09", showLogo);
         doc.moveDown(0.4);
         doc
-          .fontSize(10)
+          .fontSize(11)
           .text(
             choose(
               lang,
@@ -390,7 +392,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         setupFont(doc);
       }
       drawHeader(doc, lang, "Schedule", "\u8bfe\u8868", showLogo);
-      doc.fontSize(10);
+      doc.fontSize(11);
       doc.text(`${choose(lang, "Student", "\u5b66\u751f")}: ${student.name}`);
       doc.text(
         `${choose(lang, "Range", "\u65e5\u671f\u8303\u56f4")}: ${formatDate(monthStart)} ~ ${formatDate(monthEnd)}`
@@ -405,7 +407,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       );
 
       if (monthSessions.length === 0) {
-        doc.fontSize(10).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
+        doc.fontSize(11).text(choose(lang, "No sessions in this month.", "\u672c\u6708\u65e0\u8bfe\u6b21"));
         firstPage = false;
         continue;
       }
@@ -416,9 +418,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         setupFont(doc);
         drawHeader(doc, lang, "Schedule (Overflow)", "\u8bfe\u8868\uff08\u7ee7\u7eed\uff09", showLogo);
         doc.moveDown(0.2);
-        doc.fontSize(10).text(`${choose(lang, "Month", "\u6708\u4efd")}: ${m.year}-${String(m.month).padStart(2, "0")}`);
+        doc.fontSize(11).text(`${choose(lang, "Month", "\u6708\u4efd")}: ${m.year}-${String(m.month).padStart(2, "0")}`);
         doc
-          .fontSize(10)
+          .fontSize(11)
           .text(
             choose(
               lang,
