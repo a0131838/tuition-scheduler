@@ -4,6 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { TICKET_OWNER_OPTIONS, TICKET_STATUS_OPTIONS, TICKET_TYPE_OPTIONS } from "@/lib/tickets";
 import Link from "next/link";
 
+function proofItems(proof: string | null | undefined) {
+  if (!proof) return [];
+  return proof
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 export default async function AdminArchivedTicketsPage({
   searchParams,
 }: {
@@ -102,7 +111,24 @@ export default async function AdminArchivedTicketsPage({
                 <td>{r.completedAt ? r.completedAt.toLocaleString() : "-"}</td>
                 <td>{r.updatedAt.toLocaleString()}</td>
                 <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>{r.summary ?? "-"}</td>
-                <td style={{ maxWidth: 260, whiteSpace: "pre-wrap" }}>{r.proof ?? "-"}</td>
+                <td style={{ maxWidth: 260, whiteSpace: "pre-wrap" }}>
+                  {proofItems(r.proof).length === 0 ? (
+                    "-"
+                  ) : (
+                    <div style={{ display: "grid", gap: 4 }}>
+                      {proofItems(r.proof).map((item, idx) => {
+                        const isLink = item.startsWith("/") || item.startsWith("http://") || item.startsWith("https://");
+                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(item);
+                        return (
+                          <a key={`${r.id}-proof-${idx}`} href={item} target="_blank" rel="noreferrer">
+                            {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -111,4 +137,3 @@ export default async function AdminArchivedTicketsPage({
     </div>
   );
 }
-

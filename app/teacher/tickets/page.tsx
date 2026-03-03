@@ -5,6 +5,15 @@ import { canTransitionTicketStatus, TICKET_STATUS_OPTIONS } from "@/lib/tickets"
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+function proofItems(proof: string | null | undefined) {
+  if (!proof) return [];
+  return proof
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
 async function markDoneTeacherAction(formData: FormData) {
   "use server";
   const user = await requireTeacher();
@@ -99,7 +108,7 @@ export default async function TeacherTicketsPage({
       </form>
 
       <div className="table-scroll">
-        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
+        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1020 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">Ticket</th>
@@ -108,6 +117,7 @@ export default async function TeacherTicketsPage({
               <th align="left">{t(lang, "Type", "类型")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Summary", "摘要")}</th>
+              <th align="left">{t(lang, "Proof", "证据")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -120,6 +130,23 @@ export default async function TeacherTicketsPage({
                 <td>{r.type}</td>
                 <td>{r.status}</td>
                 <td style={{ maxWidth: 320 }}>{r.summary ?? "-"}</td>
+                <td style={{ maxWidth: 220 }}>
+                  {proofItems(r.proof).length === 0 ? (
+                    "-"
+                  ) : (
+                    <div style={{ display: "grid", gap: 4 }}>
+                      {proofItems(r.proof).map((item, idx) => {
+                        const isLink = item.startsWith("/") || item.startsWith("http://") || item.startsWith("https://");
+                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                        return (
+                          <a key={`${r.id}-proof-${idx}`} href={item} target="_blank" rel="noreferrer">
+                            {`Proof ${idx + 1}`}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </td>
                 <td>
                   {r.status !== "Completed" ? (
                     <form action={markDoneTeacherAction} style={{ display: "grid", gap: 6 }}>
@@ -140,3 +167,4 @@ export default async function TeacherTicketsPage({
     </div>
   );
 }
+

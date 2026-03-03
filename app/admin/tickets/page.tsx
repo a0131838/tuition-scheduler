@@ -17,6 +17,15 @@ function trimValue(formData: FormData, key: string, max = 400) {
   return v ? v.slice(0, max) : "";
 }
 
+function proofItems(proof: string | null | undefined) {
+  if (!proof) return [];
+  return proof
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 async function updateStatusAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -294,6 +303,7 @@ export default async function AdminTicketsPage({
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Owner", "负责人")}</th>
               <th align="left">{t(lang, "Summary", "摘要")}</th>
+              <th align="left">{t(lang, "Proof", "证据")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -318,6 +328,24 @@ export default async function AdminTicketsPage({
                 </td>
                 <td>{r.owner ?? "-"}</td>
                 <td style={{ maxWidth: 340 }}>{r.summary ?? "-"}</td>
+                <td style={{ maxWidth: 260 }}>
+                  {proofItems(r.proof).length === 0 ? (
+                    "-"
+                  ) : (
+                    <div style={{ display: "grid", gap: 4 }}>
+                      {proofItems(r.proof).map((item, idx) => {
+                        const isLink = item.startsWith("/") || item.startsWith("http://") || item.startsWith("https://");
+                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(item);
+                        return (
+                          <a key={`${r.id}-proof-${idx}`} href={item} target="_blank" rel="noreferrer">
+                            {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </td>
                 <td>
                   {r.status === "Completed" ? (
                     <div style={{ display: "grid", gap: 6 }}>
