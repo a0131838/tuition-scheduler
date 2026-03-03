@@ -198,6 +198,9 @@ export default async function AdminTicketsPage({
           <Link scroll={false} href="/admin/tickets/sop">
             {t(lang, "SOP One Pager", "SOP一页纸")}
           </Link>
+          <Link scroll={false} href="/admin/tickets/archived">
+            {t(lang, "Archived Tickets", "已归档工单")}
+          </Link>
         </div>
         <form action={createIntakeTokenAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
           <input name="label" placeholder="标签 / Label" />
@@ -351,4 +354,3 @@ export default async function AdminTicketsPage({
     </div>
   );
 }
-
