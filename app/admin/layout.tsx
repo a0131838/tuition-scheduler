@@ -194,6 +194,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   {t(lang, "Teacher Feedbacks", "老师课后反馈")}
                 </Link>
               </div>
+
+              <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 8, background: "#fefce8", border: "1px solid #fde68a" }}>
+                <div style={{ fontSize: 10.5, color: "#854d0e", fontWeight: 700 }}>
+                  {t(lang, "Ticket Workflow", "工单流程")}
+                </div>
+                <Link scroll={false} href="/admin/tickets" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fffbeb", border: "1px solid #facc15", borderLeft: "4px solid #ca8a04" }}>
+                  {t(lang, "Ticket Center", "工单中心")}
+                </Link>
+                <Link scroll={false} href="/admin/tickets/handover" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fffbeb", border: "1px solid #facc15", borderLeft: "4px solid #ca8a04" }}>
+                  {t(lang, "Daily Handover", "每日交接")}
+                </Link>
+                <Link scroll={false} href="/admin/tickets/sop" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#fffbeb", border: "1px solid #facc15", borderLeft: "4px solid #ca8a04" }}>
+                  {t(lang, "SOP One Pager", "SOP一页纸")}
+                </Link>
+              </div>
             </div>
           </>
         ) : null}

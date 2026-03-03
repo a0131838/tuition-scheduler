@@ -532,6 +532,8 @@ model User {
   teacher  Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   sessions AuthSession[]
   midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
+  ticketsCompleted       Ticket[]        @relation("TicketCompletedBy")
+  ticketHandovers        TicketHandover[]
 }
 
 model AuditLog {
@@ -830,4 +832,73 @@ model TeacherFeedbackRead {
 
   @@unique([userId, feedbackId])
   @@index([userId, studentId, readAt])
+}
+
+model TicketDailyCounter {
+  dayKey    String   @id
+  nextSeq   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id                 String   @id @default(uuid())
+  ticketNo           String   @unique
+  source             String
+  type               String
+  priority           String
+  studentName        String
+  grade              String?
+  course             String?
+  teacher            String?
+  poc                String?
+  wechat             String?
+  phone              String?
+  parentAvailability String?
+  teacherAvailability String?
+  durationMin        Int?
+  mode               String?
+  addressOrLink      String?
+  confirmDeadline    DateTime?
+  slaDue             DateTime?
+  status             String
+  owner              String?
+  version            String?
+  systemUpdated      String?
+  finalSchedule      String?
+  lastUpdateAt       DateTime?
+  summary            String?
+  risksNotes         String?
+  nextAction         String?
+  nextActionDue      DateTime?
+  proof              String?
+  createdByName      String?
+  completedAt        DateTime?
+  completedByUserId  String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  completedByUser User? @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([priority, createdAt])
+  @@index([studentName, createdAt])
+  @@index([type, createdAt])
+}
+
+model TicketHandover {
+  id                    String   @id @default(uuid())
+  handoverDate          DateTime @unique
+  newTickets            Int      @default(0)
+  completed             Int      @default(0)
+  needInfo              String?
+  waitingTeacher        String?
+  waitingParentPartner  String?
+  tomorrowLessonsCheck  String?
+  exceptionsEscalations String?
+  notes                 String?
+  createdByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  createdByUser User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 }

@@ -14,6 +14,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <Link scroll={false} href="/teacher/availability">{t(lang, "My Availability", "我的可上课时间")}</Link>
         <Link scroll={false} href="/teacher/sessions">{t(lang, "My Sessions", "我的课次")}</Link>
         <Link scroll={false} href="/teacher/student-feedbacks">{t(lang, "Student Feedbacks", "学生课后反馈")}</Link>
+        <Link scroll={false} href="/teacher/tickets">{t(lang, "Ticket Board", "工单看板")}</Link>
         <Link scroll={false} href="/teacher/midterm-reports">{t(lang, "Midterm Reports", "中期报告")}</Link>
         <Link scroll={false} href="/teacher/payroll">{t(lang, "My Payroll", "我的工资单")}</Link>
         <Link scroll={false} href="/teacher/card">{t(lang, "My Teacher Card", "我的老师名片")}</Link>
