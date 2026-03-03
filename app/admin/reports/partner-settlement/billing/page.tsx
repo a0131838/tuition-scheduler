@@ -604,10 +604,18 @@ export default async function PartnerBillingPage({
               <td>{r.mode}</td>
               <td>{r.monthKey ?? "-"}</td>
               <td>{money(r.totalAmount)}</td>
-              <td><a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
+              <td>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                  <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}?seal=1`}>PDF + Seal</a>
+                </div>
+              </td>
               <td>
                 {r.mode === "OFFLINE_MONTHLY" ? (
-                  <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}`}>Export XLSX</a>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}`}>Export XLSX</a>
+                    <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}?seal=1`}>XLSX + Seal</a>
+                  </div>
                 ) : (
                   <span style={{ color: "#9ca3af" }}>-</span>
                 )}

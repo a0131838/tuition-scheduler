@@ -2,11 +2,14 @@ import { requireAdmin } from "@/lib/auth";
 import { getPartnerInvoiceById } from "@/lib/partner-billing";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
+import { readFile } from "fs/promises";
+import path from "path";
 
 const ATTENDED_STATUSES = new Set(["PRESENT", "LATE"]);
 const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
 const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const TZ = "Asia/Shanghai";
+const SEAL_PATH = path.join(process.cwd(), "public", "reshapeSeal.png");
 
 function parseMonthKey(monthKey: string | null | undefined) {
   const s = String(monthKey ?? "").trim();
@@ -44,8 +47,9 @@ function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const withSeal = new URL(request.url).searchParams.get("seal") === "1";
   const { id } = await params;
   const invoice = await getPartnerInvoiceById(id);
   if (!invoice) return new Response("Invoice not found", { status: 404 });
@@ -184,8 +188,23 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     });
   });
 
+  if (withSeal) {
+    try {
+      const sealBuffer = await readFile(SEAL_PATH);
+      const sealBase64 = `data:image/png;base64,${sealBuffer.toString("base64")}`;
+      const imageId = workbook.addImage({ base64: sealBase64, extension: "png" });
+      sheet.addImage(imageId, {
+        tl: { col: 5.35, row: 0.1 },
+        ext: { width: 160, height: 160 },
+        editAs: "oneCell",
+      });
+    } catch {}
+  }
+
   const buffer = await workbook.xlsx.writeBuffer();
-  const fileName = `partner_detail_${safeName(invoice.invoiceNo)}.xlsx`;
+  const fileName = withSeal
+    ? `partner_detail_${safeName(invoice.invoiceNo)}_sealed.xlsx`
+    : `partner_detail_${safeName(invoice.invoiceNo)}.xlsx`;
   const fileNameAscii = fileName.replace(/[^\x20-\x7E]/g, "_");
   const fileNameUtf8 = encodeURIComponent(fileName);
   return new Response(buffer as ArrayBuffer, {

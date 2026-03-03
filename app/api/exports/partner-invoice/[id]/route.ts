@@ -10,6 +10,7 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 const ORANGE = "#f97316";
 const LOGO_PATH = path.join(process.cwd(), "public", "invoice-org.png");
 const LOGO_FALLBACK_PATH = path.join(process.cwd(), "public", "logo.png");
+const SEAL_PATH = path.join(process.cwd(), "public", "reshapeSeal.png");
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -49,8 +50,9 @@ function text(doc: PDFDoc, str: string, x: number, y: number, size = 10, bold = 
   doc.text(str, x, y, { width, align, lineBreak: false });
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
+  const withSeal = new URL(request.url).searchParams.get("seal") === "1";
   const { id } = await params;
   const invoice = await getPartnerInvoiceById(id);
   if (!invoice) return new Response("Invoice not found", { status: 404 });
@@ -159,9 +161,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   text(doc, "Account number: 595214891001", x + 4, noteY + 148, 10);
   text(doc, "Swift code: OCBCSGSG", x + 4, noteY + 166, 10);
   text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
+  if (withSeal) {
+    try {
+      doc.image(SEAL_PATH, x + w - 170, y + h - 135, { width: 140 });
+    } catch {}
+  }
 
   const stream = streamPdf(doc);
-  const fileName = `partner_invoice_${safeName(invoice.invoiceNo)}.pdf`;
+  const fileName = withSeal
+    ? `partner_invoice_${safeName(invoice.invoiceNo)}_sealed.pdf`
+    : `partner_invoice_${safeName(invoice.invoiceNo)}.pdf`;
   const fileNameAscii = fileName.replace(/[^\x20-\x7E]/g, "_");
   const fileNameUtf8 = encodeURIComponent(fileName);
   return new Response(stream as any, {
