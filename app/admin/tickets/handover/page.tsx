@@ -176,6 +176,7 @@ export default async function TicketHandoverPage({
   const selectedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(sp?.day ?? "")) ? String(sp?.day) : today;
   const selectedDate = parseDateOnly(selectedDay) ?? parseDateOnly(today)!;
   const { start, end } = dayRange(selectedDate);
+
   const historyStart = new Date(selectedDate.getTime());
   historyStart.setDate(historyStart.getDate() - 6);
   const historyEnd = new Date(selectedDate.getTime());
@@ -270,105 +271,106 @@ export default async function TicketHandoverPage({
       .map((x) => `${x.ticketNo} | Owner:${x.owner ?? "-"} | Due:${x.nextActionDue ? x.nextActionDue.toLocaleString() : "-"}`)
       .join("\n") || "";
 
+  const box: React.CSSProperties = {
+    border: "1px solid #e2e8f0",
+    borderRadius: 12,
+    background: "#fff",
+    padding: 12,
+  };
+
   return (
-    <div>
-      <h2>{t(lang, "Daily Handover", "每日交接")}</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Tickets", "返回工单中心")}</Link>
-        <Link scroll={false} href="/admin/tickets/sop">{t(lang, "SOP One Pager", "SOP一页纸")}</Link>
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ ...box, display: "grid", gap: 10 }}>
+        <h2 style={{ margin: 0 }}>{t(lang, "Daily Handover", "每日交接")}</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Tickets", "返回工单中心")}</Link>
+          <Link scroll={false} href="/admin/tickets/sop">{t(lang, "SOP One Pager", "SOP一页纸")}</Link>
+        </div>
+        {saved ? <div style={{ color: "#166534" }}>{t(lang, "Saved", "已保存")}</div> : null}
+        {err === "min-required" ? (
+          <div style={{ color: "#b91c1c" }}>
+            {t(lang, "Required fields missing: Top3 / Tomorrow risk / Owner+deadline", "必填缺失：Top3 / 明日风险 / 责任人截止")}
+          </div>
+        ) : null}
+        <form method="GET" className="ts-filter-bar">
+          <label>
+            Date / 日期
+            <input type="date" name="day" defaultValue={selectedDay} />
+          </label>
+          <label>
+            View / 视图
+            <select name="view" defaultValue={view}>
+              <option value="cs">CS View / 客服视图</option>
+              <option value="ops">Ops View / 教务视图</option>
+            </select>
+          </label>
+          <label>
+            History / 历史
+            <select name="history" defaultValue={history}>
+              <option value="7d">Recent 7 days / 最近7天</option>
+              <option value="all">All / 全部</option>
+            </select>
+          </label>
+          <label>
+            History Filter / 历史筛选
+            <select name="historyFilter" defaultValue={historyFilter}>
+              <option value="all">All days / 全部日期</option>
+              <option value="abnormal">Abnormal only / 仅异常日</option>
+            </select>
+          </label>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+        </form>
       </div>
-      {saved ? <div style={{ color: "#166534", marginBottom: 10 }}>{t(lang, "Saved", "已保存")}</div> : null}
-      {err === "min-required" ? (
-        <div style={{ color: "#b91c1c", marginBottom: 10 }}>
-          {t(lang, "Required fields missing: Top3 / Tomorrow risk / Owner+deadline", "必填缺失：Top3 / 明日风险 / 责任人截止")}
-        </div>
-      ) : null}
 
-      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 10 }}>
-        <label>
-          {t(lang, "Date", "日期")}
-          <input type="date" name="day" defaultValue={selectedDay} />
-        </label>
-        <label>
-          {t(lang, "View", "视图")}
-          <select name="view" defaultValue={view}>
-            <option value="cs">CS View / 客服视图</option>
-            <option value="ops">Ops View / 教务视图</option>
-          </select>
-        </label>
-        <label>
-          {t(lang, "History", "历史")}
-          <select name="history" defaultValue={history}>
-            <option value="7d">Recent 7 days / 最近7天</option>
-            <option value="all">All / 全部</option>
-          </select>
-        </label>
-        <label>
-          {t(lang, "History Filter", "历史筛选")}
-          <select name="historyFilter" defaultValue={historyFilter}>
-            <option value="all">All days / 全部日期</option>
-            <option value="abnormal">Abnormal only / 仅异常日</option>
-          </select>
-        </label>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-      </form>
-
-      <div style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 10, padding: 10, marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Management Escalation", "管理介入")}</div>
-        <div style={{ marginBottom: 6 }}>
-          <Link scroll={false} href="/admin/tickets?focus=mgmt">Open Mgmt Focus / 打开管理介入视图</Link>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+        <div style={{ ...box, borderColor: "#cbd5e1", background: "#f8fafc" }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Summary", "自动汇总")}</div>
+          <div>New tickets / 新增工单: {createdToday}</div>
+          <div>Completed / 已完成: {completedToday}</div>
+          <div>Need Info: {statusCount["Need Info"] ?? 0}</div>
+          <div>Waiting Teacher: {statusCount["Waiting Teacher"] ?? 0}</div>
+          <div>Waiting Parent: {statusCount["Waiting Parent"] ?? 0}</div>
+          <div>Exception: {statusCount["Exception"] ?? 0}</div>
         </div>
-        <div style={{ display: "grid", gap: 6, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
-          {mgmtCards.length === 0 ? (
-            <div style={{ color: "#166534" }}>{t(lang, "No escalation ticket now", "当前无管理介入工单")}</div>
-          ) : (
-            mgmtCards.map((c) => {
-              const sla = slaFor(c.nextActionDue, c.status);
-              return (
-                <div key={c.id} style={{ border: `1px solid ${sla.border}`, borderRadius: 8, background: "#fff", padding: 8, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                    <div><b>{c.ticketNo}</b> | {c.status}</div>
-                    <span style={{ background: sla.bg, color: sla.color, border: `1px solid ${sla.border}`, borderRadius: 999, padding: "1px 8px", fontWeight: 700 }}>
-                      {sla.label}
-                    </span>
+
+        <div style={{ ...box, borderColor: "#fde68a", background: "#fffbeb" }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Management Escalation", "管理介入")}</div>
+          <div style={{ marginBottom: 8 }}>
+            <Link scroll={false} href="/admin/tickets?focus=mgmt">Open Mgmt Focus / 打开管理介入视图</Link>
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {mgmtCards.length === 0 ? (
+              <div style={{ color: "#166534" }}>{t(lang, "No escalation ticket now", "当前无管理介入工单")}</div>
+            ) : (
+              mgmtCards.map((c) => {
+                const sla = slaFor(c.nextActionDue, c.status);
+                return (
+                  <div key={c.id} style={{ border: `1px solid ${sla.border}`, background: "#fff", borderRadius: 8, padding: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+                      <div><b>{c.ticketNo}</b> | {c.status}</div>
+                      <span style={{ background: sla.bg, color: sla.color, border: `1px solid ${sla.border}`, borderRadius: 999, padding: "1px 8px", fontWeight: 700 }}>
+                        {sla.label}
+                      </span>
+                    </div>
+                    <div>Priority: {c.priority}</div>
+                    <div>Owner: {c.owner ?? "-"}</div>
+                    <div>Due: {c.nextActionDue ? c.nextActionDue.toLocaleString() : "-"}</div>
                   </div>
-                  <div>Priority: {c.priority}</div>
-                  <div>Owner: {c.owner ?? "-"}</div>
-                  <div>Due: {c.nextActionDue ? c.nextActionDue.toLocaleString() : "-"}</div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 
-      <div style={{ border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13 }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>Quick Fill Tips / 快速填写建议</div>
-        {view === "cs" ? (
-          <div>1) Top3 by parent urgency 2) Tomorrow risk: unconfirmed time/no reply 3) Owner+deadline with exact minute</div>
-        ) : (
-          <div>1) Top3 by scheduling conflicts 2) Tomorrow risk: teacher/room/attendance 3) Owner+deadline with exact minute</div>
-        )}
-      </div>
-
-      <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(lang, "Auto Summary", "自动汇总")}</div>
-        <div>New tickets: {createdToday}</div>
-        <div>Completed: {completedToday}</div>
-        <div>Need Info: {statusCount["Need Info"] ?? 0}</div>
-        <div>Waiting Teacher: {statusCount["Waiting Teacher"] ?? 0}</div>
-        <div>Waiting Parent: {statusCount["Waiting Parent"] ?? 0}</div>
-        <div>Exception: {statusCount["Exception"] ?? 0}</div>
-      </div>
-
-      <div style={{ border: "1px solid #fbcfe8", background: "#fdf2f8", borderRadius: 10, padding: 10, marginBottom: 14 }}>
+      <div style={{ ...box, borderColor: "#fbcfe8", background: "#fdf2f8" }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>Open Ticket Cards / 未闭环卡片</div>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
           {cardGroups.map((g) => (
             <div key={g.title} style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", padding: 8 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{g.title}: {g.cards.length}</div>
               <div style={{ display: "grid", gap: 6 }}>
-                {g.cards.slice(0, 6).map((c) => (
+                {g.cards.slice(0, 4).map((c) => (
                   <div key={c.id} style={{ fontSize: 12, border: "1px solid #f1f5f9", borderRadius: 6, padding: 6 }}>
                     <div><b>{c.ticketNo}</b> | {c.studentName}</div>
                     <div>Owner: {c.owner ?? "-"}</div>
@@ -383,9 +385,33 @@ export default async function TicketHandoverPage({
         </div>
       </div>
 
-      <form action={saveHandoverAction} style={{ display: "grid", gap: 10, marginBottom: 16 }}>
+      <form action={saveHandoverAction} style={{ ...box, display: "grid", gap: 12 }}>
         <input type="hidden" name="handoverDate" value={selectedDay} />
-        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+
+        <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, fontSize: 13 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Quick Fill Tips / 快速填写建议</div>
+          {view === "cs" ? (
+            <>
+              <div>1. Top3 按家长紧急程度排序。</div>
+              <div style={{ color: "#475569" }}>1. Rank Top3 by parent urgency.</div>
+              <div>2. 明日风险写“未确认时间 / 未回消息”。</div>
+              <div style={{ color: "#475569" }}>2. Tomorrow risks: unconfirmed time / no response.</div>
+              <div>3. 责任人与截止时间精确到分钟。</div>
+              <div style={{ color: "#475569" }}>3. Use exact owner and minute-level deadline.</div>
+            </>
+          ) : (
+            <>
+              <div>1. Top3 按排课冲突优先级排序。</div>
+              <div style={{ color: "#475569" }}>1. Rank Top3 by scheduling conflict priority.</div>
+              <div>2. 明日风险写“老师 / 教室 / 到课风险”。</div>
+              <div style={{ color: "#475569" }}>2. Tomorrow risks: teacher / room / attendance.</div>
+              <div>3. 责任人与截止时间精确到分钟。</div>
+              <div style={{ color: "#475569" }}>3. Use exact owner and minute-level deadline.</div>
+            </>
+          )}
+        </div>
+
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
           <label>
             New tickets / 新增工单
             <input name="newTickets" type="number" min={0} defaultValue={existing?.newTickets ?? createdToday} />
@@ -396,74 +422,75 @@ export default async function TicketHandoverPage({
           </label>
         </div>
 
-        <label>
-          Unresolved Top3 (Required) / 未闭环Top3（必填）
-          <textarea name="unresolvedTop3" rows={3} defaultValue={parsedExistingNotes.unresolvedTop3 || defaultUnresolvedTop3} />
-        </label>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+          <label>
+            Unresolved Top3 (Required) / 未闭环Top3（必填）
+            <textarea name="unresolvedTop3" rows={4} defaultValue={parsedExistingNotes.unresolvedTop3 || defaultUnresolvedTop3} />
+          </label>
+          <label>
+            Tomorrow First-class Risks (Required) / 明日首课风险（必填）
+            <textarea
+              name="tomorrowRisk"
+              rows={4}
+              defaultValue={
+                existing?.tomorrowLessonsCheck ??
+                (view === "ops"
+                  ? "Please fill: teacher confirmation / room / attendance risk"
+                  : "Please fill: parent communication / confirmed time / pending items")
+              }
+            />
+          </label>
+          <label>
+            Owner + Deadline (Required) / 责任人+截止时间（必填）
+            <textarea name="ownerDeadline" rows={4} defaultValue={parsedExistingNotes.ownerDeadline || defaultOwnerDeadline} />
+          </label>
+          <label>
+            Management Note / 管理备注
+            <textarea name="managementNote" rows={4} defaultValue={parsedExistingNotes.managementNote} />
+          </label>
+        </div>
 
-        <label>
-          Tomorrow First-class Risks (Required) / 明日首课风险（必填）
-          <textarea
-            name="tomorrowRisk"
-            rows={3}
-            defaultValue={
-              existing?.tomorrowLessonsCheck ??
-              (view === "ops"
-                ? "Please fill: teacher confirmation / room / attendance risk"
-                : "Please fill: parent communication / confirmed time / pending items")
-            }
-          />
-        </label>
         <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <input name="noTomorrowRisk" type="checkbox" value="1" />
           No tomorrow risk (auto fill) / 明日无风险（自动填充）
         </label>
 
-        <label>
-          Owner + Deadline (Required) / 责任人+截止时间（必填）
-          <textarea name="ownerDeadline" rows={3} defaultValue={parsedExistingNotes.ownerDeadline || defaultOwnerDeadline} />
-        </label>
-
-        <label>
-          Management Note / 管理备注
-          <textarea name="managementNote" rows={2} defaultValue={parsedExistingNotes.managementNote} />
-        </label>
-
         {view === "cs" ? (
-          <>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
             <label>
               Need Info (Owner/Deadline) / 待补信息（责任人/截止）
-              <textarea name="needInfo" rows={2} defaultValue={existing?.needInfo ?? ""} />
+              <textarea name="needInfo" rows={3} defaultValue={existing?.needInfo ?? ""} />
             </label>
             <label>
               Waiting Parent/Partner / 等家长合作方
-              <textarea name="waitingParentPartner" rows={2} defaultValue={existing?.waitingParentPartner ?? ""} />
+              <textarea name="waitingParentPartner" rows={3} defaultValue={existing?.waitingParentPartner ?? ""} />
             </label>
-          </>
+          </div>
         ) : (
-          <>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
             <label>
               Waiting Teacher (Owner/ETA) / 等老师（责任人/预计）
-              <textarea name="waitingTeacher" rows={2} defaultValue={existing?.waitingTeacher ?? ""} />
+              <textarea name="waitingTeacher" rows={3} defaultValue={existing?.waitingTeacher ?? ""} />
             </label>
             <label>
               Exceptions/Escalations / 异常升级
-              <textarea name="exceptionsEscalations" rows={2} defaultValue={existing?.exceptionsEscalations ?? ""} />
+              <textarea name="exceptionsEscalations" rows={3} defaultValue={existing?.exceptionsEscalations ?? ""} />
             </label>
-          </>
+          </div>
         )}
 
         <label>
           Notes / 备注
-          <textarea name="notes" rows={2} defaultValue={parsedExistingNotes.notes} />
+          <textarea name="notes" rows={3} defaultValue={parsedExistingNotes.notes} />
         </label>
+
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="submit">{t(lang, "Save Handover", "保存交接")}</button>
           <button type="submit" name="quickMode" value="all-clear">One-click All Clear / 一键无待办保存</button>
         </div>
       </form>
 
-      <div className="table-scroll">
+      <div style={box} className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
@@ -484,10 +511,10 @@ export default async function TicketHandoverPage({
                   <td>{r.handoverDate.toLocaleDateString()}</td>
                   <td>{r.newTickets}</td>
                   <td>{r.completed}</td>
-                  <td style={{ maxWidth: 220 }}>{r.needInfo ?? "-"}</td>
-                  <td style={{ maxWidth: 220 }}>{r.waitingTeacher ?? "-"}</td>
-                  <td style={{ maxWidth: 220 }}>{r.waitingParentPartner ?? "-"}</td>
-                  <td style={{ maxWidth: 220 }}>{parsed.managementNote || "-"}</td>
+                  <td style={{ maxWidth: 220 }} title={r.needInfo ?? ""}>{r.needInfo ?? "-"}</td>
+                  <td style={{ maxWidth: 220 }} title={r.waitingTeacher ?? ""}>{r.waitingTeacher ?? "-"}</td>
+                  <td style={{ maxWidth: 220 }} title={r.waitingParentPartner ?? ""}>{r.waitingParentPartner ?? "-"}</td>
+                  <td style={{ maxWidth: 220 }} title={parsed.managementNote}>{parsed.managementNote || "-"}</td>
                 </tr>
               );
             })}
