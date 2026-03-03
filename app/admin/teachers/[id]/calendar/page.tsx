@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 
 function parseMonth(s?: string) {
@@ -198,7 +198,7 @@ export default async function TeacherCalendarPage({
         {t(lang, "Each day shows scheduled sessions and remaining available slots.", "每天同格展示已排课次和剩余可排时段。")}
       </div>
 
-      <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <table cellPadding={6} style={{ borderCollapse: "separate", borderSpacing: 4, width: "100%" }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             {WEEKDAYS.map((w) => (
@@ -210,29 +210,79 @@ export default async function TeacherCalendarPage({
           {grid.weeks.map((week, wi) => (
             <tr key={wi}>
               {week.map((day, di) => {
-                if (!day) return <td key={di} style={{ border: "1px solid #eee", height: 160 }} />;
+                if (!day) return <td key={di} style={{ border: "1px solid #eee", height: 180, background: "#f8fafc" }} />;
                 const key = ymd(day);
                 const daySessions = sessionMap.get(key) ?? [];
                 const dayBusy = mergeIntervals(daySessions.map((s) => ({ startMin: s.startMin, endMin: s.endMin })));
                 const dayAvail = availMap.get(key) ?? [];
                 const dayFree = subtractIntervals(dayAvail, dayBusy);
+                const hasScheduled = daySessions.length > 0;
+                const hasFree = dayFree.length > 0;
+                const dayBorderColor = hasScheduled && hasFree ? "#d97706" : hasScheduled ? "#2563eb" : hasFree ? "#16a34a" : "#cbd5e1";
+                const dayBg = hasScheduled && hasFree ? "#fff7ed" : hasScheduled ? "#eff6ff" : hasFree ? "#f0fdf4" : "#f8fafc";
 
                 return (
-                  <td key={di} style={{ border: "1px solid #eee", verticalAlign: "top", padding: 8 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
+                  <td
+                    key={di}
+                    style={{
+                      border: `2px solid ${dayBorderColor}`,
+                      background: dayBg,
+                      verticalAlign: "top",
+                      padding: 8,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>{day.getDate()}</div>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "2px 6px",
+                            borderRadius: 999,
+                            background: "#dbeafe",
+                            color: "#1d4ed8",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t(lang, "Scheduled", "已排")} {daySessions.length}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "2px 6px",
+                            borderRadius: 999,
+                            background: "#dcfce7",
+                            color: "#166534",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t(lang, "Free", "可排")} {dayFree.length}
+                        </span>
+                      </div>
+                    </div>
 
-                    <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>
+                    <div style={{ marginBottom: 8, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, padding: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
                         {t(lang, "Scheduled", "已排")}
                       </div>
                       {daySessions.length === 0 ? (
                         <div style={{ color: "#999", fontSize: 12 }}>-</div>
                       ) : (
-                        <div style={{ display: "grid", gap: 3 }}>
+                        <div style={{ display: "grid", gap: 4 }}>
                           {daySessions.map((s) => (
-                            <div key={s.id} style={{ fontSize: 12 }}>
-                              <span style={{ fontFamily: "monospace" }}>{fromMin(s.startMin)}-{fromMin(s.endMin)}</span>{" "}
-                              <span>{s.studentLabel}</span>{" "}
+                            <div
+                              key={s.id}
+                              style={{
+                                fontSize: 12,
+                                background: "white",
+                                border: "1px solid #dbeafe",
+                                borderRadius: 6,
+                                padding: "3px 6px",
+                              }}
+                            >
+                              <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{fromMin(s.startMin)}-{fromMin(s.endMin)}</span>{" "}
+                              <span style={{ fontWeight: 700 }}>{s.studentLabel}</span>{" "}
                               <span style={{ color: "#666" }}>| {s.label}</span>
                             </div>
                           ))}
@@ -240,16 +290,27 @@ export default async function TeacherCalendarPage({
                       )}
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#15803d", marginBottom: 4 }}>
                         {t(lang, "Free to Schedule", "可排")}
                       </div>
                       {dayFree.length === 0 ? (
                         <div style={{ color: "#999", fontSize: 12 }}>-</div>
                       ) : (
-                        <div style={{ display: "grid", gap: 3 }}>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           {dayFree.map((f, idx) => (
-                            <div key={`${key}-${idx}`} style={{ fontFamily: "monospace", fontSize: 12, color: "#166534" }}>
+                            <div
+                              key={`${key}-${idx}`}
+                              style={{
+                                fontFamily: "monospace",
+                                fontSize: 12,
+                                color: "#166534",
+                                border: "1px solid #86efac",
+                                borderRadius: 999,
+                                padding: "2px 8px",
+                                background: "white",
+                              }}
+                            >
                               {fromMin(f.startMin)}-{fromMin(f.endMin)}
                             </div>
                           ))}
@@ -266,4 +327,3 @@ export default async function TeacherCalendarPage({
     </div>
   );
 }
-
