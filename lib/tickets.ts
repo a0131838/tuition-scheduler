@@ -36,6 +36,22 @@ export const TICKET_STATUS_OPTIONS: OptionItem[] = [
   { value: "Exception", zh: "异常升级", en: "Exception" },
 ];
 
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  "Need Info": ["Waiting Teacher", "Waiting Parent", "Cancelled"],
+  "Waiting Teacher": ["Waiting Parent", "Confirmed", "Need Info", "Exception", "Cancelled"],
+  "Waiting Parent": ["Waiting Teacher", "Confirmed", "Need Info", "Exception", "Cancelled"],
+  Confirmed: ["Completed", "Exception", "Cancelled"],
+  Completed: ["Confirmed"],
+  Cancelled: [],
+  Exception: ["Waiting Teacher", "Waiting Parent", "Confirmed", "Completed", "Cancelled"],
+};
+
+export function canTransitionTicketStatus(from: string, to: string) {
+  if (from === to) return true;
+  const allowed = STATUS_TRANSITIONS[from] ?? [];
+  return allowed.includes(to);
+}
+
 export const TICKET_OWNER_OPTIONS: OptionItem[] = [
   { value: "B", zh: "B组", en: "Team B" },
   { value: "A", zh: "A组", en: "Team A" },
@@ -115,3 +131,11 @@ export async function allocateTicketNo(tx: Prisma.TransactionClient, now = new D
   return `${dayKey}-${String(seq).padStart(3, "0")}`;
 }
 
+export function generateIntakeToken() {
+  const alphabet = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+  let out = "";
+  for (let i = 0; i < 24; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}

@@ -14,8 +14,8 @@ import {
   TICKET_VERSION_OPTIONS,
 } from "@/lib/tickets";
 
-function bad(message: string, status = 400) {
-  return Response.json({ ok: false, message }, { status });
+function bad(message: string, status = 400, extra?: Record<string, unknown>) {
+  return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 function validateByOptions(value: string | null, options: { value: string }[]) {
@@ -23,7 +23,24 @@ function validateByOptions(value: string | null, options: { value: string }[]) {
   return options.some((o) => o.value === value) ? value : null;
 }
 
-export async function POST(req: Request) {
+async function ensureTokenOk(token: string) {
+  const row = await prisma.ticketIntakeToken.findUnique({
+    where: { token },
+    select: { isActive: true, expiresAt: true },
+  });
+  if (!row) return false;
+  if (!row.isActive) return false;
+  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return false;
+  return true;
+}
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const { token } = await params;
+  if (!(await ensureTokenOk(token))) return bad("Intake link is invalid or expired", 403);
+
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -39,6 +56,31 @@ export async function POST(req: Request) {
   const priority = validateByOptions(normalizeTicketString(body.priority, 60), TICKET_PRIORITY_OPTIONS);
   if (!source || !type || !priority) {
     return bad("Invalid source/type/priority");
+  }
+
+  const force = String(body.forceDuplicate ?? "").trim() === "1";
+  const dupeSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const duplicates = await prisma.ticket.findMany({
+    where: {
+      studentName: { equals: studentName, mode: "insensitive" },
+      type,
+      createdAt: { gte: dupeSince },
+      status: { not: "Cancelled" },
+    },
+    select: { ticketNo: true, status: true, createdAt: true, summary: true },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
+  if (!force && duplicates.length > 0) {
+    return bad("Potential duplicate ticket detected", 409, {
+      code: "DUPLICATE",
+      duplicates: duplicates.map((d) => ({
+        ticketNo: d.ticketNo,
+        status: d.status,
+        createdAt: d.createdAt.toISOString(),
+        summary: d.summary ?? "",
+      })),
+    });
   }
 
   const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);

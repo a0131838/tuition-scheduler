@@ -1,7 +1,7 @@
 import { requireTeacher } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { TICKET_STATUS_OPTIONS } from "@/lib/tickets";
+import { canTransitionTicketStatus, TICKET_STATUS_OPTIONS } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -10,10 +10,29 @@ async function markDoneTeacherAction(formData: FormData) {
   const user = await requireTeacher();
   const id = String(formData.get("id") ?? "").trim();
   const back = String(formData.get("back") ?? "/teacher/tickets");
+  const note = String(formData.get("completionNote") ?? "").trim().slice(0, 1000);
   if (!id) redirect(back);
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, summary: true },
+  });
+  if (!row) redirect(back);
+  if (!canTransitionTicketStatus(row.status, "Completed")) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=status-flow`);
+  }
+  if (!note) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-note`);
+  }
+
   await prisma.ticket.update({
     where: { id },
-    data: { status: "Completed", completedAt: new Date(), completedByUserId: user.id },
+    data: {
+      status: "Completed",
+      completedAt: new Date(),
+      completedByUserId: user.id,
+      summary: `${row.summary ? `${row.summary}\n` : ""}[Completed Note] ${note}`,
+    },
   });
   revalidatePath("/teacher/tickets");
   revalidatePath("/admin/tickets");
@@ -23,13 +42,14 @@ async function markDoneTeacherAction(formData: FormData) {
 export default async function TeacherTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; err?: string }>;
 }) {
   await requireTeacher();
   const lang = await getLang();
   const sp = await searchParams;
   const q = String(sp?.q ?? "").trim();
   const status = String(sp?.status ?? "").trim();
+  const err = String(sp?.err ?? "").trim();
 
   const rows = await prisma.ticket.findMany({
     where: {
@@ -53,6 +73,17 @@ export default async function TeacherTicketsPage({
   return (
     <div>
       <h2>{t(lang, "Ticket Board", "工单看板")}</h2>
+      {err === "status-flow" ? (
+        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
+          状态流转不允许 / Invalid status transition
+        </div>
+      ) : null}
+      {err === "need-note" ? (
+        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
+          完成时必须填写完成说明 / Completion note is required when marking completed
+        </div>
+      ) : null}
+
       <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
         <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
         <select name="status" defaultValue={status}>
@@ -90,9 +121,10 @@ export default async function TeacherTicketsPage({
                 <td style={{ maxWidth: 320 }}>{r.summary ?? "-"}</td>
                 <td>
                   {r.status !== "Completed" ? (
-                    <form action={markDoneTeacherAction}>
+                    <form action={markDoneTeacherAction} style={{ display: "grid", gap: 6 }}>
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={backHref} />
+                      <input name="completionNote" placeholder="完成说明 / Completion note" />
                       <button type="submit">{t(lang, "Mark Completed", "标记已完成")}</button>
                     </form>
                   ) : (

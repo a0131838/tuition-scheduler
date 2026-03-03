@@ -10,6 +10,13 @@ function parseDateOnly(raw: string) {
   return new Date(`${raw}T00:00:00+08:00`);
 }
 
+function dayRange(day: Date) {
+  const start = new Date(day.getTime());
+  const end = new Date(day.getTime());
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
 async function saveHandoverAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -53,23 +60,44 @@ async function saveHandoverAction(formData: FormData) {
     },
   });
   revalidatePath("/admin/tickets/handover");
-  redirect("/admin/tickets/handover?saved=1");
+  redirect(`/admin/tickets/handover?day=${encodeURIComponent(day)}&saved=1`);
 }
 
 export default async function TicketHandoverPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ saved?: string }>;
+  searchParams?: Promise<{ saved?: string; day?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const saved = sp?.saved === "1";
   const today = new Date().toISOString().slice(0, 10);
-  const rows = await prisma.ticketHandover.findMany({
-    orderBy: { handoverDate: "desc" },
-    take: 30,
+  const selectedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(sp?.day ?? "")) ? String(sp?.day) : today;
+  const selectedDate = parseDateOnly(selectedDay) ?? parseDateOnly(today)!;
+  const { start, end } = dayRange(selectedDate);
+
+  const [existing, rows, autoCounts, autoBuckets] = await Promise.all([
+    prisma.ticketHandover.findUnique({ where: { handoverDate: selectedDate } }),
+    prisma.ticketHandover.findMany({
+      orderBy: { handoverDate: "desc" },
+      take: 30,
+    }),
+    prisma.ticket.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
+    prisma.ticket.groupBy({
+      by: ["status"],
+      where: { createdAt: { gte: start, lt: end } },
+      _count: { _all: true },
+    }),
+  ]);
+  const createdToday = autoBuckets.reduce((sum, x) => sum + x._count._all, 0);
+  const completedToday = await prisma.ticket.count({
+    where: { completedAt: { gte: start, lt: end } },
   });
+  const statusCount = Object.fromEntries(autoCounts.map((x) => [x.status, x._count._all]));
 
   return (
     <div>
@@ -79,44 +107,62 @@ export default async function TicketHandoverPage({
         <Link scroll={false} href="/admin/tickets/sop">{t(lang, "SOP One Pager", "SOP一页纸")}</Link>
       </div>
       {saved ? <div style={{ color: "#166534", marginBottom: 10 }}>{t(lang, "Saved", "已保存")}</div> : null}
+
+      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 10 }}>
+        <label>
+          Date / 日期
+          <input type="date" name="day" defaultValue={selectedDay} />
+        </label>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+      </form>
+
+      <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, marginBottom: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>自动汇总 / Auto Summary</div>
+        <div>New tickets: {createdToday}</div>
+        <div>Completed: {completedToday}</div>
+        <div>Need Info: {statusCount["Need Info"] ?? 0}</div>
+        <div>Waiting Teacher: {statusCount["Waiting Teacher"] ?? 0}</div>
+        <div>Waiting Parent: {statusCount["Waiting Parent"] ?? 0}</div>
+      </div>
+
       <form action={saveHandoverAction} style={{ display: "grid", gap: 10, marginBottom: 16 }}>
         <label>
           Date / 日期
-          <input name="handoverDate" type="date" defaultValue={today} required />
+          <input name="handoverDate" type="date" defaultValue={selectedDay} required />
         </label>
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label>
             New tickets / 新增工单
-            <input name="newTickets" type="number" min={0} defaultValue={0} />
+            <input name="newTickets" type="number" min={0} defaultValue={existing?.newTickets ?? createdToday} />
           </label>
           <label>
             Completed / 已完成
-            <input name="completed" type="number" min={0} defaultValue={0} />
+            <input name="completed" type="number" min={0} defaultValue={existing?.completed ?? completedToday} />
           </label>
         </div>
         <label>
           Need Info（责任人/截止）/ Need Info (Owner/Deadline)
-          <textarea name="needInfo" rows={2} />
+          <textarea name="needInfo" rows={2} defaultValue={existing?.needInfo ?? ""} />
         </label>
         <label>
           Waiting Teacher（责任人/预计回）/ Waiting Teacher (Owner/ETA)
-          <textarea name="waitingTeacher" rows={2} />
+          <textarea name="waitingTeacher" rows={2} defaultValue={existing?.waitingTeacher ?? ""} />
         </label>
         <label>
           Waiting Parent/Partner（责任人/最晚确认）/ Waiting Parent/Partner (Owner/Latest Confirm)
-          <textarea name="waitingParentPartner" rows={2} />
+          <textarea name="waitingParentPartner" rows={2} defaultValue={existing?.waitingParentPartner ?? ""} />
         </label>
         <label>
           Tomorrow lessons check（A）/ 明日上课检查（A）
-          <textarea name="tomorrowLessonsCheck" rows={2} />
+          <textarea name="tomorrowLessonsCheck" rows={2} defaultValue={existing?.tomorrowLessonsCheck ?? ""} />
         </label>
         <label>
           Exceptions/Escalations / 异常升级
-          <textarea name="exceptionsEscalations" rows={2} />
+          <textarea name="exceptionsEscalations" rows={2} defaultValue={existing?.exceptionsEscalations ?? ""} />
         </label>
         <label>
           Notes / 备注
-          <textarea name="notes" rows={2} />
+          <textarea name="notes" rows={2} defaultValue={existing?.notes ?? ""} />
         </label>
         <button type="submit">{t(lang, "Save Handover", "保存交接")}</button>
       </form>
