@@ -52,9 +52,8 @@ export async function POST(
     const absPath = path.join(uploadDir, filename);
     const buf = Buffer.from(await file.arrayBuffer());
     await writeFile(absPath, buf);
-    urls.push(`/uploads/tickets/${filename}`);
+    urls.push(`/api/tickets/files/${filename}`);
   }
 
   return Response.json({ ok: true, urls });
 }
-

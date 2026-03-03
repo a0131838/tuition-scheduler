@@ -26,6 +26,14 @@ function proofItems(proof: string | null | undefined) {
     .slice(0, 6);
 }
 
+function normalizeProofUrl(item: string) {
+  if (item.startsWith("/uploads/tickets/")) {
+    const name = item.replace("/uploads/tickets/", "");
+    return `/api/tickets/files/${encodeURIComponent(name)}`;
+  }
+  return item;
+}
+
 async function updateStatusAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -334,11 +342,12 @@ export default async function AdminTicketsPage({
                   ) : (
                     <div style={{ display: "grid", gap: 4 }}>
                       {proofItems(r.proof).map((item, idx) => {
-                        const isLink = item.startsWith("/") || item.startsWith("http://") || item.startsWith("https://");
+                        const href = normalizeProofUrl(item);
+                        const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
                         if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
-                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(item);
+                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
                         return (
-                          <a key={`${r.id}-proof-${idx}`} href={item} target="_blank" rel="noreferrer">
+                          <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
                             {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
                           </a>
                         );
