@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+﻿import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -189,36 +189,15 @@ export default async function TicketHandoverPage({
       orderBy: { handoverDate: "desc" },
       take: history === "all" ? 120 : 14,
     }),
-    prisma.ticket.groupBy({
-      by: ["status"],
-      where: { isArchived: false },
-      _count: { _all: true },
-    }),
-    prisma.ticket.groupBy({
-      by: ["status"],
-      where: { isArchived: false, createdAt: { gte: start, lt: end } },
-      _count: { _all: true },
-    }),
+    prisma.ticket.groupBy({ by: ["status"], where: { isArchived: false }, _count: { _all: true } }),
+    prisma.ticket.groupBy({ by: ["status"], where: { isArchived: false, createdAt: { gte: start, lt: end } }, _count: { _all: true } }),
     prisma.ticket.findMany({
-      where: {
-        isArchived: false,
-        status: { in: ["Need Info", "Waiting Teacher", "Waiting Parent", "Exception"] },
-      },
+      where: { isArchived: false, status: { in: ["Need Info", "Waiting Teacher", "Waiting Parent", "Exception"] } },
       orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       take: 60,
-      select: {
-        id: true,
-        ticketNo: true,
-        studentName: true,
-        status: true,
-        owner: true,
-        nextAction: true,
-        nextActionDue: true,
-      },
+      select: { id: true, ticketNo: true, studentName: true, status: true, owner: true, nextAction: true, nextActionDue: true },
     }),
-    prisma.ticket.count({
-      where: { isArchived: false, completedAt: { gte: start, lt: end } },
-    }),
+    prisma.ticket.count({ where: { isArchived: false, completedAt: { gte: start, lt: end } } }),
     prisma.ticket.findMany({
       where: {
         isArchived: false,
@@ -226,24 +205,12 @@ export default async function TicketHandoverPage({
           { status: "Exception" },
           { priority: { contains: "紧急" } },
           { priority: { contains: "Urgent", mode: "insensitive" } },
-          {
-            AND: [
-              { nextActionDue: { lt: new Date() } },
-              { status: { notIn: ["Completed", "Cancelled"] } },
-            ],
-          },
+          { AND: [{ nextActionDue: { lt: new Date() } }, { status: { notIn: ["Completed", "Cancelled"] } }] },
         ],
       },
       orderBy: [{ priority: "desc" }, { nextActionDue: "asc" }, { createdAt: "desc" }],
       take: 8,
-      select: {
-        id: true,
-        ticketNo: true,
-        status: true,
-        owner: true,
-        priority: true,
-        nextActionDue: true,
-      },
+      select: { id: true, ticketNo: true, status: true, owner: true, priority: true, nextActionDue: true },
     }),
   ]);
 
@@ -389,100 +356,121 @@ export default async function TicketHandoverPage({
         <input type="hidden" name="handoverDate" value={selectedDay} />
 
         <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, fontSize: 13 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Quick Fill Tips / 快速填写建议</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Quick Fill Tips / 快速填写建议</div>
+          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+            {view === "cs" ? (
+              <>
+                <div>
+                  <div>1. Top3 按家长紧急程度排序。</div>
+                  <div>2. 明日风险写“未确认时间 / 未回消息”。</div>
+                  <div>3. 责任人与截止时间精确到分钟。</div>
+                </div>
+                <div style={{ color: "#475569" }}>
+                  <div>1. Rank Top3 by parent urgency.</div>
+                  <div>2. Tomorrow risks: unconfirmed time / no response.</div>
+                  <div>3. Use exact owner and minute-level deadline.</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div>1. Top3 按排课冲突优先级排序。</div>
+                  <div>2. 明日风险写“老师 / 教室 / 到课风险”。</div>
+                  <div>3. 责任人与截止时间精确到分钟。</div>
+                </div>
+                <div style={{ color: "#475569" }}>
+                  <div>1. Rank Top3 by scheduling conflict priority.</div>
+                  <div>2. Tomorrow risks: teacher / room / attendance.</div>
+                  <div>3. Use exact owner and minute-level deadline.</div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>A. 今日汇总 / Today Summary</div>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+            <label>
+              New tickets / 新增工单
+              <input name="newTickets" type="number" min={0} defaultValue={existing?.newTickets ?? createdToday} />
+            </label>
+            <label>
+              Completed / 已完成
+              <input name="completed" type="number" min={0} defaultValue={existing?.completed ?? completedToday} />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>B. 必填交接 / Required Handover</div>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+            <label>
+              Unresolved Top3 (Required) / 未闭环Top3（必填）
+              <textarea name="unresolvedTop3" rows={4} defaultValue={parsedExistingNotes.unresolvedTop3 || defaultUnresolvedTop3} />
+            </label>
+            <label>
+              Tomorrow First-class Risks (Required) / 明日首课风险（必填）
+              <textarea
+                name="tomorrowRisk"
+                rows={4}
+                defaultValue={
+                  existing?.tomorrowLessonsCheck ??
+                  (view === "ops"
+                    ? "Please fill: teacher confirmation / room / attendance risk"
+                    : "Please fill: parent communication / confirmed time / pending items")
+                }
+              />
+              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                <input name="noTomorrowRisk" type="checkbox" value="1" />
+                <span>No tomorrow risk (auto fill) / 明日无风险（自动填充）</span>
+              </div>
+            </label>
+            <label>
+              Owner + Deadline (Required) / 责任人+截止时间（必填）
+              <textarea name="ownerDeadline" rows={4} defaultValue={parsedExistingNotes.ownerDeadline || defaultOwnerDeadline} />
+            </label>
+            <label>
+              Management Note / 管理备注
+              <textarea name="managementNote" rows={4} defaultValue={parsedExistingNotes.managementNote} />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>C. 跟进补充 / Follow-up Notes</div>
           {view === "cs" ? (
-            <>
-              <div>1. Top3 按家长紧急程度排序。</div>
-              <div style={{ color: "#475569" }}>1. Rank Top3 by parent urgency.</div>
-              <div>2. 明日风险写“未确认时间 / 未回消息”。</div>
-              <div style={{ color: "#475569" }}>2. Tomorrow risks: unconfirmed time / no response.</div>
-              <div>3. 责任人与截止时间精确到分钟。</div>
-              <div style={{ color: "#475569" }}>3. Use exact owner and minute-level deadline.</div>
-            </>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+              <label>
+                Need Info (Owner/Deadline) / 待补信息（责任人/截止）
+                <textarea name="needInfo" rows={3} defaultValue={existing?.needInfo ?? ""} />
+              </label>
+              <label>
+                Waiting Parent/Partner / 等家长合作方
+                <textarea name="waitingParentPartner" rows={3} defaultValue={existing?.waitingParentPartner ?? ""} />
+              </label>
+              <label>
+                Notes / 备注
+                <textarea name="notes" rows={3} defaultValue={parsedExistingNotes.notes} />
+              </label>
+            </div>
           ) : (
-            <>
-              <div>1. Top3 按排课冲突优先级排序。</div>
-              <div style={{ color: "#475569" }}>1. Rank Top3 by scheduling conflict priority.</div>
-              <div>2. 明日风险写“老师 / 教室 / 到课风险”。</div>
-              <div style={{ color: "#475569" }}>2. Tomorrow risks: teacher / room / attendance.</div>
-              <div>3. 责任人与截止时间精确到分钟。</div>
-              <div style={{ color: "#475569" }}>3. Use exact owner and minute-level deadline.</div>
-            </>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+              <label>
+                Waiting Teacher (Owner/ETA) / 等老师（责任人/预计）
+                <textarea name="waitingTeacher" rows={3} defaultValue={existing?.waitingTeacher ?? ""} />
+              </label>
+              <label>
+                Exceptions/Escalations / 异常升级
+                <textarea name="exceptionsEscalations" rows={3} defaultValue={existing?.exceptionsEscalations ?? ""} />
+              </label>
+              <label>
+                Notes / 备注
+                <textarea name="notes" rows={3} defaultValue={parsedExistingNotes.notes} />
+              </label>
+            </div>
           )}
         </div>
-
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
-          <label>
-            New tickets / 新增工单
-            <input name="newTickets" type="number" min={0} defaultValue={existing?.newTickets ?? createdToday} />
-          </label>
-          <label>
-            Completed / 已完成
-            <input name="completed" type="number" min={0} defaultValue={existing?.completed ?? completedToday} />
-          </label>
-        </div>
-
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
-          <label>
-            Unresolved Top3 (Required) / 未闭环Top3（必填）
-            <textarea name="unresolvedTop3" rows={4} defaultValue={parsedExistingNotes.unresolvedTop3 || defaultUnresolvedTop3} />
-          </label>
-          <label>
-            Tomorrow First-class Risks (Required) / 明日首课风险（必填）
-            <textarea
-              name="tomorrowRisk"
-              rows={4}
-              defaultValue={
-                existing?.tomorrowLessonsCheck ??
-                (view === "ops"
-                  ? "Please fill: teacher confirmation / room / attendance risk"
-                  : "Please fill: parent communication / confirmed time / pending items")
-              }
-            />
-          </label>
-          <label>
-            Owner + Deadline (Required) / 责任人+截止时间（必填）
-            <textarea name="ownerDeadline" rows={4} defaultValue={parsedExistingNotes.ownerDeadline || defaultOwnerDeadline} />
-          </label>
-          <label>
-            Management Note / 管理备注
-            <textarea name="managementNote" rows={4} defaultValue={parsedExistingNotes.managementNote} />
-          </label>
-        </div>
-
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input name="noTomorrowRisk" type="checkbox" value="1" />
-          No tomorrow risk (auto fill) / 明日无风险（自动填充）
-        </label>
-
-        {view === "cs" ? (
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
-            <label>
-              Need Info (Owner/Deadline) / 待补信息（责任人/截止）
-              <textarea name="needInfo" rows={3} defaultValue={existing?.needInfo ?? ""} />
-            </label>
-            <label>
-              Waiting Parent/Partner / 等家长合作方
-              <textarea name="waitingParentPartner" rows={3} defaultValue={existing?.waitingParentPartner ?? ""} />
-            </label>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
-            <label>
-              Waiting Teacher (Owner/ETA) / 等老师（责任人/预计）
-              <textarea name="waitingTeacher" rows={3} defaultValue={existing?.waitingTeacher ?? ""} />
-            </label>
-            <label>
-              Exceptions/Escalations / 异常升级
-              <textarea name="exceptionsEscalations" rows={3} defaultValue={existing?.exceptionsEscalations ?? ""} />
-            </label>
-          </div>
-        )}
-
-        <label>
-          Notes / 备注
-          <textarea name="notes" rows={3} defaultValue={parsedExistingNotes.notes} />
-        </label>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="submit">{t(lang, "Save Handover", "保存交接")}</button>
