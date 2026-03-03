@@ -163,7 +163,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
   if (withSeal) {
     try {
-      doc.image(SEAL_PATH, x + w - 300, y + h - 122, { width: 119 });
+      doc.image(SEAL_PATH, x + w - 284, y + h - 118, { width: 101 });
     } catch {}
   }
 
