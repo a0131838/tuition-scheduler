@@ -17,6 +17,11 @@ function dayRange(day: Date) {
   return { start, end };
 }
 
+function txt(formData: FormData, name: string, max = 3000) {
+  const v = String(formData.get(name) ?? "").trim();
+  return v ? v.slice(0, max) : "";
+}
+
 async function saveHandoverAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -24,14 +29,27 @@ async function saveHandoverAction(formData: FormData) {
   const handoverDate = parseDateOnly(day);
   if (!handoverDate) redirect("/admin/tickets/handover?err=date");
 
+  const unresolvedTop3 = txt(formData, "unresolvedTop3", 4000);
+  const tomorrowRisk = txt(formData, "tomorrowRisk", 4000);
+  const ownerDeadline = txt(formData, "ownerDeadline", 4000);
+  if (!unresolvedTop3 || !tomorrowRisk || !ownerDeadline) {
+    redirect(`/admin/tickets/handover?day=${encodeURIComponent(day)}&err=min-required`);
+  }
+
   const toInt = (name: string) => {
     const n = Number(String(formData.get(name) ?? "").trim());
     return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
   };
-  const text = (name: string, max = 2000) => {
-    const v = String(formData.get(name) ?? "").trim();
-    return v ? v.slice(0, max) : null;
+  const textOrNull = (name: string, max = 4000) => {
+    const v = txt(formData, name, max);
+    return v || null;
   };
+
+  const needInfoRaw = textOrNull("needInfo");
+  const waitingTeacherRaw = textOrNull("waitingTeacher");
+  const waitingParentRaw = textOrNull("waitingParentPartner");
+  const exceptionsRaw = textOrNull("exceptionsEscalations");
+  const notesRaw = textOrNull("notes");
 
   await prisma.ticketHandover.upsert({
     where: { handoverDate },
@@ -39,23 +57,23 @@ async function saveHandoverAction(formData: FormData) {
       handoverDate,
       newTickets: toInt("newTickets"),
       completed: toInt("completed"),
-      needInfo: text("needInfo"),
-      waitingTeacher: text("waitingTeacher"),
-      waitingParentPartner: text("waitingParentPartner"),
-      tomorrowLessonsCheck: text("tomorrowLessonsCheck"),
-      exceptionsEscalations: text("exceptionsEscalations"),
-      notes: text("notes"),
+      needInfo: needInfoRaw,
+      waitingTeacher: waitingTeacherRaw,
+      waitingParentPartner: waitingParentRaw,
+      tomorrowLessonsCheck: tomorrowRisk,
+      exceptionsEscalations: exceptionsRaw,
+      notes: [unresolvedTop3, ownerDeadline, notesRaw].filter(Boolean).join("\n\n") || null,
       createdByUserId: user.id,
     },
     update: {
       newTickets: toInt("newTickets"),
       completed: toInt("completed"),
-      needInfo: text("needInfo"),
-      waitingTeacher: text("waitingTeacher"),
-      waitingParentPartner: text("waitingParentPartner"),
-      tomorrowLessonsCheck: text("tomorrowLessonsCheck"),
-      exceptionsEscalations: text("exceptionsEscalations"),
-      notes: text("notes"),
+      needInfo: needInfoRaw,
+      waitingTeacher: waitingTeacherRaw,
+      waitingParentPartner: waitingParentRaw,
+      tomorrowLessonsCheck: tomorrowRisk,
+      exceptionsEscalations: exceptionsRaw,
+      notes: [unresolvedTop3, ownerDeadline, notesRaw].filter(Boolean).join("\n\n") || null,
       createdByUserId: user.id,
     },
   });
@@ -66,18 +84,20 @@ async function saveHandoverAction(formData: FormData) {
 export default async function TicketHandoverPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ saved?: string; day?: string }>;
+  searchParams?: Promise<{ saved?: string; day?: string; view?: string; err?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const saved = sp?.saved === "1";
+  const err = String(sp?.err ?? "").trim();
+  const view = String(sp?.view ?? "cs").trim() === "ops" ? "ops" : "cs";
   const today = new Date().toISOString().slice(0, 10);
   const selectedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(sp?.day ?? "")) ? String(sp?.day) : today;
   const selectedDate = parseDateOnly(selectedDay) ?? parseDateOnly(today)!;
   const { start, end } = dayRange(selectedDate);
 
-  const [existing, rows, autoCounts, autoBuckets] = await Promise.all([
+  const [existing, rows, allStatusCounts, createdTodayStatus, unresolvedCards, completedToday] = await Promise.all([
     prisma.ticketHandover.findUnique({ where: { handoverDate: selectedDate } }),
     prisma.ticketHandover.findMany({
       orderBy: { handoverDate: "desc" },
@@ -85,19 +105,62 @@ export default async function TicketHandoverPage({
     }),
     prisma.ticket.groupBy({
       by: ["status"],
+      where: { isArchived: false },
       _count: { _all: true },
     }),
     prisma.ticket.groupBy({
       by: ["status"],
-      where: { createdAt: { gte: start, lt: end } },
+      where: { isArchived: false, createdAt: { gte: start, lt: end } },
       _count: { _all: true },
     }),
+    prisma.ticket.findMany({
+      where: {
+        isArchived: false,
+        status: { in: ["Need Info", "Waiting Teacher", "Waiting Parent", "Exception"] },
+      },
+      orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+      take: 60,
+      select: {
+        id: true,
+        ticketNo: true,
+        studentName: true,
+        status: true,
+        owner: true,
+        nextAction: true,
+        nextActionDue: true,
+        summary: true,
+      },
+    }),
+    prisma.ticket.count({
+      where: { isArchived: false, completedAt: { gte: start, lt: end } },
+    }),
   ]);
-  const createdToday = autoBuckets.reduce((sum, x) => sum + x._count._all, 0);
-  const completedToday = await prisma.ticket.count({
-    where: { completedAt: { gte: start, lt: end } },
-  });
-  const statusCount = Object.fromEntries(autoCounts.map((x) => [x.status, x._count._all]));
+
+  const statusCount = Object.fromEntries(allStatusCounts.map((x) => [x.status, x._count._all]));
+  const createdToday = createdTodayStatus.reduce((sum, x) => sum + x._count._all, 0);
+
+  const needInfoCards = unresolvedCards.filter((x) => x.status === "Need Info");
+  const waitingTeacherCards = unresolvedCards.filter((x) => x.status === "Waiting Teacher");
+  const waitingParentCards = unresolvedCards.filter((x) => x.status === "Waiting Parent");
+  const exceptionCards = unresolvedCards.filter((x) => x.status === "Exception");
+  const cardGroups = [
+    { title: "Need Info", cards: needInfoCards },
+    { title: "Waiting Teacher", cards: waitingTeacherCards },
+    { title: "Waiting Parent", cards: waitingParentCards },
+    { title: "Exception", cards: exceptionCards },
+  ];
+
+  const defaultUnresolvedTop3 =
+    unresolvedCards
+      .slice(0, 3)
+      .map((x, i) => `${i + 1}. ${x.ticketNo} | ${x.studentName} | ${x.status} | ${x.nextAction ?? "-"}`)
+      .join("\n") || "";
+
+  const defaultOwnerDeadline =
+    unresolvedCards
+      .slice(0, 5)
+      .map((x) => `${x.ticketNo} | Owner:${x.owner ?? "-"} | Due:${x.nextActionDue ? x.nextActionDue.toLocaleString() : "-"}`)
+      .join("\n") || "";
 
   return (
     <div>
@@ -107,11 +170,23 @@ export default async function TicketHandoverPage({
         <Link scroll={false} href="/admin/tickets/sop">{t(lang, "SOP One Pager", "SOP一页纸")}</Link>
       </div>
       {saved ? <div style={{ color: "#166534", marginBottom: 10 }}>{t(lang, "Saved", "已保存")}</div> : null}
+      {err === "min-required" ? (
+        <div style={{ color: "#b91c1c", marginBottom: 10 }}>
+          必填项缺失：未闭环Top3、明日风险、责任人+截止时间 / Required fields missing
+        </div>
+      ) : null}
 
       <form method="GET" className="ts-filter-bar" style={{ marginBottom: 10 }}>
         <label>
           Date / 日期
           <input type="date" name="day" defaultValue={selectedDay} />
+        </label>
+        <label>
+          View / 视图
+          <select name="view" defaultValue={view}>
+            <option value="cs">客服视图 / CS View</option>
+            <option value="ops">教务视图 / Ops View</option>
+          </select>
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
@@ -123,13 +198,33 @@ export default async function TicketHandoverPage({
         <div>Need Info: {statusCount["Need Info"] ?? 0}</div>
         <div>Waiting Teacher: {statusCount["Waiting Teacher"] ?? 0}</div>
         <div>Waiting Parent: {statusCount["Waiting Parent"] ?? 0}</div>
+        <div>Exception: {statusCount["Exception"] ?? 0}</div>
+      </div>
+
+      <div style={{ border: "1px solid #fbcfe8", background: "#fdf2f8", borderRadius: 10, padding: 10, marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>未闭环自动卡片 / Open Ticket Cards</div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+          {cardGroups.map((g) => (
+            <div key={g.title} style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", padding: 8 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{g.title}: {g.cards.length}</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {g.cards.slice(0, 6).map((c) => (
+                  <div key={c.id} style={{ fontSize: 12, border: "1px solid #f1f5f9", borderRadius: 6, padding: 6 }}>
+                    <div><b>{c.ticketNo}</b> | {c.studentName}</div>
+                    <div>Owner: {c.owner ?? "-"}</div>
+                    <div>Next: {c.nextAction ?? "-"}</div>
+                    <div>Due: {c.nextActionDue ? c.nextActionDue.toLocaleString() : "-"}</div>
+                    <Link scroll={false} href={`/admin/tickets?q=${encodeURIComponent(c.ticketNo)}`}>Open / 打开</Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <form action={saveHandoverAction} style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-        <label>
-          Date / 日期
-          <input name="handoverDate" type="date" defaultValue={selectedDay} required />
-        </label>
+        <input type="hidden" name="handoverDate" value={selectedDay} />
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label>
             New tickets / 新增工单
@@ -140,26 +235,56 @@ export default async function TicketHandoverPage({
             <input name="completed" type="number" min={0} defaultValue={existing?.completed ?? completedToday} />
           </label>
         </div>
+
         <label>
-          Need Info（责任人/截止）/ Need Info (Owner/Deadline)
-          <textarea name="needInfo" rows={2} defaultValue={existing?.needInfo ?? ""} />
+          未闭环Top3（必填）/ Unresolved Top3 (Required)
+          <textarea name="unresolvedTop3" rows={3} defaultValue={existing?.notes ?? defaultUnresolvedTop3} required />
         </label>
+
         <label>
-          Waiting Teacher（责任人/预计回）/ Waiting Teacher (Owner/ETA)
-          <textarea name="waitingTeacher" rows={2} defaultValue={existing?.waitingTeacher ?? ""} />
+          明日首课风险（必填）/ Tomorrow First-class Risks (Required)
+          <textarea
+            name="tomorrowRisk"
+            rows={3}
+            defaultValue={
+              existing?.tomorrowLessonsCheck ??
+              (view === "ops"
+                ? "请填写：老师确认、教室、到课风险\nPlease fill: teacher confirmation, room, attendance risk"
+                : "请填写：家长沟通、确认时间、未确认项\nPlease fill: parent communication, confirmed time, pending items")
+            }
+            required
+          />
         </label>
+
         <label>
-          Waiting Parent/Partner（责任人/最晚确认）/ Waiting Parent/Partner (Owner/Latest Confirm)
-          <textarea name="waitingParentPartner" rows={2} defaultValue={existing?.waitingParentPartner ?? ""} />
+          责任人+截止时间（必填）/ Owner + Deadline (Required)
+          <textarea name="ownerDeadline" rows={3} defaultValue={defaultOwnerDeadline} required />
         </label>
-        <label>
-          Tomorrow lessons check（A）/ 明日上课检查（A）
-          <textarea name="tomorrowLessonsCheck" rows={2} defaultValue={existing?.tomorrowLessonsCheck ?? ""} />
-        </label>
-        <label>
-          Exceptions/Escalations / 异常升级
-          <textarea name="exceptionsEscalations" rows={2} defaultValue={existing?.exceptionsEscalations ?? ""} />
-        </label>
+
+        {view === "cs" ? (
+          <>
+            <label>
+              Need Info（责任人/截止）/ Need Info (Owner/Deadline)
+              <textarea name="needInfo" rows={2} defaultValue={existing?.needInfo ?? ""} />
+            </label>
+            <label>
+              Waiting Parent/Partner（责任人/最晚确认）/ Waiting Parent/Partner
+              <textarea name="waitingParentPartner" rows={2} defaultValue={existing?.waitingParentPartner ?? ""} />
+            </label>
+          </>
+        ) : (
+          <>
+            <label>
+              Waiting Teacher（责任人/预计回）/ Waiting Teacher (Owner/ETA)
+              <textarea name="waitingTeacher" rows={2} defaultValue={existing?.waitingTeacher ?? ""} />
+            </label>
+            <label>
+              Exceptions/Escalations / 异常升级
+              <textarea name="exceptionsEscalations" rows={2} defaultValue={existing?.exceptionsEscalations ?? ""} />
+            </label>
+          </>
+        )}
+
         <label>
           Notes / 备注
           <textarea name="notes" rows={2} defaultValue={existing?.notes ?? ""} />
@@ -168,7 +293,7 @@ export default async function TicketHandoverPage({
       </form>
 
       <div className="table-scroll">
-        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">Date / 日期</th>
@@ -196,4 +321,3 @@ export default async function TicketHandoverPage({
     </div>
   );
 }
-
