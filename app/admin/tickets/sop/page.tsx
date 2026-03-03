@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+﻿import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import Link from "next/link";
 
@@ -37,10 +37,24 @@ const SOP_BLOCKS = [
   },
   {
     titleZh: "分工",
-    titleEn: "Ownership",
+    titleEn: "Ownership by Role",
     lines: [
-      "Owner A/B 负责跟进到底，状态必须实时更新。",
-      "Owner A/B is responsible end-to-end; status must be updated in real time.",
+      "客服 CS：接单、补全信息、更新状态、催办。",
+      "CS: intake, complete info, update status, and follow-up reminders.",
+      "教务 Ops：排课协调、老师沟通、家长确认、执行落地。",
+      "Ops: scheduling, teacher coordination, parent confirmation, and execution.",
+      "管理 Mgmt：处理升级异常、跨部门协调、关键决策。",
+      "Mgmt: escalation handling, cross-team coordination, and final decisions.",
+      "每张工单必须有明确负责人角色（CS/Ops/Mgmt）与截止时间。",
+      "Every ticket must have a clear owner role (CS/Ops/Mgmt) and deadline.",
+    ],
+  },
+  {
+    titleZh: "完成定义",
+    titleEn: "Definition of Done",
+    lines: [
+      "已通知家长 + 已完成系统更新 + 已写入交接记录。",
+      "Parent informed + system updated + handover recorded.",
     ],
   },
   {
@@ -59,7 +73,7 @@ export default async function TicketSopPage() {
   return (
     <div>
       <h2>{t(lang, "Ticket SOP One Pager", "工单SOP一页纸")}</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Tickets", "返回工单中心")}</Link>
         <Link scroll={false} href="/admin/tickets/handover">{t(lang, "Daily Handover", "每日交接")}</Link>
       </div>
@@ -80,4 +94,3 @@ export default async function TicketSopPage() {
     </div>
   );
 }
-

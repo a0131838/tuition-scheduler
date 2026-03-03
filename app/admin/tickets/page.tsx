@@ -236,6 +236,13 @@ export default async function AdminTicketsPage({
           <Link scroll={false} href="/admin/tickets/sop">
             {t(lang, "SOP One Pager", "SOP一页纸")}
           </Link>
+          <Link
+            scroll={false}
+            href="/admin/tickets/sop"
+            style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 8, padding: "6px 10px", fontWeight: 700 }}
+          >
+            SOP给客服看 / SOP for CS
+          </Link>
           <Link scroll={false} href="/admin/tickets/archived">
             {t(lang, "Archived Tickets", "已归档工单")}
           </Link>

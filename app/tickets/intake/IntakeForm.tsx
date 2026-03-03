@@ -75,6 +75,16 @@ export default function IntakeForm({
       </div>
       {msg ? <div style={{ color: "#166534", marginBottom: 10 }}>{msg}</div> : null}
       {err ? <div style={{ color: "#b91c1c", marginBottom: 10 }}>{err}</div> : null}
+      <details style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", padding: "8px 10px", marginBottom: 10 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>快速流程 / Quick SOP</summary>
+        <ol style={{ margin: "8px 0 0", paddingLeft: 18, color: "#334155", lineHeight: 1.5 }}>
+          <li>先录入工单，再在群里同步。/ Create ticket first, then notify in chat.</li>
+          <li>每单都要有状态与下一步截止时间。/ Every ticket needs status and next deadline.</li>
+          <li>负责人按角色写清楚（CS/Ops/Mgmt）。/ Set owner role clearly (CS/Ops/Mgmt).</li>
+          <li>有证据就上传文件或图片，不放在口头。/ Upload proof files/images instead of verbal-only notes.</li>
+          <li>完成定义：家长已通知 + 系统已更新。/ Done means parent informed + system updated.</li>
+        </ol>
+      </details>
 
       {dupes.length > 0 ? (
         <div style={{ marginBottom: 10, border: "1px solid #f59e0b", background: "#fffbeb", padding: 10, borderRadius: 8 }}>
@@ -322,4 +332,3 @@ export default function IntakeForm({
     </div>
   );
 }
-
