@@ -194,8 +194,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const sealBase64 = `data:image/png;base64,${sealBuffer.toString("base64")}`;
       const imageId = workbook.addImage({ base64: sealBase64, extension: "png" });
       sheet.addImage(imageId, {
-        tl: { col: 5.35, row: 0.1 },
-        ext: { width: 160, height: 160 },
+        tl: { col: 5.35, row: 6.2 },
+        ext: { width: 136, height: 136 },
         editAs: "oneCell",
       });
     } catch {}
