@@ -195,7 +195,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const imageId = workbook.addImage({ base64: sealBase64, extension: "png" });
       sheet.addImage(imageId, {
         tl: { col: 4.6, row: 11.4 },
-        ext: { width: 116, height: 116 },
+        ext: { width: 116, height: 128 },
         editAs: "oneCell",
       });
     } catch {}
