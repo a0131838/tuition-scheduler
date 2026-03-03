@@ -108,7 +108,7 @@ export async function POST(
         teacher: normalizeTicketString(body.teacher, 120),
         poc: normalizeTicketString(body.poc, 120),
         wechat: normalizeTicketString(body.wechat, 120),
-        phone: normalizeTicketString(body.phone, 60),
+        phone: null,
         parentAvailability: normalizeTicketString(body.parentAvailability, 500),
         teacherAvailability: normalizeTicketString(body.teacherAvailability, 500),
         durationMin: normalizeTicketInt(body.durationMin),
@@ -135,4 +135,3 @@ export async function POST(
 
   return Response.json({ ok: true, id: created.id, ticketNo: created.ticketNo }, { status: 201 });
 }
-

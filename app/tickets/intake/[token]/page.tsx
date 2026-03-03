@@ -30,6 +30,6 @@ export default async function TicketIntakeByTokenPage({
     );
   }
 
-  return <IntakeForm apiPath={`/api/tickets/intake/${encodeURIComponent(token)}`} />;
+  const encoded = encodeURIComponent(token);
+  return <IntakeForm apiPath={`/api/tickets/intake/${encoded}`} uploadPath={`/api/tickets/upload/${encoded}`} />;
 }
-

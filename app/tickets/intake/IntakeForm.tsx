@@ -10,7 +10,7 @@ import {
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
 } from "@/lib/tickets";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -22,7 +22,12 @@ const fieldStyle: React.CSSProperties = {
   background: "#fff",
 };
 
-const labelStyle: React.CSSProperties = { display: "grid", gap: 6, fontWeight: 700, fontSize: 13 };
+const labelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 6,
+  fontWeight: 700,
+  fontSize: 13,
+};
 
 function OptionList({
   options,
@@ -43,12 +48,24 @@ function OptionList({
   );
 }
 
-export default function IntakeForm({ apiPath }: { apiPath: string }) {
+export default function IntakeForm({
+  apiPath,
+  uploadPath,
+}: {
+  apiPath: string;
+  uploadPath: string;
+}) {
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [dupes, setDupes] = useState<Array<{ ticketNo: string; status: string; createdAt: string; summary: string }>>([]);
   const [forceDuplicate, setForceDuplicate] = useState(false);
+  const [proofText, setProofText] = useState("");
+  const proofLines = useMemo(
+    () => proofText.split("\n").map((x) => x.trim()).filter(Boolean),
+    [proofText]
+  );
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "14px 12px 24px" }}>
@@ -58,6 +75,7 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
       </div>
       {msg ? <div style={{ color: "#166534", marginBottom: 10 }}>{msg}</div> : null}
       {err ? <div style={{ color: "#b91c1c", marginBottom: 10 }}>{err}</div> : null}
+
       {dupes.length > 0 ? (
         <div style={{ marginBottom: 10, border: "1px solid #f59e0b", background: "#fffbeb", padding: 10, borderRadius: 8 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>可能重复工单 / Potential Duplicates</div>
@@ -87,6 +105,7 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
           setMsg("");
           setErr("");
           const payload: Record<string, unknown> = Object.fromEntries(fd.entries());
+          payload.proof = proofText.trim();
           if (forceDuplicate) payload.forceDuplicate = "1";
           try {
             const res = await fetch(apiPath, {
@@ -107,6 +126,7 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
             setMsg(`提交成功 / Submitted: ${data.ticketNo}`);
             setDupes([]);
             setForceDuplicate(false);
+            setProofText("");
             form.reset();
           } catch (e2: any) {
             setErr(String(e2?.message ?? "提交失败 / Submit failed"));
@@ -146,8 +166,8 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
           </label>
           <label style={labelStyle}>
             负责人 / Owner
-            <select name="owner" style={fieldStyle}>
-              <OptionList options={TICKET_OWNER_OPTIONS} placeholder="可选 / Optional" />
+            <select name="owner" style={fieldStyle} defaultValue="">
+              <OptionList options={TICKET_OWNER_OPTIONS} placeholder="请选择 / Select" />
             </select>
           </label>
           <label style={labelStyle}>
@@ -167,12 +187,8 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
             <input name="poc" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
-            微信 / WeChat
+            当前微信群名称 / Current WeChat Group Name
             <input name="wechat" style={fieldStyle} />
-          </label>
-          <label style={labelStyle}>
-            电话 / Phone
-            <input name="phone" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
             时长(分钟) / Duration(min)
@@ -198,15 +214,15 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
           </label>
           <label style={labelStyle}>
             确认截止 / Confirm Deadline
-            <input name="confirmDeadline" type="date" style={fieldStyle} />
+            <input name="confirmDeadline" type="datetime-local" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
             SLA截止 / SLA Due
-            <input name="slaDue" type="date" style={fieldStyle} />
+            <input name="slaDue" type="datetime-local" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
             下步截止 / Next Action Due
-            <input name="nextActionDue" type="date" style={fieldStyle} />
+            <input name="nextActionDue" type="datetime-local" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
             录入人 / Intake Agent
@@ -242,12 +258,64 @@ export default function IntakeForm({ apiPath }: { apiPath: string }) {
           下一步动作 / Next Action
           <textarea name="nextAction" rows={2} style={fieldStyle} />
         </label>
-        <label style={labelStyle}>
-          证据链接/文本 / Proof
-          <textarea name="proof" rows={2} style={fieldStyle} />
-        </label>
 
-        <button type="submit" disabled={submitting || (dupes.length > 0 && !forceDuplicate)} style={{ width: "100%", minHeight: 44 }}>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>
+            证据上传（支持多文件）/ Evidence Upload (multiple files)
+          </div>
+          <input
+            type="file"
+            multiple
+            accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+            onChange={async (e) => {
+              const files = e.currentTarget.files;
+              if (!files || files.length === 0) return;
+              setErr("");
+              setUploading(true);
+              try {
+                const uploadFd = new FormData();
+                Array.from(files).forEach((f) => uploadFd.append("files", f));
+                const res = await fetch(uploadPath, { method: "POST", body: uploadFd });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data?.ok || !Array.isArray(data?.urls)) {
+                  setErr(String(data?.message ?? "上传失败 / Upload failed"));
+                  return;
+                }
+                setProofText((prev) => {
+                  const oldLines = prev.split("\n").map((x) => x.trim()).filter(Boolean);
+                  const merged = [...oldLines, ...data.urls];
+                  return merged.join("\n");
+                });
+              } catch (e2: any) {
+                setErr(String(e2?.message ?? "上传失败 / Upload failed"));
+              } finally {
+                setUploading(false);
+                e.currentTarget.value = "";
+              }
+            }}
+          />
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+            单文件上限 10MB / Max 10MB per file
+          </div>
+        </div>
+
+        <label style={labelStyle}>
+          证据链接/文本 / Proof URLs or Notes
+          <textarea
+            name="proofTextOnlyView"
+            rows={4}
+            value={proofText}
+            onChange={(e) => setProofText(e.target.value)}
+            style={fieldStyle}
+          />
+        </label>
+        {proofLines.length > 0 ? (
+          <div style={{ fontSize: 12, color: "#334155" }}>
+            已上传 / Uploaded: {proofLines.length}
+          </div>
+        ) : null}
+
+        <button type="submit" disabled={submitting || uploading || (dupes.length > 0 && !forceDuplicate)} style={{ width: "100%", minHeight: 44 }}>
           {submitting ? "提交中... / Submitting..." : "提交工单 / Submit Ticket"}
         </button>
       </form>

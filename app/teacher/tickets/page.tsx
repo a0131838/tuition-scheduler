@@ -53,6 +53,7 @@ export default async function TeacherTicketsPage({
 
   const rows = await prisma.ticket.findMany({
     where: {
+      isArchived: false,
       ...(q
         ? {
             OR: [
@@ -139,4 +140,3 @@ export default async function TeacherTicketsPage({
     </div>
   );
 }
-

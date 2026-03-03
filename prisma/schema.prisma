@@ -875,12 +875,14 @@ model Ticket {
   createdByName      String?
   completedAt        DateTime?
   completedByUserId  String?
+  isArchived         Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   completedByUser User? @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
+  @@index([isArchived, createdAt])
   @@index([priority, createdAt])
   @@index([studentName, createdAt])
   @@index([type, createdAt])

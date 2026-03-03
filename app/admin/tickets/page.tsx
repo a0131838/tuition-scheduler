@@ -28,9 +28,11 @@ async function updateStatusAction(formData: FormData) {
 
   const row = await prisma.ticket.findUnique({
     where: { id },
-    select: { status: true, summary: true },
+    select: { status: true, summary: true, isArchived: true },
   });
   if (!row) redirect(back);
+  if (row.isArchived) redirect(`${back}${back.includes("?") ? "&" : "?"}err=archived-locked`);
+  if (row.status === "Completed") redirect(`${back}${back.includes("?") ? "&" : "?"}err=completed-locked`);
   if (!canTransitionTicketStatus(row.status, nextStatus)) {
     redirect(`${back}${back.includes("?") ? "&" : "?"}err=status-flow`);
   }
@@ -49,6 +51,30 @@ async function updateStatusAction(formData: FormData) {
           ? `${row.summary ? `${row.summary}\n` : ""}[Completed Note] ${completionNote}`
           : row.summary,
     },
+  });
+  revalidatePath("/admin/tickets");
+  revalidatePath("/teacher/tickets");
+  redirect(back);
+}
+
+async function archiveTicketAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = trimValue(formData, "back", 500) || "/admin/tickets";
+  if (!id) redirect(back);
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, isArchived: true },
+  });
+  if (!row) redirect(back);
+  if (row.isArchived) redirect(back);
+  if (row.status !== "Completed") {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-completed-archive`);
+  }
+  await prisma.ticket.update({
+    where: { id },
+    data: { isArchived: true },
   });
   revalidatePath("/admin/tickets");
   revalidatePath("/teacher/tickets");
@@ -87,6 +113,16 @@ async function disableTokenAction(formData: FormData) {
   redirect("/admin/tickets?tok=1");
 }
 
+async function deleteTokenAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  if (!id) redirect("/admin/tickets");
+  await prisma.ticketIntakeToken.delete({ where: { id } });
+  revalidatePath("/admin/tickets");
+  redirect("/admin/tickets?tok=1");
+}
+
 export default async function AdminTicketsPage({
   searchParams,
 }: {
@@ -105,6 +141,7 @@ export default async function AdminTicketsPage({
   const [rows, tokens] = await Promise.all([
     prisma.ticket.findMany({
       where: {
+        isArchived: false,
         ...(q
           ? {
               OR: [
@@ -123,7 +160,7 @@ export default async function AdminTicketsPage({
     }),
     prisma.ticketIntakeToken.findMany({
       orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
-      take: 10,
+      take: 20,
     }),
   ]);
 
@@ -134,14 +171,13 @@ export default async function AdminTicketsPage({
   return (
     <div>
       <h2>{t(lang, "Ticket Center", "工单中心")}</h2>
-      {err === "status-flow" ? (
+      {err ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          状态流转不允许 / Invalid status transition
-        </div>
-      ) : null}
-      {err === "need-note" ? (
-        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          完成时必须填写完成说明 / Completion note is required when marking completed
+          {err === "status-flow" && "状态流转不允许 / Invalid status transition"}
+          {err === "need-note" && "完成时必须填写完成说明 / Completion note is required when marking completed"}
+          {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
+          {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
+          {err === "need-completed-archive" && "仅已完成工单可归档 / Only completed tickets can be archived."}
         </div>
       ) : null}
       {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>录入链接已更新 / Intake link updated</div> : null}
@@ -192,14 +228,18 @@ export default async function AdminTicketsPage({
                     <td>{tk.isActive && !expired ? "Active / 可用" : "Inactive / 不可用"}</td>
                     <td>{tk.expiresAt ? tk.expiresAt.toLocaleString() : "-"}</td>
                     <td>
-                      {tk.isActive ? (
-                        <form action={disableTokenAction}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {tk.isActive ? (
+                          <form action={disableTokenAction}>
+                            <input type="hidden" name="id" value={tk.id} />
+                            <button type="submit">停用 / Disable</button>
+                          </form>
+                        ) : null}
+                        <form action={deleteTokenAction}>
                           <input type="hidden" name="id" value={tk.id} />
-                          <button type="submit">停用 / Disable</button>
+                          <button type="submit">删除 / Delete</button>
                         </form>
-                      ) : (
-                        "-"
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -276,19 +316,32 @@ export default async function AdminTicketsPage({
                 <td>{r.owner ?? "-"}</td>
                 <td style={{ maxWidth: 340 }}>{r.summary ?? "-"}</td>
                 <td>
-                  <form action={updateStatusAction} style={{ display: "grid", gap: 6 }}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <input type="hidden" name="back" value={backHref} />
-                    <select name="nextStatus" defaultValue={r.status}>
-                      {TICKET_STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.zh} / {o.en}
-                        </option>
-                      ))}
-                    </select>
-                    <input name="completionNote" placeholder="完成说明(仅完成时必填) / Completion note" />
-                    <button type="submit">{t(lang, "Save", "保存")}</button>
-                  </form>
+                  {r.status === "Completed" ? (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <div style={{ color: "#166534", fontWeight: 700 }}>
+                        已完成（锁定）/ Completed (Locked)
+                      </div>
+                      <form action={archiveTicketAction}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="back" value={backHref} />
+                        <button type="submit">归档 / Archive</button>
+                      </form>
+                    </div>
+                  ) : (
+                    <form action={updateStatusAction} style={{ display: "grid", gap: 6 }}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="back" value={backHref} />
+                      <select name="nextStatus" defaultValue={r.status}>
+                        {TICKET_STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.zh} / {o.en}
+                          </option>
+                        ))}
+                      </select>
+                      <input name="completionNote" placeholder="完成说明(仅完成时必填) / Completion note" />
+                      <button type="submit">{t(lang, "Save", "保存")}</button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}

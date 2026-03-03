@@ -53,8 +53,9 @@ export function canTransitionTicketStatus(from: string, to: string) {
 }
 
 export const TICKET_OWNER_OPTIONS: OptionItem[] = [
-  { value: "B", zh: "B组", en: "Team B" },
-  { value: "A", zh: "A组", en: "Team A" },
+  { value: "Eva", zh: "Eva", en: "Eva" },
+  { value: "Emily", zh: "Emily", en: "Emily" },
+  { value: "Jasmine", zh: "Jasmine", en: "Jasmine" },
 ];
 
 export const TICKET_MODE_OPTIONS: OptionItem[] = [
@@ -139,3 +140,17 @@ export function generateIntakeToken() {
   }
   return out;
 }
+
+export const TICKET_UPLOAD_ACCEPT = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+];
+
+export const TICKET_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
