@@ -143,7 +143,7 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -152,6 +152,7 @@ export default async function AdminTicketsPage({
   const status = String(sp?.status ?? "").trim();
   const owner = String(sp?.owner ?? "").trim();
   const type = String(sp?.type ?? "").trim();
+  const focus = String(sp?.focus ?? "").trim();
   const err = String(sp?.err ?? "").trim();
   const tokenSaved = sp?.tok === "1";
 
@@ -171,6 +172,21 @@ export default async function AdminTicketsPage({
         ...(status ? { status } : {}),
         ...(owner ? { owner } : {}),
         ...(type ? { type } : {}),
+        ...(focus === "mgmt"
+          ? {
+              OR: [
+                { status: "Exception" },
+                { priority: { contains: "紧急" } },
+                { priority: { contains: "Urgent", mode: "insensitive" } },
+                {
+                  AND: [
+                    { nextActionDue: { lt: new Date() } },
+                    { status: { notIn: ["Completed", "Cancelled"] } },
+                  ],
+                },
+              ],
+            }
+          : {}),
       },
       orderBy: [{ createdAt: "desc" }],
       take: 200,
@@ -183,7 +199,7 @@ export default async function AdminTicketsPage({
 
   const activeToken = tokens.find((x) => x.isActive && (!x.expiresAt || x.expiresAt.getTime() > Date.now()));
   const intakeLink = activeToken ? `/tickets/intake/${activeToken.token}` : "";
-  const backHref = `/admin/tickets?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}&owner=${encodeURIComponent(owner)}&type=${encodeURIComponent(type)}`;
+  const backHref = `/admin/tickets?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}&owner=${encodeURIComponent(owner)}&type=${encodeURIComponent(type)}&focus=${encodeURIComponent(focus)}`;
 
   return (
     <div>
@@ -198,6 +214,11 @@ export default async function AdminTicketsPage({
         </div>
       ) : null}
       {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>录入链接已更新 / Intake link updated</div> : null}
+      {focus === "mgmt" ? (
+        <div style={{ color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: 8, marginBottom: 8 }}>
+          管理介入视图 / Management Focus: 异常、紧急、逾期未完成工单
+        </div>
+      ) : null}
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>录入链接管理 / Intake Link Management</div>
@@ -297,6 +318,7 @@ export default async function AdminTicketsPage({
         </select>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Clear", "清空")}</Link>
+        <Link scroll={false} href="/admin/tickets?focus=mgmt">Mgmt Focus / 管理介入</Link>
       </form>
 
       <div className="table-scroll">
@@ -372,7 +394,7 @@ export default async function AdminTicketsPage({
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={backHref} />
                       <select name="nextStatus" defaultValue={r.status}>
-                        {TICKET_STATUS_OPTIONS.map((o) => (
+                        {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(r.status, o.value)).map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.zh} / {o.en}
                           </option>
