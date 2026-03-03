@@ -253,6 +253,10 @@ export default async function TeacherDetailPage({
         <a href="/admin/teachers">← {t(lang, "Back to Teachers", "返回老师列表")}</a>
         <span style={{ color: "#999" }}>(TCH-{teacher.id.slice(0, 4)}…{teacher.id.slice(-4)})</span>
       </p>
+      <p style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <a href={`/admin/teachers/${teacherId}/availability`}>{t(lang, "Availability", "可用时间")}</a>
+        <a href={`/admin/teachers/${teacherId}/calendar`}>{t(lang, "Month Calendar", "月表")}</a>
+      </p>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}

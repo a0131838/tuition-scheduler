@@ -381,6 +381,14 @@ export default async function TeachersPage({
                     >
                       {t(lang, "Set / View", "设置 / 查看")}
                     </a>
+                    <div style={{ marginTop: 6 }}>
+                      <a
+                        href={`/admin/teachers/${tch.id}/calendar`}
+                        style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6, display: "inline-block" }}
+                      >
+                        {t(lang, "Month Calendar", "月表")}
+                      </a>
+                    </div>
                   </td>
                   <td>
                     {tch.users[0]?.email ? (
