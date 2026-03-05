@@ -11,6 +11,7 @@ _Learn about the person you're helping. Update this as you go._
   - 中文短指令模式：用户给学生姓名时，先做姓名解析并返回候选编号；用户选编号后再查详情
   - 姓名查工单为只读流程，不需要 apply 确认
   - 最近工单输出固定字段：工单编号 / 时间 / 状态 / 负责人 / 摘要 / 优先级建议
+  - 课表/排课汇报默认排除“请假免扣课”课次（EXCUSED 且免扣），不要发送给老板
 
 ## Context
 
