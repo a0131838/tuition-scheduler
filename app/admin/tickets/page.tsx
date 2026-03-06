@@ -26,12 +26,26 @@ function proofItems(proof: string | null | undefined) {
     .slice(0, 6);
 }
 
+function proofItemsAll(proof: string | null | undefined) {
+  if (!proof) return [];
+  return proof
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
 function normalizeProofUrl(item: string) {
   if (item.startsWith("/uploads/tickets/")) {
     const name = item.replace("/uploads/tickets/", "");
     return `/api/tickets/files/${encodeURIComponent(name)}`;
   }
   return item;
+}
+
+function asText(v: string | null | undefined) {
+  const s = String(v ?? "").trim();
+  return s || "-";
 }
 
 async function updateStatusAction(formData: FormData) {
@@ -341,6 +355,7 @@ export default async function AdminTicketsPage({
               <th align="left">{t(lang, "Owner", "负责人")}</th>
               <th align="left">{t(lang, "Summary", "摘要")}</th>
               <th align="left">{t(lang, "Proof", "证据")}</th>
+              <th align="left">{t(lang, "Details", "详情")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -364,7 +379,7 @@ export default async function AdminTicketsPage({
                   ) : null}
                 </td>
                 <td>{r.owner ?? "-"}</td>
-                <td style={{ maxWidth: 340 }}>{r.summary ?? "-"}</td>
+                <td style={{ maxWidth: 340 }}>{r.summary ?? "（无摘要，点详情）"}</td>
                 <td style={{ maxWidth: 260 }}>
                   {proofItems(r.proof).length === 0 ? (
                     "-"
@@ -383,6 +398,54 @@ export default async function AdminTicketsPage({
                       })}
                     </div>
                   )}
+                </td>
+                <td style={{ minWidth: 360 }}>
+                  <details>
+                    <summary style={{ cursor: "pointer" }}>查看详情 / Details</summary>
+                    <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, color: "#334155" }}>
+                      <div><b>来源</b>: {asText(r.source)}</div>
+                      <div><b>年级</b>: {asText(r.grade)}</div>
+                      <div><b>课程</b>: {asText(r.course)}</div>
+                      <div><b>老师</b>: {asText(r.teacher)}</div>
+                      <div><b>对接人</b>: {asText(r.poc)}</div>
+                      <div><b>微信群</b>: {asText(r.wechat)}</div>
+                      <div><b>时长(分钟)</b>: {r.durationMin ?? "-"}</div>
+                      <div><b>授课形式</b>: {asText(r.mode)}</div>
+                      <div><b>版本</b>: {asText(r.version)}</div>
+                      <div><b>系统已更新</b>: {asText(r.systemUpdated)}</div>
+                      <div><b>确认截止</b>: {r.confirmDeadline ? r.confirmDeadline.toLocaleString() : "-"}</div>
+                      <div><b>SLA截止</b>: {r.slaDue ? r.slaDue.toLocaleString() : "-"}</div>
+                      <div><b>下步截止</b>: {r.nextActionDue ? r.nextActionDue.toLocaleString() : "-"}</div>
+                      <div><b>最后更新时间</b>: {r.lastUpdateAt ? r.lastUpdateAt.toLocaleString() : "-"}</div>
+                      <div><b>录入人</b>: {asText(r.createdByName)}</div>
+                      <div><b>地址/会议链接</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.addressOrLink)}</span></div>
+                      <div><b>家长可约</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.parentAvailability)}</span></div>
+                      <div><b>老师可约</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.teacherAvailability)}</span></div>
+                      <div><b>最终排课</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.finalSchedule)}</span></div>
+                      <div><b>风险备注</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.risksNotes)}</span></div>
+                      <div><b>下一步动作</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.nextAction)}</span></div>
+                      <div>
+                        <b>全部证据</b>:{" "}
+                        {proofItemsAll(r.proof).length === 0 ? (
+                          "-"
+                        ) : (
+                          <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+                            {proofItemsAll(r.proof).map((item, idx) => {
+                              const href = normalizeProofUrl(item);
+                              const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
+                              if (!isLink) return <span key={`${r.id}-proof-all-${idx}`}>{item}</span>;
+                              const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
+                              return (
+                                <a key={`${r.id}-proof-all-${idx}`} href={href} target="_blank" rel="noreferrer">
+                                  {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </details>
                 </td>
                 <td>
                   {r.status === "Completed" ? (
