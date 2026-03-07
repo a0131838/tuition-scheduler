@@ -336,7 +336,17 @@ export default async function TeacherDetailPage({
         labels={{
           loginEmail: t(lang, "Login Email", "登录邮箱"),
           teacherName: t(lang, "Teacher Name", "老师姓名"),
-          initialPassword: t(lang, "Initial Password", "初始密码"),
+          initialPassword: t(lang, "Initial Password (new account only)", "初始密码（仅新建账号时使用）"),
+          passwordHint: t(
+            lang,
+            "If this email already exists from a previously unlinked teacher account, the existing password will be kept.",
+            "如果这个邮箱来自之前解绑过的老师账号，系统会保留原密码，不会覆盖。"
+          ),
+          rebindingHint: t(
+            lang,
+            "Existing unlinked teacher/admin emails will be rebound automatically. Emails already linked to another teacher will still be blocked.",
+            "已存在但当前未绑定老师的老师/管理账号邮箱会自动重新绑定；若该邮箱已绑定其他老师，仍会拦截。"
+          ),
           quickCopy: t(lang, "Quick Copy", "一键复制"),
           copy3: t(lang, "Copy 3 fields", "复制三项信息"),
           submit: t(lang, "Create + Link Teacher User", "创建并绑定老师账号"),
@@ -509,7 +519,6 @@ export default async function TeacherDetailPage({
     </div>
   );
 }
-
 
 
 

@@ -21,8 +21,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const name = String(body?.name ?? "").trim();
   const password = String(body?.password ?? "");
 
-  if (!email || !name || !password) return bad("Email, name, and password are required", 409);
-  if (password.length < 8) return bad("Password must be at least 8 characters", 409);
+  if (!email || !name) return bad("Email and name are required", 409);
 
   const teacher = await prisma.teacher.findUnique({
     where: { id: teacherId },
@@ -40,9 +39,27 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const existingUser = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, teacherId: true, role: true },
   });
-  if (existingUser) return bad("Email already exists", 409);
+  if (existingUser) {
+    if (existingUser.teacherId) {
+      return bad("This email is already linked to another teacher", 409);
+    }
+    if (existingUser.role !== "TEACHER" && existingUser.role !== "ADMIN") {
+      return bad("Email already exists under a non-teacher account", 409);
+    }
+
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: { teacherId, name },
+      select: { id: true },
+    });
+
+    return Response.json({ ok: true, reusedExistingUser: true });
+  }
+
+  if (!password) return bad("Password is required for a brand new account", 409);
+  if (password.length < 8) return bad("Password must be at least 8 characters", 409);
 
   const { salt, hash } = createPasswordHash(password);
   await prisma.user.create({
@@ -57,6 +74,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     select: { id: true },
   });
 
-  return Response.json({ ok: true }, { status: 201 });
+  return Response.json({ ok: true, createdNewUser: true }, { status: 201 });
 }
-

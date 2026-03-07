@@ -15,6 +15,8 @@ export default function CreateAndBindTeacherUserFormClient({
     loginEmail: string;
     teacherName: string;
     initialPassword: string;
+    passwordHint: string;
+    rebindingHint: string;
     quickCopy: string;
     copy3: string;
     submit: string;
@@ -75,6 +77,7 @@ export default function CreateAndBindTeacherUserFormClient({
       <label style={{ display: "grid", gap: 4 }}>
         <span style={{ fontSize: 12, color: "#666" }}>{labels.initialPassword}</span>
         <input id="teacher-account-password" name="password" type="password" style={{ minWidth: 220 }} />
+        <span style={{ fontSize: 12, color: "#666", maxWidth: 280 }}>{labels.passwordHint}</span>
       </label>
       <label style={{ display: "grid", gap: 4 }}>
         <span style={{ fontSize: 12, color: "#666" }}>{labels.quickCopy}</span>
@@ -88,7 +91,7 @@ export default function CreateAndBindTeacherUserFormClient({
       <button type="submit" disabled={busy}>
         {busy ? `${labels.submit}...` : labels.submit}
       </button>
+      <div style={{ color: "#666", fontSize: 12, flexBasis: "100%" }}>{labels.rebindingHint}</div>
     </form>
   );
 }
-
