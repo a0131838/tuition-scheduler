@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { getVisibleSessionStudentNames } from "@/lib/session-students";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
 
@@ -19,12 +20,7 @@ function fmtRange(startAt: Date, endAt: Date) {
 }
 
 function getStudentNames(session: any) {
-  const classStudentNames = session.class.enrollments.map((e: any) => e.student.name).filter(Boolean);
-  if (session.class.capacity === 1) {
-    const onlyStudent = session.student?.name ?? session.class.oneOnOneStudent?.name ?? (classStudentNames[0] ?? null);
-    return onlyStudent ? [onlyStudent] : [];
-  }
-  return Array.from(new Set(classStudentNames));
+  return getVisibleSessionStudentNames(session);
 }
 
 function buildManualContent(session: any, channel: string, note: string) {
@@ -71,6 +67,7 @@ export async function POST(req: Request) {
     include: {
       teacher: true,
       student: true,
+      attendances: { select: { studentId: true, status: true } },
       feedbacks: true,
       class: {
         include: {

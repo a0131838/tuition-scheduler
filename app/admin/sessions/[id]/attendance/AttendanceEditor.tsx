@@ -12,6 +12,8 @@ export type AttendanceRow = {
   note: string;
   packageId: string;
   excusedCharge: boolean;
+  waiveDeduction?: boolean;
+  waiveReason?: string;
   excusedBaseCount: number;
   packageOptions: Array<{
     id: string;
@@ -274,4 +276,3 @@ export default function AttendanceEditor({ rows, lang }: Props) {
     </>
   );
 }
-

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AttendanceStatus } from "@prisma/client";
+import { getCancelledSessionStudentIds } from "@/lib/session-students";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { class: true },
+    include: { class: true, attendances: true },
   });
   if (!session) return bad("Session not found", 404);
 
@@ -38,8 +39,11 @@ export async function POST(req: Request) {
     where: { classId: session.classId },
     select: { studentId: true },
   });
+  const cancelledSet = getCancelledSessionStudentIds(session);
   const expectedSet = new Set(
-    session.class.capacity === 1 && session.studentId ? [session.studentId] : enrollments.map((e) => e.studentId)
+    (session.class.capacity === 1 && session.studentId ? [session.studentId] : enrollments.map((e) => e.studentId)).filter(
+      (studentId) => !cancelledSet.has(studentId)
+    )
   );
 
   const targetIds = Array.from(new Set(studentIds.map((s) => s.trim()).filter((s) => s && expectedSet.has(s))));
@@ -65,4 +69,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true, updatedCount: targetIds.length });
 }
-

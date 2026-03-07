@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { getCancelledSessionStudentIds, getVisibleSessionStudentNames } from "@/lib/session-students";
 import TeacherAttendanceClient from "./TeacherAttendanceClient";
 import TeacherFeedbackClient from "./TeacherFeedbackClient";
 
@@ -48,7 +49,7 @@ export default async function TeacherSessionDetailPage({
     where: { id: sessionId },
     include: {
       student: true,
-      class: { include: { course: true, subject: true, level: true, campus: true, room: true } },
+      class: { include: { course: true, subject: true, level: true, campus: true, room: true, oneOnOneStudent: true } },
       attendances: true,
       feedbacks: { where: { teacherId: teacher.id } },
     },
@@ -63,10 +64,23 @@ export default async function TeacherSessionDetailPage({
     include: { student: true },
     orderBy: { student: { name: "asc" } },
   });
+  const cancelledSet = getCancelledSessionStudentIds(session);
   const attendanceEnrollments =
     session.class.capacity === 1 && session.studentId
       ? enrollments.filter((e) => e.studentId === session.studentId)
       : enrollments;
+  const visibleAttendanceEnrollments = attendanceEnrollments.filter((e) => !cancelledSet.has(e.studentId));
+  const visibleStudentNames = getVisibleSessionStudentNames({
+    studentId: session.studentId,
+    student: session.student,
+    attendances: session.attendances,
+    class: {
+      capacity: session.class.capacity,
+      oneOnOneStudentId: session.class.oneOnOneStudentId,
+      oneOnOneStudent: session.class.oneOnOneStudent,
+      enrollments,
+    },
+  });
 
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
@@ -119,7 +133,8 @@ export default async function TeacherSessionDetailPage({
         </div>
         {session.class.capacity === 1 && (
           <div>
-            {t(lang, "Student", "学生")}: {session.student?.name ?? t(lang, "Not assigned", "未选择学生")}
+            {t(lang, "Student", "学生")}:{" "}
+            {visibleStudentNames[0] ?? t(lang, "Cancelled / hidden", "已取消 / 已隐藏")}
           </div>
         )}
         <div>
@@ -131,7 +146,7 @@ export default async function TeacherSessionDetailPage({
       <h3>{t(lang, "Attendance", "点名")}</h3>
       <TeacherAttendanceClient
         sessionId={session.id}
-        initialRows={attendanceEnrollments.map((e) => {
+        initialRows={visibleAttendanceEnrollments.map((e) => {
           const a = attMap.get(e.studentId);
           return {
             studentId: e.studentId,
@@ -199,7 +214,4 @@ export default async function TeacherSessionDetailPage({
     </div>
   );
 }
-
-
-
 

@@ -22,10 +22,18 @@ export default function AdminSessionAttendanceClient({
     saving: string;
     saveErrorPrefix: string;
     markAllErrorPrefix: string;
+    waiveDeduction: string;
+    waiveHint: string;
+    waiveReasonPlaceholder: string;
   };
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const initialWaiveDeduction = rows.some((row) => Boolean(row.waiveDeduction));
+  const initialWaiveReason =
+    rows.find((row) => row.waiveReason && row.waiveReason.trim())?.waiveReason ?? "Assessment lesson";
+  const [waiveDeduction, setWaiveDeduction] = useState(initialWaiveDeduction);
+  const [waiveReason, setWaiveReason] = useState(initialWaiveReason);
 
   function refreshPreserveScroll() {
     const y = window.scrollY;
@@ -40,6 +48,8 @@ export default function AdminSessionAttendanceClient({
     try {
       const res = await fetch(`/api/admin/sessions/${encodeURIComponent(sessionId)}/attendance/mark-all-present`, {
         method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ waiveDeduction, waiveReason }),
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Mark all failed"));
@@ -63,6 +73,8 @@ export default function AdminSessionAttendanceClient({
         note: String(formData.get(`note:${r.studentId}`) ?? r.note ?? ""),
         packageId: String(formData.get(`pkg:${r.studentId}`) ?? r.packageId ?? ""),
         excusedCharge: String(formData.get(`charge:${r.studentId}`) ?? "") === "on",
+        waiveDeduction,
+        waiveReason: waiveDeduction ? waiveReason : "",
       }));
 
       const res = await fetch(`/api/admin/sessions/${encodeURIComponent(sessionId)}/attendance`, {
@@ -82,6 +94,37 @@ export default function AdminSessionAttendanceClient({
 
   return (
     <div>
+      <div
+        style={{
+          border: "1px solid #fde68a",
+          background: "#fffbeb",
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 12,
+          display: "grid",
+          gap: 8,
+        }}
+      >
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+          <input
+            type="checkbox"
+            checked={waiveDeduction}
+            onChange={(e) => setWaiveDeduction(e.target.checked)}
+          />
+          {labels.waiveDeduction}
+        </label>
+        <div style={{ color: "#666", fontSize: 12 }}>
+          {labels.waiveHint}
+        </div>
+        <input
+          type="text"
+          value={waiveReason}
+          onChange={(e) => setWaiveReason(e.target.value)}
+          placeholder={labels.waiveReasonPlaceholder}
+          disabled={!waiveDeduction}
+          style={{ maxWidth: 360 }}
+        />
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div style={{ fontWeight: 700 }}>{labels.title}</div>
         {canMarkAll && (

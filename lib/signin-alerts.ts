@@ -334,6 +334,7 @@ export async function getAdminOpenSignInAlerts(limit = 200) {
         session: {
           include: {
             student: { select: { id: true, name: true } },
+            attendances: { select: { studentId: true, status: true } },
             class: {
               include: {
                 course: true,
@@ -370,6 +371,7 @@ export async function getTeacherOpenSignInAlerts(userId: string, limit = 200) {
         session: {
           include: {
             student: { select: { id: true, name: true } },
+            attendances: { select: { studentId: true, status: true } },
             class: {
               include: {
                 course: true,
@@ -413,6 +415,7 @@ export async function getTeacherVisibleSignInAlerts(
         session: {
           include: {
             student: { select: { id: true, name: true } },
+            attendances: { select: { studentId: true, status: true } },
             class: {
               include: {
                 course: true,

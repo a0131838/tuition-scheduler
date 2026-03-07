@@ -218,6 +218,12 @@ async function applyOneStudentAttendanceAndDeduct(
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   const { id: sessionId } = await ctx.params;
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {}
+  const waiveDeduction = Boolean(body?.waiveDeduction);
+  const waiveReason = waiveDeduction ? String(body?.waiveReason ?? "").trim() || "Assessment lesson" : null;
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -263,8 +269,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             note: null,
             packageId: null,
             excusedCharge: false,
-            waiveDeduction: false,
-            waiveReason: null,
+            waiveDeduction,
+            waiveReason,
           },
           existing: existingMap.get(studentId),
           isGroupClass,
@@ -285,6 +291,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       studentCount: studentIds.length,
       isGroupClass,
       deductedMinutesPerStudent: dm,
+      waiveDeduction,
+      waiveReason,
     },
   });
 

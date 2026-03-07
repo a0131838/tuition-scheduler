@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { getVisibleSessionStudents } from "@/lib/session-students";
 
 function parseMonth(s?: string) {
   if (!s) return null;
@@ -123,13 +124,16 @@ export default async function TeacherCalendarPage({
       },
       orderBy: [{ startAt: "asc" }],
       include: {
-        student: { select: { name: true } },
+        student: { select: { id: true, name: true } },
+        attendances: { select: { studentId: true, status: true } },
         class: {
           select: {
+            capacity: true,
+            oneOnOneStudentId: true,
             course: { select: { name: true } },
             subject: { select: { name: true } },
-            oneOnOneStudent: { select: { name: true } },
-            enrollments: { select: { id: true } },
+            oneOnOneStudent: { select: { id: true, name: true } },
+            enrollments: { select: { studentId: true, student: { select: { name: true } } } },
           },
         },
       },
@@ -156,14 +160,14 @@ export default async function TeacherCalendarPage({
     }>
   >();
   for (const s of sessions) {
+    const visibleStudents = getVisibleSessionStudents(s);
+    if (visibleStudents.length === 0) continue;
     const key = ymd(new Date(s.startAt));
     const arr = sessionMap.get(key) ?? [];
     const studentLabel =
-      s.student?.name ??
-      s.class.oneOnOneStudent?.name ??
-      (s.class.enrollments.length > 1
-        ? `${s.class.enrollments.length} ${t(lang, "students", "名学生")}`
-        : t(lang, "Group", "班课"));
+      visibleStudents.length === 1
+        ? visibleStudents[0]?.name ?? t(lang, "Group", "班课")
+        : `${visibleStudents.length} ${t(lang, "students", "名学生")}`;
     arr.push({
       id: s.id,
       startMin: toMin(new Date(s.startAt)),

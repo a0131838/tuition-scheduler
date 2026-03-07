@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AttendanceStatus } from "@prisma/client";
 import { logAudit } from "@/lib/audit-log";
+import { getCancelledSessionStudentIds } from "@/lib/session-students";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -33,11 +34,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!allowed) return bad("No permission", 403);
 
   const enrollments = await prisma.enrollment.findMany({ where: { classId: session.classId } });
+  const cancelledSet = getCancelledSessionStudentIds(session);
   const attendanceEnrollments =
     session.class.capacity === 1 && session.studentId
       ? enrollments.filter((e) => e.studentId === session.studentId)
       : enrollments;
-  const expected = new Set(attendanceEnrollments.map((e) => e.studentId));
+  const expected = new Set(attendanceEnrollments.filter((e) => !cancelledSet.has(e.studentId)).map((e) => e.studentId));
 
   for (const it of items) {
     const studentId = String(it?.studentId ?? "");

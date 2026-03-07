@@ -59,6 +59,8 @@ export default async function AttendancePage({
         note: true,
         packageId: true,
         excusedCharge: true,
+        waiveDeduction: true,
+        waiveReason: true,
       },
     }),
   ]);
@@ -185,6 +187,13 @@ export default async function AttendancePage({
               saving: t(lang, "Saving...", "保存中..."),
               saveErrorPrefix: t(lang, "Error", "错误"),
               markAllErrorPrefix: t(lang, "Error", "错误"),
+              waiveDeduction: t(lang, "Assessment / Waive deduction", "评估课 / 免扣课时"),
+              waiveHint: t(
+                lang,
+                "If enabled, attendance and feedback stay recorded, but package minutes/count will not be deducted.",
+                "开启后，课次记录和反馈会保留，但不会扣减课包分钟数/次数。"
+              ),
+              waiveReasonPlaceholder: t(lang, "Waive reason", "免扣原因"),
             }}
             rows={attendanceEnrollments.map((e) => {
               const a = map.get(e.studentId);
@@ -214,6 +223,8 @@ export default async function AttendancePage({
                 note: a?.note ?? "",
                 packageId: a?.packageId ?? (opts[0]?.id ?? ""),
                 excusedCharge: a?.excusedCharge ?? false,
+                waiveDeduction: a?.waiveDeduction ?? false,
+                waiveReason: a?.waiveReason ?? "",
                 excusedBaseCount: prevExcused,
                 packageOptions: opts,
               } as AttendanceRow;
@@ -224,8 +235,6 @@ export default async function AttendancePage({
     </div>
   );
 }
-
-
 
 
 

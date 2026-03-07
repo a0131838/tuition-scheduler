@@ -335,7 +335,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const desired = desiredMap.get(studentId);
     if (!desired) continue;
     const existing = existingMap.get(studentId);
-    const canDeduct = desired.status === AttendanceStatus.EXCUSED ? desired.excusedCharge : DEDUCTABLE_STATUS.has(desired.status);
+    const canDeduct =
+      !desired.waiveDeduction &&
+      (desired.status === AttendanceStatus.EXCUSED ? desired.excusedCharge : DEDUCTABLE_STATUS.has(desired.status));
     const prevUnits = isGroupClass ? existing?.deductedCount ?? 0 : existing?.deductedMinutes ?? 0;
     const nextUnits = canDeduct ? (isGroupClass ? 1 : desired.deductedMinutes) : 0;
     const delta = nextUnits - prevUnits;

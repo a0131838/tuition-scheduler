@@ -8,6 +8,7 @@ import {
   syncSignInAlerts,
 } from "@/lib/signin-alerts";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { getVisibleSessionStudentNames } from "@/lib/session-students";
 import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
 
 function fmtRange(startAt: Date, endAt: Date) {
@@ -19,11 +20,7 @@ function classLabel(cls: any) {
 }
 
 function sessionStudentNames(session: any) {
-  if (session.class?.capacity === 1) {
-    const one = session.student?.name ?? session.class?.oneOnOneStudent?.name ?? session.class?.enrollments?.[0]?.student?.name ?? null;
-    return one ? [one] : [];
-  }
-  return (session.class?.enrollments ?? []).map((e: any) => e.student?.name).filter(Boolean);
+  return getVisibleSessionStudentNames(session);
 }
 
 function sessionStudentNameMap(session: any) {
@@ -371,6 +368,5 @@ export default async function TeacherAlertsPage({
     </div>
   );
 }
-
 
 
