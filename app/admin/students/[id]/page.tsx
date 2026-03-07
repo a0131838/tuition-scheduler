@@ -15,6 +15,7 @@ import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { campusRequiresRoom } from "@/lib/campus";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -104,7 +105,7 @@ const zhMap: Record<string, string> = {
   "Restore": "\u6062\u590d",
   "Restore this session?": "\u786e\u8ba4\u6062\u590d\u8be5\u8bfe\u6b21\uff1f",
   "Room": "\u6559\u5ba4",
-  "Room is required for offline campus.": "\u9009\u62e9\u7ebf\u4e0b\u6821\u533a\u65f6\uff0c\u5fc5\u987b\u9009\u62e9\u6559\u5ba4",
+  "Room is required for this campus.": "\u5f53\u524d\u6821\u533a\u5fc5\u987b\u9009\u62e9\u6559\u5ba4",
   "Save": "\u4fdd\u5b58",
   "Schedule": "\u6392\u8bfe",
   "Scheduled": "\u5df2\u6392\u8bfe",
@@ -504,7 +505,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     if (!campus) {
       redirect(backWithQuickParams({ err: "Campus not found" }));
     }
-    if (!roomId && !campus.isOnline) {
+    if (!roomId && campusRequiresRoom(campus)) {
       redirect(backWithQuickParams({ err: "Room is required" }));
     }
     if (roomId) {
@@ -1280,8 +1281,9 @@ export default async function StudentDetailPage({
     reason?: string;
   }[] = [];
   let quickPackageWarn = "";
-  const quickCampusIsOnline = campuses.some((c) => c.id === quickCampusId && c.isOnline);
-  if (quickSubjectId && quickStartAt && quickCampusId && (quickRoomId || quickCampusIsOnline)) {
+  const quickCampus = campuses.find((c) => c.id === quickCampusId) ?? null;
+  const quickCampusNeedsRoom = campusRequiresRoom(quickCampus);
+  if (quickSubjectId && quickStartAt && quickCampusId && (quickRoomId || !quickCampusNeedsRoom)) {
     const startAt = parseDatetimeLocal(quickStartAt);
     const endAt = new Date(startAt.getTime() + quickDurationMin * 60 * 1000);
     const quickSubject = await prisma.subject.findUnique({
@@ -2172,7 +2174,7 @@ export default async function StudentDetailPage({
             subjectName: l.subject.name,
             courseName: l.subject.course.name,
           }))}
-          campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
+          campuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline, requiresRoom: c.requiresRoom }))}
           rooms={rooms.map((r) => ({ id: r.id, name: `${r.name} (${r.campus.name})`, campusId: r.campusId }))}
           candidates={quickCandidates}
           sessionOptions={quickRescheduleSessionOptions}
@@ -2213,7 +2215,7 @@ export default async function StudentDetailPage({
             noTeachers: tl(lang, "No eligible teachers found."),
             chooseHint: tl(lang, "Choose subject, campus, room and time to match teachers."),
             schedule: tl(lang, "Schedule"),
-            roomRequiredOffline: tl(lang, "Room is required for offline campus."),
+            roomRequiredOffline: tl(lang, "Room is required for this campus."),
           }}
         />
       </details>
@@ -2252,5 +2254,4 @@ export default async function StudentDetailPage({
     </div>
   );
 }
-
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
+import { campusRequiresRoom } from "@/lib/campus";
 
 type CourseOption = { id: string; name: string };
 
@@ -25,6 +26,7 @@ type CampusOption = {
   id: string;
   name: string;
   isOnline: boolean;
+  requiresRoom: boolean;
 };
 
 type RoomOption = {
@@ -318,14 +320,15 @@ export default function QuickScheduleModal({
       setIsScheduling(false);
     }
   }
-  const campusIsOnline = useMemo(() => {
-    if (!campusId) return false;
-    return campuses.find((c) => c.id === campusId)?.isOnline ?? false;
+  const selectedCampus = useMemo(() => {
+    if (!campusId) return null;
+    return campuses.find((c) => c.id === campusId) ?? null;
   }, [campusId, campuses]);
+  const roomRequired = useMemo(() => campusRequiresRoom(selectedCampus), [selectedCampus]);
 
   const canSchedule = useMemo(() => {
-    return Boolean(subjectId && campusId && (roomId || campusIsOnline) && startAt && durationMin);
-  }, [subjectId, campusId, roomId, campusIsOnline, startAt, durationMin]);
+    return Boolean(subjectId && campusId && (roomId || !roomRequired) && startAt && durationMin);
+  }, [subjectId, campusId, roomId, roomRequired, startAt, durationMin]);
 
   const levelOptions = useMemo(() => {
     if (!subjectId) return levels;
@@ -387,7 +390,7 @@ export default function QuickScheduleModal({
   function submitFind(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormWarn("");
-    if (campusId && !campusIsOnline && !roomId) {
+    if (campusId && roomRequired && !roomId) {
       setFormWarn(labels.roomRequiredOffline);
       return;
     }
@@ -530,7 +533,7 @@ export default function QuickScheduleModal({
                   }}
                   style={{ marginLeft: 6, minWidth: 220 }}
                 >
-                  <option value="">{campusIsOnline ? `${labels.room} (${labels.roomOptional})` : labels.room}</option>
+                  <option value="">{roomRequired ? labels.room : `${labels.room} (${labels.roomOptional})`}</option>
                   {roomOptions.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -650,7 +653,7 @@ export default function QuickScheduleModal({
             </div>
           ) : null}
 
-          {mode === "create" && subjectId && campusId && (roomId || campusIsOnline) && startAt ? (
+          {mode === "create" && subjectId && campusId && (roomId || !roomRequired) && startAt ? (
             candidates.length === 0 ? (
               <div style={{ color: "#999" }}>{labels.noTeachers}</div>
             ) : (

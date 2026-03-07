@@ -4,6 +4,7 @@ import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { campusRequiresRoom } from "@/lib/campus";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -135,7 +136,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const roomId = roomIdRaw || null;
   const campus = await prisma.campus.findUnique({ where: { id: campusId } });
   if (!campus) return bad("Campus not found", 404);
-  if (!roomId && !campus.isOnline) return bad("Room is required", 409);
+  if (!roomId && campusRequiresRoom(campus)) return bad("Room is required", 409);
   if (roomId) {
     const room = await prisma.room.findUnique({ where: { id: roomId } });
     if (!room || room.campusId !== campusId) return bad("Invalid room", 409);

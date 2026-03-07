@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type CampusRow = { id: string; name: string; isOnline: boolean };
+type CampusRow = { id: string; name: string; isOnline: boolean; requiresRoom: boolean };
 
 export default function CampusesClient({
   initialCampuses,
@@ -12,6 +12,8 @@ export default function CampusesClient({
   labels: {
     campusName: string;
     onlineCampus: string;
+    requiresRoom: string;
+    noRoomNeeded: string;
     add: string;
     name: string;
     type: string;
@@ -27,6 +29,7 @@ export default function CampusesClient({
   const [campuses, setCampuses] = useState<CampusRow[]>(initialCampuses);
   const [name, setName] = useState("");
   const [isOnline, setIsOnline] = useState(false);
+  const [requiresRoom, setRequiresRoom] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -43,15 +46,35 @@ export default function CampusesClient({
       const res = await fetch("/api/admin/campuses", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: v, isOnline }),
+        body: JSON.stringify({ name: v, isOnline, requiresRoom }),
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Create failed"));
       setCampuses((prev) => [data.campus as CampusRow, ...prev]);
       setName("");
       setIsOnline(false);
+      setRequiresRoom(true);
     } catch (e: any) {
       alert(`${labels.errorPrefix}: ${e?.message ?? "Create failed"}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateCampus(id: string, patch: Partial<Pick<CampusRow, "isOnline" | "requiresRoom">>) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/campuses", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = (await res.json()) as any;
+      if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Update failed"));
+      setCampuses((prev) => prev.map((row) => (row.id === id ? (data.campus as CampusRow) : row)));
+    } catch (e: any) {
+      alert(`${labels.errorPrefix}: ${e?.message ?? "Update failed"}`);
     } finally {
       setSaving(false);
     }
@@ -82,8 +105,25 @@ export default function CampusesClient({
       <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={labels.campusName} />
         <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={isOnline} onChange={(e) => setIsOnline(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isOnline}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setIsOnline(checked);
+              if (checked) setRequiresRoom(false);
+            }}
+          />
           {labels.onlineCampus}
+        </label>
+        <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={requiresRoom}
+            disabled={isOnline}
+            onChange={(e) => setRequiresRoom(e.target.checked)}
+          />
+          {labels.requiresRoom}
         </label>
         <button type="button" onClick={create} disabled={saving}>
           {labels.add}
@@ -95,6 +135,7 @@ export default function CampusesClient({
           <tr style={{ background: "#f5f5f5" }}>
             <th align="left">{labels.name}</th>
             <th align="left">{labels.type}</th>
+            <th align="left">{labels.requiresRoom}</th>
             <th align="left">ID</th>
             <th align="left">{labels.action}</th>
           </tr>
@@ -104,6 +145,17 @@ export default function CampusesClient({
             <tr key={c.id} style={{ borderTop: "1px solid #eee" }}>
               <td>{c.name}</td>
               <td>{c.isOnline ? labels.typeOnline : labels.typeOffline}</td>
+              <td>
+                <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={c.requiresRoom}
+                    disabled={saving || c.isOnline}
+                    onChange={(e) => updateCampus(c.id, { requiresRoom: e.target.checked })}
+                  />
+                  {c.requiresRoom ? labels.requiresRoom : labels.noRoomNeeded}
+                </label>
+              </td>
               <td style={{ fontFamily: "monospace", fontSize: 11, color: "#475569" }} title={c.id}>
                 CMP-{c.id.length > 10 ? `${c.id.slice(0, 4)}…${c.id.slice(-4)}` : c.id}
               </td>
@@ -116,7 +168,7 @@ export default function CampusesClient({
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={4}>{labels.noCampuses}</td>
+              <td colSpan={5}>{labels.noCampuses}</td>
             </tr>
           )}
         </tbody>

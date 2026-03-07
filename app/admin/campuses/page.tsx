@@ -10,10 +10,12 @@ export default async function CampusesPage() {
     <div>
       <h2>{t(lang, "Campuses", "校区")}</h2>
       <CampusesClient
-        initialCampuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline }))}
+        initialCampuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline, requiresRoom: c.requiresRoom }))}
         labels={{
           campusName: t(lang, "Campus name", "校区名称"),
           onlineCampus: t(lang, "Online campus", "线上校区"),
+          requiresRoom: t(lang, "Requires room", "需要教室"),
+          noRoomNeeded: t(lang, "Room optional", "教室可空"),
           add: t(lang, "Add", "新增"),
           name: t(lang, "Name", "名称"),
           type: t(lang, "Type", "类型"),

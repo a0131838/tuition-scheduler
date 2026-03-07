@@ -84,6 +84,7 @@ model Campus {
   id             String          @id @default(uuid())
   name           String
   isOnline       Boolean         @default(false)
+  requiresRoom   Boolean         @default(true)
   rooms          Room[]
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
