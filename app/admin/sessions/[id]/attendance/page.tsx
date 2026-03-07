@@ -183,6 +183,7 @@ export default async function AttendancePage({
             labels={{
               title: t(lang, "Attendance Editor", "点名编辑"),
               markAllPresent: t(lang, "Mark All Present (deductCount=1)", "全部标记到课(扣1次)"),
+              markAllPresentWaived: t(lang, "Mark All Present (waived)", "全部标记到课(免扣)"),
               save: t(lang, "Save", "保存"),
               saving: t(lang, "Saving...", "保存中..."),
               saveErrorPrefix: t(lang, "Error", "错误"),
@@ -235,7 +236,6 @@ export default async function AttendancePage({
     </div>
   );
 }
-
 
 
 

@@ -18,6 +18,7 @@ export default function AdminSessionAttendanceClient({
   labels: {
     title: string;
     markAllPresent: string;
+    markAllPresentWaived: string;
     save: string;
     saving: string;
     saveErrorPrefix: string;
@@ -34,6 +35,7 @@ export default function AdminSessionAttendanceClient({
     rows.find((row) => row.waiveReason && row.waiveReason.trim())?.waiveReason ?? "Assessment lesson";
   const [waiveDeduction, setWaiveDeduction] = useState(initialWaiveDeduction);
   const [waiveReason, setWaiveReason] = useState(initialWaiveReason);
+  const markAllLabel = waiveDeduction ? labels.markAllPresentWaived : labels.markAllPresent;
 
   function refreshPreserveScroll() {
     const y = window.scrollY;
@@ -129,7 +131,7 @@ export default function AdminSessionAttendanceClient({
         <div style={{ fontWeight: 700 }}>{labels.title}</div>
         {canMarkAll && (
           <button type="button" onClick={markAll} disabled={saving}>
-            {saving ? labels.saving : labels.markAllPresent}
+            {saving ? labels.saving : markAllLabel}
           </button>
         )}
       </div>
