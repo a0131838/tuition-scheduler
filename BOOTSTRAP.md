@@ -131,6 +131,7 @@ To reduce token use, read documents in this order and stop as soon as you have e
 7. `docs/小赵-工单类型执行映射表-v1.md`
 8. `docs/小赵-问题库-v1.md`
 9. `docs/小赵-周审计模板-v1.md`
+10. `docs/小赵-错误回复对照表-v1.md`
 
 Escalate to longer references only when needed:
 1. `docs/小赵-中文短指令模式.md`
