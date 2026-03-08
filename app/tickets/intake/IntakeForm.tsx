@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  parseTicketSituationSummary,
   TICKET_MODE_OPTIONS,
   TICKET_OWNER_OPTIONS,
   TICKET_PRIORITY_OPTIONS,
@@ -12,6 +13,8 @@ import {
 } from "@/lib/tickets";
 import { useMemo, useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+
+const PACKAGE_PURCHASE_TYPE = "新学生购买课时包";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -62,10 +65,16 @@ export default function IntakeForm({
   const [err, setErr] = useState("");
   const [dupes, setDupes] = useState<Array<{ ticketNo: string; status: string; createdAt: string; summary: string }>>([]);
   const [forceDuplicate, setForceDuplicate] = useState(false);
-  const [proofText, setProofText] = useState("");
-  const proofLines = useMemo(
-    () => proofText.split("\n").map((x) => x.trim()).filter(Boolean),
-    [proofText]
+  const [selectedType, setSelectedType] = useState("");
+  const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const packagePurchaseSelected = selectedType === PACKAGE_PURCHASE_TYPE;
+  const proofFiles = useMemo(
+    () =>
+      proofUrls.map((url, index) => {
+        const rawName = url.split("/").pop() ?? `file-${index + 1}`;
+        return { url, label: `File ${index + 1}`, name: decodeURIComponent(rawName) };
+      }),
+    [proofUrls]
   );
 
   return (
@@ -92,7 +101,7 @@ export default function IntakeForm({
           <div style={{ fontWeight: 700, marginBottom: 6 }}>可能重复工单 / Potential Duplicates</div>
           {dupes.map((d) => (
             <div key={d.ticketNo} style={{ fontSize: 12, color: "#92400e" }}>
-              {d.ticketNo} | {d.status} | {new Date(d.createdAt).toLocaleString()} | {d.summary || "-"}
+              {d.ticketNo} | {d.status} | {new Date(d.createdAt).toLocaleString()} | {parseTicketSituationSummary(d.summary).currentIssue || d.summary || "-"}
             </div>
           ))}
           <div style={{ marginTop: 8, fontSize: 12 }}>
@@ -116,7 +125,7 @@ export default function IntakeForm({
           setMsg("");
           setErr("");
           const payload: Record<string, unknown> = Object.fromEntries(fd.entries());
-          payload.proof = proofText.trim();
+          payload.proof = proofUrls.join("\n");
           if (forceDuplicate) payload.forceDuplicate = "1";
           try {
             const res = await fetch(apiPath, {
@@ -137,7 +146,8 @@ export default function IntakeForm({
             setMsg(`提交成功 / Submitted: ${data.ticketNo}`);
             setDupes([]);
             setForceDuplicate(false);
-            setProofText("");
+            setSelectedType("");
+            setProofUrls([]);
             form.reset();
           } catch (e2: any) {
             setErr(String(e2?.message ?? "提交失败 / Submit failed"));
@@ -159,7 +169,13 @@ export default function IntakeForm({
           </label>
           <label style={labelStyle}>
             工单类型* / Type*
-            <select name="type" required style={fieldStyle}>
+            <select
+              name="type"
+              required
+              style={fieldStyle}
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+            >
               <OptionList options={TICKET_TYPE_OPTIONS} placeholder="请选择 / Select" />
             </select>
           </label>
@@ -170,24 +186,24 @@ export default function IntakeForm({
             </select>
           </label>
           <label style={labelStyle}>
-            状态 / Status
-            <select name="status" defaultValue="Need Info" style={fieldStyle}>
+            状态* / Status*
+            <select name="status" required defaultValue="Need Info" style={fieldStyle}>
               <OptionList options={TICKET_STATUS_OPTIONS} placeholder="默认待补信息 / Default Need Info" />
             </select>
           </label>
           <label style={labelStyle}>
-            负责人 / Owner
-            <select name="owner" style={fieldStyle} defaultValue="">
+            负责人* / Owner*
+            <select name="owner" required style={fieldStyle} defaultValue="">
               <OptionList options={TICKET_OWNER_OPTIONS} placeholder="请选择 / Select" />
             </select>
           </label>
           <label style={labelStyle}>
-            年级 / Grade
-            <input name="grade" style={fieldStyle} />
+            年级{packagePurchaseSelected ? "*" : ""} / Grade{packagePurchaseSelected ? "*" : ""}
+            <input name="grade" required={packagePurchaseSelected} style={fieldStyle} />
           </label>
           <label style={labelStyle}>
-            课程 / Course
-            <input name="course" style={fieldStyle} />
+            课程{packagePurchaseSelected ? "*" : ""} / Course{packagePurchaseSelected ? "*" : ""}
+            <input name="course" required={packagePurchaseSelected} style={fieldStyle} />
           </label>
           <label style={labelStyle}>
             老师 / Teacher
@@ -224,10 +240,6 @@ export default function IntakeForm({
             </select>
           </label>
           <label style={labelStyle}>
-            确认截止 / Confirm Deadline
-            <DateTimeSplitInput name="confirmDeadline" wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
-          </label>
-          <label style={labelStyle}>
             SLA截止 / SLA Due
             <DateTimeSplitInput name="slaDue" wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
           </label>
@@ -242,32 +254,26 @@ export default function IntakeForm({
         </div>
 
         <label style={labelStyle}>
-          家长可约({">="}3) / Parent Availability ({">="}3)
-          <textarea name="parentAvailability" rows={2} style={fieldStyle} />
-        </label>
-        <label style={labelStyle}>
-          老师可约({">="}2) / Teacher Availability ({">="}2)
-          <textarea name="teacherAvailability" rows={2} style={fieldStyle} />
-        </label>
-        <label style={labelStyle}>
           地址或链接 / Address or Meeting Link
           <textarea name="addressOrLink" rows={2} style={fieldStyle} />
         </label>
         <label style={labelStyle}>
-          最终排课 / Final Schedule
-          <textarea name="finalSchedule" rows={2} style={fieldStyle} />
+          S – Situation（情况）*
+          <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>
+            必须写清楚：当前正在发生什么问题、需要怎么做、最晚截止时间
+          </div>
         </label>
         <label style={labelStyle}>
-          摘要 / Summary
-          <textarea name="summary" rows={2} style={fieldStyle} />
+          当前正在发生什么问题* / Current Problem*
+          <textarea name="situationCurrent" required rows={3} style={fieldStyle} />
         </label>
         <label style={labelStyle}>
-          风险备注 / Risks & Notes
-          <textarea name="risksNotes" rows={2} style={fieldStyle} />
+          需要怎么做* / Required Action*
+          <textarea name="situationAction" required rows={3} style={fieldStyle} />
         </label>
         <label style={labelStyle}>
-          下一步动作 / Next Action
-          <textarea name="nextAction" rows={2} style={fieldStyle} />
+          最晚截止时间* / Latest Deadline*
+          <DateTimeSplitInput name="situationDeadline" required wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
         </label>
 
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
@@ -292,11 +298,7 @@ export default function IntakeForm({
                   setErr(String(data?.message ?? "上传失败 / Upload failed"));
                   return;
                 }
-                setProofText((prev) => {
-                  const oldLines = prev.split("\n").map((x) => x.trim()).filter(Boolean);
-                  const merged = [...oldLines, ...data.urls];
-                  return merged.join("\n");
-                });
+                setProofUrls((prev) => [...prev, ...data.urls.map((x: unknown) => String(x).trim()).filter(Boolean)]);
               } catch (e2: any) {
                 setErr(String(e2?.message ?? "上传失败 / Upload failed"));
               } finally {
@@ -309,20 +311,12 @@ export default function IntakeForm({
             单文件上限 10MB / Max 10MB per file
           </div>
         </div>
-
-        <label style={labelStyle}>
-          证据链接/文本 / Proof URLs or Notes
-          <textarea
-            name="proofTextOnlyView"
-            rows={4}
-            value={proofText}
-            onChange={(e) => setProofText(e.target.value)}
-            style={fieldStyle}
-          />
-        </label>
-        {proofLines.length > 0 ? (
-          <div style={{ fontSize: 12, color: "#334155" }}>
-            已上传 / Uploaded: {proofLines.length}
+        {proofFiles.length > 0 ? (
+          <div style={{ fontSize: 12, color: "#334155", display: "grid", gap: 4 }}>
+            <div>已上传 / Uploaded: {proofFiles.length}</div>
+            {proofFiles.map((file) => (
+              <div key={file.url}>{file.label}: {file.name}</div>
+            ))}
           </div>
         ) : null}
 

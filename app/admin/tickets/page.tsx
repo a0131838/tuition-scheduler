@@ -4,9 +4,13 @@ import { prisma } from "@/lib/prisma";
 import {
   canTransitionTicketStatus,
   generateIntakeToken,
+  normalizeTicketPriorityValue,
+  normalizeTicketTypeValue,
+  parseTicketSituationSummary,
   TICKET_OWNER_OPTIONS,
   TICKET_STATUS_OPTIONS,
   TICKET_TYPE_OPTIONS,
+  ticketTypeAliases,
 } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -46,6 +50,11 @@ function normalizeProofUrl(item: string) {
 function asText(v: string | null | undefined) {
   const s = String(v ?? "").trim();
   return s || "-";
+}
+
+function situationPreview(summary: string | null | undefined) {
+  const parsed = parseTicketSituationSummary(summary);
+  return parsed.currentIssue || asText(summary);
 }
 
 async function updateStatusAction(formData: FormData) {
@@ -185,7 +194,7 @@ export default async function AdminTicketsPage({
           : {}),
         ...(status ? { status } : {}),
         ...(owner ? { owner } : {}),
-        ...(type ? { type } : {}),
+        ...(type ? { type: { in: ticketTypeAliases(type) } } : {}),
         ...(focus === "mgmt"
           ? {
               OR: [
@@ -347,13 +356,14 @@ export default async function AdminTicketsPage({
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">Ticket</th>
-              <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Source", "来源")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
               <th align="left">{t(lang, "Priority", "优先级")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Owner", "负责人")}</th>
-              <th align="left">{t(lang, "Summary", "摘要")}</th>
+              <th align="left">SLA</th>
+              <th align="left">{t(lang, "Situation", "情况")}</th>
               <th align="left">{t(lang, "Proof", "证据")}</th>
               <th align="left">{t(lang, "Details", "详情")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
@@ -363,13 +373,13 @@ export default async function AdminTicketsPage({
             {rows.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
                 <td>{r.ticketNo}</td>
-                <td>{r.createdAt.toLocaleString()}</td>
                 <td>
                   <div>{r.studentName}</div>
-                  <div style={{ color: "#64748b", fontSize: 12 }}>{r.course ?? "-"}</div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>{r.createdAt.toLocaleString()}</div>
                 </td>
-                <td>{r.type}</td>
-                <td>{r.priority}</td>
+                <td>{r.source}</td>
+                <td>{normalizeTicketTypeValue(r.type)}</td>
+                <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>
                   <div>{r.status}</div>
                   {r.completedAt ? (
@@ -379,51 +389,47 @@ export default async function AdminTicketsPage({
                   ) : null}
                 </td>
                 <td>{r.owner ?? "-"}</td>
-                <td style={{ maxWidth: 340 }}>{r.summary ?? "（无摘要，点详情）"}</td>
+                <td>{r.slaDue ? r.slaDue.toLocaleString() : "-"}</td>
+                <td style={{ maxWidth: 340, whiteSpace: "pre-wrap" }}>{situationPreview(r.summary) || "（无情况，点详情）"}</td>
                 <td style={{ maxWidth: 260 }}>
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
-                    <div style={{ display: "grid", gap: 4 }}>
-                      {proofItems(r.proof).map((item, idx) => {
-                        const href = normalizeProofUrl(item);
-                        const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
-                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
-                        return (
-                          <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                            {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
-                          </a>
-                        );
-                      })}
-                    </div>
+                    <div>{proofItems(r.proof).length} 份 / files</div>
                   )}
                 </td>
                 <td style={{ minWidth: 360 }}>
                   <details>
                     <summary style={{ cursor: "pointer" }}>查看详情 / Details</summary>
                     <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, color: "#334155" }}>
-                      <div><b>来源</b>: {asText(r.source)}</div>
-                      <div><b>年级</b>: {asText(r.grade)}</div>
-                      <div><b>课程</b>: {asText(r.course)}</div>
-                      <div><b>老师</b>: {asText(r.teacher)}</div>
-                      <div><b>对接人</b>: {asText(r.poc)}</div>
-                      <div><b>微信群</b>: {asText(r.wechat)}</div>
-                      <div><b>时长(分钟)</b>: {r.durationMin ?? "-"}</div>
-                      <div><b>授课形式</b>: {asText(r.mode)}</div>
-                      <div><b>版本</b>: {asText(r.version)}</div>
-                      <div><b>系统已更新</b>: {asText(r.systemUpdated)}</div>
-                      <div><b>确认截止</b>: {r.confirmDeadline ? r.confirmDeadline.toLocaleString() : "-"}</div>
-                      <div><b>SLA截止</b>: {r.slaDue ? r.slaDue.toLocaleString() : "-"}</div>
-                      <div><b>下步截止</b>: {r.nextActionDue ? r.nextActionDue.toLocaleString() : "-"}</div>
-                      <div><b>最后更新时间</b>: {r.lastUpdateAt ? r.lastUpdateAt.toLocaleString() : "-"}</div>
-                      <div><b>录入人</b>: {asText(r.createdByName)}</div>
-                      <div><b>地址/会议链接</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.addressOrLink)}</span></div>
-                      <div><b>家长可约</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.parentAvailability)}</span></div>
-                      <div><b>老师可约</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.teacherAvailability)}</span></div>
-                      <div><b>最终排课</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.finalSchedule)}</span></div>
-                      <div><b>风险备注</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.risksNotes)}</span></div>
-                      <div><b>下一步动作</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.nextAction)}</span></div>
+                      {(() => {
+                        const parsed = parseTicketSituationSummary(r.summary);
+                        return (
+                          <>
+                            <div><b>学生姓名</b>: {asText(r.studentName)}</div>
+                            <div><b>来源</b>: {asText(r.source)}</div>
+                            <div><b>工单类型</b>: {asText(normalizeTicketTypeValue(r.type))}</div>
+                            <div><b>优先级</b>: {asText(normalizeTicketPriorityValue(r.priority))}</div>
+                            <div><b>状态</b>: {asText(r.status)}</div>
+                            <div><b>负责人</b>: {asText(r.owner)}</div>
+                            <div><b>年级</b>: {asText(r.grade)}</div>
+                            <div><b>课程</b>: {asText(r.course)}</div>
+                            <div><b>老师</b>: {asText(r.teacher)}</div>
+                            <div><b>对接人</b>: {asText(r.poc)}</div>
+                            <div><b>当前微信群名称</b>: {asText(r.wechat)}</div>
+                            <div><b>时长(分钟)</b>: {r.durationMin ?? "-"}</div>
+                            <div><b>授课形式</b>: {asText(r.mode)}</div>
+                            <div><b>版本</b>: {asText(r.version)}</div>
+                            <div><b>系统已更新</b>: {asText(r.systemUpdated)}</div>
+                            <div><b>SLA截止</b>: {r.slaDue ? r.slaDue.toLocaleString() : "-"}</div>
+                            <div><b>录入人</b>: {asText(r.createdByName)}</div>
+                            <div><b>地址或链接</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.addressOrLink)}</span></div>
+                            <div><b>S – Situation / 当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.currentIssue)}</span></div>
+                            <div><b>S – Situation / 需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.requiredAction || r.nextAction)}</span></div>
+                            <div><b>S – Situation / 最晚截止时间</b>: {parsed.latestDeadlineText || (r.nextActionDue ? r.nextActionDue.toLocaleString() : "-")}</div>
+                          </>
+                        );
+                      })()}
                       <div>
                         <b>全部证据</b>:{" "}
                         {proofItemsAll(r.proof).length === 0 ? (

@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import {
   allocateTicketNo,
+  composeTicketSituation,
   normalizeTicketInt,
+  normalizeTicketTypeValue,
   normalizeTicketString,
   parseDateLike,
   TICKET_MODE_OPTIONS,
@@ -12,6 +14,7 @@ import {
   TICKET_SYSTEM_UPDATED_OPTIONS,
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
+  ticketTypeAliases,
 } from "@/lib/tickets";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -58,12 +61,38 @@ export async function POST(
     return bad("Invalid source/type/priority");
   }
 
+  const status = validateByOptions(normalizeTicketString(body.status, 60), TICKET_STATUS_OPTIONS);
+  const owner = validateByOptions(normalizeTicketString(body.owner, 20), TICKET_OWNER_OPTIONS);
+  if (!status || !owner) {
+    return bad("Status and owner are required / 状态与负责人必填");
+  }
+
+  const normalizedType = normalizeTicketTypeValue(type);
+  const grade = normalizeTicketString(body.grade, 40);
+  const course = normalizeTicketString(body.course, 120);
+  if (normalizedType === "新学生购买课时包" && (!grade || !course)) {
+    return bad("Grade and course are required for package purchase tickets / 新学生购买课时包必须填写年级和课程");
+  }
+
+  const situationCurrent = normalizeTicketString(body.situationCurrent, 2000);
+  const situationAction = normalizeTicketString(body.situationAction, 2000);
+  const situationDeadlineRaw = normalizeTicketString(body.situationDeadline, 40);
+  const situationDeadline = parseDateLike(body.situationDeadline);
+  if (!situationCurrent || !situationAction || !situationDeadlineRaw || !situationDeadline) {
+    return bad("S – Situation is incomplete / Situation三项必填");
+  }
+  const situationSummary = composeTicketSituation({
+    currentIssue: situationCurrent,
+    requiredAction: situationAction,
+    latestDeadlineText: situationDeadlineRaw,
+  });
+
   const force = String(body.forceDuplicate ?? "").trim() === "1";
   const dupeSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const duplicates = await prisma.ticket.findMany({
     where: {
       studentName: { equals: studentName, mode: "insensitive" },
-      type,
+      type: { in: ticketTypeAliases(type) },
       createdAt: { gte: dupeSince },
       status: { not: "Cancelled" },
     },
@@ -84,10 +113,6 @@ export async function POST(
   }
 
   const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);
-  const status =
-    validateByOptions(normalizeTicketString(body.status, 60), TICKET_STATUS_OPTIONS) ??
-    "Need Info";
-  const owner = validateByOptions(normalizeTicketString(body.owner, 20), TICKET_OWNER_OPTIONS);
   const version = validateByOptions(normalizeTicketString(body.version, 10), TICKET_VERSION_OPTIONS);
   const systemUpdated = validateByOptions(
     normalizeTicketString(body.systemUpdated, 5),
@@ -103,30 +128,30 @@ export async function POST(
         type,
         priority,
         studentName,
-        grade: normalizeTicketString(body.grade, 40),
-        course: normalizeTicketString(body.course, 120),
+        grade,
+        course,
         teacher: normalizeTicketString(body.teacher, 120),
         poc: normalizeTicketString(body.poc, 120),
         wechat: normalizeTicketString(body.wechat, 120),
         phone: null,
-        parentAvailability: normalizeTicketString(body.parentAvailability, 500),
-        teacherAvailability: normalizeTicketString(body.teacherAvailability, 500),
+        parentAvailability: null,
+        teacherAvailability: null,
         durationMin: normalizeTicketInt(body.durationMin),
         mode,
         addressOrLink: normalizeTicketString(body.addressOrLink, 500),
-        confirmDeadline: parseDateLike(body.confirmDeadline),
+        confirmDeadline: null,
         slaDue: parseDateLike(body.slaDue),
         status,
         owner,
         version,
         systemUpdated,
-        finalSchedule: normalizeTicketString(body.finalSchedule, 500),
+        finalSchedule: null,
         lastUpdateAt: parseDateLike(body.lastUpdateAt),
-        summary: normalizeTicketString(body.summary, 2000),
-        risksNotes: normalizeTicketString(body.risksNotes, 2000),
-        nextAction: normalizeTicketString(body.nextAction, 2000),
-        nextActionDue: parseDateLike(body.nextActionDue),
-        proof: normalizeTicketString(body.proof, 500),
+        summary: situationSummary,
+        risksNotes: null,
+        nextAction: situationAction,
+        nextActionDue: situationDeadline,
+        proof: normalizeTicketString(body.proof, 5000),
         createdByName: normalizeTicketString(body.createdByName, 120),
       },
       select: { id: true, ticketNo: true },

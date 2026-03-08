@@ -1,7 +1,15 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { TICKET_OWNER_OPTIONS, TICKET_STATUS_OPTIONS, TICKET_TYPE_OPTIONS } from "@/lib/tickets";
+import {
+  normalizeTicketPriorityValue,
+  normalizeTicketTypeValue,
+  parseTicketSituationSummary,
+  TICKET_OWNER_OPTIONS,
+  TICKET_STATUS_OPTIONS,
+  TICKET_TYPE_OPTIONS,
+  ticketTypeAliases,
+} from "@/lib/tickets";
 import Link from "next/link";
 
 function proofItems(proof: string | null | undefined) {
@@ -48,7 +56,7 @@ export default async function AdminArchivedTicketsPage({
         : {}),
       ...(status ? { status } : {}),
       ...(owner ? { owner } : {}),
-      ...(type ? { type } : {}),
+      ...(type ? { type: { in: ticketTypeAliases(type) } } : {}),
     },
     orderBy: [{ updatedAt: "desc" }],
     take: 300,
@@ -97,13 +105,15 @@ export default async function AdminArchivedTicketsPage({
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">Ticket</th>
               <th align="left">{t(lang, "Student", "学生")}</th>
+              <th align="left">{t(lang, "Source", "来源")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
+              <th align="left">{t(lang, "Priority", "优先级")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Owner", "负责人")}</th>
               <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Completed", "完成时间")}</th>
               <th align="left">{t(lang, "Updated", "更新时间")}</th>
-              <th align="left">{t(lang, "Summary", "摘要")}</th>
+              <th align="left">{t(lang, "Situation", "情况")}</th>
               <th align="left">{t(lang, "Proof", "证据")}</th>
             </tr>
           </thead>
@@ -112,30 +122,37 @@ export default async function AdminArchivedTicketsPage({
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
                 <td>{r.ticketNo}</td>
                 <td>{r.studentName}</td>
-                <td>{r.type}</td>
+                <td>{r.source}</td>
+                <td>{normalizeTicketTypeValue(r.type)}</td>
+                <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>{r.status}</td>
                 <td>{r.owner ?? "-"}</td>
                 <td>{r.createdAt.toLocaleString()}</td>
                 <td>{r.completedAt ? r.completedAt.toLocaleString() : "-"}</td>
                 <td>{r.updatedAt.toLocaleString()}</td>
-                <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>{r.summary ?? "-"}</td>
+                <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>
+                  {parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-"}
+                </td>
                 <td style={{ maxWidth: 260, whiteSpace: "pre-wrap" }}>
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
-                    <div style={{ display: "grid", gap: 4 }}>
-                      {proofItems(r.proof).map((item, idx) => {
-                        const href = normalizeProofUrl(item);
-                        const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
-                        const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
-                        return (
-                          <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                            {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
-                          </a>
-                        );
-                      })}
-                    </div>
+                    <details>
+                      <summary style={{ cursor: "pointer" }}>{proofItems(r.proof).length} files</summary>
+                      <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+                        {proofItems(r.proof).map((item, idx) => {
+                          const href = normalizeProofUrl(item);
+                          const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
+                          if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                          const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
+                          return (
+                            <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
+                              {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </details>
                   )}
                 </td>
               </tr>

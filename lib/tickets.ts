@@ -12,18 +12,23 @@ export const TICKET_SOURCE_OPTIONS: OptionItem[] = [
 ];
 
 export const TICKET_TYPE_OPTIONS: OptionItem[] = [
-  { value: "新排课", zh: "新排课", en: "New Scheduling" },
-  { value: "改课调课", zh: "改课调课", en: "Reschedule" },
-  { value: "取消", zh: "取消", en: "Cancel" },
-  { value: "请假", zh: "请假", en: "Leave" },
+  { value: "改课程时间", zh: "改课程时间", en: "Reschedule Lesson Time" },
+  { value: "改上课老师", zh: "改上课老师", en: "Change Teacher" },
+  { value: "临时取消&请假课程", zh: "临时取消&请假课程", en: "Temporary Cancel / Leave" },
   { value: "补课加课", zh: "补课加课", en: "Extra Session" },
+  { value: "新学生购买课时包", zh: "新学生购买课时包", en: "New Student Package Purchase" },
+  { value: "新排课", zh: "新排课", en: "New Scheduling" },
+  { value: "临时评估学生（没有买课程）", zh: "临时评估学生（没有买课程）", en: "Assessment Without Package" },
+  { value: "评估学生（已买课程）", zh: "评估学生（已买课程）", en: "Assessment With Package" },
   { value: "学术问题", zh: "学术问题", en: "Academic Issue" },
   { value: "非学术问题", zh: "非学术问题", en: "Non-academic Issue" },
 ];
 
 export const TICKET_PRIORITY_OPTIONS: OptionItem[] = [
   { value: "普通", zh: "普通", en: "Normal" },
-  { value: "紧急(24h内要上课)", zh: "紧急(24h内要上课)", en: "Urgent (within 24h)" },
+  { value: "1小时紧急", zh: "1小时紧急", en: "Urgent in 1 Hour" },
+  { value: "6小时紧急", zh: "6小时紧急", en: "Urgent in 6 Hours" },
+  { value: "24小时紧急", zh: "24小时紧急", en: "Urgent in 24 Hours" },
 ];
 
 export const TICKET_STATUS_OPTIONS: OptionItem[] = [
@@ -75,6 +80,86 @@ export const TICKET_VERSION_OPTIONS: OptionItem[] = [
   { value: "V4", zh: "V4", en: "V4" },
   { value: "V5", zh: "V5", en: "V5" },
 ];
+
+const LEGACY_TICKET_TYPE_MAP: Record<string, string> = {
+  改课调课: "改课程时间",
+  取消: "临时取消&请假课程",
+  请假: "临时取消&请假课程",
+};
+
+const LEGACY_TICKET_PRIORITY_MAP: Record<string, string> = {
+  "紧急(24h内要上课)": "24小时紧急",
+};
+
+const SITUATION_CURRENT_TAG = "[SITUATION_CURRENT]";
+const SITUATION_ACTION_TAG = "[SITUATION_ACTION]";
+const SITUATION_DEADLINE_TAG = "[SITUATION_DEADLINE]";
+
+export function normalizeTicketTypeValue(value: string | null | undefined) {
+  if (!value) return "";
+  return LEGACY_TICKET_TYPE_MAP[value] ?? value;
+}
+
+export function ticketTypeAliases(value: string | null | undefined) {
+  const normalized = normalizeTicketTypeValue(value);
+  if (!normalized) return [];
+  return Array.from(
+    new Set(
+      [normalized, ...Object.entries(LEGACY_TICKET_TYPE_MAP).filter(([, next]) => next === normalized).map(([legacy]) => legacy)].filter(
+        Boolean
+      )
+    )
+  );
+}
+
+export function normalizeTicketPriorityValue(value: string | null | undefined) {
+  if (!value) return "";
+  return LEGACY_TICKET_PRIORITY_MAP[value] ?? value;
+}
+
+export function composeTicketSituation(input: {
+  currentIssue: string;
+  requiredAction: string;
+  latestDeadlineText: string;
+}) {
+  return [
+    SITUATION_CURRENT_TAG,
+    input.currentIssue.trim(),
+    "",
+    SITUATION_ACTION_TAG,
+    input.requiredAction.trim(),
+    "",
+    SITUATION_DEADLINE_TAG,
+    input.latestDeadlineText.trim(),
+  ].join("\n");
+}
+
+export function parseTicketSituationSummary(raw: string | null | undefined) {
+  const src = String(raw ?? "");
+  const readBlock = (startTag: string, nextTag?: string) => {
+    const start = src.indexOf(startTag);
+    if (start < 0) return "";
+    const contentStart = start + startTag.length;
+    const completionNoteStart = src.indexOf("[Completed Note]", contentStart);
+    const nextTagStart = nextTag ? src.indexOf(nextTag, contentStart) : -1;
+    const endCandidates = [nextTagStart, completionNoteStart].filter((idx) => idx >= 0);
+    const end = endCandidates.length > 0 ? Math.min(...endCandidates) : -1;
+    const text = end >= 0 ? src.slice(contentStart, end) : src.slice(contentStart);
+    return text.trim();
+  };
+
+  const currentIssue = readBlock(SITUATION_CURRENT_TAG, SITUATION_ACTION_TAG);
+  const requiredAction = readBlock(SITUATION_ACTION_TAG, SITUATION_DEADLINE_TAG);
+  const latestDeadlineText = readBlock(SITUATION_DEADLINE_TAG);
+  if (!currentIssue && !requiredAction && !latestDeadlineText) {
+    return {
+      currentIssue: src.trim(),
+      requiredAction: "",
+      latestDeadlineText: "",
+    };
+  }
+  return { currentIssue, requiredAction, latestDeadlineText };
+}
 
 export function normalizeTicketString(v: unknown, maxLen = 500): string | null {
   if (typeof v !== "string") return null;

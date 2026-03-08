@@ -1,7 +1,13 @@
 import { requireTeacher } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { canTransitionTicketStatus, TICKET_STATUS_OPTIONS } from "@/lib/tickets";
+import {
+  canTransitionTicketStatus,
+  normalizeTicketPriorityValue,
+  normalizeTicketTypeValue,
+  parseTicketSituationSummary,
+  TICKET_STATUS_OPTIONS,
+} from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -123,8 +129,9 @@ export default async function TeacherTicketsPage({
               <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Student", "学生")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
+              <th align="left">{t(lang, "Priority", "优先级")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
-              <th align="left">{t(lang, "Summary", "摘要")}</th>
+              <th align="left">{t(lang, "Situation", "情况")}</th>
               <th align="left">{t(lang, "Proof", "证据")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
@@ -135,25 +142,31 @@ export default async function TeacherTicketsPage({
                 <td>{r.ticketNo}</td>
                 <td>{r.createdAt.toLocaleString()}</td>
                 <td>{r.studentName}</td>
-                <td>{r.type}</td>
+                <td>{normalizeTicketTypeValue(r.type)}</td>
+                <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>{r.status}</td>
-                <td style={{ maxWidth: 320 }}>{r.summary ?? "-"}</td>
+                <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>
+                  {parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-"}
+                </td>
                 <td style={{ maxWidth: 220 }}>
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
-                    <div style={{ display: "grid", gap: 4 }}>
-                      {proofItems(r.proof).map((item, idx) => {
-                        const href = normalizeProofUrl(item);
-                        const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                        if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
-                        return (
-                          <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                            {`Proof ${idx + 1}`}
-                          </a>
-                        );
-                      })}
-                    </div>
+                    <details>
+                      <summary style={{ cursor: "pointer" }}>{proofItems(r.proof).length} files</summary>
+                      <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+                        {proofItems(r.proof).map((item, idx) => {
+                          const href = normalizeProofUrl(item);
+                          const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
+                          if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                          return (
+                            <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
+                              {`Proof ${idx + 1}`}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </details>
                   )}
                 </td>
                 <td>
