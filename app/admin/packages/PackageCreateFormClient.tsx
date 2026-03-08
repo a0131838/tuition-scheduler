@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type StudentOpt = { id: string; name: string };
 type CourseOpt = { id: string; name: string };
@@ -206,7 +207,7 @@ export default function PackageCreateFormClient({
 
       <label>
         {labels.paidAt}:
-        <input name="paidAt" type="datetime-local" style={{ marginLeft: 8 }} />
+        <DateTimeSplitInput name="paidAt" wrapperStyle={{ marginLeft: 8 }} />
       </label>
 
       <label>

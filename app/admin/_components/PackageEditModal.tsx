@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type Labels = {
   edit: string;
@@ -212,11 +213,10 @@ export default function PackageEditModal({
           </label>
           <label>
             {labels.paidAt}:
-            <input
+            <DateTimeSplitInput
               name="paidAt"
-              type="datetime-local"
               defaultValue={pkg.paidAt ? pkg.paidAt.toISOString().slice(0, 16) : ""}
-              style={{ marginLeft: 8 }}
+              wrapperStyle={{ marginLeft: 8 }}
             />
           </label>
           <label>
@@ -324,7 +324,7 @@ export default function PackageEditModal({
           </label>
           <label>
             {labels.paidAt}:
-            <input name="paidAt" type="datetime-local" defaultValue="" style={{ marginLeft: 8 }} />
+            <DateTimeSplitInput name="paidAt" defaultValue="" wrapperStyle={{ marginLeft: 8 }} />
           </label>
           <label>
             {labels.paidAmount}:

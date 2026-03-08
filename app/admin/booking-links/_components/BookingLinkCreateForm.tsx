@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type StudentOption = {
   id: string;
@@ -263,7 +264,7 @@ export default function BookingLinkCreateForm({
         </label>
         <label>
           {labels.expiresAt}:
-          <input type="datetime-local" name="expiresAt" style={{ marginLeft: 6 }} />
+          <DateTimeSplitInput name="expiresAt" wrapperStyle={{ marginLeft: 6 }} />
         </label>
       </div>
 

@@ -11,6 +11,7 @@ import {
   TICKET_VERSION_OPTIONS,
 } from "@/lib/tickets";
 import { useMemo, useState } from "react";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -224,15 +225,15 @@ export default function IntakeForm({
           </label>
           <label style={labelStyle}>
             确认截止 / Confirm Deadline
-            <input name="confirmDeadline" type="datetime-local" style={fieldStyle} />
+            <DateTimeSplitInput name="confirmDeadline" wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
           </label>
           <label style={labelStyle}>
             SLA截止 / SLA Due
-            <input name="slaDue" type="datetime-local" style={fieldStyle} />
+            <DateTimeSplitInput name="slaDue" wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
           </label>
           <label style={labelStyle}>
             下步截止 / Next Action Due
-            <input name="nextActionDue" type="datetime-local" style={fieldStyle} />
+            <DateTimeSplitInput name="nextActionDue" wrapperStyle={{ width: "100%" }} dateStyle={fieldStyle} />
           </label>
           <label style={labelStyle}>
             录入人 / Intake Agent

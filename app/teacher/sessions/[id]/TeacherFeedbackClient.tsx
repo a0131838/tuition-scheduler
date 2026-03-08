@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 export default function TeacherFeedbackClient({
   sessionId,
@@ -103,20 +104,20 @@ export default function TeacherFeedbackClient({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <label>
             {labels.actualStart}
-            <input
-              type="datetime-local"
+            <DateTimeSplitInput
               value={actualStartAt}
-              onChange={(e) => setActualStartAt(e.target.value)}
-              style={{ width: "100%" }}
+              onChange={setActualStartAt}
+              wrapperStyle={{ width: "100%" }}
+              dateStyle={{ width: "100%" }}
             />
           </label>
           <label>
             {labels.actualEnd}
-            <input
-              type="datetime-local"
+            <DateTimeSplitInput
               value={actualEndAt}
-              onChange={(e) => setActualEndAt(e.target.value)}
-              style={{ width: "100%" }}
+              onChange={setActualEndAt}
+              wrapperStyle={{ width: "100%" }}
+              dateStyle={{ width: "100%" }}
             />
           </label>
         </div>
