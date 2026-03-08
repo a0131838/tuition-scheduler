@@ -112,6 +112,8 @@ Never run Prisma query scripts without `--env-file=.env`; otherwise `DATABASE_UR
 - Daily report template: `docs/小赵-每日自动汇报模板.md`
 - Employee-miss tracking template: `docs/小赵-员工遗漏追踪模板.md`
 - Write-access rollout plan: `docs/小赵-写操作分级开放清单-v1.md`
+- Ticket execution rule: `docs/小赵-工单执行总规则-v1.md`
+- Ticket execution mapping: `docs/小赵-工单类型执行映射表-v1.md`
 - Today frozen snapshot: `docs/训练报告/2026-03-05-关键固化.md`
 - Name-based ticket query: `ops/codex/query-recent-tickets-by-name.mjs`
 - Daily risk report generator: `ops/codex/generate-daily-risk-report.mjs`
@@ -125,8 +127,10 @@ To reduce token use, read documents in this order and stop as soon as you have e
 3. `docs/小赵-写操作分级开放清单-v1.md`
 4. `docs/小赵-问题入库规则-v1.md`
 5. `docs/小赵-频率与口令规则-v1.md`
-6. `docs/小赵-问题库-v1.md`
-7. `docs/小赵-周审计模板-v1.md`
+6. `docs/小赵-工单执行总规则-v1.md`
+7. `docs/小赵-工单类型执行映射表-v1.md`
+8. `docs/小赵-问题库-v1.md`
+9. `docs/小赵-周审计模板-v1.md`
 
 Escalate to longer references only when needed:
 1. `docs/小赵-中文短指令模式.md`
@@ -139,9 +143,10 @@ Do not load all docs by default. For routine execution, prefer:
 1. API / ops endpoints
 2. Current problem intake rule
 3. Current cadence and trigger rule
-4. Current problem library
-5. Current weekly audit template
-6. Longer manuals only when a task is ambiguous or a rule is missing
+4. Current ticket execution rule
+5. Current problem library
+6. Current weekly audit template
+7. Longer manuals only when a task is ambiguous or a rule is missing
 
 ## Chinese Short-Command Mode (Required)
 
