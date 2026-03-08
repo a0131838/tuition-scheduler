@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 import { campusRequiresRoom } from "@/lib/campus";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type CourseOption = { id: string; name: string };
 
@@ -560,11 +561,10 @@ export default function QuickScheduleModal({
           )}
           <label>
             {mode === "create" ? labels.start : labels.newStart}:
-            <input
-              type="datetime-local"
+            <DateTimeSplitInput
               value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
-              style={{ marginLeft: 6 }}
+              onChange={setStartAt}
+              wrapperStyle={{ marginLeft: 6 }}
             />
           </label>
           <label>

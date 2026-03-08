@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NoticeBanner from "../../../_components/NoticeBanner";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -161,7 +162,7 @@ export default function NewSingleSessionClient({
 
         <label>
           {labels.start}:
-          <input name="startAt" type="datetime-local" required style={{ marginLeft: 8 }} disabled={busy} />
+          <DateTimeSplitInput name="startAt" required disabled={busy} wrapperStyle={{ marginLeft: 8 }} />
         </label>
 
         <label>

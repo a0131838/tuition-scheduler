@@ -5,6 +5,7 @@ import SimpleModal from "../../../_components/SimpleModal";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type EnrollmentRow = { studentId: string; studentName: string };
 type TeacherOption = { id: string; name: string };
@@ -309,7 +310,11 @@ export default function AdminClassSessionsClient({
               )}
               <label>
                 {labels.start}:
-                <input name="startAt" type="datetime-local" required style={{ marginLeft: 8 }} />
+                <DateTimeSplitInput
+                  name="startAt"
+                  required
+                  wrapperStyle={{ marginLeft: 8 }}
+                />
               </label>
               <label>
                 {labels.durationMin}:
@@ -476,7 +481,12 @@ export default function AdminClassSessionsClient({
                 >
                   <label>
                     {labels.newStart}:
-                    <input name="startAt" type="datetime-local" defaultValue={toLocalDateTimeInput(s.startAt)} required style={{ marginLeft: 6 }} />
+                    <DateTimeSplitInput
+                      name="startAt"
+                      defaultValue={toLocalDateTimeInput(s.startAt)}
+                      required
+                      wrapperStyle={{ marginLeft: 6 }}
+                    />
                   </label>
                   <label>
                     {labels.rescheduleDurationMin}:

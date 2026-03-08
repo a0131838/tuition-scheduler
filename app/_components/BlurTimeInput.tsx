@@ -5,6 +5,10 @@ import type { CSSProperties, InputHTMLAttributes } from "react";
 
 type BlurTimeInputProps = InputHTMLAttributes<HTMLInputElement>;
 
+type BlurTimeInputExtraProps = {
+  onValueChange?: (value: string) => void;
+};
+
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -25,7 +29,7 @@ function toMin(v: string | undefined, fallback: number) {
   return hh * 60 + mm;
 }
 
-export default function BlurTimeInput(props: BlurTimeInputProps) {
+export default function BlurTimeInput(props: BlurTimeInputProps & BlurTimeInputExtraProps) {
   const {
     type,
     name,
@@ -38,6 +42,7 @@ export default function BlurTimeInput(props: BlurTimeInputProps) {
     step,
     min,
     max,
+    onValueChange,
     ...rest
   } = props;
 
@@ -99,7 +104,10 @@ export default function BlurTimeInput(props: BlurTimeInputProps) {
         onChange={(e) => {
           const nextH = Number(e.target.value);
           const firstForHour = allowedTimes.find((v) => Math.floor(v / 60) === nextH);
-          if (typeof firstForHour === "number") setSelectedMin(firstForHour);
+          if (typeof firstForHour === "number") {
+            setSelectedMin(firstForHour);
+            onValueChange?.(`${pad2(Math.floor(firstForHour / 60))}:${pad2(firstForHour % 60)}`);
+          }
           e.currentTarget.blur();
         }}
       >
@@ -116,7 +124,9 @@ export default function BlurTimeInput(props: BlurTimeInputProps) {
         disabled={disabled}
         onChange={(e) => {
           const nextM = Number(e.target.value);
-          setSelectedMin(hh * 60 + nextM);
+          const nextValue = hh * 60 + nextM;
+          setSelectedMin(nextValue);
+          onValueChange?.(`${pad2(Math.floor(nextValue / 60))}:${pad2(nextValue % 60)}`);
           e.currentTarget.blur();
         }}
       >
