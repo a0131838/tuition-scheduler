@@ -8,6 +8,7 @@ type ReminderSession = {
   courseName: string;
   subjectName: string | null;
   levelName: string | null;
+  studentNames?: string[];
 };
 
 type ReminderRow = {
@@ -31,7 +32,13 @@ function courseLabel(s: ReminderSession) {
 }
 
 function formatSessionBrief(s: ReminderSession) {
-  return `${fmtDateRange(s.startAt, s.endAt)} | ${courseLabel(s)}`;
+  const studentNames = Array.isArray(s.studentNames) ? s.studentNames.filter(Boolean) : [];
+  if (studentNames.length === 0) {
+    return `${fmtDateRange(s.startAt, s.endAt)} | ${courseLabel(s)}`;
+  }
+  const shown = studentNames.slice(0, 3).join("、");
+  const suffix = studentNames.length > 3 ? ` +${studentNames.length - 3} more` : "";
+  return `${fmtDateRange(s.startAt, s.endAt)} | ${courseLabel(s)} | 学生：${shown}${suffix}`;
 }
 
 function listWithLimit(items: string[], limit: number) {

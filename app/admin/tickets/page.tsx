@@ -57,6 +57,15 @@ function situationPreview(summary: string | null | undefined) {
   return parsed.currentIssue || asText(summary);
 }
 
+function situationLines(summary: string | null | undefined, nextAction: string | null | undefined, nextActionDue: Date | null | undefined) {
+  const parsed = parseTicketSituationSummary(summary);
+  return {
+    currentIssue: asText(parsed.currentIssue),
+    requiredAction: asText(parsed.requiredAction || nextAction),
+    latestDeadline: parsed.latestDeadlineText || (nextActionDue ? nextActionDue.toLocaleString() : "-"),
+  };
+}
+
 async function updateStatusAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -352,7 +361,21 @@ export default async function AdminTicketsPage({
       </form>
 
       <div className="table-scroll">
-        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1220 }}>
+        <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180, tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "84px" }} />
+            <col style={{ width: "140px" }} />
+            <col style={{ width: "60px" }} />
+            <col style={{ width: "72px" }} />
+            <col style={{ width: "64px" }} />
+            <col style={{ width: "78px" }} />
+            <col style={{ width: "64px" }} />
+            <col style={{ width: "86px" }} />
+            <col style={{ width: "270px" }} />
+            <col style={{ width: "54px" }} />
+            <col style={{ width: "150px" }} />
+            <col style={{ width: "230px" }} />
+          </colgroup>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">Ticket</th>
@@ -370,8 +393,10 @@ export default async function AdminTicketsPage({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+            {rows.map((r) => {
+              const situation = situationLines(r.summary, r.nextAction, r.nextActionDue);
+              return (
+              <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
                 <td>{r.ticketNo}</td>
                 <td>
                   <div>{r.studentName}</div>
@@ -390,15 +415,21 @@ export default async function AdminTicketsPage({
                 </td>
                 <td>{r.owner ?? "-"}</td>
                 <td>{r.slaDue ? r.slaDue.toLocaleString() : "-"}</td>
-                <td style={{ maxWidth: 340, whiteSpace: "pre-wrap" }}>{situationPreview(r.summary) || "（无情况，点详情）"}</td>
-                <td style={{ maxWidth: 260 }}>
+                <td style={{ whiteSpace: "normal", lineHeight: 1.35 }}>
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div><b>当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{situation.currentIssue}</span></div>
+                    <div><b>需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{situation.requiredAction}</span></div>
+                    <div><b>最晚截止</b>: {situation.latestDeadline}</div>
+                  </div>
+                </td>
+                <td>
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
                     <div>{proofItems(r.proof).length} 份 / files</div>
                   )}
                 </td>
-                <td style={{ minWidth: 360 }}>
+                <td>
                   <details>
                     <summary style={{ cursor: "pointer" }}>查看详情 / Details</summary>
                     <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, color: "#334155" }}>
@@ -455,7 +486,7 @@ export default async function AdminTicketsPage({
                 </td>
                 <td>
                   {r.status === "Completed" ? (
-                    <div style={{ display: "grid", gap: 6 }}>
+                    <div style={{ display: "grid", gap: 6, maxWidth: 210 }}>
                       <div style={{ color: "#166534", fontWeight: 700 }}>
                         已完成（锁定）/ Completed (Locked)
                       </div>
@@ -466,23 +497,27 @@ export default async function AdminTicketsPage({
                       </form>
                     </div>
                   ) : (
-                    <form action={updateStatusAction} style={{ display: "grid", gap: 6 }}>
+                    <form action={updateStatusAction} style={{ display: "grid", gap: 6, maxWidth: 210 }}>
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={backHref} />
-                      <select name="nextStatus" defaultValue={r.status}>
+                      <select name="nextStatus" defaultValue={r.status} style={{ width: "100%", boxSizing: "border-box" }}>
                         {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(r.status, o.value)).map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.zh} / {o.en}
                           </option>
                         ))}
                       </select>
-                      <input name="completionNote" placeholder="完成说明(仅完成时必填) / Completion note" />
-                      <button type="submit">{t(lang, "Save", "保存")}</button>
+                      <input
+                        name="completionNote"
+                        placeholder="完成说明(仅完成时必填) / Completion note"
+                        style={{ width: "100%", boxSizing: "border-box" }}
+                      />
+                      <button type="submit" style={{ width: "100%", boxSizing: "border-box" }}>{t(lang, "Save", "保存")}</button>
                     </form>
                   )}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>

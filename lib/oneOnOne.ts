@@ -13,6 +13,14 @@ type OneOnOneClassInput = {
   preferTeacherClass?: boolean;
 };
 
+function matchesRequestedLocation(
+  cls: { campusId: string; roomId: string | null },
+  campusId: string,
+  roomId: string | null
+) {
+  return cls.campusId === campusId && (cls.roomId ?? null) === (roomId ?? null);
+}
+
 export async function getOrCreateOneOnOneGroup(input: {
   teacherId: string;
   courseId: string;
@@ -98,7 +106,7 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
           });
     if (preferredEnrollment) {
       const preferredClass = await prisma.class.findUnique({ where: { id: preferredEnrollment.classId } });
-      if (preferredClass && preferredClass.capacity === 1) {
+      if (preferredClass && preferredClass.capacity === 1 && matchesRequestedLocation(preferredClass, campusId, roomId)) {
         return preferredClass;
       }
     }
@@ -123,7 +131,10 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
         if (existingClass.capacity !== 1 || subjectMismatch) {
           throw new Error("COURSE_ENROLLMENT_CONFLICT");
         }
-        if (!preferTeacherClass || existingClass.teacherId === teacherId) {
+        if (
+          (!preferTeacherClass || existingClass.teacherId === teacherId) &&
+          matchesRequestedLocation(existingClass, campusId, roomId)
+        ) {
           return existingClass;
         }
       }

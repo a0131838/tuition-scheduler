@@ -1112,6 +1112,7 @@ export default async function AdminTodosPage({
               courseName: s.class.course.name,
               subjectName: s.class.subject?.name ?? null,
               levelName: s.class.level?.name ?? null,
+              studentNames: expectedStudentsForReminder(s, enrollmentsByClass).map((e) => e.name ?? "-"),
             })),
           }))}
           teacherConfirmed={teacherRemindersConfirmed.map((x) => ({
@@ -1124,6 +1125,7 @@ export default async function AdminTodosPage({
               courseName: s.class.course.name,
               subjectName: s.class.subject?.name ?? null,
               levelName: s.class.level?.name ?? null,
+              studentNames: expectedStudentsForReminder(s, enrollmentsByClass).map((e) => e.name ?? "-"),
             })),
           }))}
           studentPending={studentRemindersPending.map((x) => ({
@@ -1514,7 +1516,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
 
 
 
