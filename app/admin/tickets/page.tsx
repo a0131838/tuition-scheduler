@@ -1,15 +1,25 @@
 import { requireAdmin } from "@/lib/auth";
+import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
+  composeTicketSituation,
   canTransitionTicketStatus,
   generateIntakeToken,
+  normalizeTicketInt,
   normalizeTicketPriorityValue,
   normalizeTicketTypeValue,
+  normalizeTicketString,
+  parseDateLike,
+  TICKET_MODE_OPTIONS,
   parseTicketSituationSummary,
   TICKET_OWNER_OPTIONS,
+  TICKET_PRIORITY_OPTIONS,
+  TICKET_SOURCE_OPTIONS,
   TICKET_STATUS_OPTIONS,
+  TICKET_SYSTEM_UPDATED_OPTIONS,
   TICKET_TYPE_OPTIONS,
+  TICKET_VERSION_OPTIONS,
   ticketTypeAliases,
 } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
@@ -19,6 +29,11 @@ import { redirect } from "next/navigation";
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
   return v ? v.slice(0, max) : "";
+}
+
+function validateByOptions(value: string | null, options: { value: string }[]) {
+  if (!value) return null;
+  return options.some((o) => o.value === value) ? value : null;
 }
 
 function proofItems(proof: string | null | undefined) {
@@ -50,6 +65,16 @@ function normalizeProofUrl(item: string) {
 function asText(v: string | null | undefined) {
   const s = String(v ?? "").trim();
   return s || "-";
+}
+
+function toDateTimeLocalValue(v: Date | null | undefined) {
+  if (!v) return "";
+  const y = v.getFullYear();
+  const m = String(v.getMonth() + 1).padStart(2, "0");
+  const d = String(v.getDate()).padStart(2, "0");
+  const hh = String(v.getHours()).padStart(2, "0");
+  const mm = String(v.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${hh}:${mm}`;
 }
 
 function situationPreview(summary: string | null | undefined) {
@@ -104,6 +129,78 @@ async function updateStatusAction(formData: FormData) {
   revalidatePath("/admin/tickets");
   revalidatePath("/teacher/tickets");
   redirect(back);
+}
+
+async function updateTicketFieldsAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = trimValue(formData, "back", 500) || "/admin/tickets";
+  if (!id) redirect(back);
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, isArchived: true },
+  });
+  if (!row) redirect(back);
+  if (row.isArchived) redirect(`${back}${back.includes("?") ? "&" : "?"}err=archived-locked`);
+  if (row.status === "Completed") redirect(`${back}${back.includes("?") ? "&" : "?"}err=completed-locked`);
+
+  const studentName = normalizeTicketString(formData.get("studentName"), 120);
+  const source = validateByOptions(normalizeTicketString(formData.get("source"), 60), TICKET_SOURCE_OPTIONS);
+  const type = validateByOptions(normalizeTicketString(formData.get("type"), 60), TICKET_TYPE_OPTIONS);
+  const priority = validateByOptions(normalizeTicketString(formData.get("priority"), 60), TICKET_PRIORITY_OPTIONS);
+  const owner = validateByOptions(normalizeTicketString(formData.get("owner"), 20), TICKET_OWNER_OPTIONS);
+  if (!studentName || !source || !type || !priority || !owner) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=edit-required`);
+  }
+
+  const grade = normalizeTicketString(formData.get("grade"), 40);
+  const course = normalizeTicketString(formData.get("course"), 120);
+  if (type === "新学生购买课时包" && (!grade || !course)) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=edit-package-required`);
+  }
+
+  const situationCurrent = normalizeTicketString(formData.get("situationCurrent"), 2000);
+  const situationAction = normalizeTicketString(formData.get("situationAction"), 2000);
+  const situationDeadlineRaw = normalizeTicketString(formData.get("situationDeadline"), 40);
+  const situationDeadline = parseDateLike(formData.get("situationDeadline"));
+  if (!situationCurrent || !situationAction || !situationDeadlineRaw || !situationDeadline) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=edit-situation`);
+  }
+
+  await prisma.ticket.update({
+    where: { id },
+    data: {
+      studentName,
+      source,
+      type,
+      priority,
+      owner,
+      grade,
+      course,
+      teacher: normalizeTicketString(formData.get("teacher"), 120),
+      poc: normalizeTicketString(formData.get("poc"), 120),
+      wechat: normalizeTicketString(formData.get("wechat"), 120),
+      durationMin: normalizeTicketInt(formData.get("durationMin")),
+      mode: validateByOptions(normalizeTicketString(formData.get("mode"), 40), TICKET_MODE_OPTIONS),
+      version: validateByOptions(normalizeTicketString(formData.get("version"), 10), TICKET_VERSION_OPTIONS),
+      systemUpdated: validateByOptions(normalizeTicketString(formData.get("systemUpdated"), 5), TICKET_SYSTEM_UPDATED_OPTIONS),
+      slaDue: parseDateLike(formData.get("slaDue")),
+      createdByName: normalizeTicketString(formData.get("createdByName"), 120),
+      addressOrLink: normalizeTicketString(formData.get("addressOrLink"), 500),
+      summary: composeTicketSituation({
+        currentIssue: situationCurrent,
+        requiredAction: situationAction,
+        latestDeadlineText: situationDeadlineRaw,
+      }),
+      nextAction: situationAction,
+      nextActionDue: situationDeadline,
+    },
+  });
+  revalidatePath("/admin/tickets");
+  revalidatePath("/teacher/tickets");
+  redirect(`${back}${back.includes("?") ? "&" : "?"}ok=edited`);
 }
 
 async function archiveTicketAction(formData: FormData) {
@@ -175,7 +272,7 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -186,6 +283,7 @@ export default async function AdminTicketsPage({
   const type = String(sp?.type ?? "").trim();
   const focus = String(sp?.focus ?? "").trim();
   const err = String(sp?.err ?? "").trim();
+  const ok = String(sp?.ok ?? "").trim();
   const tokenSaved = sp?.tok === "1";
 
   const [rows, tokens] = await Promise.all([
@@ -243,8 +341,12 @@ export default async function AdminTicketsPage({
           {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
+          {err === "edit-required" && "编辑保存失败：学生、来源、类型、优先级、负责人必填 / Required fields missing."}
+          {err === "edit-package-required" && "编辑保存失败：新学生购买课时包必须填写年级和课程 / Grade and course are required."}
+          {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
         </div>
       ) : null}
+      {ok === "edited" ? <div style={{ color: "#166534", marginBottom: 8 }}>工单已更新 / Ticket updated</div> : null}
       {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>录入链接已更新 / Intake link updated</div> : null}
       {focus === "mgmt" ? (
         <div style={{ color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: 8, marginBottom: 8 }}>
@@ -395,6 +497,7 @@ export default async function AdminTicketsPage({
           <tbody>
             {rows.map((r) => {
               const situation = situationLines(r.summary, r.nextAction, r.nextActionDue);
+              const parsed = parseTicketSituationSummary(r.summary);
               return (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
                 <td>{r.ticketNo}</td>
@@ -433,34 +536,29 @@ export default async function AdminTicketsPage({
                   <details>
                     <summary style={{ cursor: "pointer" }}>查看详情 / Details</summary>
                     <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, color: "#334155" }}>
-                      {(() => {
-                        const parsed = parseTicketSituationSummary(r.summary);
-                        return (
-                          <>
-                            <div><b>学生姓名</b>: {asText(r.studentName)}</div>
-                            <div><b>来源</b>: {asText(r.source)}</div>
-                            <div><b>工单类型</b>: {asText(normalizeTicketTypeValue(r.type))}</div>
-                            <div><b>优先级</b>: {asText(normalizeTicketPriorityValue(r.priority))}</div>
-                            <div><b>状态</b>: {asText(r.status)}</div>
-                            <div><b>负责人</b>: {asText(r.owner)}</div>
-                            <div><b>年级</b>: {asText(r.grade)}</div>
-                            <div><b>课程</b>: {asText(r.course)}</div>
-                            <div><b>老师</b>: {asText(r.teacher)}</div>
-                            <div><b>对接人</b>: {asText(r.poc)}</div>
-                            <div><b>当前微信群名称</b>: {asText(r.wechat)}</div>
-                            <div><b>时长(分钟)</b>: {r.durationMin ?? "-"}</div>
-                            <div><b>授课形式</b>: {asText(r.mode)}</div>
-                            <div><b>版本</b>: {asText(r.version)}</div>
-                            <div><b>系统已更新</b>: {asText(r.systemUpdated)}</div>
-                            <div><b>SLA截止</b>: {r.slaDue ? r.slaDue.toLocaleString() : "-"}</div>
-                            <div><b>录入人</b>: {asText(r.createdByName)}</div>
-                            <div><b>地址或链接</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.addressOrLink)}</span></div>
-                            <div><b>S – Situation / 当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.currentIssue)}</span></div>
-                            <div><b>S – Situation / 需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.requiredAction || r.nextAction)}</span></div>
-                            <div><b>S – Situation / 最晚截止时间</b>: {parsed.latestDeadlineText || (r.nextActionDue ? r.nextActionDue.toLocaleString() : "-")}</div>
-                          </>
-                        );
-                      })()}
+                      <>
+                        <div><b>学生姓名</b>: {asText(r.studentName)}</div>
+                        <div><b>来源</b>: {asText(r.source)}</div>
+                        <div><b>工单类型</b>: {asText(normalizeTicketTypeValue(r.type))}</div>
+                        <div><b>优先级</b>: {asText(normalizeTicketPriorityValue(r.priority))}</div>
+                        <div><b>状态</b>: {asText(r.status)}</div>
+                        <div><b>负责人</b>: {asText(r.owner)}</div>
+                        <div><b>年级</b>: {asText(r.grade)}</div>
+                        <div><b>课程</b>: {asText(r.course)}</div>
+                        <div><b>老师</b>: {asText(r.teacher)}</div>
+                        <div><b>对接人</b>: {asText(r.poc)}</div>
+                        <div><b>当前微信群名称</b>: {asText(r.wechat)}</div>
+                        <div><b>时长(分钟)</b>: {r.durationMin ?? "-"}</div>
+                        <div><b>授课形式</b>: {asText(r.mode)}</div>
+                        <div><b>版本</b>: {asText(r.version)}</div>
+                        <div><b>系统已更新</b>: {asText(r.systemUpdated)}</div>
+                        <div><b>SLA截止</b>: {r.slaDue ? r.slaDue.toLocaleString() : "-"}</div>
+                        <div><b>录入人</b>: {asText(r.createdByName)}</div>
+                        <div><b>地址或链接</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(r.addressOrLink)}</span></div>
+                        <div><b>S – Situation / 当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.currentIssue)}</span></div>
+                        <div><b>S – Situation / 需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.requiredAction || r.nextAction)}</span></div>
+                        <div><b>S – Situation / 最晚截止时间</b>: {parsed.latestDeadlineText || (r.nextActionDue ? r.nextActionDue.toLocaleString() : "-")}</div>
+                      </>
                       <div>
                         <b>全部证据</b>:{" "}
                         {proofItemsAll(r.proof).length === 0 ? (
@@ -481,6 +579,132 @@ export default async function AdminTicketsPage({
                           </div>
                         )}
                       </div>
+                      {!r.isArchived && r.status !== "Completed" ? (
+                        <form action={updateTicketFieldsAction} style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="back" value={backHref} />
+                          <div style={{ fontWeight: 700, color: "#0f172a" }}>编辑工单 / Edit Ticket</div>
+                          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
+                            <label>
+                              学生姓名*
+                              <input name="studentName" defaultValue={r.studentName} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              来源*
+                              <select name="source" defaultValue={r.source} style={{ width: "100%", boxSizing: "border-box" }}>
+                                {TICKET_SOURCE_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              工单类型*
+                              <select name="type" defaultValue={r.type} style={{ width: "100%", boxSizing: "border-box" }}>
+                                {TICKET_TYPE_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              优先级*
+                              <select name="priority" defaultValue={r.priority} style={{ width: "100%", boxSizing: "border-box" }}>
+                                {TICKET_PRIORITY_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              负责人*
+                              <select name="owner" defaultValue={r.owner ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
+                                <option value="">请选择 / Select</option>
+                                {TICKET_OWNER_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              年级
+                              <input name="grade" defaultValue={r.grade ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              课程
+                              <input name="course" defaultValue={r.course ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              老师
+                              <input name="teacher" defaultValue={r.teacher ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              对接人
+                              <input name="poc" defaultValue={r.poc ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              当前微信群名称
+                              <input name="wechat" defaultValue={r.wechat ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              时长(分钟)
+                              <input name="durationMin" type="number" min={1} defaultValue={r.durationMin ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                            <label>
+                              授课形式
+                              <select name="mode" defaultValue={r.mode ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
+                                <option value="">可选 / Optional</option>
+                                {TICKET_MODE_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              版本
+                              <select name="version" defaultValue={r.version ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
+                                <option value="">可选 / Optional</option>
+                                {TICKET_VERSION_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              系统已更新
+                              <select name="systemUpdated" defaultValue={r.systemUpdated ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
+                                <option value="">可选 / Optional</option>
+                                {TICKET_SYSTEM_UPDATED_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              SLA截止
+                              <DateTimeSplitInput name="slaDue" defaultValue={toDateTimeLocalValue(r.slaDue)} wrapperStyle={{ width: "100%" }} />
+                            </label>
+                            <label>
+                              录入人
+                              <input name="createdByName" defaultValue={r.createdByName ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            </label>
+                          </div>
+                          <label>
+                            地址或链接
+                            <textarea name="addressOrLink" rows={2} defaultValue={r.addressOrLink ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                          </label>
+                          <label>
+                            当前问题*
+                            <textarea name="situationCurrent" rows={3} defaultValue={parsed.currentIssue} style={{ width: "100%", boxSizing: "border-box" }} />
+                          </label>
+                          <label>
+                            需要怎么做*
+                            <textarea name="situationAction" rows={3} defaultValue={parsed.requiredAction || r.nextAction || ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                          </label>
+                          <label>
+                            最晚截止时间*
+                            <DateTimeSplitInput
+                              name="situationDeadline"
+                              defaultValue={toDateTimeLocalValue(r.nextActionDue)}
+                              wrapperStyle={{ width: "100%" }}
+                            />
+                          </label>
+                          <button type="submit" style={{ width: 180 }}>保存工单内容 / Save Ticket</button>
+                        </form>
+                      ) : null}
                     </div>
                   </details>
                 </td>
