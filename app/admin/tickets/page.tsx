@@ -118,8 +118,8 @@ async function archiveTicketAction(formData: FormData) {
   });
   if (!row) redirect(back);
   if (row.isArchived) redirect(back);
-  if (row.status !== "Completed") {
-    redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-completed-archive`);
+  if (!["Completed", "Cancelled"].includes(row.status)) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=need-closed-archive`);
   }
   await prisma.ticket.update({
     where: { id },
@@ -242,7 +242,7 @@ export default async function AdminTicketsPage({
           {err === "need-note" && "完成时必须填写完成说明 / Completion note is required when marking completed"}
           {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
-          {err === "need-completed-archive" && "仅已完成工单可归档 / Only completed tickets can be archived."}
+          {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
         </div>
       ) : null}
       {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>录入链接已更新 / Intake link updated</div> : null}
@@ -485,10 +485,12 @@ export default async function AdminTicketsPage({
                   </details>
                 </td>
                 <td>
-                  {r.status === "Completed" ? (
+                  {r.status === "Completed" || r.status === "Cancelled" ? (
                     <div style={{ display: "grid", gap: 6, maxWidth: 210 }}>
-                      <div style={{ color: "#166534", fontWeight: 700 }}>
-                        已完成（锁定）/ Completed (Locked)
+                      <div style={{ color: r.status === "Cancelled" ? "#b45309" : "#166534", fontWeight: 700 }}>
+                        {r.status === "Cancelled"
+                          ? "已取消（可归档）/ Cancelled (Archivable)"
+                          : "已完成（锁定）/ Completed (Locked)"}
                       </div>
                       <form action={archiveTicketAction}>
                         <input type="hidden" name="id" value={r.id} />

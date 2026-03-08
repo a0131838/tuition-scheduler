@@ -2,11 +2,11 @@
 
 import {
   parseTicketSituationSummary,
+  TICKET_CS_STATUS_OPTIONS,
   TICKET_MODE_OPTIONS,
   TICKET_OWNER_OPTIONS,
   TICKET_PRIORITY_OPTIONS,
   TICKET_SOURCE_OPTIONS,
-  TICKET_STATUS_OPTIONS,
   TICKET_SYSTEM_UPDATED_OPTIONS,
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
@@ -188,7 +188,7 @@ export default function IntakeForm({
           <label style={labelStyle}>
             状态* / Status*
             <select name="status" required defaultValue="Need Info" style={fieldStyle}>
-              <OptionList options={TICKET_STATUS_OPTIONS} placeholder="默认待补信息 / Default Need Info" />
+              <OptionList options={TICKET_CS_STATUS_OPTIONS} placeholder="默认待补信息 / Default Need Info" />
             </select>
           </label>
           <label style={labelStyle}>

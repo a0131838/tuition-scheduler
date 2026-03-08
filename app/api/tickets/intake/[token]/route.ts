@@ -6,11 +6,11 @@ import {
   normalizeTicketTypeValue,
   normalizeTicketString,
   parseDateLike,
+  TICKET_CS_STATUS_OPTIONS,
   TICKET_MODE_OPTIONS,
   TICKET_OWNER_OPTIONS,
   TICKET_PRIORITY_OPTIONS,
   TICKET_SOURCE_OPTIONS,
-  TICKET_STATUS_OPTIONS,
   TICKET_SYSTEM_UPDATED_OPTIONS,
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
@@ -61,7 +61,7 @@ export async function POST(
     return bad("Invalid source/type/priority");
   }
 
-  const status = validateByOptions(normalizeTicketString(body.status, 60), TICKET_STATUS_OPTIONS);
+  const status = validateByOptions(normalizeTicketString(body.status, 60), TICKET_CS_STATUS_OPTIONS);
   const owner = validateByOptions(normalizeTicketString(body.owner, 20), TICKET_OWNER_OPTIONS);
   if (!status || !owner) {
     return bad("Status and owner are required / 状态与负责人必填");

@@ -41,6 +41,13 @@ export const TICKET_STATUS_OPTIONS: OptionItem[] = [
   { value: "Exception", zh: "异常升级", en: "Exception" },
 ];
 
+export const TICKET_CS_STATUS_OPTIONS: OptionItem[] = [
+  { value: "Need Info", zh: "待补信息", en: "Need Info" },
+  { value: "Waiting Teacher", zh: "等老师", en: "Waiting Teacher" },
+  { value: "Waiting Parent", zh: "等家长/合作方", en: "Waiting Parent/Partner" },
+  { value: "Confirmed", zh: "已确认", en: "Confirmed" },
+];
+
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   "Need Info": ["Waiting Teacher", "Waiting Parent", "Cancelled"],
   "Waiting Teacher": ["Waiting Parent", "Confirmed", "Need Info", "Exception", "Cancelled"],
