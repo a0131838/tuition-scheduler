@@ -1,0 +1,26 @@
+{
+  "operationId": "op-ticket-20260308-002-followup-preview",
+  "task": "ticket.append_followup_note",
+  "target": {
+    "entity": "ticket",
+    "where": "id='b7c5fb45-8fe1-41db-9303-5ec89977406e' AND ticketNo='20260308-002'"
+  },
+  "change": {
+    "summary": "追加跟进备注（仅追加，不改owner/status/createdAt）",
+    "appendText": "工单中心第5条已进入处理队列：请在今晚22:00前确认周日/周二可排课时段，并回填最终安排。"
+  },
+  "safety": {
+    "maxAffected": 1,
+    "forceApply": false,
+    "confirmPhrase": "CONFIRM op-ticket-20260308-002-followup-preview"
+  },
+  "preview": {
+    "affectedCount": 1,
+    "sampleIds": [
+      "b7c5fb45-8fe1-41db-9303-5ec89977406e"
+    ]
+  },
+  "rollback": {
+    "strategy": "保留原summary快照；若误追加，使用一次反向append备注说明撤销。"
+  }
+}
