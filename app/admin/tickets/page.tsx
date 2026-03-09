@@ -22,6 +22,7 @@ import {
   TICKET_VERSION_OPTIONS,
   ticketTypeAliases,
 } from "@/lib/tickets";
+import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -286,7 +287,7 @@ export default async function AdminTicketsPage({
   const ok = String(sp?.ok ?? "").trim();
   const tokenSaved = sp?.tok === "1";
 
-  const [rows, tokens] = await Promise.all([
+  const [rows, tokens, overdueGroups] = await Promise.all([
     prisma.ticket.findMany({
       where: {
         isArchived: false,
@@ -325,6 +326,7 @@ export default async function AdminTicketsPage({
       orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
       take: 20,
     }),
+    getOverdueTicketFollowupGroups({ perOwnerLimit: 5, totalLimit: 80 }),
   ]);
 
   const activeToken = tokens.find((x) => x.isActive && (!x.expiresAt || x.expiresAt.getTime() > Date.now()));
@@ -353,6 +355,44 @@ export default async function AdminTicketsPage({
           管理介入视图 / Management Focus: 异常、紧急、逾期未完成工单
         </div>
       ) : null}
+      <div style={{ border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 10, padding: 10, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+          <div style={{ fontWeight: 700 }}>超时催办清单 / Overdue Follow-up Queue</div>
+          <div style={{ fontSize: 12, color: "#7f1d1d" }}>
+            {overdueGroups.length === 0
+              ? "当前无超时工单 / No overdue tickets"
+              : `${overdueGroups.reduce((sum, group) => sum + group.count, 0)} 张超时工单 / ${overdueGroups.length} 位负责人`}
+          </div>
+        </div>
+        {overdueGroups.length === 0 ? (
+          <div style={{ color: "#166534", fontSize: 13 }}>当前无超时工单，可按正常节奏处理。/ No overdue follow-up needed now.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+            {overdueGroups.map((group) => (
+              <div key={group.owner} style={{ border: "1px solid #fecaca", borderRadius: 8, background: "#fff", padding: 8 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                  {group.owner} <span style={{ color: "#b91c1c" }}>({group.count})</span>
+                </div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {group.items.map((item) => (
+                    <div key={item.id} style={{ border: "1px solid #fee2e2", borderRadius: 6, background: "#fffafa", padding: 6, fontSize: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+                        <b>{item.ticketNo}</b>
+                        <span style={{ color: "#b91c1c", fontWeight: 700 }}>{item.overdueLabel}</span>
+                      </div>
+                      <div>{item.studentName} | {normalizeTicketTypeValue(item.type)}</div>
+                      <div>Priority: {normalizeTicketPriorityValue(item.priority)}</div>
+                      <div>Next: {item.nextAction ?? "-"}</div>
+                      <div>Due: {new Date(item.nextActionDue).toLocaleString()}</div>
+                      <Link scroll={false} href={item.openHref}>打开工单 / Open</Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>录入链接管理 / Intake Link Management</div>
