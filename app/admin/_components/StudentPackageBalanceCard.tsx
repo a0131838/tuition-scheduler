@@ -50,6 +50,8 @@ export default function StudentPackageBalanceCard({
     const raw = Number(durationMin ?? 60);
     return Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 60;
   }, [durationMin]);
+  const hasInsufficient = useMemo(() => rows.some((row) => !row.canSchedule), [rows]);
+  const hasLowBalance = useMemo(() => rows.some((row) => row.lowBalance), [rows]);
 
   useEffect(() => {
     if (!studentId || !courseId) {
@@ -94,16 +96,43 @@ export default function StudentPackageBalanceCard({
   if (!studentId || !courseId) return null;
 
   return (
-    <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8, padding: 10, display: "grid", gap: 8 }}>
+    <div
+      style={{
+        border: hasInsufficient ? "1px solid #fca5a5" : hasLowBalance ? "1px solid #fdba74" : "1px solid #93c5fd",
+        background: hasInsufficient ? "#fff7f7" : hasLowBalance ? "#fffaf0" : "#f8fbff",
+        borderRadius: 8,
+        padding: 10,
+        display: "grid",
+        gap: 8,
+      }}
+    >
       <div style={{ fontWeight: 700 }}>课包余额预览 / Package Balance</div>
       <div style={{ fontSize: 12, color: "#475569" }}>
         本次时长: {needMinutes} 分钟 / Session length: {needMinutes} min
         {!startAt ? " | 未选开始时间，按当前时间口径显示" : ""}
       </div>
+      {!loading && !err && rows.length > 0 ? (
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "6px 8px",
+            borderRadius: 6,
+            background: hasInsufficient ? "#fef2f2" : hasLowBalance ? "#fff7ed" : "#ecfdf3",
+            color: hasInsufficient ? "#b91c1c" : hasLowBalance ? "#c2410c" : "#166534",
+          }}
+        >
+          {hasInsufficient
+            ? "当前有课包余额不足，请先确认是否仍要排课 / Insufficient balance detected."
+            : hasLowBalance
+            ? "当前可排，但余额偏低 / Schedulable, but balance is low."
+            : "当前时长可排，余额正常 / Schedulable with healthy balance."}
+        </div>
+      ) : null}
       {loading ? <div style={{ fontSize: 12, color: "#475569" }}>正在检查课包余额 / Checking package balance...</div> : null}
       {err ? <div style={{ fontSize: 12, color: "#b91c1c" }}>{err}</div> : null}
       {!loading && !err && rows.length === 0 ? (
-        <div style={{ fontSize: 12, color: "#b91c1c" }}>当前课程在该时间没有可用课包 / No active package for this course at the selected time.</div>
+        <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 700 }}>当前课程在该时间没有可用课包 / No active package for this course at the selected time.</div>
       ) : null}
       {!loading && !err && rows.length > 0 ? (
         <div style={{ display: "grid", gap: 6 }}>
@@ -111,10 +140,10 @@ export default function StudentPackageBalanceCard({
             <div
               key={row.id}
               style={{
-                border: "1px solid #e2e8f0",
+                border: row.canSchedule ? (row.lowBalance ? "1px solid #fdba74" : "1px solid #cbd5e1") : "1px solid #fca5a5",
                 borderRadius: 8,
                 padding: 8,
-                background: row.canSchedule ? "#ffffff" : "#fff7ed",
+                background: row.canSchedule ? (row.lowBalance ? "#fffaf0" : "#ffffff") : "#fff7f7",
               }}
             >
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
