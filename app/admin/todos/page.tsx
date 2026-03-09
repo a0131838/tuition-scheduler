@@ -12,6 +12,7 @@ import {
   refreshDailyConflictAudit,
   saveAutoFixResult,
 } from "@/lib/conflict-audit";
+import { getOverdueUnmarkedFollowupGroups } from "@/lib/unmarked-followups";
 
 const FORECAST_WINDOW_DAYS = 30;
 const DEFAULT_WARN_DAYS = 3;
@@ -550,7 +551,7 @@ export default async function AdminTodosPage({
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const [dailyConflictAudit, lastAutoFix, packages] = await Promise.all([
+  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups] = await Promise.all([
     getOrRunDailyConflictAudit(now),
     getLatestAutoFixResult(),
     prisma.coursePackage.findMany({
@@ -563,6 +564,7 @@ export default async function AdminTodosPage({
       orderBy: { updatedAt: "desc" },
       take: 500,
     }),
+    getOverdueUnmarkedFollowupGroups({ now, thresholdHours: 3, lookbackDays: 7, perTeacherLimit: 4, totalLimit: 120 }),
   ]);
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
@@ -988,6 +990,44 @@ export default async function AdminTodosPage({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...sectionStyle, borderColor: "#fdba74", background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)" }}>
+        <div style={sectionHeaderStyle}>
+          <h3 style={{ margin: 0 }}>{t(lang, "Overdue Unmarked Follow-up", "超时未点名催办")}</h3>
+          <span style={{ color: "#9a3412", fontSize: 12 }}>
+            {t(lang, "Threshold", "提醒阈值")}: 3h
+          </span>
+        </div>
+        {overdueUnmarkedGroups.length === 0 ? (
+          <div style={{ color: "#166534" }}>{t(lang, "No overdue unmarked sessions.", "当前无超时未点名课次。")}</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+            {overdueUnmarkedGroups.map((group) => (
+              <div key={group.teacherId} style={{ border: "1px solid #fdba74", borderRadius: 10, background: "#fff", padding: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700 }}>{group.teacherName}</div>
+                  <div style={{ color: "#c2410c", fontWeight: 700 }}>{group.count} {t(lang, "sessions", "节")}</div>
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {group.items.map((item) => (
+                    <div key={item.id} style={{ border: "1px solid #fed7aa", borderRadius: 8, background: "#fffaf0", padding: 8, fontSize: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                        <b>{new Date(item.startAt).toLocaleDateString()}</b>
+                        <span style={{ color: "#b91c1c", fontWeight: 700 }}>{item.overdueLabel}</span>
+                      </div>
+                      <div style={detailLineStyle}>{new Date(item.startAt).toLocaleTimeString()} - {new Date(item.endAt).toLocaleTimeString()}</div>
+                      <div style={detailLineStyle}>{item.courseLabel}</div>
+                      <div style={detailLineStyle}>{t(lang, "Students", "学生")}: {listWithLimit(item.studentNames, 3)}</div>
+                      <div style={detailLineStyle}>{t(lang, "Unmarked", "未点名")}: {item.unmarkedCount}</div>
+                      <a href={item.attendanceHref}>{t(lang, "Go Attendance", "去点名")}</a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -1516,7 +1556,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
 
 
 
