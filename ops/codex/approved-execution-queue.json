@@ -1,5 +1,17 @@
 {
   "version": 1,
-  "updatedAt": "",
-  "items": []
+  "updatedAt": "2026-03-09T21:18:19.519001+08:00",
+  "items": [
+    {
+      "id": "queue-20260309-001",
+      "createdAt": "2026-03-09T21:18:19.519001+08:00",
+      "source": "boss-approval",
+      "title": "提效第2条：工单模板化",
+      "detail": "高频场景模板（补录课次、改老师、改时间、家长确认、BM录入）；模板自动带出必填项，降低Need Info",
+      "priority": "P1",
+      "status": "approved",
+      "owner": "小赵",
+      "nextAction": "拆分为字段模板+校验规则+前端入口，进入实施排期"
+    }
+  ]
 }
