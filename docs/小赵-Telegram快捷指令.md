@@ -4,6 +4,7 @@
 适用：老板在 Telegram 直接指挥小赵（OpenClaw）  
 默认安全规则：所有数据修改都先 `Preview`，你确认后才 `Apply`。
 默认回复规则：先说业务结论，再说关键细节；除非老板点名，不展示技术日志、脚本名、JSON 文件名。
+补充规则：如果底层返回了 `operationId / validate / affectedCount / maxAffected / preview file`，必须先翻译成老板版业务结果，再回复。
 
 ---
 
@@ -103,8 +104,7 @@
 当你看完 Preview，确认执行时统一发：
 
 ```text
-确认执行：CONFIRM <operationId>
-同意按当前 preview 结果执行 apply。
+小赵，确认执行第X张工单，按刚才预览结果执行，不要扩大范围。
 ```
 
 ---
@@ -178,9 +178,9 @@ confirmationText: "CONFIRM OP-<日期>-TICKETNOTE-001"
 ```
 
 注意：
-1. `operationId` 每单唯一。
-2. 先 Preview，确认无误后再 Apply。
-3. `confirmationText` 必须与 `confirmPhrase` 完全一致。
+1. 内部仍有 `operationId`，但默认不对老板展示。
+2. 老板默认只需要确认业务动作，不需要记技术 ID。
+3. 先 Preview，确认无误后再 Apply。
 
 ---
 
@@ -189,9 +189,9 @@ confirmationText: "CONFIRM OP-<日期>-TICKETNOTE-001"
 ```text
 执行约束：
 1) 严格遵守 Preview -> Confirm -> Apply
-2) 每次输出 affectedCount 与 sampleIds
-3) 超过 maxAffected 自动拒绝
-4) 输出回滚方案
+2) 超过 maxAffected 自动拒绝
+3) 输出回滚方案
+4) 面向老板回复时，不直接展示 affectedCount、sampleIds、validator 名称
 ```
 
 ---
