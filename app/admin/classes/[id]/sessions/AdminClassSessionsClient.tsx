@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SimpleModal from "../../../_components/SimpleModal";
 import NoticeBanner from "../../../_components/NoticeBanner";
+import StudentPackageBalanceCard from "../../../_components/StudentPackageBalanceCard";
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
@@ -43,8 +44,24 @@ function durationMinutes(startIso: string, endIso: string) {
   return Number.isFinite(mins) && mins > 0 ? mins : 60;
 }
 
+function firstWeeklyOccurrence(startDate: string, weekday: string, time: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{2}:\d{2}$/.test(time)) return "";
+  const [year, month, day] = startDate.split("-").map(Number);
+  const targetWeekday = Number(weekday);
+  if (!Number.isFinite(targetWeekday) || targetWeekday < 1 || targetWeekday > 7) return "";
+  const base = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const jsTarget = targetWeekday === 7 ? 0 : targetWeekday;
+  const diff = (jsTarget - base.getDay() + 7) % 7;
+  base.setDate(base.getDate() + diff);
+  const y = base.getFullYear();
+  const m = String(base.getMonth() + 1).padStart(2, "0");
+  const dd = String(base.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}T${time}`;
+}
+
 export default function AdminClassSessionsClient({
   classId,
+  classCourseId,
   classCapacity,
   classTeacherId,
   classTeacherName,
@@ -57,6 +74,7 @@ export default function AdminClassSessionsClient({
   labels,
 }: {
   classId: string;
+  classCourseId: string;
   classCapacity: number;
   classTeacherId: string;
   classTeacherName: string;
@@ -113,18 +131,24 @@ export default function AdminClassSessionsClient({
   const [sessions, setSessions] = useState<SessionRow[]>(initialSessions);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
-
-  const defaultStartDate = useMemo(() => {
+  const [createStudentId, setCreateStudentId] = useState("");
+  const [createStartAt, setCreateStartAt] = useState("");
+  const [createDurationMin, setCreateDurationMin] = useState("60");
+  const [weeklyStudentId, setWeeklyStudentId] = useState("");
+  const [weeklyStartDate, setWeeklyStartDate] = useState(() => {
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
-  }, []);
-  const weekdayDefault = useMemo(() => {
-    const jsDay = new Date().getDay();
-    return jsDay === 0 ? 7 : jsDay;
-  }, []);
+  });
+  const [weeklyWeekday, setWeeklyWeekday] = useState(String(new Date().getDay() === 0 ? 7 : new Date().getDay()));
+  const [weeklyTime, setWeeklyTime] = useState("19:00");
+  const [weeklyDurationMin, setWeeklyDurationMin] = useState("60");
+  const weeklyPreviewStartAt = useMemo(
+    () => firstWeeklyOccurrence(weeklyStartDate, weeklyWeekday, weeklyTime),
+    [weeklyStartDate, weeklyWeekday, weeklyTime]
+  );
 
   async function reloadSessions() {
     const res = await fetch(`/api/admin/classes/${encodeURIComponent(classId)}/sessions`);
@@ -298,7 +322,12 @@ export default function AdminClassSessionsClient({
               {classCapacity === 1 && (
                 <label>
                   {labels.student}:
-                  <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 240 }}>
+                  <select
+                    name="studentId"
+                    value={createStudentId}
+                    onChange={(e) => setCreateStudentId(e.target.value)}
+                    style={{ marginLeft: 8, minWidth: 240 }}
+                  >
                     <option value="">{labels.selectStudent}</option>
                     {enrollments.map((e) => (
                       <option key={e.studentId} value={e.studentId}>
@@ -313,13 +342,32 @@ export default function AdminClassSessionsClient({
                 <DateTimeSplitInput
                   name="startAt"
                   required
+                  value={createStartAt}
+                  onChange={setCreateStartAt}
                   wrapperStyle={{ marginLeft: 8 }}
                 />
               </label>
               <label>
                 {labels.durationMin}:
-                <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
+                <input
+                  name="durationMin"
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={createDurationMin}
+                  onChange={(e) => setCreateDurationMin(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                />
               </label>
+              {classCapacity === 1 && createStudentId ? (
+                <StudentPackageBalanceCard
+                  studentId={createStudentId}
+                  courseId={classCourseId}
+                  startAt={createStartAt}
+                  durationMin={Number(createDurationMin || 60)}
+                  kind="oneOnOne"
+                />
+              ) : null}
               <button type="submit">{labels.create}</button>
             </form>
           )}
@@ -346,7 +394,12 @@ export default function AdminClassSessionsClient({
               {classCapacity === 1 && (
                 <label>
                   {labels.student}:
-                  <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 240 }}>
+                  <select
+                    name="studentId"
+                    value={weeklyStudentId}
+                    onChange={(e) => setWeeklyStudentId(e.target.value)}
+                    style={{ marginLeft: 8, minWidth: 240 }}
+                  >
                     <option value="">{labels.selectStudent}</option>
                     {enrollments.map((e) => (
                       <option key={e.studentId} value={e.studentId}>
@@ -358,11 +411,22 @@ export default function AdminClassSessionsClient({
               )}
               <label>
                 {labels.startDateFrom}:
-                <input name="startDate" type="date" defaultValue={defaultStartDate} style={{ marginLeft: 8 }} />
+                <input
+                  name="startDate"
+                  type="date"
+                  value={weeklyStartDate}
+                  onChange={(e) => setWeeklyStartDate(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                />
               </label>
               <label>
                 {labels.weekday}:
-                <select name="weekday" defaultValue={weekdayDefault} style={{ marginLeft: 8, minWidth: 200 }}>
+                <select
+                  name="weekday"
+                  value={weeklyWeekday}
+                  onChange={(e) => setWeeklyWeekday(e.target.value)}
+                  style={{ marginLeft: 8, minWidth: 200 }}
+                >
                   <option value={1}>Mon</option>
                   <option value={2}>Tue</option>
                   <option value={3}>Wed</option>
@@ -374,12 +438,29 @@ export default function AdminClassSessionsClient({
               </label>
               <label>
                 {labels.time}:
-                <BlurTimeInput name="time" defaultValue="19:00" style={{ marginLeft: 8 }} />
+                <BlurTimeInput name="time" value={weeklyTime} onValueChange={setWeeklyTime} style={{ marginLeft: 8 }} />
               </label>
               <label>
                 {labels.durationMin}:
-                <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} />
+                <input
+                  name="durationMin"
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={weeklyDurationMin}
+                  onChange={(e) => setWeeklyDurationMin(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                />
               </label>
+              {classCapacity === 1 && weeklyStudentId ? (
+                <StudentPackageBalanceCard
+                  studentId={weeklyStudentId}
+                  courseId={classCourseId}
+                  startAt={weeklyPreviewStartAt}
+                  durationMin={Number(weeklyDurationMin || 60)}
+                  kind="oneOnOne"
+                />
+              ) : null}
               <label>
                 {labels.weeks}:
                 <input name="weeks" type="number" min={1} max={52} defaultValue={8} style={{ marginLeft: 8 }} />

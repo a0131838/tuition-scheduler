@@ -1,0 +1,162 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type PackageRow = {
+  id: string;
+  type: "HOURS" | "MONTHLY";
+  remainingMinutes: number | null;
+  validFrom: string;
+  validTo: string | null;
+  paid: boolean;
+  canSchedule: boolean;
+  lowBalance: boolean;
+  packMode: "GROUP" | "HOURS";
+};
+
+function fmtMinutes(min?: number | null) {
+  if (min == null) return "-";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h <= 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function fmtDate(v: string | null) {
+  if (!v) return "(open)";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+}
+
+export default function StudentPackageBalanceCard({
+  studentId,
+  courseId,
+  startAt,
+  durationMin,
+  kind = "oneOnOne",
+}: {
+  studentId: string;
+  courseId: string;
+  startAt?: string;
+  durationMin?: number;
+  kind?: "oneOnOne" | "group";
+}) {
+  const [rows, setRows] = useState<PackageRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const needMinutes = useMemo(() => {
+    const raw = Number(durationMin ?? 60);
+    return Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 60;
+  }, [durationMin]);
+
+  useEffect(() => {
+    if (!studentId || !courseId) {
+      setRows([]);
+      setErr("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      courseId,
+      kind,
+      durationMin: String(needMinutes),
+    });
+    if (startAt) params.set("at", startAt);
+
+    setLoading(true);
+    setErr("");
+    fetch(`/api/admin/students/${encodeURIComponent(studentId)}/package-balance-preview?${params.toString()}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as any;
+        if (!res.ok || !data?.ok) {
+          throw new Error(String(data?.message ?? `Request failed (${res.status})`));
+        }
+        setRows(Array.isArray(data.rows) ? data.rows : []);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setErr(error instanceof Error ? error.message : "Failed to load package balance");
+        setRows([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [studentId, courseId, startAt, needMinutes, kind]);
+
+  if (!studentId || !courseId) return null;
+
+  return (
+    <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8, padding: 10, display: "grid", gap: 8 }}>
+      <div style={{ fontWeight: 700 }}>课包余额预览 / Package Balance</div>
+      <div style={{ fontSize: 12, color: "#475569" }}>
+        本次时长: {needMinutes} 分钟 / Session length: {needMinutes} min
+        {!startAt ? " | 未选开始时间，按当前时间口径显示" : ""}
+      </div>
+      {loading ? <div style={{ fontSize: 12, color: "#475569" }}>正在检查课包余额 / Checking package balance...</div> : null}
+      {err ? <div style={{ fontSize: 12, color: "#b91c1c" }}>{err}</div> : null}
+      {!loading && !err && rows.length === 0 ? (
+        <div style={{ fontSize: 12, color: "#b91c1c" }}>当前课程在该时间没有可用课包 / No active package for this course at the selected time.</div>
+      ) : null}
+      {!loading && !err && rows.length > 0 ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {rows.map((row, idx) => (
+            <div
+              key={row.id}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: 8,
+                background: row.canSchedule ? "#ffffff" : "#fff7ed",
+              }}
+            >
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <b>课包 {idx + 1}</b>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: row.type === "MONTHLY" ? "#ecfdf3" : "#eef2ff",
+                    color: row.type === "MONTHLY" ? "#166534" : "#1d4ed8",
+                  }}
+                >
+                  {row.type === "MONTHLY" ? "MONTHLY / 包月" : row.packMode === "GROUP" ? "GROUP / 次数包" : "HOURS / 课时包"}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: row.canSchedule ? "#ecfdf3" : "#fef2f2",
+                    color: row.canSchedule ? "#166534" : "#b91c1c",
+                  }}
+                >
+                  {row.canSchedule ? "当前时长可排 / Schedulable" : "当前时长不足 / Insufficient"}
+                </span>
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#334155" }}>
+                剩余:{" "}
+                <span style={{ fontWeight: row.lowBalance ? 700 : 400, color: row.lowBalance ? "#b91c1c" : undefined }}>
+                  {row.type === "MONTHLY" ? "MONTHLY / 包月" : fmtMinutes(row.remainingMinutes)}
+                </span>
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#334155" }}>
+                有效期: {fmtDate(row.validFrom)} ~ {fmtDate(row.validTo)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}

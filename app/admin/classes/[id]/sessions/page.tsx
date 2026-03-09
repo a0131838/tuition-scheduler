@@ -698,6 +698,7 @@ export default async function ClassSessionsPage({
 
       <AdminClassSessionsClient
         classId={classId}
+        classCourseId={cls.courseId}
         classCapacity={cls.capacity}
         classTeacherId={cls.teacherId}
         classTeacherName={cls.teacher.name}
@@ -762,7 +763,6 @@ export default async function ClassSessionsPage({
     </div>
   );
 }
-
 
 
 

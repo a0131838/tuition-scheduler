@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
+import StudentPackageBalanceCard from "@/app/admin/_components/StudentPackageBalanceCard";
 import { campusRequiresRoom } from "@/lib/campus";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
@@ -330,6 +331,10 @@ export default function QuickScheduleModal({
   const canSchedule = useMemo(() => {
     return Boolean(subjectId && campusId && (roomId || !roomRequired) && startAt && durationMin);
   }, [subjectId, campusId, roomId, roomRequired, startAt, durationMin]);
+  const selectedCourseId = useMemo(() => {
+    if (subjectId) return subjects.find((s) => s.id === subjectId)?.courseId ?? courseId;
+    return courseId;
+  }, [courseId, subjectId, subjects]);
 
   const levelOptions = useMemo(() => {
     if (!subjectId) return levels;
@@ -500,6 +505,15 @@ export default function QuickScheduleModal({
                   ))}
                 </select>
               </label>
+              {selectedCourseId ? (
+                <StudentPackageBalanceCard
+                  studentId={studentId}
+                  courseId={selectedCourseId}
+                  startAt={startAt}
+                  durationMin={Number(durationMin || 60)}
+                  kind="oneOnOne"
+                />
+              ) : null}
               <label>
                 {labels.campus}:
                 <select

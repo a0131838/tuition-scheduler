@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NoticeBanner from "../../../_components/NoticeBanner";
+import StudentPackageBalanceCard from "../../../_components/StudentPackageBalanceCard";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 function startOfWeekMonday(d: Date) {
@@ -56,6 +57,7 @@ export default function NewSingleSessionClient({
 }: {
   classes: Array<{
     id: string;
+    courseId: string;
     capacity: number;
     course: { name: string };
     subject: { name: string } | null;
@@ -82,8 +84,13 @@ export default function NewSingleSessionClient({
   const formRef = useRef<HTMLFormElement | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState(defaultClassId);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const [durationMin, setDurationMin] = useState("60");
 
   const classById = useMemo(() => new Map(classes.map((c) => [c.id, c])), [classes]);
+  const selectedClass = useMemo(() => classById.get(selectedClassId) ?? null, [classById, selectedClassId]);
 
   return (
     <div style={{ display: "grid", gap: 10, maxWidth: 720 }}>
@@ -138,7 +145,13 @@ export default function NewSingleSessionClient({
 
         <label>
           {labels.classLabel}:
-          <select name="classId" defaultValue={defaultClassId} style={{ marginLeft: 8, minWidth: 520 }} disabled={busy}>
+          <select
+            name="classId"
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            style={{ marginLeft: 8, minWidth: 520 }}
+            disabled={busy}
+          >
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 [{c.capacity === 1 ? "1-on-1/一对一" : "Group/班课"}] {c.course.name} / {c.subject?.name ?? "-"} / {c.level?.name ?? "-"} | Teacher:{" "}
@@ -150,7 +163,13 @@ export default function NewSingleSessionClient({
 
         <label>
           {labels.studentForOneOnOne}:
-          <select name="studentId" defaultValue="" style={{ marginLeft: 8, minWidth: 260 }} disabled={busy}>
+          <select
+            name="studentId"
+            value={selectedStudentId}
+            onChange={(e) => setSelectedStudentId(e.target.value)}
+            style={{ marginLeft: 8, minWidth: 260 }}
+            disabled={busy}
+          >
             <option value="">{labels.selectStudent}</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>
@@ -162,13 +181,32 @@ export default function NewSingleSessionClient({
 
         <label>
           {labels.start}:
-          <DateTimeSplitInput name="startAt" required disabled={busy} wrapperStyle={{ marginLeft: 8 }} />
+          <DateTimeSplitInput name="startAt" required disabled={busy} value={startAt} onChange={setStartAt} wrapperStyle={{ marginLeft: 8 }} />
         </label>
 
         <label>
           {labels.durationMin}:
-          <input name="durationMin" type="number" min={15} step={15} defaultValue={60} style={{ marginLeft: 8 }} disabled={busy} />
+          <input
+            name="durationMin"
+            type="number"
+            min={15}
+            step={15}
+            value={durationMin}
+            onChange={(e) => setDurationMin(e.target.value)}
+            style={{ marginLeft: 8 }}
+            disabled={busy}
+          />
         </label>
+
+        {selectedClass?.capacity === 1 && selectedStudentId ? (
+          <StudentPackageBalanceCard
+            studentId={selectedStudentId}
+            courseId={selectedClass.courseId}
+            startAt={startAt}
+            durationMin={Number(durationMin || 60)}
+            kind="oneOnOne"
+          />
+        ) : null}
 
         <button type="submit" disabled={busy}>
           {busy ? `${labels.create}...` : labels.create}
