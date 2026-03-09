@@ -6,6 +6,8 @@ import {
   composeTicketSituation,
   canTransitionTicketStatus,
   generateIntakeToken,
+  getTicketFieldLabel,
+  getTicketTypeTemplate,
   normalizeTicketInt,
   normalizeTicketPriorityValue,
   normalizeTicketTypeValue,
@@ -21,6 +23,7 @@ import {
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
   ticketTypeAliases,
+  validateTicketTypeRequirements,
 } from "@/lib/tickets";
 import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
@@ -158,8 +161,22 @@ async function updateTicketFieldsAction(formData: FormData) {
 
   const grade = normalizeTicketString(formData.get("grade"), 40);
   const course = normalizeTicketString(formData.get("course"), 120);
-  if (type === "新学生购买课时包" && (!grade || !course)) {
-    redirect(`${back}${back.includes("?") ? "&" : "?"}err=edit-package-required`);
+  const teacher = normalizeTicketString(formData.get("teacher"), 120);
+  const durationMin = normalizeTicketInt(formData.get("durationMin"));
+  const mode = validateByOptions(normalizeTicketString(formData.get("mode"), 40), TICKET_MODE_OPTIONS);
+  const wechat = normalizeTicketString(formData.get("wechat"), 120);
+  const requirementCheck = validateTicketTypeRequirements({
+    type,
+    grade,
+    course,
+    teacher,
+    durationMin,
+    mode,
+    wechat,
+  });
+  if (requirementCheck.missingLabels.length > 0) {
+    const labels = encodeURIComponent(requirementCheck.missingLabels.join("、"));
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=edit-type-required&fields=${labels}`);
   }
 
   const situationCurrent = normalizeTicketString(formData.get("situationCurrent"), 2000);
@@ -180,11 +197,11 @@ async function updateTicketFieldsAction(formData: FormData) {
       owner,
       grade,
       course,
-      teacher: normalizeTicketString(formData.get("teacher"), 120),
+      teacher,
       poc: normalizeTicketString(formData.get("poc"), 120),
-      wechat: normalizeTicketString(formData.get("wechat"), 120),
-      durationMin: normalizeTicketInt(formData.get("durationMin")),
-      mode: validateByOptions(normalizeTicketString(formData.get("mode"), 40), TICKET_MODE_OPTIONS),
+      wechat,
+      durationMin,
+      mode,
       version: validateByOptions(normalizeTicketString(formData.get("version"), 10), TICKET_VERSION_OPTIONS),
       systemUpdated: validateByOptions(normalizeTicketString(formData.get("systemUpdated"), 5), TICKET_SYSTEM_UPDATED_OPTIONS),
       slaDue: parseDateLike(formData.get("slaDue")),
@@ -273,7 +290,7 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -285,6 +302,7 @@ export default async function AdminTicketsPage({
   const focus = String(sp?.focus ?? "").trim();
   const err = String(sp?.err ?? "").trim();
   const ok = String(sp?.ok ?? "").trim();
+  const fields = String(sp?.fields ?? "").trim();
   const tokenSaved = sp?.tok === "1";
 
   const [rows, tokens, overdueGroups] = await Promise.all([
@@ -345,6 +363,8 @@ export default async function AdminTicketsPage({
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
           {err === "edit-required" && "编辑保存失败：学生、来源、类型、优先级、负责人必填 / Required fields missing."}
           {err === "edit-package-required" && "编辑保存失败：新学生购买课时包必须填写年级和课程 / Grade and course are required."}
+          {err === "edit-type-required" &&
+            `编辑保存失败：该工单类型缺少必填字段 / Missing required fields for this ticket type${fields ? `: ${decodeURIComponent(fields)}` : ""}`}
           {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
         </div>
       ) : null}
@@ -538,6 +558,10 @@ export default async function AdminTicketsPage({
             {rows.map((r) => {
               const situation = situationLines(r.summary, r.nextAction, r.nextActionDue);
               const parsed = parseTicketSituationSummary(r.summary);
+              const template = getTicketTypeTemplate(r.type);
+              const typeFieldHint = template.requiredFields.length
+                ? `本类型必填：${template.requiredFields.map(getTicketFieldLabel).join("、")}`
+                : "本类型无额外必填字段";
               return (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
                 <td>{r.ticketNo}</td>
@@ -624,6 +648,11 @@ export default async function AdminTicketsPage({
                           <input type="hidden" name="id" value={r.id} />
                           <input type="hidden" name="back" value={backHref} />
                           <div style={{ fontWeight: 700, color: "#0f172a" }}>编辑工单 / Edit Ticket</div>
+                          <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 8, padding: 8, fontSize: 12, color: "#334155" }}>
+                            <div style={{ fontWeight: 700, marginBottom: 4 }}>{template.title}</div>
+                            <div>{typeFieldHint}</div>
+                            <div style={{ marginTop: 4 }}>录入提示：{template.checklist.join("；")}</div>
+                          </div>
                           <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
                             <label>
                               学生姓名*
@@ -663,32 +692,64 @@ export default async function AdminTicketsPage({
                               </select>
                             </label>
                             <label>
-                              年级
-                              <input name="grade" defaultValue={r.grade ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                              年级{template.requiredFields.includes("grade") ? "*" : ""}
+                              <input
+                                name="grade"
+                                required={template.requiredFields.includes("grade")}
+                                defaultValue={r.grade ?? ""}
+                                placeholder={template.requiredFields.includes("grade") || template.suggestedFields.includes("grade") ? "如：P3 / G6" : ""}
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                              />
                             </label>
                             <label>
-                              课程
-                              <input name="course" defaultValue={r.course ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                              课程{template.requiredFields.includes("course") ? "*" : ""}
+                              <input
+                                name="course"
+                                required={template.requiredFields.includes("course")}
+                                defaultValue={r.course ?? ""}
+                                placeholder={template.requiredFields.includes("course") || template.suggestedFields.includes("course") ? "如：英语口语 / Math" : ""}
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                              />
                             </label>
                             <label>
-                              老师
-                              <input name="teacher" defaultValue={r.teacher ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                              老师{template.requiredFields.includes("teacher") ? "*" : ""}
+                              <input
+                                name="teacher"
+                                required={template.requiredFields.includes("teacher")}
+                                defaultValue={r.teacher ?? ""}
+                                placeholder={template.requiredFields.includes("teacher") || template.suggestedFields.includes("teacher") ? "填写当前老师或目标老师" : ""}
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                              />
                             </label>
                             <label>
                               对接人
                               <input name="poc" defaultValue={r.poc ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
                             </label>
                             <label>
-                              当前微信群名称
-                              <input name="wechat" defaultValue={r.wechat ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                              当前微信群名称{template.requiredFields.includes("wechat") ? "*" : ""}
+                              <input
+                                name="wechat"
+                                required={template.requiredFields.includes("wechat")}
+                                defaultValue={r.wechat ?? ""}
+                                placeholder={template.requiredFields.includes("wechat") || template.suggestedFields.includes("wechat") ? "如：欧阳梓恩家长群" : ""}
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                              />
                             </label>
                             <label>
-                              时长(分钟)
-                              <input name="durationMin" type="number" min={1} defaultValue={r.durationMin ?? ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                              时长{template.requiredFields.includes("durationMin") ? "*" : ""}(分钟)
+                              <input
+                                name="durationMin"
+                                type="number"
+                                min={1}
+                                required={template.requiredFields.includes("durationMin")}
+                                defaultValue={r.durationMin ?? ""}
+                                placeholder={template.requiredFields.includes("durationMin") || template.suggestedFields.includes("durationMin") ? "如：60 / 120" : ""}
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                              />
                             </label>
                             <label>
-                              授课形式
-                              <select name="mode" defaultValue={r.mode ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
+                              授课形式{template.requiredFields.includes("mode") ? "*" : ""}
+                              <select name="mode" required={template.requiredFields.includes("mode")} defaultValue={r.mode ?? ""} style={{ width: "100%", boxSizing: "border-box" }}>
                                 <option value="">可选 / Optional</option>
                                 {TICKET_MODE_OPTIONS.map((o) => (
                                   <option key={o.value} value={o.value}>{o.zh} / {o.en}</option>
@@ -728,11 +789,23 @@ export default async function AdminTicketsPage({
                           </label>
                           <label>
                             当前问题*
-                            <textarea name="situationCurrent" rows={3} defaultValue={parsed.currentIssue} style={{ width: "100%", boxSizing: "border-box" }} />
+                            <textarea
+                              name="situationCurrent"
+                              rows={3}
+                              defaultValue={parsed.currentIssue}
+                              placeholder={template.currentPlaceholder}
+                              style={{ width: "100%", boxSizing: "border-box" }}
+                            />
                           </label>
                           <label>
                             需要怎么做*
-                            <textarea name="situationAction" rows={3} defaultValue={parsed.requiredAction || r.nextAction || ""} style={{ width: "100%", boxSizing: "border-box" }} />
+                            <textarea
+                              name="situationAction"
+                              rows={3}
+                              defaultValue={parsed.requiredAction || r.nextAction || ""}
+                              placeholder={template.actionPlaceholder}
+                              style={{ width: "100%", boxSizing: "border-box" }}
+                            />
                           </label>
                           <label>
                             最晚截止时间*

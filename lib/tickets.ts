@@ -6,6 +6,23 @@ export type OptionItem = {
   en: string;
 };
 
+export type TicketTemplateField =
+  | "grade"
+  | "course"
+  | "teacher"
+  | "durationMin"
+  | "mode"
+  | "wechat";
+
+export type TicketTypeTemplate = {
+  title: string;
+  requiredFields: TicketTemplateField[];
+  suggestedFields: TicketTemplateField[];
+  currentPlaceholder: string;
+  actionPlaceholder: string;
+  checklist: string[];
+};
+
 export const TICKET_SOURCE_OPTIONS: OptionItem[] = [
   { value: "新东方外包", zh: "新东方外包", en: "New Oriental Outsourced" },
   { value: "自营学生", zh: "自营学生", en: "In-house Student" },
@@ -246,3 +263,139 @@ export const TICKET_UPLOAD_ACCEPT = [
 ];
 
 export const TICKET_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
+const DEFAULT_TICKET_TEMPLATE: TicketTypeTemplate = {
+  title: "通用工单模板",
+  requiredFields: [],
+  suggestedFields: [],
+  currentPlaceholder: "写清楚当前正在发生什么问题。",
+  actionPlaceholder: "写清楚下一步需要谁做什么。",
+  checklist: ["先写清当前问题", "再写需要怎么做", "最后写最晚截止时间"],
+};
+
+const TICKET_TYPE_TEMPLATE_MAP: Record<string, TicketTypeTemplate> = {
+  改课程时间: {
+    title: "改课程时间模板",
+    requiredFields: ["course", "teacher"],
+    suggestedFields: ["durationMin", "wechat"],
+    currentPlaceholder: "例如：家长要求把原定周三19:00课程改到周五晚上，当前待确认老师和家长都可行的时间。",
+    actionPlaceholder: "例如：先确认老师周五可排时段，再和家长确认最终时间并更新系统。",
+    checklist: ["课程必填", "老师必填", "建议补充时长和微信群"],
+  },
+  改上课老师: {
+    title: "改上课老师模板",
+    requiredFields: ["course", "teacher"],
+    suggestedFields: ["wechat"],
+    currentPlaceholder: "例如：家长希望将现有英语课改由另一位老师接手，当前待确认交接安排。",
+    actionPlaceholder: "例如：确认新老师可接手的时间，并同步家长和系统。",
+    checklist: ["课程必填", "老师栏填写目标老师或当前待替换老师", "建议补充微信群"],
+  },
+  "临时取消&请假课程": {
+    title: "取消/请假模板",
+    requiredFields: ["course"],
+    suggestedFields: ["teacher", "wechat"],
+    currentPlaceholder: "例如：家长通知本周课程需临时取消/请假，当前待确认是否补课。",
+    actionPlaceholder: "例如：记录取消原因，通知老师，并确认是否需要补课或改期。",
+    checklist: ["课程必填", "建议补充老师和微信群", "Situation 里写清是否需要后续补课"],
+  },
+  补课加课: {
+    title: "补课加课模板",
+    requiredFields: ["course", "teacher", "durationMin"],
+    suggestedFields: ["wechat", "mode"],
+    currentPlaceholder: "例如：家长希望周日或周二增加一节课，当前倾向 Yunfeng 周日下午。",
+    actionPlaceholder: "例如：确认老师可排时间，确认家长最终选择，并补录到系统。",
+    checklist: ["课程必填", "老师必填", "时长必填", "建议补充授课形式和微信群"],
+  },
+  新学生购买课时包: {
+    title: "新学生购买课时包模板",
+    requiredFields: ["grade", "course"],
+    suggestedFields: ["wechat"],
+    currentPlaceholder: "例如：新学生已确认购买课时包，当前待录入和后续排课。",
+    actionPlaceholder: "例如：完成课包登记，并推进后续排课准备。",
+    checklist: ["年级必填", "课程必填", "建议补充微信群或后续沟通入口"],
+  },
+  新排课: {
+    title: "新排课模板",
+    requiredFields: ["grade", "course"],
+    suggestedFields: ["teacher", "mode", "durationMin"],
+    currentPlaceholder: "例如：学生需要新排一门英语课，当前待确认老师、时段和授课形式。",
+    actionPlaceholder: "例如：先匹配老师和时间，再确认授课形式并排入系统。",
+    checklist: ["年级必填", "课程必填", "建议补充老师、授课形式和时长"],
+  },
+  "临时评估学生（没有买课程）": {
+    title: "临时评估模板",
+    requiredFields: ["grade", "course"],
+    suggestedFields: ["teacher", "mode", "durationMin"],
+    currentPlaceholder: "例如：学生需安排一次未购课评估，当前待确认评估老师和时间。",
+    actionPlaceholder: "例如：安排评估课，课后按评估课免扣流程处理。",
+    checklist: ["年级必填", "课程必填", "建议补充老师、授课形式和时长"],
+  },
+  "评估学生（已买课程）": {
+    title: "已购课评估模板",
+    requiredFields: ["grade", "course"],
+    suggestedFields: ["teacher", "mode", "durationMin"],
+    currentPlaceholder: "例如：已购课学生需要安排评估，当前待确认老师和评估时间。",
+    actionPlaceholder: "例如：安排评估课并记录评估结论，再推进后续课程安排。",
+    checklist: ["年级必填", "课程必填", "建议补充老师、授课形式和时长"],
+  },
+  学术问题: {
+    title: "学术问题模板",
+    requiredFields: [],
+    suggestedFields: ["course", "teacher"],
+    currentPlaceholder: "例如：学生在某门课程出现学术问题，当前待确认具体原因和影响范围。",
+    actionPlaceholder: "例如：先收集老师反馈，再给出处理方案并回家长。",
+    checklist: ["建议补充课程和老师", "Situation 里写清问题和处理动作"],
+  },
+  "非学术问题": {
+    title: "非学术问题模板",
+    requiredFields: [],
+    suggestedFields: ["course", "teacher"],
+    currentPlaceholder: "例如：家长对服务流程或沟通安排有意见，当前待跟进处理。",
+    actionPlaceholder: "例如：确认问题归属，安排负责人处理并回家长。",
+    checklist: ["建议补充相关课程或老师", "Situation 里写清问题和处理动作"],
+  },
+};
+
+const TICKET_FIELD_LABELS: Record<TicketTemplateField, string> = {
+  grade: "年级",
+  course: "课程",
+  teacher: "老师",
+  durationMin: "时长",
+  mode: "授课形式",
+  wechat: "当前微信群名称",
+};
+
+export function getTicketTypeTemplate(type: string | null | undefined): TicketTypeTemplate {
+  const normalized = normalizeTicketTypeValue(type);
+  return TICKET_TYPE_TEMPLATE_MAP[normalized] ?? DEFAULT_TICKET_TEMPLATE;
+}
+
+export function getTicketFieldLabel(field: TicketTemplateField) {
+  return TICKET_FIELD_LABELS[field];
+}
+
+export function validateTicketTypeRequirements(input: {
+  type: string | null | undefined;
+  grade?: string | null;
+  course?: string | null;
+  teacher?: string | null;
+  durationMin?: number | null;
+  mode?: string | null;
+  wechat?: string | null;
+}) {
+  const template = getTicketTypeTemplate(input.type);
+  const missing: TicketTemplateField[] = [];
+  for (const field of template.requiredFields) {
+    if (field === "durationMin") {
+      if (!input.durationMin || input.durationMin <= 0) missing.push(field);
+      continue;
+    }
+    const value = (input[field] ?? "") as string | null;
+    if (!String(value ?? "").trim()) missing.push(field);
+  }
+  return {
+    missingFields: missing,
+    missingLabels: missing.map((field) => getTicketFieldLabel(field)),
+    template,
+  };
+}

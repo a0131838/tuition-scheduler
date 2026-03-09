@@ -15,6 +15,7 @@ import {
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
   ticketTypeAliases,
+  validateTicketTypeRequirements,
 } from "@/lib/tickets";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -70,8 +71,23 @@ export async function POST(
   const normalizedType = normalizeTicketTypeValue(type);
   const grade = normalizeTicketString(body.grade, 40);
   const course = normalizeTicketString(body.course, 120);
-  if (normalizedType === "新学生购买课时包" && (!grade || !course)) {
-    return bad("Grade and course are required for package purchase tickets / 新学生购买课时包必须填写年级和课程");
+  const teacher = normalizeTicketString(body.teacher, 120);
+  const durationMin = normalizeTicketInt(body.durationMin);
+  const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);
+  const wechat = normalizeTicketString(body.wechat, 120);
+  const requirementCheck = validateTicketTypeRequirements({
+    type: normalizedType,
+    grade,
+    course,
+    teacher,
+    durationMin,
+    mode,
+    wechat,
+  });
+  if (requirementCheck.missingLabels.length > 0) {
+    return bad(
+      `Missing required fields for this ticket type / 该工单类型缺少必填字段: ${requirementCheck.missingLabels.join("、")}`
+    );
   }
 
   const situationCurrent = normalizeTicketString(body.situationCurrent, 2000);
@@ -112,7 +128,6 @@ export async function POST(
     });
   }
 
-  const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);
   const version = validateByOptions(normalizeTicketString(body.version, 10), TICKET_VERSION_OPTIONS);
   const systemUpdated = validateByOptions(
     normalizeTicketString(body.systemUpdated, 5),
@@ -130,13 +145,13 @@ export async function POST(
         studentName,
         grade,
         course,
-        teacher: normalizeTicketString(body.teacher, 120),
+        teacher,
         poc: normalizeTicketString(body.poc, 120),
-        wechat: normalizeTicketString(body.wechat, 120),
+        wechat,
         phone: null,
         parentAvailability: null,
         teacherAvailability: null,
-        durationMin: normalizeTicketInt(body.durationMin),
+        durationMin,
         mode,
         addressOrLink: normalizeTicketString(body.addressOrLink, 500),
         confirmDeadline: null,

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  getTicketFieldLabel,
+  getTicketTypeTemplate,
   parseTicketSituationSummary,
   TICKET_CS_STATUS_OPTIONS,
   TICKET_MODE_OPTIONS,
@@ -13,8 +15,6 @@ import {
 } from "@/lib/tickets";
 import { useMemo, useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
-
-const PACKAGE_PURCHASE_TYPE = "新学生购买课时包";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -67,7 +67,11 @@ export default function IntakeForm({
   const [forceDuplicate, setForceDuplicate] = useState(false);
   const [selectedType, setSelectedType] = useState("");
   const [proofUrls, setProofUrls] = useState<string[]>([]);
-  const packagePurchaseSelected = selectedType === PACKAGE_PURCHASE_TYPE;
+  const selectedTemplate = useMemo(() => getTicketTypeTemplate(selectedType), [selectedType]);
+  const fieldRequired = (field: "grade" | "course" | "teacher" | "durationMin" | "mode" | "wechat") =>
+    selectedTemplate.requiredFields.includes(field);
+  const fieldSuggested = (field: "grade" | "course" | "teacher" | "durationMin" | "mode" | "wechat") =>
+    selectedTemplate.suggestedFields.includes(field);
   const proofFiles = useMemo(
     () =>
       proofUrls.map((url, index) => {
@@ -179,6 +183,17 @@ export default function IntakeForm({
               <OptionList options={TICKET_TYPE_OPTIONS} placeholder="请选择 / Select" />
             </select>
           </label>
+          {selectedType ? (
+            <div style={{ gridColumn: "1 / -1", border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 8, padding: 10 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{selectedTemplate.title}</div>
+              <div style={{ fontSize: 12, color: "#334155", marginBottom: 6 }}>
+                必填字段：{selectedTemplate.requiredFields.length > 0 ? selectedTemplate.requiredFields.map(getTicketFieldLabel).join("、") : "无额外必填"}
+              </div>
+              <div style={{ fontSize: 12, color: "#475569" }}>
+                录入提示：{selectedTemplate.checklist.join("；")}
+              </div>
+            </div>
+          ) : null}
           <label style={labelStyle}>
             优先级* / Priority*
             <select name="priority" required style={fieldStyle}>
@@ -198,32 +213,59 @@ export default function IntakeForm({
             </select>
           </label>
           <label style={labelStyle}>
-            年级{packagePurchaseSelected ? "*" : ""} / Grade{packagePurchaseSelected ? "*" : ""}
-            <input name="grade" required={packagePurchaseSelected} style={fieldStyle} />
+            年级{fieldRequired("grade") ? "*" : ""} / Grade{fieldRequired("grade") ? "*" : ""}
+            <input
+              name="grade"
+              required={fieldRequired("grade")}
+              placeholder={fieldSuggested("grade") || fieldRequired("grade") ? "如：P3 / G6" : ""}
+              style={fieldStyle}
+            />
           </label>
           <label style={labelStyle}>
-            课程{packagePurchaseSelected ? "*" : ""} / Course{packagePurchaseSelected ? "*" : ""}
-            <input name="course" required={packagePurchaseSelected} style={fieldStyle} />
+            课程{fieldRequired("course") ? "*" : ""} / Course{fieldRequired("course") ? "*" : ""}
+            <input
+              name="course"
+              required={fieldRequired("course")}
+              placeholder={fieldSuggested("course") || fieldRequired("course") ? "如：英语口语 / Math" : ""}
+              style={fieldStyle}
+            />
           </label>
           <label style={labelStyle}>
-            老师 / Teacher
-            <input name="teacher" style={fieldStyle} />
+            老师{fieldRequired("teacher") ? "*" : ""} / Teacher{fieldRequired("teacher") ? "*" : ""}
+            <input
+              name="teacher"
+              required={fieldRequired("teacher")}
+              placeholder={fieldSuggested("teacher") || fieldRequired("teacher") ? "填写当前老师或目标老师" : ""}
+              style={fieldStyle}
+            />
           </label>
           <label style={labelStyle}>
             对接人 / POC
             <input name="poc" style={fieldStyle} />
           </label>
           <label style={labelStyle}>
-            当前微信群名称 / Current WeChat Group Name
-            <input name="wechat" style={fieldStyle} />
+            当前微信群名称{fieldRequired("wechat") ? "*" : ""} / Current WeChat Group Name{fieldRequired("wechat") ? "*" : ""}
+            <input
+              name="wechat"
+              required={fieldRequired("wechat")}
+              placeholder={fieldSuggested("wechat") || fieldRequired("wechat") ? "如：欧阳梓恩家长群" : ""}
+              style={fieldStyle}
+            />
           </label>
           <label style={labelStyle}>
-            时长(分钟) / Duration(min)
-            <input name="durationMin" type="number" min={1} style={fieldStyle} />
+            时长{fieldRequired("durationMin") ? "*" : ""}(分钟) / Duration(min){fieldRequired("durationMin") ? "*" : ""}
+            <input
+              name="durationMin"
+              type="number"
+              min={1}
+              required={fieldRequired("durationMin")}
+              placeholder={fieldSuggested("durationMin") || fieldRequired("durationMin") ? "如：60 / 120" : ""}
+              style={fieldStyle}
+            />
           </label>
           <label style={labelStyle}>
-            授课形式 / Mode
-            <select name="mode" style={fieldStyle}>
+            授课形式{fieldRequired("mode") ? "*" : ""} / Mode{fieldRequired("mode") ? "*" : ""}
+            <select name="mode" required={fieldRequired("mode")} style={fieldStyle}>
               <OptionList options={TICKET_MODE_OPTIONS} placeholder="可选 / Optional" />
             </select>
           </label>
@@ -265,11 +307,23 @@ export default function IntakeForm({
         </label>
         <label style={labelStyle}>
           当前正在发生什么问题* / Current Problem*
-          <textarea name="situationCurrent" required rows={3} style={fieldStyle} />
+          <textarea
+            name="situationCurrent"
+            required
+            rows={3}
+            placeholder={selectedTemplate.currentPlaceholder}
+            style={fieldStyle}
+          />
         </label>
         <label style={labelStyle}>
           需要怎么做* / Required Action*
-          <textarea name="situationAction" required rows={3} style={fieldStyle} />
+          <textarea
+            name="situationAction"
+            required
+            rows={3}
+            placeholder={selectedTemplate.actionPlaceholder}
+            style={fieldStyle}
+          />
         </label>
         <label style={labelStyle}>
           最晚截止时间* / Latest Deadline*
