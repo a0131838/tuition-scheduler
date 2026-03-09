@@ -1,0 +1,2 @@
+ALTER TABLE "TeacherCourseRate"
+  ADD COLUMN IF NOT EXISTS "currencyCode" TEXT NOT NULL DEFAULT 'SGD';

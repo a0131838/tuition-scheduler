@@ -147,6 +147,7 @@ model TeacherCourseRate {
   subjectKey      String   @default("")
   levelKey        String   @default("")
   hourlyRateCents Int      @default(0)
+  currencyCode    String   @default("SGD")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -210,7 +210,12 @@ async function TeacherPayrollBody({
           <b>{t(lang, "Total Hours", "总课时")}</b>: {data.totalHours}
         </div>
         <div>
-          <b>{t(lang, "Total Salary", "总工资")}</b>: {formatMoneyCents(data.totalAmountCents)}
+          <b>{t(lang, "Total Salary", "总工资")}</b>:{" "}
+          {data.totalCurrencyTotals.length === 0
+            ? formatMoneyCents(0)
+            : data.totalCurrencyTotals.map((item) => (
+                <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>
+              ))}
         </div>
       </div>
 
@@ -234,8 +239,8 @@ async function TeacherPayrollBody({
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.sessionCount}</td>
                 <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.hourlyRateCents)}</td>
-                <td>{formatMoneyCents(row.amountCents)}</td>
+                <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
+                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
               </tr>
             ))}
           </tbody>
@@ -270,7 +275,7 @@ async function TeacherPayrollBody({
                 <td>{row.studentSessionCount}</td>
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.hourlyRateCents)}</td>
+                <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>
                   <span style={{ color: row.isCompleted ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                     {row.isCompleted ? t(lang, "Completed", "已完成") : t(lang, "Pending", "未完成")}
@@ -279,7 +284,7 @@ async function TeacherPayrollBody({
                 <td style={{ color: row.isCompleted ? "#64748b" : "#b45309", fontWeight: row.isCompleted ? 400 : 700 }}>
                   {row.isCompleted ? "-" : pendingReasonLabel(lang, row.pendingReason)}
                 </td>
-                <td>{formatMoneyCents(row.amountCents)}</td>
+                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
               </tr>
             ))}
           </tbody>

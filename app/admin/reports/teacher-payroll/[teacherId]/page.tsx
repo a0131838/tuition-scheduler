@@ -135,7 +135,12 @@ export default async function TeacherPayrollDetailPage({
           <b>{t(lang, "Total Hours", "总课时")}</b>: {data.totalHours}
         </div>
         <div>
-          <b>{t(lang, "Total Salary", "总工资")}</b>: {formatMoneyCents(data.totalAmountCents)}
+          <b>{t(lang, "Total Salary", "总工资")}</b>:{" "}
+          {data.totalCurrencyTotals.length === 0
+            ? formatMoneyCents(0)
+            : data.totalCurrencyTotals.map((item) => (
+                <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>
+              ))}
         </div>
       </div>
 
@@ -162,8 +167,8 @@ export default async function TeacherPayrollDetailPage({
                 <td>{row.sessionCount}</td>
                 <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
                 <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.hourlyRateCents)}</td>
-                <td>{formatMoneyCents(row.amountCents)}</td>
+                <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
+                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
               </tr>
             ))}
           </tbody>
@@ -199,7 +204,7 @@ export default async function TeacherPayrollDetailPage({
                 <td>{row.studentSessionCount}</td>
                 <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                 <td>{row.totalHours}</td>
-                <td>{formatMoneyCents(row.hourlyRateCents)}</td>
+                <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>
                   {row.isChargedExcused ? (
                     <span style={{ color: "#9a3412", fontWeight: 700 }}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</span>
@@ -215,7 +220,7 @@ export default async function TeacherPayrollDetailPage({
                 <td style={{ color: row.isCompleted ? "#64748b" : "#b45309", fontWeight: row.isCompleted ? 400 : 700 }}>
                   {row.isCompleted ? "-" : pendingReasonLabel(lang, row.pendingReason)}
                 </td>
-                <td>{formatMoneyCents(row.amountCents)}</td>
+                <td>{formatMoneyCents(row.amountCents, row.currencyCode)}</td>
               </tr>
             ))}
           </tbody>

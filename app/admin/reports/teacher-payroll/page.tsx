@@ -12,6 +12,9 @@ import {
   managerApproveTeacherPayroll,
   markTeacherPayrollSent,
   monthKey,
+  normalizePayrollCurrencyCode,
+  type PayrollCurrencyCode,
+  PAYROLL_CURRENCY_CODES,
   parseMonth,
   revokeTeacherPayrollSent,
   upsertTeacherPayrollRate,
@@ -50,6 +53,7 @@ async function saveRateAction(formData: FormData) {
   const subjectId = normalizeOptionalId(formData.get("subjectId"));
   const levelId = normalizeOptionalId(formData.get("levelId"));
   const hourlyRateRaw = typeof formData.get("hourlyRate") === "string" ? String(formData.get("hourlyRate")) : "0";
+  const currencyCodeRaw = typeof formData.get("currencyCode") === "string" ? String(formData.get("currencyCode")) : "SGD";
 
   const hourlyRate = Number(hourlyRateRaw);
   if (!teacherId || !courseId || !Number.isFinite(hourlyRate) || hourlyRate < 0) {
@@ -57,12 +61,14 @@ async function saveRateAction(formData: FormData) {
   }
 
   const hourlyRateCents = Math.round(hourlyRate * 100);
+  const currencyCode = normalizePayrollCurrencyCode(currencyCodeRaw);
   await upsertTeacherPayrollRate({
     teacherId,
     courseId,
     subjectId,
     levelId,
     hourlyRateCents,
+    currencyCode,
   });
 
   revalidatePath("/admin/reports/teacher-payroll");
@@ -314,9 +320,17 @@ export default async function TeacherPayrollPage({
   });
 
   const shownHours = payrollRows.reduce((sum, row) => sum + row.totalHours, 0);
-  const shownSalaryCents = payrollRows.reduce((sum, row) => sum + row.totalAmountCents, 0);
   const shownPending = payrollRows.reduce((sum, row) => sum + row.pendingSessions, 0);
   const shownCompleted = payrollRows.reduce((sum, row) => sum + row.completedSessions, 0);
+  const shownCurrencyMap = new Map<PayrollCurrencyCode, number>();
+  for (const row of payrollRows) {
+    for (const item of row.currencyTotals) {
+      shownCurrencyMap.set(item.currencyCode, (shownCurrencyMap.get(item.currencyCode) ?? 0) + item.amountCents);
+    }
+  }
+  const shownCurrencyTotals = Array.from(shownCurrencyMap.entries())
+    .map(([currencyCode, amountCents]) => ({ currencyCode, amountCents }))
+    .sort((a, b) => String(a.currencyCode).localeCompare(String(b.currencyCode)));
   const missingRateTeacherSet = new Set(
     data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).map((r) => r.teacherId)
   );
@@ -469,7 +483,9 @@ export default async function TeacherPayrollPage({
         </div>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
           <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Estimated Salary", "预估工资")}</div>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>{formatMoneyCents(shownSalaryCents)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>
+            {shownCurrencyTotals.length === 0 ? formatMoneyCents(0) : shownCurrencyTotals.map((item) => <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>)}
+          </div>
         </div>
         <div style={{ border: "1px solid #fcd34d", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
           <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Pending Sessions", "待完成课次")}</div>
@@ -547,7 +563,9 @@ export default async function TeacherPayrollPage({
                     <td style={{ borderTop: "1px solid #eee", color: row.pendingSessions > 0 ? "#b91c1c" : "#64748b", fontWeight: 700 }}>{row.pendingSessions}</td>
                     <td style={{ borderTop: "1px solid #eee" }}>{row.totalHours}</td>
                     <td style={{ borderTop: "1px solid #eee" }}>
-                      {formatMoneyCents(row.totalAmountCents)}
+                      {row.currencyTotals.map((item) => (
+                        <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>
+                      ))}
                       {missingRateTeacherSet.has(row.teacherId) ? (
                         <div style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "Rate Missing", "费率缺失")}</div>
                       ) : null}
@@ -724,6 +742,13 @@ export default async function TeacherPayrollPage({
                             defaultValue={(row.hourlyRateCents / 100).toFixed(2)}
                             style={{ width: 100 }}
                           />
+                          <select name="currencyCode" defaultValue={row.currencyCode} style={{ width: 90 }}>
+                            {PAYROLL_CURRENCY_CODES.map((currencyCode) => (
+                              <option key={currencyCode} value={currencyCode}>
+                                {currencyCode}
+                              </option>
+                            ))}
+                          </select>
                           <button type="submit">{t(lang, "Save", "保存")}</button>
                         </form>
                       </td>
@@ -771,8 +796,5 @@ export default async function TeacherPayrollPage({
     </div>
   );
 }
-
-
-
 
 
