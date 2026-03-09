@@ -2,6 +2,11 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import { listPartnerBilling } from "@/lib/partner-billing";
+import {
+  buildAbnormalLedgerNote,
+  isAbnormalTxnKind,
+  validateAbnormalLedgerFields,
+} from "@/lib/package-ledger-guard";
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 
@@ -35,6 +40,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
 
   const deltaMinutes = Number(body?.deltaMinutes);
   const note = String(body?.note ?? "").trim();
+  const reasonCategory = String(body?.reasonCategory ?? "").trim();
+  const approver = String(body?.approver ?? "").trim();
+  const evidenceNote = String(body?.evidenceNote ?? "").trim();
   if (!Number.isFinite(deltaMinutes)) return bad("Invalid deltaMinutes", 409);
 
   const txn = await prisma.packageTxn.findFirst({
@@ -87,6 +95,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     }
   }
 
+  const abnormalMeta = isAbnormalTxnKind(txn.kind)
+    ? { reasonCategory, approver, evidenceNote, detailNote: note }
+    : null;
+  if (abnormalMeta) {
+    const abnormalError = validateAbnormalLedgerFields(abnormalMeta);
+    if (abnormalError) return bad(abnormalError, 409);
+  }
+
   await prisma.$transaction(async (tx) => {
     if (settlementIdsToDelete.length > 0) {
       await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
@@ -95,7 +111,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
       where: { id: txn.id },
       data: {
         deltaMinutes: Math.round(deltaMinutes),
-        note: note || null,
+        note: abnormalMeta ? buildAbnormalLedgerNote(abnormalMeta) : note || null,
       },
     });
     await tx.coursePackage.update({
@@ -110,7 +126,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     action: "TXN_UPDATE",
     entityType: "PackageTxn",
     entityId: txn.id,
-    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), note: note || null, diff, totalChanged: isPurchase, settlementIdsToDelete },
+    meta: {
+      packageId,
+      deltaMinutes: Math.round(deltaMinutes),
+      note: abnormalMeta ? buildAbnormalLedgerNote(abnormalMeta) : note || null,
+      diff,
+      totalChanged: isPurchase,
+      settlementIdsToDelete,
+      abnormalMeta,
+    },
   });
 
   return Response.json({ ok: true, remainingMinutes: nextRemaining });

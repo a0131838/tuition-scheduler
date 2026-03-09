@@ -6,6 +6,7 @@ import { packageModeFromNote, stripGroupPackTag } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import PackageLedgerGiftClient from "./PackageLedgerGiftClient";
 import PackageLedgerEditTxnClient from "./PackageLedgerEditTxnClient";
+import { parseAbnormalLedgerNote } from "@/lib/package-ledger-guard";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(Math.abs(min) / 60);
@@ -154,11 +155,18 @@ export default async function PackageLedgerPage({
                 <td>{r.txn.note ?? "-"}</td>
                 <td>
                   {canEditTxn ? (
+                    (() => {
+                      const abnormal = parseAbnormalLedgerNote(r.txn.note ?? "");
+                      return (
                     <PackageLedgerEditTxnClient
                       packageId={packageId}
                       txnId={r.txn.id}
+                      txnKind={r.txn.kind}
                       defaultDelta={r.txn.deltaMinutes}
-                      defaultNote={r.txn.note ?? ""}
+                      defaultNote={abnormal.detailNote}
+                      defaultReasonCategory={abnormal.reasonCategory}
+                      defaultApprover={abnormal.approver}
+                      defaultEvidenceNote={abnormal.evidenceNote}
                       labels={{
                         delta: t(lang, "Delta", "变动"),
                         note: t(lang, "Note", "备注"),
@@ -173,6 +181,8 @@ export default async function PackageLedgerPage({
                         errorPrefix: t(lang, "Error", "错误"),
                       }}
                     />
+                      );
+                    })()
                   ) : (
                     "-"
                   )}

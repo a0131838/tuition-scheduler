@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { ABNORMAL_REASON_OPTIONS } from "@/lib/package-ledger-guard";
 
 type Labels = {
   edit: string;
@@ -71,6 +72,9 @@ export default function PackageEditModal({
   const settlementNoneLabel = labels.settlementNone ?? "Not Included";
   const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
+  const originalRemaining = pkg.remainingMinutes == null ? "" : String(pkg.remainingMinutes);
+  const [remainingDraft, setRemainingDraft] = useState(originalRemaining);
+  const remainingChanged = remainingDraft !== originalRemaining;
 
   const preserveRefresh = (okMsg?: string) => {
     if (okMsg) {
@@ -117,6 +121,7 @@ export default function PackageEditModal({
         onClose={() => {
           setErr("");
           setMsg("");
+          setRemainingDraft(originalRemaining);
           setContentKey((v) => v + 1);
         }}
       >
@@ -143,6 +148,10 @@ export default function PackageEditModal({
                 status: String(fd.get("status") ?? ""),
                 settlementMode: String(fd.get("settlementMode") ?? ""),
                 remainingMinutes: String(fd.get("remainingMinutes") ?? ""),
+                abnormalReasonCategory: String(fd.get("abnormalReasonCategory") ?? ""),
+                abnormalApprover: String(fd.get("abnormalApprover") ?? ""),
+                abnormalEvidenceNote: String(fd.get("abnormalEvidenceNote") ?? ""),
+                abnormalDetailNote: String(fd.get("abnormalDetailNote") ?? ""),
                 validFrom: String(fd.get("validFrom") ?? ""),
                 validTo: String(fd.get("validTo") ?? ""),
                 paid: String(fd.get("paid") ?? "") === "on",
@@ -179,10 +188,48 @@ export default function PackageEditModal({
               name="remainingMinutes"
               type="number"
               min={0}
-              defaultValue={pkg.remainingMinutes ?? ""}
+              value={remainingDraft}
+              onChange={(e) => setRemainingDraft(e.target.value)}
               style={{ marginLeft: 8 }}
             />
           </label>
+          {remainingChanged ? (
+            <div
+              style={{
+                border: "1px solid #f59e0b",
+                borderRadius: 8,
+                padding: 10,
+                background: "#fff7ed",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <b>Abnormal Ledger Guard / 异常流水说明（修改剩余课时必填）</b>
+              <label>
+                Reason Category / 原因分类:
+                <select name="abnormalReasonCategory" defaultValue="" style={{ marginLeft: 8, minWidth: 220 }} required>
+                  <option value="">Select / 请选择</option>
+                  {ABNORMAL_REASON_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Approver / 审批人:
+                <input name="abnormalApprover" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} required />
+              </label>
+              <label>
+                Evidence Note / 证据备注:
+                <input name="abnormalEvidenceNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} required />
+              </label>
+              <label>
+                Detail / 补充说明:
+                <input name="abnormalDetailNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
+              </label>
+            </div>
+          ) : null}
           <label>
             {labels.validFrom}:
             <input name="validFrom" type="date" defaultValue={pkg.validFrom.toISOString().slice(0, 10)} style={{ marginLeft: 8 }} />

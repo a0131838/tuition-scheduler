@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
+import { buildAbnormalLedgerNote, validateAbnormalLedgerFields } from "@/lib/package-ledger-guard";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -57,6 +58,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const validFromStr = String(body?.validFrom ?? "");
   const validToStr = String(body?.validTo ?? "");
   const noteRaw = String(body?.note ?? "");
+  const abnormalReasonCategory = String(body?.abnormalReasonCategory ?? "");
+  const abnormalApprover = String(body?.abnormalApprover ?? "");
+  const abnormalEvidenceNote = String(body?.abnormalEvidenceNote ?? "");
+  const abnormalDetailNote = String(body?.abnormalDetailNote ?? "");
   const paid = !!body?.paid;
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
@@ -166,12 +171,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   if (pkg && remainingMinutes != null && pkg.remainingMinutes != null && remainingMinutes !== pkg.remainingMinutes) {
     const delta = remainingMinutes - pkg.remainingMinutes;
+    const abnormalError = validateAbnormalLedgerFields({
+      reasonCategory: abnormalReasonCategory,
+      approver: abnormalApprover,
+      evidenceNote: abnormalEvidenceNote,
+    });
+    if (abnormalError) return bad(abnormalError, 409);
     await prisma.packageTxn.create({
       data: {
         packageId: id,
         kind: "ADJUST",
         deltaMinutes: delta,
-        note: "manual adjust",
+        note: buildAbnormalLedgerNote({
+          reasonCategory: abnormalReasonCategory,
+          approver: abnormalApprover,
+          evidenceNote: abnormalEvidenceNote,
+          detailNote: abnormalDetailNote,
+        }),
       },
     });
   }

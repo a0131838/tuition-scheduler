@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { ABNORMAL_REASON_OPTIONS, isAbnormalTxnKind } from "@/lib/package-ledger-guard";
 
 type Props = {
   packageId: string;
   txnId: string;
+  txnKind: string;
   defaultDelta: number;
   defaultNote: string;
+  defaultReasonCategory?: string;
+  defaultApprover?: string;
+  defaultEvidenceNote?: string;
   labels: {
     delta: string;
     note: string;
@@ -25,6 +30,9 @@ type Props = {
 export default function PackageLedgerEditTxnClient(props: Props) {
   const [delta, setDelta] = useState(String(props.defaultDelta));
   const [note, setNote] = useState(props.defaultNote);
+  const [reasonCategory, setReasonCategory] = useState(props.defaultReasonCategory ?? "");
+  const [approver, setApprover] = useState(props.defaultApprover ?? "");
+  const [evidenceNote, setEvidenceNote] = useState(props.defaultEvidenceNote ?? "");
   const [saving, setSaving] = useState(false);
   const [deletedPayload, setDeletedPayload] = useState<{
     id: string;
@@ -45,7 +53,7 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deltaMinutes: deltaNum, note }),
+          body: JSON.stringify({ deltaMinutes: deltaNum, note, reasonCategory, approver, evidenceNote }),
         }
       );
       const data = await res.json().catch(() => ({}));
@@ -123,6 +131,42 @@ export default function PackageLedgerEditTxnClient(props: Props) {
 
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      {isAbnormalTxnKind(props.txnKind) ? (
+        <>
+          <select
+            value={reasonCategory}
+            onChange={(e) => setReasonCategory(e.target.value)}
+            disabled={saving || !!deletedPayload}
+            style={{ width: 180 }}
+            title="Reason Category / 原因分类"
+          >
+            <option value="">Reason / 原因分类</option>
+            {ABNORMAL_REASON_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={approver}
+            onChange={(e) => setApprover(e.target.value)}
+            style={{ width: 140 }}
+            title="Approver / 审批人"
+            placeholder="Approver / 审批人"
+            disabled={saving || !!deletedPayload}
+          />
+          <input
+            type="text"
+            value={evidenceNote}
+            onChange={(e) => setEvidenceNote(e.target.value)}
+            style={{ width: 180 }}
+            title="Evidence Note / 证据备注"
+            placeholder="Evidence / 证据备注"
+            disabled={saving || !!deletedPayload}
+          />
+        </>
+      ) : null}
       <input
         type="number"
         value={delta}
@@ -136,7 +180,8 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         style={{ width: 180 }}
-        title={props.labels.note}
+        title={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : props.labels.note}
+        placeholder={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : undefined}
         disabled={saving || !!deletedPayload}
       />
       <button type="button" onClick={onSave} disabled={saving || !!deletedPayload}>
