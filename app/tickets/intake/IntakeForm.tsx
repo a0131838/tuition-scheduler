@@ -2,6 +2,7 @@
 
 import {
   getTicketFieldLabel,
+  TICKET_HIGH_FREQUENCY_TYPES,
   getTicketTypeTemplate,
   parseTicketSituationSummary,
   TICKET_CS_STATUS_OPTIONS,
@@ -66,6 +67,8 @@ export default function IntakeForm({
   const [dupes, setDupes] = useState<Array<{ ticketNo: string; status: string; createdAt: string; summary: string }>>([]);
   const [forceDuplicate, setForceDuplicate] = useState(false);
   const [selectedType, setSelectedType] = useState("");
+  const [situationCurrent, setSituationCurrent] = useState("");
+  const [situationAction, setSituationAction] = useState("");
   const [proofUrls, setProofUrls] = useState<string[]>([]);
   const selectedTemplate = useMemo(() => getTicketTypeTemplate(selectedType), [selectedType]);
   const fieldRequired = (field: "grade" | "course" | "teacher" | "durationMin" | "mode" | "wechat") =>
@@ -80,6 +83,12 @@ export default function IntakeForm({
       }),
     [proofUrls]
   );
+  const applySituationDraft = (type: string, force = false) => {
+    const template = getTicketTypeTemplate(type);
+    setSelectedType(type);
+    setSituationCurrent((prev) => (force || !prev.trim() ? template.draftCurrentIssue : prev));
+    setSituationAction((prev) => (force || !prev.trim() ? template.draftRequiredAction : prev));
+  };
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "14px 12px 24px" }}>
@@ -151,6 +160,8 @@ export default function IntakeForm({
             setDupes([]);
             setForceDuplicate(false);
             setSelectedType("");
+            setSituationCurrent("");
+            setSituationAction("");
             setProofUrls([]);
             form.reset();
           } catch (e2: any) {
@@ -160,6 +171,33 @@ export default function IntakeForm({
           }
         }}
       >
+        <div style={{ border: "1px solid #e2e8f0", background: "#f8fafc", borderRadius: 8, padding: 10 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>高频模板快捷入口 / Quick Ticket Templates</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {TICKET_HIGH_FREQUENCY_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => applySituationDraft(type, true)}
+                style={{
+                  border: selectedType === type ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                  background: selectedType === type ? "#dbeafe" : "#fff",
+                  borderRadius: 999,
+                  padding: "6px 10px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+            点击后会自动切换工单类型，并套用 Situation 草稿。/ Click to set type and apply a draft.
+          </div>
+        </div>
+
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label style={labelStyle}>
             学生姓名* / Student*
@@ -178,7 +216,13 @@ export default function IntakeForm({
               required
               style={fieldStyle}
               value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                setSelectedType(nextType);
+                if (nextType && !situationCurrent.trim() && !situationAction.trim()) {
+                  applySituationDraft(nextType, false);
+                }
+              }}
             >
               <OptionList options={TICKET_TYPE_OPTIONS} placeholder="请选择 / Select" />
             </select>
@@ -304,6 +348,28 @@ export default function IntakeForm({
           <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>
             必须写清楚：当前正在发生什么问题、需要怎么做、最晚截止时间
           </div>
+          {selectedType ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <span style={{ fontSize: 12, color: "#334155", fontWeight: 500 }}>
+                当前草稿基于：{selectedTemplate.title}
+              </span>
+              <button
+                type="button"
+                onClick={() => applySituationDraft(selectedType, true)}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                套用当前类型草稿 / Apply Draft
+              </button>
+            </div>
+          ) : null}
         </label>
         <label style={labelStyle}>
           当前正在发生什么问题* / Current Problem*
@@ -311,6 +377,8 @@ export default function IntakeForm({
             name="situationCurrent"
             required
             rows={3}
+            value={situationCurrent}
+            onChange={(e) => setSituationCurrent(e.target.value)}
             placeholder={selectedTemplate.currentPlaceholder}
             style={fieldStyle}
           />
@@ -321,6 +389,8 @@ export default function IntakeForm({
             name="situationAction"
             required
             rows={3}
+            value={situationAction}
+            onChange={(e) => setSituationAction(e.target.value)}
             placeholder={selectedTemplate.actionPlaceholder}
             style={fieldStyle}
           />
