@@ -72,6 +72,8 @@ export default function IntakeForm({
   const [forceDuplicate, setForceDuplicate] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [teacherName, setTeacherName] = useState("");
+  const [gradeValue, setGradeValue] = useState("");
+  const [courseValue, setCourseValue] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [situationCurrent, setSituationCurrent] = useState("");
   const [situationAction, setSituationAction] = useState("");
@@ -79,13 +81,14 @@ export default function IntakeForm({
   const [studentLookupState, setStudentLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [studentLookupResult, setStudentLookupResult] = useState<{
     matchType: string;
-    candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[] }>;
+    candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[]; courses: string[] }>;
   }>({ matchType: "empty", candidates: [] });
   const [selectedStudentCandidate, setSelectedStudentCandidate] = useState<{
     studentId: string;
     name: string;
     grade: string | null;
     teachers: string[];
+    courses: string[];
   } | null>(null);
   const [teacherLookupState, setTeacherLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [teacherLookupResult, setTeacherLookupResult] = useState<{
@@ -267,6 +270,8 @@ export default function IntakeForm({
             setForceDuplicate(false);
             setStudentName("");
             setTeacherName("");
+            setGradeValue("");
+            setCourseValue("");
             setSelectedType("");
             setSituationCurrent("");
             setSituationAction("");
@@ -393,6 +398,36 @@ export default function IntakeForm({
                 <div style={{ fontWeight: 700 }}>已确认学生 / Confirmed student</div>
                 <div>{selectedStudentCandidate.name}{selectedStudentCandidate.grade ? ` | ${selectedStudentCandidate.grade}` : ""}</div>
                 <div>最近老师 / Recent teacher: {selectedStudentCandidate.teachers.length > 0 ? selectedStudentCandidate.teachers.join("、") : "暂无 / None"}</div>
+                <div>最近课程 / Recent course: {selectedStudentCandidate.courses.length > 0 ? selectedStudentCandidate.courses.join("、") : "暂无 / None"}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  {selectedStudentCandidate.grade ? (
+                    <button
+                      type="button"
+                      onClick={() => setGradeValue(selectedStudentCandidate.grade ?? "")}
+                      style={{ border: "1px solid #bbf7d0", background: "#fff", borderRadius: 999, padding: "4px 8px", fontSize: 12, cursor: "pointer", color: "#166534" }}
+                    >
+                      采用年级：{selectedStudentCandidate.grade}
+                    </button>
+                  ) : null}
+                  {selectedStudentCandidate.teachers[0] ? (
+                    <button
+                      type="button"
+                      onClick={() => setTeacherName(selectedStudentCandidate.teachers[0] ?? "")}
+                      style={{ border: "1px solid #bbf7d0", background: "#fff", borderRadius: 999, padding: "4px 8px", fontSize: 12, cursor: "pointer", color: "#166534" }}
+                    >
+                      采用最近老师：{selectedStudentCandidate.teachers[0]}
+                    </button>
+                  ) : null}
+                  {selectedStudentCandidate.courses[0] ? (
+                    <button
+                      type="button"
+                      onClick={() => setCourseValue(selectedStudentCandidate.courses[0] ?? "")}
+                      style={{ border: "1px solid #bbf7d0", background: "#fff", borderRadius: 999, padding: "4px 8px", fontSize: 12, cursor: "pointer", color: "#166534" }}
+                    >
+                      采用最近课程：{selectedStudentCandidate.courses[0]}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </label>
@@ -454,6 +489,8 @@ export default function IntakeForm({
             <input
               name="grade"
               required={fieldRequired("grade")}
+              value={gradeValue}
+              onChange={(e) => setGradeValue(e.target.value)}
               placeholder={fieldSuggested("grade") || fieldRequired("grade") ? "如：P3 / G6" : ""}
               style={fieldStyle}
             />
@@ -463,6 +500,8 @@ export default function IntakeForm({
             <input
               name="course"
               required={fieldRequired("course")}
+              value={courseValue}
+              onChange={(e) => setCourseValue(e.target.value)}
               placeholder={fieldSuggested("course") || fieldRequired("course") ? "如：英语口语 / Math" : ""}
               style={fieldStyle}
             />

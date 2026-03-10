@@ -40,6 +40,23 @@ function collectTeacherNames(input: {
   return ordered.slice(0, 3);
 }
 
+function collectCourseNames(input: {
+  appointments: Array<{ teacher: { name: string } | null }>;
+  sessions: Array<{ class: { course: { name: string } | null } | null }>;
+  enrollments: Array<{ class: { course: { name: string } | null } | null }>;
+}) {
+  const ordered: string[] = [];
+  const push = (name: string | null | undefined) => {
+    const normalized = String(name ?? "").trim();
+    if (!normalized || ordered.includes(normalized)) return;
+    ordered.push(normalized);
+  };
+
+  for (const row of input.sessions) push(row.class?.course?.name);
+  for (const row of input.enrollments) push(row.class?.course?.name);
+  return ordered.slice(0, 3);
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -67,20 +84,22 @@ export async function GET(
       appointments: {
         orderBy: { startAt: "desc" },
         take: 3,
-        select: { teacher: { select: { name: true } } },
+        select: {
+          teacher: { select: { name: true } },
+        },
       },
       sessions: {
         orderBy: { startAt: "desc" },
         take: 3,
         select: {
           teacher: { select: { name: true } },
-          class: { select: { teacher: { select: { name: true } } } },
+          class: { select: { teacher: { select: { name: true } }, course: { select: { name: true } } } },
         },
       },
       enrollments: {
         take: 3,
         select: {
-          class: { select: { teacher: { select: { name: true } } } },
+          class: { select: { teacher: { select: { name: true } }, course: { select: { name: true } } } },
         },
       },
     },
@@ -104,20 +123,22 @@ export async function GET(
             appointments: {
               orderBy: { startAt: "desc" },
               take: 2,
-              select: { teacher: { select: { name: true } } },
+              select: {
+                teacher: { select: { name: true } },
+              },
             },
             sessions: {
               orderBy: { startAt: "desc" },
               take: 2,
               select: {
                 teacher: { select: { name: true } },
-                class: { select: { teacher: { select: { name: true } } } },
+                class: { select: { teacher: { select: { name: true } }, course: { select: { name: true } } } },
               },
             },
             enrollments: {
               take: 2,
               select: {
-                class: { select: { teacher: { select: { name: true } } } },
+                class: { select: { teacher: { select: { name: true } }, course: { select: { name: true } } } },
               },
             },
           },
@@ -129,6 +150,11 @@ export async function GET(
     name: row.name,
     grade: row.grade ?? null,
     teachers: collectTeacherNames({
+      appointments: row.appointments,
+      sessions: row.sessions,
+      enrollments: row.enrollments,
+    }),
+    courses: collectCourseNames({
       appointments: row.appointments,
       sessions: row.sessions,
       enrollments: row.enrollments,
