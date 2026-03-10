@@ -81,11 +81,22 @@ export default function IntakeForm({
     matchType: string;
     candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[] }>;
   }>({ matchType: "empty", candidates: [] });
+  const [selectedStudentCandidate, setSelectedStudentCandidate] = useState<{
+    studentId: string;
+    name: string;
+    grade: string | null;
+    teachers: string[];
+  } | null>(null);
   const [teacherLookupState, setTeacherLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [teacherLookupResult, setTeacherLookupResult] = useState<{
     matchType: string;
     candidates: Array<{ teacherId: string; name: string; courses: string[] }>;
   }>({ matchType: "empty", candidates: [] });
+  const [selectedTeacherCandidate, setSelectedTeacherCandidate] = useState<{
+    teacherId: string;
+    name: string;
+    courses: string[];
+  } | null>(null);
   const selectedTemplate = useMemo(() => getTicketTypeTemplate(selectedType), [selectedType]);
   const fieldRequired = (field: "grade" | "course" | "teacher" | "durationMin" | "mode" | "wechat") =>
     selectedTemplate.requiredFields.includes(field);
@@ -163,6 +174,18 @@ export default function IntakeForm({
 
     return () => window.clearTimeout(timer);
   }, [teacherLookupPath, teacherName]);
+
+  useEffect(() => {
+    if (selectedStudentCandidate && studentName.trim() !== selectedStudentCandidate.name) {
+      setSelectedStudentCandidate(null);
+    }
+  }, [studentName, selectedStudentCandidate]);
+
+  useEffect(() => {
+    if (selectedTeacherCandidate && teacherName.trim() !== selectedTeacherCandidate.name) {
+      setSelectedTeacherCandidate(null);
+    }
+  }, [teacherName, selectedTeacherCandidate]);
 
   const exactCandidate =
     studentLookupResult.matchType === "exact" && studentLookupResult.candidates.length === 1
@@ -248,6 +271,8 @@ export default function IntakeForm({
             setSituationCurrent("");
             setSituationAction("");
             setProofUrls([]);
+            setSelectedStudentCandidate(null);
+            setSelectedTeacherCandidate(null);
             setStudentLookupState("idle");
             setStudentLookupResult({ matchType: "empty", candidates: [] });
             setTeacherLookupState("idle");
@@ -306,7 +331,10 @@ export default function IntakeForm({
             {studentLookupState === "done" && exactCandidate ? (
               <button
                 type="button"
-                onClick={() => setStudentName(exactCandidate.name)}
+                onClick={() => {
+                  setStudentName(exactCandidate.name);
+                  setSelectedStudentCandidate(exactCandidate);
+                }}
                 style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534", textAlign: "left", cursor: "pointer" }}
               >
                 <div style={{ fontWeight: 700 }}>已匹配学生 / Student found</div>
@@ -323,7 +351,10 @@ export default function IntakeForm({
                     <button
                       key={candidate.studentId}
                       type="button"
-                      onClick={() => setStudentName(candidate.name)}
+                      onClick={() => {
+                        setStudentName(candidate.name);
+                        setSelectedStudentCandidate(candidate);
+                      }}
                       style={{ border: "1px solid #fcd34d", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#92400e" }}
                     >
                       {candidate.name}{candidate.grade ? ` | ${candidate.grade}` : ""} | 最近老师：{candidate.teachers.length > 0 ? candidate.teachers.join("、") : "暂无"}
@@ -340,7 +371,10 @@ export default function IntakeForm({
                     <button
                       key={candidate.studentId}
                       type="button"
-                      onClick={() => setStudentName(candidate.name)}
+                      onClick={() => {
+                        setStudentName(candidate.name);
+                        setSelectedStudentCandidate(candidate);
+                      }}
                       style={{ border: "1px solid #bfdbfe", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#1d4ed8" }}
                     >
                       {candidate.name}{candidate.grade ? ` | ${candidate.grade}` : ""} | 最近老师：{candidate.teachers.length > 0 ? candidate.teachers.join("、") : "暂无"}
@@ -352,6 +386,13 @@ export default function IntakeForm({
             {studentLookupState === "done" && studentLookupResult.matchType === "none" ? (
               <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 500 }}>
                 数据库中未找到该学生，请确认姓名是否填写正确 / Student not found in database
+              </div>
+            ) : null}
+            {selectedStudentCandidate ? (
+              <div style={{ border: "1px solid #bbf7d0", background: "#f8fff8", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534" }}>
+                <div style={{ fontWeight: 700 }}>已确认学生 / Confirmed student</div>
+                <div>{selectedStudentCandidate.name}{selectedStudentCandidate.grade ? ` | ${selectedStudentCandidate.grade}` : ""}</div>
+                <div>最近老师 / Recent teacher: {selectedStudentCandidate.teachers.length > 0 ? selectedStudentCandidate.teachers.join("、") : "暂无 / None"}</div>
               </div>
             ) : null}
           </label>
@@ -445,7 +486,10 @@ export default function IntakeForm({
             {teacherLookupState === "done" && exactTeacherCandidate ? (
               <button
                 type="button"
-                onClick={() => setTeacherName(exactTeacherCandidate.name)}
+                onClick={() => {
+                  setTeacherName(exactTeacherCandidate.name);
+                  setSelectedTeacherCandidate(exactTeacherCandidate);
+                }}
                 style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534", textAlign: "left", cursor: "pointer" }}
               >
                 <div style={{ fontWeight: 700 }}>已匹配老师 / Teacher found</div>
@@ -462,7 +506,10 @@ export default function IntakeForm({
                     <button
                       key={candidate.teacherId}
                       type="button"
-                      onClick={() => setTeacherName(candidate.name)}
+                      onClick={() => {
+                        setTeacherName(candidate.name);
+                        setSelectedTeacherCandidate(candidate);
+                      }}
                       style={{ border: "1px solid #fcd34d", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#92400e" }}
                     >
                       {candidate.name} | 相关课程：{candidate.courses.length > 0 ? candidate.courses.join("、") : "暂无"}
@@ -479,7 +526,10 @@ export default function IntakeForm({
                     <button
                       key={candidate.teacherId}
                       type="button"
-                      onClick={() => setTeacherName(candidate.name)}
+                      onClick={() => {
+                        setTeacherName(candidate.name);
+                        setSelectedTeacherCandidate(candidate);
+                      }}
                       style={{ border: "1px solid #bfdbfe", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#1d4ed8" }}
                     >
                       {candidate.name} | 相关课程：{candidate.courses.length > 0 ? candidate.courses.join("、") : "暂无"}
@@ -491,6 +541,13 @@ export default function IntakeForm({
             {teacherLookupState === "done" && teacherLookupResult.matchType === "none" ? (
               <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 500 }}>
                 数据库中未找到该老师，请确认姓名是否填写正确 / Teacher not found in database
+              </div>
+            ) : null}
+            {selectedTeacherCandidate ? (
+              <div style={{ border: "1px solid #bbf7d0", background: "#f8fff8", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534" }}>
+                <div style={{ fontWeight: 700 }}>已确认老师 / Confirmed teacher</div>
+                <div>{selectedTeacherCandidate.name}</div>
+                <div>相关课程 / Courses: {selectedTeacherCandidate.courses.length > 0 ? selectedTeacherCandidate.courses.join("、") : "暂无 / None"}</div>
               </div>
             ) : null}
           </label>
