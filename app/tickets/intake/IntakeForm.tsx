@@ -190,6 +190,19 @@ export default function IntakeForm({
     }
   }, [teacherName, selectedTeacherCandidate]);
 
+  useEffect(() => {
+    if (!selectedStudentCandidate) return;
+    if (!gradeValue.trim() && selectedStudentCandidate.grade) {
+      setGradeValue(selectedStudentCandidate.grade);
+    }
+    if (!teacherName.trim() && selectedStudentCandidate.teachers[0]) {
+      setTeacherName(selectedStudentCandidate.teachers[0]);
+    }
+    if (!courseValue.trim() && selectedStudentCandidate.courses[0]) {
+      setCourseValue(selectedStudentCandidate.courses[0]);
+    }
+  }, [selectedStudentCandidate, gradeValue, teacherName, courseValue]);
+
   const exactCandidate =
     studentLookupResult.matchType === "exact" && studentLookupResult.candidates.length === 1
       ? studentLookupResult.candidates[0]
