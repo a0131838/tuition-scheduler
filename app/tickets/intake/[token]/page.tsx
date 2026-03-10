@@ -36,6 +36,7 @@ export default async function TicketIntakeByTokenPage({
       apiPath={`/api/tickets/intake/${encoded}`}
       uploadPath={`/api/tickets/upload/${encoded}`}
       studentLookupPath={`/api/tickets/intake/${encoded}/students/lookup`}
+      teacherLookupPath={`/api/tickets/intake/${encoded}/teachers/lookup`}
     />
   );
 }
