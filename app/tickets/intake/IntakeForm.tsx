@@ -14,7 +14,7 @@ import {
   TICKET_TYPE_OPTIONS,
   TICKET_VERSION_OPTIONS,
 } from "@/lib/tickets";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 const fieldStyle: React.CSSProperties = {
@@ -56,9 +56,11 @@ function OptionList({
 export default function IntakeForm({
   apiPath,
   uploadPath,
+  studentLookupPath,
 }: {
   apiPath: string;
   uploadPath: string;
+  studentLookupPath: string;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -66,10 +68,16 @@ export default function IntakeForm({
   const [err, setErr] = useState("");
   const [dupes, setDupes] = useState<Array<{ ticketNo: string; status: string; createdAt: string; summary: string }>>([]);
   const [forceDuplicate, setForceDuplicate] = useState(false);
+  const [studentName, setStudentName] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [situationCurrent, setSituationCurrent] = useState("");
   const [situationAction, setSituationAction] = useState("");
   const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const [studentLookupState, setStudentLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [studentLookupResult, setStudentLookupResult] = useState<{
+    matchType: string;
+    candidates: Array<{ studentId: string; name: string; grade: string | null; teachers: string[] }>;
+  }>({ matchType: "empty", candidates: [] });
   const selectedTemplate = useMemo(() => getTicketTypeTemplate(selectedType), [selectedType]);
   const fieldRequired = (field: "grade" | "course" | "teacher" | "durationMin" | "mode" | "wechat") =>
     selectedTemplate.requiredFields.includes(field);
@@ -89,6 +97,40 @@ export default function IntakeForm({
     setSituationCurrent((prev) => (force || !prev.trim() ? template.draftCurrentIssue : prev));
     setSituationAction((prev) => (force || !prev.trim() ? template.draftRequiredAction : prev));
   };
+
+  useEffect(() => {
+    const query = studentName.trim();
+    if (query.length < 2) {
+      setStudentLookupState("idle");
+      setStudentLookupResult({ matchType: "empty", candidates: [] });
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      setStudentLookupState("loading");
+      try {
+        const res = await fetch(`${studentLookupPath}?name=${encodeURIComponent(query)}`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          setStudentLookupState("error");
+          return;
+        }
+        setStudentLookupResult({
+          matchType: String(data.matchType ?? "none"),
+          candidates: Array.isArray(data.candidates) ? data.candidates : [],
+        });
+        setStudentLookupState("done");
+      } catch {
+        setStudentLookupState("error");
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [studentLookupPath, studentName]);
+
+  const exactCandidate =
+    studentLookupResult.matchType === "exact" && studentLookupResult.candidates.length === 1
+      ? studentLookupResult.candidates[0]
+      : null;
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "14px 12px 24px" }}>
@@ -159,10 +201,13 @@ export default function IntakeForm({
             setMsg(`提交成功 / Submitted: ${data.ticketNo}`);
             setDupes([]);
             setForceDuplicate(false);
+            setStudentName("");
             setSelectedType("");
             setSituationCurrent("");
             setSituationAction("");
             setProofUrls([]);
+            setStudentLookupState("idle");
+            setStudentLookupResult({ matchType: "empty", candidates: [] });
             form.reset();
           } catch (e2: any) {
             setErr(String(e2?.message ?? "提交失败 / Submit failed"));
@@ -201,7 +246,55 @@ export default function IntakeForm({
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label style={labelStyle}>
             学生姓名* / Student*
-            <input name="studentName" required style={fieldStyle} />
+            <input
+              name="studentName"
+              required
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              style={fieldStyle}
+            />
+            {studentLookupState === "loading" ? (
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>正在校验学生姓名... / Checking student name...</div>
+            ) : null}
+            {studentLookupState === "error" ? (
+              <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 500 }}>学生校验失败，请稍后重试 / Student check failed</div>
+            ) : null}
+            {studentLookupState === "done" && exactCandidate ? (
+              <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534" }}>
+                <div style={{ fontWeight: 700 }}>已匹配学生 / Student found</div>
+                <div>{exactCandidate.name}{exactCandidate.grade ? ` | ${exactCandidate.grade}` : ""}</div>
+                <div>最近老师 / Recent teacher: {exactCandidate.teachers.length > 0 ? exactCandidate.teachers.join("、") : "暂无 / None"}</div>
+              </div>
+            ) : null}
+            {studentLookupState === "done" && studentLookupResult.matchType === "multiple-exact" ? (
+              <div style={{ border: "1px solid #fcd34d", background: "#fffbeb", borderRadius: 8, padding: 8, fontSize: 12, color: "#92400e" }}>
+                <div style={{ fontWeight: 700 }}>找到多个同名学生，请确认 / Multiple exact matches</div>
+                <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+                  {studentLookupResult.candidates.map((candidate) => (
+                    <div key={candidate.studentId}>
+                      {candidate.name}{candidate.grade ? ` | ${candidate.grade}` : ""} | 最近老师：{candidate.teachers.length > 0 ? candidate.teachers.join("、") : "暂无"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {studentLookupState === "done" && studentLookupResult.matchType === "fuzzy" ? (
+              <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, padding: 8, fontSize: 12, color: "#1d4ed8" }}>
+                <div style={{ fontWeight: 700 }}>未找到完全匹配，以下是候选学生 / Closest student matches</div>
+                <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+                  {studentLookupResult.candidates.map((candidate) => (
+                    <div key={candidate.studentId}>
+                      {candidate.name}{candidate.grade ? ` | ${candidate.grade}` : ""} | 最近老师：{candidate.teachers.length > 0 ? candidate.teachers.join("、") : "暂无"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {studentLookupState === "done" && studentLookupResult.matchType === "none" ? (
+              <div style={{ fontSize: 12, color: "#b91c1c", fontWeight: 500 }}>
+                数据库中未找到该学生，请确认姓名是否填写正确 / Student not found in database
+              </div>
+            ) : null}
           </label>
           <label style={labelStyle}>
             来源* / Source*
