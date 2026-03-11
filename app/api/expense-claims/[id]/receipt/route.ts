@@ -21,6 +21,12 @@ const MIME_BY_EXT: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+function toAsciiFilename(name: string) {
+  const ext = path.extname(name);
+  const base = path.basename(name, ext).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return `${base || 'receipt'}${ext}`;
+}
+
 function buildExpenseClaimFilePath(receiptPath: string) {
   const normalized = String(receiptPath || '').trim();
   if (!normalized.startsWith('/uploads/expense-claims/')) return null;
@@ -75,13 +81,23 @@ export async function GET(
   const stream = createReadStream(absPath);
   const url = new URL(req.url);
   const download = url.searchParams.get('download') === '1';
+  const asciiName = toAsciiFilename(safeName);
+  const encodedName = encodeURIComponent(safeName);
+
+  const headers = new Headers({
+    'content-type': contentType,
+    'cache-control': 'private, max-age=3600',
+  });
+
+  if (download) {
+    headers.set(
+      'content-disposition',
+      `attachment; filename="${asciiName.replace(/"/g, '')}"; filename*=UTF-8''${encodedName}`
+    );
+  }
 
   return new Response(stream as any, {
     status: 200,
-    headers: {
-      'content-type': contentType,
-      'cache-control': 'private, max-age=3600',
-      'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${safeName.replace(/"/g, '')}"`,
-    },
+    headers,
   });
 }
