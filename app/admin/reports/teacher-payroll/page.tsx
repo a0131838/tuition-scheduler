@@ -1,6 +1,7 @@
 ﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover, saveApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
+import RestoreRateConfigScroll from "@/app/admin/reports/teacher-payroll/RestoreRateConfigScroll";
 import {
   financeConfirmTeacherPayroll,
   financeMarkTeacherPayrollPaid,
@@ -407,6 +408,7 @@ export default async function TeacherPayrollPage({
 
   return (
     <div>
+      <RestoreRateConfigScroll targetId={savedRateRowKey} />
       <h2>{t(lang, "Teacher Payroll", "老师工资单")}</h2>
       <div
         style={{
