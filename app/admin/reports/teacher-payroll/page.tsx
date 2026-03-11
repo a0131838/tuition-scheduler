@@ -51,6 +51,10 @@ async function saveRateAction(formData: FormData) {
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
   const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
+  const q = typeof formData.get("q") === "string" ? String(formData.get("q")) : "";
+  const pendingOnly = typeof formData.get("pendingOnly") === "string" ? String(formData.get("pendingOnly")) === "1" : false;
+  const unsentOnly = typeof formData.get("unsentOnly") === "string" ? String(formData.get("unsentOnly")) === "1" : false;
+  const rateMissingOnly = typeof formData.get("rateMissingOnly") === "string" ? String(formData.get("rateMissingOnly")) === "1" : false;
   const teacherId = typeof formData.get("teacherId") === "string" ? String(formData.get("teacherId")) : "";
   const courseId = typeof formData.get("courseId") === "string" ? String(formData.get("courseId")) : "";
   const subjectId = normalizeOptionalId(formData.get("subjectId"));
@@ -78,7 +82,21 @@ async function saveRateAction(formData: FormData) {
   });
 
   revalidatePath("/admin/reports/teacher-payroll");
-  redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&saved=1`);
+  const params = new URLSearchParams({
+    month,
+    scope,
+    saved: "1",
+    savedTeacherId: teacherId,
+    savedCourseId: courseId,
+    savedSubjectId: subjectId ?? "",
+    savedLevelId: levelId ?? "",
+    savedTeachingMode: teachingMode,
+  });
+  if (q.trim()) params.set("q", q);
+  if (pendingOnly) params.set("pendingOnly", "1");
+  if (unsentOnly) params.set("unsentOnly", "1");
+  if (rateMissingOnly) params.set("rateMissingOnly", "1");
+  redirect(`/admin/reports/teacher-payroll?${params.toString()}#rate-config`);
 }
 
 async function sendPayrollAction(formData: FormData) {
@@ -253,6 +271,11 @@ export default async function TeacherPayrollPage({
     pendingOnly?: string;
     unsentOnly?: string;
     rateMissingOnly?: string;
+    savedTeacherId?: string;
+    savedCourseId?: string;
+    savedSubjectId?: string;
+    savedLevelId?: string;
+    savedTeachingMode?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -269,6 +292,11 @@ export default async function TeacherPayrollPage({
   const pendingOnly = sp?.pendingOnly === "1";
   const unsentOnly = sp?.unsentOnly === "1";
   const rateMissingOnly = sp?.rateMissingOnly === "1";
+  const savedTeacherId = String(sp?.savedTeacherId ?? "");
+  const savedCourseId = String(sp?.savedCourseId ?? "");
+  const savedSubjectId = typeof sp?.savedSubjectId === "string" ? sp.savedSubjectId : "";
+  const savedLevelId = typeof sp?.savedLevelId === "string" ? sp.savedLevelId : "";
+  const savedTeachingMode = typeof sp?.savedTeachingMode === "string" ? normalizePayrollTeachingMode(sp.savedTeachingMode) : null;
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
   const finPaidDone = sp?.finpaid === "1";
@@ -345,6 +373,9 @@ export default async function TeacherPayrollPage({
   const rateRows = rateMissingOnly
     ? data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0)
     : data.rateEditorRows;
+  const savedRateRowKey = saved && savedTeacherId && savedCourseId && savedTeachingMode
+    ? `rate-${savedTeacherId}-${savedCourseId}-${savedSubjectId || "-"}-${savedLevelId || "-"}-${savedTeachingMode}`
+    : null;
   const payrollTableHeaderCellStyle = {
     position: "sticky" as const,
     top: 0,
@@ -682,7 +713,7 @@ export default async function TeacherPayrollPage({
       {!isFinanceOnlyUser ? (
         <details
           id="rate-config"
-          open={rateMissingOnly}
+          open={rateMissingOnly || saved}
           style={{ marginBottom: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#fff", scrollMarginTop: 80 }}
         >
           <summary style={{ cursor: "pointer", padding: "10px 12px", fontWeight: 700 }}>
@@ -733,9 +764,25 @@ export default async function TeacherPayrollPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {rateRows.map((row) => (
-                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}-${row.teachingMode}`} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{row.teacherName}</td>
+                  {rateRows.map((row) => {
+                    const rowKey = `rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}-${row.teachingMode}`;
+                    const isSavedRow = rowKey === savedRateRowKey;
+                    return (
+                    <tr
+                      id={rowKey}
+                      key={rowKey}
+                      style={{
+                        borderTop: "1px solid #eee",
+                        background: isSavedRow ? "#ecfdf5" : undefined,
+                        boxShadow: isSavedRow ? "inset 0 0 0 1px #86efac" : undefined,
+                      }}
+                    >
+                      <td>
+                        <div>{row.teacherName}</div>
+                        {isSavedRow ? (
+                          <div style={{ color: "#166534", fontSize: 12 }}>{t(lang, "Just saved", "刚刚已保存")}</div>
+                        ) : null}
+                      </td>
                       <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
                       <td>
                         <div>{formatTeachingModeLabel(row.teachingMode)}</div>
@@ -751,6 +798,10 @@ export default async function TeacherPayrollPage({
                         <form action={saveRateAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="scope" value={scope} />
+                          <input type="hidden" name="q" value={String(sp?.q ?? "")} />
+                          {pendingOnly ? <input type="hidden" name="pendingOnly" value="1" /> : null}
+                          {unsentOnly ? <input type="hidden" name="unsentOnly" value="1" /> : null}
+                          {rateMissingOnly ? <input type="hidden" name="rateMissingOnly" value="1" /> : null}
                           <input type="hidden" name="teacherId" value={row.teacherId} />
                           <input type="hidden" name="courseId" value={row.courseId} />
                           <input type="hidden" name="subjectId" value={row.subjectId ?? ""} />
@@ -781,7 +832,7 @@ export default async function TeacherPayrollPage({
                         </form>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             )}
