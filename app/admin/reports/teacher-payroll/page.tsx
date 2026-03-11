@@ -7,14 +7,17 @@ import {
   financeRejectTeacherPayroll,
   formatComboLabel,
   formatMoneyCents,
+  formatTeachingModeLabel,
   getTeacherPayrollPublishStatus,
   loadTeacherPayroll,
   managerApproveTeacherPayroll,
   markTeacherPayrollSent,
   monthKey,
   normalizePayrollCurrencyCode,
+  normalizePayrollTeachingMode,
   type PayrollCurrencyCode,
   PAYROLL_CURRENCY_CODES,
+  PAYROLL_TEACHING_MODES,
   parseMonth,
   revokeTeacherPayrollSent,
   upsertTeacherPayrollRate,
@@ -52,6 +55,7 @@ async function saveRateAction(formData: FormData) {
   const courseId = typeof formData.get("courseId") === "string" ? String(formData.get("courseId")) : "";
   const subjectId = normalizeOptionalId(formData.get("subjectId"));
   const levelId = normalizeOptionalId(formData.get("levelId"));
+  const teachingModeRaw = typeof formData.get("teachingMode") === "string" ? String(formData.get("teachingMode")) : "ONE_ON_ONE";
   const hourlyRateRaw = typeof formData.get("hourlyRate") === "string" ? String(formData.get("hourlyRate")) : "0";
   const currencyCodeRaw = typeof formData.get("currencyCode") === "string" ? String(formData.get("currencyCode")) : "SGD";
 
@@ -62,11 +66,13 @@ async function saveRateAction(formData: FormData) {
 
   const hourlyRateCents = Math.round(hourlyRate * 100);
   const currencyCode = normalizePayrollCurrencyCode(currencyCodeRaw);
+  const teachingMode = normalizePayrollTeachingMode(teachingModeRaw);
   await upsertTeacherPayrollRate({
     teacherId,
     courseId,
     subjectId,
     levelId,
+    teachingMode,
     hourlyRateCents,
     currencyCode,
   });
@@ -335,6 +341,7 @@ export default async function TeacherPayrollPage({
     data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).map((r) => r.teacherId)
   );
   const unconfiguredRateCount = data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).length;
+  const fallbackRateCount = data.rateEditorRows.filter((r) => r.usesFallbackRate).length;
   const rateRows = rateMissingOnly
     ? data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0)
     : data.rateEditorRows;
@@ -690,10 +697,15 @@ export default async function TeacherPayrollPage({
             <div style={{ marginBottom: 10, color: "#666" }}>
               {t(
                 lang,
-                "If no matching rate is found, hourly rate defaults to 0.",
-                "若没有匹配费率，默认课时费为 0。"
+                "Rates are configured separately for 1-on-1 and group classes. Group rows without a dedicated group rate temporarily fall back to the matching 1-on-1 rate.",
+                "费率现在区分一对一和班课。班课若暂未配置专属班课费率，会临时回退使用对应的一对一费率。"
               )}
             </div>
+            {fallbackRateCount > 0 ? (
+              <div style={{ marginBottom: 10, color: "#92400e" }}>
+                {t(lang, "Using 1-on-1 fallback for group rows", "正在用一对一费率回退的班课")}：{fallbackRateCount}
+              </div>
+            ) : null}
             <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
               <input type="hidden" name="month" value={month} />
               <input type="hidden" name="scope" value={scope} />
@@ -714,6 +726,7 @@ export default async function TeacherPayrollPage({
                   <tr style={{ background: "#f5f5f5" }}>
                     <th align="left">{t(lang, "Teacher", "老师")}</th>
                     <th align="left">{t(lang, "Course Combo", "课程组合")}</th>
+                    <th align="left">{t(lang, "Teaching Mode", "班型")}</th>
                     <th align="left">{t(lang, "Matched Sessions", "匹配课次")}</th>
                     <th align="left">{t(lang, "Matched Hours", "匹配课时")}</th>
                     <th align="left">{t(lang, "Edit Hourly Rate", "编辑课时费")}</th>
@@ -721,9 +734,17 @@ export default async function TeacherPayrollPage({
                 </thead>
                 <tbody>
                   {rateRows.map((row) => (
-                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
+                    <tr key={`rate-${row.teacherId}-${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}-${row.teachingMode}`} style={{ borderTop: "1px solid #eee" }}>
                       <td>{row.teacherName}</td>
                       <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
+                      <td>
+                        <div>{formatTeachingModeLabel(row.teachingMode)}</div>
+                        {row.usesFallbackRate ? (
+                          <div style={{ color: "#92400e", fontSize: 12 }}>
+                            {t(lang, "Using 1-on-1 fallback", "正在使用一对一费率回退")}
+                          </div>
+                        ) : null}
+                      </td>
                       <td>{row.matchedSessions}</td>
                       <td>{row.matchedHours}</td>
                       <td>
@@ -746,6 +767,13 @@ export default async function TeacherPayrollPage({
                             {PAYROLL_CURRENCY_CODES.map((currencyCode) => (
                               <option key={currencyCode} value={currencyCode}>
                                 {currencyCode}
+                              </option>
+                            ))}
+                          </select>
+                          <select name="teachingMode" defaultValue={row.teachingMode} style={{ width: 110 }}>
+                            {PAYROLL_TEACHING_MODES.map((mode) => (
+                              <option key={mode} value={mode}>
+                                {formatTeachingModeLabel(mode)}
                               </option>
                             ))}
                           </select>
@@ -796,5 +824,3 @@ export default async function TeacherPayrollPage({
     </div>
   );
 }
-
-

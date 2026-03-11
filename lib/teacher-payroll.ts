@@ -9,6 +9,9 @@ const PAYROLL_PUBLISH_FALLBACK_KEY = "teacher_payroll_publish_v1";
 export const PAYROLL_CURRENCY_CODES = ["SGD", "CNY", "USD", "HKD", "THB"] as const;
 export type PayrollCurrencyCode = (typeof PAYROLL_CURRENCY_CODES)[number];
 const DEFAULT_PAYROLL_CURRENCY: PayrollCurrencyCode = "SGD";
+export const PAYROLL_TEACHING_MODES = ["ONE_ON_ONE", "GROUP"] as const;
+export type PayrollTeachingMode = (typeof PAYROLL_TEACHING_MODES)[number];
+const DEFAULT_PAYROLL_TEACHING_MODE: PayrollTeachingMode = "ONE_ON_ONE";
 
 export type PayrollRange = {
   start: Date;
@@ -29,6 +32,7 @@ export type PayrollBreakdownRow = {
   subjectName: string | null;
   levelId: string | null;
   levelName: string | null;
+  teachingMode: PayrollTeachingMode;
   sessionCount: number;
   totalMinutes: number;
   totalHours: number;
@@ -36,6 +40,7 @@ export type PayrollBreakdownRow = {
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
   chargedExcusedSessions: number;
+  usedRateFallback: boolean;
 };
 
 export type PayrollTeacherSummary = {
@@ -60,10 +65,12 @@ export type PayrollRateEditorRow = {
   subjectName: string | null;
   levelId: string | null;
   levelName: string | null;
+  teachingMode: PayrollTeachingMode;
   hourlyRateCents: number;
   currencyCode: PayrollCurrencyCode;
   matchedSessions: number;
   matchedHours: number;
+  usesFallbackRate: boolean;
 };
 
 export type PayrollTeacherDetailComboRow = {
@@ -73,6 +80,7 @@ export type PayrollTeacherDetailComboRow = {
   subjectName: string | null;
   levelId: string | null;
   levelName: string | null;
+  teachingMode: PayrollTeachingMode;
   sessionCount: number;
   totalMinutes: number;
   totalHours: number;
@@ -80,6 +88,7 @@ export type PayrollTeacherDetailComboRow = {
   currencyCode: PayrollCurrencyCode;
   amountCents: number;
   chargedExcusedSessions: number;
+  usedRateFallback: boolean;
 };
 
 export type PayrollTeacherDetailSessionRow = {
@@ -91,6 +100,7 @@ export type PayrollTeacherDetailSessionRow = {
   courseName: string;
   subjectName: string | null;
   levelName: string | null;
+  teachingMode: PayrollTeachingMode;
   totalMinutes: number;
   totalHours: number;
   hourlyRateCents: number;
@@ -99,6 +109,7 @@ export type PayrollTeacherDetailSessionRow = {
   isCompleted: boolean;
   isChargedExcused: boolean;
   pendingReason: PayrollPendingReason | null;
+  usedRateFallback: boolean;
 };
 
 export type PayrollPendingReason =
@@ -112,6 +123,7 @@ type PayrollRateItem = {
   courseId: string;
   subjectId: string | null;
   levelId: string | null;
+  teachingMode: PayrollTeachingMode;
   hourlyRateCents: number;
   currencyCode: PayrollCurrencyCode;
 };
@@ -177,6 +189,15 @@ export function normalizePayrollCurrencyCode(value?: string | null): PayrollCurr
     : DEFAULT_PAYROLL_CURRENCY;
 }
 
+export function normalizePayrollTeachingMode(value?: string | null): PayrollTeachingMode {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  return (PAYROLL_TEACHING_MODES as readonly string[]).includes(normalized)
+    ? (normalized as PayrollTeachingMode)
+    : DEFAULT_PAYROLL_TEACHING_MODE;
+}
+
 function upsertCurrencyTotal(
   totalsMap: Map<PayrollCurrencyCode, number>,
   currencyCode: PayrollCurrencyCode,
@@ -200,8 +221,14 @@ function payrollPublishKey(teacherId: string, month: string, scope: PayrollScope
   return `${teacherId}__${month}__${scope}`;
 }
 
-function comboKey(teacherId: string, courseId: string, subjectId: string | null, levelId: string | null) {
-  return `${teacherId}__${courseId}__${subjectId ?? ""}__${levelId ?? ""}`;
+function comboKey(
+  teacherId: string,
+  courseId: string,
+  subjectId: string | null,
+  levelId: string | null,
+  teachingMode: PayrollTeachingMode
+) {
+  return `${teacherId}__${courseId}__${subjectId ?? ""}__${levelId ?? ""}__${teachingMode}`;
 }
 
 function comboCurrencyKey(
@@ -209,13 +236,18 @@ function comboCurrencyKey(
   courseId: string,
   subjectId: string | null,
   levelId: string | null,
+  teachingMode: PayrollTeachingMode,
   currencyCode: PayrollCurrencyCode
 ) {
-  return `${comboKey(teacherId, courseId, subjectId, levelId)}__${currencyCode}`;
+  return `${comboKey(teacherId, courseId, subjectId, levelId, teachingMode)}__${currencyCode}`;
 }
 
 function toHours(totalMinutes: number) {
   return Number((totalMinutes / 60).toFixed(2));
+}
+
+function derivePayrollTeachingMode(capacity: number | null | undefined): PayrollTeachingMode {
+  return Number(capacity ?? 0) > 1 ? "GROUP" : "ONE_ON_ONE";
 }
 
 function resolveRate(
@@ -223,19 +255,40 @@ function resolveRate(
   teacherId: string,
   courseId: string,
   subjectId: string | null,
-  levelId: string | null
+  levelId: string | null,
+  teachingMode: PayrollTeachingMode
 ) {
-  const exact = rateMap.get(comboKey(teacherId, courseId, subjectId, levelId));
-  if (exact) return exact;
+  const lookups: Array<{ subjectId: string | null; levelId: string | null; teachingMode: PayrollTeachingMode }> = [
+    { subjectId, levelId, teachingMode },
+  ];
   if (levelId) {
-    const noLevel = rateMap.get(comboKey(teacherId, courseId, subjectId, null));
-    if (noLevel) return noLevel;
+    lookups.push({ subjectId, levelId: null, teachingMode });
   }
   if (subjectId || levelId) {
-    const courseOnly = rateMap.get(comboKey(teacherId, courseId, null, null));
-    if (courseOnly) return courseOnly;
+    lookups.push({ subjectId: null, levelId: null, teachingMode });
   }
-  return { hourlyRateCents: 0, currencyCode: DEFAULT_PAYROLL_CURRENCY };
+  if (teachingMode === "GROUP") {
+    lookups.push({ subjectId, levelId, teachingMode: "ONE_ON_ONE" });
+    if (levelId) {
+      lookups.push({ subjectId, levelId: null, teachingMode: "ONE_ON_ONE" });
+    }
+    if (subjectId || levelId) {
+      lookups.push({ subjectId: null, levelId: null, teachingMode: "ONE_ON_ONE" });
+    }
+  }
+
+  for (const lookup of lookups) {
+    const exact = rateMap.get(comboKey(teacherId, courseId, lookup.subjectId, lookup.levelId, lookup.teachingMode));
+    if (exact) {
+      return {
+        hourlyRateCents: exact.hourlyRateCents,
+        currencyCode: exact.currencyCode,
+        usedFallback: teachingMode === "GROUP" && lookup.teachingMode === "ONE_ON_ONE",
+      };
+    }
+  }
+
+  return { hourlyRateCents: 0, currencyCode: DEFAULT_PAYROLL_CURRENCY, usedFallback: false };
 }
 
 function isMissingRateTableError(err: unknown) {
@@ -256,6 +309,7 @@ function parseFallbackRateItems(raw: string | null): PayrollRateItem[] {
       const courseId = typeof x.courseId === "string" ? x.courseId : "";
       const subjectId = typeof x.subjectId === "string" && x.subjectId.trim() ? x.subjectId : null;
       const levelId = typeof x.levelId === "string" && x.levelId.trim() ? x.levelId : null;
+      const teachingMode = normalizePayrollTeachingMode(typeof x.teachingMode === "string" ? x.teachingMode : null);
       const hourlyRateCents = Number(x.hourlyRateCents);
       const currencyCode = normalizePayrollCurrencyCode(typeof x.currencyCode === "string" ? x.currencyCode : null);
       if (!teacherId || !courseId || !Number.isFinite(hourlyRateCents) || hourlyRateCents < 0) continue;
@@ -264,6 +318,7 @@ function parseFallbackRateItems(raw: string | null): PayrollRateItem[] {
         courseId,
         subjectId,
         levelId,
+        teachingMode,
         hourlyRateCents: Math.round(hourlyRateCents),
         currencyCode,
       });
@@ -647,12 +702,19 @@ export async function getTeacherPayrollPublishForTeacher(input: { teacherId: str
 async function saveFallbackRateItem(nextItem: PayrollRateItem) {
   const normalizedItem = {
     ...nextItem,
+    teachingMode: normalizePayrollTeachingMode(nextItem.teachingMode),
     currencyCode: normalizePayrollCurrencyCode(nextItem.currencyCode),
   };
   const items = await loadFallbackRateItems();
-  const key = comboKey(normalizedItem.teacherId, normalizedItem.courseId, normalizedItem.subjectId, normalizedItem.levelId);
+  const key = comboKey(
+    normalizedItem.teacherId,
+    normalizedItem.courseId,
+    normalizedItem.subjectId,
+    normalizedItem.levelId,
+    normalizedItem.teachingMode
+  );
   const deduped = items.filter(
-    (item) => comboKey(item.teacherId, item.courseId, item.subjectId, item.levelId) !== key
+    (item) => comboKey(item.teacherId, item.courseId, item.subjectId, item.levelId, item.teachingMode) !== key
   );
   deduped.push(normalizedItem);
   await prisma.appSetting.upsert({
@@ -669,17 +731,19 @@ export async function upsertTeacherPayrollRate(input: PayrollRateItem) {
   const subjectKey = input.subjectId ?? "";
   const levelKey = input.levelId ?? "";
   const currencyCode = normalizePayrollCurrencyCode(input.currencyCode);
+  const teachingMode = normalizePayrollTeachingMode(input.teachingMode);
   try {
     await prisma.teacherCourseRate.upsert({
       where: {
-        teacherId_courseId_subjectKey_levelKey: {
+        teacherId_courseId_subjectKey_levelKey_teachingMode: {
           teacherId: input.teacherId,
           courseId: input.courseId,
           subjectKey,
           levelKey,
+          teachingMode,
         },
       },
-      update: { hourlyRateCents: input.hourlyRateCents, currencyCode },
+      update: { hourlyRateCents: input.hourlyRateCents, currencyCode, teachingMode },
       create: {
         teacherId: input.teacherId,
         courseId: input.courseId,
@@ -687,6 +751,7 @@ export async function upsertTeacherPayrollRate(input: PayrollRateItem) {
         levelId: input.levelId,
         subjectKey,
         levelKey,
+        teachingMode,
         hourlyRateCents: input.hourlyRateCents,
         currencyCode,
       },
@@ -738,6 +803,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     courseId: string;
     subjectId: string | null;
     levelId: string | null;
+    teachingMode: string;
     hourlyRateCents: number;
     currencyCode: string;
     teacher: { id: string; name: string };
@@ -753,6 +819,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         teacherId: { in: Array.from(teacherIds) },
       },
       include: {
+        // teachingMode defaults old rows to ONE_ON_ONE via schema/migration
         teacher: { select: { id: true, name: true } },
         course: { select: { id: true, name: true } },
         subject: { select: { id: true, name: true } },
@@ -788,6 +855,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
           courseId: r.courseId,
           subjectId: r.subjectId,
           levelId: r.levelId,
+          teachingMode: r.teachingMode,
           hourlyRateCents: r.hourlyRateCents,
           currencyCode: r.currencyCode,
           teacher,
@@ -801,7 +869,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
 
   const rateMap = new Map<string, { hourlyRateCents: number; currencyCode: PayrollCurrencyCode }>();
   for (const r of rates) {
-    rateMap.set(comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId), {
+    rateMap.set(comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId, normalizePayrollTeachingMode(r.teachingMode)), {
       hourlyRateCents: r.hourlyRateCents,
       currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
     });
@@ -835,13 +903,13 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     const subjectName = s.class.subject?.name ?? null;
     const levelId = s.class.level?.id ?? null;
     const levelName = s.class.level?.name ?? null;
-
-    const resolvedRate = resolveRate(rateMap, effectiveTeacher.id, courseId, subjectId, levelId);
+    const teachingMode = derivePayrollTeachingMode(s.class.capacity);
+    const resolvedRate = resolveRate(rateMap, effectiveTeacher.id, courseId, subjectId, levelId, teachingMode);
     const hourlyRateCents = resolvedRate.hourlyRateCents;
     const currencyCode = resolvedRate.currencyCode;
     const amountCents = Math.round((totalMinutes * hourlyRateCents) / 60);
 
-    const key = comboCurrencyKey(effectiveTeacher.id, courseId, subjectId, levelId, currencyCode);
+    const key = comboCurrencyKey(effectiveTeacher.id, courseId, subjectId, levelId, teachingMode, currencyCode);
     const prev = breakdownByCombo.get(key);
     if (prev) {
       prev.sessionCount += 1;
@@ -849,6 +917,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
       if (chargedExcused) prev.chargedExcusedSessions += 1;
+      if (resolvedRate.usedFallback) prev.usedRateFallback = true;
     } else {
       breakdownByCombo.set(key, {
         teacherId: effectiveTeacher.id,
@@ -859,6 +928,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         subjectName,
         levelId,
         levelName,
+        teachingMode,
         sessionCount: 1,
         totalMinutes,
         totalHours: toHours(totalMinutes),
@@ -866,6 +936,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         currencyCode,
         amountCents,
         chargedExcusedSessions: chargedExcused ? 1 : 0,
+        usedRateFallback: resolvedRate.usedFallback,
       });
     }
 
@@ -905,6 +976,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     const aSubject = a.subjectName ?? "";
     const bSubject = b.subjectName ?? "";
     if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+    if (a.teachingMode !== b.teachingMode) return a.teachingMode.localeCompare(b.teachingMode);
     return (a.levelName ?? "").localeCompare(b.levelName ?? "");
   });
 
@@ -912,7 +984,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
 
   const rateEditorMap = new Map<string, PayrollRateEditorRow>();
   for (const row of breakdownRows) {
-    rateEditorMap.set(comboKey(row.teacherId, row.courseId, row.subjectId, row.levelId), {
+    rateEditorMap.set(comboKey(row.teacherId, row.courseId, row.subjectId, row.levelId, row.teachingMode), {
       teacherId: row.teacherId,
       teacherName: row.teacherName,
       courseId: row.courseId,
@@ -921,15 +993,18 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
       subjectName: row.subjectName,
       levelId: row.levelId,
       levelName: row.levelName,
+      teachingMode: row.teachingMode,
       hourlyRateCents: row.hourlyRateCents,
       currencyCode: row.currencyCode,
       matchedSessions: row.sessionCount,
       matchedHours: row.totalHours,
+      usesFallbackRate: row.usedRateFallback,
     });
   }
 
   for (const r of rates) {
-    const key = comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId);
+    const teachingMode = normalizePayrollTeachingMode(r.teachingMode);
+    const key = comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId, teachingMode);
     if (!rateEditorMap.has(key)) {
       rateEditorMap.set(key, {
         teacherId: r.teacherId,
@@ -940,10 +1015,12 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
         subjectName: r.subject?.name ?? null,
         levelId: r.levelId,
         levelName: r.level?.name ?? null,
+        teachingMode,
         hourlyRateCents: r.hourlyRateCents,
         currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
         matchedSessions: 0,
         matchedHours: 0,
+        usesFallbackRate: false,
       });
     }
   }
@@ -954,6 +1031,7 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     const aSubject = a.subjectName ?? "";
     const bSubject = b.subjectName ?? "";
     if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+    if (a.teachingMode !== b.teachingMode) return a.teachingMode.localeCompare(b.teachingMode);
     return (a.levelName ?? "").localeCompare(b.levelName ?? "");
   });
 
@@ -1125,6 +1203,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     courseId: string;
     subjectId: string | null;
     levelId: string | null;
+    teachingMode: string;
     hourlyRateCents: number;
     currencyCode: string;
   }> = [];
@@ -1137,6 +1216,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
         courseId: true,
         subjectId: true,
         levelId: true,
+        teachingMode: true,
         hourlyRateCents: true,
         currencyCode: true,
       },
@@ -1149,7 +1229,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
 
   const rateMap = new Map<string, { hourlyRateCents: number; currencyCode: PayrollCurrencyCode }>();
   for (const r of rates) {
-    rateMap.set(comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId), {
+    rateMap.set(comboKey(r.teacherId, r.courseId, r.subjectId, r.levelId, normalizePayrollTeachingMode(r.teachingMode)), {
       hourlyRateCents: r.hourlyRateCents,
       currencyCode: normalizePayrollCurrencyCode(r.currencyCode),
     });
@@ -1179,12 +1259,13 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     const subjectName = s.class.subject?.name ?? null;
     const levelId = s.class.level?.id ?? null;
     const levelName = s.class.level?.name ?? null;
-    const resolvedRate = resolveRate(rateMap, teacherId, courseId, subjectId, levelId);
+    const teachingMode = derivePayrollTeachingMode(s.class.capacity);
+    const resolvedRate = resolveRate(rateMap, teacherId, courseId, subjectId, levelId, teachingMode);
     const hourlyRateCents = resolvedRate.hourlyRateCents;
     const currencyCode = resolvedRate.currencyCode;
     const amountCents = Math.round((minutes * hourlyRateCents) / 60);
 
-    const key = comboCurrencyKey(teacherId, courseId, subjectId, levelId, currencyCode);
+    const key = comboCurrencyKey(teacherId, courseId, subjectId, levelId, teachingMode, currencyCode);
     const prev = comboMap.get(key);
     if (prev) {
       prev.sessionCount += 1;
@@ -1192,6 +1273,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       prev.totalHours = toHours(prev.totalMinutes);
       prev.amountCents += amountCents;
       if (chargedExcused) prev.chargedExcusedSessions += 1;
+      if (resolvedRate.usedFallback) prev.usedRateFallback = true;
     } else {
       comboMap.set(key, {
         courseId,
@@ -1200,6 +1282,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
         subjectName,
         levelId,
         levelName,
+        teachingMode,
         sessionCount: 1,
         totalMinutes: minutes,
         totalHours: toHours(minutes),
@@ -1207,6 +1290,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
         currencyCode,
         amountCents,
         chargedExcusedSessions: chargedExcused ? 1 : 0,
+        usedRateFallback: resolvedRate.usedFallback,
       });
     }
 
@@ -1219,6 +1303,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       courseName,
       subjectName,
       levelName,
+      teachingMode,
       totalMinutes: minutes,
       totalHours: toHours(minutes),
       hourlyRateCents,
@@ -1227,6 +1312,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
       isCompleted: completed,
       isChargedExcused: chargedExcused,
       pendingReason: completion.pendingReason,
+      usedRateFallback: resolvedRate.usedFallback,
     });
 
     totalMinutes += minutes;
@@ -1247,6 +1333,7 @@ export async function loadTeacherPayrollDetail(month: string, teacherId: string,
     const aSubject = a.subjectName ?? "";
     const bSubject = b.subjectName ?? "";
     if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+    if (a.teachingMode !== b.teachingMode) return a.teachingMode.localeCompare(b.teachingMode);
     return (a.levelName ?? "").localeCompare(b.levelName ?? "");
   });
 
@@ -1269,6 +1356,17 @@ export function formatMoneyCents(cents: number, currencyCode: PayrollCurrencyCod
   return `${currencyCode} ${(cents / 100).toFixed(2)}`;
 }
 
-export function formatComboLabel(courseName: string, subjectName: string | null, levelName: string | null) {
-  return [courseName, subjectName, levelName].filter(Boolean).join(" / ");
+export function formatTeachingModeLabel(teachingMode: PayrollTeachingMode) {
+  return teachingMode === "GROUP" ? "GROUP" : "1-ON-1";
+}
+
+export function formatComboLabel(
+  courseName: string,
+  subjectName: string | null,
+  levelName: string | null,
+  teachingMode?: PayrollTeachingMode
+) {
+  const parts = [courseName, subjectName, levelName].filter(Boolean);
+  if (teachingMode) parts.push(formatTeachingModeLabel(teachingMode));
+  return parts.join(" / ");
 }

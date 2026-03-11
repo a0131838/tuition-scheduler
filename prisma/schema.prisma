@@ -146,6 +146,7 @@ model TeacherCourseRate {
   levelId         String?
   subjectKey      String   @default("")
   levelKey        String   @default("")
+  teachingMode    String   @default("ONE_ON_ONE")
   hourlyRateCents Int      @default(0)
   currencyCode    String   @default("SGD")
   createdAt       DateTime @default(now())
@@ -156,7 +157,7 @@ model TeacherCourseRate {
   subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   level   Level?   @relation(fields: [levelId], references: [id], onDelete: SetNull)
 
-  @@unique([teacherId, courseId, subjectKey, levelKey])
+  @@unique([teacherId, courseId, subjectKey, levelKey, teachingMode])
   @@index([teacherId, updatedAt])
 }
 

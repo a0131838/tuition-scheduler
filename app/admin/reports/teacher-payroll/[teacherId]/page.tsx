@@ -162,8 +162,15 @@ export default async function TeacherPayrollDetailPage({
           </thead>
           <tbody>
             {data.comboRows.map((row) => (
-              <tr key={`${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}`} style={{ borderTop: "1px solid #eee" }}>
-                <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
+              <tr key={`${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}-${row.teachingMode}-${row.currencyCode}`} style={{ borderTop: "1px solid #eee" }}>
+                <td>
+                  <div>{formatComboLabel(row.courseName, row.subjectName, row.levelName, row.teachingMode)}</div>
+                  {row.usedRateFallback ? (
+                    <div style={{ color: "#92400e", fontSize: 12 }}>
+                      {t(lang, "Using 1-on-1 fallback for group rate", "班课未配置专属费率，当前回退使用一对一费率")}
+                    </div>
+                  ) : null}
+                </td>
                 <td>{row.sessionCount}</td>
                 <td style={{ color: row.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{row.chargedExcusedSessions}</td>
                 <td>{row.totalHours}</td>
@@ -202,7 +209,14 @@ export default async function TeacherPayrollDetailPage({
                 <td>{DATE_TIME_FMT.format(row.endAt)}</td>
                 <td>{row.studentName}</td>
                 <td>{row.studentSessionCount}</td>
-                <td>{formatComboLabel(row.courseName, row.subjectName, row.levelName)}</td>
+                <td>
+                  <div>{formatComboLabel(row.courseName, row.subjectName, row.levelName, row.teachingMode)}</div>
+                  {row.usedRateFallback ? (
+                    <div style={{ color: "#92400e", fontSize: 12 }}>
+                      {t(lang, "Using 1-on-1 fallback for group rate", "班课未配置专属费率，当前回退使用一对一费率")}
+                    </div>
+                  ) : null}
+                </td>
                 <td>{row.totalHours}</td>
                 <td>{formatMoneyCents(row.hourlyRateCents, row.currencyCode)}</td>
                 <td>
