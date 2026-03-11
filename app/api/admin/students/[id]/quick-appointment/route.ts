@@ -182,7 +182,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (msg === "COURSE_ENROLLMENT_CONFLICT") {
-      const conflict = await findStudentCourseEnrollment(studentId, courseId);
+      const conflict = await findStudentCourseEnrollment(studentId, courseId, undefined, subjectId);
       return bad("Course enrollment conflict", 409, {
         code: "COURSE_CONFLICT",
         detail: conflict ? formatEnrollmentConflict(conflict) : undefined,

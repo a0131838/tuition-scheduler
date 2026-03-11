@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { courseId: true },
+    select: { courseId: true, subjectId: true },
   });
   if (!cls) return bad("Class not found", 404);
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   });
 
   if (!exists) {
-    const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId);
+    const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId);
     if (courseConflict) {
       return bad("Course enrollment conflict", 409, { code: "COURSE_CONFLICT", detail: formatEnrollmentConflict(courseConflict) });
     }

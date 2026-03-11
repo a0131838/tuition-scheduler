@@ -4,11 +4,15 @@ import type { Lang } from "@/lib/i18n";
 export async function findStudentCourseEnrollment(
   studentId: string,
   courseId: string,
-  excludeClassId?: string | null
+  excludeClassId?: string | null,
+  subjectId?: string | null
 ) {
+  const classWhere: any = { courseId };
+  if (subjectId) classWhere.subjectId = subjectId;
+
   const where: any = {
     studentId,
-    class: { courseId },
+    class: classWhere,
   };
   if (excludeClassId) {
     where.NOT = { classId: excludeClassId };
