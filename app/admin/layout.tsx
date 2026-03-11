@@ -55,6 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
     pathname === "/admin/reports/audit-logs" ||
+    pathname === "/admin/expense-claims" ||
     pathname === "/admin/receipts-approvals" ||
     (pathname.startsWith("/admin/packages/") && pathname.endsWith("/billing"));
 
@@ -78,6 +79,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
               <Link scroll={false} href="/admin/reports/partner-settlement" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Partner Settlement", "合作方结算")}
+              </Link>
+              <Link scroll={false} href="/admin/expense-claims" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                {t(lang, "Expense Claims", "报销审批")}
               </Link>
               <Link scroll={false} href="/admin/receipts-approvals" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Receipt Approvals", "收据审批")}
@@ -240,6 +244,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link scroll={false} href="/admin/receipts-approvals" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Receipt Approvals", "收据审批")}
               </Link>
+              <Link scroll={false} href="/admin/expense-claims" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                {t(lang, "Expense Claims", "报销审批")}
+              </Link>
               <Link scroll={false} href="/admin/reports/midterm" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Midterm Reports", "中期报告")}
               </Link>
@@ -327,7 +334,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </div>
   );
 }
-
 
 
 

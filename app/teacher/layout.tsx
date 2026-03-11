@@ -17,6 +17,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <Link scroll={false} href="/teacher/tickets">{t(lang, "Ticket Board", "工单看板")}</Link>
         <Link scroll={false} href="/teacher/midterm-reports">{t(lang, "Midterm Reports", "中期报告")}</Link>
         <Link scroll={false} href="/teacher/payroll">{t(lang, "My Payroll", "我的工资单")}</Link>
+        <Link scroll={false} href="/teacher/expense-claims">{t(lang, "My Expense Claims", "我的报销")}</Link>
         <Link scroll={false} href="/teacher/card">{t(lang, "My Teacher Card", "我的老师名片")}</Link>
       </nav>
       <hr style={{ margin: "16px 0" }} />
@@ -51,6 +52,5 @@ export default async function TeacherLayout({ children }: { children: React.Reac
     </div>
   );
 }
-
 
 

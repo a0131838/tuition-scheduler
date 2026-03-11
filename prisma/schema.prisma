@@ -80,6 +80,13 @@ enum MidtermReportStatus {
   SUBMITTED
 }
 
+enum ExpenseClaimStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
 model Campus {
   id             String          @id @default(uuid())
   name           String
@@ -538,6 +545,44 @@ model User {
   ticketsCompleted       Ticket[]        @relation("TicketCompletedBy")
   ticketHandovers        TicketHandover[]
   ticketIntakeTokens     TicketIntakeToken[]
+  expenseClaimsSubmitted ExpenseClaim[]
+}
+
+model ExpenseClaim {
+  id                 String             @id @default(uuid())
+  claimRefNo         String             @unique
+  submitterUserId    String
+  submitterName      String
+  submitterRole      String
+  expenseDate        DateTime
+  description        String
+  studentName        String?
+  location           String?
+  amountCents        Int
+  gstAmountCents     Int?
+  currencyCode       String             @default("SGD")
+  expenseTypeCode    String
+  accountCode        String
+  receiptPath        String
+  receiptOriginalName String
+  status             ExpenseClaimStatus @default(SUBMITTED)
+  approverEmail      String?
+  approvedAt         DateTime?
+  rejectedAt         DateTime?
+  rejectReason       String?
+  paidByEmail        String?
+  paidAt             DateTime?
+  paymentBatchMonth  String?
+  remarks            String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  submitter User @relation(fields: [submitterUserId], references: [id], onDelete: Cascade)
+
+  @@index([submitterUserId, createdAt])
+  @@index([status, expenseDate])
+  @@index([paymentBatchMonth, status])
+  @@index([expenseTypeCode, expenseDate])
 }
 
 model AuditLog {
