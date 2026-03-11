@@ -132,12 +132,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     const enrollmentRef = await prisma.enrollment.findFirst({
       where: { studentId: reqRow.studentId },
       orderBy: { id: "desc" },
-      include: { class: { select: { courseId: true } } },
+      include: { class: { select: { courseId: true, subjectId: true } } },
     });
     const teacherRef = await prisma.class.findFirst({
       where: { teacherId: reqRow.teacherId },
       orderBy: { id: "desc" },
-      select: { courseId: true },
+      select: { courseId: true, subjectId: true },
     });
     const fallbackCourse = await prisma.course.findFirst({
       orderBy: { name: "asc" },
@@ -145,6 +145,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     });
     const courseId = pkg?.courseId ?? enrollmentRef?.class.courseId ?? teacherRef?.courseId ?? fallbackCourse?.id;
     if (!courseId) return bad("No course found for auto class creation", 409);
+
+    const candidateSubjectIds = Array.from(
+      new Set(
+        [enrollmentRef?.class.subjectId ?? null, teacherRef?.subjectId ?? null].filter(
+          (value): value is string => Boolean(value)
+        )
+      )
+    );
+    const subjectId = candidateSubjectIds.length === 1 ? candidateSubjectIds[0] : null;
+    if (!subjectId) {
+      const subjectCount = await prisma.subject.count({ where: { courseId } });
+      if (subjectCount > 1) {
+        return bad("Cannot auto-create 1-on-1 class for multi-subject course without a resolved subject", 409, {
+          code: "SUBJECT_REQUIRED_FOR_AUTO_CLASS",
+        });
+      }
+    }
 
     const onlineCampus = await prisma.campus.findFirst({ where: { isOnline: true }, select: { id: true } });
     const anyCampus = onlineCampus ? null : await prisma.campus.findFirst({ select: { id: true } });
@@ -157,6 +174,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
         teacherId: reqRow.teacherId,
         studentId: reqRow.studentId,
         courseId,
+        subjectId,
         campusId,
         roomId: null,
         ensureEnrollment: true,
