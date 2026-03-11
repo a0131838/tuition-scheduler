@@ -119,7 +119,7 @@ export default async function TeacherExpenseClaimsPage({
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.status}</td>
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}><a href={claim.receiptPath} target="_blank">{t(lang, 'Open', '打开')}</a></td>
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}><a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank">{t(lang, 'Open', '打开')}</a></td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.rejectReason || claim.remarks || '-'}</td>
                   </tr>
                 ))}

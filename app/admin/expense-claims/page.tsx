@@ -214,7 +214,7 @@ export default async function AdminExpenseClaimsPage({
                     {claim.approverEmail ? <div style={{ color: '#64748b', fontSize: 12 }}>{claim.approverEmail}</div> : null}
                     {claim.rejectReason ? <div style={{ color: '#b91c1c', fontSize: 12 }}>{claim.rejectReason}</div> : null}
                   </td>
-                  <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}><a href={claim.receiptPath} target="_blank">{t(lang, 'Open', '打开')}</a></td>
+                  <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}><a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank">{t(lang, 'Open', '打开')}</a></td>
                   <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>
                     <div style={{ display: 'grid', gap: 8, minWidth: 220 }}>
                       {canApprove && claim.status === ExpenseClaimStatus.SUBMITTED ? (
