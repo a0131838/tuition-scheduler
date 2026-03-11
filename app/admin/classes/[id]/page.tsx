@@ -312,11 +312,21 @@ export default async function ClassDetailPage({
 
       <ClassEnrollmentsClient
         classId={classId}
-        initialAvailableStudents={availableStudents.map((s) => ({ id: s.id, name: s.name }))}
-        initialEnrollments={enrollments.map((e) => ({ id: e.id, studentId: e.studentId, studentName: e.student.name }))}
+        initialStudents={students.map((s) => ({
+          id: s.id,
+          name: s.name,
+          grade: s.grade ?? null,
+          hasEligiblePackage: eligibleStudentSet.has(s.id),
+        }))}
+        initialEnrollments={enrollments.map((e) => ({
+          id: e.id,
+          studentId: e.studentId,
+          studentName: e.student.name,
+          studentGrade: e.student.grade ?? null,
+        }))}
         labels={{
           enrollments: t(lang, "Enrollments", "报名"),
-          selectStudent: t(lang, "Select student", "选择学生"),
+          selectStudent: t(lang, "Search student name", "搜索学生姓名"),
           add: t(lang, "Add", "添加"),
           remove: t(lang, "Remove", "移除"),
           noEnrollments: t(lang, "No enrollments yet.", "暂无报名"),
