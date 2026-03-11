@@ -1,5 +1,4 @@
-import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { canFinanceOperateExpense, canApproveExpense } from '@/lib/expense-claims';
@@ -78,7 +77,7 @@ export async function GET(
   const safeName = path.basename(claim.receiptOriginalName || 'receipt');
   const ext = path.extname(safeName).toLowerCase();
   const contentType = MIME_BY_EXT[ext] ?? 'application/octet-stream';
-  const stream = createReadStream(absPath);
+  const body = await readFile(absPath);
   const url = new URL(req.url);
   const download = url.searchParams.get('download') === '1';
   const asciiName = toAsciiFilename(safeName);
@@ -87,6 +86,7 @@ export async function GET(
   const headers = new Headers({
     'content-type': contentType,
     'cache-control': 'private, max-age=3600',
+    'content-length': String(body.byteLength),
   });
 
   if (download) {
@@ -96,7 +96,7 @@ export async function GET(
     );
   }
 
-  return new Response(stream as any, {
+  return new Response(body, {
     status: 200,
     headers,
   });
