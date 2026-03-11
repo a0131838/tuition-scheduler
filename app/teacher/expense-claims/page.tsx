@@ -6,6 +6,7 @@ import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import { redirect } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import { ExpenseClaimStatus } from '@prisma/client';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -22,6 +23,23 @@ function formatDateOnly(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function monthKey(value: Date) {
+  return value.toISOString().slice(0, 7);
+}
+
+function shiftMonth(base: Date, delta: number) {
+  return monthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
+}
+
+function buildFilterQuery(input: Record<string, string | null | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input)) {
+    const normalized = String(value ?? '').trim();
+    if (normalized) params.set(key, normalized);
+  }
+  return params.toString();
+}
+
 export default async function TeacherExpenseClaimsPage({
   searchParams,
 }: {
@@ -33,6 +51,15 @@ export default async function TeacherExpenseClaimsPage({
   const params = (await searchParams) ?? {};
   const msg = typeof params.msg === 'string' ? params.msg : '';
   const err = typeof params.err === 'string' ? params.err : '';
+  const statusFilter = typeof params.status === 'string' ? params.status : 'ALL';
+  const monthFilter = typeof params.month === 'string' ? params.month : '';
+  const paymentBatchMonthFilter = typeof params.paymentBatchMonth === 'string' ? params.paymentBatchMonth : '';
+  const currentMonth = monthKey(new Date());
+  const previousMonth = shiftMonth(new Date(), -1);
+  const quickThisMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: statusFilter !== 'ALL' ? statusFilter : '', month: currentMonth, paymentBatchMonth: paymentBatchMonthFilter })}`;
+  const quickLastMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: statusFilter !== 'ALL' ? statusFilter : '', month: previousMonth, paymentBatchMonth: paymentBatchMonthFilter })}`;
+  const quickPaidThisMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: ExpenseClaimStatus.PAID, month: '', paymentBatchMonth: currentMonth })}`;
+  const quickClearHref = '/teacher/expense-claims';
 
   async function submitClaimAction(formData: FormData) {
     'use server';
@@ -96,7 +123,12 @@ export default async function TeacherExpenseClaimsPage({
     redirect('/teacher/expense-claims?msg=Expense+claim+submitted');
   }
 
-  const claims = await listExpenseClaims({ submitterUserId: user.id });
+  const claims = await listExpenseClaims({
+    submitterUserId: user.id,
+    status: statusFilter as ExpenseClaimStatus | 'ALL',
+    month: monthFilter || null,
+    paymentBatchMonth: paymentBatchMonthFilter || null,
+  });
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -106,6 +138,46 @@ export default async function TeacherExpenseClaimsPage({
       <ExpenseClaimForm lang={lang} action={submitClaimAction} submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
       <section style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0 }}>{t(lang, 'My submitted claims', '我提交的报销单')}</h2>
+        <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a href={quickThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
+            <a href={quickLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
+            <a href={quickPaidThisMonthHref}>{t(lang, 'Paid this month', '本月已付款')}</a>
+            <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+          </div>
+          <form style={{ display: 'grid', gap: 14 }}>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ fontWeight: 600, color: '#334155' }}>{t(lang, 'Expense filters', '消费筛选')}</div>
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <span>{t(lang, 'Status', '状态')}</span>
+                  <select name="status" defaultValue={statusFilter}>
+                    <option value="ALL">ALL</option>
+                    {Object.values(ExpenseClaimStatus).map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <span>{t(lang, 'Expense month', '消费月份')}</span>
+                  <input type="month" name="month" defaultValue={monthFilter} />
+                </label>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ fontWeight: 600, color: '#334155' }}>{t(lang, 'Payment filters', '付款筛选')}</div>
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <span>{t(lang, 'Payment batch month', '付款批次月份')}</span>
+                  <input type="month" name="paymentBatchMonth" defaultValue={paymentBatchMonthFilter} />
+                </label>
+              </div>
+            </div>
+            <div>
+              <button type="submit">{t(lang, 'Apply', '应用')}</button>
+            </div>
+          </form>
+        </section>
         {claims.length ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
