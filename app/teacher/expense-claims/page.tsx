@@ -7,6 +7,11 @@ import { redirect } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import path from 'path';
 
+function isPreviewableImage(name: string | null | undefined) {
+  const ext = path.extname(String(name ?? '')).toLowerCase();
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
+}
+
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const n = Number(String(value ?? '').trim());
   if (!Number.isFinite(n) || n < 0) return null;
@@ -119,7 +124,27 @@ export default async function TeacherExpenseClaimsPage({
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.status}</td>
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}><a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank">{t(lang, 'Open', '打开')}</a></td>
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
+                          {claim.receiptOriginalName}
+                        </div>
+                        {isPreviewableImage(claim.receiptOriginalName) ? (
+                          <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`}
+                              alt={claim.receiptOriginalName || 'receipt'}
+                              style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' }}
+                            />
+                          </a>
+                        ) : null}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View', '查看')}</a>
+                          <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download', '下载')}</a>
+                        </div>
+                      </div>
+                    </td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.rejectReason || claim.remarks || '-'}</td>
                   </tr>
                 ))}

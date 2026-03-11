@@ -30,7 +30,7 @@ function buildExpenseClaimFilePath(receiptPath: string) {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
@@ -73,13 +73,15 @@ export async function GET(
   const ext = path.extname(safeName).toLowerCase();
   const contentType = MIME_BY_EXT[ext] ?? 'application/octet-stream';
   const stream = createReadStream(absPath);
+  const url = new URL(req.url);
+  const download = url.searchParams.get('download') === '1';
 
   return new Response(stream as any, {
     status: 200,
     headers: {
       'content-type': contentType,
       'cache-control': 'private, max-age=3600',
-      'content-disposition': `inline; filename="${safeName.replace(/"/g, '')}"`,
+      'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${safeName.replace(/"/g, '')}"`,
     },
   });
 }
