@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth';
-import { canFinanceOperateExpense, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
+import { canFinanceOperateExpense, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? '');
@@ -13,8 +13,23 @@ export async function GET(req: Request) {
   }
   const { searchParams } = new URL(req.url);
   const month = searchParams.get('month');
+  const paymentBatchMonth = searchParams.get('paymentBatchMonth');
   const status = searchParams.get('status') as 'ALL' | null;
-  const rows = await listExpenseClaims({ month, status: status || 'ALL' });
+  const expenseTypeCode = searchParams.get('expenseType');
+  const currencyCode = searchParams.get('currency');
+  const submitterQuery = searchParams.get('q');
+  const approvedUnpaidOnly = searchParams.get('approvedUnpaidOnly') === '1';
+  const archived = searchParams.get('archived') === '1';
+  const rows = await listExpenseClaims({
+    month,
+    paymentBatchMonth,
+    status: status || 'ALL',
+    expenseTypeCode,
+    currencyCode,
+    submitterQuery,
+    approvedUnpaidOnly,
+    archived,
+  });
   const header = [
     'Claim Ref No',
     'Submitter',
@@ -29,8 +44,12 @@ export async function GET(req: Request) {
     'Currency',
     'Status',
     'Approver',
+    'Payment Method',
+    'Payment Reference',
     'Paid At',
+    'Paid By',
     'Payment Batch Month',
+    'Finance Remarks',
     'Receipt Path',
     'Description',
     'Remarks',
@@ -51,8 +70,12 @@ export async function GET(req: Request) {
       claim.currencyCode,
       claim.status,
       claim.approverEmail || '',
+      claim.paymentMethod ? formatExpensePaymentMethod(claim.paymentMethod) : '',
+      claim.paymentReference || '',
       claim.paidAt ? claim.paidAt.toISOString() : '',
+      claim.paidByEmail || '',
       claim.paymentBatchMonth || '',
+      claim.financeRemarks || '',
       claim.receiptPath,
       claim.description,
       claim.remarks || claim.rejectReason || '',

@@ -571,8 +571,13 @@ model ExpenseClaim {
   rejectedAt         DateTime?
   rejectReason       String?
   paidByEmail        String?
+  financeRemarks     String?
+  paymentMethod      String?
+  paymentReference   String?
   paidAt             DateTime?
   paymentBatchMonth  String?
+  archivedAt         DateTime?
+  archivedByEmail    String?
   remarks            String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -582,6 +587,7 @@ model ExpenseClaim {
   @@index([submitterUserId, createdAt])
   @@index([status, expenseDate])
   @@index([paymentBatchMonth, status])
+  @@index([archivedAt, status])
   @@index([expenseTypeCode, expenseDate])
 }
 

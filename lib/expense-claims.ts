@@ -3,8 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { getApprovalRoleConfig, isRoleApprover } from '@/lib/approval-flow';
 
+const EXPENSE_APPROVER_KEY = 'approval_expense_approver_emails_v1';
+const EXPENSE_APPROVAL_OWNER_EMAIL = 'zhaohongwei0880@gmail.com';
+
 export const EXPENSE_CURRENCY_CODES = ['SGD', 'CNY', 'USD', 'HKD', 'THB'] as const;
 export type ExpenseCurrencyCode = (typeof EXPENSE_CURRENCY_CODES)[number];
+export const EXPENSE_PAYMENT_METHODS = ['BANK_TRANSFER', 'PAYNOW', 'CASH', 'OTHER'] as const;
+export type ExpensePaymentMethod = (typeof EXPENSE_PAYMENT_METHODS)[number];
 
 export type ExpenseTypeOption = {
   code: string;
@@ -50,14 +55,69 @@ export function formatExpenseMoney(cents: number, currencyCode: string) {
   return `${currencyCode} ${(Math.max(0, Number(cents || 0)) / 100).toFixed(2)}`;
 }
 
+export function normalizeExpensePaymentMethod(value?: string | null): ExpensePaymentMethod {
+  const raw = String(value ?? '').trim().toUpperCase();
+  return (EXPENSE_PAYMENT_METHODS as readonly string[]).includes(raw) ? (raw as ExpensePaymentMethod) : 'BANK_TRANSFER';
+}
+
+export function formatExpensePaymentMethod(value?: string | null) {
+  switch (normalizeExpensePaymentMethod(value)) {
+    case 'PAYNOW':
+      return 'PayNow';
+    case 'CASH':
+      return 'Cash';
+    case 'OTHER':
+      return 'Other';
+    default:
+      return 'Bank Transfer';
+  }
+}
+
 export function canFinanceOperateExpense(user: { email?: string | null; role?: string | null }) {
   const email = String(user.email ?? '').trim().toLowerCase();
   return user.role === 'FINANCE' || email === 'zhaohongwei0880@gmail.com';
 }
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function dedupeEmails(emails: string[]) {
+  return Array.from(new Set(emails.map(normalizeEmail).filter(Boolean)));
+}
+
+function parseEmailList(raw?: string | null) {
+  if (!raw) return [];
+  return dedupeEmails(raw.split(','));
+}
+
+export function canEditExpenseApprovalConfig(email: string | null | undefined) {
+  return normalizeEmail(String(email ?? '')) === EXPENSE_APPROVAL_OWNER_EMAIL;
+}
+
+export async function getExpenseApprovalConfig() {
+  const [row, fallback] = await Promise.all([
+    prisma.appSetting.findUnique({ where: { key: EXPENSE_APPROVER_KEY }, select: { value: true } }),
+    getApprovalRoleConfig(),
+  ]);
+  const approverEmails = parseEmailList(row?.value ?? null);
+  return {
+    approverEmails: approverEmails.length ? approverEmails : fallback.managerApproverEmails,
+  };
+}
+
+export async function saveExpenseApprovalConfig(input: { approverEmailsRaw: string }) {
+  const approverEmails = dedupeEmails((input.approverEmailsRaw ?? '').split(','));
+  await prisma.appSetting.upsert({
+    where: { key: EXPENSE_APPROVER_KEY },
+    update: { value: approverEmails.join(',') },
+    create: { key: EXPENSE_APPROVER_KEY, value: approverEmails.join(',') },
+  });
+}
+
 export async function canApproveExpense(user: { email?: string | null }) {
-  const cfg = await getApprovalRoleConfig();
-  return isRoleApprover(user.email, cfg.managerApproverEmails);
+  const cfg = await getExpenseApprovalConfig();
+  return isRoleApprover(user.email, cfg.approverEmails);
 }
 
 export async function allocateExpenseClaimRefNo(now = new Date()) {
@@ -192,7 +252,9 @@ export async function markExpenseClaimPaid(input: {
   claimId: string;
   paidBy: { email?: string | null; name?: string | null; role?: string | null };
   paymentBatchMonth?: string | null;
-  remarks?: string | null;
+  financeRemarks?: string | null;
+  paymentMethod?: string | null;
+  paymentReference?: string | null;
 }) {
   const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
   if (!existing) throw new Error('Expense claim not found');
@@ -206,7 +268,9 @@ export async function markExpenseClaimPaid(input: {
       paidAt: new Date(),
       paidByEmail: String(input.paidBy.email ?? '').trim().toLowerCase() || null,
       paymentBatchMonth: input.paymentBatchMonth?.trim() || null,
-      remarks: input.remarks?.trim() || undefined,
+      financeRemarks: input.financeRemarks?.trim() || null,
+      paymentMethod: normalizeExpensePaymentMethod(input.paymentMethod),
+      paymentReference: input.paymentReference?.trim() || null,
     },
   });
   await logAudit({
@@ -223,13 +287,34 @@ export async function markExpenseClaimPaid(input: {
 export type ExpenseClaimListFilters = {
   status?: ExpenseClaimStatus | 'ALL' | null;
   month?: string | null;
+  paymentBatchMonth?: string | null;
   submitterUserId?: string | null;
+  submitterQuery?: string | null;
+  expenseTypeCode?: string | null;
+  currencyCode?: string | null;
+  approvedUnpaidOnly?: boolean | null;
+  archived?: boolean | null;
 };
 
 export async function listExpenseClaims(filters: ExpenseClaimListFilters = {}) {
   const where: Prisma.ExpenseClaimWhereInput = {};
   if (filters.submitterUserId) where.submitterUserId = filters.submitterUserId;
   if (filters.status && filters.status !== 'ALL') where.status = filters.status;
+  if (filters.archived === true) where.archivedAt = { not: null };
+  else if (filters.archived === false) where.archivedAt = null;
+  if (filters.expenseTypeCode) where.expenseTypeCode = String(filters.expenseTypeCode).trim().toUpperCase();
+  if (filters.currencyCode) where.currencyCode = normalizeExpenseCurrencyCode(filters.currencyCode);
+  if (filters.approvedUnpaidOnly) where.status = ExpenseClaimStatus.APPROVED;
+  if (filters.submitterQuery) {
+    const q = String(filters.submitterQuery).trim();
+    if (q) {
+      where.OR = [
+        { submitterName: { contains: q, mode: 'insensitive' } },
+        { claimRefNo: { contains: q, mode: 'insensitive' } },
+        { studentName: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+  }
   if (filters.month) {
     const [yearRaw, monthRaw] = String(filters.month).split('-');
     const year = Number(yearRaw);
@@ -241,9 +326,100 @@ export async function listExpenseClaims(filters: ExpenseClaimListFilters = {}) {
       };
     }
   }
+  if (filters.paymentBatchMonth) {
+    where.paymentBatchMonth = String(filters.paymentBatchMonth).trim();
+  }
 
   return prisma.expenseClaim.findMany({
     where,
     orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
   });
+}
+
+export async function archiveExpenseClaim(input: {
+  claimId: string;
+  actor: { email?: string | null; name?: string | null; role?: string | null };
+}) {
+  const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
+  if (!existing) throw new Error('Expense claim not found');
+  if (existing.status !== ExpenseClaimStatus.PAID) {
+    throw new Error('Only paid claims can be archived');
+  }
+  const row = await prisma.expenseClaim.update({
+    where: { id: input.claimId },
+    data: {
+      archivedAt: new Date(),
+      archivedByEmail: String(input.actor.email ?? '').trim().toLowerCase() || null,
+    },
+  });
+  await logAudit({
+    actor: input.actor,
+    module: 'expense-claims',
+    action: 'archive',
+    entityType: 'ExpenseClaim',
+    entityId: row.id,
+    meta: { claimRefNo: row.claimRefNo },
+  });
+  return row;
+}
+
+export function summarizeExpenseClaims(rows: Array<{
+  status: ExpenseClaimStatus;
+  amountCents: number;
+  gstAmountCents: number | null;
+  currencyCode: string;
+}>) {
+  const totalsByCurrency = new Map<string, number>();
+  let submittedCount = 0;
+  let approvedCount = 0;
+  let rejectedCount = 0;
+  let paidCount = 0;
+
+  for (const row of rows) {
+    const total = row.amountCents + (row.gstAmountCents ?? 0);
+    totalsByCurrency.set(row.currencyCode, (totalsByCurrency.get(row.currencyCode) ?? 0) + total);
+    if (row.status === ExpenseClaimStatus.SUBMITTED) submittedCount += 1;
+    else if (row.status === ExpenseClaimStatus.APPROVED) approvedCount += 1;
+    else if (row.status === ExpenseClaimStatus.REJECTED) rejectedCount += 1;
+    else if (row.status === ExpenseClaimStatus.PAID) paidCount += 1;
+  }
+
+  return {
+    submittedCount,
+    approvedCount,
+    rejectedCount,
+    paidCount,
+    totalsByCurrency: Array.from(totalsByCurrency.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([currencyCode, cents]) => ({ currencyCode, cents })),
+  };
+}
+
+export async function getExpenseClaimReminderQueues(now = new Date()) {
+  const submittedBefore = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const approvedBefore = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+  const [staleSubmitted, staleApprovedUnpaid] = await Promise.all([
+    prisma.expenseClaim.findMany({
+      where: {
+        status: ExpenseClaimStatus.SUBMITTED,
+        createdAt: { lt: submittedBefore },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+      take: 20,
+    }),
+    prisma.expenseClaim.findMany({
+      where: {
+        status: ExpenseClaimStatus.APPROVED,
+        approvedAt: { lt: approvedBefore },
+      },
+      orderBy: [{ approvedAt: 'asc' }],
+      take: 20,
+    }),
+  ]);
+
+  return {
+    staleSubmitted,
+    staleApprovedUnpaid,
+  };
 }

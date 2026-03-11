@@ -1,6 +1,6 @@
 import { getCurrentUser, requireTeacher } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
-import { createExpenseClaim, formatExpenseMoney, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation } from '@/lib/expense-claims';
+import { createExpenseClaim, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation } from '@/lib/expense-claims';
 import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import { redirect } from 'next/navigation';
@@ -123,7 +123,13 @@ export default async function TeacherExpenseClaimsPage({
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatDateOnly(claim.expenseDate)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.status}</td>
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div>{claim.status}</div>
+                      {claim.approverEmail ? <div style={{ color: '#64748b', fontSize: 12 }}>{claim.approverEmail}</div> : null}
+                      {claim.paidAt ? <div style={{ color: '#166534', fontSize: 12 }}>{formatDateOnly(claim.paidAt)}</div> : null}
+                      {claim.paymentMethod ? <div style={{ color: '#334155', fontSize: 12 }}>{formatExpensePaymentMethod(claim.paymentMethod)}</div> : null}
+                      {claim.paymentReference ? <div style={{ color: '#64748b', fontSize: 12 }}>{claim.paymentReference}</div> : null}
+                    </td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
                       <div style={{ display: 'grid', gap: 6 }}>
                         <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
@@ -145,7 +151,9 @@ export default async function TeacherExpenseClaimsPage({
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.rejectReason || claim.remarks || '-'}</td>
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
+                      {claim.rejectReason || claim.financeRemarks || claim.remarks || '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
