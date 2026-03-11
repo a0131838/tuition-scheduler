@@ -54,6 +54,10 @@ function buildFilterQuery(input: Record<string, string | null | undefined>) {
   return params.toString();
 }
 
+function shiftMonth(base: Date, delta: number) {
+  return monthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
+}
+
 export default async function AdminExpenseClaimsPage({
   searchParams,
 }: {
@@ -87,6 +91,39 @@ export default async function AdminExpenseClaimsPage({
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
     archived: archivedOnly ? '1' : '',
   });
+  const currentMonth = monthKey(new Date());
+  const previousMonth = shiftMonth(new Date(), -1);
+  const quickExpenseThisMonthHref = `/admin/expense-claims?${buildFilterQuery({
+    status: statusFilter !== 'ALL' ? statusFilter : '',
+    month: currentMonth,
+    paymentBatchMonth: '',
+    expenseType: expenseTypeFilter,
+    currency: currencyFilter,
+    q: submitterQuery,
+    approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
+    archived: archivedOnly ? '1' : '',
+  })}`;
+  const quickExpenseLastMonthHref = `/admin/expense-claims?${buildFilterQuery({
+    status: statusFilter !== 'ALL' ? statusFilter : '',
+    month: previousMonth,
+    paymentBatchMonth: '',
+    expenseType: expenseTypeFilter,
+    currency: currencyFilter,
+    q: submitterQuery,
+    approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
+    archived: archivedOnly ? '1' : '',
+  })}`;
+  const quickApprovedUnpaidHref = `/admin/expense-claims?${buildFilterQuery({
+    status: '',
+    month: '',
+    paymentBatchMonth: '',
+    expenseType: '',
+    currency: '',
+    q: '',
+    approvedUnpaidOnly: '1',
+    archived: '',
+  })}`;
+  const quickClearHref = '/admin/expense-claims';
 
   async function submitClaimAction(formData: FormData) {
     'use server';
@@ -333,57 +370,79 @@ export default async function AdminExpenseClaimsPage({
         </section>
       ) : null}
 
-      <form style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
-        <label>
-          {t(lang, 'Status', '状态')}
-          <select name="status" defaultValue={statusFilter}>
-            <option value="ALL">ALL</option>
-            {Object.values(ExpenseClaimStatus).map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t(lang, 'Expense month', '消费月份')}
-          <input type="month" name="month" defaultValue={monthFilter} />
-        </label>
-        <label>
-          {t(lang, 'Payment batch month', '付款批次月份')}
-          <input type="month" name="paymentBatchMonth" defaultValue={paymentBatchMonthFilter} />
-        </label>
-        <label>
-          {t(lang, 'Type', '类型')}
-          <select name="expenseType" defaultValue={expenseTypeFilter}>
-            <option value="">{t(lang, 'All', '全部')}</option>
-            {EXPENSE_TYPE_OPTIONS.map((item) => (
-              <option key={item.code} value={item.code}>{item.label}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t(lang, 'Currency', '币种')}
-          <select name="currency" defaultValue={currencyFilter}>
-            <option value="">{t(lang, 'All', '全部')}</option>
-            {EXPENSE_CURRENCY_CODES.map((code) => (
-              <option key={code} value={code}>{code}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t(lang, 'Submitter / ref / student', '提交人 / 编号 / 学生')}
-          <input name="q" defaultValue={submitterQuery} />
-        </label>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="checkbox" name="approvedUnpaidOnly" value="1" defaultChecked={approvedUnpaidOnly} />
-          <span>{t(lang, 'Approved but unpaid only', '仅看已批未付')}</span>
-        </label>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="checkbox" name="archived" value="1" defaultChecked={archivedOnly} />
-          <span>{t(lang, 'Archived only', '仅看已归档')}</span>
-        </label>
-        <button type="submit">{t(lang, 'Apply', '应用')}</button>
-        <a href={exportHref}>{t(lang, 'Export CSV', '导出 CSV')}</a>
-      </form>
+      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
+          <a href={quickExpenseLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
+          <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
+          <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+        </div>
+        <form style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div style={{ fontWeight: 600, color: '#334155' }}>{t(lang, 'Expense filters', '消费筛选')}</div>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Status', '状态')}</span>
+                <select name="status" defaultValue={statusFilter}>
+                  <option value="ALL">ALL</option>
+                  {Object.values(ExpenseClaimStatus).map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Expense month', '消费月份')}</span>
+                <input type="month" name="month" defaultValue={monthFilter} />
+              </label>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Type', '类型')}</span>
+                <select name="expenseType" defaultValue={expenseTypeFilter}>
+                  <option value="">{t(lang, 'All', '全部')}</option>
+                  {EXPENSE_TYPE_OPTIONS.map((item) => (
+                    <option key={item.code} value={item.code}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Currency', '币种')}</span>
+                <select name="currency" defaultValue={currencyFilter}>
+                  <option value="">{t(lang, 'All', '全部')}</option>
+                  {EXPENSE_CURRENCY_CODES.map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div style={{ fontWeight: 600, color: '#334155' }}>{t(lang, 'Payment and follow-up filters', '付款与跟进筛选')}</div>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Payment batch month', '付款批次月份')}</span>
+                <input type="month" name="paymentBatchMonth" defaultValue={paymentBatchMonthFilter} />
+              </label>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Submitter / ref / student', '提交人 / 编号 / 学生')}</span>
+                <input name="q" defaultValue={submitterQuery} placeholder={t(lang, 'Name / ref / student', '姓名 / 编号 / 学生')} />
+              </label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
+                <input type="checkbox" name="approvedUnpaidOnly" value="1" defaultChecked={approvedUnpaidOnly} />
+                <span>{t(lang, 'Approved but unpaid only', '仅看已批未付')}</span>
+              </label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
+                <input type="checkbox" name="archived" value="1" defaultChecked={archivedOnly} />
+                <span>{t(lang, 'Archived only', '仅看已归档')}</span>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button type="submit">{t(lang, 'Apply', '应用')}</button>
+            <a href={exportHref}>{t(lang, 'Export CSV', '导出 CSV')}</a>
+          </div>
+        </form>
+      </section>
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
