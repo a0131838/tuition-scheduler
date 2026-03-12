@@ -441,37 +441,37 @@ export default async function PartnerBillingPage({
 
       <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
         <form method="get" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <label>Mode<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">Online: Package End</option><option value="OFFLINE_MONTHLY">Offline: Monthly</option></select></label>
-          <label>Month<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
+          <label>{t(lang, "Mode", "模式")}<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "线上：课包结束")}</option><option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "线下：按月")}</option></select></label>
+          <label>{t(lang, "Month", "月份")}<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
           <input type="hidden" name="tab" value={activeTab} />
-          <button type="submit" data-apply-submit="1" style={primaryBtn}>Apply</button>
+          <button type="submit" data-apply-submit="1" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
         </form>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-          {tabBtn("invoice", "Create Invoice")}
-          {tabBtn("payments", "Payment Records")}
-          {tabBtn("receipt", "Create Receipt")}
-          {tabBtn("invoices", "Invoices")}
-          {tabBtn("receipts", "Receipts & Approval")}
+          {tabBtn("invoice", t(lang, "Create Invoice", "创建发票"))}
+          {tabBtn("payments", t(lang, "Payment Records", "付款记录"))}
+          {tabBtn("receipt", t(lang, "Create Receipt", "创建收据"))}
+          {tabBtn("invoices", t(lang, "Invoices", "发票"))}
+          {tabBtn("receipts", t(lang, "Receipts & Approval", "收据与审批"))}
         </div>
       </div>
 
       <div style={{ ...cardStyle, background: "#f8fafc" }}>
-        <h3 style={{ marginTop: 0 }}>Pending Settlement Items ({mode === "ONLINE_PACKAGE_END" ? "Online" : `Offline ${month}`})</h3>
-        <div style={{ color: "#374151" }}>Items: {candidates.length} | Total: SGD {money(candidatesAmount)}</div>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Pending Settlement Items", "待结算项目")} ({mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : `${t(lang, "Offline", "线下")} ${month}`})</h3>
+        <div style={{ color: "#374151" }}>{t(lang, "Items", "项目数")}: {candidates.length} | {t(lang, "Total", "合计")}: SGD {money(candidatesAmount)}</div>
       </div>
 
       {activeTab === "invoice" ? (
       <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Create Partner Invoice (Batch)</h3>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Create Partner Invoice (Batch)", "创建合作方发票（批量）")}</h3>
       <form action={createPartnerInvoiceAction}>
         <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-          <label>Invoice No.<input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} /></label>
-          <label>Issue Date<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-          <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-          <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
-          <label>Bill To<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 3" }}>Description<input name="description" defaultValue={mode === "OFFLINE_MONTHLY" ? `星辅优学${Number(String(month).split("-")[1] || "0") || month}月线下一对一产品服务费` : "Partner settlement Online batch"} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Invoice No.", "发票号")}<input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Issue Date", "开票日期")}<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Due Date", "到期日期")}<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Payment Terms", "付款条款")}<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Bill To", "账单对象")}<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 3" }}>{t(lang, "Description", "描述")}<input name="description" defaultValue={mode === "OFFLINE_MONTHLY" ? `星辅优学${Number(String(month).split("-")[1] || "0") || month}月线下一对一产品服务费` : "Partner settlement Online batch"} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>
             Manual Extra Items / 手动附加项目（每行：描述|金额）
             <textarea
@@ -481,45 +481,45 @@ export default async function PartnerBillingPage({
               style={{ width: "100%" }}
             />
           </label>
-          <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 4" }}>{t(lang, "Note", "备注")}<input name="note" style={{ width: "100%" }} /></label>
         </div>
-        <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>Create Invoice (Batch)</button></div>
+        <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>{t(lang, "Create Invoice (Batch)", "创建发票（批量）")}</button></div>
       </form>
       </div>
       ) : null}
 
       {activeTab === "payments" ? (
       <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Payment Records</h3>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Payment Records", "付款记录")}</h3>
       {financeOpsEnabled ? (
         <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-            <label>Payment Proof<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
-            <label>Payment Date<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
-            <label>Payment Method<select name="paymentMethod" defaultValue="" style={{ width: "100%" }}><option value="">(optional)</option><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">Bank transfer</option></select></label>
-            <label>Reference No.<input name="referenceNo" style={{ width: "100%" }} /></label>
-            <label>Replace Existing<select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">(new record)</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
-            <label style={{ gridColumn: "span 5" }}>Note<input name="paymentNote" style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Payment Proof", "付款凭证")}<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Payment Date", "付款日期")}<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Payment Method", "付款方式")}<select name="paymentMethod" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(optional)", "（可选）")}</option><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option></select></label>
+            <label>{t(lang, "Reference No.", "参考号")}<input name="referenceNo" style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Replace Existing", "替换现有记录")}<select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(new record)", "（新记录）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
+            <label style={{ gridColumn: "span 5" }}>{t(lang, "Note", "备注")}<input name="paymentNote" style={{ width: "100%" }} /></label>
           </div>
-          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>Upload</button></div>
+          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>{t(lang, "Upload", "上传")}</button></div>
         </form>
-      ) : <div style={{ color: "#92400e", marginBottom: 12 }}>Only finance can manage payment records.</div>}
+      ) : <div style={{ color: "#92400e", marginBottom: 12 }}>{t(lang, "Only finance can manage payment records.", "仅财务可管理付款记录。")}</div>}
       {billing.paymentRecords.length === 0 ? (
-        <div style={{ color: "#666", marginBottom: 12 }}>No payment records yet.</div>
+        <div style={{ color: "#666", marginBottom: 12 }}>{t(lang, "No payment records yet.", "暂无付款记录。")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12, minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f3f4f6" }}>
-              <th align="left" style={thCell}>Time</th>
-              <th align="left" style={thCell}>Payment Date</th>
-              <th align="left" style={thCell}>Method</th>
-              <th align="left" style={thCell}>Reference</th>
-              <th align="left" style={thCell}>File</th>
-              <th align="left" style={thCell}>Note</th>
-              <th align="left" style={thCell}>By</th>
-              <th align="left" style={thCell}>Delete</th>
+              <th align="left" style={thCell}>{t(lang, "Time", "时间")}</th>
+              <th align="left" style={thCell}>{t(lang, "Payment Date", "付款日期")}</th>
+              <th align="left" style={thCell}>{t(lang, "Method", "方式")}</th>
+              <th align="left" style={thCell}>{t(lang, "Reference", "参考号")}</th>
+              <th align="left" style={thCell}>{t(lang, "File", "文件")}</th>
+              <th align="left" style={thCell}>{t(lang, "Note", "备注")}</th>
+              <th align="left" style={thCell}>{t(lang, "By", "上传人")}</th>
+              <th align="left" style={thCell}>{t(lang, "Delete", "删除")}</th>
             </tr>
           </thead>
           <tbody>
@@ -541,7 +541,7 @@ export default async function PartnerBillingPage({
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="recordId" value={r.id} />
-                    <button type="submit" style={dangerBtn}>Delete</button>
+                    <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
                   </form>
                 </td>
               </tr>
@@ -555,45 +555,45 @@ export default async function PartnerBillingPage({
 
       {activeTab === "receipt" ? (
       <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Create Receipt</h3>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Create Receipt", "创建收据")}</h3>
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
           <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-            <label>Source Invoice<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? "(No available invoice)" : "Select an invoice"}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
-            <label>Receipt No.<input name="receiptNo" placeholder="Leave blank to auto-generate: InvoiceNo-RC" style={{ width: "100%" }} /></label>
-            <label>Receipt Date<input name="receiptDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-            <label>Received From<input name="receivedFrom" required style={{ width: "100%" }} /></label>
-            <label>Paid By<select name="paidBy" required defaultValue="Paynow" style={{ width: "100%" }}><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">Bank transfer</option></select></label>
-            <label>Quantity<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
-            <label>Amount<input name="amount" type="number" step="0.01" defaultValue={availableInvoices[0]?.amount ?? 0} style={{ width: "100%" }} /></label>
-            <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.gstAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>Amount Received<input name="amountReceived" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>Payment Record<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">(none)</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
-            <label style={{ gridColumn: "span 4" }}>Note<input name="note" style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Source Invoice", "来源发票")}<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No available invoice)", "（无可用发票）") : t(lang, "Select an invoice", "请选择发票")}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
+            <label>{t(lang, "Receipt No.", "收据号")}<input name="receiptNo" placeholder={t(lang, "Leave blank to auto-generate: InvoiceNo-RC", "留空自动生成：InvoiceNo-RC")} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Receipt Date", "收据日期")}<input name="receiptDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Received From", "收款对象")}<input name="receivedFrom" required style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Paid By", "付款方式")}<select name="paidBy" required defaultValue="Paynow" style={{ width: "100%" }}><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option></select></label>
+            <label>{t(lang, "Quantity", "数量")}<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Amount", "金额")}<input name="amount" type="number" step="0.01" defaultValue={availableInvoices[0]?.amount ?? 0} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "GST", "消费税")}<input name="gstAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.gstAmount ?? 0} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Total", "合计")}<input name="totalAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Amount Received", "实收金额")}<input name="amountReceived" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
+            <label>{t(lang, "Payment Record", "付款记录")}<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(none)", "（无）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
+            <label style={{ gridColumn: "span 4" }}>{t(lang, "Note", "备注")}<input name="note" style={{ width: "100%" }} /></label>
           </div>
-          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn} disabled={availableInvoices.length === 0}>Create Receipt</button></div>
+          <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn} disabled={availableInvoices.length === 0}>{t(lang, "Create Receipt", "创建收据")}</button></div>
         </form>
-      ) : <div style={{ color: "#92400e" }}>Only finance can create receipts.</div>}
+      ) : <div style={{ color: "#92400e" }}>{t(lang, "Only finance can create receipts.", "仅财务可创建收据。")}</div>}
       </div>
       ) : null}
 
       {activeTab === "invoices" ? (
       <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Partner Invoices</h3>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Invoices", "合作方发票")}</h3>
       <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 980 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
-            <th align="left" style={thCell}>Invoice No.</th>
-            <th align="left" style={thCell}>Issue</th>
-            <th align="left" style={thCell}>Mode</th>
-            <th align="left" style={thCell}>Month</th>
-            <th align="left" style={thCell}>Total</th>
+            <th align="left" style={thCell}>{t(lang, "Invoice No.", "发票号")}</th>
+            <th align="left" style={thCell}>{t(lang, "Issue", "开票日")}</th>
+            <th align="left" style={thCell}>{t(lang, "Mode", "模式")}</th>
+            <th align="left" style={thCell}>{t(lang, "Month", "月份")}</th>
+            <th align="left" style={thCell}>{t(lang, "Total", "合计")}</th>
             <th align="left" style={thCell}>PDF</th>
-            <th align="left" style={thCell}>Student Detail</th>
-            <th align="left" style={thCell}>Delete</th>
+            <th align="left" style={thCell}>{t(lang, "Student Detail", "学生明细")}</th>
+            <th align="left" style={thCell}>{t(lang, "Delete", "删除")}</th>
           </tr>
         </thead>
         <tbody>
@@ -606,15 +606,15 @@ export default async function PartnerBillingPage({
               <td>{money(r.totalAmount)}</td>
               <td>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                  <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a>
                   <a href={`/api/exports/partner-invoice/${encodeURIComponent(r.id)}?seal=1`}>PDF + Seal</a>
                 </div>
               </td>
               <td>
                 {r.mode === "OFFLINE_MONTHLY" ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}`}>Export XLSX</a>
-                    <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}?seal=1`}>XLSX + Seal</a>
+                      <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}`}>{t(lang, "Export XLSX", "导出 XLSX")}</a>
+                      <a href={`/api/exports/partner-invoice-detail/${encodeURIComponent(r.id)}?seal=1`}>XLSX + Seal</a>
                   </div>
                 ) : (
                   <span style={{ color: "#9ca3af" }}>-</span>
@@ -625,7 +625,7 @@ export default async function PartnerBillingPage({
                   <input type="hidden" name="mode" value={mode} />
                   <input type="hidden" name="month" value={month} />
                   <input type="hidden" name="invoiceId" value={r.id} />
-                  <button type="submit" style={dangerBtn}>Delete</button>
+                  <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
                 </form>
               </td>
             </tr>
@@ -638,26 +638,26 @@ export default async function PartnerBillingPage({
 
       {activeTab === "receipts" ? (
       <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Partner Receipts</h3>
+      <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Receipts", "合作方收据")}</h3>
       <div style={{ marginBottom: 10 }}>
         <a href="/admin/receipts-approvals" style={{ fontWeight: 700 }}>
-          Open Receipt Approval Center
+          {t(lang, "Open Receipt Approval Center", "打开收据审批中心")}
         </a>
       </div>
       <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
-            <th align="left" style={thCell}>Receipt No.</th>
-            <th align="left" style={thCell}>Date</th>
-            <th align="left" style={thCell}>Invoice No.</th>
-            <th align="left" style={thCell}>Payment Record</th>
-            <th align="left" style={thCell}>Amount</th>
-            <th align="left" style={thCell}>Manager</th>
-            <th align="left" style={thCell}>Finance</th>
-            <th align="left" style={thCell}>Actions</th>
+            <th align="left" style={thCell}>{t(lang, "Receipt No.", "收据号")}</th>
+            <th align="left" style={thCell}>{t(lang, "Date", "日期")}</th>
+            <th align="left" style={thCell}>{t(lang, "Invoice No.", "发票号")}</th>
+            <th align="left" style={thCell}>{t(lang, "Payment Record", "付款记录")}</th>
+            <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
+            <th align="left" style={thCell}>{t(lang, "Manager", "管理")}</th>
+            <th align="left" style={thCell}>{t(lang, "Finance", "财务")}</th>
+            <th align="left" style={thCell}>{t(lang, "Actions", "操作")}</th>
             <th align="left" style={thCell}>PDF</th>
-            <th align="left" style={thCell}>Delete</th>
+            <th align="left" style={thCell}>{t(lang, "Delete", "删除")}</th>
           </tr>
         </thead>
         <tbody>
@@ -682,20 +682,20 @@ export default async function PartnerBillingPage({
                       </a>
                     </div>
                   ) : (
-                    <span style={{ color: "#6b7280" }}>(none)</span>
+                    <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
                   )}
                 </td>
                 <td>{money(r.amountReceived)}</td>
                 <td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td>
                 <td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td>
                 <td>
-                  {exportReady ? <span style={completedPill}>Completed</span> : <span style={pendingPill}>Go to Approval Center</span>}
+                  {exportReady ? <span style={completedPill}>{t(lang, "Completed", "已完成")}</span> : <span style={pendingPill}>{t(lang, "Go to Approval Center", "前往审批中心")}</span>}
                 </td>
                 <td>
                   {exportReady ? (
-                    <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
+                    <a href={`/api/exports/partner-receipt/${encodeURIComponent(r.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a>
                   ) : (
-                    <span style={pendingPill}>Pending approval</span>
+                    <span style={pendingPill}>{t(lang, "Pending approval", "等待审批")}</span>
                   )}
                 </td>
                 <td>
@@ -703,7 +703,7 @@ export default async function PartnerBillingPage({
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="receiptId" value={r.id} />
-                    <button type="submit" style={dangerBtn}>Delete</button>
+                    <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
                   </form>
                 </td>
               </tr>

@@ -152,7 +152,7 @@ export default async function TeacherExpenseClaimsPage({
                 <label style={{ display: 'grid', gap: 6 }}>
                   <span>{t(lang, 'Status', '状态')}</span>
                   <select name="status" defaultValue={statusFilter}>
-                    <option value="ALL">ALL</option>
+                    <option value="ALL">{t(lang, 'All', '全部')}</option>
                     {Object.values(ExpenseClaimStatus).map((status) => (
                       <option key={status} value={status}>{status}</option>
                     ))}
@@ -183,7 +183,15 @@ export default async function TeacherExpenseClaimsPage({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Ref', 'Date', 'Type', 'Amount', 'Status', 'Receipt', 'Remarks'].map((head) => (
+                  {[
+                    t(lang, 'Ref', '编号'),
+                    t(lang, 'Date', '日期'),
+                    t(lang, 'Type', '类型'),
+                    t(lang, 'Amount', '金额'),
+                    t(lang, 'Status', '状态'),
+                    t(lang, 'Receipt', '附件'),
+                    t(lang, 'Remarks', '备注'),
+                  ].map((head) => (
                     <th key={head} style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '8px 6px' }}>{head}</th>
                   ))}
                 </tr>
