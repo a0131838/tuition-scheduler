@@ -648,7 +648,7 @@ export default async function AdminTodosPage({
       if (new Date(b.startAt) < new Date(a.endAt)) {
         const teacherName = a.teacher?.name ?? a.class.teacher.name;
         conflicts.push({
-          type: "Teacher Session Overlap",
+          type: "老师课次重叠 / Teacher Session Overlap",
           time: `${fmtDateRange(new Date(a.startAt), new Date(a.endAt))} & ${fmtDateRange(
             new Date(b.startAt),
             new Date(b.endAt)
@@ -668,7 +668,7 @@ export default async function AdminTodosPage({
       if (new Date(b.startAt) < new Date(a.endAt)) {
         const roomName = a.class.room?.name ?? "Room";
         conflicts.push({
-          type: "Room Session Overlap",
+          type: "教室课次重叠 / Room Session Overlap",
           time: `${fmtDateRange(new Date(a.startAt), new Date(a.endAt))} & ${fmtDateRange(
             new Date(b.startAt),
             new Date(b.endAt)
@@ -710,10 +710,10 @@ export default async function AdminTodosPage({
       }
       const teacherName = s.teacher?.name ?? s.class.teacher.name;
       conflicts.push({
-        type: "Teacher Appointment Overlap",
+        type: "老师预约重叠 / Teacher Appointment Overlap",
         time: `${fmtDateRange(sStart, sEnd)} & ${fmtDateRange(aStart, aEnd)}`,
         entity: teacherName,
-        detail: `${courseLabel(s.class)} | ${a.student?.name ?? "Appointment"}`,
+        detail: `${courseLabel(s.class)} | ${a.student?.name ?? "预约 / Appointment"}`,
       });
       if (sEnd <= aEnd) i += 1;
       else j += 1;
@@ -1556,7 +1556,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
 
 
 

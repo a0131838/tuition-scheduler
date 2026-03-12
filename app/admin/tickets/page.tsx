@@ -401,9 +401,9 @@ export default async function AdminTicketsPage({
                         <span style={{ color: "#b91c1c", fontWeight: 700 }}>{item.overdueLabel}</span>
                       </div>
                       <div>{item.studentName} | {normalizeTicketTypeValue(item.type)}</div>
-                      <div>Priority: {normalizeTicketPriorityValue(item.priority)}</div>
-                      <div>Next: {item.nextAction ?? "-"}</div>
-                      <div>Due: {new Date(item.nextActionDue).toLocaleString()}</div>
+                      <div>优先级 / Priority: {normalizeTicketPriorityValue(item.priority)}</div>
+                      <div>下一步 / Next: {item.nextAction ?? "-"}</div>
+                      <div>截止 / Due: {new Date(item.nextActionDue).toLocaleString()}</div>
                       <Link scroll={false} href={item.openHref}>打开工单 / Open</Link>
                     </div>
                   ))}
@@ -453,11 +453,11 @@ export default async function AdminTicketsPage({
           <table cellPadding={6} style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
             <thead>
               <tr style={{ background: "#eef2ff" }}>
-                <th align="left">Label</th>
-                <th align="left">Token</th>
-                <th align="left">Status</th>
-                <th align="left">Expire</th>
-                <th align="left">Action</th>
+                <th align="left">标签 / Label</th>
+                <th align="left">令牌 / Token</th>
+                <th align="left">状态 / Status</th>
+                <th align="left">失效日 / Expire</th>
+                <th align="left">操作 / Action</th>
               </tr>
             </thead>
             <tbody>
@@ -467,7 +467,7 @@ export default async function AdminTicketsPage({
                   <tr key={tk.id} style={{ borderTop: "1px solid #e2e8f0" }}>
                     <td>{tk.label ?? "-"}</td>
                     <td style={{ fontFamily: "monospace", fontSize: 12 }}>{tk.token}</td>
-                    <td>{tk.isActive && !expired ? "Active / 可用" : "Inactive / 不可用"}</td>
+                    <td>{tk.isActive && !expired ? "可用 / Active" : "不可用 / Inactive"}</td>
                     <td>{tk.expiresAt ? tk.expiresAt.toLocaleString() : "-"}</td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -519,7 +519,7 @@ export default async function AdminTicketsPage({
         </select>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Clear", "清空")}</Link>
-        <Link scroll={false} href="/admin/tickets?focus=mgmt">Mgmt Focus / 管理介入</Link>
+        <Link scroll={false} href="/admin/tickets?focus=mgmt">管理介入 / Mgmt Focus</Link>
       </form>
 
       <div className="table-scroll">
@@ -593,7 +593,7 @@ export default async function AdminTicketsPage({
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
-                    <div>{proofItems(r.proof).length} 份 / files</div>
+                    <div>{proofItems(r.proof).length} 份文件 / files</div>
                   )}
                 </td>
                 <td>
@@ -636,7 +636,7 @@ export default async function AdminTicketsPage({
                               const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
                               return (
                                 <a key={`${r.id}-proof-all-${idx}`} href={href} target="_blank" rel="noreferrer">
-                                  {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                                  {imageLike ? `图片 ${idx + 1} / Image ${idx + 1}` : `文件 ${idx + 1} / File ${idx + 1}`}
                                 </a>
                               );
                             })}

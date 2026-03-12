@@ -37,14 +37,14 @@ function formatSessionBrief(s: ReminderSession) {
     return `${fmtDateRange(s.startAt, s.endAt)} | ${courseLabel(s)}`;
   }
   const shown = studentNames.slice(0, 3).join("、");
-  const suffix = studentNames.length > 3 ? ` +${studentNames.length - 3} more` : "";
+  const suffix = studentNames.length > 3 ? ` +${studentNames.length - 3}位更多学生 / more` : "";
   return `${fmtDateRange(s.startAt, s.endAt)} | ${courseLabel(s)} | 学生：${shown}${suffix}`;
 }
 
 function listWithLimit(items: string[], limit: number) {
   if (items.length <= limit) return items.join("; ");
   const shown = items.slice(0, limit).join("; ");
-  return `${shown}; +${items.length - limit} more`;
+  return `${shown}; +${items.length - limit}项更多内容 / more`;
 }
 
 async function postConfirm(kind: Kind, date: string, targetIds: string[]) {
@@ -55,7 +55,7 @@ async function postConfirm(kind: Kind, date: string, targetIds: string[]) {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok || !data?.ok) {
-    throw new Error(String(data?.message ?? "Confirm failed"));
+    throw new Error(String(data?.message ?? "确认失败 / Confirm failed"));
   }
   return data as { ok: true; confirmedCount: number };
 }
@@ -130,6 +130,14 @@ function ReminderCard(props: {
 
   const tableStyle = { borderCollapse: "collapse", width: "100%" } as const;
   const detailLineStyle = { fontSize: 12, color: "#334155", lineHeight: 1.4 } as const;
+  const nameHeader = kind === "teacher" ? "老师 / Teacher" : "学生 / Student";
+  const teacherConfirmHeader = "老师确认 / Teacher Confirm";
+  const sessionsHeader = "课次数 / Sessions";
+  const detailHeader = "详情 / Detail";
+  const actionHeader = "操作 / Action";
+  const statusHeader = "状态 / Status";
+  const confirmedStatus = (confirmAt?: string | null) =>
+    confirmAt ? `已确认 / Confirmed ${new Date(confirmAt).toLocaleTimeString()}` : "未确认 / Not confirmed";
 
   return (
     <div style={cardStyle}>
@@ -152,7 +160,7 @@ function ReminderCard(props: {
                 try {
                   await confirmIds(pendingIds);
                 } catch (e: any) {
-                  setError(String(e?.message ?? "Confirm failed"));
+                  setError(String(e?.message ?? "确认失败 / Confirm failed"));
                 } finally {
                   setLoadingAll(false);
                 }
@@ -172,11 +180,11 @@ function ReminderCard(props: {
         <table cellPadding={8} style={{ ...tableStyle, marginTop: 8 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{kind === "teacher" ? "Teacher" : "Student"}</th>
-              <th align="left">Sessions</th>
-              <th align="left">Detail</th>
-              {kind === "teacher" ? <th align="left">Teacher Confirm</th> : null}
-              <th align="left">Action</th>
+              <th align="left">{nameHeader}</th>
+              <th align="left">{sessionsHeader}</th>
+              <th align="left">{detailHeader}</th>
+              {kind === "teacher" ? <th align="left">{teacherConfirmHeader}</th> : null}
+              <th align="left">{actionHeader}</th>
             </tr>
           </thead>
           <tbody>
@@ -195,7 +203,7 @@ function ReminderCard(props: {
                 </td>
                 {kind === "teacher" ? (
                   <td style={{ color: x.teacherConfirmAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
-                    {x.teacherConfirmAt ? `Confirmed ${new Date(x.teacherConfirmAt).toLocaleTimeString()}` : "Not confirmed"}
+                    {confirmedStatus(x.teacherConfirmAt)}
                   </td>
                 ) : null}
                 <td>
@@ -207,7 +215,7 @@ function ReminderCard(props: {
                       try {
                         await confirmIds([x.id]);
                       } catch (e: any) {
-                        setError(String(e?.message ?? "Confirm failed"));
+                        setError(String(e?.message ?? "确认失败 / Confirm failed"));
                       } finally {
                         setLoadingIds((m) => ({ ...m, [x.id]: false }));
                       }
@@ -230,11 +238,11 @@ function ReminderCard(props: {
           <table cellPadding={8} style={tableStyle}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
-                <th align="left">{kind === "teacher" ? "Teacher" : "Student"}</th>
-                <th align="left">Sessions</th>
-                <th align="left">Detail</th>
-                {kind === "teacher" ? <th align="left">Teacher Confirm</th> : null}
-                <th align="left">Status</th>
+                <th align="left">{nameHeader}</th>
+                <th align="left">{sessionsHeader}</th>
+                <th align="left">{detailHeader}</th>
+                {kind === "teacher" ? <th align="left">{teacherConfirmHeader}</th> : null}
+                <th align="left">{statusHeader}</th>
               </tr>
             </thead>
             <tbody>
@@ -253,7 +261,7 @@ function ReminderCard(props: {
                   </td>
                   {kind === "teacher" ? (
                     <td style={{ color: x.teacherConfirmAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
-                      {x.teacherConfirmAt ? `Confirmed ${new Date(x.teacherConfirmAt).toLocaleTimeString()}` : "Not confirmed"}
+                      {confirmedStatus(x.teacherConfirmAt)}
                     </td>
                   ) : null}
                   <td>{confirmedLabel}</td>

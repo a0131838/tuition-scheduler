@@ -59,6 +59,16 @@ function firstWeeklyOccurrence(startDate: string, weekday: string, time: string)
   return `${y}-${m}-${dd}T${time}`;
 }
 
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: "周一 / Mon" },
+  { value: 2, label: "周二 / Tue" },
+  { value: 3, label: "周三 / Wed" },
+  { value: 4, label: "周四 / Thu" },
+  { value: 5, label: "周五 / Fri" },
+  { value: 6, label: "周六 / Sat" },
+  { value: 7, label: "周日 / Sun" },
+];
+
 export default function AdminClassSessionsClient({
   classId,
   classCourseId,
@@ -154,7 +164,7 @@ export default function AdminClassSessionsClient({
     const res = await fetch(`/api/admin/classes/${encodeURIComponent(classId)}/sessions`);
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      throw new Error(String(data?.message ?? "Failed to load sessions"));
+      throw new Error(String(data?.message ?? "加载课次失败 / Failed to load sessions"));
     }
     setSessions(
       (data.sessions as any[]).map((s) => ({
@@ -179,7 +189,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Create failed"));
+      setErr(String(data?.message ?? "创建失败 / Create failed"));
       return;
     }
     await reloadSessions();
@@ -197,7 +207,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Generate failed"));
+      setErr(String(data?.message ?? "批量生成失败 / Generate failed"));
       return;
     }
     await reloadSessions();
@@ -206,7 +216,7 @@ export default function AdminClassSessionsClient({
   }
 
   async function del(sessionId: string) {
-    if (!confirm("Delete session?")) return;
+    if (!confirm("确认删除该课次？ / Delete session?")) return;
     setErr("");
     setMsg("");
     const res = await fetch(`/api/admin/classes/${encodeURIComponent(classId)}/sessions`, {
@@ -216,7 +226,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Delete failed"));
+      setErr(String(data?.message ?? "删除失败 / Delete failed"));
       return;
     }
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
@@ -233,7 +243,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Replace failed"));
+      setErr(String(data?.message ?? "换老师失败 / Replace failed"));
       return;
     }
     await reloadSessions();
@@ -250,7 +260,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Reschedule failed"));
+      setErr(String(data?.message ?? "改时间失败 / Reschedule failed"));
       return;
     }
     await reloadSessions();
@@ -267,7 +277,7 @@ export default function AdminClassSessionsClient({
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) {
-      setErr(String(data?.message ?? "Assign failed"));
+      setErr(String(data?.message ?? "分配学生失败 / Assign failed"));
       return;
     }
     setSessions((prev) =>
@@ -427,13 +437,9 @@ export default function AdminClassSessionsClient({
                   onChange={(e) => setWeeklyWeekday(e.target.value)}
                   style={{ marginLeft: 8, minWidth: 200 }}
                 >
-                  <option value={1}>Mon</option>
-                  <option value={2}>Tue</option>
-                  <option value={3}>Wed</option>
-                  <option value={4}>Thu</option>
-                  <option value={5}>Fri</option>
-                  <option value={6}>Sat</option>
-                  <option value={7}>Sun</option>
+                  {WEEKDAY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </label>
               <label>
