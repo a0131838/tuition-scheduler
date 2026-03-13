@@ -416,6 +416,9 @@ export default async function AdminTicketsPage({
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>录入链接管理 / Intake Link Management</div>
+        <div style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>
+          标签会作为该链接默认录入人，并用于个人工单看板过滤。比如给 Emily 建链接时，标签直接填 <b>Emily</b>。
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           {intakeLink ? (
             <Link scroll={false} href={intakeLink} target="_blank">
@@ -457,6 +460,7 @@ export default async function AdminTicketsPage({
                 <th align="left">令牌 / Token</th>
                 <th align="left">状态 / Status</th>
                 <th align="left">失效日 / Expire</th>
+                <th align="left">链接 / Link</th>
                 <th align="left">操作 / Action</th>
               </tr>
             </thead>
@@ -469,6 +473,11 @@ export default async function AdminTicketsPage({
                     <td style={{ fontFamily: "monospace", fontSize: 12 }}>{tk.token}</td>
                     <td>{tk.isActive && !expired ? "可用 / Active" : "不可用 / Inactive"}</td>
                     <td>{tk.expiresAt ? tk.expiresAt.toLocaleString() : "-"}</td>
+                    <td>
+                      <Link scroll={false} href={`/tickets/intake/${tk.token}`} target="_blank">
+                        打开 / Open
+                      </Link>
+                    </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
                         {tk.isActive ? (

@@ -27,15 +27,15 @@ function validateByOptions(value: string | null, options: { value: string }[]) {
   return options.some((o) => o.value === value) ? value : null;
 }
 
-async function ensureTokenOk(token: string) {
+async function getValidToken(token: string) {
   const row = await prisma.ticketIntakeToken.findUnique({
     where: { token },
-    select: { isActive: true, expiresAt: true },
+    select: { isActive: true, expiresAt: true, label: true },
   });
-  if (!row) return false;
-  if (!row.isActive) return false;
-  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return false;
-  return true;
+  if (!row) return null;
+  if (!row.isActive) return null;
+  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
+  return row;
 }
 
 export async function POST(
@@ -43,7 +43,8 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
-  if (!(await ensureTokenOk(token))) return bad("Intake link is invalid or expired", 403);
+  const tokenRow = await getValidToken(token);
+  if (!tokenRow) return bad("Intake link is invalid or expired", 403);
 
   let body: Record<string, unknown>;
   try {
@@ -167,7 +168,7 @@ export async function POST(
         nextAction: situationAction,
         nextActionDue: situationDeadline,
         proof: normalizeTicketString(body.proof, 5000),
-        createdByName: normalizeTicketString(body.createdByName, 120),
+        createdByName: normalizeTicketString(tokenRow.label, 120) || normalizeTicketString(body.createdByName, 120),
       },
       select: { id: true, ticketNo: true },
     });

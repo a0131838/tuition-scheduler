@@ -58,11 +58,15 @@ export default function IntakeForm({
   uploadPath,
   studentLookupPath,
   teacherLookupPath,
+  createdByNameDefault,
+  lockCreatedByName,
 }: {
   apiPath: string;
   uploadPath: string;
   studentLookupPath: string;
   teacherLookupPath: string;
+  createdByNameDefault?: string;
+  lockCreatedByName?: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -74,6 +78,11 @@ export default function IntakeForm({
   const [teacherName, setTeacherName] = useState("");
   const [gradeValue, setGradeValue] = useState("");
   const [courseValue, setCourseValue] = useState("");
+  const [autoFilledFields, setAutoFilledFields] = useState<{
+    grade: boolean;
+    teacher: boolean;
+    course: boolean;
+  }>({ grade: false, teacher: false, course: false });
   const [selectedType, setSelectedType] = useState("");
   const [situationCurrent, setSituationCurrent] = useState("");
   const [situationAction, setSituationAction] = useState("");
@@ -194,12 +203,15 @@ export default function IntakeForm({
     if (!selectedStudentCandidate) return;
     if (!gradeValue.trim() && selectedStudentCandidate.grade) {
       setGradeValue(selectedStudentCandidate.grade);
+      setAutoFilledFields((prev) => ({ ...prev, grade: true }));
     }
     if (!teacherName.trim() && selectedStudentCandidate.teachers[0]) {
       setTeacherName(selectedStudentCandidate.teachers[0]);
+      setAutoFilledFields((prev) => ({ ...prev, teacher: true }));
     }
     if (!courseValue.trim() && selectedStudentCandidate.courses[0]) {
       setCourseValue(selectedStudentCandidate.courses[0]);
+      setAutoFilledFields((prev) => ({ ...prev, course: true }));
     }
   }, [selectedStudentCandidate, gradeValue, teacherName, courseValue]);
 
@@ -218,6 +230,12 @@ export default function IntakeForm({
       <div style={{ color: "#475569", marginBottom: 12 }}>
         客服快速录入（免登录）/ Quick no-login intake for customer service
       </div>
+      {createdByNameDefault ? (
+        <div style={{ color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+          当前链接默认录入人 / Intake agent: <b>{createdByNameDefault}</b>
+          {lockCreatedByName ? "，此字段已锁定并会同步到个人工单看板。" : ""}
+        </div>
+      ) : null}
       {msg ? <div style={{ color: "#166534", marginBottom: 10 }}>{msg}</div> : null}
       {err ? <div style={{ color: "#b91c1c", marginBottom: 10 }}>{err}</div> : null}
       <details style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", padding: "8px 10px", marginBottom: 10 }}>
@@ -285,6 +303,7 @@ export default function IntakeForm({
             setTeacherName("");
             setGradeValue("");
             setCourseValue("");
+            setAutoFilledFields({ grade: false, teacher: false, course: false });
             setSelectedType("");
             setSituationCurrent("");
             setSituationAction("");
@@ -503,10 +522,20 @@ export default function IntakeForm({
               name="grade"
               required={fieldRequired("grade")}
               value={gradeValue}
-              onChange={(e) => setGradeValue(e.target.value)}
+              onChange={(e) => {
+                setGradeValue(e.target.value);
+                setAutoFilledFields((prev) => ({ ...prev, grade: false }));
+              }}
               placeholder={fieldSuggested("grade") || fieldRequired("grade") ? "如：P3 / G6" : ""}
-              style={fieldStyle}
+              style={{
+                ...fieldStyle,
+                borderColor: autoFilledFields.grade ? "#93c5fd" : fieldStyle.border?.toString(),
+                background: autoFilledFields.grade ? "#f8fbff" : "#fff",
+              }}
             />
+            {autoFilledFields.grade ? (
+              <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 500 }}>系统建议值 / Suggested from student match</div>
+            ) : null}
           </label>
           <label style={labelStyle}>
             课程{fieldRequired("course") ? "*" : ""} / Course{fieldRequired("course") ? "*" : ""}
@@ -514,10 +543,20 @@ export default function IntakeForm({
               name="course"
               required={fieldRequired("course")}
               value={courseValue}
-              onChange={(e) => setCourseValue(e.target.value)}
+              onChange={(e) => {
+                setCourseValue(e.target.value);
+                setAutoFilledFields((prev) => ({ ...prev, course: false }));
+              }}
               placeholder={fieldSuggested("course") || fieldRequired("course") ? "如：英语口语 / Math" : ""}
-              style={fieldStyle}
+              style={{
+                ...fieldStyle,
+                borderColor: autoFilledFields.course ? "#93c5fd" : fieldStyle.border?.toString(),
+                background: autoFilledFields.course ? "#f8fbff" : "#fff",
+              }}
             />
+            {autoFilledFields.course ? (
+              <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 500 }}>系统建议值 / Suggested from student match</div>
+            ) : null}
           </label>
           <label style={labelStyle}>
             老师{fieldRequired("teacher") ? "*" : ""} / Teacher{fieldRequired("teacher") ? "*" : ""}
@@ -525,10 +564,20 @@ export default function IntakeForm({
               name="teacher"
               required={fieldRequired("teacher")}
               value={teacherName}
-              onChange={(e) => setTeacherName(e.target.value)}
+              onChange={(e) => {
+                setTeacherName(e.target.value);
+                setAutoFilledFields((prev) => ({ ...prev, teacher: false }));
+              }}
               placeholder={fieldSuggested("teacher") || fieldRequired("teacher") ? "填写当前老师或目标老师" : ""}
-              style={fieldStyle}
+              style={{
+                ...fieldStyle,
+                borderColor: autoFilledFields.teacher ? "#93c5fd" : fieldStyle.border?.toString(),
+                background: autoFilledFields.teacher ? "#f8fbff" : "#fff",
+              }}
             />
+            {autoFilledFields.teacher ? (
+              <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 500 }}>系统建议值 / Suggested from student match</div>
+            ) : null}
             {teacherLookupState === "loading" ? (
               <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>正在校验老师姓名... / Checking teacher name...</div>
             ) : null}
@@ -655,7 +704,16 @@ export default function IntakeForm({
           </label>
           <label style={labelStyle}>
             录入人 / Intake Agent
-            <input name="createdByName" style={fieldStyle} />
+            <input
+              name="createdByName"
+              defaultValue={createdByNameDefault ?? ""}
+              readOnly={lockCreatedByName}
+              style={{
+                ...fieldStyle,
+                background: lockCreatedByName ? "#f8fafc" : "#fff",
+                color: lockCreatedByName ? "#334155" : undefined,
+              }}
+            />
           </label>
         </div>
 
