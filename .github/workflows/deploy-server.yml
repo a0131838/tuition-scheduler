@@ -31,7 +31,7 @@ jobs:
 
       - name: Add known hosts
         env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_HOST: ${{ secrets.SERVER_HOST || vars.SERVER_HOST || '13.250.199.59' }}
           SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
         run: |
           test -n "$SSH_HOST" || { echo "Missing secret: SERVER_HOST"; exit 1; }
@@ -40,7 +40,7 @@ jobs:
 
       - name: Run remote deploy
         env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_HOST: ${{ secrets.SERVER_HOST || vars.SERVER_HOST || '13.250.199.59' }}
           SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
           SSH_USER: ${{ secrets.SERVER_SSH_USER }}
           APP_DIR: ${{ secrets.SERVER_APP_DIR }}
@@ -62,7 +62,7 @@ jobs:
 
       - name: Run remote health check
         env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_HOST: ${{ secrets.SERVER_HOST || vars.SERVER_HOST || '13.250.199.59' }}
           SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
           SSH_USER: ${{ secrets.SERVER_SSH_USER }}
           APP_DIR: ${{ secrets.SERVER_APP_DIR }}
