@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
+import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { courseId: true, subjectId: true, teacherId: true },
+    select: { courseId: true, subjectId: true, teacherId: true, capacity: true },
   });
   if (!cls) return bad("Class not found", 404);
 
@@ -32,7 +32,14 @@ export async function POST(req: Request) {
   });
 
   if (!exists) {
-    const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId, cls.teacherId);
+    const courseConflict = await findStudentCourseEnrollment(
+      studentId,
+      cls.courseId,
+      classId,
+      cls.subjectId,
+      cls.teacherId,
+      classTeachingMode(cls.capacity)
+    );
     if (courseConflict) {
       return bad("Course enrollment conflict", 409, { code: "COURSE_CONFLICT", detail: formatEnrollmentConflict(courseConflict) });
     }

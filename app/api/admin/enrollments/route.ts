@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { isGroupPackNote } from "@/lib/package-mode";
-import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
+import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -59,7 +59,14 @@ export async function POST(req: Request) {
   });
   if (exists) return bad("Already enrolled", 409, { code: "ALREADY_ENROLLED" });
 
-  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId, cls.teacherId);
+  const courseConflict = await findStudentCourseEnrollment(
+    studentId,
+    cls.courseId,
+    classId,
+    cls.subjectId,
+    cls.teacherId,
+    classTeachingMode(cls.capacity)
+  );
   if (courseConflict) {
     return bad("Course enrollment conflict", 409, { code: "COURSE_CONFLICT", detail: formatEnrollmentConflict(courseConflict) });
   }

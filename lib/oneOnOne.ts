@@ -116,11 +116,11 @@ export async function getOrCreateOneOnOneClassForStudent(input: OneOnOneClassInp
         ? await prisma.enrollment.findFirst({
             where: {
               studentId,
-              class: { courseId, subjectId, teacherId },
+              class: { courseId, subjectId, teacherId, capacity: 1 },
             },
             select: { classId: true },
           })
-        : await findStudentCourseEnrollment(studentId, courseId, undefined, undefined, teacherId);
+        : await findStudentCourseEnrollment(studentId, courseId, undefined, undefined, teacherId, "ONE_ON_ONE");
     if (existingEnrollment) {
         const existingClass = await prisma.class.findUnique({
         where: { id: existingEnrollment.classId },

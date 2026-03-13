@@ -800,7 +800,7 @@ async function previewStudentQuickSchedule(payload: Record<string, unknown>, byp
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (msg === "COURSE_ENROLLMENT_CONFLICT") {
-      const conflict = await findStudentCourseEnrollment(studentId, courseId, undefined, subjectId, teacherId);
+      const conflict = await findStudentCourseEnrollment(studentId, courseId, undefined, subjectId, teacherId, "ONE_ON_ONE");
       return {
         error: "Course enrollment conflict",
         status: 409,

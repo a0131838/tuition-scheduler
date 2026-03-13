@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { isGroupPackNote } from "@/lib/package-mode";
-import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
+import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -48,7 +48,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId, cls.teacherId);
+  const courseConflict = await findStudentCourseEnrollment(
+    studentId,
+    cls.courseId,
+    classId,
+    cls.subjectId,
+    cls.teacherId,
+    classTeachingMode(cls.capacity)
+  );
   if (courseConflict) {
     return Response.json({
       ok: true,
@@ -57,7 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         studentName: student.name,
         studentGrade: student.grade ?? null,
         reasonCode: "COURSE_CONFLICT",
-        reasonText: "该学生已报名同老师的同课程/同科目班级。",
+        reasonText: "该学生已报名同老师、同课程/同科目、同班型班级。",
         detail: formatEnrollmentConflict(courseConflict),
       },
     });
