@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [cls, student] = await Promise.all([
     prisma.class.findUnique({
       where: { id: classId },
-      select: { id: true, courseId: true, subjectId: true, capacity: true },
+      select: { id: true, courseId: true, subjectId: true, teacherId: true, capacity: true },
     }),
     prisma.student.findUnique({
       where: { id: studentId },
@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId);
+  const courseConflict = await findStudentCourseEnrollment(studentId, cls.courseId, classId, cls.subjectId, cls.teacherId);
   if (courseConflict) {
     return Response.json({
       ok: true,
@@ -57,7 +57,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         studentName: student.name,
         studentGrade: student.grade ?? null,
         reasonCode: "COURSE_CONFLICT",
-        reasonText: "该学生已报名同课程/同科目冲突班级。",
+        reasonText: "该学生已报名同老师的同课程/同科目班级。",
         detail: formatEnrollmentConflict(courseConflict),
       },
     });

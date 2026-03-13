@@ -33,7 +33,7 @@ function humanizeEnrollmentError(data: any) {
   }
   if (code === "COURSE_CONFLICT") {
     const detail = String(data?.detail ?? "").trim();
-    return detail ? `该学生已报名冲突课程：${detail}` : "该学生已报名同课程/同科目冲突班级。";
+    return detail ? `该学生已报名同老师冲突班级：${detail}` : "该学生已报名同老师的同课程/同科目班级。";
   }
   if (code === "NO_ACTIVE_PACKAGE") {
     return "该学生当前没有这个课程的有效课包，暂时不能加入班级。";

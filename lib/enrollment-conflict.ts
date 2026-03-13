@@ -5,10 +5,12 @@ export async function findStudentCourseEnrollment(
   studentId: string,
   courseId: string,
   excludeClassId?: string | null,
-  subjectId?: string | null
+  subjectId?: string | null,
+  teacherId?: string | null
 ) {
   const classWhere: any = { courseId };
   if (subjectId) classWhere.subjectId = subjectId;
+  if (teacherId) classWhere.teacherId = teacherId;
 
   const where: any = {
     studentId,
@@ -46,8 +48,8 @@ export function formatEnrollmentConflict(conflict: NonNullable<Awaited<ReturnTyp
 }
 
 export function courseEnrollmentConflictMessage(lang: Lang, detail?: string) {
-  const en = "Student already has this course enrollment";
-  const zh = "学生已存在该课程报名";
+  const en = "Student already has this course/subject enrollment with the same teacher";
+  const zh = "学生已存在同老师的该课程/科目报名";
   const base = lang === "EN" ? en : lang === "ZH" ? zh : `${en} / ${zh}`;
   return detail ? `${base}: ${detail}` : base;
 }
