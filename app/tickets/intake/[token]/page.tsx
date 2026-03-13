@@ -15,6 +15,12 @@ function overdueLabel(nextActionDue: Date | null, status: string) {
   return minutes > 0 ? `${hours}h ${minutes}m overdue` : `${hours}h overdue`;
 }
 
+function dueTone(nextActionDue: Date | null, status: string) {
+  if (!nextActionDue || !isOpenStatus(status)) return { bg: "#f8fafc", border: "#e2e8f0", text: "#475569" };
+  if (nextActionDue.getTime() >= Date.now()) return { bg: "#f0fdf4", border: "#bbf7d0", text: "#166534" };
+  return { bg: "#fff1f2", border: "#fecdd3", text: "#b91c1c" };
+}
+
 export default async function TicketIntakeByTokenPage({
   params,
 }: {
@@ -69,6 +75,15 @@ export default async function TicketIntakeByTokenPage({
     : [];
   const openTickets = ownTickets.filter((row) => isOpenStatus(row.status));
   const overdueTickets = openTickets.filter((row) => row.nextActionDue && row.nextActionDue.getTime() < Date.now());
+  const sortedTickets = [...ownTickets].sort((a, b) => {
+    const aOverdue = a.nextActionDue && a.nextActionDue.getTime() < Date.now() && isOpenStatus(a.status) ? 1 : 0;
+    const bOverdue = b.nextActionDue && b.nextActionDue.getTime() < Date.now() && isOpenStatus(b.status) ? 1 : 0;
+    if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+    const aDue = a.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const bDue = b.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    if (aDue !== bDue) return aDue - bDue;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {viewerName ? (
@@ -89,41 +104,69 @@ export default async function TicketIntakeByTokenPage({
             {ownTickets.length === 0 ? (
               <div style={{ color: "#64748b", fontSize: 13 }}>当前还没有这位录入人的工单。/ No tickets yet for this intake agent.</div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
-                  <thead>
-                    <tr style={{ background: "#eef6ff" }}>
-                      <th align="left">Ticket</th>
-                      <th align="left">学生 / Student</th>
-                      <th align="left">类型 / Type</th>
-                      <th align="left">状态 / Status</th>
-                      <th align="left">负责人 / Owner</th>
-                      <th align="left">下一步 / Next</th>
-                      <th align="left">截止 / Due</th>
-                      <th align="left">录入时间 / Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ownTickets.map((row) => {
-                      const overdue = row.nextActionDue && row.nextActionDue.getTime() < Date.now() && isOpenStatus(row.status);
-                      return (
-                        <tr key={row.id} style={{ borderTop: "1px solid #e2e8f0", background: overdue ? "#fff7f7" : "#fff" }}>
-                          <td style={{ fontFamily: "monospace", fontSize: 12 }}>{row.ticketNo}</td>
-                          <td>{row.studentName}</td>
-                          <td>{row.type}</td>
-                          <td>
-                            <div>{row.status}</div>
-                            {overdue ? <div style={{ color: "#b91c1c", fontSize: 12, fontWeight: 700 }}>{overdueLabel(row.nextActionDue, row.status)}</div> : null}
-                          </td>
-                          <td>{row.owner ?? "-"}</td>
-                          <td style={{ whiteSpace: "pre-wrap" }}>{row.nextAction ?? "-"}</td>
-                          <td>{row.nextActionDue ? row.nextActionDue.toLocaleString() : "-"}</td>
-                          <td>{row.createdAt.toLocaleString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ display: "grid", gap: 10 }}>
+                {sortedTickets.map((row) => {
+                  const tone = dueTone(row.nextActionDue, row.status);
+                  const overdue = row.nextActionDue && row.nextActionDue.getTime() < Date.now() && isOpenStatus(row.status);
+                  return (
+                    <div
+                      key={row.id}
+                      style={{
+                        border: `1px solid ${tone.border}`,
+                        background: tone.bg,
+                        borderRadius: 10,
+                        padding: 12,
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontFamily: "monospace", fontSize: 12, color: "#475569" }}>{row.ticketNo}</div>
+                          <div style={{ fontWeight: 700, fontSize: 16 }}>{row.studentName}</div>
+                        </div>
+                        <div
+                          style={{
+                            border: `1px solid ${tone.border}`,
+                            color: tone.text,
+                            background: "#fff",
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {overdue ? overdueLabel(row.nextActionDue, row.status) : row.status}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+                          类型 / Type: {row.type}
+                        </div>
+                        <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+                          负责人 / Owner: {row.owner ?? "-"}
+                        </div>
+                        <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+                          状态 / Status: {row.status}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
+                        <div>
+                          <b>下一步 / Next:</b>{" "}
+                          <span style={{ whiteSpace: "pre-wrap" }}>{row.nextAction ?? "-"}</span>
+                        </div>
+                        <div>
+                          <b>截止 / Due:</b> {row.nextActionDue ? row.nextActionDue.toLocaleString() : "-"}
+                        </div>
+                        <div>
+                          <b>录入时间 / Created:</b> {row.createdAt.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
