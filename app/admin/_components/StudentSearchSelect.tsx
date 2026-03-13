@@ -48,9 +48,9 @@ export default function StudentSearchSelect({
       if (!userConfirmed) setUserConfirmed(true);
       return;
     }
-    if (userConfirmed) setUserConfirmed(false);
     if (selectedId && !filtered.some((s) => s.id === selectedId)) {
       setSelectedId("");
+      setUserConfirmed(false);
     }
   }, [query, filtered, selectedId, userConfirmed]);
 
