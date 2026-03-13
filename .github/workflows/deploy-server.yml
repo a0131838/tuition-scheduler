@@ -1,0 +1,76 @@
+name: Deploy Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Git branch to deploy"
+        required: true
+        default: "feat/strict-superadmin-availability-bypass"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Validate inputs
+        run: |
+          case "${{ github.event.inputs.branch }}" in
+            "" ) echo "Branch is required"; exit 1 ;;
+            * ) ;;
+          esac
+
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY" || { echo "Missing secret: SERVER_SSH_PRIVATE_KEY"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Add known hosts
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
+        run: |
+          test -n "$SSH_HOST" || { echo "Missing secret: SERVER_HOST"; exit 1; }
+          PORT="${SSH_PORT:-22}"
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run remote deploy
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
+          SSH_USER: ${{ secrets.SERVER_SSH_USER }}
+          APP_DIR: ${{ secrets.SERVER_APP_DIR }}
+          DEPLOY_ENV_FILE: ${{ secrets.SERVER_DEPLOY_ENV_FILE }}
+          DEPLOY_BRANCH: ${{ github.event.inputs.branch }}
+        run: |
+          test -n "$SSH_HOST" || { echo "Missing secret: SERVER_HOST"; exit 1; }
+          test -n "$SSH_USER" || { echo "Missing secret: SERVER_SSH_USER"; exit 1; }
+          test -n "$APP_DIR" || { echo "Missing secret: SERVER_APP_DIR"; exit 1; }
+          ENV_FILE="${DEPLOY_ENV_FILE:-ops/server/.deploy.env}"
+          PORT="${SSH_PORT:-22}"
+          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" \
+            "set -euo pipefail; \
+             cd '$APP_DIR'; \
+             git fetch origin; \
+             git checkout '$DEPLOY_BRANCH'; \
+             git reset --hard 'origin/$DEPLOY_BRANCH'; \
+             bash ops/server/scripts/deploy_app.sh '$ENV_FILE'"
+
+      - name: Run remote health check
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
+          SSH_USER: ${{ secrets.SERVER_SSH_USER }}
+          APP_DIR: ${{ secrets.SERVER_APP_DIR }}
+          DEPLOY_ENV_FILE: ${{ secrets.SERVER_DEPLOY_ENV_FILE }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          ENV_FILE="${DEPLOY_ENV_FILE:-ops/server/.deploy.env}"
+          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" \
+            "set -euo pipefail; \
+             cd '$APP_DIR'; \
+             bash ops/server/scripts/health_check.sh '$ENV_FILE'"
