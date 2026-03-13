@@ -246,11 +246,9 @@ async function applyOneStudentAttendanceAndDeduct(
     | (Awaited<ReturnType<typeof loadAttendancePackage>> & { mode: PackageMode })
     | null = null;
   let previousUnits = 0;
+  const hasLegacyUnboundDeduction = previousCanDeduct && !existing?.packageId;
 
-  if (previousCanDeduct) {
-    if (!existing?.packageId) {
-      throw new Error("Existing deductible attendance is missing package binding.");
-    }
+  if (previousCanDeduct && existing?.packageId) {
     previousPackage = await loadAttendancePackage(tx, {
       packageId: existing.packageId,
       studentId,
@@ -362,6 +360,10 @@ async function applyOneStudentAttendanceAndDeduct(
       mode: nextPackage.mode,
       reason: "mark-all-present",
     });
+  }
+
+  if (hasLegacyUnboundDeduction && !nextPackage && canDeduct) {
+    throw new Error("Student has deductible attendance but no package could be bound for this save.");
   }
 
   const finalPackageId = canDeduct && nextUnits > 0 ? nextPackage?.id ?? null : null;
