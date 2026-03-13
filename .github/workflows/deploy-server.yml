@@ -33,8 +33,18 @@ jobs:
           test -n "$APP_DIR" || { echo "Missing secret: SERVER_APP_DIR"; exit 1; }
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' '${{ secrets.SERVER_SSH_PRIVATE_KEY }}' > ~/.ssh/deploy_key
+          cat > ~/.ssh/deploy_key.raw <<'EOF'
+          ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          EOF
+          tr -d '\r' < ~/.ssh/deploy_key.raw > ~/.ssh/deploy_key.tmp
+          if grep -q '\\n' ~/.ssh/deploy_key.tmp; then
+            perl -0pe 's/\\n/\n/g' ~/.ssh/deploy_key.tmp > ~/.ssh/deploy_key
+          else
+            mv ~/.ssh/deploy_key.tmp ~/.ssh/deploy_key
+          fi
+          rm -f ~/.ssh/deploy_key.raw ~/.ssh/deploy_key.tmp
           chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
 
       - name: Add known hosts
         run: |
@@ -42,7 +52,7 @@ jobs:
 
       - name: Run remote deploy
         run: |
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
           set -euo pipefail
           cd "$APP_DIR"
           git fetch origin
@@ -53,7 +63,7 @@ jobs:
 
       - name: Run remote health check
         run: |
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
           set -euo pipefail
           pm2 status
           curl -I https://sgtmanage.com
