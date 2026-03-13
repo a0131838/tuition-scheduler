@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
-import { buildAbnormalLedgerNote, validateAbnormalLedgerFields } from "@/lib/package-ledger-guard";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -58,10 +57,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const validFromStr = String(body?.validFrom ?? "");
   const validToStr = String(body?.validTo ?? "");
   const noteRaw = String(body?.note ?? "");
-  const abnormalReasonCategory = String(body?.abnormalReasonCategory ?? "");
-  const abnormalApprover = String(body?.abnormalApprover ?? "");
-  const abnormalEvidenceNote = String(body?.abnormalEvidenceNote ?? "");
-  const abnormalDetailNote = String(body?.abnormalDetailNote ?? "");
   const paid = !!body?.paid;
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
@@ -74,10 +69,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     : [];
 
   if (!validFromStr) return bad("Missing validFrom", 409);
+  if (remainingMinutesRaw !== "" && remainingMinutesRaw != null) {
+    return bad("Remaining balance cannot be edited. Delete and recreate the package if needed.", 409);
+  }
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id },
-    select: { remainingMinutes: true, note: true, type: true, studentId: true, courseId: true },
+    select: { note: true, type: true, studentId: true, courseId: true },
   });
   if (!pkg) return bad("Package not found", 404);
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
@@ -94,12 +92,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const n = Number(paidAmountRaw);
     if (Number.isFinite(n)) paidAmount = n;
     else return bad("Invalid paidAmount", 409);
-  }
-
-  let remainingMinutes: number | null = null;
-  if (remainingMinutesRaw !== "" && remainingMinutesRaw != null) {
-    const n = Number(remainingMinutesRaw);
-    if (Number.isFinite(n) && n >= 0) remainingMinutes = n;
   }
 
   const note = composePackageNote(
@@ -146,7 +138,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     data: {
       status: (status as any) || undefined,
       settlementMode: settlementMode as any,
-      remainingMinutes,
       validFrom,
       validTo,
       paid,
@@ -168,29 +159,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       },
     },
   });
-
-  if (pkg && remainingMinutes != null && pkg.remainingMinutes != null && remainingMinutes !== pkg.remainingMinutes) {
-    const delta = remainingMinutes - pkg.remainingMinutes;
-    const abnormalError = validateAbnormalLedgerFields({
-      reasonCategory: abnormalReasonCategory,
-      approver: abnormalApprover,
-      evidenceNote: abnormalEvidenceNote,
-    });
-    if (abnormalError) return bad(abnormalError, 409);
-    await prisma.packageTxn.create({
-      data: {
-        packageId: id,
-        kind: "ADJUST",
-        deltaMinutes: delta,
-        note: buildAbnormalLedgerNote({
-          reasonCategory: abnormalReasonCategory,
-          approver: abnormalApprover,
-          evidenceNote: abnormalEvidenceNote,
-          detailNote: abnormalDetailNote,
-        }),
-      },
-    });
-  }
 
   return Response.json({ ok: true });
 }
