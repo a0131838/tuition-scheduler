@@ -12,6 +12,7 @@ type PackageRow = {
   canSchedule: boolean;
   lowBalance: boolean;
   packMode: "GROUP" | "HOURS";
+  packVariant?: "MONTHLY" | "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT";
 };
 
 function fmtMinutes(min?: number | null) {
@@ -27,6 +28,19 @@ function fmtDate(v: string | null) {
   if (!v) return "(open)";
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+}
+
+function packLabel(row: PackageRow) {
+  if (row.type === "MONTHLY" || row.packVariant === "MONTHLY") return "MONTHLY / 包月";
+  if (row.packVariant === "GROUP_MINUTES") return "GROUP MINUTES / 班课分钟包";
+  if (row.packVariant === "GROUP_COUNT") return "GROUP COUNT / 班课按次包(旧)";
+  return row.packMode === "GROUP" ? "GROUP / 次数包" : "HOURS / 课时包";
+}
+
+function remainingLabel(row: PackageRow) {
+  if (row.type === "MONTHLY") return "MONTHLY / 包月";
+  if (row.packVariant === "GROUP_COUNT") return `${row.remainingMinutes ?? 0} cls`;
+  return fmtMinutes(row.remainingMinutes);
 }
 
 export default function StudentPackageBalanceCard({
@@ -158,7 +172,7 @@ export default function StudentPackageBalanceCard({
                     color: row.type === "MONTHLY" ? "#166534" : "#1d4ed8",
                   }}
                 >
-                  {row.type === "MONTHLY" ? "MONTHLY / 包月" : row.packMode === "GROUP" ? "GROUP / 次数包" : "HOURS / 课时包"}
+                  {packLabel(row)}
                 </span>
                 <span
                   style={{
@@ -176,7 +190,7 @@ export default function StudentPackageBalanceCard({
               <div style={{ marginTop: 4, fontSize: 12, color: "#334155" }}>
                 剩余:{" "}
                 <span style={{ fontWeight: row.lowBalance ? 700 : 400, color: row.lowBalance ? "#b91c1c" : undefined }}>
-                  {row.type === "MONTHLY" ? "MONTHLY / 包月" : fmtMinutes(row.remainingMinutes)}
+                  {remainingLabel(row)}
                 </span>
               </div>
               <div style={{ marginTop: 4, fontSize: 12, color: "#334155" }}>

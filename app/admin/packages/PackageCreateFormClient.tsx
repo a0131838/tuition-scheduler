@@ -32,7 +32,8 @@ export default function PackageCreateFormClient({
     course: string;
     type: string;
     typeHours: string;
-    typeGroup: string;
+    typeGroupMinutes: string;
+    typeGroupCountLegacy: string;
     typeMonthly: string;
     totalMinutesOrCount: string;
     totalMinutesHint: string;
@@ -159,9 +160,10 @@ export default function PackageCreateFormClient({
 
       <label>
         {labels.type}:
-        <select name="type" defaultValue="HOURS" style={{ marginLeft: 8, minWidth: 220 }}>
+        <select name="type" defaultValue="GROUP_MINUTES" style={{ marginLeft: 8, minWidth: 220 }}>
           <option value="HOURS">{labels.typeHours}</option>
-          <option value="GROUP_COUNT">{labels.typeGroup}</option>
+          <option value="GROUP_MINUTES">{labels.typeGroupMinutes}</option>
+          <option value="GROUP_COUNT">{labels.typeGroupCountLegacy}</option>
           <option value="MONTHLY">{labels.typeMonthly}</option>
         </select>
       </label>

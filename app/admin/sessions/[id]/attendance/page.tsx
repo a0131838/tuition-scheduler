@@ -13,6 +13,16 @@ function fmtRange(startAt: Date, endAt: Date) {
   return `${start} -> ${end}`;
 }
 
+function durationMinutes(startAt: Date, endAt: Date) {
+  return Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
+}
+
+function packagePriority(mode: ReturnType<typeof packageModeFromNote>) {
+  if (mode === "GROUP_MINUTES") return 0;
+  if (mode === "GROUP_COUNT") return 1;
+  return 2;
+}
+
 export default async function AttendancePage({
   params,
   searchParams,
@@ -66,6 +76,7 @@ export default async function AttendancePage({
   ]);
 
   const map = new Map(existing.map((a) => [a.studentId, a]));
+  const sessionDuration = durationMinutes(session.startAt, session.endAt);
 
   const attendanceEnrollments =
     session.class.capacity === 1 && session.studentId
@@ -182,7 +193,7 @@ export default async function AttendancePage({
             canMarkAll={attendanceEnrollments.length > 0}
             labels={{
               title: t(lang, "Attendance Editor", "点名编辑"),
-              markAllPresent: t(lang, "Mark All Present (deductCount=1)", "全部标记到课(扣1次)"),
+              markAllPresent: t(lang, "Mark All Present (auto deduct package)", "全部标记到课(自动扣包)"),
               markAllPresentWaived: t(lang, "Mark All Present (waived)", "全部标记到课(免扣)"),
               save: t(lang, "Save", "保存"),
               saving: t(lang, "Saving...", "保存中..."),
@@ -202,25 +213,49 @@ export default async function AttendancePage({
               const opts = (pkgMap.get(e.studentId) ?? [])
                 .filter((p) => {
                   if (p.type !== "HOURS") return false;
-                  const isGroupPack = packageModeFromNote(p.note) === "GROUP_COUNT";
-                  return classIsGroup ? isGroupPack : !isGroupPack;
+                  const mode = packageModeFromNote(p.note);
+                  return classIsGroup ? mode !== "HOURS_MINUTES" : mode === "HOURS_MINUTES";
+                })
+                .sort((aPkg, bPkg) => {
+                  const modeDiff = packagePriority(packageModeFromNote(aPkg.note)) - packagePriority(packageModeFromNote(bPkg.note));
+                  if (modeDiff !== 0) return modeDiff;
+                  const aValidTo = aPkg.validTo ? new Date(aPkg.validTo).getTime() : Number.MAX_SAFE_INTEGER;
+                  const bValidTo = bPkg.validTo ? new Date(bPkg.validTo).getTime() : Number.MAX_SAFE_INTEGER;
+                  return aValidTo - bValidTo;
                 })
                 .map((p) => ({
                   id: p.id,
-                  label:
-                    packageModeFromNote(p.note) === "GROUP_COUNT"
-                      ? `GROUP (${p.remainingMinutes ?? 0} cls)`
-                      : `HOURS (${p.remainingMinutes ?? 0}m)`,
+                  label: (() => {
+                    const mode = packageModeFromNote(p.note);
+                    if (mode === "GROUP_MINUTES") return `GROUP (${p.remainingMinutes ?? 0}m)`;
+                    if (mode === "GROUP_COUNT") return `GROUP legacy (${p.remainingMinutes ?? 0} cls)`;
+                    return `HOURS (${p.remainingMinutes ?? 0}m)`;
+                  })(),
                   remainingMinutes: p.remainingMinutes,
                   billingMode: packageModeFromNote(p.note) === "GROUP_COUNT" ? "COUNT" : "MINUTES",
                   validToLabel: p.validTo ? new Date(p.validTo).toLocaleDateString() : null,
                 }));
+              const defaultPkg = opts[0] ?? null;
+              const defaultDeductedMinutes =
+                a?.deductedMinutes ??
+                (classIsGroup
+                  ? defaultPkg?.billingMode === "MINUTES"
+                    ? sessionDuration
+                    : 0
+                  : 0);
+              const defaultDeductedCount =
+                a?.deductedCount ??
+                (classIsGroup
+                  ? defaultPkg?.billingMode === "COUNT"
+                    ? 1
+                    : 0
+                  : 0);
               return {
                 studentId: e.studentId,
                 studentName: e.student?.name ?? "-",
                 status: a?.status ?? AttendanceStatus.UNMARKED,
-                deductedCount: a?.deductedCount ?? 0,
-                deductedMinutes: a?.deductedMinutes ?? 0,
+                deductedCount: defaultDeductedCount,
+                deductedMinutes: defaultDeductedMinutes,
                 note: a?.note ?? "",
                 packageId: a?.packageId ?? (opts[0]?.id ?? ""),
                 excusedCharge: a?.excusedCharge ?? false,
@@ -236,7 +271,6 @@ export default async function AttendancePage({
     </div>
   );
 }
-
 
 
 

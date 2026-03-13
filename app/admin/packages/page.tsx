@@ -163,8 +163,9 @@ export default async function AdminPackagesPage({
         const remaining = p.remainingMinutes ?? 0;
         const deducted30 = deducted30Map.get(p.id) ?? 0;
         const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
-        const isGroupPack = p.type === "HOURS" && packageModeFromNote(p.note) === "GROUP_COUNT";
-        const lowBalanceThreshold = isGroupPack ? LOW_COUNTS : LOW_MINUTES;
+        const packageMode = p.type === "HOURS" ? packageModeFromNote(p.note) : null;
+        const isLegacyGroupPack = packageMode === "GROUP_COUNT";
+        const lowBalanceThreshold = isLegacyGroupPack ? LOW_COUNTS : LOW_MINUTES;
         const estDays =
           p.type === "HOURS" && p.status === "ACTIVE" && remaining > 0 && avgPerDay > 0
             ? Math.ceil(remaining / avgPerDay)
@@ -172,7 +173,7 @@ export default async function AdminPackagesPage({
         const lowMinutes = p.type === "HOURS" && p.status === "ACTIVE" && remaining <= lowBalanceThreshold;
         const lowDays = p.type === "HOURS" && p.status === "ACTIVE" && estDays != null && estDays <= LOW_DAYS;
         const isAlert = p.type === "HOURS" && p.status === "ACTIVE" && (remaining <= 0 || lowMinutes || lowDays);
-        return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert, isGroupPack }] as const;
+        return [p.id, { deducted30, estDays, lowMinutes, lowDays, isAlert, isLegacyGroupPack }] as const;
       })
     );
 
@@ -226,13 +227,14 @@ export default async function AdminPackagesPage({
                 course: t(lang, "Course", "课程"),
                 type: t(lang, "Type", "类型"),
                 typeHours: t(lang, "HOURS (minutes)", "课时包(按分钟)"),
-                typeGroup: t(lang, "GROUP (per class)", "班课包(按次)"),
+                typeGroupMinutes: t(lang, "GROUP (minutes, recommended)", "班课包(按分钟，推荐)"),
+                typeGroupCountLegacy: t(lang, "GROUP (per class, legacy)", "班课包(按次，旧版)"),
                 typeMonthly: t(lang, "MONTHLY (valid period)", "月卡(按有效期)"),
-                totalMinutesOrCount: t(lang, "totalMinutes / count (HOURS/GROUP)", "总分钟数/次数(课时包/班课包)"),
+                totalMinutesOrCount: t(lang, "totalMinutes / count", "总分钟数 / 次数"),
                 totalMinutesHint: t(
                   lang,
-                  "HOURS: minutes (e.g. 600=10h). GROUP: class count (e.g. 20=20 classes).",
-                  "课时包按分钟（例如600=10小时）；班课包按次数（例如20=20次）。"
+                  "HOURS and new GROUP packages use minutes (e.g. 600=10h). Legacy GROUP_COUNT uses class count (e.g. 20=20 classes).",
+                  "课时包和新班课包都按分钟填写（例如600=10小时）；旧版班课按次包按次数填写（例如20=20次）。"
                 ),
                 validFrom: t(lang, "validFrom", "生效日期"),
                 validToOptional: t(lang, "validTo (optional)", "失效日期(可选)"),
@@ -333,11 +335,13 @@ export default async function AdminPackagesPage({
                 <td>{p.student?.sourceChannel?.name ?? "-"}</td>
                 <td>{p.course?.name ?? "-"}</td>
                 <td>
-                  {p.type === "HOURS"
-                    ? packageModeFromNote(p.note) === "GROUP_COUNT"
-                      ? t(lang, "GROUP", "班课包")
-                      : "HOURS"
-                    : p.type}
+                  {(() => {
+                    if (p.type !== "HOURS") return p.type;
+                    const packageMode = packageModeFromNote(p.note);
+                    if (packageMode === "GROUP_MINUTES") return t(lang, "GROUP (minutes)", "班课包(按分钟)");
+                    if (packageMode === "GROUP_COUNT") return t(lang, "GROUP (legacy count)", "班课包(按次，旧版)");
+                    return t(lang, "HOURS", "课时包");
+                  })()}
                 </td>
                 <td>
                   {p.type === "HOURS" ? (
@@ -452,5 +456,4 @@ export default async function AdminPackagesPage({
     </div>
   );
 }
-
 

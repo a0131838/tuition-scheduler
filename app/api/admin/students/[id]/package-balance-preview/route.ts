@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { isGroupPackNote } from "@/lib/package-mode";
+import { packageModeFromNote } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { prisma } from "@/lib/prisma";
 
@@ -56,8 +56,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const filtered = rows.filter((row) => {
     if (row.type === "MONTHLY") return true;
-    if (kind === "group") return true;
-    return !isGroupPackNote(row.note);
+    const mode = packageModeFromNote(row.note);
+    if (kind === "group") return mode === "GROUP_MINUTES" || mode === "GROUP_COUNT";
+    return mode === "HOURS_MINUTES";
   });
 
   return Response.json({
@@ -70,6 +71,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     rows: filtered.map((row) => {
       const remaining = row.remainingMinutes ?? 0;
       const canSchedule = row.type === "MONTHLY" ? true : remaining >= durationMin;
+      const packMode = row.type === "MONTHLY" ? "MONTHLY" : packageModeFromNote(row.note);
       return {
         id: row.id,
         type: row.type,
@@ -79,7 +81,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         paid: row.paid,
         canSchedule,
         lowBalance: row.type === "HOURS" && remaining <= 120,
-        packMode: row.type === "HOURS" && isGroupPackNote(row.note) ? "GROUP" : "HOURS",
+        packMode: packMode === "GROUP_COUNT" ? "GROUP" : "HOURS",
+        packVariant: packMode,
       };
     }),
   });

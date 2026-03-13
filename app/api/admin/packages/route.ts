@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { composePackageNote, GROUP_PACK_TAG } from "@/lib/package-mode";
+import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG } from "@/lib/package-mode";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -21,21 +21,34 @@ function parseSettlementMode(v: unknown) {
   return null;
 }
 
-type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
+type PackageModeKey = "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT" | "MONTHLY";
 
 function modeKeyFromCreateType(typeRaw: string, type: string): PackageModeKey {
   if (type === "MONTHLY") return "MONTHLY";
-  return typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
+  if (typeRaw === "GROUP_MINUTES") return "GROUP_MINUTES";
+  if (typeRaw === "GROUP_COUNT") return "GROUP_COUNT";
+  return "HOURS_MINUTES";
 }
 
 function sameModeWhere(mode: PackageModeKey) {
   if (mode === "MONTHLY") return { type: "MONTHLY" as const };
+  if (mode === "GROUP_MINUTES") {
+    return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_MINUTES_TAG } };
+  }
   if (mode === "GROUP_COUNT") {
     return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_TAG } };
   }
   return {
     type: "HOURS" as const,
-    OR: [{ note: null }, { NOT: { note: { startsWith: GROUP_PACK_TAG } } }],
+    OR: [
+      { note: null },
+      {
+        AND: [
+          { NOT: { note: { startsWith: GROUP_PACK_TAG } } },
+          { NOT: { note: { startsWith: GROUP_PACK_MINUTES_TAG } } },
+        ],
+      },
+    ],
   };
 }
 
@@ -52,7 +65,7 @@ export async function POST(req: Request) {
   const studentId = String(body?.studentId ?? "");
   const courseId = String(body?.courseId ?? "");
   const typeRaw = String(body?.type ?? "HOURS");
-  const type = typeRaw === "GROUP_COUNT" ? "HOURS" : typeRaw;
+  const type = typeRaw === "GROUP_COUNT" || typeRaw === "GROUP_MINUTES" ? "HOURS" : typeRaw;
   const status = String(body?.status ?? "PAUSED");
   const settlementMode = parseSettlementMode(body?.settlementMode);
 
@@ -133,7 +146,10 @@ export async function POST(req: Request) {
     if (overlap) return bad("Overlapping ACTIVE package exists", 409);
   }
 
-  const packageNote = composePackageNote(typeRaw === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES", noteRaw);
+  const packageNote = composePackageNote(
+    typeRaw === "GROUP_MINUTES" || typeRaw === "GROUP_COUNT" ? typeRaw : "HOURS_MINUTES",
+    noteRaw
+  );
 
   if (type === "HOURS") {
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return bad("HOURS package needs totalMinutes", 409);

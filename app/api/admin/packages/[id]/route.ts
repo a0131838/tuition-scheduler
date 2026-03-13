@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { composePackageNote, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
+import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -21,21 +21,32 @@ function parseSettlementMode(v: unknown) {
   return null;
 }
 
-type PackageModeKey = "HOURS_MINUTES" | "GROUP_COUNT" | "MONTHLY";
+type PackageModeKey = "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT" | "MONTHLY";
 
 function modeKeyFromSaved(type: string, note: string | null): PackageModeKey {
   if (type === "MONTHLY") return "MONTHLY";
-  return packageModeFromNote(note) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES";
+  return packageModeFromNote(note);
 }
 
 function sameModeWhere(mode: PackageModeKey) {
   if (mode === "MONTHLY") return { type: "MONTHLY" as const };
+  if (mode === "GROUP_MINUTES") {
+    return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_MINUTES_TAG } };
+  }
   if (mode === "GROUP_COUNT") {
     return { type: "HOURS" as const, note: { startsWith: GROUP_PACK_TAG } };
   }
   return {
     type: "HOURS" as const,
-    OR: [{ note: null }, { NOT: { note: { startsWith: GROUP_PACK_TAG } } }],
+    OR: [
+      { note: null },
+      {
+        AND: [
+          { NOT: { note: { startsWith: GROUP_PACK_TAG } } },
+          { NOT: { note: { startsWith: GROUP_PACK_MINUTES_TAG } } },
+        ],
+      },
+    ],
   };
 }
 
@@ -95,7 +106,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   const note = composePackageNote(
-    packageModeFromNote(pkg?.note ?? null) === "GROUP_COUNT" ? "GROUP_COUNT" : "HOURS_MINUTES",
+    packageModeFromNote(pkg?.note ?? null),
     noteRaw
   );
   const updateMode = modeKeyFromSaved(pkg.type, note);
