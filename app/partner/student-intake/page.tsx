@@ -54,6 +54,7 @@ export default function PartnerStudentIntakePage() {
               grade: String(fd.get("grade") ?? ""),
               birthDate: String(fd.get("birthDate") ?? ""),
               note: String(fd.get("note") ?? ""),
+              packageQuantity: String(fd.get("packageQuantity") ?? ""),
               targetSchool: String(fd.get("targetSchool") ?? ""),
               currentMajor: String(fd.get("currentMajor") ?? ""),
               coachingContent: String(fd.get("coachingContent") ?? ""),
@@ -93,6 +94,7 @@ export default function PartnerStudentIntakePage() {
           </select>
           <input name="birthDate" type="date" style={{ height: 36, padding: "0 10px" }} />
         </div>
+        <input name="packageQuantity" type="number" min="1" step="1" placeholder="购买课时包数量" style={{ height: 36, padding: "0 10px" }} />
         <input name="targetSchool" placeholder="申请目标院校" style={{ height: 36, padding: "0 10px" }} />
         <input name="currentMajor" placeholder="目前专业" style={{ height: 36, padding: "0 10px" }} />
         <textarea name="coachingContent" rows={3} placeholder="辅导内容" style={{ padding: 10 }} />

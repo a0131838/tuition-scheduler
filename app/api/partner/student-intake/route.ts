@@ -7,6 +7,16 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 const FIXED_STUDENT_TYPE_NAME = "合作方学生";
 const FIXED_SOURCE_CHANNEL_NAME = "新东方学生";
 
+function normalizePackageQuantity(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return null;
+  const rounded = Math.round(num);
+  if (rounded <= 0) return null;
+  return rounded;
+}
+
 export async function POST(req: Request) {
   let body: any;
   try {
@@ -19,12 +29,14 @@ export async function POST(req: Request) {
   const school = String(body?.school ?? "").trim();
   const grade = String(body?.grade ?? "").trim();
   const note = String(body?.note ?? "").trim();
+  const packageQuantity = normalizePackageQuantity(body?.packageQuantity);
   const targetSchool = String(body?.targetSchool ?? "").trim();
   const currentMajor = String(body?.currentMajor ?? "").trim();
   const coachingContent = String(body?.coachingContent ?? "").trim();
   const birthDateStr = String(body?.birthDate ?? "").trim();
 
   if (!name) return bad("Name is required", 409);
+  if (String(body?.packageQuantity ?? "").trim() && packageQuantity === null) return bad("Invalid packageQuantity", 409);
 
   let birthDate: Date | null = null;
   if (birthDateStr) {
@@ -47,6 +59,11 @@ export async function POST(req: Request) {
   if (!source) return bad(`Missing fixed source channel: ${FIXED_SOURCE_CHANNEL_NAME}`, 409);
   if (!studentType) return bad(`Missing fixed student type: ${FIXED_STUDENT_TYPE_NAME}`, 409);
 
+  const noteParts = [
+    packageQuantity ? `购买课时包数量: ${packageQuantity}` : "",
+    note,
+  ].filter(Boolean);
+
   const created = await prisma.student.create({
     data: {
       name,
@@ -55,7 +72,7 @@ export async function POST(req: Request) {
       targetSchool: targetSchool || null,
       currentMajor: currentMajor || null,
       coachingContent: coachingContent || null,
-      note: note || null,
+      note: noteParts.length > 0 ? noteParts.join("\n") : null,
       birthDate,
       sourceChannelId: source.id,
       studentTypeId: studentType.id,
