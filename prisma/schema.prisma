@@ -460,6 +460,7 @@ model Student {
   sourceChannelId String?
   studentTypeId   String?
   settlementMode  PartnerSettlementMode?
+  createdAt       DateTime  @default(now())
 
   enrollments        Enrollment[]
   appointments       Appointment[]
@@ -478,6 +479,7 @@ model Student {
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
+  @@index([createdAt])
 }
 
 model PartnerSettlement {

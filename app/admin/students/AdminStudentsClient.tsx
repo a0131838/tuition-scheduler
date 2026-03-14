@@ -17,11 +17,20 @@ type StudentRow = {
   sourceName: string | null;
   typeName: string | null;
   note: string | null;
+  createdAt: string;
   targetSchool: string | null;
   currentMajor: string | null;
   coachingContent: string | null;
   unpaidCount: number;
 };
+
+function sortStudents(rows: StudentRow[]) {
+  return [...rows].sort((a, b) => {
+    const createdDiff = +new Date(b.createdAt) - +new Date(a.createdAt);
+    if (createdDiff !== 0) return createdDiff;
+    return a.name.localeCompare(b.name);
+  });
+}
 
 export default function AdminStudentsClient({
   initialStudents,
@@ -105,12 +114,13 @@ export default function AdminStudentsClient({
           sourceName,
           typeName,
           note: String(payload.note ?? "").trim() || null,
+          createdAt: new Date().toISOString(),
           targetSchool: String(payload.targetSchool ?? "").trim() || null,
           currentMajor: String(payload.currentMajor ?? "").trim() || null,
           coachingContent: String(payload.coachingContent ?? "").trim() || null,
           unpaidCount: 0,
         };
-        setStudents((prev) => [...prev, createdRow].sort((a, b) => a.name.localeCompare(b.name)));
+        setStudents((prev) => sortStudents([...prev, createdRow]));
         setMsg(labels.created);
         close();
         router.refresh();
