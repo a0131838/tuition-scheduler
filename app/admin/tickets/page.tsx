@@ -573,7 +573,11 @@ export default async function AdminTicketsPage({
                 : "本类型无额外必填字段";
               return (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
-                <td>{r.ticketNo}</td>
+                <td>
+                  <Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(backHref)}`}>
+                    {r.ticketNo}
+                  </Link>
+                </td>
                 <td>
                   <div>{r.studentName}</div>
                   <div style={{ color: "#64748b", fontSize: 12 }}>{r.createdAt.toLocaleString()}</div>

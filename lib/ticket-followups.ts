@@ -98,7 +98,7 @@ export async function getOverdueTicketFollowupGroups(options?: {
       nextActionDue: row.nextActionDue.toISOString(),
       overdueMinutes,
       overdueLabel: overdueLabel(overdueMinutes),
-      openHref: `/admin/tickets?q=${encodeURIComponent(row.ticketNo)}`,
+      openHref: `/admin/tickets/${row.id}?back=${encodeURIComponent("/admin/tickets?focus=mgmt")}`,
     };
     const bucket = groups.get(key) ?? [];
     bucket.push(item);
