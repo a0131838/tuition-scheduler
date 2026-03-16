@@ -129,6 +129,23 @@ function drawHeader(doc: PDFDoc, lang: Lang, titleEn: string, titleZh: string, s
   drawPrintedTimeHeader(doc, lang);
 }
 
+function truncatePdfText(doc: PDFDoc, text: string, maxWidth: number) {
+  if (!text || maxWidth <= 0) return "";
+  if (doc.widthOfString(text) <= maxWidth) return text;
+
+  const ellipsis = "...";
+  if (doc.widthOfString(ellipsis) > maxWidth) return "";
+
+  let end = text.length;
+  while (end > 0) {
+    const next = `${text.slice(0, end).trimEnd()}${ellipsis}`;
+    if (doc.widthOfString(next) <= maxWidth) return next;
+    end -= 1;
+  }
+
+  return ellipsis;
+}
+
 function drawMonthCalendar(
   doc: PDFDoc,
   lang: Lang,
@@ -158,17 +175,20 @@ function drawMonthCalendar(
   const width = Math.min(fullWidth, fullWidth * 1.2);
   const offsetX = left + (fullWidth - width) / 2;
   const cellW = width / 7;
-  const cellH = 64;
+  const weekdayHeaderH = 16;
+  const gridRows = 6;
+  const availableCalendarHeight = doc.page.height - doc.page.margins.bottom - top;
+  const cellH = Math.floor((availableCalendarHeight - weekdayHeaderH) / gridRows);
 
   const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   doc.fontSize(10);
   for (let i = 0; i < 7; i += 1) {
     const x = offsetX + i * cellW;
-    doc.rect(x, top, cellW, 16).fill(ORANGE);
+    doc.rect(x, top, cellW, weekdayHeaderH).fill(ORANGE);
     doc.fillColor("white");
     doc.text(weekdayNames[i], x + 4, top + 3, { width: cellW - 8, align: "left" });
     doc.fillColor("black");
-    doc.rect(x, top, cellW, 16).stroke();
+    doc.rect(x, top, cellW, weekdayHeaderH).stroke();
   }
 
   const sessionsByDay = new Map<string, typeof sessions>();
@@ -183,15 +203,17 @@ function drawMonthCalendar(
 
   const overflowByDay = new Map<string, typeof sessions>();
 
-  // Keep legacy row capacity to avoid adding overflow pages when we enlarge text slightly.
-  const legacyLineH = 7;
+  const textInsetX = 4;
+  const textInsetTop = 14;
+  const textInsetBottom = 6;
+  const lineH = 7;
   doc.fontSize(8);
-  for (let row = 0; row < 6; row += 1) {
+  for (let row = 0; row < gridRows; row += 1) {
     for (let col = 0; col < 7; col += 1) {
       const idx = row * 7 + col;
       const day = days[idx];
       const x = offsetX + col * cellW;
-      const y = top + 16 + row * cellH;
+      const y = top + weekdayHeaderH + row * cellH;
       doc.rect(x, y, cellW, cellH).stroke();
 
       const dateLabel = day.date.getDate().toString();
@@ -203,10 +225,9 @@ function drawMonthCalendar(
 
       const key = fmtYMD(day.date);
       const daySessions = sessionsByDay.get(key) ?? [];
-      let lineY = y + 14;
-      const maxY = y + cellH - 6;
-      const lineH = legacyLineH;
-      const maxLines = Math.max(1, Math.floor((maxY - lineY) / legacyLineH));
+      let lineY = y + textInsetTop;
+      const contentHeight = Math.max(0, cellH - textInsetTop - textInsetBottom);
+      const lineSlots = Math.max(1, Math.floor(contentHeight / lineH));
 
       const entries = daySessions.map((s) => {
         const time = `${String(new Date(s.startAt).getHours()).padStart(2, "0")}:${String(
@@ -219,16 +240,23 @@ function drawMonthCalendar(
         return { s, line: `${time} ${subjectInitial} ${s.class.teacher.name}` };
       });
 
-      const visible = entries.slice(0, maxLines);
-      const hidden = entries.slice(maxLines);
+      const needsOverflowMarker = entries.length > lineSlots;
+      const visibleCount = needsOverflowMarker ? Math.max(0, lineSlots - 1) : lineSlots;
+      const visible = entries.slice(0, visibleCount);
+      const hidden = entries.slice(visibleCount);
+      const textWidth = cellW - textInsetX * 2;
 
+      doc.save();
+      doc.rect(x + 1, y + textInsetTop - 1, cellW - 2, cellH - textInsetTop - 1).clip();
       for (const item of visible) {
-        doc.text(item.line, x + 4, lineY, { width: cellW - 8, lineBreak: false });
+        const line = truncatePdfText(doc, item.line, textWidth);
+        doc.text(line, x + textInsetX, lineY, { width: textWidth, lineBreak: false });
         lineY += lineH;
       }
+      doc.restore();
 
-      if (hidden.length > 0) {
-        doc.fillColor("#999").text("...", x + 4, lineY, { width: cellW - 8, lineBreak: false });
+      if (needsOverflowMarker) {
+        doc.fillColor("#999").text("...", x + textInsetX, lineY, { width: textWidth, lineBreak: false });
         doc.fillColor("black");
         overflowByDay.set(
           key,
@@ -471,4 +499,3 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     },
   });
 }
-
