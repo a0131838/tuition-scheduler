@@ -215,9 +215,23 @@ export default async function TeacherExpenseClaimsPage({
                         <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
                           {claim.receiptOriginalName}
                         </div>
-                        <div style={{ maxWidth: 260, fontSize: 12, color: '#334155', lineHeight: 1.5 }}>
-                          <span style={{ color: '#64748b' }}>{t(lang, 'Attachment note', '附件说明')}:</span>{' '}
-                          {claim.description}
+                        <div
+                          style={{
+                            maxWidth: 260,
+                            display: 'grid',
+                            gap: 4,
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            border: '1px solid #dbeafe',
+                            background: '#f8fbff',
+                          }}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>
+                            {t(lang, 'Attachment note', '附件说明')}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                            {claim.description}
+                          </div>
                         </div>
                         {isPreviewableImage(claim.receiptOriginalName) ? (
                           <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
