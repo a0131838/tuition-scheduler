@@ -31,7 +31,7 @@ function buildMonthGrid(year: number, monthIndex: number) {
   const first = new Date(year, monthIndex, 1);
   const last = new Date(year, monthIndex + 1, 0);
   const daysInMonth = last.getDate();
-  const startPad = first.getDay();
+  const startPad = (first.getDay() + 6) % 7;
   const totalCells = Math.ceil((startPad + daysInMonth) / 7) * 7;
   const cells: Array<Date | null> = [];
   for (let i = 0; i < totalCells; i += 1) {
@@ -82,7 +82,7 @@ function subtractIntervals(avails: Interval[], busy: Interval[]) {
   return free.filter((x) => x.endMin > x.startMin);
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default async function TeacherCalendarPage({
   params,
