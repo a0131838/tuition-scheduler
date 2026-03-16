@@ -37,6 +37,7 @@ import {
   getApprovalRoleConfig,
   isRoleApprover,
 } from "@/lib/approval-flow";
+import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 
@@ -789,13 +790,12 @@ export default async function ReceiptsApprovalsPage({
                           </td>
                           <td>
                             {isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
-                              <a href={r.relativePath} target="_blank" rel="noreferrer">
-                                <img
-                                  src={r.relativePath}
-                                  alt={r.originalFileName}
-                                  style={{ width: 56, height: 56, objectFit: "cover", border: "1px solid #ddd", borderRadius: 4 }}
-                                />
-                              </a>
+                              <ImagePreviewWithFallback
+                                src={r.relativePath}
+                                alt={r.originalFileName}
+                                href={r.relativePath}
+                                noPreviewLabel={t(lang, "No preview", "无法预览")}
+                              />
                             ) : (
                               <span style={{ color: "#666" }}>{t(lang, "No preview", "无法预览")}</span>
                             )}
@@ -1058,5 +1058,4 @@ export default async function ReceiptsApprovalsPage({
     </div>
   );
 }
-
 
