@@ -491,9 +491,6 @@ export default async function AdminExpenseClaimsPage({
                   </td>
                   <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>
                     <div style={{ display: 'grid', gap: 6 }}>
-                      <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
-                        {claim.receiptOriginalName}
-                      </div>
                       <div
                         style={{
                           maxWidth: 260,
@@ -511,6 +508,9 @@ export default async function AdminExpenseClaimsPage({
                         <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                           {claim.description}
                         </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
+                        {claim.receiptOriginalName}
                       </div>
                       {isPreviewableImage(claim.receiptOriginalName) ? (
                         <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
