@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     'Payment Batch Month',
     'Finance Remarks',
     'Receipt Path',
-    'Description',
+    'Attachment Description',
     'Remarks',
   ];
   const lines = [header.join(',')];

@@ -6,7 +6,7 @@ const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PAYROLL_RATE_FALLBACK_KEY = "teacher_payroll_rates_v1";
 const PAYROLL_PUBLISH_FALLBACK_KEY = "teacher_payroll_publish_v1";
 
-export const PAYROLL_CURRENCY_CODES = ["SGD", "CNY", "USD", "HKD", "THB"] as const;
+export const PAYROLL_CURRENCY_CODES = ["SGD", "CNY", "USD", "HKD", "THB", "CAD"] as const;
 export type PayrollCurrencyCode = (typeof PAYROLL_CURRENCY_CODES)[number];
 const DEFAULT_PAYROLL_CURRENCY: PayrollCurrencyCode = "SGD";
 export const PAYROLL_TEACHING_MODES = ["ONE_ON_ONE", "GROUP"] as const;

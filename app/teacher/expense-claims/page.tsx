@@ -215,6 +215,10 @@ export default async function TeacherExpenseClaimsPage({
                         <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
                           {claim.receiptOriginalName}
                         </div>
+                        <div style={{ maxWidth: 260, fontSize: 12, color: '#334155', lineHeight: 1.5 }}>
+                          <span style={{ color: '#64748b' }}>{t(lang, 'Attachment note', '附件说明')}:</span>{' '}
+                          {claim.description}
+                        </div>
                         {isPreviewableImage(claim.receiptOriginalName) ? (
                           <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -56,8 +56,18 @@ export default function ExpenseClaimForm({
         </label>
       </div>
       <label>
-        {t(lang, 'Description / purpose', '报销说明 / 用途')}*
-        <textarea name="description" required rows={4} placeholder={t(lang, 'State the purpose clearly. Include student name if relevant.', '请写清用途；若与教学相关，请写明学生姓名。')} style={{ width: '100%' }} />
+        {t(lang, 'Attachment description / purpose', '附件说明 / 报销用途')}*
+        <textarea
+          name="description"
+          required
+          rows={4}
+          placeholder={t(
+            lang,
+            'Describe what the attachment is for and why this expense is needed. Include student name if relevant.',
+            '请写清附件对应内容和报销用途；若与教学相关，请写明学生姓名。',
+          )}
+          style={{ width: '100%' }}
+        />
       </label>
       <label>
         {t(lang, 'Remarks', '备注')}
