@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import path from "path";
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { access, mkdir, unlink, writeFile } from "fs/promises";
 import crypto from "crypto";
 import {
   addParentPaymentRecord,
@@ -516,6 +516,22 @@ export default async function ReceiptsApprovalsPage({
   const selectedBilling = packageIdFilter
     ? await listParentBillingForPackage(packageIdFilter).catch(() => null)
     : null;
+  const paymentRecordFileMap = new Map<string, boolean>(
+    selectedBilling
+      ? await Promise.all(
+          selectedBilling.paymentRecords.map(async (record) => {
+            if (!record.relativePath?.startsWith("/")) return [record.id, false] as const;
+            const absPath = path.join(process.cwd(), "public", record.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
+            try {
+              await access(absPath);
+              return [record.id, true] as const;
+            } catch {
+              return [record.id, false] as const;
+            }
+          })
+        )
+      : []
+  );
   const availableInvoices = selectedBilling
     ? selectedBilling.invoices.filter((inv) => !selectedBilling.receipts.some((r) => r.invoiceId === inv.id))
     : [];
@@ -777,40 +793,53 @@ export default async function ReceiptsApprovalsPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedBilling.paymentRecords.map((r) => (
-                        <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                          <td>{new Date(r.uploadedAt).toLocaleString()}</td>
-                          <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
-                          <td>{r.paymentMethod || "-"}</td>
-                          <td>{r.referenceNo || "-"}</td>
-                          <td>
-                            <a href={r.relativePath} target="_blank" rel="noreferrer">
-                              {t(lang, "Open File", "打开文件")}
-                            </a>
-                          </td>
-                          <td>
-                            {isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
-                              <ImagePreviewWithFallback
-                                src={r.relativePath}
-                                alt={r.originalFileName}
-                                href={r.relativePath}
-                                noPreviewLabel={t(lang, "No preview", "无法预览")}
-                              />
-                            ) : (
-                              <span style={{ color: "#666" }}>{t(lang, "No preview", "无法预览")}</span>
-                            )}
-                          </td>
-                          <td>{r.note ?? "-"}</td>
-                          <td>{r.uploadedBy}</td>
-                          <td>
-                            <form action={deletePaymentRecordAction}>
-                              <input type="hidden" name="packageId" value={packageIdFilter} />
-                              <input type="hidden" name="recordId" value={r.id} />
-                              <button type="submit">{t(lang, "Delete", "删除")}</button>
-                            </form>
-                          </td>
-                        </tr>
-                      ))}
+                      {selectedBilling.paymentRecords.map((r) => {
+                        const fileExists = paymentRecordFileMap.get(r.id) ?? false;
+                        return (
+                          <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                            <td>{new Date(r.uploadedAt).toLocaleString()}</td>
+                            <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
+                            <td>{r.paymentMethod || "-"}</td>
+                            <td>{r.referenceNo || "-"}</td>
+                            <td>
+                              {fileExists ? (
+                                <a href={r.relativePath} target="_blank" rel="noreferrer">
+                                  {t(lang, "Open File", "打开文件")}
+                                </a>
+                              ) : (
+                                <span style={{ color: "#b91c1c", fontWeight: 600 }}>
+                                  {t(lang, "File missing", "文件缺失")}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {!fileExists ? (
+                                <span style={{ color: "#b91c1c" }}>
+                                  {t(lang, "Missing file, please re-upload", "文件已丢失，请重新上传")}
+                                </span>
+                              ) : isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
+                                <ImagePreviewWithFallback
+                                  src={r.relativePath}
+                                  alt={r.originalFileName}
+                                  href={r.relativePath}
+                                  noPreviewLabel={t(lang, "No preview", "无法预览")}
+                                />
+                              ) : (
+                                <span style={{ color: "#666" }}>{t(lang, "No preview", "无法预览")}</span>
+                              )}
+                            </td>
+                            <td>{r.note ?? "-"}</td>
+                            <td>{r.uploadedBy}</td>
+                            <td>
+                              <form action={deletePaymentRecordAction}>
+                                <input type="hidden" name="packageId" value={packageIdFilter} />
+                                <input type="hidden" name="recordId" value={r.id} />
+                                <button type="submit">{t(lang, "Delete", "删除")}</button>
+                              </form>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -1058,4 +1087,3 @@ export default async function ReceiptsApprovalsPage({
     </div>
   );
 }
-
