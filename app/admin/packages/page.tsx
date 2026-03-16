@@ -297,7 +297,6 @@ export default async function AdminPackagesPage({
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Student Source", "学生来源")}</th>
               <th align="left">{t(lang, "Course", "课程")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
               <th align="left">{t(lang, "Remaining", "剩余")}</th>
@@ -306,17 +305,7 @@ export default async function AdminPackagesPage({
               <th align="left">{t(lang, "Alert", "预警")}</th>
               <th align="left">{t(lang, "Valid", "有效期")}</th>
               <th align="left">{t(lang, "Status", "状态")}</th>
-              <th align="left">{t(lang, "Paid", "已付款")}</th>
-              <th align="left">{t(lang, "Paid At", "付款时间")}</th>
-              <th align="left">{t(lang, "Amount", "金额")}</th>
-              <th align="left">{t(lang, "Paid Note", "付款备注")}</th>
-              <th align="left">{t(lang, "Shared Students", "共享学生")}</th>
-              <th align="left">{t(lang, "Shared Courses", "共享课程")}</th>
-              <th align="left">{t(lang, "Note", "备注")}</th>
-              <th align="left">{t(lang, "Created", "创建时间")}</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
-              <th align="left">{t(lang, "Billing", "账单")}</th>
-              <th align="left">{t(lang, "Ledger", "对账单")}</th>
             </tr>
           </thead>
           <tbody>
@@ -331,120 +320,147 @@ export default async function AdminPackagesPage({
                   const lowDays = risk?.lowDays ?? false;
                   return (
                     <>
-                <td>{p.student?.name ?? "-"}</td>
-                <td>{p.student?.sourceChannel?.name ?? "-"}</td>
-                <td>{p.course?.name ?? "-"}</td>
-                <td>
-                  {(() => {
-                    if (p.type !== "HOURS") return p.type;
-                    const packageMode = packageModeFromNote(p.note);
-                    if (packageMode === "GROUP_MINUTES") return t(lang, "GROUP (minutes)", "班课包(按分钟)");
-                    if (packageMode === "GROUP_COUNT") return t(lang, "GROUP (legacy count)", "班课包(按次，旧版)");
-                    return t(lang, "HOURS", "课时包");
-                  })()}
-                </td>
-                <td>
-                  {p.type === "HOURS" ? (
-                    <span
-                      style={{
-                        fontWeight: lowMinutes ? 700 : 400,
-                        color: lowMinutes ? "#b00" : undefined,
-                      }}
-                    >
-                      {packageModeFromNote(p.note) === "GROUP_COUNT"
-                        ? `${fmtCount(p.remainingMinutes)} cls`
-                        : fmtMinutes(p.remainingMinutes)}
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  {p.type === "HOURS"
-                    ? packageModeFromNote(p.note) === "GROUP_COUNT"
-                      ? `${deducted30} cls / ${FORECAST_WINDOW_DAYS}d`
-                      : `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d`
-                    : "-"}
-                </td>
-                <td>
-                  {p.type !== "HOURS"
-                    ? "-"
-                    : p.status !== "ACTIVE"
-                    ? t(lang, "Inactive", "未生效")
-                    : remaining <= 0
-                    ? t(lang, "Depleted", "已用完")
-                    : estDays == null
-                    ? t(lang, "No usage (30d)", "近30天无消耗")
-                    : `${estDays} ${t(lang, "days", "天")}`}
-                </td>
-                <td>
-                  {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
-                    "-"
-                  ) : remaining <= 0 ? (
-                    <span style={{ color: "#b00", fontWeight: 700 }}>{t(lang, "Urgent", "紧急")}</span>
-                  ) : lowMinutes || lowDays ? (
-                    <span style={{ color: "#b00", fontWeight: 700 }}>
-                      {lowMinutes && lowDays
-                        ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
-                        : lowMinutes
-                        ? t(lang, "Low balance", "余额低")
-                        : t(lang, "Likely to run out soon", "即将用完")}
-                    </span>
-                  ) : (
-                    <span style={{ color: "#0a7" }}>{t(lang, "Normal", "正常")}</span>
-                  )}
-                </td>
-                <td>
-                  {new Date(p.validFrom).toLocaleDateString()} ~ {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
-                </td>
-                <td>{p.status}</td>
-                <td>{p.paid ? t(lang, "Yes", "是") : t(lang, "No", "否")}</td>
-                <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</td>
-                <td>{p.paidAmount ?? "-"}</td>
-                <td>{p.paidNote ?? "-"}</td>
-                <td>{p.sharedStudents.map((x: any) => x.student.name).join(", ") || "-"}</td>
-                <td>{p.sharedCourses.map((x: any) => x.course.name).join(", ") || "-"}</td>
-                <td>{stripGroupPackTag(p.note) || "-"}</td>
-                <td>{new Date(p.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <PackageEditModal
-                    pkg={p}
-                    students={students.map((s) => ({ id: s.id, name: s.name }))}
-                    courses={courses.map((c) => ({ id: c.id, name: c.name }))}
-                    labels={{
-                      edit: t(lang, "Edit", "编辑"),
-                      update: t(lang, "Update", "更新"),
-                      topUp: t(lang, "Top-up", "增购"),
-                      topUpMinutes: t(lang, "Add Minutes", "增加分钟"),
-                      topUpNote: t(lang, "Top-up Note", "增购备注"),
-                      topUpSubmit: t(lang, "Add", "确认增购"),
-                      deleteLabel: t(lang, "Delete", "删除"),
-                      paid: t(lang, "Paid", "已付款"),
-                      paidAt: t(lang, "Paid At", "付款时间"),
-                      paidAmount: t(lang, "Amount", "金额"),
-                      paidNote: t(lang, "Paid Note", "付款备注"),
-                      sharedStudents: t(lang, "Shared Students", "共享学生"),
-                      sharedCourses: t(lang, "Shared Courses", "共享课程"),
-                      remaining: t(lang, "Remaining", "剩余"),
-                      validFrom: t(lang, "validFrom", "生效日期"),
-                      validTo: t(lang, "validTo", "失效日期"),
-                      status: t(lang, "Status", "状态"),
-                      note: t(lang, "Note", "备注"),
-                      close: t(lang, "Close", "关闭"),
-                      deleteConfirm: t(
-                        lang,
-                        "Delete package? This will delete all txns.",
-                        "删除课包？将删除所有流水。"
-                      ),
-                    }}
-                  />
-                </td>
-                <td>
-                  <a href={`/admin/packages/${p.id}/billing`}>{t(lang, "Billing", "账单")}</a>
-                </td>
-                <td>
-                  <a href={`/admin/packages/${p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
-                </td>
+                      <td style={{ minWidth: 150, verticalAlign: "top" }}>
+                        <div>{p.student?.name ?? "-"}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          {t(lang, "Student Source", "学生来源")}: {p.student?.sourceChannel?.name ?? "-"}
+                        </div>
+                      </td>
+                      <td style={{ minWidth: 120, verticalAlign: "top" }}>{p.course?.name ?? "-"}</td>
+                      <td style={{ minWidth: 120, verticalAlign: "top" }}>
+                        {(() => {
+                          if (p.type !== "HOURS") return p.type;
+                          const packageMode = packageModeFromNote(p.note);
+                          if (packageMode === "GROUP_MINUTES") return t(lang, "GROUP (minutes)", "班课包(按分钟)");
+                          if (packageMode === "GROUP_COUNT") return t(lang, "GROUP (legacy count)", "班课包(按次，旧版)");
+                          return t(lang, "HOURS", "课时包");
+                        })()}
+                      </td>
+                      <td style={{ minWidth: 90, verticalAlign: "top" }}>
+                        {p.type === "HOURS" ? (
+                          <span
+                            style={{
+                              fontWeight: lowMinutes ? 700 : 400,
+                              color: lowMinutes ? "#b00" : undefined,
+                            }}
+                          >
+                            {packageModeFromNote(p.note) === "GROUP_COUNT"
+                              ? `${fmtCount(p.remainingMinutes)} cls`
+                              : fmtMinutes(p.remainingMinutes)}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td style={{ minWidth: 100, verticalAlign: "top" }}>
+                        {p.type === "HOURS"
+                          ? packageModeFromNote(p.note) === "GROUP_COUNT"
+                            ? `${deducted30} cls / ${FORECAST_WINDOW_DAYS}d`
+                            : `${fmtMinutes(deducted30)} / ${FORECAST_WINDOW_DAYS}d`
+                          : "-"}
+                      </td>
+                      <td style={{ minWidth: 110, verticalAlign: "top" }}>
+                        {p.type !== "HOURS"
+                          ? "-"
+                          : p.status !== "ACTIVE"
+                          ? t(lang, "Inactive", "未生效")
+                          : remaining <= 0
+                          ? t(lang, "Depleted", "已用完")
+                          : estDays == null
+                          ? t(lang, "No usage (30d)", "近30天无消耗")
+                          : `${estDays} ${t(lang, "days", "天")}`}
+                      </td>
+                      <td style={{ minWidth: 110, verticalAlign: "top" }}>
+                        {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
+                          "-"
+                        ) : remaining <= 0 ? (
+                          <span style={{ color: "#b00", fontWeight: 700 }}>{t(lang, "Urgent", "紧急")}</span>
+                        ) : lowMinutes || lowDays ? (
+                          <span style={{ color: "#b00", fontWeight: 700 }}>
+                            {lowMinutes && lowDays
+                              ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
+                              : lowMinutes
+                              ? t(lang, "Low balance", "余额低")
+                              : t(lang, "Likely to run out soon", "即将用完")}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#0a7" }}>{t(lang, "Normal", "正常")}</span>
+                        )}
+                      </td>
+                      <td style={{ minWidth: 150, verticalAlign: "top" }}>
+                        {new Date(p.validFrom).toLocaleDateString()} ~ {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
+                      </td>
+                      <td style={{ minWidth: 110, verticalAlign: "top" }}>
+                        <div>{p.status}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          {t(lang, "Paid", "已付款")}: {p.paid ? t(lang, "Yes", "是") : t(lang, "No", "否")}
+                        </div>
+                      </td>
+                      <td style={{ minWidth: 240, verticalAlign: "top" }}>
+                        <div style={{ display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <PackageEditModal
+                              pkg={p}
+                              students={students.map((s) => ({ id: s.id, name: s.name }))}
+                              courses={courses.map((c) => ({ id: c.id, name: c.name }))}
+                              labels={{
+                                edit: t(lang, "Edit", "编辑"),
+                                update: t(lang, "Update", "更新"),
+                                topUp: t(lang, "Top-up", "增购"),
+                                topUpMinutes: t(lang, "Add Minutes", "增加分钟"),
+                                topUpNote: t(lang, "Top-up Note", "增购备注"),
+                                topUpSubmit: t(lang, "Add", "确认增购"),
+                                deleteLabel: t(lang, "Delete", "删除"),
+                                paid: t(lang, "Paid", "已付款"),
+                                paidAt: t(lang, "Paid At", "付款时间"),
+                                paidAmount: t(lang, "Amount", "金额"),
+                                paidNote: t(lang, "Paid Note", "付款备注"),
+                                sharedStudents: t(lang, "Shared Students", "共享学生"),
+                                sharedCourses: t(lang, "Shared Courses", "共享课程"),
+                                remaining: t(lang, "Remaining", "剩余"),
+                                validFrom: t(lang, "validFrom", "生效日期"),
+                                validTo: t(lang, "validTo", "失效日期"),
+                                status: t(lang, "Status", "状态"),
+                                note: t(lang, "Note", "备注"),
+                                close: t(lang, "Close", "关闭"),
+                                deleteConfirm: t(
+                                  lang,
+                                  "Delete package? This will delete all txns.",
+                                  "删除课包？将删除所有流水。"
+                                ),
+                              }}
+                            />
+                            <a href={`/admin/packages/${p.id}/billing`}>{t(lang, "Billing", "账单")}</a>
+                            <a href={`/admin/packages/${p.id}/ledger`}>{t(lang, "Ledger", "对账单")}</a>
+                          </div>
+                          <details>
+                            <summary style={{ cursor: "pointer", color: "#334155", fontWeight: 600 }}>
+                              {t(lang, "Details", "详情")}
+                            </summary>
+                            <div
+                              style={{
+                                marginTop: 8,
+                                display: "grid",
+                                gap: 6,
+                                fontSize: 12,
+                                color: "#475569",
+                                background: "#f8fafc",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: 10,
+                                padding: 10,
+                              }}
+                            >
+                              <div><b>{t(lang, "Paid At", "付款时间")}:</b> {p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</div>
+                              <div><b>{t(lang, "Amount", "金额")}:</b> {p.paidAmount ?? "-"}</div>
+                              <div><b>{t(lang, "Paid Note", "付款备注")}:</b> {p.paidNote ?? "-"}</div>
+                              <div><b>{t(lang, "Shared Students", "共享学生")}:</b> {p.sharedStudents.map((x: any) => x.student.name).join(", ") || "-"}</div>
+                              <div><b>{t(lang, "Shared Courses", "共享课程")}:</b> {p.sharedCourses.map((x: any) => x.course.name).join(", ") || "-"}</div>
+                              <div><b>{t(lang, "Note", "备注")}:</b> {stripGroupPackTag(p.note) || "-"}</div>
+                              <div><b>{t(lang, "Created", "创建时间")}:</b> {new Date(p.createdAt).toLocaleDateString()}</div>
+                            </div>
+                          </details>
+                        </div>
+                      </td>
                     </>
                   );
                 })()}
@@ -456,4 +472,3 @@ export default async function AdminPackagesPage({
     </div>
   );
 }
-
