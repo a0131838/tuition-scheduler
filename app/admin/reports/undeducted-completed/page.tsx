@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { isGroupPackNote } from "@/lib/package-mode";
+import { packageModeFromNote, type PackageMode } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { logAudit } from "@/lib/audit-log";
 import { PackageStatus, PackageType } from "@prisma/client";
@@ -15,6 +15,7 @@ type RepairPackageCandidate = {
   note: string | null;
   remainingMinutes: number;
   studentId: string;
+  mode: PackageMode;
   sharedStudents: Array<{ id: string }>;
 };
 
@@ -25,6 +26,7 @@ type RepairPreviewItem = {
   studentName: string;
   sessionAt: Date;
   needUnits: number;
+  unitLabel: "minutes" | "classes";
   packageId: string | null;
   beforeRemaining: number | null;
   afterRemaining: number | null;
@@ -118,9 +120,9 @@ async function pickRepairPackage(
       findMany: typeof prisma.coursePackage.findMany;
     };
   },
-  input: { studentId: string; courseId: string; at: Date; needUnits: number; isGroupClass: boolean }
+  input: { studentId: string; courseId: string; at: Date; needMinutes: number; needCount: number; isGroupClass: boolean }
 ) {
-  const { studentId, courseId, at, needUnits, isGroupClass } = input;
+  const { studentId, courseId, at, needMinutes, needCount, isGroupClass } = input;
   const pkgMatches = await tx.coursePackage.findMany({
     where: {
       AND: [
@@ -128,7 +130,6 @@ async function pickRepairPackage(
         coursePackageMatchesCourse(courseId),
         { type: PackageType.HOURS },
         { status: PackageStatus.ACTIVE },
-        { remainingMinutes: { gte: Math.max(1, needUnits) } },
         { validFrom: { lte: at } },
         { OR: [{ validTo: null }, { validTo: { gte: at } }] },
       ],
@@ -145,14 +146,47 @@ async function pickRepairPackage(
       },
     },
   });
-  const modeMatched = pkgMatches.filter((p) => (isGroupClass ? isGroupPackNote(p.note) : !isGroupPackNote(p.note)));
-  const picked =
-    modeMatched.find((p) => p.studentId === studentId) ??
-    modeMatched.find((p) => p.sharedStudents.length > 0) ??
-    null;
-  if (!picked) return null;
-  if (picked.studentId !== studentId && picked.sharedStudents.length === 0) return null;
-  return picked as RepairPackageCandidate;
+
+  const pickPreferred = (
+    items: Array<{
+      id: string;
+      note: string | null;
+      remainingMinutes: number | null;
+      studentId: string;
+      sharedStudents: Array<{ id: string }>;
+    }>,
+    mode: PackageMode
+  ) => {
+    const matched =
+      items.find((p) => p.studentId === studentId) ??
+      items.find((p) => p.sharedStudents.length > 0) ??
+      null;
+    if (!matched) return null;
+    if (matched.studentId !== studentId && matched.sharedStudents.length === 0) return null;
+    return {
+      ...matched,
+      remainingMinutes: matched.remainingMinutes ?? 0,
+      mode,
+    } satisfies RepairPackageCandidate;
+  };
+
+  if (isGroupClass) {
+    const minuteMatched = pkgMatches.filter(
+      (p) => packageModeFromNote(p.note) === "GROUP_MINUTES" && (p.remainingMinutes ?? 0) >= Math.max(1, needMinutes)
+    );
+    const pickedMinutes = pickPreferred(minuteMatched, "GROUP_MINUTES");
+    if (pickedMinutes) return pickedMinutes;
+
+    const countMatched = pkgMatches.filter(
+      (p) => packageModeFromNote(p.note) === "GROUP_COUNT" && (p.remainingMinutes ?? 0) >= Math.max(1, needCount)
+    );
+    return pickPreferred(countMatched, "GROUP_COUNT");
+  }
+
+  const hourMatched = pkgMatches.filter(
+    (p) => packageModeFromNote(p.note) === "HOURS_MINUTES" && (p.remainingMinutes ?? 0) >= Math.max(1, needMinutes)
+  );
+  return pickPreferred(hourMatched, "HOURS_MINUTES");
 }
 
 async function loadCandidateRows(limit: number) {
@@ -199,35 +233,40 @@ async function loadCandidateRows(limit: number) {
 }
 
 function computeNeedUnits(row: ReportRow) {
-  const isGroupClass = row.session.class.capacity !== 1;
-  return isGroupClass ? 1 : durationMinutes(row.session.startAt, row.session.endAt);
+  return durationMinutes(row.session.startAt, row.session.endAt);
 }
 
 async function buildPreviewItem(row: ReportRow): Promise<RepairPreviewItem> {
   const isGroupClass = row.session.class.capacity !== 1;
-  const needUnits = computeNeedUnits(row);
+  const needMinutes = computeNeedUnits(row);
+  const needCount = isGroupClass ? 1 : 0;
   const picked =
-    needUnits > 0
+    needMinutes > 0
       ? await pickRepairPackage(prisma, {
           studentId: row.student.id,
           courseId: row.session.class.courseId,
           at: row.session.startAt,
-          needUnits,
+          needMinutes,
+          needCount,
           isGroupClass,
         })
       : null;
+
+  const needUnits = picked?.mode === "GROUP_COUNT" ? needCount : needMinutes;
+  const unitLabel = picked?.mode === "GROUP_COUNT" ? "classes" : "minutes";
 
   if (!picked) {
     return {
       attendanceId: row.id,
       studentName: row.student.name,
       sessionAt: row.session.startAt,
-      needUnits,
+      needUnits: needMinutes,
+      unitLabel: "minutes",
       packageId: null,
       beforeRemaining: null,
       afterRemaining: null,
       canApply: false,
-      reason: needUnits <= 0 ? "invalid-duration" : "no-package",
+      reason: needMinutes <= 0 ? "invalid-duration" : "no-package",
       ledgerNote: buildRepairLedgerNote(row.id),
     };
   }
@@ -237,6 +276,7 @@ async function buildPreviewItem(row: ReportRow): Promise<RepairPreviewItem> {
     studentName: row.student.name,
     sessionAt: row.session.startAt,
     needUnits,
+    unitLabel,
     packageId: picked.id,
     beforeRemaining: picked.remainingMinutes,
     afterRemaining: picked.remainingMinutes - needUnits,
@@ -291,8 +331,9 @@ async function repairAttendanceDeduction(attendanceId: string) {
   if (!DEDUCT_STATUSES.has(row.status)) throw new Error("Attendance status not deductible");
 
   const isGroupClass = row.session.class.capacity !== 1;
-  const needUnits = isGroupClass ? 1 : durationMinutes(row.session.startAt, row.session.endAt);
-  if (needUnits <= 0) throw new Error("invalid-duration");
+  const needMinutes = durationMinutes(row.session.startAt, row.session.endAt);
+  const needCount = isGroupClass ? 1 : 0;
+  if (needMinutes <= 0) throw new Error("invalid-duration");
 
   let fixedPackageId = "";
   await prisma.$transaction(async (tx) => {
@@ -315,11 +356,13 @@ async function repairAttendanceDeduction(attendanceId: string) {
       studentId: current.studentId,
       courseId: row.session.class.courseId,
       at: row.session.startAt,
-      needUnits,
+      needMinutes,
+      needCount,
       isGroupClass,
     });
     if (!picked) throw new Error("No active package available for auto deduction");
 
+    const needUnits = picked.mode === "GROUP_COUNT" ? needCount : needMinutes;
     fixedPackageId = picked.id;
     await tx.coursePackage.update({
       where: { id: picked.id },
@@ -338,8 +381,8 @@ async function repairAttendanceDeduction(attendanceId: string) {
       where: { id: attendanceId },
       data: {
         packageId: picked.id,
-        deductedMinutes: isGroupClass ? 0 : needUnits,
-        deductedCount: isGroupClass ? 1 : 0,
+        deductedMinutes: picked.mode === "GROUP_COUNT" ? 0 : needMinutes,
+        deductedCount: picked.mode === "GROUP_COUNT" ? needCount : 0,
         waiveDeduction: false,
         waiveReason: null,
       },
@@ -619,7 +662,7 @@ export default async function UndeductedCompletedReportPage({
             {t(lang, "Student", "学生")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "课次")}: {new Date(previewItem.sessionAt).toLocaleString()}
           </div>
           <div style={{ marginBottom: 8 }}>
-            {t(lang, "Units", "扣减单位")}: <b>{previewItem.needUnits}</b> | {t(lang, "Target Package", "目标课包")}: <b>{previewItem.packageId ?? "-"}</b>
+            {t(lang, "Units", "扣减单位")}: <b>{previewItem.needUnits} {previewItem.unitLabel === "classes" ? t(lang, "class(es)", "次") : t(lang, "min", "分钟")}</b> | {t(lang, "Target Package", "目标课包")}: <b>{previewItem.packageId ?? "-"}</b>
           </div>
           <div style={{ marginBottom: 8, color: "#334155" }}>
             {t(lang, "Balance", "余额")}: <b>{previewItem.beforeRemaining ?? "-"} {"->"} {previewItem.afterRemaining ?? "-"}</b> | {t(lang, "Ledger Note", "流水备注")}: <code>{previewItem.ledgerNote}</code>
@@ -661,7 +704,7 @@ export default async function UndeductedCompletedReportPage({
                   <tr key={item.attendanceId} style={{ borderTop: "1px solid #ddd6fe" }}>
                     <td>{item.studentName}</td>
                     <td>{new Date(item.sessionAt).toLocaleString()}</td>
-                    <td>{item.needUnits}</td>
+                    <td>{item.needUnits} {item.unitLabel === "classes" ? t(lang, "class(es)", "次") : t(lang, "min", "分钟")}</td>
                     <td>{item.packageId ?? "-"}</td>
                     <td>{item.beforeRemaining ?? "-"} {"->"} {item.afterRemaining ?? "-"}</td>
                     <td style={{ color: item.canApply ? "#166534" : "#b91c1c" }}>
