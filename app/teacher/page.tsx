@@ -3,6 +3,7 @@ import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import TeacherConfirmCoursesButton from "./TeacherConfirmCoursesButton";
+import { getVisibleSessionStudentNames } from "@/lib/session-students";
 
 const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
 const TEACHER_SELF_CONFIRM_TOMORROW = "TEACHER_SELF_CONFIRM_TOMORROW";
@@ -16,21 +17,7 @@ function toDateInputValue(d: Date) {
 }
 
 function sessionStudentNames(s: any) {
-  const cancelledSet = new Set(
-    Array.isArray(s.attendances)
-      ? s.attendances.filter((a: any) => a?.status === "EXCUSED").map((a: any) => a.studentId as string)
-      : []
-  );
-  if (s.class?.capacity === 1) {
-    const sid = s.student?.id ?? s.class?.oneOnOneStudent?.id ?? s.class?.enrollments?.[0]?.student?.id ?? null;
-    if (sid && cancelledSet.has(sid)) return [];
-    const one = s.student?.name ?? s.class?.oneOnOneStudent?.name ?? s.class?.enrollments?.[0]?.student?.name ?? null;
-    return one ? [one] : [];
-  }
-  return (s.class?.enrollments ?? [])
-    .filter((e: any) => !cancelledSet.has(e.studentId))
-    .map((e: any) => e.student?.name)
-    .filter(Boolean);
+  return getVisibleSessionStudentNames(s);
 }
 
 // Teacher self-confirm is handled via client fetch to avoid page jump/flash.

@@ -8,7 +8,7 @@ import {
   syncSignInAlerts,
 } from "@/lib/signin-alerts";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
-import { getVisibleSessionStudentNames } from "@/lib/session-students";
+import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
 
 function fmtRange(startAt: Date, endAt: Date) {
@@ -124,7 +124,9 @@ export default async function TeacherAlertsPage({
     grouped.set(a.sessionId, g);
   }
 
-  const rows = Array.from(grouped.values()).map((g) => {
+  const rows = Array.from(grouped.values())
+    .filter((g) => !isSessionFullyCancelled(g.session))
+    .map((g) => {
     const pending = g.items.filter((x) => !x.resolvedAt);
     const resolved = g.items.filter((x) => !!x.resolvedAt);
     const sourceItems = pending.length > 0 ? pending : resolved;
@@ -150,19 +152,19 @@ export default async function TeacherAlertsPage({
 
     const severity = hasFeedbackAlert || hasTeacherAlert ? 2 : missingStudentIds.length > 0 ? 1 : 0;
 
-    return {
-      sessionId: g.session.id,
-      session: g.session,
-      pendingCount: pending.length,
-      isPending: pending.length > 0,
-      resolvedAt,
-      missingStudentIds,
-      missingStudentNames,
-      hasTeacherAlert,
-      hasFeedbackAlert,
-      severity,
-    };
-  });
+      return {
+        sessionId: g.session.id,
+        session: g.session,
+        pendingCount: pending.length,
+        isPending: pending.length > 0,
+        resolvedAt,
+        missingStudentIds,
+        missingStudentNames,
+        hasTeacherAlert,
+        hasFeedbackAlert,
+        severity,
+      };
+    });
 
   const pendingRows = rows.filter((r) => r.isPending).sort((a, b) => b.severity - a.severity || +new Date(a.session.startAt) - +new Date(b.session.startAt));
   const resolvedRows = rows
@@ -368,5 +370,4 @@ export default async function TeacherAlertsPage({
     </div>
   );
 }
-
 

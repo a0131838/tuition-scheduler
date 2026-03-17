@@ -2,6 +2,7 @@
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { getVisibleSessionStudents, isSessionFullyCancelled } from "@/lib/session-students";
 
 type SessionWithMeta = {
   id: string;
@@ -32,17 +33,7 @@ function classLabel(s: SessionWithMeta) {
 }
 
 function sessionStudents(s: SessionWithMeta) {
-  const cancelledSet = new Set(s.attendances.filter((a) => a.status === "EXCUSED").map((a) => a.studentId));
-  if (s.class.capacity === 1) {
-    const oneId = s.student?.id ?? s.class.oneOnOneStudent?.id ?? s.class.enrollments[0]?.student?.id ?? null;
-    if (oneId && cancelledSet.has(oneId)) return [];
-    const one = s.student?.name ?? s.class.oneOnOneStudent?.name ?? s.class.enrollments[0]?.student?.name ?? null;
-    return one ? [{ id: oneId ?? one, name: one }] : [];
-  }
-  return s.class.enrollments
-    .filter((e) => !cancelledSet.has(e.studentId))
-    .map((e) => ({ id: e.student.id, name: e.student.name }))
-    .filter((x) => !!x.name);
+  return getVisibleSessionStudents(s).filter((x) => !!x.name);
 }
 
 function attendancePill(marked: number, total: number) {
@@ -87,7 +78,7 @@ export default async function TeacherSessionsPage() {
   const end = new Date(now);
   end.setDate(end.getDate() + 14);
 
-  const sessions = (await prisma.session.findMany({
+  const sessionsRaw = (await prisma.session.findMany({
     where: {
       startAt: { gte: start, lte: end },
       OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
@@ -111,6 +102,8 @@ export default async function TeacherSessionsPage() {
     orderBy: { startAt: "asc" },
     take: 300,
   })) as SessionWithMeta[];
+
+  const sessions = sessionsRaw.filter((s) => !isSessionFullyCancelled(s));
 
   const grouped = new Map<string, SessionWithMeta[]>();
   for (const s of sessions) {
@@ -239,7 +232,6 @@ export default async function TeacherSessionsPage() {
     </div>
   );
 }
-
 
 
 
