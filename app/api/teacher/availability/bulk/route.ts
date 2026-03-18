@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     where: { teacherId: teacher.id, date: { gte: from, lte: to } },
     select: { date: true, startMin: true, endMin: true },
   });
-  const existSet = new Set(existing.map((e) => `${ymd(new Date(e.date))}|${e.startMin}|${e.endMin}`));
+  const existSet = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
 
   const creates: { teacherId: string; date: Date; startMin: number; endMin: number }[] = [];
   for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {

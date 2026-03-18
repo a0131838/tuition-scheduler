@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { parseUndoPayload, parseYMD, undoKey, ymd } from "../_lib";
+import { formatDateOnly } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -24,7 +25,7 @@ export async function POST() {
     where: { teacherId: teacher.id, date: { in: dates } },
     select: { date: true, startMin: true, endMin: true },
   });
-  const existSet = new Set(existing.map((e) => `${ymd(new Date(e.date))}|${e.startMin}|${e.endMin}`));
+  const existSet = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
 
   const creates = payload.slots
     .filter((s) => !existSet.has(`${s.date}|${s.startMin}|${s.endMin}`))
@@ -50,10 +51,9 @@ export async function POST() {
     restoredCount: creates.length,
     slots: restored.map((s) => ({
       id: s.id,
-      date: s.date.toISOString(),
+      date: formatDateOnly(s.date),
       startMin: s.startMin,
       endMin: s.endMin,
     })),
   });
 }
-

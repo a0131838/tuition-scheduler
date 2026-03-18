@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { formatDateOnly } from "@/lib/date-only";
 
 type Labels = {
   edit: string;
@@ -180,11 +181,11 @@ export default function PackageEditModal({
           </div>
           <label>
             {labels.validFrom}:
-            <input name="validFrom" type="date" defaultValue={pkg.validFrom.toISOString().slice(0, 10)} style={{ marginLeft: 8 }} />
+            <input name="validFrom" type="date" defaultValue={formatDateOnly(new Date(pkg.validFrom))} style={{ marginLeft: 8 }} />
           </label>
           <label>
             {labels.validTo}:
-            <input name="validTo" type="date" defaultValue={pkg.validTo ? pkg.validTo.toISOString().slice(0, 10) : ""} style={{ marginLeft: 8 }} />
+            <input name="validTo" type="date" defaultValue={pkg.validTo ? formatDateOnly(new Date(pkg.validTo)) : ""} style={{ marginLeft: 8 }} />
           </label>
           <label>
             {labels.status}:

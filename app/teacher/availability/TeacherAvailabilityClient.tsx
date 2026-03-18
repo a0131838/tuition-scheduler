@@ -127,7 +127,7 @@ export default function TeacherAvailabilityClient(props: {
   const slotMap = useMemo(() => {
     const map = new Map<string, Slot[]>();
     for (const s of slots) {
-      const key = ymd(new Date(s.date));
+      const key = s.date;
       const arr = map.get(key) ?? [];
       arr.push(s);
       map.set(key, arr);
@@ -217,8 +217,7 @@ export default function TeacherAvailabilityClient(props: {
       const data3 = (await list.json()) as { slots: Slot[] };
       setSlots((prev) => {
         const keep = prev.filter((s) => {
-          const d = ymd(new Date(s.date));
-          return d < from || d > to;
+          return s.date < from || s.date > to;
         });
         return [...keep, ...data3.slots];
       });
@@ -312,7 +311,7 @@ export default function TeacherAvailabilityClient(props: {
       if (e2) throw new Error(e2);
       const data = (await res.json()) as { undoPayload: AvailabilityUndoPayload };
       setUndoPayload(data.undoPayload);
-      setSlots((prev) => prev.filter((s) => ymd(new Date(s.date)) !== date));
+      setSlots((prev) => prev.filter((s) => s.date !== date));
       setMsg(tr(lang, `Cleared ${date}`, `已清空 ${date}`));
     } catch (error: any) {
       setErr(error?.message ?? String(error));
@@ -332,9 +331,9 @@ export default function TeacherAvailabilityClient(props: {
       if (e2) throw new Error(e2);
       const data = (await res.json()) as { restoredCount: number; slots: Slot[] };
       setUndoPayload(null);
-      const restoredDates = new Set(data.slots.map((s) => ymd(new Date(s.date))));
+      const restoredDates = new Set(data.slots.map((s) => s.date));
       setSlots((prev) => {
-        const keep = prev.filter((s) => !restoredDates.has(ymd(new Date(s.date))));
+        const keep = prev.filter((s) => !restoredDates.has(s.date));
         return [...keep, ...data.slots];
       });
       setMsg(tr(lang, `Undo done, restored ${data.restoredCount} slots`, `撤销完成，恢复 ${data.restoredCount} 条时段`));

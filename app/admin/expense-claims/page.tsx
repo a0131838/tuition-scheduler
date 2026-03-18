@@ -29,6 +29,7 @@ import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import { unlink } from 'fs/promises';
 import path from 'path';
 import { revalidatePath } from 'next/cache';
+import { formatDateOnly, formatMonthKey } from '@/lib/date-only';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -41,10 +42,6 @@ function parseMoneyToCents(value: FormDataEntryValue | null) {
   return Math.round(n * 100);
 }
 
-function formatDateOnly(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
 function buildFilterQuery(input: Record<string, string | null | undefined>) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(input)) {
@@ -55,7 +52,7 @@ function buildFilterQuery(input: Record<string, string | null | undefined>) {
 }
 
 function shiftMonth(base: Date, delta: number) {
-  return monthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
+  return formatMonthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
 }
 
 export default async function AdminExpenseClaimsPage({
@@ -91,7 +88,7 @@ export default async function AdminExpenseClaimsPage({
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
     archived: archivedOnly ? '1' : '',
   });
-  const currentMonth = monthKey(new Date());
+  const currentMonth = formatMonthKey(new Date());
   const previousMonth = shiftMonth(new Date(), -1);
   const quickExpenseThisMonthHref = `/admin/expense-claims?${buildFilterQuery({
     status: statusFilter !== 'ALL' ? statusFilter : '',
@@ -552,7 +549,7 @@ export default async function AdminExpenseClaimsPage({
                             ))}
                           </select>
                           <input name="paymentReference" placeholder={t(lang, 'Payment reference', '付款参考号')} />
-                          <input type="month" name="paymentBatchMonth" defaultValue={monthKey(new Date())} />
+                          <input type="month" name="paymentBatchMonth" defaultValue={formatMonthKey(new Date())} />
                           <input name="financeRemarks" placeholder={t(lang, 'Finance remarks', '财务备注')} />
                           <button type="submit">{t(lang, 'Mark Paid', '标记已付款')}</button>
                         </form>

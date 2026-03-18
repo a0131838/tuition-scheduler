@@ -131,7 +131,7 @@ export async function listBookingSlotsForMonth(opts: {
 
   const dateMap = new Map<string, { startMin: number; endMin: number }[]>();
   for (const s of dateSlots) {
-    const key = `${s.teacherId}|${ymd(new Date(s.date))}`;
+    const key = `${s.teacherId}|${ymd(s.date)}`;
     const arr = dateMap.get(key) ?? [];
     arr.push({ startMin: s.startMin, endMin: s.endMin });
     dateMap.set(key, arr);

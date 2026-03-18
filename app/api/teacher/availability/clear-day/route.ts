@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     date: dateStr,
     createdAt: new Date().toISOString(),
     slots: slots.map((s) => ({
-      date: ymd(new Date(s.date)),
+      date: ymd(s.date),
       startMin: s.startMin,
       endMin: s.endMin,
     })),
@@ -80,4 +80,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true, undoPayload: payload });
 }
-

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AVAIL_MAX_TIME, AVAIL_MIN_TIME, inAllowedWindow, parseYMD, toMin } from "../_lib";
+import { formatDateOnly } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
   return Response.json({
     slots: slots.map((s) => ({
       id: s.id,
-      date: s.date.toISOString(),
+      date: formatDateOnly(s.date),
       startMin: s.startMin,
       endMin: s.endMin,
     })),
@@ -69,10 +70,9 @@ export async function POST(req: Request) {
   return Response.json({
     slot: {
       id: created.id,
-      date: created.date.toISOString(),
+      date: formatDateOnly(created.date),
       startMin: created.startMin,
       endMin: created.endMin,
     },
   });
 }
-

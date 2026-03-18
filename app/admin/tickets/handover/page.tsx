@@ -1,4 +1,5 @@
 ﻿import { requireAdmin } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -172,7 +173,7 @@ export default async function TicketHandoverPage({
   const view = String(sp?.view ?? "cs").trim() === "ops" ? "ops" : "cs";
   const history = String(sp?.history ?? "").trim() === "all" ? "all" : "7d";
   const historyFilter = String(sp?.historyFilter ?? "").trim() === "abnormal" ? "abnormal" : "all";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatDateOnly(new Date());
   const selectedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(sp?.day ?? "")) ? String(sp?.day) : today;
   const selectedDate = parseDateOnly(selectedDay) ?? parseDateOnly(today)!;
   const { start, end } = dayRange(selectedDate);

@@ -1,4 +1,5 @@
 ﻿import { requireTeacherProfile } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
@@ -29,8 +30,8 @@ function parseDateRange(fromRaw?: string, toRaw?: string) {
   const now = new Date();
   const defaultFrom = new Date(now);
   defaultFrom.setDate(defaultFrom.getDate() - 30);
-  const from = fromRaw ? new Date(fromRaw) : defaultFrom;
-  const to = toRaw ? new Date(toRaw) : now;
+  const from = fromRaw ? new Date(`${fromRaw}T00:00:00`) : defaultFrom;
+  const to = toRaw ? new Date(`${toRaw}T00:00:00`) : now;
   const safeFrom = Number.isNaN(from.getTime()) ? defaultFrom : from;
   const safeTo = Number.isNaN(to.getTime()) ? now : to;
   const dayEnd = new Date(safeTo);
@@ -336,8 +337,8 @@ export default async function TeacherStudentFeedbacksPage({
   const latestOther = selectedTimelineAll.find((x) => x.teacherId !== teacher.id) ?? null;
 
   const queryBase = `q=${encodeURIComponent(q)}&from=${encodeURIComponent(
-    sp?.from ?? from.toISOString().slice(0, 10)
-  )}&to=${encodeURIComponent(sp?.to ?? to.toISOString().slice(0, 10))}&onlyOthers=${
+    sp?.from ?? formatDateOnly(from)
+  )}&to=${encodeURIComponent(sp?.to ?? formatDateOnly(to))}&onlyOthers=${
     onlyOthers ? "1" : "0"
   }&onlyUnreadOthers=${onlyUnreadOthers ? "1" : "0"}&handoffRisk=${handoffRisk ? "1" : "0"}`;
 
@@ -471,11 +472,11 @@ export default async function TeacherStudentFeedbacksPage({
         />
         <label>
           {t(lang, "From", "开始")}:
-          <input name="from" type="date" defaultValue={sp?.from ?? from.toISOString().slice(0, 10)} style={{ marginLeft: 6 }} />
+          <input name="from" type="date" defaultValue={sp?.from ?? formatDateOnly(from)} style={{ marginLeft: 6 }} />
         </label>
         <label>
           {t(lang, "To", "结束")}:
-          <input name="to" type="date" defaultValue={sp?.to ?? to.toISOString().slice(0, 10)} style={{ marginLeft: 6 }} />
+          <input name="to" type="date" defaultValue={sp?.to ?? formatDateOnly(to)} style={{ marginLeft: 6 }} />
         </label>
         <label style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
           <input type="checkbox" name="onlyOthers" value="1" defaultChecked={onlyOthers} />

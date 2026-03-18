@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import path from 'path';
 import { ExpenseClaimStatus } from '@prisma/client';
+import { formatDateOnly, formatMonthKey } from '@/lib/date-only';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -19,16 +20,8 @@ function parseMoneyToCents(value: FormDataEntryValue | null) {
   return Math.round(n * 100);
 }
 
-function formatDateOnly(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
-function monthKey(value: Date) {
-  return value.toISOString().slice(0, 7);
-}
-
 function shiftMonth(base: Date, delta: number) {
-  return monthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
+  return formatMonthKey(new Date(base.getFullYear(), base.getMonth() + delta, 1));
 }
 
 function buildFilterQuery(input: Record<string, string | null | undefined>) {
@@ -54,7 +47,7 @@ export default async function TeacherExpenseClaimsPage({
   const statusFilter = typeof params.status === 'string' ? params.status : 'ALL';
   const monthFilter = typeof params.month === 'string' ? params.month : '';
   const paymentBatchMonthFilter = typeof params.paymentBatchMonth === 'string' ? params.paymentBatchMonth : '';
-  const currentMonth = monthKey(new Date());
+  const currentMonth = formatMonthKey(new Date());
   const previousMonth = shiftMonth(new Date(), -1);
   const quickThisMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: statusFilter !== 'ALL' ? statusFilter : '', month: currentMonth, paymentBatchMonth: paymentBatchMonthFilter })}`;
   const quickLastMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: statusFilter !== 'ALL' ? statusFilter : '', month: previousMonth, paymentBatchMonth: paymentBatchMonthFilter })}`;

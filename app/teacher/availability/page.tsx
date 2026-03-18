@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
+import { formatDateOnly } from "@/lib/date-only";
 import TeacherAvailabilityClient from "./TeacherAvailabilityClient";
 
 function undoKey(teacherId: string) {
@@ -53,7 +54,7 @@ export default async function TeacherAvailabilityPage() {
     <TeacherAvailabilityClient
       lang={lang as Lang}
       teacherId={teacher.id}
-      initialSlots={slots.map((s) => ({ id: s.id, date: s.date.toISOString(), startMin: s.startMin, endMin: s.endMin }))}
+      initialSlots={slots.map((s) => ({ id: s.id, date: formatDateOnly(s.date), startMin: s.startMin, endMin: s.endMin }))}
       initialUndoPayload={undoPayload}
     />
   );
