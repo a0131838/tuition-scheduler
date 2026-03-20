@@ -47,6 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdmin();
   const lang = await getLang();
   const showManagerConsole = await isManagerUser(user);
+  const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
 
   const financeAllowedPath =
@@ -111,6 +112,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {showManagerConsole ? (
                 <Link scroll={false} href="/admin/manager/users" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
                   {t(lang, "System User Admin", "系统使用者管理")}
+                </Link>
+              ) : null}
+              {canSeeSharedDocs ? (
+                <Link scroll={false} href="/admin/shared-docs" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
+                  {t(lang, "Shared Docs", "共享文档库")}
                 </Link>
               ) : null}
               <Link scroll={false} href="/admin/schedule" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8, background: "#f5f7ff", border: "1px solid #818cf8", borderLeft: "4px solid #4338ca" }}>
@@ -334,8 +340,3 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </div>
   );
 }
-
-
-
-
-

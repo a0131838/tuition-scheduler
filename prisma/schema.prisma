@@ -87,6 +87,11 @@ enum ExpenseClaimStatus {
   PAID
 }
 
+enum SharedDocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model Campus {
   id             String          @id @default(uuid())
   name           String
@@ -548,6 +553,8 @@ model User {
   ticketHandovers        TicketHandover[]
   ticketIntakeTokens     TicketIntakeToken[]
   expenseClaimsSubmitted ExpenseClaim[]
+  sharedDocumentsUploaded SharedDocument[]      @relation("SharedDocumentUploader")
+  sharedDocumentAudits    SharedDocumentAudit[] @relation("SharedDocumentAuditActor")
 }
 
 model ExpenseClaim {
@@ -618,6 +625,56 @@ model ManagerAcl {
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DocumentCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents SharedDocument[]
+}
+
+model SharedDocument {
+  id               String               @id @default(uuid())
+  title            String
+  categoryId       String
+  status           SharedDocumentStatus @default(ACTIVE)
+  filePath         String
+  originalFileName String
+  fileSizeBytes    Int
+  mimeType         String?
+  remarks          String?
+  uploadedByUserId String
+  archivedAt       DateTime?
+  archivedByEmail  String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  category DocumentCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  uploader User             @relation("SharedDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  audits   SharedDocumentAudit[]
+
+  @@index([categoryId, status, createdAt])
+  @@index([uploadedByUserId, createdAt])
+  @@index([status, createdAt])
+}
+
+model SharedDocumentAudit {
+  id          String   @id @default(uuid())
+  documentId  String
+  actorUserId String
+  action      String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  document SharedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  actor    User           @relation("SharedDocumentAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 model AuthSession {
