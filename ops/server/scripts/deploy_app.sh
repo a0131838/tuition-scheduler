@@ -27,6 +27,17 @@ git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
 git pull origin "$BRANCH"
 
+# Remove stale untracked files/dirs from prior manual syncs or emergency patches.
+# Keep runtime env and uploaded files.
+if [[ "${CLEAN_UNTRACKED:-true}" == "true" ]]; then
+  git clean -fd \
+    -e .env \
+    -e .env.bak* \
+    -e ops/server/.deploy.env \
+    -e ops/server/.deploy.env.bak* \
+    -e public/uploads
+fi
+
 cat > .env <<EOF
 NODE_ENV=production
 NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
