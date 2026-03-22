@@ -101,3 +101,19 @@ This file is the single source of truth for what changed in production.
   - remote build passes after export fix
   - `/admin/login` health check returns `200`
 - Rollback point: Previous commit `7598093`.
+
+## 2026-03-22-r6
+
+- Release ID: `2026-03-22-r6`
+- Date/Time (Asia/Shanghai): `2026-03-22`
+- Scope: Fix quick deploy/check script default path resolution.
+- Key files:
+  - `ops/server/scripts/quick_check.sh`
+  - `ops/server/scripts/quick_deploy.sh`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260322-context-control.md`
+- Risk impact (if any): Process-only; no runtime business logic change.
+- Verification:
+  - `bash ops/server/scripts/quick_deploy.sh ...` can find and execute `quick_check.sh`
+- Rollback point: `39e9967`.

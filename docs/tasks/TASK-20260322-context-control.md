@@ -95,3 +95,10 @@
 
 - During deployment, `release-doc gate` correctly blocked a commit that only changed `lib/date-only.ts`.
 - Added this entry + changelog + release board update to make hotfix deploy traceable and gate-compliant.
+
+## 13) Quick Script Path Fix
+
+- Found and fixed local path resolution issue in:
+  - `ops/server/scripts/quick_check.sh`
+  - `ops/server/scripts/quick_deploy.sh`
+- Impact: deploy already succeeded; this fix prevents false failure in the final "run quick check" step.

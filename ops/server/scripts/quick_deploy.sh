@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CFG_FILE="${1:-$ROOT_DIR/server-handoff.env}"
+SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CFG_FILE="${1:-$SERVER_DIR/server-handoff.env}"
 BRANCH_ARG="${2:-}"
 
 if [[ ! -f "$CFG_FILE" ]]; then
   echo "Missing config: $CFG_FILE"
-  echo "Create it from: $ROOT_DIR/server-handoff.env.example"
+  echo "Create it from: $SERVER_DIR/server-handoff.env.example"
   exit 1
 fi
 
@@ -42,5 +42,4 @@ echo "Target: $SSH_USER@$SSH_HOST:$APP_DIR"
 
 echo
 echo "Deploy done. Running quick check..."
-bash "$ROOT_DIR/scripts/quick_check.sh" "$CFG_FILE"
-
+bash "$SERVER_DIR/scripts/quick_check.sh" "$CFG_FILE"

@@ -9,9 +9,9 @@
 
 ## Current Known State
 
-- Local HEAD: `79a2e18` (in-progress hotfix chain)
-- Remote HEAD: `79a2e18` (branch updated, deployment pending gate-compliant doc commit)
-- Note: Remote workspace has uncommitted changes. Treat as high-risk until normalized.
+- Local HEAD: process hardening chain (includes deploy guard + build hotfix + quick script path fix)
+- Remote deploy completed on `39e9967` and service healthy.
+- Note: Prior remote dirty workspace was normalized by hard-reset deploy flow.
 
 ## Open Risks
 

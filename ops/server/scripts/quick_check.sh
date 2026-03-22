@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CFG_FILE="${1:-$ROOT_DIR/server-handoff.env}"
+SERVER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CFG_FILE="${1:-$SERVER_DIR/server-handoff.env}"
 
 if [[ ! -f "$CFG_FILE" ]]; then
   echo "Missing config: $CFG_FILE"
-  echo "Create it from: $ROOT_DIR/server-handoff.env.example"
+  echo "Create it from: $SERVER_DIR/server-handoff.env.example"
   exit 1
 fi
 
@@ -41,4 +41,3 @@ echo "== app build id =="
 echo
 echo "== http health =="
 curl -sS -o /dev/null -w "code=%{http_code} url=%{url_effective}\n" "$HEALTH_URL"
-
