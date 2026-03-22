@@ -2,6 +2,18 @@
 
 Use these commands at the start of every new conversation window.
 
+## 0) One-click Startup Check (best first step)
+
+```bash
+bash ops/server/scripts/new_chat_startup_check.sh
+```
+
+This command prints:
+- local / origin / server commit alignment
+- working tree dirty status
+- online health status
+- snapshot of `SERVER-HANDOFF`, `CHANGELOG-LIVE`, latest `TASK`, and `RELEASE-BOARD`
+
 ## A) Standard Start (recommended)
 
 ```txt

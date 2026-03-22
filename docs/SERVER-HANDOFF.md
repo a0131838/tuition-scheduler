@@ -21,6 +21,8 @@ Always read this first before any deploy or server troubleshooting.
 
 ## 3) One-command Operations
 
+- New chat startup check (recommended first command):
+  - `bash ops/server/scripts/new_chat_startup_check.sh`
 - Quick health check:
   - `bash ops/server/scripts/quick_check.sh`
 - Quick deploy (default branch from config):
