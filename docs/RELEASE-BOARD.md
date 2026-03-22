@@ -40,3 +40,12 @@
 1. Freeze a clean release commit from current effective code.
 2. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-03-22-r8 Planned Sync
+
+- Target: align server to commit `6cf3658`.
+- Scope: startup check script + startup docs only.
+- Business impact: none (process/tooling only).
+- Validation:
+  - `bash ops/server/scripts/new_chat_startup_check.sh`
+  - `server == origin == 6cf3658`

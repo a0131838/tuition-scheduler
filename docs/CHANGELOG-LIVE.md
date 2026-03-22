@@ -130,3 +130,20 @@ This file is the single source of truth for what changed in production.
 - Verification:
   - `RELEASE-BOARD` remote commit updated to `d00be8e`
 - Rollback point: `d00be8e` (runtime unchanged).
+
+## 2026-03-22-r8
+
+- Release ID: `2026-03-22-r8`
+- Date/Time (Asia/Shanghai): `2026-03-22`
+- Scope: Add one-click new chat startup verification script and entry docs.
+- Key files:
+  - `ops/server/scripts/new_chat_startup_check.sh`
+  - `docs/SERVER-HANDOFF.md`
+  - `docs/NEW-CHAT-COMMANDS.md`
+  - `docs/tasks/TASK-20260322-startup-check-rollout.md`
+- Risk impact (if any): Process-only; no business logic/runtime behavior change.
+- Verification:
+  - `bash ops/server/scripts/new_chat_startup_check.sh`
+  - local/origin/server commit alignment is printed
+  - `/admin/login` returns `200`
+- Rollback point: `e215176`.
