@@ -85,3 +85,19 @@ This file is the single source of truth for what changed in production.
   - `bash -n ops/server/scripts/sync_local_db_to_neon.sh`
   - docs now explicitly warn against localhost DB and stale-branch deploy risks.
 - Rollback point: Revert r4 doc/script guard files.
+
+## 2026-03-22-r5
+
+- Release ID: `2026-03-22-r5`
+- Date/Time (Asia/Shanghai): `2026-03-22`
+- Scope: Build hotfix to restore missing date helper exports required by finance pages.
+- Key files:
+  - `lib/date-only.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260322-context-control.md`
+- Risk impact (if any): Low; utility exports only, no business rule change.
+- Verification:
+  - remote build passes after export fix
+  - `/admin/login` health check returns `200`
+- Rollback point: Previous commit `7598093`.

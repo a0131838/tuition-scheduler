@@ -9,8 +9,8 @@
 
 ## Current Known State
 
-- Local HEAD: `259dca8`
-- Remote HEAD: `56a91b1`
+- Local HEAD: `79a2e18` (in-progress hotfix chain)
+- Remote HEAD: `79a2e18` (branch updated, deployment pending gate-compliant doc commit)
 - Note: Remote workspace has uncommitted changes. Treat as high-risk until normalized.
 
 ## Open Risks

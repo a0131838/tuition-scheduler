@@ -90,3 +90,8 @@
   - `docs/SERVER-HANDOFF.md`
 - Added forced confirmation gate for Neon overwrite script:
   - `ops/server/scripts/sync_local_db_to_neon.sh`
+
+## 12) Build Hotfix Follow-up
+
+- During deployment, `release-doc gate` correctly blocked a commit that only changed `lib/date-only.ts`.
+- Added this entry + changelog + release board update to make hotfix deploy traceable and gate-compliant.
