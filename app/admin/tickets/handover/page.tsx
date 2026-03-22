@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
 function parseDateOnly(raw: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
@@ -236,7 +237,7 @@ export default async function TicketHandoverPage({
   const defaultOwnerDeadline =
     unresolvedCards
       .slice(0, 5)
-      .map((x) => `${x.ticketNo} | Owner:${x.owner ?? "-"} | Due:${x.nextActionDue ? x.nextActionDue.toLocaleString() : "-"}`)
+      .map((x) => `${x.ticketNo} | Owner:${x.owner ?? "-"} | Due:${x.nextActionDue ? formatBusinessDateTime(x.nextActionDue) : "-"}`)
       .join("\n") || "";
 
   const box: React.CSSProperties = {
@@ -322,7 +323,7 @@ export default async function TicketHandoverPage({
                     </div>
                     <div>Priority: {c.priority}</div>
                     <div>Owner: {c.owner ?? "-"}</div>
-                    <div>Due: {c.nextActionDue ? c.nextActionDue.toLocaleString() : "-"}</div>
+                    <div>Due: {c.nextActionDue ? formatBusinessDateTime(c.nextActionDue) : "-"}</div>
                   </div>
                 );
               })
@@ -343,7 +344,7 @@ export default async function TicketHandoverPage({
                     <div><b>{c.ticketNo}</b> | {c.studentName}</div>
                     <div>Owner: {c.owner ?? "-"}</div>
                     <div>Next: {c.nextAction ?? "-"}</div>
-                    <div>Due: {c.nextActionDue ? c.nextActionDue.toLocaleString() : "-"}</div>
+                    <div>Due: {c.nextActionDue ? formatBusinessDateTime(c.nextActionDue) : "-"}</div>
                     <Link scroll={false} href={`/admin/tickets?q=${encodeURIComponent(c.ticketNo)}`}>Open / 打开</Link>
                   </div>
                 ))}
@@ -497,7 +498,7 @@ export default async function TicketHandoverPage({
               const parsed = parseComposedNotes(r.notes);
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                  <td>{r.handoverDate.toLocaleDateString()}</td>
+                  <td>{formatBusinessDateOnly(r.handoverDate)}</td>
                   <td>{r.newTickets}</td>
                   <td>{r.completed}</td>
                   <td style={{ maxWidth: 220 }} title={r.needInfo ?? ""}>{r.needInfo ?? "-"}</td>

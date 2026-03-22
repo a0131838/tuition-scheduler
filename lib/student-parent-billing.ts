@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
+import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
 
 const PARENT_BILLING_KEY = "parent_billing_v1";
 
@@ -81,6 +82,7 @@ function parseNumber(v: unknown, fallback = 0) {
 
 function sanitizeStore(input: unknown): ParentBillingStore {
   const out: ParentBillingStore = { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
+  const today = formatDateOnly(new Date());
   if (!input || typeof input !== "object") return out;
   const root = input as Record<string, unknown>;
 
@@ -98,10 +100,10 @@ function sanitizeStore(input: unknown): ParentBillingStore {
       packageId,
       studentId,
       invoiceNo,
-      issueDate: String(x.issueDate ?? "").trim() || new Date().toISOString(),
-      dueDate: String(x.dueDate ?? "").trim() || new Date().toISOString(),
-      courseStartDate: String(x.courseStartDate ?? "").trim() || null,
-      courseEndDate: String(x.courseEndDate ?? "").trim() || null,
+      issueDate: normalizeDateOnly(x.issueDate as string | Date | null | undefined, new Date()) ?? today,
+      dueDate: normalizeDateOnly(x.dueDate as string | Date | null | undefined, new Date()) ?? today,
+      courseStartDate: normalizeNullableDateOnly(x.courseStartDate as string | Date | null | undefined),
+      courseEndDate: normalizeNullableDateOnly(x.courseEndDate as string | Date | null | undefined),
       billTo: String(x.billTo ?? "").trim(),
       quantity: parseNumber(x.quantity, 1),
       description: String(x.description ?? "").trim(),
@@ -129,7 +131,7 @@ function sanitizeStore(input: unknown): ParentBillingStore {
       id,
       packageId,
       studentId,
-      paymentDate: String(x.paymentDate ?? "").trim() || null,
+      paymentDate: normalizeNullableDateOnly(x.paymentDate as string | Date | null | undefined),
       paymentMethod: String(x.paymentMethod ?? "").trim() || null,
       referenceNo: String(x.referenceNo ?? "").trim() || null,
       uploadedBy: normalizeEmail(String(x.uploadedBy ?? "")),
@@ -157,7 +159,7 @@ function sanitizeStore(input: unknown): ParentBillingStore {
       invoiceId: String(x.invoiceId ?? "").trim() || null,
       paymentRecordId: String(x.paymentRecordId ?? "").trim() || null,
       receiptNo,
-      receiptDate: String(x.receiptDate ?? "").trim() || new Date().toISOString(),
+      receiptDate: normalizeDateOnly(x.receiptDate as string | Date | null | undefined, new Date()) ?? today,
       receivedFrom: String(x.receivedFrom ?? "").trim(),
       paidBy: String(x.paidBy ?? "").trim(),
       quantity: parseNumber(x.quantity, 1),
@@ -210,14 +212,8 @@ function byNewest<T>(rows: T[], pickTime: (row: T) => string) {
   return [...rows].sort((a, b) => +new Date(pickTime(b)) - +new Date(pickTime(a)));
 }
 
-function two(n: number) {
-  return String(n).padStart(2, "0");
-}
-
 function monthKeyFromDate(input: string | Date | null | undefined) {
-  const d = input ? new Date(input) : new Date();
-  const x = Number.isNaN(+d) ? new Date() : d;
-  return `${x.getFullYear()}${two(x.getMonth() + 1)}`;
+  return monthKeyFromDateOnly(input).replace("-", "");
 }
 
 function parseInvoiceNo(invoiceNo: string): { monthKey: string; seq: number } | null {
@@ -351,10 +347,10 @@ export async function createParentInvoice(input: {
     packageId: input.packageId,
     studentId: input.studentId,
     invoiceNo: normalizedInvoiceNo,
-    issueDate: input.issueDate,
-    dueDate: input.dueDate,
-    courseStartDate: input.courseStartDate?.trim() || null,
-    courseEndDate: input.courseEndDate?.trim() || null,
+    issueDate: normalizeDateOnly(input.issueDate, new Date()) ?? formatDateOnly(new Date()),
+    dueDate: normalizeDateOnly(input.dueDate, new Date()) ?? formatDateOnly(new Date()),
+    courseStartDate: normalizeNullableDateOnly(input.courseStartDate),
+    courseEndDate: normalizeNullableDateOnly(input.courseEndDate),
     billTo: input.billTo.trim(),
     quantity: Math.max(1, Math.floor(input.quantity || 1)),
     description: input.description.trim(),
@@ -398,7 +394,7 @@ export async function addParentPaymentRecord(input: {
     id: crypto.randomUUID(),
     packageId: input.packageId,
     studentId: input.studentId,
-    paymentDate: input.paymentDate?.trim() || null,
+    paymentDate: normalizeNullableDateOnly(input.paymentDate),
     paymentMethod: input.paymentMethod?.trim() || null,
     referenceNo: input.referenceNo?.trim() || null,
     uploadedBy: normalizeEmail(input.uploadedBy),
@@ -447,7 +443,7 @@ export async function replaceParentPaymentRecord(input: {
   }
   const next: ParentPaymentRecordItem = {
     ...oldItem,
-    paymentDate: input.paymentDate?.trim() || null,
+    paymentDate: normalizeNullableDateOnly(input.paymentDate),
     paymentMethod: input.paymentMethod?.trim() || null,
     referenceNo: input.referenceNo?.trim() || null,
     originalFileName: input.originalFileName.trim(),
@@ -535,7 +531,7 @@ export async function createParentReceipt(input: {
     invoiceId,
     paymentRecordId: input.paymentRecordId?.trim() || null,
     receiptNo: normalizedReceiptNo,
-    receiptDate: input.receiptDate,
+    receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
     receivedFrom: input.receivedFrom.trim(),
     paidBy: input.paidBy.trim() || "Cash or Bank Transfer",
     quantity: Math.max(1, Math.floor(input.quantity || 1)),

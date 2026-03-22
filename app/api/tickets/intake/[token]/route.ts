@@ -17,7 +17,6 @@ import {
   ticketTypeAliases,
   validateTicketTypeRequirements,
 } from "@/lib/tickets";
-
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -73,6 +72,9 @@ export async function POST(
   const grade = normalizeTicketString(body.grade, 40);
   const course = normalizeTicketString(body.course, 120);
   const teacher = normalizeTicketString(body.teacher, 120);
+  if (!teacher) {
+    return bad("Teacher is required / 老师必填");
+  }
   const durationMin = normalizeTicketInt(body.durationMin);
   const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);
   const wechat = normalizeTicketString(body.wechat, 120);
@@ -134,7 +136,6 @@ export async function POST(
     normalizeTicketString(body.systemUpdated, 5),
     TICKET_SYSTEM_UPDATED_OPTIONS
   );
-
   const created = await prisma.$transaction(async (tx) => {
     const ticketNo = await allocateTicketNo(tx);
     return tx.ticket.create({

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import IntakeForm from "../IntakeForm";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function isOpenStatus(status: string) {
   return !["Completed", "Cancelled"].includes(status);
@@ -158,10 +159,10 @@ export default async function TicketIntakeByTokenPage({
                           <span style={{ whiteSpace: "pre-wrap" }}>{row.nextAction ?? "-"}</span>
                         </div>
                         <div>
-                          <b>截止 / Due:</b> {row.nextActionDue ? row.nextActionDue.toLocaleString() : "-"}
+                          <b>截止 / Due:</b> {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
                         </div>
                         <div>
-                          <b>录入时间 / Created:</b> {row.createdAt.toLocaleString()}
+                          <b>录入时间 / Created:</b> {formatBusinessDateTime(row.createdAt)}
                         </div>
                       </div>
                     </div>

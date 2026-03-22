@@ -10,7 +10,7 @@
 ## Current Known State
 
 - Local HEAD: process hardening chain (includes deploy guard + build hotfix + quick script path fix)
-- Remote deploy completed on `39e9967` and service healthy.
+- Remote deploy completed on `d00be8e` and service healthy.
 - Note: Prior remote dirty workspace was normalized by hard-reset deploy flow.
 
 ## Open Risks

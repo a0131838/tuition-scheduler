@@ -7,6 +7,7 @@ import path from "path";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
+import { normalizeDateOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -22,13 +23,7 @@ function streamPdf(doc: PDFDoc) {
 }
 
 function fmtDate(input: string | Date | null | undefined) {
-  if (!input) return "-";
-  const d = input instanceof Date ? input : new Date(input);
-  if (Number.isNaN(+d)) return "-";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return normalizeDateOnly(input) ?? "-";
 }
 
 function money(n: number) {

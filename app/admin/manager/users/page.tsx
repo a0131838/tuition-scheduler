@@ -12,6 +12,7 @@ import ManagerEmailRemoveClient from "./_components/ManagerEmailRemoveClient";
 import SystemUserCreateClient from "./_components/SystemUserCreateClient";
 import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient";
 import SystemUserActionsClient from "./_components/SystemUserActionsClient";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
 
@@ -44,6 +45,7 @@ export default async function ManagerUsersPage({
   const lang = await getLang();
   const now = new Date();
   const canEdit = true;
+  const canViewAllPasswordControls = currentUser.email.trim().toLowerCase() === "zhaohongwei0880@gmail.com";
   const sp = await searchParams;
   const isEditMode = canEdit && (sp?.mode ?? "").toLowerCase() === "edit";
 
@@ -174,7 +176,7 @@ export default async function ManagerUsersPage({
               <tr key={row.id} style={{ borderTop: "1px solid #f1f5f9" }}>
                 <td>{row.email}</td>
                 <td>{row.note || "-"}</td>
-                <td>{row.createdAt.toLocaleString()}</td>
+                <td>{formatBusinessDateTime(row.createdAt)}</td>
                 {isEditMode && isOwnerManager(currentUser) ? (
                   <td>
                     <ManagerEmailRemoveClient
@@ -238,7 +240,7 @@ export default async function ManagerUsersPage({
                     <div style={{ fontWeight: 700 }}>{u.name}</div>
                     <div>{u.email}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {t(lang, "Created", "创建")}: {u.createdAt.toLocaleString()}
+                      {t(lang, "Created", "创建")}: {formatBusinessDateTime(u.createdAt)}
                       {isManager ? ` | ${t(lang, "Manager", "管理者")}` : ""}
                     </div>
                   </td>
@@ -271,7 +273,7 @@ export default async function ManagerUsersPage({
                   <td>
                     <div>{t(lang, "Active", "活跃")}: {sess?.count ?? 0}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {t(lang, "Last login", "最近登录")}: {sess?.lastCreatedAt ? sess.lastCreatedAt.toLocaleString() : "-"}
+                      {t(lang, "Last login", "最近登录")}: {sess?.lastCreatedAt ? formatBusinessDateTime(sess.lastCreatedAt) : "-"}
                     </div>
                   </td>
                   {isEditMode ? (
@@ -280,6 +282,7 @@ export default async function ManagerUsersPage({
                         <>
                           <SystemUserActionsClient
                             userId={u.id}
+                            canManagePassword={canViewAllPasswordControls}
                             labels={{
                               newPasswordPlaceholder: t(lang, "New password (>=8)", "新密码(至少8位)"),
                               resetPassword: t(lang, "Reset Password", "重置密码"),

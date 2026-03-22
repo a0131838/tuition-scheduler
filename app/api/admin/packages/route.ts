@@ -1,18 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG } from "@/lib/package-mode";
+import { parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
-}
-
-function parseDateStart(s: string) {
-  const [Y, M, D] = s.split("-").map(Number);
-  return new Date(Y, M - 1, D, 0, 0, 0, 0);
-}
-function parseDateEnd(s: string) {
-  const [Y, M, D] = s.split("-").map(Number);
-  return new Date(Y, M - 1, D, 23, 59, 59, 999);
 }
 
 function parseSettlementMode(v: unknown) {
@@ -111,8 +103,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const validFrom = parseDateStart(validFromStr);
-  const validTo = validToStr ? parseDateEnd(validToStr) : null;
+  const validFrom = parseBusinessDateStart(validFromStr);
+  const validTo = validToStr ? parseBusinessDateEnd(validToStr) : null;
+  if (!validFrom || (validToStr && !validTo)) return bad("Invalid validFrom/validTo", 409);
 
   const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
   if (paidAtStr && (Number.isNaN(paidAt!.getTime()) || !paidAt)) return bad("Invalid paidAt", 409);

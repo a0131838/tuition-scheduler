@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AttendanceStatus } from "@prisma/client";
 import { getCancelledSessionStudentIds } from "@/lib/session-students";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   const targetIds = Array.from(new Set(studentIds.map((s) => s.trim()).filter((s) => s && expectedSet.has(s))));
   if (targetIds.length === 0) return bad("No target students", 409);
 
-  const autoNote = `[Quick mark from alerts @ ${new Date().toLocaleString()}]`;
+  const autoNote = `[Quick mark from alerts @ ${formatBusinessDateTime(new Date(), true)}]`;
   await prisma.$transaction(
     targetIds.map((studentId) =>
       prisma.attendance.upsert({

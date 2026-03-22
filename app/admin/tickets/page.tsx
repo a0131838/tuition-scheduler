@@ -17,6 +17,7 @@ import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -42,7 +43,7 @@ function situationLines(summary: string | null | undefined, nextAction: string |
   return {
     currentIssue: parsed.currentIssue || "-",
     requiredAction: parsed.requiredAction || nextAction || "-",
-    latestDeadline: parsed.latestDeadlineText || (nextActionDue ? nextActionDue.toLocaleString() : "-"),
+    latestDeadline: parsed.latestDeadlineText || (nextActionDue ? formatBusinessDateTime(nextActionDue) : "-"),
   };
 }
 
@@ -268,7 +269,7 @@ export default async function AdminTicketsPage({
                       <div>{item.studentName} | {normalizeTicketTypeValue(item.type)}</div>
                       <div>优先级 / Priority: {normalizeTicketPriorityValue(item.priority)}</div>
                       <div>下一步 / Next: {item.nextAction ?? "-"}</div>
-                      <div>截止 / Due: {new Date(item.nextActionDue).toLocaleString()}</div>
+                      <div>截止 / Due: {formatBusinessDateTime(new Date(item.nextActionDue))}</div>
                       <Link scroll={false} href={item.openHref}>打开工单 / Open</Link>
                     </div>
                   ))}
@@ -337,7 +338,7 @@ export default async function AdminTicketsPage({
                     <td>{tk.label ?? "-"}</td>
                     <td style={{ fontFamily: "monospace", fontSize: 12 }}>{tk.token}</td>
                     <td>{tk.isActive && !expired ? "可用 / Active" : "不可用 / Inactive"}</td>
-                    <td>{tk.expiresAt ? tk.expiresAt.toLocaleString() : "-"}</td>
+                    <td>{tk.expiresAt ? formatBusinessDateTime(tk.expiresAt) : "-"}</td>
                     <td>
                       <Link scroll={false} href={`/tickets/intake/${tk.token}`} target="_blank">
                         打开 / Open
@@ -438,7 +439,7 @@ export default async function AdminTicketsPage({
                 </td>
                 <td>
                   <div>{r.studentName}</div>
-                  <div style={{ color: "#64748b", fontSize: 12 }}>{r.createdAt.toLocaleString()}</div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>{formatBusinessDateTime(r.createdAt)}</div>
                 </td>
                 <td>{r.source}</td>
                 <td>{normalizeTicketTypeValue(r.type)}</td>
@@ -447,12 +448,12 @@ export default async function AdminTicketsPage({
                   <div>{r.status}</div>
                   {r.completedAt ? (
                     <div style={{ fontSize: 12, color: "#166534" }}>
-                      {t(lang, "Done At", "完成时间")}: {r.completedAt.toLocaleString()}
+                      {t(lang, "Done At", "完成时间")}: {formatBusinessDateTime(r.completedAt)}
                     </div>
                   ) : null}
                 </td>
                 <td>{r.owner ?? "-"}</td>
-                <td>{r.slaDue ? r.slaDue.toLocaleString() : "-"}</td>
+                <td>{r.slaDue ? formatBusinessDateTime(r.slaDue) : "-"}</td>
                 <td style={{ whiteSpace: "normal", lineHeight: 1.35 }}>
                   <div style={{ display: "grid", gap: 4 }}>
                     <div><b>当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{situation.currentIssue}</span></div>

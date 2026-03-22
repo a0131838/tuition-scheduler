@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import path from 'path';
 import { ExpenseClaimStatus } from '@prisma/client';
-import { formatDateOnly, formatMonthKey } from '@/lib/date-only';
+import { formatDateOnly, formatMonthKey, formatUTCDateOnly, parseDateOnlyToUTCNoon } from '@/lib/date-only';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -59,7 +59,7 @@ export default async function TeacherExpenseClaimsPage({
     const actor = await requireTeacher();
     const current = await getCurrentUser();
     const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
-    const expenseDate = expenseDateRaw ? new Date(`${expenseDateRaw}T00:00:00`) : null;
+    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
     const description = String(formData.get('description') ?? '').trim();
     const studentName = String(formData.get('studentName') ?? '').trim();
     const location = String(formData.get('location') ?? '').trim();
@@ -193,7 +193,7 @@ export default async function TeacherExpenseClaimsPage({
                 {claims.map((claim) => (
                   <tr key={claim.id}>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.claimRefNo}</td>
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatDateOnly(claim.expenseDate)}</td>
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatUTCDateOnly(claim.expenseDate)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>

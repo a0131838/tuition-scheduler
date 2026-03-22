@@ -11,6 +11,7 @@ import UnbindTeacherUserButtonClient from "./UnbindTeacherUserButtonClient";
 import DeleteTemplateButtonClient from "./DeleteTemplateButtonClient";
 import GenerateSessionsButtonClient from "./GenerateSessionsButtonClient";
 import DeleteTeacherNavigateClient from "./DeleteTeacherNavigateClient";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -487,8 +488,8 @@ export default async function TeacherDetailPage({
                       <tr key={`${c.reason}-${i}`} style={{ borderTop: "1px solid #f3e2d1" }}>
                         <td>{c.reason}</td>
                         <td>
-                          {new Date(c.occ.startAt).toLocaleString()} -{" "}
-                          {new Date(c.occ.endAt).toLocaleTimeString()}
+                          {formatBusinessDateTime(new Date(c.occ.startAt))} -{" "}
+                          {formatBusinessTimeOnly(new Date(c.occ.endAt))}
                         </td>
                         <td>{tpl?.student.name ?? "-"}</td>
                         <td>
@@ -519,7 +520,6 @@ export default async function TeacherDetailPage({
     </div>
   );
 }
-
 
 
 

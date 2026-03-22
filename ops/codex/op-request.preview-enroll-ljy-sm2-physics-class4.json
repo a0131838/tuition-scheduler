@@ -1,0 +1,27 @@
+{
+  "operationId": "OP-20260311-ENROLL-LJY-SM2P-04",
+  "task": "Transfer student 李俊仪 from existing SM2 enrollment to SM2 物理 班4 (Adam)",
+  "target": {
+    "entity": "enrollment",
+    "where": "studentId='d6b30350-76b4-4276-b511-2c27b126a51c' and oldClassId='96c1f1c6-3d2d-4c22-b334-72be967a60f0' and newClassId='e523cd7b-e245-4d19-bd25-efac5364630d'"
+  },
+  "change": {
+    "summary": "delete old enrollment (SM2/英文/Jasmine) and create new enrollment (SM2/物理/Adam, 班4)"
+  },
+  "safety": {
+    "maxAffected": 2,
+    "forceApply": false,
+    "confirmPhrase": "确认执行 OP-20260311-ENROLL-LJY-SM2P-04"
+  },
+  "preview": {
+    "affectedCount": 2,
+    "sampleIds": [
+      "delete enrollmentId=93cb0a63-5fc0-4c13-a8c9-922dc4f56de7",
+      "create enrollment studentId=d6b30350-76b4-4276-b511-2c27b126a51c classId=e523cd7b-e245-4d19-bd25-efac5364630d"
+    ]
+  },
+  "rollback": {
+    "strategy": "If new enrollment creation fails after delete, recreate old enrollment into classId=96c1f1c6-3d2d-4c22-b334-72be967a60f0; if both succeed but need revert, delete new enrollment then recreate old enrollment."
+  },
+  "confirmationText": "待老板确认后执行"
+}

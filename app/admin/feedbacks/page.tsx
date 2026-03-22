@@ -6,11 +6,12 @@ import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function getStudentNames(session: any) {
@@ -442,7 +443,7 @@ export default async function AdminFeedbacksPage({
                   </div>
                   <div style={{ textAlign: "right", fontSize: 12 }}>
                     <div>
-                      {t(lang, "Submitted", "提交时间")}: {new Date(r.submittedAt).toLocaleString()}
+                      {t(lang, "Submitted", "提交时间")}: {formatBusinessDateTime(new Date(r.submittedAt))}
                     </div>
                     <div>
                       {t(lang, "Teacher", "老师")}: {r.teacher.name}
@@ -492,7 +493,7 @@ export default async function AdminFeedbacksPage({
                       }}
                     >
                       <div style={{ fontWeight: 700 }}>{t(lang, "Forwarded", "已转发")}</div>
-                      <div>{new Date(r.forwardedAt).toLocaleString()}</div>
+                      <div>{formatBusinessDateTime(new Date(r.forwardedAt))}</div>
                       <div>{r.forwardedBy ?? "-"}</div>
                       <div>{r.forwardChannel ?? "-"}</div>
                       {r.forwardNote ? <div style={{ whiteSpace: "pre-wrap" }}>{r.forwardNote}</div> : null}

@@ -37,6 +37,8 @@ export default async function AdminHome() {
         <section style={{ ...cardStyle, background: "#f8fafc" }}>
           <div style={sectionTitleStyle}>{t(lang, "Finance Actions", "财务入口")}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            <a href="/admin/finance/workbench">{t(lang, "Finance Workbench", "财务工作台")}</a>
+            <a href="/admin/finance/student-package-invoices">{t(lang, "Student Package Invoices", "学生课时包发票")}</a>
             <a href="/admin/reports/teacher-payroll">{t(lang, "Teacher Payroll", "老师工资单")}</a>
             <a href="/admin/reports/partner-settlement">{t(lang, "Partner Settlement", "合作方结算")}</a>
             <a href="/admin/receipts-approvals">{t(lang, "Receipt Approvals & Operations", "收据审批与处理")}</a>

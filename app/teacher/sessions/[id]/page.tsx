@@ -5,6 +5,7 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getCancelledSessionStudentIds, getVisibleSessionStudentNames } from "@/lib/session-students";
 import TeacherAttendanceClient from "./TeacherAttendanceClient";
 import TeacherFeedbackClient from "./TeacherFeedbackClient";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
@@ -18,13 +19,7 @@ function toInputDateTimeValue(value: Date | null | undefined) {
 }
 
 function formatDateTime(value: Date) {
-  const d = new Date(value);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return formatBusinessDateTime(value);
 }
 
 // Attendance and feedback are handled via client fetch to avoid page jump/flash.
@@ -104,7 +99,7 @@ export default async function TeacherSessionDetailPage({
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
       {feedback ? (
         <div style={{ color: "#087", marginBottom: 10 }}>
-          {t(lang, "Last saved", "最近保存")}: {new Date(feedback.submittedAt).toLocaleString()} (
+          {t(lang, "Last saved", "最近保存")}: {formatBusinessDateTime(new Date(feedback.submittedAt))} (
           {feedback.status === "ON_TIME"
             ? t(lang, "On time", "准时")
             : feedback.status === "LATE"
@@ -115,13 +110,13 @@ export default async function TeacherSessionDetailPage({
       ) : null}
       {lastAttendanceSavedAt ? (
         <div style={{ color: "#087", marginBottom: 10 }}>
-          {t(lang, "Last attendance save", "最近点名保存")}: {lastAttendanceSavedAt.toLocaleString()}
+          {t(lang, "Last attendance save", "最近点名保存")}: {formatBusinessDateTime(lastAttendanceSavedAt)}
         </div>
       ) : null}
 
       <div style={{ marginBottom: 12 }}>
         <b>
-          {new Date(session.startAt).toLocaleString()} - {new Date(session.endAt).toLocaleTimeString()}
+          {formatBusinessDateTime(new Date(session.startAt))} - {formatBusinessTimeOnly(new Date(session.endAt))}
         </b>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <ClassTypeBadge capacity={session.class.capacity} compact />
@@ -173,7 +168,7 @@ export default async function TeacherSessionDetailPage({
               "Overdue: please submit now. This feedback will be marked as Late.",
               "已超时：请尽快补交，提交后会标记为迟交。"
             )
-          : `${t(lang, "Deadline", "截止")}: ${deadline.toLocaleString()}`}
+          : `${t(lang, "Deadline", "截止")}: ${formatBusinessDateTime(deadline)}`}
       </div>
       {feedback?.isProxyDraft ? (
         <div style={{ color: "#92400e", background: "#fff7ed", border: "1px solid #fed7aa", padding: 8, borderRadius: 6, marginBottom: 8 }}>
@@ -214,4 +209,3 @@ export default async function TeacherSessionDetailPage({
     </div>
   );
 }
-

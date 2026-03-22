@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireManager } from "@/lib/auth";
 import { packageModeFromNote } from "@/lib/package-mode";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const ATTENDED_STATUS = new Set(["PRESENT", "LATE"]);
 const DEFAULT_REQ_OVERDUE_HOURS = 24;
@@ -15,7 +16,7 @@ function ymd(d: Date) {
 }
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function courseLabel(cls: {
@@ -427,14 +428,14 @@ export default async function AdminManagerPage({
       type: "BOOKING",
       at: r.updatedAt,
       label: `Booking request ${r.status}`,
-      detail: `${r.student?.name ?? "-"} / ${r.teacher?.name ?? "-"} / ${new Date(r.startAt).toLocaleString()}`,
+      detail: `${r.student?.name ?? "-"} / ${r.teacher?.name ?? "-"} / ${formatBusinessDateTime(new Date(r.startAt))}`,
       href: `/admin/booking-links/${r.linkId}`,
     })),
     ...teacherChangesRaw.map((c) => ({
       type: "TEACHER_CHANGE",
       at: c.changedAt,
       label: "Teacher changed",
-      detail: `${c.fromTeacher.name} -> ${c.toTeacher.name} / ${new Date(c.session.startAt).toLocaleString()}`,
+      detail: `${c.fromTeacher.name} -> ${c.toTeacher.name} / ${formatBusinessDateTime(new Date(c.session.startAt))}`,
       href: `/admin/sessions/${c.sessionId}/attendance`,
     })),
     ...packageTxnsRaw.map((x) => ({
@@ -450,7 +451,7 @@ export default async function AdminManagerPage({
       type: "ATTENDANCE",
       at: a.updatedAt,
       label: "Attendance saved",
-      detail: `${a.student?.name ?? "-"} / ${a.status} / ${courseLabel(a.session.class)} / ${new Date(a.session.startAt).toLocaleString()}`,
+      detail: `${a.student?.name ?? "-"} / ${a.status} / ${courseLabel(a.session.class)} / ${formatBusinessDateTime(new Date(a.session.startAt))}`,
       href: `/admin/sessions/${a.sessionId}/attendance`,
     })),
   ]
@@ -582,7 +583,7 @@ export default async function AdminManagerPage({
                               }}
                             >
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", color: tone.fg }}>
-                                {new Date(s.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {courseLabel(s.class)}
+                                {formatBusinessTimeOnly(new Date(s.startAt))} {courseLabel(s.class)}
                                 <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "1px 6px", background: s.class.capacity === 1 ? "#fee2e2" : "#dbeafe", color: s.class.capacity === 1 ? "#991b1b" : "#1e3a8a" }}>
                                   {s.class.capacity === 1 ? t(lang, "1-on-1", "一对一") : t(lang, "Group", "班课")}
                                 </span>
@@ -613,7 +614,7 @@ export default async function AdminManagerPage({
           <div style={{ display: "grid", gap: 6 }}>
             {eventFeed.map((e, idx) => (
               <div key={`${e.label}-${idx}`} style={{ border: "1px solid #eef2f7", borderRadius: 8, padding: 8, background: "#fafcff" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>{new Date(e.at).toLocaleString()}</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{formatBusinessDateTime(new Date(e.at))}</div>
                 <div style={{ fontWeight: 700 }}>{e.label}</div>
                 <div style={{ fontSize: 12, color: "#334155" }}>{e.detail}</div>
                 <div style={{ marginTop: 4 }}><a href={e.href}>{t(lang, "Open", "打开")}</a></div>

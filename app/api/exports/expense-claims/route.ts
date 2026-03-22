@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth';
 import { canFinanceOperateExpense, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
-import { formatDateOnly } from '@/lib/date-only';
+import { formatUTCDateOnly } from '@/lib/date-only';
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? '');
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
       claim.claimRefNo,
       claim.submitterName,
       claim.submitterRole,
-      formatDateOnly(claim.expenseDate),
+      formatUTCDateOnly(claim.expenseDate),
       getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode,
       claim.accountCode,
       claim.studentName || '',

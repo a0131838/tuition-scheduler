@@ -6,6 +6,7 @@ import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 import StudentPackageBalanceCard from "@/app/admin/_components/StudentPackageBalanceCard";
 import { campusRequiresRoom } from "@/lib/campus";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 type CourseOption = { id: string; name: string };
 
@@ -658,7 +659,7 @@ export default function QuickScheduleModal({
                   {previewRows.map((r) => (
                     <tr key={r.index} style={{ borderTop: "1px solid #eee" }}>
                       <td>{r.index}</td>
-                      <td>{new Date(r.startAt).toLocaleString()}</td>
+                      <td>{formatBusinessDateTime(new Date(r.startAt))}</td>
                       <td style={{ color: r.ok ? "#0a7" : "#b00" }}>{r.ok ? labels.available : r.reason}</td>
                     </tr>
                   ))}

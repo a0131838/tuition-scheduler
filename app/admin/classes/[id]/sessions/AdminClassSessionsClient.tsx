@@ -7,6 +7,7 @@ import StudentPackageBalanceCard from "../../../_components/StudentPackageBalanc
 import BlurTimeInput from "@/app/_components/BlurTimeInput";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type EnrollmentRow = { studentId: string; studentName: string };
 type TeacherOption = { id: string; name: string };
@@ -24,7 +25,7 @@ type SessionRow = {
 function fmtSessionRange(startAtIso: string, endAtIso: string) {
   const startAt = new Date(startAtIso);
   const endAt = new Date(endAtIso);
-  return `${startAt.toLocaleString()} - ${endAt.toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(startAt)} - ${formatBusinessTimeOnly(endAt)}`;
 }
 
 function toLocalDateTimeInput(iso: string) {

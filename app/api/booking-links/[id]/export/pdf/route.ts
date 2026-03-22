@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { setPdfFont } from "@/lib/pdf-font";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -75,7 +76,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   doc.moveDown(0.2);
   doc.fontSize(9).text(`Student: ${link.student.name}`);
   doc.text(`Month: ${month}`);
-  doc.text(`Window: ${link.startDate.toLocaleDateString()} - ${link.endDate.toLocaleDateString()}`);
+  doc.text(`Window: ${formatBusinessDateOnly(link.startDate)} - ${formatBusinessDateOnly(link.endDate)}`);
   doc.text(`Teachers: ${link.teachers.map((x) => x.teacher.name).join(", ")}`);
   doc.text(`Duration: ${link.durationMin} min`);
   doc.text(`Start step: ${link.slotStepMin} min`);

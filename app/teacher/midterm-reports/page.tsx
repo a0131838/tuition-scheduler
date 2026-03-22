@@ -2,10 +2,11 @@ import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function fmt(d?: Date | null) {
   if (!d) return "-";
-  return new Date(d).toLocaleString();
+  return formatBusinessDateTime(new Date(d));
 }
 
 export default async function TeacherMidtermReportsPage() {

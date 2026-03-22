@@ -1,0 +1,24 @@
+{
+  "operationId": "OP-20260305-001",
+  "task": "Set wrong attendance status back to UNMARKED",
+  "target": {
+    "entity": "attendance",
+    "where": "sessionId='xxx' AND studentId='yyy'"
+  },
+  "change": {
+    "summary": "status: PRESENT -> UNMARKED"
+  },
+  "safety": {
+    "maxAffected": 5,
+    "forceApply": false,
+    "confirmPhrase": "CONFIRM OP-20260305-001"
+  },
+  "preview": {
+    "affectedCount": 1,
+    "sampleIds": ["sessionId=xxx,studentId=yyy"]
+  },
+  "rollback": {
+    "strategy": "Restore original status from backup snapshot before apply"
+  },
+  "confirmationText": ""
+}

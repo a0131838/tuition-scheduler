@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 
 type SourceOption = { id: string; name: string };
 type TypeOption = { id: string; name: string };
@@ -237,7 +238,7 @@ export default function AdminStudentsClient({
                 <a href={`/admin/students/${s.id}`}>{s.name}</a>
               </td>
               <td>{s.school ?? "-"}</td>
-              <td>{s.birthDate ? new Date(s.birthDate).toLocaleDateString() : "-"}</td>
+              <td>{s.birthDate ? formatBusinessDateOnly(new Date(s.birthDate)) : "-"}</td>
               <td>{s.grade ?? "-"}</td>
               <td>{s.sourceName ?? "-"}</td>
               <td>{s.typeName ?? "-"}</td>

@@ -4,6 +4,7 @@ import { formatMinutesToHours, loadMidtermCandidates } from "@/lib/midterm-repor
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function readForwardMeta(raw: unknown): { forwardedAt: string | null; forwardedByName: string | null; locked: boolean } {
   if (!raw || typeof raw !== "object") return { forwardedAt: null, forwardedByName: null, locked: false };
@@ -273,7 +274,7 @@ export default async function AdminMidtermReportCenterPage({
                         <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
                         {forwardMeta.locked ? (
                           <span style={{ color: "#1d4ed8", fontSize: 12 }}>
-                            {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? new Date(forwardMeta.forwardedAt).toLocaleString() : "-"} ({forwardMeta.forwardedByName || "-"})
+                            {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? formatBusinessDateTime(new Date(forwardMeta.forwardedAt)) : "-"} ({forwardMeta.forwardedByName || "-"})
                           </span>
                         ) : r.status === "SUBMITTED" ? (
                           <form action={markForwardedAndLock}>

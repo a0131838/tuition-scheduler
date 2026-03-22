@@ -11,6 +11,7 @@ import {
 } from "@/lib/teacher-payroll";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Shanghai",
@@ -168,10 +169,10 @@ async function TeacherPayrollBody({
   return (
     <>
       <div style={{ marginBottom: 12, padding: "8px 10px", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, color: "#1e3a8a" }}>
-        {t(lang, "Sent by admin", "管理端发送时间")}: {new Date(sentAt).toLocaleString()}
+        {t(lang, "Sent by admin", "管理端发送时间")}: {formatBusinessDateTime(new Date(sentAt))}
         <br />
         {confirmedAt
-          ? `${t(lang, "Confirmed at", "确认时间")}: ${new Date(confirmedAt).toLocaleString()}`
+          ? `${t(lang, "Confirmed at", "确认时间")}: ${formatBusinessDateTime(new Date(confirmedAt))}`
           : t(lang, "Please review and confirm this payroll.", "请核对后确认此工资单。")}
       </div>
       {cycleInfo ? (

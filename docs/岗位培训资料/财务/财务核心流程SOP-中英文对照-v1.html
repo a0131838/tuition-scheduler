@@ -1,0 +1,914 @@
+<html><head><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;line-height:1.55;font-size:12pt;padding:24px;} h1,h2,h3{margin-top:20px;} ul,ol{margin-top:6px;margin-bottom:10px;} li{margin:4px 0;} p{margin:8px 0;} code{font-family:Menlo,monospace;background:#f4f4f4;padding:1px 3px;border-radius:3px;}</style></head><body>
+<h1>财务核心流程 SOP（中英文对照版）</h1>
+<h1>Core Finance Process SOP (Bilingual)</h1>
+<p>适用对象：财务、管理审批人、教务配合人员、老板复核人员</p>
+<p>For: Finance staff, manager approvers, admin staff, and owner reviewers.</p>
+<p>适用系统：sgtmanage.com 当前线上系统</p>
+<p>System: Current live version of sgtmanage.com.</p>
+<p>适用范围：</p>
+<p>Scope:</p>
+<p>1. Partner Settlement / 合作方结算</p>
+<p>2. Teacher Payroll / 老师工资单</p>
+<p>3. Receipt Approvals / 收据审批</p>
+<p>目标：让财务拿到这份文档后，不需要猜流程，不需要问开发，就知道每一步应该怎么做、谁先做、谁后做、卡住时该找谁。</p>
+<p>Goal: Finance staff should be able to follow this document without guessing, know who does what, in what order, and who to contact when a step is blocked.</p>
+<p>---</p>
+<h1>一、财务每天先看什么</h1>
+<h1>1. What Finance Should Check First Every Day</h1>
+<p>每天登录后台后，先按这个顺序处理：</p>
+<p>After logging into the admin system, use this order first:</p>
+<p>1. 打开 Teacher Payroll / 老师工资单</p>
+<p>Open Teacher Payroll.</p>
+<p>2. 打开 Partner Settlement / 合作方结算</p>
+<p>Open Partner Settlement.</p>
+<p>3. 打开 Receipt Approvals / 收据审批</p>
+<p>Open Receipt Approvals.</p>
+<p>4. 先看有没有：</p>
+<p>Check whether there are any of the following:</p>
+<ul>
+<li>待管理审批 / waiting for manager approval</li>
+<li>待财务审批 / waiting for finance approval</li>
+<li>待发薪 / waiting to be paid</li>
+<li>待开票 / waiting for invoice</li>
+<li>待创建收据 / waiting for receipt creation</li>
+<li>已创建但未完成审批的收据 / receipts created but not fully approved</li>
+</ul>
+<p>5. 最后再做导出、付款、归档</p>
+<p>Do exports, payments, and archiving only after the review above.</p>
+<p>原则：</p>
+<p>Rules:</p>
+<p>1. 先处理卡住主流程的东西</p>
+<p>Handle items blocking the main process first.</p>
+<p>2. 先处理待审批，再处理导出，再处理归档</p>
+<p>Do approvals first, exports second, archiving last.</p>
+<p>3. 任何导出或付款前，先确认前置审批都完成</p>
+<p>Before exporting or paying anything, confirm all prior approvals are complete.</p>
+<p>---</p>
+<h1>二、角色分工</h1>
+<h1>2. Role Responsibilities</h1>
+<h2>1. 教务 / Admin 负责什么</h2>
+<h2>2.1 What Admin Staff Are Responsible For</h2>
+<p>1. 维护老师课次、点名、反馈完整性</p>
+<p>Maintain complete session, attendance, and feedback records.</p>
+<p>2. 生成合作方结算账单前，先确保学生课次、反馈、扣课状态正确</p>
+<p>Before partner billing is created, ensure sessions, feedback, and deduction status are correct.</p>
+<p>3. 如果财务发现数据不对，教务负责先改业务数据，再让财务继续</p>
+<p>If finance finds business data is wrong, admin must correct the business data first before finance continues.</p>
+<h2>2. 管理审批人 / Manager 负责什么</h2>
+<h2>2.2 What Manager Approvers Are Responsible For</h2>
+<p>1. 审批老师工资单</p>
+<p>Approve teacher payroll.</p>
+<p>2. 审批收据</p>
+<p>Approve receipts.</p>
+<p>3. 审批合作方相关收据</p>
+<p>Approve partner-related receipts.</p>
+<p>4. 驳回时必须写原因</p>
+<p>A rejection reason is mandatory.</p>
+<h2>3. 财务 / Finance 负责什么</h2>
+<h2>2.3 What Finance Is Responsible For</h2>
+<p>1. 财务确认老师工资单</p>
+<p>Finance confirmation of teacher payroll.</p>
+<p>2. 标记老师工资已发薪</p>
+<p>Mark teacher payroll as paid.</p>
+<p>3. 生成合作方 Invoice / Receipt</p>
+<p>Create partner invoices and receipts.</p>
+<p>4. 上传付款记录</p>
+<p>Upload payment records.</p>
+<p>5. 财务审批收据</p>
+<p>Finance approval for receipts.</p>
+<p>6. 导出 PDF / XLSX / CSV</p>
+<p>Export PDF / XLSX / CSV.</p>
+<p>7. 核对异常并保留凭证</p>
+<p>Review exceptions and keep evidence.</p>
+<h2>4. 老板 / Owner 负责什么</h2>
+<h2>2.4 What the Owner Is Responsible For</h2>
+<p>1. 规则确认</p>
+<p>Confirm rules and policy.</p>
+<p>2. 高风险驳回或特殊情况审批</p>
+<p>Handle high-risk rejection or special-case approval.</p>
+<p>3. 需要时撤回重做</p>
+<p>Revoke for redo when necessary.</p>
+<p>---</p>
+<h1>三、模块一：Teacher Payroll / 老师工资单</h1>
+<h1>3. Module One: Teacher Payroll</h1>
+<h2>1. 这个模块是干什么的</h2>
+<h2>3.1 What This Module Is For</h2>
+<p>这个模块用来做：</p>
+<p>This module is used to:</p>
+<p>1. 查看每位老师在某个工资月的工资</p>
+<p>View each teacher’s payroll for a payroll month.</p>
+<p>2. 检查工资是否已完成</p>
+<p>Check whether the payroll workflow is complete.</p>
+<p>3. 走完整审批链：老师确认 -&gt; 管理审批 -&gt; 财务确认 -&gt; 财务发薪</p>
+<p>Complete the workflow: teacher review -&gt; manager approval -&gt; finance confirmation -&gt; finance payout.</p>
+<p>4. 配置课时费率</p>
+<p>Configure teaching rates.</p>
+<h2>2. 进入路径</h2>
+<h2>3.2 Navigation Path</h2>
+<p>进入后台后，左侧点击：</p>
+<p>In the admin backend, click:</p>
+<p>1. Teacher Payroll / 老师工资单</p>
+<p>页面顶部会看到：</p>
+<p>At the top of the page, you will see:</p>
+<p>1. Payroll Month / 工资月份</p>
+<p>2. Scope / 统计口径</p>
+<p>3. Apply / 应用</p>
+<p>4. Go to Salary Slips / 跳到工资单</p>
+<p>5. Go to Rate Config / 跳到费率配置</p>
+<p>6. Go to Approval Config / 跳到审批配置</p>
+<h2>3. 第一步：先选工资月份</h2>
+<h2>3.3 Step 1: Select the Payroll Month</h2>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 在 Payroll Month / 工资月份 选择月份</p>
+<p>Select the payroll month.</p>
+<p>2. 在 Scope / 统计口径 选择统计方式</p>
+<p>Select the calculation scope.</p>
+<p>说明：</p>
+<p>Meaning:</p>
+<p>1. All Scheduled Sessions = 全部排课课次（排除整节取消）</p>
+<p>All scheduled sessions excluding fully cancelled sessions.</p>
+<p>2. Completed Only = 仅已完成（已点名 + 已反馈）</p>
+<p>Only sessions with completed attendance and submitted feedback.</p>
+<p>建议：</p>
+<p>Recommendation:</p>
+<p>1. 财务正式核工资时，优先看 Completed Only</p>
+<p>Use Completed Only for formal payroll review.</p>
+<p>2. 如果要核差异或找漏，才看 All Scheduled Sessions</p>
+<p>Use All Scheduled Sessions only when investigating differences or missing items.</p>
+<h2>4. 第二步：看顶部汇总卡</h2>
+<h2>3.4 Step 2: Review the Summary Cards</h2>
+<p>顶部会显示：</p>
+<p>The top summary area shows:</p>
+<p>1. Teachers / 教师数</p>
+<p>2. Total Hours / 总课时</p>
+<p>3. Completed / 已完成</p>
+<p>4. Estimated Salary / 预估工资</p>
+<p>5. Pending Sessions / 待完成课次</p>
+<p>财务要先做的判断：</p>
+<p>Finance should first judge:</p>
+<p>1. Pending Sessions 如果很多，说明这月工资还不能着急结</p>
+<p>If pending sessions are high, payroll is not ready to finalize.</p>
+<p>2. Estimated Salary 要按币种分别看，不能混合相加</p>
+<p>Estimated salary must be checked by currency, not combined across currencies.</p>
+<p>3. 如果看到多种货币，要分别核对</p>
+<p>If multiple currencies appear, review each separately.</p>
+<h2>5. 第三步：看每个老师的工资单状态</h2>
+<h2>3.5 Step 3: Check Each Teacher&#x27;s Salary Slip Status</h2>
+<p>进入 Salary Slips by Teacher / 按老师工资单 区域。</p>
+<p>Go to the Salary Slips by Teacher section.</p>
+<p>每位老师一行，财务要看这几列：</p>
+<p>Each teacher has one row. Finance should review:</p>
+<p>1. 老师姓名 / Teacher name</p>
+<p>2. 课时 / Hours</p>
+<p>3. 工资金额 / Salary amount</p>
+<p>4. 发送状态 / Send status</p>
+<p>5. 审批进度 / Approval progress</p>
+<p>6. 操作 / Actions</p>
+<h3>操作按钮的意思</h3>
+<h3>Meaning of Action Buttons</h3>
+<p>1. Open Detail / 打开详情</p>
+<p>View the full payroll detail.</p>
+<p>2. Send / 发送</p>
+<p>Send the payroll slip to the teacher.</p>
+<p>3. Resend / 重新发送</p>
+<p>Resend the payroll slip.</p>
+<p>4. Revoke / 撤销发送</p>
+<p>Revoke the sent payroll slip.</p>
+<p>5. Manager Approve / 管理审批</p>
+<p>Manager approval.</p>
+<p>6. Finance Confirm / 财务确认</p>
+<p>Finance confirmation.</p>
+<p>7. Mark Paid / 标记已发薪</p>
+<p>Mark salary as paid.</p>
+<p>8. Finance Reject / 财务驳回</p>
+<p>Finance rejection with reason.</p>
+<h2>6. 老师工资单完整流程</h2>
+<h2>3.6 Full Teacher Payroll Workflow</h2>
+<h3>第一步：教务先保证基础数据完整</h3>
+<h3>Step 1: Admin Must Ensure the Base Data Is Complete</h3>
+<p>财务不要一上来就发薪。先确认教务已完成：</p>
+<p>Finance should not start payout immediately. First confirm admin has completed:</p>
+<p>1. 老师该月课次已经排完</p>
+<p>Sessions are scheduled.</p>
+<p>2. 点名完成</p>
+<p>Attendance is completed.</p>
+<p>3. 老师反馈完成</p>
+<p>Teacher feedback is completed.</p>
+<p>4. 整节取消课次不会计入工资</p>
+<p>Fully cancelled sessions are excluded.</p>
+<p>如果发现：</p>
+<p>If you find:</p>
+<p>1. 课次未点名 / session attendance missing</p>
+<p>2. 没反馈 / missing feedback</p>
+<p>3. 班课/一对一费率不对 / group or 1-on-1 rate is wrong</p>
+<p>先退回教务处理，不要往后走。</p>
+<p>Return it to admin for correction before proceeding.</p>
+<h3>第二步：非财务管理员发送工资单给老师</h3>
+<h3>Step 2: Non-finance Admin Sends the Payroll Slip to the Teacher</h3>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 找到对应老师那一行</p>
+<p>Find the teacher row.</p>
+<p>2. 点 Send / 发送</p>
+<p>Click Send.</p>
+<p>目的：</p>
+<p>Purpose:</p>
+<p>1. 让老师先看到自己的工资单</p>
+<p>Let the teacher review the payroll slip first.</p>
+<p>2. 老师确认有没有明显问题</p>
+<p>Let the teacher identify obvious issues.</p>
+<h3>第三步：管理审批</h3>
+<h3>Step 3: Manager Approval</h3>
+<p>前提：</p>
+<p>Prerequisite:</p>
+<p>1. 老师工资单已经发送</p>
+<p>The slip has been sent.</p>
+<p>2. 老师确认后无问题，或管理层已决定继续</p>
+<p>The teacher has no objection, or management decides to continue.</p>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 管理审批人点 Manager Approve / 管理审批</p>
+<p>The manager approver clicks Manager Approve.</p>
+<p>结果：</p>
+<p>Result:</p>
+<p>1. 管理审批状态变成完成</p>
+<p>Manager approval becomes complete.</p>
+<p>2. 只有管理审批完成后，财务才能继续</p>
+<p>Finance can continue only after manager approval is complete.</p>
+<h3>第四步：财务确认</h3>
+<h3>Step 4: Finance Confirmation</h3>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 财务检查工资明细</p>
+<p>Finance reviews the payroll detail.</p>
+<p>2. 点 Finance Confirm / 财务确认</p>
+<p>Click Finance Confirm.</p>
+<p>财务确认前必须核：</p>
+<p>Before confirming, finance must check:</p>
+<p>1. 月份是否正确 / payroll month is correct</p>
+<p>2. 课次是否合理 / sessions look reasonable</p>
+<p>3. 币种是否正确 / currency is correct</p>
+<p>4. 班课是否误用了一对一费率回退 / group sessions are not wrongly using a 1-on-1 fallback</p>
+<p>5. 是否有明显缺课或重复课次 / there are no obvious missing or duplicate sessions</p>
+<h3>第五步：财务发薪</h3>
+<h3>Step 5: Finance Payout</h3>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 付款完成后，点 Mark Paid / 标记已发薪</p>
+<p>After payment is completed, click Mark Paid.</p>
+<p>结果：</p>
+<p>Result:</p>
+<p>1. 该老师工资单进入已发薪状态</p>
+<p>The payroll record is marked as paid.</p>
+<p>2. 后续只能查看或有限重发</p>
+<p>After that, only view or limited resend actions remain.</p>
+<h3>第六步：如果要驳回</h3>
+<h3>Step 6: If Finance Must Reject</h3>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 点 Finance Reject / 财务驳回</p>
+<p>Click Finance Reject.</p>
+<p>2. 填 Reject reason / 驳回原因</p>
+<p>Enter the rejection reason.</p>
+<p>3. 提交</p>
+<p>Submit.</p>
+<p>驳回时必须写清楚，例如：</p>
+<p>Use a clear reason, for example:</p>
+<p>1. 课时未完成 / hours not complete</p>
+<p>2. 班课费率未配置 / group rate not configured</p>
+<p>3. 明细有误 / detail error</p>
+<p>4. 币种不对 / wrong currency</p>
+<h2>7. 老师工资明细页怎么用</h2>
+<h2>3.7 How to Use the Teacher Payroll Detail Page</h2>
+<p>点击某个老师行的 Open Detail / 打开详情。</p>
+<p>Click Open Detail on a teacher row.</p>
+<p>进入后会看到：</p>
+<p>You will see:</p>
+<p>1. Payroll Month / 工资月份</p>
+<p>2. Scope / 统计口径</p>
+<p>3. 当前周期 / current period</p>
+<p>4. Combo Summary / 课程组合汇总</p>
+<p>5. Session Details / 逐课次明细</p>
+<h3>财务在明细页重点看什么</h3>
+<h3>What Finance Should Focus on in the Detail Page</h3>
+<p>1. Course Combo / 课程组合</p>
+<p>2. Teaching Mode / 班型</p>
+<p>3. Hourly Rate / 课时费</p>
+<p>4. Amount / 金额</p>
+<p>5. Special / 特别标记</p>
+<p>6. Pending Reason / 未完成原因</p>
+<h3>如果看到这些情况，要暂停</h3>
+<h3>Stop and Investigate if You See These</h3>
+<p>1. Using 1-on-1 fallback for group rate</p>
+<p>This means a group rate is missing and a 1-on-1 fallback is being used.</p>
+<p>2. Pending</p>
+<p>This means the session is incomplete.</p>
+<p>3. Cancelled+Charged</p>
+<p>This means the session was cancelled but still deducted and must be confirmed.</p>
+<h2>8. 费率配置怎么做</h2>
+<h2>3.8 How to Configure Rates</h2>
+<p>进入 Rate Config / 费率配置 区块。</p>
+<p>Go to the Rate Config section.</p>
+<p>费率按以下维度配置：</p>
+<p>Rates are configured by:</p>
+<p>1. 老师 / Teacher</p>
+<p>2. 课程 / Course</p>
+<p>3. 科目 / Subject</p>
+<p>4. 级别 / Level</p>
+<p>5. Teaching Mode / 授课模式</p>
+<ul>
+<li>`ONE_ON_ONE`</li>
+<li>`GROUP`</li>
+</ul>
+<p>6. 货币 / Currency</p>
+<h3>配置步骤</h3>
+<h3>Configuration Steps</h3>
+<p>1. 找到对应老师/课程/科目行</p>
+<p>Find the correct teacher/course/subject row.</p>
+<p>2. 确认是 ONE_ON_ONE 还是 GROUP</p>
+<p>Confirm the mode.</p>
+<p>3. 输入费率金额</p>
+<p>Enter the rate amount.</p>
+<p>4. 选择货币</p>
+<p>Select the currency.</p>
+<p>5. 点保存</p>
+<p>Save.</p>
+<h3>重要原则</h3>
+<h3>Important Principles</h3>
+<p>1. 一对一和班课费率不要混</p>
+<p>Do not mix 1-on-1 and group rates.</p>
+<p>2. 如果同一个老师教同一课程的一对一和班课，就要录两条</p>
+<p>If the same teacher teaches both 1-on-1 and group for the same combo, create two rows.</p>
+<p>3. 不同币种不能混加</p>
+<p>Do not combine different currencies.</p>
+<p>4. 班课暂时没有 GROUP 费率时，系统会回退到一对一费率，但页面会提示</p>
+<p>If a group rate is missing, the system may temporarily fall back to 1-on-1 and show a warning.</p>
+<h2>9. 审批配置怎么做</h2>
+<h2>3.9 How to Configure Payroll Approval Roles</h2>
+<p>进入 Approval Config / 审批配置。</p>
+<p>Open the Approval Config section.</p>
+<p>可配置：</p>
+<p>You can configure:</p>
+<p>1. 经理审批人 / manager approvers</p>
+<p>2. 财务审批人 / finance approvers</p>
+<p>原则：</p>
+<p>Rules:</p>
+<p>1. 只有有权限的人改</p>
+<p>Only authorized users may edit this.</p>
+<p>2. 配置改动后，后续工资审批就会按新规则走</p>
+<p>New payroll approvals will follow the updated config.</p>
+<p>3. 配置错误会直接影响审批链</p>
+<p>A wrong config directly affects the approval chain.</p>
+<h2>10. 老师工资模块最常见错误</h2>
+<h2>3.10 Most Common Payroll Errors</h2>
+<p>1. 没有等点名和反馈完成就发薪</p>
+<p>Paying before attendance and feedback are complete.</p>
+<p>2. 班课还在用一对一费率回退，却没去补 GROUP 费率</p>
+<p>Ignoring group-rate fallback and not configuring a proper GROUP rate.</p>
+<p>3. 不同币种混算</p>
+<p>Mixing currencies.</p>
+<p>4. 财务还没确认就先标记已发薪</p>
+<p>Marking as paid before finance confirmation.</p>
+<p>5. 驳回时不写原因</p>
+<p>Rejecting without a reason.</p>
+<p>---</p>
+<h1>四、模块二：Partner Settlement / 合作方结算</h1>
+<h1>4. Module Two: Partner Settlement</h1>
+<h2>1. 这个模块是干什么的</h2>
+<h2>4.1 What This Module Is For</h2>
+<p>这个模块用来处理合作方的账单和收据，包括：</p>
+<p>This module handles partner billing and receipts, including:</p>
+<p>1. 生成合作方结算项 / creating settlement items</p>
+<p>2. 生成合作方 Invoice / creating partner invoices</p>
+<p>3. 上传合作方付款记录 / uploading partner payment records</p>
+<p>4. 创建合作方 Receipt / creating partner receipts</p>
+<p>5. 进入收据审批 / sending receipts to approval</p>
+<p>6. 导出 PDF / XLSX / exporting PDF / XLSX</p>
+<h2>2. 进入路径</h2>
+<h2>4.2 Navigation Path</h2>
+<p>后台左侧点击：</p>
+<p>In the admin backend, click:</p>
+<p>1. Partner Settlement / 合作方结算</p>
+<p>页面顶部会看到：</p>
+<p>At the top of the page, you will see:</p>
+<p>1. Month / 月份</p>
+<p>2. Apply / 应用</p>
+<p>3. Open Billing Workspace / 打开账单工作区</p>
+<p>重要规则：</p>
+<p>Important rule:</p>
+<p>1. 这里只统计来源为合作方渠道的学生</p>
+<p>Only students from the partner source channel are included.</p>
+<h2>3. 第一步：先看待结算概览</h2>
+<h2>4.3 Step 1: Review the Pending Settlement Overview</h2>
+<p>页面会显示：</p>
+<p>The page shows:</p>
+<p>1. Online Pending / 线上待结算</p>
+<p>2. Offline Pending / 线下待结算</p>
+<p>3. Pending Records / 待开票记录</p>
+<p>4. Invoiced Records / 已开票记录</p>
+<p>财务先看：</p>
+<p>Finance should first review:</p>
+<p>1. 本月有没有待结算数据</p>
+<p>Whether there are pending items this month.</p>
+<p>2. 总金额是否合理</p>
+<p>Whether the total amount is reasonable.</p>
+<p>3. 是线上结算多，还是线下按月结算多</p>
+<p>Whether online or offline monthly settlement is more significant.</p>
+<h2>4. 第二步：设置费率</h2>
+<h2>4.4 Step 2: Set the Partner Settlement Rates</h2>
+<p>在 Rate Settings / 费率设置 可以设置：</p>
+<p>In Rate Settings, you can configure:</p>
+<p>1. Online rate per 45min / 线上每45分钟单价</p>
+<p>2. Offline rate per 45min / 线下每45分钟单价</p>
+<p>规则：</p>
+<p>Rule:</p>
+<p>1. 金额 = 总分钟 / 45 × 单价</p>
+<p>Amount = total minutes / 45 × rate.</p>
+<p>2. 改费率会直接影响账单金额</p>
+<p>Changing the rate directly changes billing amounts.</p>
+<p>3. 费率变更前最好先和老板确认</p>
+<p>Confirm with the owner before changing rates.</p>
+<h2>5. 第三步：检查线上待结算</h2>
+<h2>4.5 Step 3: Review Online Pending Items</h2>
+<p>在 Online Pending (Package Completed)：</p>
+<p>In Online Pending (Package Completed):</p>
+<p>1. 每个完结课包是一条待结算项</p>
+<p>Each completed package becomes one settlement item.</p>
+<p>2. 同一个学生再次买新课包，也要分开结算</p>
+<p>If the same student buys another package, it must be settled separately.</p>
+<p>操作步骤：</p>
+<p>Steps:</p>
+<p>1. 看学生 / check student</p>
+<p>2. 看课程 / check course</p>
+<p>3. 看课包状态 / check package status</p>
+<p>4. 看小时数 / check hours</p>
+<p>5. 看金额 / check amount</p>
+<p>6. 确认后点 Create Bill / 生成账单</p>
+<p>After confirmation, click Create Bill.</p>
+<h2>6. 第四步：检查线下待结算</h2>
+<h2>4.6 Step 4: Review Offline Pending Items</h2>
+<p>在 Offline Pending (Monthly)：</p>
+<p>In Offline Pending (Monthly):</p>
+<p>1. 这是按月统计的线下结算</p>
+<p>These are offline monthly settlement items.</p>
+<p>2. 会纳入 PRESENT / LATE</p>
+<p>PRESENT and LATE are included.</p>
+<p>3. 以及 EXCUSED 但已扣课 的情况</p>
+<p>EXCUSED with charged deduction is also included.</p>
+<p>4. 要求课次有反馈</p>
+<p>The session must have feedback.</p>
+<h3>财务先看预警</h3>
+<h3>Check Warnings First</h3>
+<p>如果页面出现 Settlement Warnings / 结算预警：</p>
+<p>If the page shows settlement warnings:</p>
+<p>1. 说明点名总数和可结算数不一致</p>
+<p>Attendance count and settlement-eligible count do not match.</p>
+<p>2. 不要直接生成账单</p>
+<p>Do not generate the bill immediately.</p>
+<p>3. 先点学生名字</p>
+<p>Click the student name first.</p>
+<p>4. 让教务检查：</p>
+<p>Ask admin staff to check:</p>
+<ul>
+<li>是否缺反馈 / missing feedback</li>
+<li>是否状态不对 / wrong status</li>
+<li>是否有不该纳入的点名 / attendance incorrectly included</li>
+</ul>
+<h3>预警处理完后再生成账单</h3>
+<h3>Generate the Bill Only After Warnings Are Resolved</h3>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 找到对应学生行</p>
+<p>Find the student row.</p>
+<p>2. 确认月份、课次、小时、金额</p>
+<p>Confirm month, sessions, hours, and amount.</p>
+<p>3. 点 Create Bill / 生成账单</p>
+<p>Click Create Bill.</p>
+<h2>7. 第五步：看最近结算记录</h2>
+<h2>4.7 Step 5: Review Recent Settlement Records</h2>
+<p>在 Recent Settlement Records / 最近结算记录：</p>
+<p>In Recent Settlement Records:</p>
+<h3>第一块：待开票结算记录（可撤回）</h3>
+<h3>Block 1: Pending Settlement Records (Revertible)</h3>
+<p>这里表示：</p>
+<p>This means:</p>
+<p>1. 已生成结算项</p>
+<p>Settlement items have been created.</p>
+<p>2. 但还没做 Invoice</p>
+<p>But an invoice has not been created yet.</p>
+<p>如果发现做错了：</p>
+<p>If something is wrong:</p>
+<p>1. 点 Revert / 撤回</p>
+<p>Click Revert.</p>
+<p>2. 让数据回到待结算状态</p>
+<p>Return the data to pending settlement.</p>
+<p>注意：</p>
+<p>Important:</p>
+<p>1. 如果已经关联到 Invoice，就不能随便撤回</p>
+<p>If it is already linked to an invoice, you cannot freely revert it.</p>
+<h3>第二块：已开票记录（按 Invoice 聚合）</h3>
+<h3>Block 2: Invoiced Records (Grouped by Invoice)</h3>
+<p>这里表示：</p>
+<p>This means:</p>
+<p>1. 已经成功生成合作方 Invoice</p>
+<p>Partner invoices have already been created.</p>
+<p>2. 可以继续做付款记录和收据</p>
+<p>You can continue with payment records and receipts.</p>
+<h2>8. 第六步：进入 Partner Settlement Billing / 合作方结算账单中心</h2>
+<h2>4.8 Step 6: Open the Partner Settlement Billing Workspace</h2>
+<p>点击：</p>
+<p>Click:</p>
+<p>1. Open Billing Workspace / 打开账单工作区</p>
+<p>这个页面是合作方结算最核心的操作页。</p>
+<p>This is the core operations page for partner settlement.</p>
+<p>顶部有 5 个标签：</p>
+<p>Top tabs:</p>
+<p>1. Create Invoice</p>
+<p>2. Payment Records</p>
+<p>3. Create Receipt</p>
+<p>4. Invoices</p>
+<p>5. Receipts &amp; Approval</p>
+<h2>9. Create Invoice 标签怎么做</h2>
+<h2>4.9 How to Use the Create Invoice Tab</h2>
+<p>在 Create Invoice (Batch) 填：</p>
+<p>In Create Invoice (Batch), fill in:</p>
+<p>1. Invoice No.</p>
+<p>2. Issue Date</p>
+<p>3. Due Date</p>
+<p>4. Payment Terms</p>
+<p>5. Bill To</p>
+<p>6. Description</p>
+<p>7. Manual Extra Items / 手动附加项目</p>
+<p>8. Note</p>
+<p>然后点：</p>
+<p>Then click:</p>
+<p>1. Create Invoice (Batch)</p>
+<p>原则：</p>
+<p>Rules:</p>
+<p>1. Invoice No 要规范</p>
+<p>Use a consistent invoice numbering rule.</p>
+<p>2. 手动附加项目每行一个：描述|金额</p>
+<p>Manual extra items must be one line each: description|amount.</p>
+<p>3. 生成前确认本批次学生和金额都对</p>
+<p>Confirm students and amounts before creating the invoice.</p>
+<h2>10. Payment Records 标签怎么做</h2>
+<h2>4.10 How to Use the Payment Records Tab</h2>
+<p>这是财务上传合作方付款凭证的地方。</p>
+<p>This is where finance uploads partner payment proof.</p>
+<p>填写：</p>
+<p>Fill in:</p>
+<p>1. Payment Proof</p>
+<p>2. Payment Date</p>
+<p>3. Payment Method</p>
+<p>4. Reference No.</p>
+<p>5. Replace Existing</p>
+<p>6. Note</p>
+<p>然后点：</p>
+<p>Then click:</p>
+<p>1. Upload</p>
+<p>上传后，下方 Payment Records 列表可以看：</p>
+<p>After upload, the list shows:</p>
+<p>1. 上传时间 / upload time</p>
+<p>2. 付款日期 / payment date</p>
+<p>3. 付款方式 / method</p>
+<p>4. 流水号 / reference number</p>
+<p>5. 文件 / file</p>
+<p>6. 备注 / note</p>
+<p>7. 上传人 / uploaded by</p>
+<p>如果传错：</p>
+<p>If uploaded wrongly:</p>
+<p>1. 可点 Delete</p>
+<p>Click Delete.</p>
+<p>2. 重新上传</p>
+<p>Upload again.</p>
+<h2>11. Create Receipt 标签怎么做</h2>
+<h2>4.11 How to Use the Create Receipt Tab</h2>
+<p>这是合作方收据创建页。</p>
+<p>This is the partner receipt creation page.</p>
+<p>需要填写：</p>
+<p>You must fill in:</p>
+<p>1. Source Invoice</p>
+<p>2. Receipt No.</p>
+<p>3. Receipt Date</p>
+<p>4. Received From</p>
+<p>5. Paid By</p>
+<p>6. Quantity</p>
+<p>7. Amount</p>
+<p>8. GST</p>
+<p>9. Total</p>
+<p>10. Amount Received</p>
+<p>11. Payment Record</p>
+<p>12. Note</p>
+<p>然后点：</p>
+<p>Then click:</p>
+<p>1. Create Receipt</p>
+<p>注意：</p>
+<p>Important:</p>
+<p>1. 必须先有 Invoice，才能创建 Receipt</p>
+<p>An invoice must exist before a receipt can be created.</p>
+<p>2. 最好关联 Payment Record，保证审计完整</p>
+<p>Link a payment record whenever possible for a complete audit trail.</p>
+<h2>12. Invoices 标签怎么做</h2>
+<h2>4.12 How to Use the Invoices Tab</h2>
+<p>这里用来看和导出 Invoice。</p>
+<p>This tab is used to review and export invoices.</p>
+<p>每条 Invoice 可做：</p>
+<p>Each invoice supports:</p>
+<p>1. Export PDF</p>
+<p>2. PDF + Seal</p>
+<p>3. 线下月结可导出：</p>
+<p>For offline monthly mode, you can also export:</p>
+<ul>
+<li>`Export XLSX`</li>
+<li>`XLSX + Seal`</li>
+</ul>
+<p>4. 如需删掉错误 Invoice，可点 Delete</p>
+<p>If an invoice is wrong, you can delete it.</p>
+<p>原则：</p>
+<p>Rules:</p>
+<p>1. 已发给合作方前，先内部核一遍</p>
+<p>Review internally before sending to the partner.</p>
+<p>2. 删 Invoice 要确认不会破坏后续收据链路</p>
+<p>Deleting an invoice must not break later receipt flow.</p>
+<h2>13. Receipts &amp; Approval 标签怎么做</h2>
+<h2>4.13 How to Use the Receipts &amp; Approval Tab</h2>
+<p>这里用来看合作方收据状态。</p>
+<p>This tab is for reviewing partner receipt status.</p>
+<p>每条收据会显示：</p>
+<p>Each receipt row shows:</p>
+<p>1. Receipt No.</p>
+<p>2. Date</p>
+<p>3. Invoice No.</p>
+<p>4. Payment Record</p>
+<p>5. Amount</p>
+<p>6. Manager</p>
+<p>7. Finance</p>
+<p>8. Actions</p>
+<p>9. PDF</p>
+<p>10. Delete</p>
+<p>如果审批没完成：</p>
+<p>If approval is not complete:</p>
+<p>1. 会提示去 Receipt Approval Center</p>
+<p>It will prompt you to go to the Receipt Approval Center.</p>
+<p>如果审批完成：</p>
+<p>If approval is complete:</p>
+<p>1. 可以 Export PDF</p>
+<p>You can export the PDF.</p>
+<p>---</p>
+<h1>五、模块三：Receipt Approvals / 收据审批</h1>
+<h1>5. Module Three: Receipt Approvals</h1>
+<h2>1. 这个模块是干什么的</h2>
+<h2>5.1 What This Module Is For</h2>
+<p>这个模块统一处理两类收据：</p>
+<p>This module handles two receipt types in one place:</p>
+<p>1. Parent / 家长收据</p>
+<p>2. Partner / 合作方收据</p>
+<p>它负责：</p>
+<p>It is responsible for:</p>
+<p>1. 查看收据队列 / viewing the receipt queue</p>
+<p>2. 选择一条收据 / selecting one receipt</p>
+<p>3. 做管理审批 / manager approval</p>
+<p>4. 做财务审批 / finance approval</p>
+<p>5. 驳回重做 / reject or revoke for redo</p>
+<p>6. 导出 PDF / exporting PDF</p>
+<h2>2. 进入路径</h2>
+<h2>5.2 Navigation Path</h2>
+<p>后台左侧点击：</p>
+<p>In the admin backend, click:</p>
+<p>1. Receipt Approvals / 收据审批</p>
+<p>顶部筛选项：</p>
+<p>Top filters:</p>
+<p>1. Package ID / 课包ID</p>
+<p>2. Month / 月份</p>
+<p>3. View / 视图</p>
+<ul>
+<li>`All`</li>
+<li>`Parent`</li>
+<li>`Partner`</li>
+</ul>
+<p>4. Filter / 筛选</p>
+<p>5. Reset / 重置</p>
+<h2>3. 家长收据怎么走</h2>
+<h2>5.3 Parent Receipt Workflow</h2>
+<h3>第一步：选择 package</h3>
+<h3>Step 1: Select the Package</h3>
+<p>如果是家长收据，先在：</p>
+<p>For a parent receipt, first use:</p>
+<p>1. Quick Select Package / 快捷选择课包</p>
+<p>里选择课包</p>
+<p>Select the package.</p>
+<p>2. 点 Open Finance Operations / 打开财务操作</p>
+<p>Click Open Finance Operations.</p>
+<h3>第二步：上传缴费记录</h3>
+<h3>Step 2: Upload the Payment Record</h3>
+<p>进入 Finance Receipt Operations / 财务收据操作</p>
+<p>In the finance receipt operations area,</p>
+<p>展开：</p>
+<p>Expand:</p>
+<p>1. 1) Upload Payment Record / 上传缴费记录</p>
+<p>填写：</p>
+<p>Fill in:</p>
+<p>1. Payment Proof</p>
+<p>2. Payment Date</p>
+<p>3. Payment Method</p>
+<p>4. Reference No.</p>
+<p>5. Replace Existing</p>
+<p>6. Note</p>
+<p>点：</p>
+<p>Click:</p>
+<p>1. Upload</p>
+<h3>第三步：检查已上传记录</h3>
+<h3>Step 3: Review Existing Payment Records</h3>
+<p>展开：</p>
+<p>Expand:</p>
+<p>1. 2) Existing Payment Records / 已上传缴费记录</p>
+<p>核对：</p>
+<p>Review:</p>
+<p>1. 日期 / date</p>
+<p>2. 方法 / method</p>
+<p>3. 流水号 / reference number</p>
+<p>4. 文件 / file</p>
+<p>5. 备注 / note</p>
+<p>6. 上传人 / uploaded by</p>
+<h3>第四步：创建收据</h3>
+<h3>Step 4: Create the Receipt</h3>
+<p>展开：</p>
+<p>Expand:</p>
+<p>1. 3) Create Receipt / 创建收据</p>
+<p>填写：</p>
+<p>Fill in:</p>
+<p>1. Source Invoice</p>
+<p>2. Receipt No.</p>
+<p>3. Receipt Date</p>
+<p>4. Received From</p>
+<p>5. Paid By</p>
+<p>6. Quantity</p>
+<p>7. Amount</p>
+<p>8. GST</p>
+<p>9. Total</p>
+<p>10. Amount Received</p>
+<p>11. Payment Record</p>
+<p>12. Description</p>
+<p>13. Note</p>
+<p>点：</p>
+<p>Click:</p>
+<p>1. Create Receipt</p>
+<h2>4. 合作方收据怎么走</h2>
+<h2>5.4 Partner Receipt Workflow</h2>
+<p>合作方收据通常先在 Partner Settlement Billing 那边创建，</p>
+<p>Partner receipts are usually created from Partner Settlement Billing,</p>
+<p>然后统一回到 Receipt Approval Center 进行审批。</p>
+<p>and then reviewed in the Receipt Approval Center.</p>
+<h2>5. Unified Receipt Queue / 统一收据队列 怎么看</h2>
+<h2>5.5 How to Read the Unified Receipt Queue</h2>
+<p>这个表是最重要的收据总表。</p>
+<p>This is the main receipt queue table.</p>
+<p>每一行会显示：</p>
+<p>Each row shows:</p>
+<p>1. 类型（家长/合作方） / type</p>
+<p>2. 收据号 / receipt number</p>
+<p>3. 日期 / date</p>
+<p>4. 发票号 / invoice number</p>
+<p>5. 学生或合作方对象 / student or partner</p>
+<p>6. 缴费记录 / payment record</p>
+<p>7. 金额 / amount</p>
+<p>8. 管理审批进度 / manager approval progress</p>
+<p>9. 财务审批进度 / finance approval progress</p>
+<p>10. 当前状态 / current status</p>
+<p>11. Open / 打开</p>
+<h2>6. 选中收据后怎么审批</h2>
+<h2>5.6 How to Approve a Selected Receipt</h2>
+<p>点击某一行 Open / 打开 后，进入：</p>
+<p>After clicking Open, go to:</p>
+<p>1. Selected Receipt Details &amp; Actions / 选中收据详情与审批操作</p>
+<p>这里会显示：</p>
+<p>This section shows:</p>
+<p>1. 类型 / type</p>
+<p>2. 收据号 / receipt number</p>
+<p>3. 发票号 / invoice number</p>
+<p>4. 缴费记录 / payment record</p>
+<p>5. 之前的驳回原因（如果有） / previous rejection reasons, if any</p>
+<h3>对家长收据</h3>
+<h3>For Parent Receipts</h3>
+<p>管理审批人可以：</p>
+<p>Manager approvers can:</p>
+<p>1. Manager Approve / 管理审批通过</p>
+<p>2. Manager Reject / 管理驳回</p>
+<p>财务审批人可以：</p>
+<p>Finance approvers can:</p>
+<p>1. Finance Approve / 财务审批通过</p>
+<p>2. Finance Reject / 财务驳回</p>
+<h3>对合作方收据</h3>
+<h3>For Partner Receipts</h3>
+<p>管理审批人可以：</p>
+<p>Manager approvers can:</p>
+<p>1. Manager Approve / 管理审批通过</p>
+<p>2. Manager Reject / 管理驳回</p>
+<p>财务审批人可以：</p>
+<p>Finance approvers can:</p>
+<p>1. Finance Approve / 财务审批通过</p>
+<p>2. Finance Reject / 财务驳回</p>
+<h3>驳回规则</h3>
+<h3>Rejection Rule</h3>
+<p>驳回时必须：</p>
+<p>When rejecting, you must:</p>
+<p>1. 填原因</p>
+<p>Enter a reason.</p>
+<p>2. 说明问题在哪</p>
+<p>State clearly what is wrong.</p>
+<p>例如：</p>
+<p>Examples:</p>
+<p>1. 付款凭证不对 / payment proof is incorrect</p>
+<p>2. 金额和发票不一致 / amount does not match invoice</p>
+<p>3. 收据号不规范 / receipt number is not correct</p>
+<p>4. 缴费记录没关联 / payment record is missing or not linked</p>
+<h2>7. Revoke To Redo / 撤回重做 是什么时候用</h2>
+<h2>5.7 When to Use Revoke To Redo</h2>
+<p>这个按钮是高级权限使用的。</p>
+<p>This button is for higher-privilege use.</p>
+<p>适用情况：</p>
+<p>Use it when:</p>
+<p>1. 收据已经创建，但内容明显错误</p>
+<p>The receipt has already been created but contains a clear error.</p>
+<p>2. 不适合继续审批</p>
+<p>It is not suitable to continue approval.</p>
+<p>3. 需要整个单据回到重做状态</p>
+<p>The whole receipt must return to redo status.</p>
+<p>操作：</p>
+<p>Action:</p>
+<p>1. 填 撤回原因（可选）</p>
+<p>Enter an optional revoke reason.</p>
+<p>2. 点 Revoke To Redo / 撤回重做</p>
+<p>Click Revoke To Redo.</p>
+<h2>8. PDF 导出什么时候能做</h2>
+<h2>5.8 When PDF Export Is Allowed</h2>
+<p>规则：</p>
+<p>Rule:</p>
+<p>1. 只有审批完成后</p>
+<p>Only after approval is complete</p>
+<p>2. 才能导出 PDF</p>
+<p>can the PDF be exported.</p>
+<p>如果还没完成审批：</p>
+<p>If approval is still incomplete:</p>
+<p>1. 页面会显示 Pending approval / 等待审批</p>
+<p>The page will show Pending approval.</p>
+<p>2. 不要导出未完成的正式文件</p>
+<p>Do not export unfinished official documents.</p>
+<p>---</p>
+<h1>六、财务在这三条流程里最常见的错误</h1>
+<h1>6. Most Common Finance Errors Across These Three Modules</h1>
+<h2>1. 老师工资单</h2>
+<h2>6.1 Teacher Payroll Errors</h2>
+<p>1. 没有等点名和反馈完成就发薪</p>
+<p>Paying before attendance and feedback are complete.</p>
+<p>2. 班课还在用一对一费率回退，却没去补 GROUP 费率</p>
+<p>Ignoring group-rate fallback and failing to add a GROUP rate.</p>
+<p>3. 不同币种混算</p>
+<p>Mixing currencies.</p>
+<p>4. 财务还没确认就先标记已发薪</p>
+<p>Marking paid before finance confirmation.</p>
+<p>5. 驳回时不写原因</p>
+<p>Rejecting without a reason.</p>
+<h2>2. 合作方结算</h2>
+<h2>6.2 Partner Settlement Errors</h2>
+<p>1. 预警没处理就生成账单</p>
+<p>Creating bills before settlement warnings are resolved.</p>
+<p>2. 结算记录已经关联 Invoice 还想撤回</p>
+<p>Trying to revert settlement records already linked to invoices.</p>
+<p>3. 付款记录没上传就做收据</p>
+<p>Creating receipts before payment records are uploaded.</p>
+<p>4. Invoice 还没核就发出去</p>
+<p>Sending invoices before internal review.</p>
+<h2>3. 收据审批</h2>
+<h2>6.3 Receipt Approval Errors</h2>
+<p>1. 缴费记录和收据没对上</p>
+<p>Payment records do not match receipts.</p>
+<p>2. 驳回不写原因</p>
+<p>Rejecting without a reason.</p>
+<p>3. 审批没完成就导出 PDF</p>
+<p>Exporting PDF before approval is complete.</p>
+<p>4. 用错 Parent / Partner 路径</p>
+<p>Using the wrong Parent / Partner workflow.</p>
+<p>---</p>
+<h1>七、财务每天最推荐的操作顺序</h1>
+<h1>7. Recommended Daily Finance Workflow Order</h1>
+<p>1. 先开 Teacher Payroll</p>
+<p>Open Teacher Payroll first.</p>
+<p>2. 查有没有待管理审批、待财务确认、待发薪</p>
+<p>Check for pending manager approvals, finance confirmations, and unpaid payroll.</p>
+<p>3. 再开 Partner Settlement</p>
+<p>Then open Partner Settlement.</p>
+<p>4. 查有没有待结算、待开票、待收据</p>
+<p>Check for pending settlement, invoicing, and receipt tasks.</p>
+<p>5. 再开 Receipt Approvals</p>
+<p>Then open Receipt Approvals.</p>
+<p>6. 把 Pending 的收据审批完</p>
+<p>Process pending receipts.</p>
+<p>7. 最后做导出、付款、归档</p>
+<p>Leave exports, payment, and archiving for the end.</p>
+<p>一句话原则：</p>
+<p>One-sentence rule:</p>
+<p>1. **先审批，后导出；先核数据，后付款；有预警先停，不要硬往下做。**</p>
+<p>**Approve first, export later; verify data before payment; if there is a warning, stop and resolve it before continuing.**</p>
+</body></html>

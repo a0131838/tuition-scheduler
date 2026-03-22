@@ -5,6 +5,7 @@ import path from "path";
 import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -27,19 +28,11 @@ function fmtMinutes(min: number) {
 }
 
 function formatDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return formatBusinessDateOnly(d);
 }
 
 function formatDateTime(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return formatBusinessDateTime(d);
 }
 
 const setupFont = setPdfFont;
@@ -379,9 +372,9 @@ export async function GET(
     const delta = fmtMinutes(r.txn.deltaMinutes);
     const balance = fmtMinutes(r.running);
     const sess = r.sess
-      ? `${formatDateTime(new Date(r.sess.startAt))} - ${new Date(
-          r.sess.endAt
-        ).toLocaleTimeString()} | ${r.sess.class.course.name} / ${r.sess.class.subject?.name ?? "-"} / ${
+      ? `${formatDateTime(new Date(r.sess.startAt))} - ${formatBusinessTimeOnly(
+          new Date(r.sess.endAt)
+        )} | ${r.sess.class.course.name} / ${r.sess.class.subject?.name ?? "-"} / ${
           r.sess.class.level?.name ?? "-"
         } | ${
           r.sess.class.teacher.name
@@ -437,4 +430,3 @@ export async function GET(
     },
   });
 }
-

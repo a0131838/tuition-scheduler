@@ -13,9 +13,10 @@ import {
 } from "@/lib/signin-alerts";
 import { prisma } from "@/lib/prisma";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function calcOverdueMin(startAt: Date, thresholdMin: number) {
@@ -214,6 +215,5 @@ export default async function AdminAlertsPage({
     </div>
   );
 }
-
 
 

@@ -2,6 +2,7 @@ import { ExpenseClaimStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { getApprovalRoleConfig, isRoleApprover } from '@/lib/approval-flow';
+import { formatUTCMonthKey } from '@/lib/date-only';
 
 const EXPENSE_APPROVER_KEY = 'approval_expense_approver_emails_v1';
 const EXPENSE_APPROVAL_OWNER_EMAIL = 'zhaohongwei0880@gmail.com';
@@ -48,7 +49,7 @@ export function requiresExpenseLocation(expenseTypeCode?: string | null) {
 }
 
 export function monthKey(value: Date) {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
+  return formatUTCMonthKey(value);
 }
 
 export function formatExpenseMoney(cents: number, currencyCode: string) {
@@ -321,8 +322,8 @@ export async function listExpenseClaims(filters: ExpenseClaimListFilters = {}) {
     const month = Number(monthRaw);
     if (Number.isFinite(year) && Number.isFinite(month) && month >= 1 && month <= 12) {
       where.expenseDate = {
-        gte: new Date(year, month - 1, 1),
-        lt: new Date(year, month, 1),
+        gte: new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0)),
+        lt: new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)),
       };
     }
   }

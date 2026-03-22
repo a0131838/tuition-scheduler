@@ -16,6 +16,7 @@ import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1175,7 +1176,7 @@ export default async function StudentDetailPage({
     })
     .map((s) => {
       const teacherName = s.teacher?.name ?? s.class.teacher.name;
-      const label = `${new Date(s.startAt).toLocaleString()} | ${s.class.course.name}${
+      const label = `${formatBusinessDateTime(new Date(s.startAt))} | ${s.class.course.name}${
         s.class.subject ? ` / ${s.class.subject.name}` : ""
       }${s.class.level ? ` / ${s.class.level.name}` : ""} | ${teacherName}`;
       return {
@@ -1903,10 +1904,10 @@ export default async function StudentDetailPage({
                   </span>
                 </div>
                 <div style={{ marginTop: 4 }}>
-                  {tl(lang, "Valid")}: {new Date(p.validFrom).toLocaleDateString()} ~ {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
+                  {tl(lang, "Valid")}: {formatBusinessDateOnly(new Date(p.validFrom))} ~ {p.validTo ? formatBusinessDateOnly(new Date(p.validTo)) : "(open)"}
                 </div>
                 <div style={{ marginTop: 4 }}>
-                  {tl(lang, "Paid")}: {p.paid ? tl(lang, "Yes") : tl(lang, "No")} | {tl(lang, "Paid At")}: {p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}
+                  {tl(lang, "Paid")}: {p.paid ? tl(lang, "Yes") : tl(lang, "No")} | {tl(lang, "Paid At")}: {p.paidAt ? formatBusinessDateTime(new Date(p.paidAt)) : "-"}
                 </div>
                 <div style={{ marginTop: 4 }}>
                   {tl(lang, "Amount")}: {p.paidAmount ?? "-"}
@@ -1967,7 +1968,7 @@ export default async function StudentDetailPage({
             <div key={a.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
               <div style={{ fontWeight: 700 }}>
                 <a href={`/admin/sessions/${a.sessionId}/attendance`}>
-                  {new Date(a.session.startAt).toLocaleString()} - {new Date(a.session.endAt).toLocaleTimeString()}
+                  {formatBusinessDateTime(new Date(a.session.startAt))} - {formatBusinessTimeOnly(new Date(a.session.endAt))}
                 </a>
               </div>
               <div style={{ marginTop: 6 }}>
@@ -2045,7 +2046,7 @@ export default async function StudentDetailPage({
             return (
               <div key={s.id} data-session-ui={s.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
                 <div style={{ fontWeight: 700 }}>
-                  {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                  {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                 </div>
                 <div style={{ marginTop: 6 }}>
                   <span
@@ -2254,4 +2255,3 @@ export default async function StudentDetailPage({
     </div>
   );
 }
-

@@ -11,6 +11,9 @@ import {
   ticketTypeAliases,
 } from "@/lib/tickets";
 import Link from "next/link";
+import { existsSync } from "fs";
+import path from "path";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function proofItems(proof: string | null | undefined) {
   if (!proof) return [];
@@ -27,6 +30,25 @@ function normalizeProofUrl(item: string) {
     return `/api/tickets/files/${encodeURIComponent(name)}`;
   }
   return item;
+}
+
+function extractTicketProofFilename(item: string) {
+  const raw = item.trim();
+  if (!raw) return "";
+  if (raw.startsWith("/uploads/tickets/")) {
+    return raw.replace("/uploads/tickets/", "").trim();
+  }
+  if (raw.startsWith("/api/tickets/files/")) {
+    return decodeURIComponent(raw.split("/").pop() ?? "").trim();
+  }
+  return "";
+}
+
+function isTicketProofMissing(item: string) {
+  const filename = extractTicketProofFilename(item);
+  if (!filename) return false;
+  const abs = path.join(process.cwd(), "public", "uploads", "tickets", filename);
+  return !existsSync(abs);
 }
 
 export default async function AdminArchivedTicketsPage({
@@ -127,9 +149,9 @@ export default async function AdminArchivedTicketsPage({
                 <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>{r.status}</td>
                 <td>{r.owner ?? "-"}</td>
-                <td>{r.createdAt.toLocaleString()}</td>
-                <td>{r.completedAt ? r.completedAt.toLocaleString() : "-"}</td>
-                <td>{r.updatedAt.toLocaleString()}</td>
+                <td>{formatBusinessDateTime(r.createdAt)}</td>
+                <td>{r.completedAt ? formatBusinessDateTime(r.completedAt) : "-"}</td>
+                <td>{formatBusinessDateTime(r.updatedAt)}</td>
                 <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>
                   {parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-"}
                 </td>
@@ -143,12 +165,23 @@ export default async function AdminArchivedTicketsPage({
                         {proofItems(r.proof).map((item, idx) => {
                           const href = normalizeProofUrl(item);
                           const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                          if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                          const missing = isTicketProofMissing(item);
+                          if (!isLink) {
+                            return (
+                              <span key={`${r.id}-proof-${idx}`} style={{ color: missing ? "#b91c1c" : undefined }}>
+                                {item}
+                                {missing ? "（文件缺失，请补传）" : ""}
+                              </span>
+                            );
+                          }
                           const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
                           return (
-                            <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                              {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
-                            </a>
+                            <div key={`${r.id}-proof-${idx}`} style={{ display: "grid", gap: 2 }}>
+                              <a href={href} target="_blank" rel="noreferrer" style={{ color: missing ? "#b91c1c" : undefined }}>
+                                {imageLike ? `Image ${idx + 1}` : `File ${idx + 1}`}
+                              </a>
+                              {missing ? <span style={{ color: "#b91c1c", fontSize: 12 }}>文件缺失，请补传 / Missing file, re-upload required</span> : null}
+                            </div>
                           );
                         })}
                       </div>

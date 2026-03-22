@@ -9,6 +9,7 @@ import {
   packageModeFromNote,
   stripGroupPackTag,
 } from "@/lib/package-mode";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
 const LOW_MINUTES = 120;
 const LOW_COUNTS = 3;
@@ -37,10 +38,7 @@ function fmtCount(v?: number | null) {
 }
 function fmtDateInput(d: Date | null) {
   if (!d) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  return formatBusinessDateOnly(d);
 }
 
 function isSchemaNotReadyError(err: unknown) {
@@ -388,7 +386,7 @@ export default async function AdminPackagesPage({
                         )}
                       </td>
                       <td style={{ minWidth: 150, verticalAlign: "top" }}>
-                        {new Date(p.validFrom).toLocaleDateString()} ~ {p.validTo ? new Date(p.validTo).toLocaleDateString() : "(open)"}
+                        {formatBusinessDateOnly(new Date(p.validFrom))} ~ {p.validTo ? formatBusinessDateOnly(new Date(p.validTo)) : "(open)"}
                       </td>
                       <td style={{ minWidth: 110, verticalAlign: "top" }}>
                         <div>{p.status}</div>
@@ -450,13 +448,13 @@ export default async function AdminPackagesPage({
                                 padding: 10,
                               }}
                             >
-                              <div><b>{t(lang, "Paid At", "付款时间")}:</b> {p.paidAt ? new Date(p.paidAt).toLocaleString() : "-"}</div>
+                              <div><b>{t(lang, "Paid At", "付款时间")}:</b> {p.paidAt ? formatBusinessDateTime(new Date(p.paidAt)) : "-"}</div>
                               <div><b>{t(lang, "Amount", "金额")}:</b> {p.paidAmount ?? "-"}</div>
                               <div><b>{t(lang, "Paid Note", "付款备注")}:</b> {p.paidNote ?? "-"}</div>
                               <div><b>{t(lang, "Shared Students", "共享学生")}:</b> {p.sharedStudents.map((x: any) => x.student.name).join(", ") || "-"}</div>
                               <div><b>{t(lang, "Shared Courses", "共享课程")}:</b> {p.sharedCourses.map((x: any) => x.course.name).join(", ") || "-"}</div>
                               <div><b>{t(lang, "Note", "备注")}:</b> {stripGroupPackTag(p.note) || "-"}</div>
-                              <div><b>{t(lang, "Created", "创建时间")}:</b> {new Date(p.createdAt).toLocaleDateString()}</div>
+                              <div><b>{t(lang, "Created", "创建时间")}:</b> {formatBusinessDateOnly(new Date(p.createdAt))}</div>
                             </div>
                           </details>
                         </div>

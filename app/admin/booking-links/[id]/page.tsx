@@ -6,6 +6,7 @@ import CopyTextButton from "../../_components/CopyTextButton";
 import SlotVisibilityToggleCard from "./_components/SlotVisibilityToggleCard";
 import BookingLinkAdminActionsClient from "./_components/BookingLinkAdminActionsClient";
 import BookingRequestActionsClient from "./_components/BookingRequestActionsClient";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -95,7 +96,7 @@ export default async function AdminBookingLinkDetailPage({
       <div style={{ marginBottom: 10 }}>
         <div><b>{t(lang, "Student", "学生")}:</b> {link.student.name}</div>
         <div><b>{t(lang, "Teachers", "老师")}:</b> {link.teachers.map((x) => x.teacher.name).join(", ")}</div>
-        <div><b>{t(lang, "Window", "范围")}:</b> {new Date(link.startDate).toLocaleDateString()} - {new Date(link.endDate).toLocaleDateString()}</div>
+        <div><b>{t(lang, "Window", "范围")}:</b> {formatBusinessDateOnly(new Date(link.startDate))} - {formatBusinessDateOnly(new Date(link.endDate))}</div>
         <div><b>{t(lang, "Duration", "时长")}:</b> {link.durationMin} min</div>
         <div><b>{t(lang, "Selected Slots", "已勾选时段")}:</b> {link.selectedSlots.length}</div>
         <div><b>{t(lang, "Student Visible Mode", "学生展示模式")}:</b> {link.onlySelectedSlots ? t(lang, "Only selected slots", "仅展示已选时段") : t(lang, "All generated slots", "展示所有生成时段")}</div>
@@ -192,9 +193,9 @@ export default async function AdminBookingLinkDetailPage({
         <tbody>
           {link.requests.map((r) => (
             <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-              <td>{new Date(r.createdAt).toLocaleString()}</td>
+              <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
               <td>{r.teacher.name}</td>
-              <td>{new Date(r.startAt).toLocaleString()} - {new Date(r.endAt).toLocaleTimeString()}</td>
+              <td>{formatBusinessDateTime(new Date(r.startAt))} - {formatBusinessTimeOnly(new Date(r.endAt))}</td>
               <td>{r.coursePref || "-"}</td>
               <td style={{ whiteSpace: "pre-wrap" }}>{r.note || "-"}</td>
               <td>{r.status}</td>
@@ -211,7 +212,7 @@ export default async function AdminBookingLinkDetailPage({
                       }}
                     />
                   ) : (
-                    <span style={{ color: "#666" }}>{r.reviewedBy ? `${r.reviewedBy} @ ${new Date(r.reviewedAt || r.updatedAt).toLocaleString()}` : "-"}</span>
+                    <span style={{ color: "#666" }}>{r.reviewedBy ? `${r.reviewedBy} @ ${formatBusinessDateTime(new Date(r.reviewedAt || r.updatedAt))}` : "-"}</span>
                   )}
                 </td>
             </tr>
@@ -224,5 +225,4 @@ export default async function AdminBookingLinkDetailPage({
     </div>
   );
 }
-
 

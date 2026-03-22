@@ -6,10 +6,11 @@ import NoticeBanner from "../../../_components/NoticeBanner";
 import { packageModeFromNote } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminSessionAttendanceClient from "./AdminSessionAttendanceClient";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
 function fmtRange(startAt: Date, endAt: Date) {
-  const start = new Date(startAt).toLocaleString();
-  const end = new Date(endAt).toLocaleString();
+  const start = formatBusinessDateTime(new Date(startAt));
+  const end = formatBusinessDateTime(new Date(endAt));
   return `${start} -> ${end}`;
 }
 
@@ -233,16 +234,12 @@ export default async function AttendancePage({
                   })(),
                   remainingMinutes: p.remainingMinutes,
                   billingMode: packageModeFromNote(p.note) === "GROUP_COUNT" ? "COUNT" : "MINUTES",
-                  validToLabel: p.validTo ? new Date(p.validTo).toLocaleDateString() : null,
+                  validToLabel: p.validTo ? formatBusinessDateOnly(new Date(p.validTo)) : null,
                 }));
               const defaultPkg = opts[0] ?? null;
               const defaultDeductedMinutes =
                 a?.deductedMinutes ??
-                (classIsGroup
-                  ? defaultPkg?.billingMode === "MINUTES"
-                    ? sessionDuration
-                    : 0
-                  : 0);
+                (defaultPkg?.billingMode === "MINUTES" ? sessionDuration : 0);
               const defaultDeductedCount =
                 a?.deductedCount ??
                 (classIsGroup
@@ -256,6 +253,7 @@ export default async function AttendancePage({
                 status: a?.status ?? AttendanceStatus.UNMARKED,
                 deductedCount: defaultDeductedCount,
                 deductedMinutes: defaultDeductedMinutes,
+                suggestedDeductMinutes: sessionDuration,
                 note: a?.note ?? "",
                 packageId: a?.packageId ?? (opts[0]?.id ?? ""),
                 excusedCharge: a?.excusedCharge ?? false,
@@ -271,6 +269,3 @@ export default async function AttendancePage({
     </div>
   );
 }
-
-
-

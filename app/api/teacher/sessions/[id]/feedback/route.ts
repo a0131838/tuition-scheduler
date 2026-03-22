@@ -1,19 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile, getCurrentUser } from "@/lib/auth";
 import { FeedbackStatus } from "@prisma/client";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 function formatDateTime(value: Date) {
-  const d = new Date(value);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return formatBusinessDateTime(value);
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -63,10 +58,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const subjectName = session.class.subject?.name || session.class.course.name;
   const plannedStart = formatDateTime(new Date(session.startAt));
-  const plannedEnd = new Date(session.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const plannedEnd = formatBusinessTimeOnly(new Date(session.endAt));
   const actualTimeLine =
     actualStartAt && actualEndAt
-      ? `${formatDateTime(actualStartAt)} - ${actualEndAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+      ? `${formatDateTime(actualStartAt)} - ${formatBusinessTimeOnly(actualEndAt)}`
       : actualStartAt
       ? `${formatDateTime(actualStartAt)} - Not set`
       : "Not set";
@@ -123,4 +118,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   return Response.json({ ok: true, status, submittedAt: now.toISOString() });
 }
-

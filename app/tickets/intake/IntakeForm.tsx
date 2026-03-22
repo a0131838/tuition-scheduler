@@ -16,6 +16,7 @@ import {
 } from "@/lib/tickets";
 import { useEffect, useMemo, useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -76,6 +77,7 @@ export default function IntakeForm({
   const [forceDuplicate, setForceDuplicate] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [teacherName, setTeacherName] = useState("");
+  const [teacherIdValue, setTeacherIdValue] = useState("");
   const [gradeValue, setGradeValue] = useState("");
   const [courseValue, setCourseValue] = useState("");
   const [autoFilledFields, setAutoFilledFields] = useState<{
@@ -196,6 +198,7 @@ export default function IntakeForm({
   useEffect(() => {
     if (selectedTeacherCandidate && teacherName.trim() !== selectedTeacherCandidate.name) {
       setSelectedTeacherCandidate(null);
+      setTeacherIdValue("");
     }
   }, [teacherName, selectedTeacherCandidate]);
 
@@ -254,7 +257,7 @@ export default function IntakeForm({
           <div style={{ fontWeight: 700, marginBottom: 6 }}>可能重复工单 / Potential Duplicates</div>
           {dupes.map((d) => (
             <div key={d.ticketNo} style={{ fontSize: 12, color: "#92400e" }}>
-              {d.ticketNo} | {d.status} | {new Date(d.createdAt).toLocaleString()} | {parseTicketSituationSummary(d.summary).currentIssue || d.summary || "-"}
+              {d.ticketNo} | {d.status} | {formatBusinessDateTime(new Date(d.createdAt))} | {parseTicketSituationSummary(d.summary).currentIssue || d.summary || "-"}
             </div>
           ))}
           <div style={{ marginTop: 8, fontSize: 12 }}>
@@ -301,6 +304,7 @@ export default function IntakeForm({
             setForceDuplicate(false);
             setStudentName("");
             setTeacherName("");
+            setTeacherIdValue("");
             setGradeValue("");
             setCourseValue("");
             setAutoFilledFields({ grade: false, teacher: false, course: false });
@@ -559,16 +563,19 @@ export default function IntakeForm({
             ) : null}
           </label>
           <label style={labelStyle}>
-            老师{fieldRequired("teacher") ? "*" : ""} / Teacher{fieldRequired("teacher") ? "*" : ""}
+            老师* / Teacher*
+            <input type="hidden" name="teacherId" value={teacherIdValue} />
             <input
               name="teacher"
-              required={fieldRequired("teacher")}
+              required
               value={teacherName}
               onChange={(e) => {
                 setTeacherName(e.target.value);
+                setTeacherIdValue("");
+                setSelectedTeacherCandidate(null);
                 setAutoFilledFields((prev) => ({ ...prev, teacher: false }));
               }}
-              placeholder={fieldSuggested("teacher") || fieldRequired("teacher") ? "填写当前老师或目标老师" : ""}
+              placeholder="填写当前老师或目标老师"
               style={{
                 ...fieldStyle,
                 borderColor: autoFilledFields.teacher ? "#93c5fd" : fieldStyle.border?.toString(),
@@ -590,6 +597,7 @@ export default function IntakeForm({
                 onClick={() => {
                   setTeacherName(exactTeacherCandidate.name);
                   setSelectedTeacherCandidate(exactTeacherCandidate);
+                  setTeacherIdValue(exactTeacherCandidate.teacherId);
                 }}
                 style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 8, padding: 8, fontSize: 12, color: "#166534", textAlign: "left", cursor: "pointer" }}
               >
@@ -610,6 +618,7 @@ export default function IntakeForm({
                       onClick={() => {
                         setTeacherName(candidate.name);
                         setSelectedTeacherCandidate(candidate);
+                        setTeacherIdValue(candidate.teacherId);
                       }}
                       style={{ border: "1px solid #fcd34d", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#92400e" }}
                     >
@@ -630,6 +639,7 @@ export default function IntakeForm({
                       onClick={() => {
                         setTeacherName(candidate.name);
                         setSelectedTeacherCandidate(candidate);
+                        setTeacherIdValue(candidate.teacherId);
                       }}
                       style={{ border: "1px solid #bfdbfe", background: "#fff", borderRadius: 6, padding: "6px 8px", textAlign: "left", cursor: "pointer", color: "#1d4ed8" }}
                     >

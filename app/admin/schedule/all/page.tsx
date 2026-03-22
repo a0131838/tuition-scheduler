@@ -1,6 +1,7 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -30,16 +31,12 @@ function parseYMD(s: string) {
 }
 
 function fmtTime(d: Date) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatBusinessTimeOnly(d);
 }
 
 function fmtDate(d: Date) {
-  return d.toLocaleDateString([], {
-    weekday: "short",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()] ?? "";
+  return `${weekday} ${formatBusinessDateOnly(d)}`;
 }
 
 export default async function ScheduleAllPage({
@@ -134,4 +131,3 @@ export default async function ScheduleAllPage({
     </div>
   );
 }
-

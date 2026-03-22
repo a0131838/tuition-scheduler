@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatBusinessTimeOnly } from "@/lib/date-only";
 
 export default function TeacherConfirmCoursesButton({
   dayKind,
@@ -44,7 +45,7 @@ export default function TeacherConfirmCoursesButton({
   if (confirmedAt) {
     return (
       <span style={{ color: "#166534", fontWeight: 700 }}>
-        {labels.confirmed}: {new Date(confirmedAt).toLocaleTimeString()}
+        {labels.confirmed}: {formatBusinessTimeOnly(new Date(confirmedAt))}
       </span>
     );
   }
@@ -55,4 +56,3 @@ export default function TeacherConfirmCoursesButton({
     </button>
   );
 }
-

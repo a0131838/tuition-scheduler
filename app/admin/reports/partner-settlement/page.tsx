@@ -2,6 +2,7 @@
 import { getLang, t } from "@/lib/i18n";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDateTime } from "@/lib/date-only";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -1039,7 +1040,7 @@ export default async function PartnerSettlementPage({
                 <tbody>
                   {recentPendingSettlements.map((r) => (
                     <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{new Date(r.createdAt).toLocaleString()}</td>
+                      <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
                       <td>{r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}</td>
                       <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
                       <td>{r.monthKey ?? "-"}</td>
@@ -1088,7 +1089,7 @@ export default async function PartnerSettlementPage({
                 <tbody>
                   {recentInvoiceStats.map((r) => (
                     <tr key={r.invoiceId} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{new Date(r.createdAt).toLocaleString()}</td>
+                      <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
                       <td>
                         <a
                           href={`/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(r.mode)}&month=${encodeURIComponent(r.monthKey ?? month)}`}
@@ -1117,6 +1118,5 @@ export default async function PartnerSettlementPage({
     </div>
   );
 }
-
 
 

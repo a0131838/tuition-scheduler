@@ -2,6 +2,7 @@
 import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 import PDFDocument from "pdfkit";
@@ -47,19 +48,11 @@ function shouldShowLogoByStudentTypeName(typeName?: string | null) {
 }
 
 function formatDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return formatBusinessDateOnly(d);
 }
 
 function formatDateTime(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return formatBusinessDateTime(d);
 }
 
 function fmtYMD(d: Date) {
@@ -394,7 +387,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           doc.fontSize(10).text(`${key}`);
           for (const s of list) {
             const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
-            const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${subjectText}`;
+            const line1 = `${formatDateTime(new Date(s.startAt))} - ${formatBusinessTimeOnly(new Date(s.endAt))} | ${subjectText}`;
             const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
             doc.fontSize(9).text(line1);
             doc.fontSize(8).text(line2);
@@ -464,7 +457,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           doc.fontSize(10).text(`${key}`);
           for (const s of list) {
             const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
-            const line1 = `${formatDateTime(new Date(s.startAt))} - ${new Date(s.endAt).toLocaleTimeString()} | ${subjectText}`;
+            const line1 = `${formatDateTime(new Date(s.startAt))} - ${formatBusinessTimeOnly(new Date(s.endAt))} | ${subjectText}`;
             const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
             doc.fontSize(9).text(line1);
             doc.fontSize(8).text(line2);

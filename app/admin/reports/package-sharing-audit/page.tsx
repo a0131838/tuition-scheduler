@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDateTime } from "@/lib/date-only";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -292,13 +293,13 @@ export default async function PackageSharingAuditPage({
             <tbody>
               {anomalies.map((x) => (
                 <tr key={x.attendanceId} style={{ borderTop: "1px solid #e5e7eb", verticalAlign: "top" }}>
-                  <td>{new Date(x.updatedAt).toLocaleString()}</td>
+                  <td>{formatBusinessDateTime(new Date(x.updatedAt))}</td>
                   <td>
                     <div>{x.studentName}</div>
                     <div style={{ color: "#6b7280", fontSize: 12 }}>{x.studentId}</div>
                   </td>
                   <td>
-                    <div>{new Date(x.sessionStartAt).toLocaleString()} - {new Date(x.sessionEndAt).toLocaleTimeString()}</div>
+                    <div>{formatBusinessDateTime(new Date(x.sessionStartAt))} - {formatBusinessDateTime(new Date(x.sessionEndAt))}</div>
                     <div style={{ color: "#6b7280", fontSize: 12 }}>{x.sessionCourseName}</div>
                     <div style={{ color: "#6b7280", fontSize: 12 }}>{x.sessionId}</div>
                   </td>

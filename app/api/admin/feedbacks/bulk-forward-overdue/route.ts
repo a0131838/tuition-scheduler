@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getVisibleSessionStudentNames } from "@/lib/session-students";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
 
@@ -16,7 +17,7 @@ function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; statu
 }
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function getStudentNames(session: any) {

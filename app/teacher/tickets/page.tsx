@@ -1,4 +1,4 @@
-import { requireTeacher } from "@/lib/auth";
+import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,6 +10,9 @@ import {
 } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { existsSync } from "fs";
+import path from "path";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function proofItems(proof: string | null | undefined) {
   if (!proof) return [];
@@ -28,19 +31,45 @@ function normalizeProofUrl(item: string) {
   return item;
 }
 
+function extractTicketProofFilename(item: string) {
+  const raw = item.trim();
+  if (!raw) return "";
+  if (raw.startsWith("/uploads/tickets/")) {
+    return raw.replace("/uploads/tickets/", "").trim();
+  }
+  if (raw.startsWith("/api/tickets/files/")) {
+    return decodeURIComponent(raw.split("/").pop() ?? "").trim();
+  }
+  return "";
+}
+
+function isTicketProofMissing(item: string) {
+  const filename = extractTicketProofFilename(item);
+  if (!filename) return false;
+  const abs = path.join(process.cwd(), "public", "uploads", "tickets", filename);
+  return !existsSync(abs);
+}
+
 async function markDoneTeacherAction(formData: FormData) {
   "use server";
-  const user = await requireTeacher();
+  const { user, teacher } = await requireTeacherProfile();
   const id = String(formData.get("id") ?? "").trim();
   const back = String(formData.get("back") ?? "/teacher/tickets");
   const note = String(formData.get("completionNote") ?? "").trim().slice(0, 1000);
   if (!id) redirect(back);
+  if (!teacher) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=not-linked`);
+  }
 
   const row = await prisma.ticket.findUnique({
     where: { id },
-    select: { status: true, summary: true },
+    select: { status: true, summary: true, teacher: true },
   });
   if (!row) redirect(back);
+  const isOwnByTeacherName = (row.teacher ?? "").trim().toLowerCase() === teacher.name.trim().toLowerCase();
+  if (!isOwnByTeacherName) {
+    redirect(`${back}${back.includes("?") ? "&" : "?"}err=forbidden`);
+  }
   if (!canTransitionTicketStatus(row.status, "Completed")) {
     redirect(`${back}${back.includes("?") ? "&" : "?"}err=status-flow`);
   }
@@ -67,16 +96,27 @@ export default async function TeacherTicketsPage({
 }: {
   searchParams?: Promise<{ q?: string; status?: string; err?: string }>;
 }) {
-  await requireTeacher();
+  const { teacher } = await requireTeacherProfile();
   const lang = await getLang();
   const sp = await searchParams;
   const q = String(sp?.q ?? "").trim();
   const status = String(sp?.status ?? "").trim();
   const err = String(sp?.err ?? "").trim();
+  if (!teacher) {
+    return (
+      <div>
+        <h2>{t(lang, "Ticket Board", "工单看板")}</h2>
+        <div style={{ color: "#b91c1c" }}>
+          老师资料未关联，暂时无法查看工单。/ Teacher profile is not linked yet.
+        </div>
+      </div>
+    );
+  }
 
   const rows = await prisma.ticket.findMany({
     where: {
       isArchived: false,
+      teacher: { equals: teacher.name, mode: "insensitive" },
       ...(q
         ? {
             OR: [
@@ -105,6 +145,16 @@ export default async function TeacherTicketsPage({
       {err === "need-note" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
           完成时必须填写完成说明 / Completion note is required when marking completed
+        </div>
+      ) : null}
+      {err === "forbidden" ? (
+        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
+          仅可操作与自己相关的工单 / You can only operate your own tickets
+        </div>
+      ) : null}
+      {err === "not-linked" ? (
+        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
+          老师档案未关联，无法执行工单操作 / Teacher profile is not linked
         </div>
       ) : null}
 
@@ -140,7 +190,7 @@ export default async function TeacherTicketsPage({
             {rows.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
                 <td>{r.ticketNo}</td>
-                <td>{r.createdAt.toLocaleString()}</td>
+                <td>{formatBusinessDateTime(r.createdAt)}</td>
                 <td>{r.studentName}</td>
                 <td>{normalizeTicketTypeValue(r.type)}</td>
                 <td>{normalizeTicketPriorityValue(r.priority)}</td>
@@ -158,11 +208,22 @@ export default async function TeacherTicketsPage({
                         {proofItems(r.proof).map((item, idx) => {
                           const href = normalizeProofUrl(item);
                           const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                          if (!isLink) return <span key={`${r.id}-proof-${idx}`}>{item}</span>;
+                          const missing = isTicketProofMissing(item);
+                          if (!isLink) {
+                            return (
+                              <span key={`${r.id}-proof-${idx}`} style={{ color: missing ? "#b91c1c" : undefined }}>
+                                {item}
+                                {missing ? "（文件缺失，请补传）" : ""}
+                              </span>
+                            );
+                          }
                           return (
-                            <a key={`${r.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                              {`Proof ${idx + 1}`}
-                            </a>
+                            <div key={`${r.id}-proof-${idx}`} style={{ display: "grid", gap: 2 }}>
+                              <a href={href} target="_blank" rel="noreferrer" style={{ color: missing ? "#b91c1c" : undefined }}>
+                                {`Proof ${idx + 1}`}
+                              </a>
+                              {missing ? <span style={{ color: "#b91c1c", fontSize: 12 }}>文件缺失，请补传 / Missing file, re-upload required</span> : null}
+                            </div>
                           );
                         })}
                       </div>

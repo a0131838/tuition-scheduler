@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function buildSessionLine(session: any) {
@@ -76,4 +77,3 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true });
 }
-

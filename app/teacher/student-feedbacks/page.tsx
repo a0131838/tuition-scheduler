@@ -1,5 +1,5 @@
 ﻿import { requireTeacherProfile } from "@/lib/auth";
-import { formatDateOnly } from "@/lib/date-only";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, formatDateOnly } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
@@ -518,7 +518,7 @@ export default async function TeacherStudentFeedbacksPage({
                 {pageStudents.map((s) => (
                   <tr id={`student-${s.studentId}`} key={s.studentId} style={{ borderTop: "1px solid #eee" }}>
                     <td>{s.studentName}</td>
-                    <td>{new Date(s.latest.sessionStartAt).toLocaleString()}</td>
+                    <td>{formatBusinessDateTime(new Date(s.latest.sessionStartAt))}</td>
                     <td>
                       {s.latest.teacherName}
                       {s.latest.teacherId !== teacher.id ? (
@@ -551,7 +551,7 @@ export default async function TeacherStudentFeedbacksPage({
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                  {t(lang, "Latest", "最近")}: {new Date(s.latest.sessionStartAt).toLocaleString()}
+                  {t(lang, "Latest", "最近")}: {formatBusinessDateTime(new Date(s.latest.sessionStartAt))}
                 </div>
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
                   {t(lang, "Teacher", "老师")}: {s.latest.teacherName}
@@ -609,7 +609,7 @@ export default async function TeacherStudentFeedbacksPage({
               <ul style={{ margin: 0, paddingLeft: 18 }}>
                 {summaryItems.map((x) => (
                   <li key={`${x.feedbackId}-${x.sessionStartAt.toISOString()}`}>
-                    {new Date(x.sessionStartAt).toLocaleDateString()} {x.teacherName}: {summarizeHandoffItem(x)}
+                    {formatBusinessDateOnly(new Date(x.sessionStartAt))} {x.teacherName}: {summarizeHandoffItem(x)}
                   </li>
                 ))}
               </ul>
@@ -623,7 +623,7 @@ export default async function TeacherStudentFeedbacksPage({
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(lang, "Mine", "我的")}</div>
                 {latestMine ? (
                   <>
-                    <div>{latestMine.teacherName} | {new Date(latestMine.sessionStartAt).toLocaleString()}</div>
+                    <div>{latestMine.teacherName} | {formatBusinessDateTime(new Date(latestMine.sessionStartAt))}</div>
                     <div style={{ color: "#475569", fontSize: 12 }}>{latestMine.courseName} / {latestMine.subjectName ?? "-"} / {latestMine.levelName ?? "-"}</div>
                     <div style={{ marginTop: 4 }}>{summarize(latestMine.content, 140)}</div>
                   </>
@@ -635,7 +635,7 @@ export default async function TeacherStudentFeedbacksPage({
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(lang, "Other Teacher", "其他老师")}</div>
                 {latestOther ? (
                   <>
-                    <div>{latestOther.teacherName} | {new Date(latestOther.sessionStartAt).toLocaleString()}</div>
+                    <div>{latestOther.teacherName} | {formatBusinessDateTime(new Date(latestOther.sessionStartAt))}</div>
                     <div style={{ color: "#475569", fontSize: 12 }}>{latestOther.courseName} / {latestOther.subjectName ?? "-"} / {latestOther.levelName ?? "-"}</div>
                     <div style={{ marginTop: 4 }}>{summarize(latestOther.content, 140)}</div>
                   </>
@@ -656,7 +656,7 @@ export default async function TeacherStudentFeedbacksPage({
                   <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
                     <div className="timeline-head" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 700 }}>
-                        {new Date(item.sessionStartAt).toLocaleString()} - {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {formatBusinessDateTime(new Date(item.sessionStartAt))} - {formatBusinessTimeOnly(new Date(item.sessionEndAt))}
                       </div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                         <span>
@@ -687,7 +687,7 @@ export default async function TeacherStudentFeedbacksPage({
                       <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
                         {item.classPerformance ? `${t(lang, "Performance", "课堂表现")}: ${item.classPerformance} | ` : ""}
                         {item.homework ? `${t(lang, "Homework", "作业")}: ${item.homework} | ` : ""}
-                        {t(lang, "Submitted", "提交")}: {new Date(item.submittedAt).toLocaleString()}
+                        {t(lang, "Submitted", "提交")}: {formatBusinessDateTime(new Date(item.submittedAt))}
                       </div>
                     </details>
                   </article>
@@ -705,7 +705,7 @@ export default async function TeacherStudentFeedbacksPage({
                         <article key={`${item.feedbackId}-${item.studentId}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
                           <div className="timeline-head" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                             <div style={{ fontWeight: 700 }}>
-                              {new Date(item.sessionStartAt).toLocaleString()} - {new Date(item.sessionEndAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {formatBusinessDateTime(new Date(item.sessionStartAt))} - {formatBusinessTimeOnly(new Date(item.sessionEndAt))}
                             </div>
                             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                               <span>
@@ -736,7 +736,7 @@ export default async function TeacherStudentFeedbacksPage({
                             <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
                               {item.classPerformance ? `${t(lang, "Performance", "课堂表现")}: ${item.classPerformance} | ` : ""}
                               {item.homework ? `${t(lang, "Homework", "作业")}: ${item.homework} | ` : ""}
-                              {t(lang, "Submitted", "提交")}: {new Date(item.submittedAt).toLocaleString()}
+                              {t(lang, "Submitted", "提交")}: {formatBusinessDateTime(new Date(item.submittedAt))}
                             </div>
                           </details>
                         </article>

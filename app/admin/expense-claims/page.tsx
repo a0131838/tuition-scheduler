@@ -29,7 +29,7 @@ import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import { unlink } from 'fs/promises';
 import path from 'path';
 import { revalidatePath } from 'next/cache';
-import { formatDateOnly, formatMonthKey } from '@/lib/date-only';
+import { formatDateOnly, formatMonthKey, formatUTCDateOnly, parseDateOnlyToUTCNoon } from '@/lib/date-only';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -127,7 +127,7 @@ export default async function AdminExpenseClaimsPage({
     const actor = await requireAdmin();
     const currentUser = await getCurrentUser();
     const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
-    const expenseDate = expenseDateRaw ? new Date(`${expenseDateRaw}T00:00:00`) : null;
+    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
     const description = String(formData.get('description') ?? '').trim();
     const studentName = String(formData.get('studentName') ?? '').trim();
     const location = String(formData.get('location') ?? '').trim();
@@ -349,7 +349,7 @@ export default async function AdminExpenseClaimsPage({
               <div style={{ fontWeight: 600 }}>{t(lang, 'Submitted more than 3 days ago', '提交超过3天未审批')}</div>
               {reminders.staleSubmitted.map((claim) => (
                 <div key={claim.id} style={{ fontSize: 14 }}>
-                  {claim.claimRefNo} | {claim.submitterName} | {formatDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
+                  {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
                 </div>
               ))}
             </div>
@@ -359,7 +359,7 @@ export default async function AdminExpenseClaimsPage({
               <div style={{ fontWeight: 600 }}>{t(lang, 'Approved more than 3 days ago but not paid', '批准超过3天仍未付款')}</div>
               {reminders.staleApprovedUnpaid.map((claim) => (
                 <div key={claim.id} style={{ fontSize: 14 }}>
-                  {claim.claimRefNo} | {claim.submitterName} | {formatDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
+                  {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
                 </div>
               ))}
             </div>
@@ -473,7 +473,7 @@ export default async function AdminExpenseClaimsPage({
                     <div style={{ color: '#64748b', fontSize: 12 }}>{claim.submitterRole}</div>
                     {claim.studentName ? <div style={{ color: '#334155', fontSize: 12 }}>{t(lang, 'Student', '学生')}: {claim.studentName}</div> : null}
                   </td>
-                  <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{formatDateOnly(claim.expenseDate)}</td>
+                  <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{formatUTCDateOnly(claim.expenseDate)}</td>
                   <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{typeLabel}</td>
                   <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
                   <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>

@@ -13,6 +13,8 @@ import {
   saveAutoFixResult,
 } from "@/lib/conflict-audit";
 import { getOverdueUnmarkedFollowupGroups } from "@/lib/unmarked-followups";
+import { LEDGER_INTEGRITY_ALERT_KEY, parseLedgerIntegrityAlertState } from "@/lib/ledger-integrity-alert";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const FORECAST_WINDOW_DAYS = 30;
 const DEFAULT_WARN_DAYS = 3;
@@ -36,7 +38,7 @@ function toInt(v: string | undefined, def: number) {
 }
 
 function fmtDateRange(startAt: Date, endAt: Date) {
-  return `${startAt.toLocaleString()} - ${endAt.toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(startAt)} - ${formatBusinessTimeOnly(endAt)}`;
 }
 
 function courseLabel(cls: any) {
@@ -332,9 +334,9 @@ export default async function AdminTodosPage({
       if (!requiresDeduct) continue;
 
       required += 1;
-      const hasDeduct = isGroupClass
-        ? Number((row as any).deductedCount ?? 0) > 0
-        : Number((row as any).deductedMinutes ?? 0) > 0;
+      const hasDeduct =
+        Number((row as any).deductedMinutes ?? 0) > 0 ||
+        Number((row as any).deductedCount ?? 0) > 0;
       if (hasDeduct) done += 1;
     }
 
@@ -551,7 +553,7 @@ export default async function AdminTodosPage({
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups] = await Promise.all([
+  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow] = await Promise.all([
     getOrRunDailyConflictAudit(now),
     getLatestAutoFixResult(),
     prisma.coursePackage.findMany({
@@ -565,7 +567,9 @@ export default async function AdminTodosPage({
       take: 500,
     }),
     getOverdueUnmarkedFollowupGroups({ now, thresholdHours: 3, lookbackDays: 7, perTeacherLimit: 4, totalLimit: 120 }),
+    prisma.appSetting.findUnique({ where: { key: LEDGER_INTEGRITY_ALERT_KEY }, select: { value: true } }),
   ]);
+  const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
     ? await prisma.packageTxn.groupBy({
@@ -822,6 +826,35 @@ export default async function AdminTodosPage({
           "聚焦今日点名任务和课包续费预警。"
         )}
       </p>
+      {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
+        <div
+          style={{
+            border: "2px solid #ef4444",
+            borderRadius: 12,
+            padding: 12,
+            background: "#fff1f2",
+            marginBottom: 14,
+            boxShadow: "0 2px 6px rgba(239, 68, 68, 0.15)",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#991b1b" }}>
+            {t(lang, "Ledger Integrity Alert", "课包对账告警")}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#991b1b" }}>
+            {t(lang, `${ledgerAlert.totalIssueCount} issues found`, `发现${ledgerAlert.totalIssueCount}个异常`)}
+          </div>
+          <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+            {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} ·
+            {" "}
+            {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} ·
+            {" "}
+            {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <a href="/admin/reports/undeducted-completed">{t(lang, "Open Repair Report", "打开减扣修复报表")}</a>
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{
@@ -938,7 +971,7 @@ export default async function AdminTodosPage({
             </div>
           </div>
           <div style={{ color: "#92400e", fontSize: 12 }}>
-            {t(lang, "Date", "日期")}: {new Date().toLocaleDateString()}
+            {t(lang, "Date", "日期")}: {formatBusinessDateOnly(new Date())}
           </div>
         </div>
 
@@ -963,7 +996,7 @@ export default async function AdminTodosPage({
                 {sessionsToday.map((s) => (
                   <tr key={s.id} style={{ borderTop: "1px solid #fcd34d" }}>
                     <td>
-                      {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                      {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1015,10 +1048,10 @@ export default async function AdminTodosPage({
                   {group.items.map((item) => (
                     <div key={item.id} style={{ border: "1px solid #fed7aa", borderRadius: 8, background: "#fffaf0", padding: 8, fontSize: 12 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                        <b>{new Date(item.startAt).toLocaleDateString()}</b>
+                        <b>{formatBusinessDateOnly(new Date(item.startAt))}</b>
                         <span style={{ color: "#b91c1c", fontWeight: 700 }}>{item.overdueLabel}</span>
                       </div>
-                      <div style={detailLineStyle}>{new Date(item.startAt).toLocaleTimeString()} - {new Date(item.endAt).toLocaleTimeString()}</div>
+                      <div style={detailLineStyle}>{formatBusinessTimeOnly(new Date(item.startAt))} - {formatBusinessTimeOnly(new Date(item.endAt))}</div>
                       <div style={detailLineStyle}>{item.courseLabel}</div>
                       <div style={detailLineStyle}>{t(lang, "Students", "学生")}: {listWithLimit(item.studentNames, 3)}</div>
                       <div style={detailLineStyle}>{t(lang, "Unmarked", "未点名")}: {item.unmarkedCount}</div>
@@ -1057,7 +1090,7 @@ export default async function AdminTodosPage({
                 {sessionsYesterday.map((s) => (
                   <tr key={`y-${s.id}`} style={{ borderTop: "1px solid #fecaca" }}>
                   <td>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1123,12 +1156,12 @@ export default async function AdminTodosPage({
                       <td>{r.name}</td>
                       <td style={{ color: todayAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                         {todayAt
-                          ? `${t(lang, "Confirmed", "已确认")} ${new Date(todayAt).toLocaleTimeString()}`
+                          ? `${t(lang, "Confirmed", "已确认")} ${formatBusinessTimeOnly(new Date(todayAt))}`
                           : t(lang, "Not confirmed", "未确认")}
                       </td>
                       <td style={{ color: tomorrowAt ? "#166534" : "#b91c1c", fontWeight: 700 }}>
                         {tomorrowAt
-                          ? `${t(lang, "Confirmed", "已确认")} ${new Date(tomorrowAt).toLocaleTimeString()}`
+                          ? `${t(lang, "Confirmed", "已确认")} ${formatBusinessTimeOnly(new Date(tomorrowAt))}`
                           : t(lang, "Not confirmed", "未确认")}
                       </td>
                     </tr>
@@ -1239,7 +1272,7 @@ export default async function AdminTodosPage({
                   style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 10, background: "#fffdf3" }}
                 >
                   <div style={{ fontWeight: 700 }}>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </div>
                   <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1312,7 +1345,7 @@ export default async function AdminTodosPage({
                   style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 10, background: "#f8fbff" }}
                 >
                   <div style={{ fontWeight: 700 }}>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </div>
                   <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1381,7 +1414,7 @@ export default async function AdminTodosPage({
               {pastSessions.map((s) => (
                 <tr key={s.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1556,9 +1589,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
-
-
 
 
 

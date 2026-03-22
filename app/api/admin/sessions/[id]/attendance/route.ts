@@ -159,6 +159,69 @@ function ledgerModeLabel(mode: PackageMode) {
   return "minutes";
 }
 
+function canRowDeduct(status: AttendanceStatus, excusedCharge: boolean, waiveDeduction: boolean) {
+  if (waiveDeduction) return false;
+  if (status === AttendanceStatus.EXCUSED) return excusedCharge;
+  return DEDUCTABLE_STATUS.has(status);
+}
+
+function parseStudentIdFromTxnNote(note: string | null | undefined) {
+  if (!note) return null;
+  const match = note.match(/studentId=([0-9a-fA-F-]{20,})/);
+  return match?.[1] ?? null;
+}
+
+async function assertTouchedStudentsLedgerConsistency(
+  tx: Prisma.TransactionClient,
+  opts: { sessionId: string; studentIds: string[] }
+) {
+  const { sessionId, studentIds } = opts;
+  if (studentIds.length === 0) return;
+  const studentIdSet = new Set(studentIds);
+
+  const rows = await tx.attendance.findMany({
+    where: { sessionId, studentId: { in: studentIds } },
+    select: {
+      studentId: true,
+      status: true,
+      deductedMinutes: true,
+      deductedCount: true,
+      packageId: true,
+      excusedCharge: true,
+      waiveDeduction: true,
+      package: { select: { note: true } },
+    },
+  });
+  const rowMap = new Map(rows.map((r) => [r.studentId, r]));
+
+  const txns = await tx.packageTxn.findMany({
+    where: { sessionId },
+    select: { deltaMinutes: true, note: true },
+  });
+  const actualNetByStudent = new Map<string, number>();
+  for (const txn of txns) {
+    const sid = parseStudentIdFromTxnNote(txn.note);
+    if (!sid || !studentIdSet.has(sid)) continue;
+    actualNetByStudent.set(sid, (actualNetByStudent.get(sid) ?? 0) + txn.deltaMinutes);
+  }
+
+  for (const sid of studentIds) {
+    const row = rowMap.get(sid);
+    let expectedNet = 0;
+    if (row && row.packageId && canRowDeduct(row.status, Boolean(row.excusedCharge), Boolean(row.waiveDeduction))) {
+      const mode = packageModeFromNote(row.package?.note);
+      const units = unitsForMode(mode, Math.max(0, row.deductedMinutes ?? 0), Math.max(0, row.deductedCount ?? 0));
+      expectedNet = units > 0 ? -units : 0;
+    }
+    const actualNet = actualNetByStudent.get(sid) ?? 0;
+    if (actualNet !== expectedNet) {
+      throw new Error(
+        `Ledger mismatch after save. session=${sessionId}, student=${sid}, expectedNet=${expectedNet}, actualNet=${actualNet}`
+      );
+    }
+  }
+}
+
 async function applyPackageChange(
   tx: Prisma.TransactionClient,
   opts: {
@@ -402,7 +465,14 @@ async function applyOneStudentAttendanceAndDeduct(
     },
   });
 
-  return { finalUnits: nextUnits };
+  return {
+    studentId,
+    status: desired.status,
+    packageId: finalPackageId,
+    deductedMinutes: finalDeductedMinutes,
+    deductedCount: finalDeductedCount,
+    finalUnits: nextUnits,
+  };
 }
 
 function parseStatus(raw: any): AttendanceStatus {
@@ -506,6 +576,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const sessionDurationMinutes = durationMinutes(session.startAt, session.endAt);
   let totalDeducted = 0;
+  const touchedStudentIds = new Set<string>();
+  const receipt: Array<{
+    studentId: string;
+    status: AttendanceStatus;
+    packageId: string | null;
+    deductedMinutes: number;
+    deductedCount: number;
+  }> = [];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -513,6 +591,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const desired = desiredMap.get(studentId);
         if (!desired) continue;
         const existing = existingMap.get(studentId);
+        touchedStudentIds.add(studentId);
         const result = await applyOneStudentAttendanceAndDeduct(tx, {
           sessionId,
           courseId: session.class.courseId,
@@ -524,7 +603,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           sessionDurationMinutes,
         });
         totalDeducted += result.finalUnits;
+        receipt.push({
+          studentId: result.studentId,
+          status: result.status,
+          packageId: result.packageId,
+          deductedMinutes: result.deductedMinutes,
+          deductedCount: result.deductedCount,
+        });
       }
+      await assertTouchedStudentsLedgerConsistency(tx, {
+        sessionId,
+        studentIds: Array.from(touchedStudentIds),
+      });
     });
   } catch (e: any) {
     return bad(e?.message ?? "Save failed", 409);
@@ -544,5 +634,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     },
   });
 
-  return Response.json({ ok: true, totalDeducted });
+  return Response.json({ ok: true, totalDeducted, receipt });
 }

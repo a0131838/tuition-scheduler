@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { packageModeFromNote, type PackageMode } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { logAudit } from "@/lib/audit-log";
+import { formatBusinessDateTime } from "@/lib/date-only";
 import { PackageStatus, PackageType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -630,7 +631,7 @@ export default async function UndeductedCompletedReportPage({
               {failDetails.map((f) => (
                 <tr key={f.attendanceId} style={{ borderTop: "1px solid #fecdd3" }}>
                   <td>{f.studentName}</td>
-                  <td>{f.sessionAt ? new Date(f.sessionAt).toLocaleString() : "-"}</td>
+                  <td>{f.sessionAt ? formatBusinessDateTime(new Date(f.sessionAt)) : "-"}</td>
                   <td>{previewReasonLabel(lang, f.reason)}</td>
                 </tr>
               ))}
@@ -659,7 +660,7 @@ export default async function UndeductedCompletedReportPage({
         <div style={{ marginBottom: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", padding: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Deduct Preview", "自动补扣预览")}</div>
           <div style={{ marginBottom: 4 }}>
-            {t(lang, "Student", "学生")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "课次")}: {new Date(previewItem.sessionAt).toLocaleString()}
+            {t(lang, "Student", "学生")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "课次")}: {formatBusinessDateTime(new Date(previewItem.sessionAt))}
           </div>
           <div style={{ marginBottom: 8 }}>
             {t(lang, "Units", "扣减单位")}: <b>{previewItem.needUnits} {previewItem.unitLabel === "classes" ? t(lang, "class(es)", "次") : t(lang, "min", "分钟")}</b> | {t(lang, "Target Package", "目标课包")}: <b>{previewItem.packageId ?? "-"}</b>
@@ -703,7 +704,7 @@ export default async function UndeductedCompletedReportPage({
                 {batchPreviewItems.map((item) => (
                   <tr key={item.attendanceId} style={{ borderTop: "1px solid #ddd6fe" }}>
                     <td>{item.studentName}</td>
-                    <td>{new Date(item.sessionAt).toLocaleString()}</td>
+                    <td>{formatBusinessDateTime(new Date(item.sessionAt))}</td>
                     <td>{item.needUnits} {item.unitLabel === "classes" ? t(lang, "class(es)", "次") : t(lang, "min", "分钟")}</td>
                     <td>{item.packageId ?? "-"}</td>
                     <td>{item.beforeRemaining ?? "-"} {"->"} {item.afterRemaining ?? "-"}</td>
@@ -781,7 +782,7 @@ export default async function UndeductedCompletedReportPage({
                   <td>
                     <input type="checkbox" name="ids" value={r.id} defaultChecked={selectedSet.has(r.id)} form="batchPreviewForm" />
                   </td>
-                  <td>{new Date(r.session.startAt).toLocaleString()}</td>
+                  <td>{formatBusinessDateTime(new Date(r.session.startAt))}</td>
                   <td>
                     {r.student.name}
                     <div style={{ color: "#94a3b8", fontSize: 11 }}>{r.student.id}</div>

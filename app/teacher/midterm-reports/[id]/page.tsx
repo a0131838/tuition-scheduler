@@ -4,6 +4,7 @@ import { EMPTY_REPORT_DRAFT, parseDraftFromFormData, parseReportDraft } from "@/
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 
 const LEVEL_OPTIONS = ["", "A1", "A2", "B1", "B2", "C1"] as const;
 
@@ -174,7 +175,7 @@ export default async function TeacherMidtermReportDetailPage({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 8 }}>
               <label>
                 {t(lang, "Date of Report", "报告日期")}
-                <input value={new Date().toLocaleDateString()} readOnly style={{ width: "100%", background: "#f8fafc" }} />
+                <input value={formatBusinessDateOnly(new Date())} readOnly style={{ width: "100%", background: "#f8fafc" }} />
               </label>
               <label>
                 {t(lang, "Assessment Period", "评估阶段")}
@@ -348,4 +349,3 @@ export default async function TeacherMidtermReportDetailPage({
     </div>
   );
 }
-

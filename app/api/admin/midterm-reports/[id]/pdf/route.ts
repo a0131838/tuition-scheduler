@@ -2,6 +2,7 @@
 import { parseReportDraft } from "@/lib/midterm-report";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 
@@ -330,7 +331,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const r2 = y1 + 42;
 
   infoCell(doc, left + 8, r1, colW, ZH.name, report.student.name);
-  infoCell(doc, left + 8 + colW + cGap, r1, colW, ZH.date, new Date().toLocaleDateString());
+  infoCell(doc, left + 8 + colW + cGap, r1, colW, ZH.date, formatBusinessDateOnly(new Date()));
   infoCell(doc, left + 8 + (colW + cGap) * 2, r1, colW, ZH.period, report.reportPeriodLabel || "-");
   infoCell(doc, left + 8, r2, colW, ZH.tool, draft.assessmentTool || "-");
   infoCell(doc, left + 8 + colW + cGap, r2, colW, ZH.score, String(report.overallScore ?? "-"));

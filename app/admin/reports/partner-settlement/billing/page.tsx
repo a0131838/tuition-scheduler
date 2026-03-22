@@ -30,6 +30,7 @@ import {
   getPartnerReceiptApprovalMap,
 } from "@/lib/partner-receipt-approval";
 import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const PARTNER_SOURCE_NAME = "新东方学生";
@@ -57,13 +58,6 @@ function monthKey(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
-}
-
-function ymd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 
 function parseNum(v: FormDataEntryValue | null, fallback = 0) {
@@ -99,6 +93,11 @@ const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px soli
 function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null) {
   const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
+}
+
+function isNextRedirectError(err: unknown) {
+  const digest = (err as { digest?: unknown } | null)?.digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }
 
 function parseManualItems(raw: string) {
@@ -142,7 +141,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
     redirect(withQuery("/admin/reports/partner-settlement/billing?err=no-settlement-items", mode, month));
   }
 
-  const issueDate = String(formData.get("issueDate") ?? "").trim() || ymd(new Date());
+  const issueDate = normalizeDateOnly(String(formData.get("issueDate") ?? "").trim(), new Date()) ?? formatDateOnly(new Date());
   const invoiceNoInput = String(formData.get("invoiceNo") ?? "").trim();
   const invoiceNo = invoiceNoInput || (await getNextGlobalInvoiceNo(issueDate));
   try {
@@ -198,7 +197,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
       settlementIds: candidates.map((x) => x.id),
       invoiceNo,
       issueDate,
-      dueDate: String(formData.get("dueDate") ?? "").trim() || issueDate,
+      dueDate: normalizeDateOnly(String(formData.get("dueDate") ?? "").trim(), new Date()) ?? issueDate,
       billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_CUSTOMER_NAME,
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim() || "Immediate",
       description: String(formData.get("description") ?? "").trim() || (mode === "OFFLINE_MONTHLY" ? offlineSummaryDesc : `Partner settlement Online batch`),
@@ -257,6 +256,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
       }
       redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-replaced", mode, month));
     } catch (e) {
+      if (isNextRedirectError(e)) throw e;
       await unlink(absPath).catch(() => {});
       const msg = e instanceof Error ? e.message : "Replace payment record failed";
       redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
@@ -290,7 +290,7 @@ async function createReceiptAction(formData: FormData) {
       invoiceId,
       paymentRecordId: String(formData.get("paymentRecordId") ?? "").trim() || null,
       receiptNo,
-      receiptDate: String(formData.get("receiptDate") ?? "").trim() || new Date().toISOString(),
+      receiptDate: normalizeDateOnly(String(formData.get("receiptDate") ?? "").trim(), new Date()) ?? formatDateOnly(new Date()),
       receivedFrom,
       paidBy,
       quantity: Math.max(1, Math.floor(parseNum(formData.get("quantity"), 1))),
@@ -385,7 +385,7 @@ export default async function PartnerBillingPage({
   const requestedTab = parseBillingTab(sp?.tab ?? null);
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
-  const today = ymd(new Date());
+  const today = formatDateOnly(new Date());
 
   const source = await prisma.studentSourceChannel.findFirst({ where: { name: PARTNER_SOURCE_NAME }, select: { id: true, name: true } });
   if (!source) return <div style={{ color: "#b00" }}>Partner source not found: {PARTNER_SOURCE_NAME}</div>;
@@ -499,7 +499,7 @@ export default async function PartnerBillingPage({
             <label>{t(lang, "Payment Date", "付款日期")}<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
             <label>{t(lang, "Payment Method", "付款方式")}<select name="paymentMethod" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(optional)", "（可选）")}</option><option value="Paynow">Paynow</option><option value="Cash">Cash</option><option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option></select></label>
             <label>{t(lang, "Reference No.", "参考号")}<input name="referenceNo" style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Replace Existing", "替换现有记录")}<select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(new record)", "（新记录）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
+            <label>{t(lang, "Replace Existing", "替换现有记录")}<select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(new record)", "（新记录）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}</option>))}</select></label>
             <label style={{ gridColumn: "span 5" }}>{t(lang, "Note", "备注")}<input name="paymentNote" style={{ width: "100%" }} /></label>
           </div>
           <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn}>{t(lang, "Upload", "上传")}</button></div>
@@ -525,8 +525,8 @@ export default async function PartnerBillingPage({
           <tbody>
             {billing.paymentRecords.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{new Date(r.uploadedAt).toLocaleString()}</td>
-                <td>{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString() : "-"}</td>
+                <td>{formatBusinessDateTime(new Date(r.uploadedAt))}</td>
+                <td>{r.paymentDate ? normalizeDateOnly(r.paymentDate) ?? "-" : "-"}</td>
                 <td>{r.paymentMethod || "-"}</td>
                 <td>{r.referenceNo || "-"}</td>
                 <td>
@@ -570,7 +570,7 @@ export default async function PartnerBillingPage({
             <label>{t(lang, "GST", "消费税")}<input name="gstAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.gstAmount ?? 0} style={{ width: "100%" }} /></label>
             <label>{t(lang, "Total", "合计")}<input name="totalAmount" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
             <label>{t(lang, "Amount Received", "实收金额")}<input name="amountReceived" type="number" step="0.01" defaultValue={availableInvoices[0]?.totalAmount ?? 0} style={{ width: "100%" }} /></label>
-            <label>{t(lang, "Payment Record", "付款记录")}<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(none)", "（无）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{new Date(r.uploadedAt).toLocaleDateString()} - {r.originalFileName}</option>))}</select></label>
+            <label>{t(lang, "Payment Record", "付款记录")}<select name="paymentRecordId" defaultValue="" style={{ width: "100%" }}><option value="">{t(lang, "(none)", "（无）")}</option>{billing.paymentRecords.map((r) => (<option key={r.id} value={r.id}>{formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}</option>))}</select></label>
             <label style={{ gridColumn: "span 4" }}>{t(lang, "Note", "备注")}<input name="note" style={{ width: "100%" }} /></label>
           </div>
           <div style={{ marginTop: 8 }}><button type="submit" style={primaryBtn} disabled={availableInvoices.length === 0}>{t(lang, "Create Receipt", "创建收据")}</button></div>
@@ -600,7 +600,7 @@ export default async function PartnerBillingPage({
           {billing.invoices.map((r) => (
             <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
               <td>{r.invoiceNo}</td>
-              <td>{new Date(r.issueDate).toLocaleDateString()}</td>
+              <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
               <td>{r.mode}</td>
               <td>{r.monthKey ?? "-"}</td>
               <td>{money(r.totalAmount)}</td>
@@ -671,12 +671,12 @@ export default async function PartnerBillingPage({
             return (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{r.receiptNo}</td>
-                <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
+                <td>{normalizeDateOnly(r.receiptDate) ?? "-"}</td>
                 <td>{inv?.invoiceNo ?? "-"}</td>
                 <td>
                   {paymentRecord ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span>{new Date(paymentRecord.uploadedAt).toLocaleDateString()}</span>
+                      <span>{formatBusinessDateOnly(new Date(paymentRecord.uploadedAt))}</span>
                       <a href={paymentRecord.relativePath} target="_blank" rel="noreferrer">
                         {paymentRecord.originalFileName}
                       </a>

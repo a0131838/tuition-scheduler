@@ -4,6 +4,7 @@ import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -22,7 +23,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     body = {};
   }
   const note = String(body?.note ?? "").trim();
-  const fmt = (d: Date) => new Date(d).toLocaleString();
+  const fmt = (d: Date) => formatBusinessDateTime(new Date(d));
 
   const reqRow = await prisma.studentBookingRequest.findUnique({
     where: { id: requestId },

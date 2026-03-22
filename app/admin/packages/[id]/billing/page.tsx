@@ -23,13 +23,7 @@ import {
   areAllApproversConfirmed,
   getApprovalRoleConfig,
 } from "@/lib/approval-flow";
-
-function ymd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 function parseNum(v: FormDataEntryValue | null, fallback = 0) {
   const n = Number(String(v ?? "").trim());
@@ -56,7 +50,7 @@ async function createInvoiceAction(formData: FormData) {
   const gstAmount = parseNum(formData.get("gstAmount"), 0);
   const totalAmountRaw = parseNum(formData.get("totalAmount"), NaN);
   const totalAmount = Number.isFinite(totalAmountRaw) ? totalAmountRaw : amount + gstAmount;
-  const issueDate = String(formData.get("issueDate") ?? "").trim() || new Date().toISOString();
+  const issueDate = normalizeDateOnly(String(formData.get("issueDate") ?? "").trim(), new Date()) ?? formatDateOnly(new Date());
   const invoiceNoInput = String(formData.get("invoiceNo") ?? "").trim();
   const invoiceNo = invoiceNoInput || (await getNextGlobalInvoiceNo(issueDate));
 
@@ -73,7 +67,7 @@ async function createInvoiceAction(formData: FormData) {
       studentId: pkg.studentId,
       invoiceNo,
       issueDate,
-      dueDate: String(formData.get("dueDate") ?? "").trim() || new Date().toISOString(),
+      dueDate: normalizeDateOnly(String(formData.get("dueDate") ?? "").trim(), new Date()) ?? issueDate,
       courseStartDate: String(formData.get("courseStartDate") ?? "").trim() || null,
       courseEndDate: String(formData.get("courseEndDate") ?? "").trim() || null,
       billTo: String(formData.get("billTo") ?? "").trim() || pkg.student.name,
@@ -161,7 +155,7 @@ export default async function PackageBillingPage({
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
-  const today = ymd(new Date());
+  const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
 
@@ -241,8 +235,8 @@ export default async function PackageBillingPage({
             {data.invoices.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{r.invoiceNo}</td>
-                <td>{new Date(r.issueDate).toLocaleDateString()}</td>
-                <td>{new Date(r.dueDate).toLocaleDateString()}</td>
+                <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
+                <td>{normalizeDateOnly(r.dueDate) ?? "-"}</td>
                 <td>{money(r.totalAmount)}</td>
                 <td>{r.createdBy}</td>
                 <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
@@ -298,7 +292,7 @@ export default async function PackageBillingPage({
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.receiptNo}</td>
                   <td>{r.invoiceId ? (invoiceMap.get(r.invoiceId)?.invoiceNo ?? "-") : "-"}</td>
-                  <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
+                  <td>{normalizeDateOnly(r.receiptDate) ?? "-"}</td>
                   <td>{r.receivedFrom}</td>
                   <td>{money(r.amountReceived)}</td>
                   <td>

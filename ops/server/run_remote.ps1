@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Uploading project..."
 ssh -i $KeyPath "$User@$Host" "mkdir -p $RemoteDir"
-rsync -avz --delete -e "ssh -i $KeyPath" ./ "$User@$Host:$RemoteDir/" --exclude ".git" --exclude "node_modules" --exclude ".next"
+rsync -avz --delete -e "ssh -i $KeyPath" ./ "$User@$Host:$RemoteDir/" --exclude ".git" --exclude "node_modules" --exclude ".next" --exclude "public/uploads"
 
 Write-Host "Setting execute bits..."
 ssh -i $KeyPath "$User@$Host" "cd $RemoteDir && chmod +x ops/server/scripts/*.sh"

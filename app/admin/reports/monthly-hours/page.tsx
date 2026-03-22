@@ -2,6 +2,7 @@
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
 
@@ -132,7 +133,7 @@ export default async function MonthlyHoursReportPage({
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{new Date(r.updatedAt).toLocaleString()}</td>
+                <td>{formatBusinessDateTime(new Date(r.updatedAt))}</td>
                 <td>
                   {r.student?.name ?? "-"}
                   <div style={{ color: "#999", fontSize: 12 }}>{r.studentId}</div>
@@ -140,8 +141,8 @@ export default async function MonthlyHoursReportPage({
                 <td>{r.student?.sourceChannel?.name ?? "-"}</td>
                 <td>{r.student?.studentType?.name ?? "-"}</td>
                 <td>
-                  {new Date(r.session.startAt).toLocaleString()} -{" "}
-                  {new Date(r.session.endAt).toLocaleTimeString()}
+                  {formatBusinessDateTime(new Date(r.session.startAt))} -{" "}
+                  {formatBusinessDateTime(new Date(r.session.endAt))}
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><ClassTypeBadge capacity={r.session.class.capacity} compact /><span>{r.session.class.course.name} / {r.session.class.subject?.name ?? "-"} / {r.session.class.level?.name ?? "-"}</span></div>
@@ -161,4 +162,3 @@ export default async function MonthlyHoursReportPage({
     </div>
   );
 }
-

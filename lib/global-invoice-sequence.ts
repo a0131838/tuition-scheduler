@@ -9,6 +9,7 @@ import {
 } from "@/lib/partner-billing";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
+import { monthKeyFromDateOnly } from "@/lib/date-only";
 
 type InvoiceOwner = "PARENT" | "PARTNER";
 
@@ -20,14 +21,8 @@ type GlobalInvoiceRow = {
   fixed: boolean;
 };
 
-function two(n: number) {
-  return String(n).padStart(2, "0");
-}
-
 function monthKeyFromDate(input: string | Date | null | undefined) {
-  const d = input ? new Date(input) : new Date();
-  const x = Number.isNaN(+d) ? new Date() : d;
-  return `${x.getFullYear()}${two(x.getMonth() + 1)}`;
+  return monthKeyFromDateOnly(input).replace("-", "");
 }
 
 export function parseInvoiceNoParts(invoiceNo: string): { monthKey: string; seq: number } | null {
@@ -171,4 +166,3 @@ export async function resequenceGlobalInvoiceNumbersForMonth(monthKey: string) {
   ]);
   return { changed: parentChanged + partnerChanged };
 }
-

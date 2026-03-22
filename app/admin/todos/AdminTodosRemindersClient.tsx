@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type ReminderSession = {
   startAt: string;
@@ -23,7 +24,7 @@ type Kind = "teacher" | "student";
 function fmtDateRange(startAtIso: string, endAtIso: string) {
   const startAt = new Date(startAtIso);
   const endAt = new Date(endAtIso);
-  return `${startAt.toLocaleString()} - ${endAt.toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(startAt)} - ${formatBusinessTimeOnly(endAt)}`;
 }
 
 function courseLabel(s: ReminderSession) {
@@ -137,7 +138,7 @@ function ReminderCard(props: {
   const actionHeader = "操作 / Action";
   const statusHeader = "状态 / Status";
   const confirmedStatus = (confirmAt?: string | null) =>
-    confirmAt ? `已确认 / Confirmed ${new Date(confirmAt).toLocaleTimeString()}` : "未确认 / Not confirmed";
+    confirmAt ? `已确认 / Confirmed ${formatBusinessTimeOnly(new Date(confirmAt))}` : "未确认 / Not confirmed";
 
   return (
     <div style={cardStyle}>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import TeacherConfirmCoursesButton from "./TeacherConfirmCoursesButton";
 import { getVisibleSessionStudentNames } from "@/lib/session-students";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
 const TEACHER_SELF_CONFIRM_TOMORROW = "TEACHER_SELF_CONFIRM_TOMORROW";
@@ -224,8 +225,8 @@ export default async function TeacherHomePage({
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <h3 style={{ margin: 0 }}>{t(lang, "Today's Courses", "今日课程")} ({todaySessionsVisible.length})</h3>
             {todayConfirmed ? (
-              <span style={{ color: "#166534", fontWeight: 700 }}>
-                {t(lang, "Confirmed", "已确认")}: {(todayConfirmed as any).createdAt.toLocaleTimeString()}
+                <span style={{ color: "#166534", fontWeight: 700 }}>
+                {t(lang, "Confirmed", "已确认")}: {formatBusinessTimeOnly(new Date((todayConfirmed as any).createdAt))}
               </span>
             ) : (
               <TeacherConfirmCoursesButton
@@ -249,7 +250,7 @@ export default async function TeacherHomePage({
                 return (
                 <div key={s.id} style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </div>
                   <div style={{ marginTop: 4, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <ClassTypeBadge capacity={s.class.capacity} compact />
@@ -277,8 +278,8 @@ export default async function TeacherHomePage({
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <h3 style={{ margin: 0 }}>{t(lang, "Tomorrow's Courses", "明日课程")} ({tomorrowSessionsVisible.length})</h3>
             {tomorrowConfirmed ? (
-              <span style={{ color: "#166534", fontWeight: 700 }}>
-                {t(lang, "Confirmed", "已确认")}: {(tomorrowConfirmed as any).createdAt.toLocaleTimeString()}
+                <span style={{ color: "#166534", fontWeight: 700 }}>
+                {t(lang, "Confirmed", "已确认")}: {formatBusinessTimeOnly(new Date((tomorrowConfirmed as any).createdAt))}
               </span>
             ) : (
               <TeacherConfirmCoursesButton
@@ -302,7 +303,7 @@ export default async function TeacherHomePage({
                 return (
                 <div key={s.id} style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div>
-                    {new Date(s.startAt).toLocaleString()} - {new Date(s.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(s.startAt))} - {formatBusinessTimeOnly(new Date(s.endAt))}
                   </div>
                   <div style={{ marginTop: 4, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <ClassTypeBadge capacity={s.class.capacity} compact />

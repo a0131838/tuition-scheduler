@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
+import { formatBusinessDateTime } from "@/lib/date-only";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 
 function ymd(d: Date) {
@@ -219,7 +220,7 @@ export default async function CancelledSessionsReportPage({
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>
-                    {new Date(r.session.startAt).toLocaleString()} - {new Date(r.session.endAt).toLocaleTimeString()}
+                    {formatBusinessDateTime(new Date(r.session.startAt))} - {formatBusinessDateTime(new Date(r.session.endAt))}
                   </td>
                   <td>
                     {r.student.name}
@@ -244,7 +245,7 @@ export default async function CancelledSessionsReportPage({
                   <td>{r.deductedMinutes}</td>
                   <td>{r.package ? `${r.package.type} (${r.package.id.slice(0, 8)})` : "-"}</td>
                   <td>{r.note?.trim() || "-"}</td>
-                  <td>{new Date(r.updatedAt).toLocaleString()}</td>
+                  <td>{formatBusinessDateTime(new Date(r.updatedAt))}</td>
                 </tr>
               );
             })}
@@ -254,4 +255,3 @@ export default async function CancelledSessionsReportPage({
     </div>
   );
 }
-

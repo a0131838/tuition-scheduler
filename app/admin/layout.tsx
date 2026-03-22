@@ -1,9 +1,12 @@
 ﻿import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
+import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
+import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 import Link from "next/link";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 async function resolvePathnameFromHeaders() {
   const h = await headers();
@@ -49,9 +52,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const showManagerConsole = await isManagerUser(user);
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
+  const ledgerAlertRow = await prisma.appSetting.findUnique({
+    where: { key: LEDGER_INTEGRITY_ALERT_KEY },
+    select: { value: true },
+  });
+  const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
 
   const financeAllowedPath =
     pathname === "/admin" ||
+    pathname === "/admin/finance/workbench" ||
+    pathname === "/admin/finance/student-package-invoices" ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
@@ -74,6 +84,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div style={{ display: "grid", gap: 5, padding: 5, borderRadius: 10, background: "#f7f5ff", border: "1px solid #e4ddf7" }}>
               <Link scroll={false} href="/admin" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Finance Dashboard", "财务首页")}
+              </Link>
+              <Link scroll={false} href="/admin/finance/workbench" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                {t(lang, "Finance Workbench", "财务工作台")}
+              </Link>
+              <Link scroll={false} href="/admin/finance/student-package-invoices" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
+                {t(lang, "Student Package Invoices", "学生课时包发票")}
               </Link>
               <Link scroll={false} href="/admin/reports/teacher-payroll" className="nav-button" style={{ padding: "6px 8px", borderRadius: 8 }}>
                 {t(lang, "Teacher Payroll", "老师工资单")}
@@ -334,6 +350,41 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <a href="/admin/logout">Logout</a>
             </div>
           </div>
+          {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
+            <div
+              style={{
+                margin: "0 0 10px",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #ef4444",
+                background: "#fef2f2",
+                color: "#7f1d1d",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                {t(lang, "Ledger Integrity Alert", "课包对账告警")}:
+                {" "}
+                {ledgerAlert.totalIssueCount}
+                {" "}
+                {t(lang, "issues detected", "条异常")}
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 6 }}>
+                {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} ·
+                {" "}
+                {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} ·
+                {" "}
+                {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link scroll={false} href="/admin/todos">
+                  {t(lang, "Open Todo Center", "打开待办中心")}
+                </Link>
+                <Link scroll={false} href="/admin/reports/undeducted-completed">
+                  {t(lang, "Open Repair Report", "打开减扣修复报表")}
+                </Link>
+              </div>
+            </div>
+          ) : null}
           {children}
         </main>
       </div>

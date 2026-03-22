@@ -26,8 +26,7 @@ function fmtMinutes(min?: number | null) {
 
 function fmtDate(v: string | null) {
   if (!v) return "(open)";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "-";
 }
 
 function packLabel(row: PackageRow) {

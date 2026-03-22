@@ -5,6 +5,7 @@ import BookingLinkCreateForm from "./_components/BookingLinkCreateForm";
 import SimpleModal from "../_components/SimpleModal";
 import CopyTextButton from "../_components/CopyTextButton";
 import NoticeBanner from "../_components/NoticeBanner";
+import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -148,10 +149,10 @@ export default async function AdminBookingLinksPage({
             const url = `${base}/booking/${l.token}`;
             return (
               <tr key={l.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{new Date(l.createdAt).toLocaleString()}</td>
+                <td>{formatBusinessDateTime(new Date(l.createdAt))}</td>
                 <td>{l.student.name}</td>
                 <td>
-                  {new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()}
+                  {formatBusinessDateOnly(new Date(l.startDate))} - {formatBusinessDateOnly(new Date(l.endDate))}
                   {!l.isActive ? <span style={{ color: "#b00" }}> ({t(lang, "Inactive", "已停用")})</span> : null}
                 </td>
                 <td>{l.teachers.map((x) => x.teacher.name).join(", ")}</td>

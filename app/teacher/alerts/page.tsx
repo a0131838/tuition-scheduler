@@ -10,9 +10,10 @@ import {
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
+import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 function fmtRange(startAt: Date, endAt: Date) {
-  return `${new Date(startAt).toLocaleString()} - ${new Date(endAt).toLocaleTimeString()}`;
+  return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
 }
 
 function classLabel(cls: any) {
@@ -295,7 +296,7 @@ export default async function TeacherAlertsPage({
                   <span style={badgeStyle(r.isPending ? "danger" : "ok")}>
                     {r.isPending
                       ? `${t(lang, "Pending", "待处理")} (${r.pendingCount})`
-                      : `${t(lang, "Processed", "已处理")} ${r.resolvedAt ? `@ ${r.resolvedAt.toLocaleString()}` : ""}`}
+                      : `${t(lang, "Processed", "已处理")} ${r.resolvedAt ? `@ ${formatBusinessDateTime(r.resolvedAt)}` : ""}`}
                   </span>
                 </div>
 
@@ -370,4 +371,3 @@ export default async function TeacherAlertsPage({
     </div>
   );
 }
-

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { bookingSlotKey, listBookingSlotsForMonth, monthKey, parseMonth, ymd } from "@/lib/booking";
+import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 
 async function submitBookingRequest(token: string, formData: FormData) {
   "use server";
@@ -301,7 +302,7 @@ export default async function BookingPage({
       <p>
         Student: <b>{link.student.name}</b><br />
         Teachers: <b>{link.teachers.map((x) => x.teacher.name).join(", ")}</b><br />
-        Window: <b>{new Date(link.startDate).toLocaleDateString()} - {new Date(link.endDate).toLocaleDateString()}</b><br />
+        Window: <b>{formatBusinessDateOnly(new Date(link.startDate))} - {formatBusinessDateOnly(new Date(link.endDate))}</b><br />
         Duration per class: <b>{link.durationMin} minutes</b><br />
         Start time interval: <b>{link.slotStepMin} minutes</b>
       </p>
@@ -324,7 +325,7 @@ export default async function BookingPage({
           <ul style={{ margin: "8px 0 0 18px" }}>
             {existingRequests.map((r) => (
               <li key={r.id}>
-                {new Date(r.startAt).toLocaleString()} - {new Date(r.endAt).toLocaleTimeString()} | {r.teacher.name} | {r.status}
+                {formatBusinessDateTime(new Date(r.startAt))} - {formatBusinessTimeOnly(new Date(r.endAt))} | {r.teacher.name} | {r.status}
                 {r.status === "PENDING" ? (
                   <form action={cancelBookingRequest.bind(null, token)} style={{ display: "inline", marginLeft: 8 }}>
                     <input type="hidden" name="requestId" value={r.id} />
@@ -425,6 +426,5 @@ export default async function BookingPage({
     </div>
   );
 }
-
 
 

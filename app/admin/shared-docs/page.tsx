@@ -3,6 +3,7 @@ import { getLang, t } from '@/lib/i18n';
 import { canAccessSharedDocs, ensureDefaultDocumentCategories } from '@/lib/shared-docs';
 import { requireAdmin } from '@/lib/auth';
 import { storeSharedDocFile } from '@/lib/shared-doc-files';
+import { formatBusinessDateTime } from '@/lib/date-only';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -291,7 +292,7 @@ export default async function SharedDocsPage({
                       <div>{row.uploader.name}</div>
                       <div style={{ color: '#64748b' }}>{row.uploader.email}</div>
                     </td>
-                    <td style={{ padding: '8px 4px' }}>{new Date(row.createdAt).toLocaleString()}</td>
+                    <td style={{ padding: '8px 4px' }}>{formatBusinessDateTime(new Date(row.createdAt))}</td>
                     <td style={{ padding: '8px 4px' }}>
                       <a href={`/api/shared-docs/${row.id}/file`} target="_blank" rel="noreferrer">
                         {t(lang, 'Open', '打开')}

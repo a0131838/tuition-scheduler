@@ -117,3 +117,16 @@ This file is the single source of truth for what changed in production.
 - Verification:
   - `bash ops/server/scripts/quick_deploy.sh ...` can find and execute `quick_check.sh`
 - Rollback point: `39e9967`.
+
+## 2026-03-22-r7
+
+- Release ID: `2026-03-22-r7`
+- Date/Time (Asia/Shanghai): `2026-03-22`
+- Scope: Release board state alignment after latest successful deploy.
+- Key files:
+  - `docs/RELEASE-BOARD.md`
+  - `docs/CHANGELOG-LIVE.md`
+- Risk impact (if any): None (documentation-only alignment).
+- Verification:
+  - `RELEASE-BOARD` remote commit updated to `d00be8e`
+- Rollback point: `d00be8e` (runtime unchanged).

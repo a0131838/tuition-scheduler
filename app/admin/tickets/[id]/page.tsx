@@ -1,6 +1,7 @@
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveTicketTeacherId } from "@/lib/ticket-teacher";
 import {
   canTransitionTicketStatus,
   composeTicketSituation,
@@ -25,6 +26,9 @@ import {
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { existsSync } from "fs";
+import path from "path";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -51,6 +55,25 @@ function normalizeProofUrl(item: string) {
     return `/api/tickets/files/${encodeURIComponent(name)}`;
   }
   return item;
+}
+
+function extractTicketProofFilename(item: string) {
+  const raw = item.trim();
+  if (!raw) return "";
+  if (raw.startsWith("/uploads/tickets/")) {
+    return raw.replace("/uploads/tickets/", "").trim();
+  }
+  if (raw.startsWith("/api/tickets/files/")) {
+    return decodeURIComponent(raw.split("/").pop() ?? "").trim();
+  }
+  return "";
+}
+
+function isTicketProofMissing(item: string) {
+  const filename = extractTicketProofFilename(item);
+  if (!filename) return false;
+  const abs = path.join(process.cwd(), "public", "uploads", "tickets", filename);
+  return !existsSync(abs);
 }
 
 function asText(v: string | null | undefined) {
@@ -194,6 +217,10 @@ async function updateTicketFieldsAction(formData: FormData) {
   const grade = normalizeTicketString(formData.get("grade"), 40);
   const course = normalizeTicketString(formData.get("course"), 120);
   const teacher = normalizeTicketString(formData.get("teacher"), 120);
+  const teacherIdInput = normalizeTicketString(formData.get("teacherId"), 80);
+  if (!teacher) {
+    redirect(appendQuery(back, { err: "edit-teacher-required" }));
+  }
   const durationMin = normalizeTicketInt(formData.get("durationMin"));
   const mode = validateByOptions(normalizeTicketString(formData.get("mode"), 40), TICKET_MODE_OPTIONS);
   const wechat = normalizeTicketString(formData.get("wechat"), 120);
@@ -222,6 +249,10 @@ async function updateTicketFieldsAction(formData: FormData) {
   if (!situationCurrent || !situationAction || !situationDeadlineRaw || !situationDeadline) {
     redirect(appendQuery(back, { err: "edit-situation" }));
   }
+  const teacherId = await resolveTicketTeacherId({
+    teacherName: teacher,
+    teacherId: teacherIdInput,
+  });
 
   await prisma.ticket.update({
     where: { id },
@@ -362,6 +393,7 @@ export default async function AdminTicketDetailPage({
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
           {err === "edit-required" && "编辑保存失败：学生、来源、类型、优先级、负责人必填 / Required fields missing."}
+          {err === "edit-teacher-required" && "编辑保存失败：老师必填 / Teacher is required."}
           {err === "edit-type-required" &&
             `编辑保存失败：该工单类型缺少必填字段 / Missing required fields for this ticket type${fields ? `: ${fields}` : ""}`}
           {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
@@ -399,7 +431,7 @@ export default async function AdminTicketDetailPage({
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: overdue ? "#fff1f2" : "#fff" }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>下一步截止 / Due</div>
           <div style={{ fontWeight: 700, marginTop: 4, color: overdue ? "#b91c1c" : "#0f172a" }}>
-            {row.nextActionDue ? row.nextActionDue.toLocaleString() : "-"}
+            {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
           </div>
         </div>
       </div>
@@ -491,10 +523,10 @@ export default async function AdminTicketDetailPage({
             <div><b>授课形式</b>: {asText(row.mode)}</div>
             <div><b>版本</b>: {asText(row.version)}</div>
             <div><b>系统已更新</b>: {asText(row.systemUpdated)}</div>
-            <div><b>SLA截止</b>: {row.slaDue ? row.slaDue.toLocaleString() : "-"}</div>
+            <div><b>SLA截止</b>: {row.slaDue ? formatBusinessDateTime(row.slaDue) : "-"}</div>
             <div><b>录入人</b>: {asText(row.createdByName)}</div>
-            <div><b>创建时间</b>: {row.createdAt.toLocaleString()}</div>
-            <div><b>更新时间</b>: {row.updatedAt.toLocaleString()}</div>
+            <div><b>创建时间</b>: {formatBusinessDateTime(row.createdAt)}</div>
+            <div><b>更新时间</b>: {formatBusinessDateTime(row.updatedAt)}</div>
           </div>
 
           <div>
@@ -502,7 +534,7 @@ export default async function AdminTicketDetailPage({
             <div style={{ display: "grid", gap: 8 }}>
               <div><b>当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.currentIssue)}</span></div>
               <div><b>需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.requiredAction || row.nextAction)}</span></div>
-              <div><b>最晚截止时间</b>: {parsed.latestDeadlineText || (row.nextActionDue ? row.nextActionDue.toLocaleString() : "-")}</div>
+              <div><b>最晚截止时间</b>: {parsed.latestDeadlineText || (row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-")}</div>
             </div>
           </div>
 
@@ -520,12 +552,23 @@ export default async function AdminTicketDetailPage({
                 {proofItemsAll(row.proof).map((item, idx) => {
                   const href = normalizeProofUrl(item);
                   const isLink = href.startsWith("/") || href.startsWith("http://") || href.startsWith("https://");
-                  if (!isLink) return <span key={`${row.id}-proof-${idx}`}>{item}</span>;
+                  const missing = isTicketProofMissing(item);
+                  if (!isLink) {
+                    return (
+                      <span key={`${row.id}-proof-${idx}`} style={{ color: missing ? "#b91c1c" : undefined }}>
+                        {item}
+                        {missing ? "（文件缺失，请补传）" : ""}
+                      </span>
+                    );
+                  }
                   const imageLike = /\.(png|jpe?g|webp|gif)$/i.test(href);
                   return (
-                    <a key={`${row.id}-proof-${idx}`} href={href} target="_blank" rel="noreferrer">
-                      {imageLike ? `图片 ${idx + 1} / Image ${idx + 1}` : `文件 ${idx + 1} / File ${idx + 1}`}
-                    </a>
+                    <div key={`${row.id}-proof-${idx}`} style={{ display: "grid", gap: 2 }}>
+                      <a href={href} target="_blank" rel="noreferrer" style={{ color: missing ? "#b91c1c" : undefined }}>
+                        {imageLike ? `图片 ${idx + 1} / Image ${idx + 1}` : `文件 ${idx + 1} / File ${idx + 1}`}
+                      </a>
+                      {missing ? <span style={{ color: "#b91c1c", fontSize: 12 }}>文件缺失，请补传 / Missing file, re-upload required</span> : null}
+                    </div>
                   );
                 })}
               </div>
@@ -644,12 +687,12 @@ export default async function AdminTicketDetailPage({
                   />
                 </label>
                 <label>
-                  老师{template.requiredFields.includes("teacher") ? "*" : ""}
+                  老师*
                   <input
                     name="teacher"
-                    required={template.requiredFields.includes("teacher")}
+                    required
                     defaultValue={row.teacher ?? ""}
-                    placeholder={template.requiredFields.includes("teacher") || template.suggestedFields.includes("teacher") ? "填写当前老师或目标老师" : ""}
+                    placeholder="填写当前老师或目标老师"
                     style={{ width: "100%", boxSizing: "border-box" }}
                   />
                 </label>

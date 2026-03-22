@@ -1,7 +1,9 @@
 ﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET(req: Request) {
+  await requireAdmin();
   const url = new URL(req.url);
   const classId = url.searchParams.get("classId") ?? undefined;
   const studentId = url.searchParams.get("studentId") ?? undefined;
@@ -21,6 +23,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  await requireAdmin();
   const body = await req.json().catch(() => null);
   const classId = body?.classId as string | undefined;
   const studentId = body?.studentId as string | undefined;
@@ -45,6 +48,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  await requireAdmin();
   const url = new URL(req.url);
   const classId = url.searchParams.get("classId") ?? "";
   const studentId = url.searchParams.get("studentId") ?? "";

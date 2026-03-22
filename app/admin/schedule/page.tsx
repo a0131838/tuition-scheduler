@@ -8,6 +8,7 @@ import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import ScheduleDeleteEventClient from "./_components/ScheduleDeleteEventClient";
 import ScheduleReplaceTeacherClient from "./_components/ScheduleReplaceTeacherClient";
+import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type ViewMode = "teacher" | "room" | "campus";
 
@@ -41,16 +42,11 @@ function parseYMD(s: string) {
 }
 
 function fmtTime(d: Date) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatBusinessTimeOnly(d);
 }
 
 function fmtDate(d: Date) {
-  return d.toLocaleDateString([], {
-    weekday: "short",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  return `${WEEKDAYS[d.getDay()] ?? ""} ${formatBusinessDateOnly(d)}`;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

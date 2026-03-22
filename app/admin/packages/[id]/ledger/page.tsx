@@ -7,6 +7,7 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import PackageLedgerGiftClient from "./PackageLedgerGiftClient";
 import PackageLedgerEditTxnClient from "./PackageLedgerEditTxnClient";
 import { parseAbnormalLedgerNote } from "@/lib/package-ledger-guard";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(Math.abs(min) / 60);
@@ -136,14 +137,14 @@ export default async function PackageLedgerPage({
           <tbody>
             {rows.map((r) => (
               <tr key={r.txn.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{new Date(r.txn.createdAt).toLocaleString()}</td>
+                <td>{formatBusinessDateTime(new Date(r.txn.createdAt))}</td>
                 <td>{r.txn.kind}</td>
                 <td style={{ color: r.txn.deltaMinutes < 0 ? "#b00" : "#0a0" }}>{fmtUnit(r.txn.deltaMinutes)}</td>
                 <td>{fmtUnit(r.running)}</td>
                 <td>
                   {r.session ? (
                     <div>
-                      <div>{new Date(r.session.startAt).toLocaleString()}</div>
+                      <div>{formatBusinessDateTime(new Date(r.session.startAt))}</div>
                       <div style={{ color: "#999", fontSize: 12 }}>
                         <ClassTypeBadge capacity={r.session.class.capacity} compact />{" "}
                         {r.session.class.course.name} / {r.session.class.subject?.name ?? "-"} / {r.session.class.level?.name ?? "-"} |{" "}

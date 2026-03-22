@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { packageModeFromNote } from "@/lib/package-mode";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { prisma } from "@/lib/prisma";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return Response.json({ ok: false, message }, { status });
@@ -76,8 +77,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         id: row.id,
         type: row.type,
         remainingMinutes: row.remainingMinutes,
-        validFrom: row.validFrom.toISOString(),
-        validTo: row.validTo?.toISOString() ?? null,
+        validFrom: formatBusinessDateOnly(row.validFrom),
+        validTo: row.validTo ? formatBusinessDateOnly(row.validTo) : null,
         paid: row.paid,
         canSchedule,
         lowBalance: row.type === "HOURS" && remaining <= 120,

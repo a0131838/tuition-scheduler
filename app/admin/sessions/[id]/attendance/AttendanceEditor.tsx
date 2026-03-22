@@ -9,6 +9,7 @@ export type AttendanceRow = {
   status: string;
   deductedCount: number;
   deductedMinutes: number;
+  suggestedDeductMinutes: number;
   note: string;
   packageId: string;
   excusedCharge: boolean;
@@ -46,7 +47,13 @@ function fmtMinutes(min?: number | null) {
   return `${h}h ${m}m`;
 }
 
+function isDeductableStatus(status: string, excusedCharge: boolean) {
+  return status === "PRESENT" || status === "LATE" || status === "ABSENT" || (status === "EXCUSED" && excusedCharge);
+}
+
 export default function AttendanceEditor({ rows, lang }: Props) {
+  const [showOnlyIssues, setShowOnlyIssues] = useState(false);
+  const [showAllPackagesByStudent, setShowAllPackagesByStudent] = useState<Record<string, boolean>>({});
   const [state, setState] = useState(() => {
     const init: Record<
       string,
@@ -92,6 +99,48 @@ export default function AttendanceEditor({ rows, lang }: Props) {
   }, [lang, rows, state]);
 
   const hasInsufficient = Object.keys(insuffMap).length > 0;
+  const anomalyMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of rows) {
+      const st = state[r.studentId];
+      const pkg = r.packageOptions.find((p) => p.id === st?.packageId);
+      const messages: string[] = [];
+
+      if (!pkg && ((st?.deductedCount ?? 0) > 0 || (st?.deductedMinutes ?? 0) > 0)) {
+        messages.push(
+          t(lang, "No package selected but deduct value is filled.", "未选择课包但填写了扣减值。")
+        );
+      } else if (pkg?.billingMode === "COUNT" && (st?.deductedMinutes ?? 0) > 0) {
+        messages.push(
+          t(
+            lang,
+            "Count package uses deduct count. Deduct minutes should be 0.",
+            "按次数课包应填写扣次数，扣分钟应为 0。"
+          )
+        );
+      } else if (pkg?.billingMode === "MINUTES" && (st?.deductedCount ?? 0) > 0) {
+        messages.push(
+          t(
+            lang,
+            "Minutes package uses deduct minutes. Deduct count should be 0.",
+            "按分钟课包应填写扣分钟，扣次数应为 0。"
+          )
+        );
+      }
+
+      if ((st?.status ?? r.status) === "UNMARKED" && ((st?.deductedCount ?? 0) > 0 || (st?.deductedMinutes ?? 0) > 0)) {
+        messages.push(
+          t(lang, "Status is UNMARKED but deduct value is not 0.", "状态为未点名，但扣减值不是 0。")
+        );
+      }
+
+      if (messages.length) map[r.studentId] = messages.join(" ");
+    }
+    return map;
+  }, [lang, rows, state]);
+  const hasAnomaly = Object.keys(anomalyMap).length > 0;
+  const issueCount = rows.filter((r) => Boolean(insuffMap[r.studentId] || anomalyMap[r.studentId])).length;
+  const displayRows = showOnlyIssues ? rows.filter((r) => Boolean(insuffMap[r.studentId] || anomalyMap[r.studentId])) : rows;
 
   return (
     <>
@@ -101,6 +150,35 @@ export default function AttendanceEditor({ rows, lang }: Props) {
           title={t(lang, "Insufficient balance", "余额不足")}
           message={t(lang, "Please adjust deduct values or choose another package.", "请调整扣减值或选择其他课包。")}
         />
+      ) : null}
+      {hasAnomaly ? (
+        <NoticeBanner
+          type="warn"
+          title={t(lang, "Deduct value check", "扣减值检查")}
+          message={t(
+            lang,
+            "Some rows look inconsistent. Please review red hints before saving.",
+            "部分行存在不一致，请先检查红色提示后再保存。"
+          )}
+        />
+      ) : null}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <input
+            type="checkbox"
+            checked={showOnlyIssues}
+            onChange={(e) => setShowOnlyIssues(e.target.checked)}
+          />
+          {t(lang, "Show only rows with issues", "仅显示有问题行")}
+        </label>
+        <span style={{ color: issueCount > 0 ? "#b00" : "#666", fontSize: 12 }}>
+          {t(lang, "Issue rows", "问题行")} {issueCount}
+        </span>
+      </div>
+      {showOnlyIssues && displayRows.length === 0 ? (
+        <div style={{ marginBottom: 8, color: "#666", fontSize: 12 }}>
+          {t(lang, "No issue rows now.", "当前没有问题行。")}
+        </div>
       ) : null}
 
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -117,13 +195,29 @@ export default function AttendanceEditor({ rows, lang }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
+          {displayRows.map((r) => {
             const st = state[r.studentId];
             const pkg = r.packageOptions.find((p) => p.id === st?.packageId);
             const insufficient = insuffMap[r.studentId];
             const status = st?.status ?? r.status;
+            const excusedCharge = Boolean(st?.excusedCharge);
+            const canDeduct = isDeductableStatus(status, excusedCharge);
             const excusedCount = r.excusedBaseCount + (status === "EXCUSED" ? 1 : 0);
             const excusedEligible = excusedCount >= 4;
+            const requiredCount = Math.max(1, Number(st?.deductedCount ?? 0) || 0);
+            const requiredMinutes = Math.max(
+              1,
+              Number(st?.deductedMinutes ?? 0) || Number(r.suggestedDeductMinutes ?? 0) || 0
+            );
+            const recommendedPackages = r.packageOptions.filter((p) => {
+              if (!canDeduct) return true;
+              if (p.billingMode === "COUNT") return (p.remainingMinutes ?? 0) >= requiredCount;
+              if (p.billingMode === "MINUTES") return (p.remainingMinutes ?? 0) >= requiredMinutes;
+              return false;
+            });
+            const showAllPackages = Boolean(showAllPackagesByStudent[r.studentId]);
+            const packageList =
+              recommendedPackages.length > 0 && !showAllPackages ? recommendedPackages : r.packageOptions;
 
             return (
               <tr key={r.studentId} style={{ borderTop: "1px solid #eee" }}>
@@ -136,12 +230,37 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                   <select
                     name={`status:${r.studentId}`}
                     value={status}
-                    onChange={(e) =>
-                      setState((s) => ({
-                        ...s,
-                        [r.studentId]: { ...s[r.studentId], status: e.target.value },
-                      }))
-                    }
+                    onChange={(e) => {
+                      const nextStatus = e.target.value;
+                      setState((s) => {
+                        const prev = s[r.studentId];
+                        if (!prev) return s;
+                        const next = { ...prev, status: nextStatus };
+                        const activePkg = r.packageOptions.find((p) => p.id === next.packageId);
+
+                        if (nextStatus === "UNMARKED") {
+                          next.deductedCount = 0;
+                          next.deductedMinutes = 0;
+                        } else if (nextStatus === "EXCUSED" && !next.excusedCharge) {
+                          next.deductedCount = 0;
+                          next.deductedMinutes = 0;
+                        } else if (activePkg) {
+                          const canDeduct = isDeductableStatus(nextStatus, Boolean(next.excusedCharge));
+                          if (canDeduct) {
+                            if (activePkg.billingMode === "COUNT") {
+                              next.deductedCount = Math.max(1, Number(next.deductedCount ?? 0) || 0);
+                              next.deductedMinutes = 0;
+                            } else if (activePkg.billingMode === "MINUTES") {
+                              if ((next.deductedMinutes ?? 0) <= 0) {
+                                next.deductedMinutes = Math.max(0, Number(r.suggestedDeductMinutes ?? 0));
+                              }
+                              next.deductedCount = 0;
+                            }
+                          }
+                        }
+                        return { ...s, [r.studentId]: next };
+                      });
+                    }}
                     style={{ minWidth: 160 }}
                   >
                     <option value="UNMARKED">{t(lang, "UNMARKED", "未点名")}</option>
@@ -160,12 +279,28 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                           type="checkbox"
                           name={`charge:${r.studentId}`}
                           checked={st?.excusedCharge ?? false}
-                          onChange={(e) =>
-                            setState((s) => ({
-                              ...s,
-                              [r.studentId]: { ...s[r.studentId], excusedCharge: e.target.checked },
-                            }))
-                          }
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setState((s) => {
+                              const prev = s[r.studentId];
+                              if (!prev) return s;
+                              const next = { ...prev, excusedCharge: checked };
+                              const activePkg = r.packageOptions.find((p) => p.id === next.packageId);
+                              if (!checked) {
+                                next.deductedCount = 0;
+                                next.deductedMinutes = 0;
+                              } else if (activePkg?.billingMode === "COUNT") {
+                                next.deductedCount = Math.max(1, Number(next.deductedCount ?? 0) || 0);
+                                next.deductedMinutes = 0;
+                              } else if (activePkg?.billingMode === "MINUTES") {
+                                if ((next.deductedMinutes ?? 0) <= 0) {
+                                  next.deductedMinutes = Math.max(0, Number(r.suggestedDeductMinutes ?? 0));
+                                }
+                                next.deductedCount = 0;
+                              }
+                              return { ...s, [r.studentId]: next };
+                            });
+                          }}
                         />
                         {t(lang, "Charge", "扣费")}
                       </label>
@@ -184,21 +319,52 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                   <select
                     name={`pkg:${r.studentId}`}
                     value={st?.packageId ?? ""}
-                    onChange={(e) =>
-                      setState((s) => ({
-                        ...s,
-                        [r.studentId]: { ...s[r.studentId], packageId: e.target.value },
-                      }))
-                    }
+                    onChange={(e) => {
+                      const nextPackageId = e.target.value;
+                      const nextPkg = r.packageOptions.find((p) => p.id === nextPackageId);
+                      setState((s) => {
+                        const prev = s[r.studentId];
+                        if (!prev) return s;
+                        const next = { ...prev, packageId: nextPackageId };
+                        if (nextPkg?.billingMode === "COUNT") {
+                          if ((prev.deductedCount ?? 0) <= 0) next.deductedCount = 1;
+                          next.deductedMinutes = 0;
+                        } else if (nextPkg?.billingMode === "MINUTES") {
+                          if ((prev.deductedMinutes ?? 0) <= 0) {
+                            next.deductedMinutes = Math.max(0, Number(r.suggestedDeductMinutes ?? 0));
+                          }
+                          next.deductedCount = 0;
+                        }
+                        return { ...s, [r.studentId]: next };
+                      });
+                    }}
                     style={{ minWidth: 220 }}
                   >
                     <option value="">{t(lang, "(none)", "(无)")}</option>
-                    {r.packageOptions.map((p) => (
+                    {packageList.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label}
                       </option>
                     ))}
                   </select>
+                  {recommendedPackages.length > 0 && recommendedPackages.length < r.packageOptions.length ? (
+                    <div style={{ marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowAllPackagesByStudent((prev) => ({
+                            ...prev,
+                            [r.studentId]: !Boolean(prev[r.studentId]),
+                          }))
+                        }
+                        style={{ fontSize: 12 }}
+                      >
+                        {showAllPackages
+                          ? t(lang, "Show recommended only", "仅显示推荐可扣课包")
+                          : t(lang, "Show all packages", "显示全部课包")}
+                      </button>
+                    </div>
+                  ) : null}
                   {pkg?.validToLabel && (
                     <div style={{ color: "#999", fontSize: 12 }}>
                       {t(lang, "Valid until", "有效期至")} {pkg.validToLabel}
@@ -212,7 +378,13 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                       ? `${pkg?.remainingMinutes ?? 0} cls`
                       : fmtMinutes(pkg?.remainingMinutes ?? null)}
                   </div>
+                  {status === "EXCUSED" && !excusedCharge ? (
+                    <div style={{ color: "#166534", fontSize: 12 }}>
+                      {t(lang, "This row is waived (no deduction).", "本行已免扣（不扣课时/次数）。")}
+                    </div>
+                  ) : null}
                   {insufficient && <div style={{ color: "#b00", fontSize: 12 }}>{insufficient}</div>}
+                  {anomalyMap[r.studentId] && <div style={{ color: "#b00", fontSize: 12 }}>{anomalyMap[r.studentId]}</div>}
                 </td>
 
                 <td>
@@ -221,6 +393,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                     type="number"
                     min={0}
                     step={1}
+                    disabled={pkg?.billingMode === "MINUTES" || !canDeduct}
                     value={st?.deductedCount ?? 0}
                     onChange={(e) =>
                       setState((s) => ({
@@ -238,7 +411,7 @@ export default function AttendanceEditor({ rows, lang }: Props) {
                     type="number"
                     min={0}
                     step={15}
-                    disabled={pkg?.billingMode === "COUNT"}
+                    disabled={pkg?.billingMode === "COUNT" || !canDeduct}
                     value={st?.deductedMinutes ?? 0}
                     onChange={(e) =>
                       setState((s) => ({
@@ -265,13 +438,8 @@ export default function AttendanceEditor({ rows, lang }: Props) {
         </tbody>
       </table>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
-        <button type="submit" disabled={hasInsufficient}>
-          {t(lang, "Save Attendance", "保存点名")}
-        </button>
-        <span style={{ color: "#666" }}>
-          {t(lang, "Saving will deduct package balance and record ledger.", "保存时将扣减课包余额并记录流水。")}
-        </span>
+      <div style={{ marginTop: 12, color: "#666" }}>
+        {t(lang, "Saving will deduct package balance and record ledger.", "保存时将扣减课包余额并记录流水。")}
       </div>
     </>
   );

@@ -3,6 +3,7 @@ import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudents, isSessionFullyCancelled } from "@/lib/session-students";
+import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 
 type SessionWithMeta = {
   id: string;
@@ -136,7 +137,7 @@ export default async function TeacherSessionsPage() {
                   fontWeight: 700,
                 }}
               >
-                {new Date(`${day}T00:00:00`).toLocaleDateString()} ({items.length})
+                {formatBusinessDateOnly(new Date(`${day}T00:00:00`))} ({items.length})
               </div>
 
               <div style={{ padding: 12 }}>
@@ -169,9 +170,9 @@ export default async function TeacherSessionsPage() {
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                           <div style={{ fontWeight: 700 }}>
-                            {new Date(s.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {formatBusinessTimeOnly(new Date(s.startAt))}
                             {" - "}
-                            {new Date(s.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {formatBusinessTimeOnly(new Date(s.endAt))}
                           </div>
                           <a href={`/teacher/sessions/${s.id}`} style={{ color: "#1d4ed8", fontWeight: 600 }}>
                             {t(lang, "Open", "打开")}
@@ -232,7 +233,6 @@ export default async function TeacherSessionsPage() {
     </div>
   );
 }
-
 
 
 

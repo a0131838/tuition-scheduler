@@ -1,0 +1,26 @@
+{
+  "operationId": "OP-DEMO-20260305-001",
+  "task": "Demo preview only: evaluate attendance correction scope",
+  "target": {
+    "entity": "attendance",
+    "where": "sessionId='<SESSION_ID>' AND studentId='<STUDENT_ID>'"
+  },
+  "change": {
+    "summary": "status: PRESENT -> UNMARKED (demo only, no apply)"
+  },
+  "safety": {
+    "maxAffected": 1,
+    "forceApply": false,
+    "confirmPhrase": "CONFIRM OP-DEMO-20260305-001"
+  },
+  "preview": {
+    "affectedCount": 1,
+    "sampleIds": [
+      "sessionId=<SESSION_ID>,studentId=<STUDENT_ID>"
+    ]
+  },
+  "rollback": {
+    "strategy": "No apply in this drill. If applied, restore original status from snapshot."
+  },
+  "confirmationText": ""
+}

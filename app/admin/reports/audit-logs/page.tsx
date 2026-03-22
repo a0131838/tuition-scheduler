@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { formatBusinessDateTime } from "@/lib/date-only";
 
 type Search = {
   actor?: string;
@@ -113,7 +114,7 @@ export default async function AuditLogsPage({
           <tbody>
             {rows.map((x) => (
               <tr key={x.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
-                <td>{new Date(x.createdAt).toLocaleString()}</td>
+                <td>{formatBusinessDateTime(new Date(x.createdAt))}</td>
                 <td>
                   <div>{x.actorEmail}</div>
                   {x.actorRole ? <div style={{ color: "#666", fontSize: 12 }}>{x.actorRole}</div> : null}
