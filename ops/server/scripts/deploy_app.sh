@@ -15,6 +15,23 @@ if [[ "$(id -un)" == "root" ]]; then
   exit 1
 fi
 
+if [[ -z "${DATABASE_URL:-}" || -z "${DIRECT_DATABASE_URL:-}" ]]; then
+  echo "Missing DATABASE_URL or DIRECT_DATABASE_URL in $ENV_FILE"
+  exit 1
+fi
+
+# Safety fuse: block accidental deploy to local/empty database in production.
+if [[ "${ALLOW_LOCAL_DB_IN_PROD:-false}" != "true" ]]; then
+  if [[ "$DATABASE_URL" == *"localhost"* || "$DATABASE_URL" == *"127.0.0.1"* || "$DATABASE_URL" == *"@tuition_db"* || "$DATABASE_URL" == *"tuition:tuition@"* ]]; then
+    echo "Refusing deploy: DATABASE_URL looks like local/dev database."
+    exit 1
+  fi
+  if [[ "$DIRECT_DATABASE_URL" == *"localhost"* || "$DIRECT_DATABASE_URL" == *"127.0.0.1"* || "$DIRECT_DATABASE_URL" == *"@tuition_db"* || "$DIRECT_DATABASE_URL" == *"tuition:tuition@"* ]]; then
+    echo "Refusing deploy: DIRECT_DATABASE_URL looks like local/dev database."
+    exit 1
+  fi
+fi
+
 mkdir -p "$APP_DIR"
 if [[ ! -d "$APP_DIR/.git" ]]; then
   git clone "$REPO_URL" "$APP_DIR"
@@ -36,6 +53,14 @@ if [[ "${CLEAN_UNTRACKED:-true}" == "true" ]]; then
     -e ops/server/.deploy.env \
     -e ops/server/.deploy.env.bak* \
     -e public/uploads
+fi
+
+# Release process gate: require changelog/task/release-board updates in the deploy commit.
+# Emergency bypass: set SKIP_RELEASE_DOC_CHECK=true in deploy env.
+if [[ "${SKIP_RELEASE_DOC_CHECK:-false}" != "true" ]]; then
+  bash ops/server/scripts/verify_release_docs.sh HEAD
+else
+  echo "WARNING: SKIP_RELEASE_DOC_CHECK=true (release doc gate bypassed)"
 fi
 
 cat > .env <<EOF

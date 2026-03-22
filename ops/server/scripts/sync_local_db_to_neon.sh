@@ -3,6 +3,13 @@ set -euo pipefail
 
 # Sync local Postgres data to Neon (overwrite Neon), then switch server env to Neon and deploy.
 # Neon URL is read from /home/ubuntu/.neon_url to avoid hardcoding secrets in scripts/commands.
+# Safety: requires explicit confirmation env to run.
+if [[ "${CONFIRM_OVERWRITE_NEON:-}" != "YES_OVERWRITE_NEON" ]]; then
+  echo "Refusing to run: this script can overwrite Neon data."
+  echo "If you are absolutely sure, run with:"
+  echo "  CONFIRM_OVERWRITE_NEON=YES_OVERWRITE_NEON bash ops/server/scripts/sync_local_db_to_neon.sh"
+  exit 10
+fi
 
 APP=/home/ubuntu/apps/tuition-scheduler
 ENV_FILE="$APP/ops/server/.deploy.env"

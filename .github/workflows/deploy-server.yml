@@ -19,12 +19,21 @@ jobs:
       DEPLOY_ENV_FILE: ${{ secrets.SERVER_DEPLOY_ENV_FILE != '' && secrets.SERVER_DEPLOY_ENV_FILE || 'ops/server/.deploy.env' }}
       BRANCH: ${{ github.event.inputs.branch }}
     steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
       - name: Validate inputs
         run: |
           case "$BRANCH" in
             feat/strict-superadmin-availability-bypass) ;;
             *) echo "Unsupported branch: $BRANCH"; exit 1 ;;
           esac
+
+      - name: Release doc gate
+        run: |
+          bash ops/server/scripts/verify_release_docs.sh HEAD
 
       - name: Prepare SSH key
         run: |

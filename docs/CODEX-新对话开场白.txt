@@ -1,0 +1,13 @@
+先不要改代码。先读取：
+1) /Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/SERVER-HANDOFF.md
+2) /Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/CHANGELOG-LIVE.md
+3) /Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/tasks/（最新 TASK 文件）
+4) /Users/zhao111/Documents/sgt系统/New project/tuition-scheduler/docs/RELEASE-BOARD.md
+
+先告诉我：
+- 当前线上版本号
+- 上次改动内容
+- 未完成项
+- 本次风险点
+
+确认后再改。改完后必须同步更新上述 3 份文档。

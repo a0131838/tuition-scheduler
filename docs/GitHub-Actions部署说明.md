@@ -33,15 +33,15 @@
 1. 打开仓库 `Actions`
 2. 选择 `Deploy Server`
 3. 点击 `Run workflow`
-4. branch 选择：`feat/strict-superadmin-availability-bypass`
+4. branch 选择：本次要发布的真实分支（不要默认旧分支）
 5. 再点 `Run workflow`
 
 ## 服务器实际执行内容
 ```bash
 cd /home/ubuntu/apps/tuition-scheduler
 git fetch origin
-git checkout feat/strict-superadmin-availability-bypass
-git reset --hard origin/feat/strict-superadmin-availability-bypass
+git checkout <你选择的分支>
+git reset --hard origin/<你选择的分支>
 bash ops/server/scripts/deploy_app.sh ops/server/.deploy.env
 ```
 
@@ -56,3 +56,5 @@ curl -I https://sgtmanage.com
 1. 不要用 `Re-run jobs` 验证旧失败记录，优先新开一次 `Run workflow`
 2. 如果失败，直接查看失败步骤日志
 3. 如果 SSH 连不通，优先检查腾讯云安全组和服务器登录方式
+4. 如果发布后出现“功能变少”，先检查是否发布到旧分支
+5. 生产数据库以 Neon 为准，禁止切回 localhost 数据库

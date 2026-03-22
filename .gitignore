@@ -8,5 +8,6 @@ build
 ~$*
 .tmp.*.env
 .tmp.*
+ops/server/server-handoff.env
 
 .vercel
