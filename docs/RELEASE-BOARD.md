@@ -4,14 +4,14 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-03-22`
+- Last checked: `2026-03-23`
 - Health check: `/admin/login` => `200`
 
 ## Current Known State
 
-- Local HEAD: process hardening chain (includes deploy guard + build hotfix + quick script path fix)
-- Remote deploy completed on `d00be8e` and service healthy.
-- Note: Prior remote dirty workspace was normalized by hard-reset deploy flow.
+- Local HEAD: upload access recovery + recovery scanner key compatibility patch.
+- Server process restarted and upload static paths under `/uploads/*` are reachable again.
+- Pending this deploy commit sync, remote should align to current branch HEAD.
 
 ## Open Risks
 
@@ -37,15 +37,16 @@
 
 ## Next Mandatory Step (No Business Logic Change)
 
-1. Freeze a clean release commit from current effective code.
-2. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
+1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
+2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-03-22-r8 Planned Sync
+## 2026-03-23-r1 Planned Sync
 
-- Target: align server to commit `6cf3658`.
-- Scope: startup check script + startup docs only.
-- Business impact: none (process/tooling only).
+- Target: align server to current branch deploy commit.
+- Scope: recovery scanner key compatibility + upload access recovery verification.
+- Business impact: none on finance approval/business logic.
 - Validation:
   - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - `server == origin == 6cf3658`
+  - `/uploads/payment-proofs/*` sample URL returns `200`
+  - server commit equals deploy commit

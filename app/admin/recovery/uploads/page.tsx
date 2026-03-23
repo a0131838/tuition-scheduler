@@ -13,6 +13,9 @@ type MissingRecord = {
   owner: string;
 };
 
+const PARENT_BILLING_KEYS = ["parent_billing_v1", "parent_billing_records_v1"] as const;
+const PARTNER_BILLING_KEYS = ["partner_billing_v1", "partner_billing_records_v1"] as const;
+
 function safeRelUploadPath(relPath: string) {
   const trimmed = String(relPath || "").trim();
   if (!trimmed.startsWith("/uploads/")) return null;
@@ -79,7 +82,7 @@ async function getMissingUploads(): Promise<MissingRecord[]> {
   }
 
   const appSettings = await prisma.appSetting.findMany({
-    where: { key: { in: ["parent_billing_records_v1", "partner_billing_records_v1"] } },
+    where: { key: { in: [...PARENT_BILLING_KEYS, ...PARTNER_BILLING_KEYS] } },
     select: { key: true, value: true },
   });
 
@@ -94,7 +97,7 @@ async function getMissingUploads(): Promise<MissingRecord[]> {
     for (const rec of records) {
       const relPath = String(rec?.relativePath ?? "").trim();
       if (!relPath.startsWith("/uploads/")) continue;
-      if (row.key === "parent_billing_records_v1") {
+      if (PARENT_BILLING_KEYS.includes(row.key as (typeof PARENT_BILLING_KEYS)[number])) {
         await missingIfNotExists(
           {
             relPath,

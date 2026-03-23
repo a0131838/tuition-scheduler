@@ -147,3 +147,21 @@ This file is the single source of truth for what changed in production.
   - local/origin/server commit alignment is printed
   - `/admin/login` returns `200`
 - Rollback point: `e215176`.
+
+## 2026-03-23-r1
+
+- Release ID: `2026-03-23-r1`
+- Date/Time (Asia/Shanghai): `2026-03-23`
+- Scope: Upload access recovery + recovery scanner key compatibility.
+- Key files:
+  - `app/admin/recovery/uploads/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260323-upload-access-recovery.md`
+- Risk impact (if any): Low. No billing/approval business rule change; recovery page now scans both legacy/new billing keys.
+- Verification:
+  - restart `pm2` process `tuition-scheduler` on server
+  - `https://sgtmanage.com/uploads/payment-proofs/3e124342-fb43-415a-b15e-810f5ff23c68/1774269713216_6b67ed17.jpg` returns `200`
+  - sample upload URLs under `/uploads/tickets/*` return `200`
+  - `npm run build` passed
+- Rollback point: commit before `2026-03-23-r1` deploy (`072686a`).
