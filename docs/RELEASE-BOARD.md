@@ -9,8 +9,8 @@
 
 ## Current Known State
 
-- Local HEAD: upload access recovery + recovery scanner key compatibility patch.
-- Server process restarted and upload static paths under `/uploads/*` are reachable again.
+- Local HEAD: ledger note readability patch (legacy reconcile note parsing + readable display template).
+- Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - Pending this deploy commit sync, remote should align to current branch HEAD.
 
 ## Open Risks
@@ -50,4 +50,14 @@
   - `bash ops/server/scripts/new_chat_startup_check.sh`
   - `npm run audit:ledger-integrity`
   - detail CSV contains reason/evidence/action columns
+  - server commit equals deploy commit
+
+## 2026-03-23-r3 Planned Sync
+
+- Target: align server to current branch deploy commit.
+- Scope: package ledger note readability upgrade.
+- Business impact: none on ledger arithmetic and deduction logic; UI note readability only.
+- Validation:
+  - `npm run build`
+  - open package ledger page and confirm legacy `manual_reconcile...` note is rendered as readable Chinese explanation
   - server commit equals deploy commit

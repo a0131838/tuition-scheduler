@@ -8,6 +8,7 @@ import PackageLedgerGiftClient from "./PackageLedgerGiftClient";
 import PackageLedgerEditTxnClient from "./PackageLedgerEditTxnClient";
 import { parseAbnormalLedgerNote } from "@/lib/package-ledger-guard";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { formatLedgerNoteForDisplay } from "@/lib/package-ledger-note";
 
 function fmtMinutes(min: number) {
   const h = Math.floor(Math.abs(min) / 60);
@@ -153,7 +154,7 @@ export default async function PackageLedgerPage({
                     </div>
                   ) : "-"}
                 </td>
-                <td>{r.txn.note ?? "-"}</td>
+                <td style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{formatLedgerNoteForDisplay(r.txn.note)}</td>
                 <td>
                   {canEditTxn ? (
                     (() => {

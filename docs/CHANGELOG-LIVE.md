@@ -181,3 +181,20 @@ This file is the single source of truth for what changed in production.
   - `npm run audit:ledger-integrity`
   - generated detail CSV includes columns `reasonCode/rootCauseCN/rootCauseEN/suggestedActionCN/suggestedActionEN`
 - Rollback point: previous deploy commit `7ab2e5f`.
+
+## 2026-03-23-r3
+
+- Release ID: `2026-03-23-r3`
+- Date/Time (Asia/Shanghai): `2026-03-23`
+- Scope: Package ledger note readability upgrade for both legacy/manual reconcile notes and abnormal txn notes.
+- Key files:
+  - `lib/package-ledger-note.ts`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260323-ledger-note-readable.md`
+- Risk impact (if any): Low. Display/wording enhancement only; no minutes delta, posting rule, or deduction logic change.
+- Verification:
+  - `npm run build` passed
+  - ledger page shows readable multi-line notes instead of raw `reason=...;actual=...;expected=...;diff=...` for legacy manual reconcile entries
+- Rollback point: previous deploy commit `8a29fc9`.
