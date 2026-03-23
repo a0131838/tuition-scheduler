@@ -45,6 +45,34 @@ function writeCsv(filePath: string, rows: Array<Record<string, unknown>>) {
 }
 
 async function main() {
+  type DetailRow = {
+    type: "LEDGER_SESSION_PACKAGE_MISMATCH" | "ATTENDANCE_DEDUCT_WITHOUT_PACKAGE";
+    reasonCode: string;
+    rootCauseCN: string;
+    rootCauseEN: string;
+    suggestedActionCN: string;
+    suggestedActionEN: string;
+    studentName: string;
+    attendanceId: string;
+    attendanceStatus: string;
+    deductedMinutes: number | "";
+    deductedCount: number | "";
+    packageCourse: string;
+    packageId: string;
+    packageStatus: string;
+    packageRemainingMinutes: number | "";
+    sessionId: string;
+    sessionExists: "YES" | "NO";
+    sessionStartSGT: string;
+    sessionEndSGT: string;
+    teacherName: string;
+    classCourse: string;
+    expectedNet: number | "";
+    actualNet: number | "";
+    diffMinutes: number | "";
+    updatedAtSGT: string;
+  };
+
   const noPackageDeduct = await prisma.attendance.findMany({
     where: {
       packageId: null,
@@ -126,7 +154,7 @@ async function main() {
   }
   rawMismatches.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 
-  const mismatchDetails = await Promise.all(
+  const mismatchDetails = await Promise.all<DetailRow>(
     rawMismatches.map(async (x) => {
       const [session, pkg] = await Promise.all([
         prisma.session.findUnique({
@@ -154,15 +182,45 @@ async function main() {
           },
         }),
       ]);
+      const sessionExists = session ? "YES" : "NO";
+      const reasonCode =
+        !session && x.expectedNet === 0 && x.actualNet < 0
+          ? "ORPHAN_DEDUCT_TXN_WITHOUT_SESSION"
+          : "LEDGER_NET_MISMATCH";
+      const rootCauseCN =
+        reasonCode === "ORPHAN_DEDUCT_TXN_WITHOUT_SESSION"
+          ? "历史误扣：存在DEDUCT流水，但对应课次(Session)不存在，无法匹配到有效出勤扣减。"
+          : "账本净额不一致：课次+课包维度的出勤扣减与流水净额不匹配。";
+      const rootCauseEN =
+        reasonCode === "ORPHAN_DEDUCT_TXN_WITHOUT_SESSION"
+          ? "Historical wrong deduction: DEDUCT txn exists but linked Session is missing, so it cannot reconcile to valid attendance deduction."
+          : "Ledger net mismatch: attendance deductions and package txn net do not match for the same session+package key.";
+      const suggestedActionCN =
+        reasonCode === "ORPHAN_DEDUCT_TXN_WITHOUT_SESSION"
+          ? "对不存在课次的误扣新增反向冲正流水（ROLLBACK/ADJUST），并保留审计备注。"
+          : "逐条核对Attendance与PackageTxn，按差值补记或冲正流水，直至净额一致。";
+      const suggestedActionEN =
+        reasonCode === "ORPHAN_DEDUCT_TXN_WITHOUT_SESSION"
+          ? "Insert offset reversal txn (ROLLBACK/ADJUST) for orphan deduction and keep an audit note."
+          : "Reconcile Attendance and PackageTxn row-by-row and post missing/reversal txns until net matches.";
       return {
         type: "LEDGER_SESSION_PACKAGE_MISMATCH",
+        reasonCode,
+        rootCauseCN,
+        rootCauseEN,
+        suggestedActionCN,
+        suggestedActionEN,
         studentName: pkg?.student?.name ?? "",
+        attendanceId: "",
+        attendanceStatus: "",
+        deductedMinutes: "",
+        deductedCount: "",
         packageCourse: pkg?.course?.name ?? "",
         packageId: x.packageId,
         packageStatus: pkg?.status ?? "",
         packageRemainingMinutes: pkg?.remainingMinutes ?? "",
         sessionId: x.sessionId,
-        sessionExists: session ? "YES" : "NO",
+        sessionExists,
         sessionStartSGT: session?.startAt ? toSgt(session.startAt) : "",
         sessionEndSGT: session?.endAt ? toSgt(session.endAt) : "",
         teacherName: session?.class?.teacher?.name ?? "",
@@ -170,13 +228,23 @@ async function main() {
         expectedNet: x.expectedNet,
         actualNet: x.actualNet,
         diffMinutes: x.diff,
+        updatedAtSGT: "",
       };
     })
   );
 
-  const noPackageRows = noPackageDeduct.map((x) => ({
+  const noPackageRows: DetailRow[] = noPackageDeduct.map((x) => ({
     type: "ATTENDANCE_DEDUCT_WITHOUT_PACKAGE",
+    reasonCode: "ATTENDANCE_DEDUCTED_BUT_PACKAGE_NOT_BOUND",
+    rootCauseCN: "出勤已发生扣减（分钟/次数>0），但未绑定课包(packageId为空)，导致扣减去向不明。",
+    rootCauseEN: "Attendance has deduction units (>0) but no package binding (packageId is null), so deduction destination is undefined.",
+    suggestedActionCN: "若确认已上课：补绑定正确课包并补记DEDUCT流水；若确认未上课：按规则标记免扣并保留原因。",
+    suggestedActionEN: "If class was delivered: backfill correct package binding and add DEDUCT txn; if not delivered: waive deduction with audit reason.",
     studentName: x.student.name,
+    attendanceId: x.id,
+    attendanceStatus: x.status,
+    deductedMinutes: x.deductedMinutes,
+    deductedCount: x.deductedCount,
     packageCourse: "",
     packageId: "",
     packageStatus: "",
@@ -190,10 +258,6 @@ async function main() {
     expectedNet: "",
     actualNet: "",
     diffMinutes: "",
-    attendanceId: x.id,
-    attendanceStatus: x.status,
-    deductedMinutes: x.deductedMinutes,
-    deductedCount: x.deductedCount,
     updatedAtSGT: toSgt(x.updatedAt),
   }));
 

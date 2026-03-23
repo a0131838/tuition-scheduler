@@ -41,12 +41,13 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-03-23-r1 Planned Sync
+## 2026-03-23-r2 Planned Sync
 
 - Target: align server to current branch deploy commit.
-- Scope: recovery scanner key compatibility + upload access recovery verification.
-- Business impact: none on finance approval/business logic.
+- Scope: ledger integrity detail report clarity (explicit reason/evidence/action columns).
+- Business impact: none on deduction execution logic; reporting clarity only.
 - Validation:
   - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - `/uploads/payment-proofs/*` sample URL returns `200`
+  - `npm run audit:ledger-integrity`
+  - detail CSV contains reason/evidence/action columns
   - server commit equals deploy commit

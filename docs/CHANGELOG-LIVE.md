@@ -165,3 +165,19 @@ This file is the single source of truth for what changed in production.
   - sample upload URLs under `/uploads/tickets/*` return `200`
   - `npm run build` passed
 - Rollback point: commit before `2026-03-23-r1` deploy (`072686a`).
+
+## 2026-03-23-r2
+
+- Release ID: `2026-03-23-r2`
+- Date/Time (Asia/Shanghai): `2026-03-23`
+- Scope: Ledger integrity detail report clarity upgrade (reason + evidence + action columns in CSV).
+- Key files:
+  - `scripts/reconciliation/daily-ledger-integrity.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260323-ledger-report-clarity.md`
+- Risk impact (if any): Low; reporting/output schema enhancement only, no deduction business logic changes.
+- Verification:
+  - `npm run audit:ledger-integrity`
+  - generated detail CSV includes columns `reasonCode/rootCauseCN/rootCauseEN/suggestedActionCN/suggestedActionEN`
+- Rollback point: previous deploy commit `7ab2e5f`.
