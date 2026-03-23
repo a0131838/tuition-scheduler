@@ -198,3 +198,19 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - ledger page shows readable multi-line notes instead of raw `reason=...;actual=...;expected=...;diff=...` for legacy manual reconcile entries
 - Rollback point: previous deploy commit `8a29fc9`.
+
+## 2026-03-23-r4
+
+- Release ID: `2026-03-23-r4`
+- Date/Time (Asia/Shanghai): `2026-03-23`
+- Scope: Add user-facing helper hint in package ledger edit area to explain readable note behavior after save.
+- Key files:
+  - `app/admin/packages/[id]/ledger/PackageLedgerEditTxnClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260323-ledger-note-readable.md`
+- Risk impact (if any): Very low. UI helper text only; no API/data/ledger arithmetic change.
+- Verification:
+  - `npm run build` passed
+  - edit area shows hint: "保存后将自动按可读模板展示备注（历史技术备注也会自动转为易读说明）"
+- Rollback point: previous deploy commit `be377a2`.

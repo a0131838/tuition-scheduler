@@ -130,74 +130,79 @@ export default function PackageLedgerEditTxnClient(props: Props) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      {isAbnormalTxnKind(props.txnKind) ? (
-        <>
-          <select
-            value={reasonCategory}
-            onChange={(e) => setReasonCategory(e.target.value)}
-            disabled={saving || !!deletedPayload}
-            style={{ width: 180 }}
-            title="Reason Category / 原因分类"
-          >
-            <option value="">Reason / 原因分类</option>
-            {ABNORMAL_REASON_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={approver}
-            onChange={(e) => setApprover(e.target.value)}
-            style={{ width: 140 }}
-            title="Approver / 审批人"
-            placeholder="Approver / 审批人"
-            disabled={saving || !!deletedPayload}
-          />
-          <input
-            type="text"
-            value={evidenceNote}
-            onChange={(e) => setEvidenceNote(e.target.value)}
-            style={{ width: 180 }}
-            title="Evidence Note / 证据备注"
-            placeholder="Evidence / 证据备注"
-            disabled={saving || !!deletedPayload}
-          />
-        </>
-      ) : null}
-      <input
-        type="number"
-        value={delta}
-        onChange={(e) => setDelta(e.target.value)}
-        style={{ width: 90 }}
-        title={props.labels.delta}
-        disabled={saving || !!deletedPayload}
-      />
-      <input
-        type="text"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        style={{ width: 180 }}
-        title={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : props.labels.note}
-        placeholder={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : undefined}
-        disabled={saving || !!deletedPayload}
-      />
-      <button type="button" onClick={onSave} disabled={saving || !!deletedPayload}>
-        {saving ? props.labels.saving : props.labels.save}
-      </button>
-      <button type="button" onClick={onDelete} disabled={saving || !!deletedPayload} style={{ color: "#b91c1c" }}>
-        {saving ? props.labels.removing : props.labels.remove}
-      </button>
-      {deletedPayload ? (
-        <>
-          <span style={{ color: "#b45309", fontSize: 12 }}>{props.labels.removedHint}</span>
-          <button type="button" onClick={onUndoDelete} disabled={saving}>
-            {saving ? props.labels.undoing : props.labels.undoRemove}
-          </button>
-        </>
-      ) : null}
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        {isAbnormalTxnKind(props.txnKind) ? (
+          <>
+            <select
+              value={reasonCategory}
+              onChange={(e) => setReasonCategory(e.target.value)}
+              disabled={saving || !!deletedPayload}
+              style={{ width: 180 }}
+              title="Reason Category / 原因分类"
+            >
+              <option value="">Reason / 原因分类</option>
+              {ABNORMAL_REASON_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={approver}
+              onChange={(e) => setApprover(e.target.value)}
+              style={{ width: 140 }}
+              title="Approver / 审批人"
+              placeholder="Approver / 审批人"
+              disabled={saving || !!deletedPayload}
+            />
+            <input
+              type="text"
+              value={evidenceNote}
+              onChange={(e) => setEvidenceNote(e.target.value)}
+              style={{ width: 180 }}
+              title="Evidence Note / 证据备注"
+              placeholder="Evidence / 证据备注"
+              disabled={saving || !!deletedPayload}
+            />
+          </>
+        ) : null}
+        <input
+          type="number"
+          value={delta}
+          onChange={(e) => setDelta(e.target.value)}
+          style={{ width: 90 }}
+          title={props.labels.delta}
+          disabled={saving || !!deletedPayload}
+        />
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          style={{ width: 180 }}
+          title={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : props.labels.note}
+          placeholder={isAbnormalTxnKind(props.txnKind) ? "Detail / 补充说明" : undefined}
+          disabled={saving || !!deletedPayload}
+        />
+        <button type="button" onClick={onSave} disabled={saving || !!deletedPayload}>
+          {saving ? props.labels.saving : props.labels.save}
+        </button>
+        <button type="button" onClick={onDelete} disabled={saving || !!deletedPayload} style={{ color: "#b91c1c" }}>
+          {saving ? props.labels.removing : props.labels.remove}
+        </button>
+        {deletedPayload ? (
+          <>
+            <span style={{ color: "#b45309", fontSize: 12 }}>{props.labels.removedHint}</span>
+            <button type="button" onClick={onUndoDelete} disabled={saving}>
+              {saving ? props.labels.undoing : props.labels.undoRemove}
+            </button>
+          </>
+        ) : null}
+      </div>
+      <div style={{ color: "#64748b", fontSize: 12 }}>
+        保存后将自动按可读模板展示备注（历史技术备注也会自动转为易读说明）。
+      </div>
     </div>
   );
 }

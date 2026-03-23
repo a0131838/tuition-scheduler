@@ -7,6 +7,7 @@
 ## Scope
 - `lib/package-ledger-note.ts`
 - `app/admin/packages/[id]/ledger/page.tsx`
+- `app/admin/packages/[id]/ledger/PackageLedgerEditTxnClient.tsx`
 - `docs/CHANGELOG-LIVE.md`
 - `docs/RELEASE-BOARD.md`
 
@@ -19,6 +20,7 @@
 1. `npm run build` passes.
 2. Legacy note pattern like `manual_reconcile...;reason=...;actual=...;expected=...;diff=...` is displayed as readable Chinese lines.
 3. Existing abnormal note format `[ABNORMAL_TXN]` is still parsed and shown with structured fields.
+4. Edit area shows helper hint explaining readable-note behavior after save.
 
 ## Status
-- In progress: deploying to production and verifying rendered ledger notes.
+- In progress: deploying helper hint update and verifying rendered ledger notes.

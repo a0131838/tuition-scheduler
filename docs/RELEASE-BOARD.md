@@ -61,3 +61,13 @@
   - `npm run build`
   - open package ledger page and confirm legacy `manual_reconcile...` note is rendered as readable Chinese explanation
   - server commit equals deploy commit
+
+## 2026-03-23-r4 Planned Sync
+
+- Target: align server to current branch deploy commit.
+- Scope: package ledger edit area helper hint text for readable note behavior.
+- Business impact: none on ledger logic; UI hint only.
+- Validation:
+  - `npm run build`
+  - package ledger edit area shows readable-note helper text under action buttons
+  - server commit equals deploy commit
