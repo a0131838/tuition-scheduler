@@ -268,6 +268,7 @@ This file is the single source of truth for what changed in production.
   - `npm run audit:availability-integrity` reports zero duplicate/overlap groups
   - `npx prisma migrate deploy` applied `20260326183000_add_session_unique_schedule_guard` and `20260326195000_add_availability_unique_guards`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server align on the live branch head
+  - release-doc closeout follow-up was completed on the same live branch lineage
 - Rollback point: previous production commit before backend-integrity deploy (`98f1b9d` lineage baseline).
 
 ## 2026-03-26-r2

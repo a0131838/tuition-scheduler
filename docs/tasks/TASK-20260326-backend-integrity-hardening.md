@@ -53,3 +53,4 @@
 
 ## Status
 - Deployed on the production branch lineage; DB cleanup, migrations, and app deploy completed.
+- Release docs synced in a docs-only follow-up on the same production branch lineage.

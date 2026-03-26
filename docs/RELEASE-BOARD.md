@@ -88,3 +88,4 @@
 - Deploy note:
   - production DB cleanup + migrations were applied and the application branch has now been deployed
   - `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server are aligned on the live branch head
+  - release-doc closeout is tracked as a docs-only follow-up on the same production branch lineage
