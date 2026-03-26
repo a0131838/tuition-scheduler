@@ -11,7 +11,7 @@
 
 - Local HEAD: group package alignment patch (shared selection rule for enrollment, attendance default ordering, and balance preview).
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
-- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server commit `3e98318` are aligned.
+- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server commit `c0f9c48` are aligned.
 
 ## Open Risks
 
