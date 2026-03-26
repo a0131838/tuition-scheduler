@@ -5,6 +5,7 @@ import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -216,16 +217,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
   const sessionId =
     dupSession?.id ??
     (
-      await prisma.session.create({
-        data: {
-          classId: oneOnOneClass.id,
-          startAt: reqRow.startAt,
-          endAt: reqRow.endAt,
-          studentId: reqRow.studentId,
-          teacherId: reqRow.teacherId === oneOnOneClass.teacherId ? null : reqRow.teacherId,
-        },
-        select: { id: true },
-      })
+      await prisma.session
+        .create({
+          data: {
+            classId: oneOnOneClass.id,
+            startAt: reqRow.startAt,
+            endAt: reqRow.endAt,
+            studentId: reqRow.studentId,
+            teacherId: reqRow.teacherId === oneOnOneClass.teacherId ? null : reqRow.teacherId,
+          },
+          select: { id: true },
+        })
+        .catch(async (error) => {
+          if (!isSessionDuplicateError(error)) throw error;
+          const existing = await prisma.session.findFirst({
+            where: { classId: oneOnOneClass.id, startAt: reqRow.startAt, endAt: reqRow.endAt },
+            select: { id: true },
+          });
+          if (!existing) throw error;
+          return existing;
+        })
     ).id;
 
   await prisma.studentBookingRequest.update({

@@ -1,7 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -29,10 +31,14 @@ type Occurrence = {
   classId: string;
   studentId: string;
   courseId: string;
+  roomId: string | null;
+  teacherId: string;
   startAt: Date;
   endAt: Date;
   requiredHoursMinutes: number;
 };
+
+type DbClient = typeof prisma | Prisma.TransactionClient;
 
 async function computeGenerationPlan(teacherId: string, startDate: string, endDate: string) {
   const start = parseDateOnly(startDate);
@@ -63,6 +69,8 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
         classId: t.classId,
         studentId: t.studentId,
         courseId: t.class.courseId,
+        roomId: t.class.roomId ?? null,
+        teacherId,
         startAt,
         endAt,
         requiredHoursMinutes: t.durationMin,
@@ -171,6 +179,76 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   return { toCreate, conflicts };
 }
 
+async function validateOccurrence(db: DbClient, occ: Occurrence) {
+  const hasPackage = await hasSchedulablePackage(db, {
+    studentId: occ.studentId,
+    courseId: occ.courseId,
+    at: occ.startAt,
+    requiredHoursMinutes: occ.requiredHoursMinutes,
+  });
+  if (!hasPackage) return "No active package";
+
+  const dup = await db.session.findFirst({
+    where: {
+      classId: occ.classId,
+      startAt: occ.startAt,
+      endAt: occ.endAt,
+      studentId: occ.studentId,
+    },
+    select: { id: true },
+  });
+  if (dup) return "Duplicate session";
+
+  const teacherSessions = await db.session.findMany({
+    where: {
+      startAt: { lte: occ.endAt },
+      endAt: { gte: occ.startAt },
+      OR: [{ teacherId: occ.teacherId }, { teacherId: null, class: { teacherId: occ.teacherId } }],
+    },
+    include: {
+      attendances: {
+        select: {
+          studentId: true,
+          status: true,
+          excusedCharge: true,
+          deductedMinutes: true,
+          deductedCount: true,
+        },
+      },
+      class: { select: { roomId: true, capacity: true, oneOnOneStudentId: true } },
+    },
+  });
+  const teacherConflict = teacherSessions.find(
+    (s) => overlaps(occ.startAt, occ.endAt, s.startAt, s.endAt) && !shouldIgnoreTeacherConflictSession(s, occ.studentId)
+  );
+  if (teacherConflict) return "Teacher conflict";
+
+  if (occ.roomId) {
+    const roomSessions = await db.session.findMany({
+      where: {
+        startAt: { lte: occ.endAt },
+        endAt: { gte: occ.startAt },
+        class: { roomId: occ.roomId },
+      },
+      include: { class: true },
+    });
+    const roomConflict = roomSessions.find((s) => overlaps(occ.startAt, occ.endAt, s.startAt, s.endAt));
+    if (roomConflict) return "Room conflict";
+  }
+
+  const apptConflict = await db.appointment.findFirst({
+    where: {
+      teacherId: occ.teacherId,
+      startAt: { lte: occ.endAt },
+      endAt: { gte: occ.startAt },
+    },
+    select: { id: true },
+  });
+  if (apptConflict) return "Appointment conflict";
+
+  return null;
+}
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id: teacherId } = await ctx.params;
@@ -188,21 +266,39 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!startDate || !endDate) return bad("Missing date range", 409);
 
   const { toCreate, conflicts } = await computeGenerationPlan(teacherId, startDate, endDate);
-  if (toCreate.length > 0) {
-    await prisma.session.createMany({
-      data: toCreate.map((o) => ({
-        classId: o.classId,
-        startAt: o.startAt,
-        endAt: o.endAt,
-        studentId: o.studentId,
-      })),
+  let created = 0;
+  const dynamicConflicts = [...conflicts];
+  for (const occ of toCreate) {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const reason = await validateOccurrence(tx, occ);
+        if (reason) return { ok: false as const, reason };
+        await tx.session.create({
+          data: {
+            classId: occ.classId,
+            startAt: occ.startAt,
+            endAt: occ.endAt,
+            studentId: occ.studentId,
+          },
+        });
+        return { ok: true as const };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    ).catch((error) => {
+      if (isSessionDuplicateError(error)) return { ok: false as const, reason: "Duplicate session" };
+      throw error;
     });
+    if (!result.ok) {
+      dynamicConflicts.push({ occ, reason: result.reason });
+      continue;
+    }
+    created++;
   }
 
   return Response.json({
     ok: true,
-    created: toCreate.length,
-    conflicts: conflicts.length,
-    message: `Generated ${toCreate.length} sessions. Skipped ${conflicts.length} conflicts.`,
+    created,
+    conflicts: dynamicConflicts.length,
+    message: `Generated ${created} sessions. Skipped ${dynamicConflicts.length} conflicts.`,
   });
 }

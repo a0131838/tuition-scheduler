@@ -1,5 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { buildTopUpMinutesUpdate } from "@/lib/package-top-up";
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
@@ -57,23 +59,32 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     select: {
       id: true,
       type: true,
-      settlementMode: true,
-      studentId: true,
-      remainingMinutes: true,
-      totalMinutes: true,
-      course: { select: { name: true } },
-      student: { select: { sourceChannel: { select: { name: true } } } },
     },
   });
   if (!pkg) return bad("Package not found", 404);
   if (pkg.type !== "HOURS") return bad("Only HOURS package can top-up", 409);
 
-  const curRemain = pkg.remainingMinutes ?? 0;
-  const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
-
   await prisma.$transaction(async (tx) => {
+    const pkgNow = await tx.coursePackage.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        settlementMode: true,
+        studentId: true,
+        remainingMinutes: true,
+        totalMinutes: true,
+        course: { select: { name: true } },
+        student: { select: { sourceChannel: { select: { name: true } } } },
+      },
+    });
+    if (!pkgNow) {
+      throw new Error("Package not found");
+    }
+
+    const curRemain = pkgNow.remainingMinutes ?? 0;
+    const curTotal = pkgNow.totalMinutes ?? pkgNow.remainingMinutes ?? 0;
     const isPartnerOnlinePackage =
-      pkg.settlementMode === "ONLINE_PACKAGE_END" && pkg.student?.sourceChannel?.name === PARTNER_SOURCE_NAME;
+      pkgNow.settlementMode === "ONLINE_PACKAGE_END" && pkgNow.student?.sourceChannel?.name === PARTNER_SOURCE_NAME;
     if (isPartnerOnlinePackage && curRemain <= 0) {
       const totalMinutesNow = Math.max(0, Number(curTotal));
       const [latestSnapshot, sameSnapshot, rateRow] = await Promise.all([
@@ -101,26 +112,37 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const rate = Number(rateRow?.value ?? DEFAULT_ONLINE_RATE_PER_45);
       const ratePer45 = Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_ONLINE_RATE_PER_45;
       if (!sameSnapshot && deltaMinutes > 0) {
-        await tx.partnerSettlement.create({
-          data: {
-            studentId: pkg.studentId,
-            packageId: id,
-            onlineSnapshotTotalMinutes: totalMinutesNow,
-            mode: "ONLINE_PACKAGE_END",
-            status: "PENDING",
-            hours: toHours(deltaMinutes),
-            amount: calcAmountByRatePer45(deltaMinutes, ratePer45),
-            note: `Auto snapshot before top-up: ${pkg.course?.name ?? "-"} | packageId=${id} | settled ${settledUpTo}->${totalMinutesNow} mins`,
-          },
-        });
+        try {
+          await tx.partnerSettlement.create({
+            data: {
+              studentId: pkgNow.studentId,
+              packageId: id,
+              onlineSnapshotTotalMinutes: totalMinutesNow,
+              mode: "ONLINE_PACKAGE_END",
+              status: "PENDING",
+              hours: toHours(deltaMinutes),
+              amount: calcAmountByRatePer45(deltaMinutes, ratePer45),
+              note: `Auto snapshot before top-up: ${pkgNow.course?.name ?? "-"} | packageId=${id} | settled ${settledUpTo}->${totalMinutesNow} mins`,
+            },
+          });
+        } catch (error) {
+          if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+            throw error;
+          }
+        }
       }
     }
 
     await tx.coursePackage.update({
       where: { id },
       data: {
-        remainingMinutes: curRemain + addMinutes,
-        totalMinutes: curTotal + addMinutes,
+        ...buildTopUpMinutesUpdate(
+          {
+            remainingMinutes: pkgNow.remainingMinutes,
+            totalMinutes: pkgNow.totalMinutes,
+          },
+          addMinutes
+        ),
         ...(paid
           ? {
               paid: true,

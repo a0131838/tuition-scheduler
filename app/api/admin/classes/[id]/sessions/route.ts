@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -282,10 +283,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   if (conflict) return bad(conflict, 409, { code: "CONFLICT" });
 
-  const created = await prisma.session.create({
-    data: { classId, startAt, endAt, studentId: cls.capacity === 1 ? studentId : null },
-    include: { teacher: { select: { id: true, name: true } }, student: { select: { id: true, name: true } } },
-  });
+  let created;
+  try {
+    created = await prisma.session.create({
+      data: { classId, startAt, endAt, studentId: cls.capacity === 1 ? studentId : null },
+      include: { teacher: { select: { id: true, name: true } }, student: { select: { id: true, name: true } } },
+    });
+  } catch (error) {
+    if (isSessionDuplicateError(error)) return bad("Session already exists at this time", 409, { code: "CONFLICT" });
+    throw error;
+  }
 
   return Response.json(
     {

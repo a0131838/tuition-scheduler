@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
@@ -5,6 +6,8 @@ import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enr
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
+import { runRejectQuickScheduleBatch, runSkipQuickScheduleBatch } from "@/lib/quick-schedule-execution";
+import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -53,7 +56,13 @@ function formatSessionConflictLabel(s: any) {
   return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
 }
 
-async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
+type DbClient = typeof prisma | Prisma.TransactionClient;
+
+class QuickScheduleConflictError extends Error {
+  status = 409;
+}
+
+async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
   if (startAt.toDateString() !== endAt.toDateString()) {
     return "Session spans multiple days";
   }
@@ -64,7 +73,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
   const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
 
-  let slots = await prisma.teacherAvailabilityDate.findMany({
+  let slots = await db.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
     select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
@@ -72,7 +81,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   if (slots.length === 0) {
     const weekday = startAt.getDay();
-    slots = await prisma.teacherAvailability.findMany({
+    slots = await db.teacherAvailability.findMany({
       where: { teacherId, weekday },
       select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
@@ -100,6 +109,122 @@ function canTeachSubject(teacher: any, subjectId?: string | null) {
     return teacher.subjects.some((s: any) => s?.id === subjectId);
   }
   return false;
+}
+
+async function validateQuickScheduleRow(
+  db: DbClient,
+  opts: {
+    classId: string;
+    teacherId: string;
+    studentId: string;
+    courseId: string;
+    roomId: string | null;
+    startAt: Date;
+    endAt: Date;
+    durationMin: number;
+    bypassAvailabilityCheck: boolean;
+  }
+) {
+  const { classId, teacherId, studentId, courseId, roomId, startAt, endAt, durationMin, bypassAvailabilityCheck } = opts;
+  let reason = "";
+
+  if (!bypassAvailabilityCheck) {
+    const availErr = await checkTeacherAvailability(db, teacherId, startAt, endAt);
+    if (availErr) reason = availErr;
+  }
+
+  if (!reason) {
+    const teacherSessionConflicts = await db.session.findMany({
+      where: {
+        OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      include: {
+        class: {
+          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+        },
+        attendances: {
+          select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+        },
+      },
+      orderBy: { startAt: "asc" },
+    });
+    const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
+    if (teacherSessionConflict) reason = `Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`;
+  }
+
+  if (!reason) {
+    const teacherApptConflict = await db.appointment.findFirst({
+      where: {
+        teacherId,
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      select: { startAt: true, endAt: true },
+    });
+    if (teacherApptConflict) {
+      const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
+        teacherApptConflict.endAt
+      )}`;
+      reason = `Teacher conflict: appointment ${timeLabel}`;
+    }
+  }
+
+  if (!reason && roomId) {
+    const roomConflicts = await db.session.findMany({
+      where: {
+        class: { roomId },
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+      },
+      include: {
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+      },
+    });
+    const roomConflict = pickTeacherSessionConflict(roomConflicts);
+    if (roomConflict) reason = `Room conflict: ${formatSessionConflictLabel(roomConflict)}`;
+  }
+
+  if (!reason) {
+    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
+    const hasPackage = await hasSchedulablePackage(db, {
+      studentId,
+      courseId,
+      at: packageCheckAt,
+      requiredHoursMinutes: durationMin,
+    });
+    if (!hasPackage) reason = "No active package for this course";
+  }
+
+  if (!reason) {
+    const dupSession = await db.session.findFirst({
+      where: { classId, startAt, endAt },
+      select: { id: true },
+    });
+    if (dupSession) reason = "Session already exists at this time";
+  }
+
+  return reason;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -200,103 +325,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   for (let i = 0; i < repeatWeeks; i++) {
     const currentStart = new Date(startAt.getTime() + i * oneWeekMs);
     const currentEnd = new Date(currentStart.getTime() + durationMin * 60 * 1000);
-    let reason = "";
-
-    if (!bypassAvailabilityCheck) {
-      const availErr = await checkTeacherAvailability(teacherId, currentStart, currentEnd);
-      if (availErr) reason = availErr;
-    }
-
-    if (!reason) {
-      const teacherSessionConflicts = await prisma.session.findMany({
-        where: {
-          OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
-          startAt: { lt: currentEnd },
-          endAt: { gt: currentStart },
-        },
-        include: {
-          class: {
-            include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
-          },
-          attendances: {
-            select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
-          },
-        },
-        orderBy: { startAt: "asc" },
-      });
-      const teacherSessionConflict = teacherSessionConflicts.find((s) => !shouldIgnoreTeacherConflictSession(s, studentId));
-      if (teacherSessionConflict) reason = `Teacher conflict: ${formatSessionConflictLabel(teacherSessionConflict)}`;
-    }
-
-    if (!reason) {
-      const teacherApptConflict = await prisma.appointment.findFirst({
-        where: {
-          teacherId,
-          startAt: { lt: currentEnd },
-          endAt: { gt: currentStart },
-        },
-        select: { startAt: true, endAt: true },
-      });
-      if (teacherApptConflict) {
-        const timeLabel = `${fmtDateInput(teacherApptConflict.startAt)} ${fmtHHMM(teacherApptConflict.startAt)}-${fmtHHMM(
-          teacherApptConflict.endAt
-        )}`;
-        reason = `Teacher conflict: appointment ${timeLabel}`;
-      }
-    }
-
-    if (!reason && roomId) {
-      const roomConflicts = await prisma.session.findMany({
-        where: {
-          class: { roomId },
-          startAt: { lt: currentEnd },
-          endAt: { gt: currentStart },
-        },
-        include: {
-          attendances: {
-            select: {
-              studentId: true,
-              status: true,
-              excusedCharge: true,
-              deductedMinutes: true,
-              deductedCount: true,
-            },
-          },
-          class: {
-            include: {
-              course: true,
-              subject: true,
-              level: true,
-              teacher: true,
-              campus: true,
-              room: true,
-              enrollments: { select: { studentId: true } },
-            },
-          },
-        },
-      });
-      const roomConflict = pickTeacherSessionConflict(roomConflicts);
-      if (roomConflict) reason = `Room conflict: ${formatSessionConflictLabel(roomConflict)}`;
-    }
-
-    if (!reason) {
-      const packageCheckAt = currentStart.getTime() < Date.now() ? new Date() : currentStart;
-      const hasPackage = await hasSchedulablePackage(prisma, {
-        studentId,
-        courseId,
-        at: packageCheckAt,
-        requiredHoursMinutes: durationMin,
-      });
-      if (!hasPackage) reason = "No active package for this course";
-    }
-
-    if (!reason) {
-      const dupSession = await prisma.session.findFirst({
-        where: { classId: cls.id, startAt: currentStart, endAt: currentEnd },
-        select: { id: true },
-      });
-      if (dupSession) reason = "Session already exists at this time";
-    }
+    const reason = await validateQuickScheduleRow(prisma, {
+      classId: cls.id,
+      teacherId,
+      studentId,
+      courseId,
+      roomId,
+      startAt: currentStart,
+      endAt: currentEnd,
+      durationMin,
+      bypassAvailabilityCheck,
+    });
 
     if (reason) {
       rows.push({
@@ -313,16 +352,106 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       continue;
     }
 
+    if (mode === "create" && onConflict === "reject") {
+      try {
+        const createdRows = await prisma.$transaction(async (tx) => {
+          const txResult = await runRejectQuickScheduleBatch({
+            total: repeatWeeks - i,
+            makeRow: async (offset) => {
+              const j = i + offset;
+              const txStart = new Date(startAt.getTime() + j * oneWeekMs);
+              const txEnd = new Date(txStart.getTime() + durationMin * 60 * 1000);
+              const txReason = await validateQuickScheduleRow(tx, {
+                classId: cls.id,
+                teacherId,
+                studentId,
+                courseId,
+                roomId,
+                startAt: txStart,
+                endAt: txEnd,
+                durationMin,
+                bypassAvailabilityCheck,
+              });
+              if (txReason) return { reason: txReason, created: null as never };
+              await tx.session.create({
+                data: {
+                  classId: cls.id,
+                  startAt: txStart,
+                  endAt: txEnd,
+                  studentId,
+                  teacherId: teacherId === cls.teacherId ? null : teacherId,
+                },
+              });
+              return {
+                created: {
+                  index: j + 1,
+                  startAt: txStart.toISOString(),
+                  endAt: txEnd.toISOString(),
+                  ok: true,
+                  created: true,
+                },
+              };
+            },
+          });
+          if (!txResult.ok) throw new QuickScheduleConflictError(txResult.reason);
+          return txResult.createdRows;
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        created += createdRows.length;
+        rows.push(...createdRows);
+      } catch (error) {
+        if (error instanceof QuickScheduleConflictError) return bad(error.message, error.status);
+        if (isSessionDuplicateError(error)) return bad("Session already exists at this time", 409);
+        throw error;
+      }
+      break;
+    }
+
     if (mode === "create") {
-      await prisma.session.create({
-        data: {
-          classId: cls.id,
-          startAt: currentStart,
-          endAt: currentEnd,
-          studentId,
-          teacherId: teacherId === cls.teacherId ? null : teacherId,
-        },
+      const batchResult: { createdRows: boolean[]; skippedReasons: string[] } = await prisma.$transaction(async (tx) => {
+        return runSkipQuickScheduleBatch({
+          total: 1,
+          makeRow: async () => {
+            const txReason = await validateQuickScheduleRow(tx, {
+              classId: cls.id,
+              teacherId,
+              studentId,
+              courseId,
+              roomId,
+              startAt: currentStart,
+              endAt: currentEnd,
+              durationMin,
+              bypassAvailabilityCheck,
+            });
+            if (txReason) return { ok: false as const, reason: txReason };
+            await tx.session.create({
+              data: {
+                classId: cls.id,
+                startAt: currentStart,
+                endAt: currentEnd,
+                studentId,
+                teacherId: teacherId === cls.teacherId ? null : teacherId,
+              },
+            });
+            return { ok: true as const, created: true };
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }).catch((error) => {
+        if (isSessionDuplicateError(error)) {
+          return { createdRows: [], skippedReasons: ["Session already exists at this time"] };
+        }
+        throw error;
       });
+      if (batchResult.skippedReasons.length > 0) {
+        rows.push({
+          index: i + 1,
+          startAt: currentStart.toISOString(),
+          endAt: currentEnd.toISOString(),
+          ok: false,
+          reason: batchResult.skippedReasons[0],
+        });
+        skipped++;
+        continue;
+      }
       created++;
       rows.push({
         index: i + 1,

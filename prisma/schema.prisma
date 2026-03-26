@@ -205,6 +205,8 @@ model TeacherAvailability {
   endMin    Int
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@unique([teacherId, weekday, startMin, endMin])
 }
 
 model TeacherAvailabilityDate {
@@ -216,6 +218,7 @@ model TeacherAvailabilityDate {
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
 
+  @@unique([teacherId, date, startMin, endMin])
   @@index([teacherId, date])
 }
 
@@ -333,6 +336,7 @@ model Session {
   bookingRequests StudentBookingRequest[]
   signInAlerts    SignInAlert[]
 
+  @@unique([classId, startAt, endAt])
   @@index([studentId])
   @@index([classId, startAt])
   @@index([teacherId, startAt])

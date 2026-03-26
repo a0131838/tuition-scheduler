@@ -71,3 +71,19 @@
 - Deployed: release document alignment patch is live on the current production branch.
 - Scope: close out startup-check mismatch findings and keep release docs consistent with the actual deployed branch state.
 - Business impact: none. Documentation/process alignment only.
+
+## 2026-03-26-r3 Ready For Deploy
+
+- Scope: backend integrity hardening for scheduling, top-up, expense claim transitions, and teacher availability cleanup.
+- Business impact:
+  - exact duplicate `Session` writes are now blocked by DB uniqueness plus controlled `409` handling
+  - admin/teacher availability creation rejects overlapping ranges instead of silently stacking slots
+  - historical availability data has already been normalized in the production database and post-clean audit is clean
+- Validation:
+  - `npm run test:backend`
+  - `npm run build`
+  - `npm run audit:availability-integrity`
+  - `npx prisma migrate deploy`
+- Deploy note:
+  - production DB cleanup + migrations have already been applied from this branch
+  - app deploy is still required so live handlers return controlled conflicts instead of legacy error paths

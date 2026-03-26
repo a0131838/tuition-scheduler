@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AVAIL_MAX_TIME, AVAIL_MIN_TIME, inAllowedWindow, parseYMD, toMin, ymd } from "../_lib";
+import { overlapsMinutes } from "@/lib/availability-conflict";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -48,22 +49,31 @@ export async function POST(req: Request) {
     select: { date: true, startMin: true, endMin: true },
   });
   const existSet = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
+  const existingByDate = new Map<string, Array<{ startMin: number; endMin: number }>>();
+  for (const row of existing) {
+    const key = ymd(row.date);
+    existingByDate.set(key, [...(existingByDate.get(key) ?? []), { startMin: row.startMin, endMin: row.endMin }]);
+  }
 
   const creates: { teacherId: string; date: Date; startMin: number; endMin: number }[] = [];
   for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
     if (!weekdaySet.has(d.getDay())) continue;
-    const key = `${ymd(d)}|${startMin}|${endMin}`;
+    const dateKey = ymd(d);
+    const key = `${dateKey}|${startMin}|${endMin}`;
     if (existSet.has(key)) continue;
+    const overlapsExisting = (existingByDate.get(dateKey) ?? []).some((row) => overlapsMinutes(startMin, endMin, row.startMin, row.endMin));
+    if (overlapsExisting) continue;
     creates.push({
       teacherId: teacher.id,
       date: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0),
       startMin,
       endMin,
     });
+    existingByDate.set(dateKey, [...(existingByDate.get(dateKey) ?? []), { startMin, endMin }]);
   }
 
   if (creates.length > 0) {
-    await prisma.teacherAvailabilityDate.createMany({ data: creates });
+    await prisma.teacherAvailabilityDate.createMany({ data: creates, skipDuplicates: true });
   }
 
   return Response.json({ added: creates.length });

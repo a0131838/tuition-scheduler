@@ -1,7 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -42,7 +44,13 @@ function fmtSlotRange(startMin: number, endMin: number) {
   return `${sh}:${sm}-${eh}:${em}`;
 }
 
-async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
+type DbClient = typeof prisma | Prisma.TransactionClient;
+
+class GenerateWeeklyConflictError extends Error {
+  code = "CONFLICT";
+}
+
+async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
   if (startAt.toDateString() !== endAt.toDateString()) {
     return "Session spans multiple days";
   }
@@ -53,7 +61,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
   const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
 
-  let slots = await prisma.teacherAvailabilityDate.findMany({
+  let slots = await db.teacherAvailabilityDate.findMany({
     where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
     select: { startMin: true, endMin: true },
     orderBy: { startMin: "asc" },
@@ -61,7 +69,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 
   if (slots.length === 0) {
     const weekday = startAt.getDay();
-    slots = await prisma.teacherAvailability.findMany({
+    slots = await db.teacherAvailability.findMany({
       where: { teacherId, weekday },
       select: { startMin: true, endMin: true },
       orderBy: { startMin: "asc" },
@@ -85,6 +93,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 }
 
 async function findConflictForSession(opts: {
+  db?: DbClient;
   classId: string;
   teacherId: string;
   roomId: string | null;
@@ -92,18 +101,18 @@ async function findConflictForSession(opts: {
   endAt: Date;
   schedulingStudentId?: string | null;
 }) {
-  const { classId, teacherId, roomId, startAt, endAt, schedulingStudentId } = opts;
+  const { db = prisma, classId, teacherId, roomId, startAt, endAt, schedulingStudentId } = opts;
 
-  const availErr = await checkTeacherAvailability(teacherId, startAt, endAt);
+  const availErr = await checkTeacherAvailability(db, teacherId, startAt, endAt);
   if (availErr) return availErr;
 
-  const dup = await prisma.session.findFirst({
+  const dup = await db.session.findFirst({
     where: { classId, startAt, endAt },
     select: { id: true },
   });
   if (dup) return `Session already exists at ${ymd(startAt)} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}`;
 
-  const teacherSessionConflicts = await prisma.session.findMany({
+  const teacherSessionConflicts = await db.session.findMany({
     where: {
       OR: [{ teacherId }, { teacherId: null, class: { teacherId } }],
       startAt: { lt: endAt },
@@ -130,7 +139,7 @@ async function findConflictForSession(opts: {
     return `Teacher conflict with session ${teacherSessionConflict.id} (class ${teacherSessionConflict.classId})`;
   }
 
-  const teacherApptConflict = await prisma.appointment.findFirst({
+  const teacherApptConflict = await db.appointment.findFirst({
     where: {
       teacherId,
       startAt: { lt: endAt },
@@ -145,7 +154,7 @@ async function findConflictForSession(opts: {
   }
 
   if (roomId) {
-    const roomSessionConflicts = await prisma.session.findMany({
+    const roomSessionConflicts = await db.session.findMany({
       where: {
         class: { roomId },
         startAt: { lt: endAt },
@@ -242,6 +251,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const expectedStudentIds =
     cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
   const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
+  const plannedRows: Array<{ startAt: Date; endAt: Date }> = [];
 
   for (let i = 0; i < weeks; i++) {
     const d = new Date(first);
@@ -290,15 +300,111 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       continue;
     }
 
-    await prisma.session.create({
-      data: {
-        classId,
-        startAt,
-        endAt,
-        studentId: cls.capacity === 1 ? studentId : null,
+    if (onConflict === "reject") {
+      plannedRows.push({ startAt, endAt });
+      continue;
+    }
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        for (const sid of expectedStudentIds) {
+          const ok = await hasSchedulablePackage(tx, {
+            studentId: sid,
+            courseId: cls.courseId,
+            at: startAt,
+            requiredHoursMinutes,
+          });
+          if (!ok) return { ok: false as const, reason: `Student ${sid} has no active package for this course` };
+        }
+
+        const conflictNow = await findConflictForSession({
+          db: tx,
+          classId,
+          teacherId: cls.teacherId,
+          roomId: cls.roomId ?? null,
+          startAt,
+          endAt,
+          schedulingStudentId: cls.capacity === 1 ? studentId : null,
+        });
+        if (conflictNow) return { ok: false as const, reason: conflictNow };
+
+        await tx.session.create({
+          data: {
+            classId,
+            startAt,
+            endAt,
+            studentId: cls.capacity === 1 ? studentId : null,
+          },
+        });
+        return { ok: true as const };
       },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    ).catch((error) => {
+      if (isSessionDuplicateError(error)) return { ok: false as const, reason: "Session already exists at this time" };
+      throw error;
     });
+
+    if (!result.ok) {
+      skipped++;
+      if (skippedSamples.length < 5) skippedSamples.push(`${ymd(startAt)} ${timeStr} - ${result.reason}`);
+      continue;
+    }
     created++;
+  }
+
+  if (onConflict === "reject" && plannedRows.length > 0) {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          for (const row of plannedRows) {
+            for (const sid of expectedStudentIds) {
+              const ok = await hasSchedulablePackage(tx, {
+                studentId: sid,
+                courseId: cls.courseId,
+                at: row.startAt,
+                requiredHoursMinutes,
+              });
+              if (!ok) {
+                throw new GenerateWeeklyConflictError(`Conflict on ${ymd(row.startAt)} ${timeStr}: Student ${sid} has no active package for this course`);
+              }
+            }
+
+            const conflictNow = await findConflictForSession({
+              db: tx,
+              classId,
+              teacherId: cls.teacherId,
+              roomId: cls.roomId ?? null,
+              startAt: row.startAt,
+              endAt: row.endAt,
+              schedulingStudentId: cls.capacity === 1 ? studentId : null,
+            });
+            if (conflictNow) {
+              throw new GenerateWeeklyConflictError(`Conflict on ${ymd(row.startAt)} ${timeStr}: ${conflictNow}`);
+            }
+
+            await tx.session.create({
+              data: {
+                classId,
+                startAt: row.startAt,
+                endAt: row.endAt,
+                studentId: cls.capacity === 1 ? studentId : null,
+              },
+            });
+          }
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+      created = plannedRows.length;
+    } catch (error) {
+      if (error instanceof GenerateWeeklyConflictError) {
+        const code = error.message.includes("no active package") ? "NO_ACTIVE_PACKAGE" : "CONFLICT";
+        return bad(error.message, 409, { code });
+      }
+      if (isSessionDuplicateError(error)) {
+        return bad(`Conflict on ${timeStr}: Session already exists at this time`, 409, { code: "CONFLICT" });
+      }
+      throw error;
+    }
   }
 
   const msg =

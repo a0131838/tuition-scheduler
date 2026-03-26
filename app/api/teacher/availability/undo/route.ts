@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { parseUndoPayload, parseYMD, undoKey, ymd } from "../_lib";
 import { formatDateOnly } from "@/lib/date-only";
+import { overlapsMinutes } from "@/lib/availability-conflict";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -26,9 +27,20 @@ export async function POST() {
     select: { date: true, startMin: true, endMin: true },
   });
   const existSet = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
+  const existingByDate = new Map<string, Array<{ startMin: number; endMin: number }>>();
+  for (const row of existing) {
+    const key = ymd(row.date);
+    existingByDate.set(key, [...(existingByDate.get(key) ?? []), { startMin: row.startMin, endMin: row.endMin }]);
+  }
 
   const creates = payload.slots
-    .filter((s) => !existSet.has(`${s.date}|${s.startMin}|${s.endMin}`))
+    .filter((s) => {
+      if (existSet.has(`${s.date}|${s.startMin}|${s.endMin}`)) return false;
+      const overlapsExisting = (existingByDate.get(s.date) ?? []).some((row) => overlapsMinutes(s.startMin, s.endMin, row.startMin, row.endMin));
+      if (overlapsExisting) return false;
+      existingByDate.set(s.date, [...(existingByDate.get(s.date) ?? []), { startMin: s.startMin, endMin: s.endMin }]);
+      return true;
+    })
     .map((s) => ({
       teacherId: teacher.id,
       date: parseYMD(s.date),
@@ -37,7 +49,7 @@ export async function POST() {
     }));
 
   await prisma.$transaction([
-    ...(creates.length > 0 ? [prisma.teacherAvailabilityDate.createMany({ data: creates })] : []),
+    ...(creates.length > 0 ? [prisma.teacherAvailabilityDate.createMany({ data: creates, skipDuplicates: true })] : []),
     prisma.appSetting.update({ where: { key: undoKey(teacher.id) }, data: { value: "" } }),
   ]);
 

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AVAIL_MAX_TIME, AVAIL_MIN_TIME, inAllowedWindow, parseYMD, toMin } from "../_lib";
 import { formatDateOnly } from "@/lib/date-only";
+import { findDateAvailabilityOverlap, isAvailabilityDuplicateError } from "@/lib/availability-conflict";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -63,9 +64,18 @@ export async function POST(req: Request) {
   if (endMin <= startMin) return bad("End must be after start");
   if (!inAllowedWindow(startMin, endMin)) return bad(`Time must be between ${AVAIL_MIN_TIME} and ${AVAIL_MAX_TIME}`);
 
-  const created = await prisma.teacherAvailabilityDate.create({
-    data: { teacherId: teacher.id, date, startMin, endMin },
-  });
+  const overlap = await findDateAvailabilityOverlap(prisma, teacher.id, date, startMin, endMin);
+  if (overlap) return bad("Availability overlaps an existing slot", 409);
+
+  let created;
+  try {
+    created = await prisma.teacherAvailabilityDate.create({
+      data: { teacherId: teacher.id, date, startMin, endMin },
+    });
+  } catch (error) {
+    if (isAvailabilityDuplicateError(error)) return bad("Availability slot already exists", 409);
+    throw error;
+  }
 
   return Response.json({
     slot: {

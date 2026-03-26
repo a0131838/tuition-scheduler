@@ -238,6 +238,37 @@ This file is the single source of truth for what changed in production.
   - package balance preview no longer treats legacy `GROUP_COUNT` as minute-based duration check
 - Rollback point: previous commit before alignment patch (`6536928` baseline before next deploy commit).
 
+## 2026-03-26-r3
+
+- Release ID: `2026-03-26-r3`
+- Date/Time (Asia/Shanghai): `2026-03-26`
+- Scope: Backend integrity hardening for scheduling, package top-up, expense claim state transitions, and teacher availability cleanup/guard rails.
+- Key files:
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/ops/execute/route.ts`
+  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
+  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
+  - `app/api/admin/packages/[id]/top-up/route.ts`
+  - `app/api/admin/teachers/[id]/availability/date/route.ts`
+  - `app/api/admin/teachers/[id]/availability/weekly/route.ts`
+  - `app/api/teacher/availability/slots/route.ts`
+  - `app/api/teacher/availability/bulk/route.ts`
+  - `app/api/teacher/availability/undo/route.ts`
+  - `lib/expense-claims.ts`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260326183000_add_session_unique_schedule_guard/migration.sql`
+  - `prisma/migrations/20260326195000_add_availability_unique_guards/migration.sql`
+  - `scripts/report-availability-integrity.ts`
+  - `scripts/clean-availability-integrity.ts`
+  - `docs/tasks/TASK-20260326-backend-integrity-hardening.md`
+- Risk impact (if any): Medium. Duplicate writes are now blocked at DB/app layers, availability creation now rejects overlaps, and historical availability data was normalized by merging overlapping ranges. Normal scheduling rules are unchanged, but repeated submits now fail fast instead of silently duplicating.
+- Verification:
+  - `npm run test:backend` passed (`16/16`)
+  - `npm run build` passed
+  - `npm run audit:availability-integrity` reports zero duplicate/overlap groups
+  - `npx prisma migrate deploy` applied `20260326183000_add_session_unique_schedule_guard` and `20260326195000_add_availability_unique_guards`
+- Rollback point: previous production commit before backend-integrity deploy (`98f1b9d` lineage baseline).
+
 ## 2026-03-26-r2
 
 - Release ID: `2026-03-26-r2`

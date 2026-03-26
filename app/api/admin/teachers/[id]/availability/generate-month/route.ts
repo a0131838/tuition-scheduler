@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { overlapsMinutes } from "@/lib/availability-conflict";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -81,10 +82,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     select: { date: true, startMin: true, endMin: true },
   });
   const exists = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
-  const missing = creates.filter((c) => !exists.has(`${ymd(c.date)}|${c.startMin}|${c.endMin}`));
+  const existingByDate = new Map<string, Array<{ startMin: number; endMin: number }>>();
+  for (const row of existing) {
+    const key = ymd(row.date);
+    existingByDate.set(key, [...(existingByDate.get(key) ?? []), { startMin: row.startMin, endMin: row.endMin }]);
+  }
+  const missing = creates.filter((c) => {
+    const dateKey = ymd(c.date);
+    if (exists.has(`${dateKey}|${c.startMin}|${c.endMin}`)) return false;
+    const overlapsExisting = (existingByDate.get(dateKey) ?? []).some((row) => overlapsMinutes(c.startMin, c.endMin, row.startMin, row.endMin));
+    if (overlapsExisting) return false;
+    existingByDate.set(dateKey, [...(existingByDate.get(dateKey) ?? []), { startMin: c.startMin, endMin: c.endMin }]);
+    return true;
+  });
   if (missing.length > 0) {
     await prisma.teacherAvailabilityDate.createMany({
       data: missing.map((c) => ({ teacherId, date: c.date, startMin: c.startMin, endMin: c.endMin })),
+      skipDuplicates: true,
     });
   }
 

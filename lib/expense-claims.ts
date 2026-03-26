@@ -186,17 +186,59 @@ export async function createExpenseClaim(input: {
   return row;
 }
 
+async function updateExpenseClaimWithExpectedStatus(opts: {
+  claimId: string;
+  expectedStatus: ExpenseClaimStatus;
+  notAllowedMessage: string;
+  data: Prisma.ExpenseClaimUpdateInput;
+}) {
+  return updateExpenseClaimWithExpectedStatusForDb(prisma, opts);
+}
+
+export async function updateExpenseClaimWithExpectedStatusForDb(
+  db: Pick<Prisma.TransactionClient, 'expenseClaim'>,
+  opts: {
+    claimId: string;
+    expectedStatus: ExpenseClaimStatus;
+    notAllowedMessage: string;
+    data: Prisma.ExpenseClaimUpdateInput;
+  }
+) {
+  const existing = await db.expenseClaim.findUnique({
+    where: { id: opts.claimId },
+    select: { id: true, status: true },
+  });
+  if (!existing) throw new Error('Expense claim not found');
+  if (existing.status !== opts.expectedStatus) {
+    throw new Error(opts.notAllowedMessage);
+  }
+
+  const updated = await db.expenseClaim.updateMany({
+    where: { id: opts.claimId, status: opts.expectedStatus },
+    data: opts.data,
+  });
+  if (updated.count === 0) {
+    const latest = await db.expenseClaim.findUnique({
+      where: { id: opts.claimId },
+      select: { id: true, status: true },
+    });
+    if (!latest) throw new Error('Expense claim not found');
+    throw new Error(opts.notAllowedMessage);
+  }
+
+  const row = await db.expenseClaim.findUnique({ where: { id: opts.claimId } });
+  if (!row) throw new Error('Expense claim not found');
+  return row;
+}
+
 export async function approveExpenseClaim(input: {
   claimId: string;
   approver: { email?: string | null; name?: string | null; role?: string | null };
 }) {
-  const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
-  if (!existing) throw new Error('Expense claim not found');
-  if (existing.status !== ExpenseClaimStatus.SUBMITTED) {
-    throw new Error('Only submitted claims can be approved');
-  }
-  const row = await prisma.expenseClaim.update({
-    where: { id: input.claimId },
+  const row = await updateExpenseClaimWithExpectedStatus({
+    claimId: input.claimId,
+    expectedStatus: ExpenseClaimStatus.SUBMITTED,
+    notAllowedMessage: 'Only submitted claims can be approved',
     data: {
       status: ExpenseClaimStatus.APPROVED,
       approverEmail: String(input.approver.email ?? '').trim().toLowerCase() || null,
@@ -221,13 +263,10 @@ export async function rejectExpenseClaim(input: {
   reason: string;
   approver: { email?: string | null; name?: string | null; role?: string | null };
 }) {
-  const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
-  if (!existing) throw new Error('Expense claim not found');
-  if (existing.status !== ExpenseClaimStatus.SUBMITTED) {
-    throw new Error('Only submitted claims can be rejected');
-  }
-  const row = await prisma.expenseClaim.update({
-    where: { id: input.claimId },
+  const row = await updateExpenseClaimWithExpectedStatus({
+    claimId: input.claimId,
+    expectedStatus: ExpenseClaimStatus.SUBMITTED,
+    notAllowedMessage: 'Only submitted claims can be rejected',
     data: {
       status: ExpenseClaimStatus.REJECTED,
       approverEmail: String(input.approver.email ?? '').trim().toLowerCase() || null,
@@ -257,13 +296,10 @@ export async function markExpenseClaimPaid(input: {
   paymentMethod?: string | null;
   paymentReference?: string | null;
 }) {
-  const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
-  if (!existing) throw new Error('Expense claim not found');
-  if (existing.status !== ExpenseClaimStatus.APPROVED) {
-    throw new Error('Only approved claims can be marked paid');
-  }
-  const row = await prisma.expenseClaim.update({
-    where: { id: input.claimId },
+  const row = await updateExpenseClaimWithExpectedStatus({
+    claimId: input.claimId,
+    expectedStatus: ExpenseClaimStatus.APPROVED,
+    notAllowedMessage: 'Only approved claims can be marked paid',
     data: {
       status: ExpenseClaimStatus.PAID,
       paidAt: new Date(),
@@ -341,13 +377,10 @@ export async function archiveExpenseClaim(input: {
   claimId: string;
   actor: { email?: string | null; name?: string | null; role?: string | null };
 }) {
-  const existing = await prisma.expenseClaim.findUnique({ where: { id: input.claimId } });
-  if (!existing) throw new Error('Expense claim not found');
-  if (existing.status !== ExpenseClaimStatus.PAID) {
-    throw new Error('Only paid claims can be archived');
-  }
-  const row = await prisma.expenseClaim.update({
-    where: { id: input.claimId },
+  const row = await updateExpenseClaimWithExpectedStatus({
+    claimId: input.claimId,
+    expectedStatus: ExpenseClaimStatus.PAID,
+    notAllowedMessage: 'Only paid claims can be archived',
     data: {
       archivedAt: new Date(),
       archivedByEmail: String(input.actor.email ?? '').trim().toLowerCase() || null,
