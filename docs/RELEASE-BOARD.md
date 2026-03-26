@@ -6,17 +6,17 @@
 - Process: `pm2 -> tuition-scheduler`
 - Last checked: `2026-03-26`
 - Health check: `/admin/login` => `200`
-- Server commit: `c0f9c48`
-- Local commit: `61df3fa`
-- Origin commit: `61df3fa`
-- Alignment status: `MISMATCH` (`server` is behind `local/origin`)
+- Server commit: `e96ce99`
+- Local commit: `e96ce99`
+- Origin commit: `e96ce99`
+- Alignment status: `ALIGNED`
 
 ## Current Known State
 
-- Local HEAD: strict superadmin availability bypass branch head (`61df3fa`).
+- Local HEAD: strict superadmin availability bypass branch head (`e96ce99`).
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
-- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `/admin/login` => `200`, but local/origin are ahead of server (`61df3fa` vs `c0f9c48`).
-- `2026-03-26-r1` and `2026-03-26-r2` are completed locally and ready for deploy, but are not yet live on the current server commit.
+- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server commit `e96ce99` are aligned and `/admin/login` => `200`.
+- `2026-03-26-r1` and `2026-03-26-r2` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
@@ -47,9 +47,9 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-03-26-r1 Ready For Deploy
+## 2026-03-26-r1 Deployed
 
-- Target: deploy current branch commit with group package alignment.
+- Deployed: group package alignment is live on the current production branch lineage.
 - Scope: use one shared preferred-package rule for group enrollment preview, actual enrollment, attendance default ordering, and balance preview.
 - Business impact: group classes prefer `GROUP_MINUTES`; legacy `GROUP_COUNT` remains fallback. 1-on-1 logic unchanged.
 - Validation:
@@ -58,12 +58,18 @@
   - group enrollment preview result matches enrollment submit result
   - legacy `GROUP_COUNT` preview is not blocked by minute-duration comparison
 
-## 2026-03-26-r2 Ready For Deploy
+## 2026-03-26-r2 Deployed
 
-- Target: deploy current branch commit with waived-attendance todo fix.
+- Deployed: waived-attendance todo fix is live on the current production branch lineage.
 - Scope: todo deduction summary respects `waiveDeduction` and does not flag assessment lessons as pending deduction.
 - Business impact: dashboard/todo card messaging only. Attendance save and package deduction behavior unchanged.
 - Validation:
   - `npm run build`
   - waived attendance sessions show `No deduction required / 无需减扣` in todo center
   - `bash ops/server/scripts/new_chat_startup_check.sh`
+
+## 2026-03-26-doc-status Deployed
+
+- Deployed: release document alignment patch is live at server commit `e96ce99`.
+- Scope: close out startup-check mismatch findings and keep release docs consistent with the actual deployed branch state.
+- Business impact: none. Documentation/process alignment only.

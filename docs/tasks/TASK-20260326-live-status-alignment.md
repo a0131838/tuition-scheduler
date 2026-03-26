@@ -1,7 +1,7 @@
 # TASK-20260326 Live Status Alignment
 
 ## Goal
-- Align release documents with the actual server commit and deployment state before the next deploy.
+- Align release documents with the actual server commit and deployment state before and after deploy closeout.
 
 ## Scope
 - `docs/CHANGELOG-LIVE.md`
@@ -15,8 +15,8 @@
 
 ## Validation
 1. `bash ops/server/scripts/new_chat_startup_check.sh` shows the real `local/origin/server` commit state.
-2. `CHANGELOG-LIVE.md` no longer implies `2026-03-26-r1/r2` are already live when server commit is behind.
-3. `RELEASE-BOARD.md` records the current server commit and mismatch status clearly.
+2. `CHANGELOG-LIVE.md` reflects the actual live state for `2026-03-26-r1/r2` after deployment.
+3. `RELEASE-BOARD.md` records the current aligned server commit clearly.
 
 ## Status
-- Completed locally; ready for deploy.
+- Deployed and closed. Server/local/origin aligned at `e96ce99`.

@@ -219,7 +219,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-26-r1`
 - Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `NOT LIVE YET` (completed locally / ready for deploy; current server commit remains `c0f9c48`)
+- Deployment status: `LIVE` (included in the currently deployed production branch lineage; server is now aligned at `e96ce99`)
 - Scope: Align group package selection across enrollment preview, enrollment submit, attendance package ordering, and student package balance preview; prefer `GROUP_MINUTES` and keep `GROUP_COUNT` fallback for legacy group classes.
 - Key files:
   - `lib/package-mode.ts`
@@ -242,7 +242,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-26-r2`
 - Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `NOT LIVE YET` (completed locally / ready for deploy; current server commit remains `c0f9c48`)
+- Deployment status: `LIVE` (included in the currently deployed production branch lineage; server is now aligned at `e96ce99`)
 - Scope: Fix todo-center deduction status so waived assessment attendance is not shown as pending deduction.
 - Key files:
   - `app/admin/todos/page.tsx`
@@ -260,7 +260,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-26-doc-status`
 - Date/Time (Asia/Shanghai): `2026-03-26`
-- Deployment status: `READY FOR DEPLOY`
+- Deployment status: `LIVE`
 - Scope: Align release documents with the actual server commit and current deploy state after startup-check verification.
 - Key files:
   - `docs/CHANGELOG-LIVE.md`
@@ -269,6 +269,6 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): None. Documentation/process alignment only; no business logic or runtime behavior change.
 - Verification:
   - `bash ops/server/scripts/new_chat_startup_check.sh`
-  - local/origin ahead of server is recorded explicitly
-  - `2026-03-26-r1/r2` remain marked as not live until server commit catches up
+  - local/origin/server are aligned at `e96ce99`
+  - `2026-03-26-r1/r2` are now marked live after deploy completion
 - Rollback point: previous docs-only commit `61df3fa`.
