@@ -219,6 +219,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-26-r1`
 - Date/Time (Asia/Shanghai): `2026-03-26`
+- Deployment status: `NOT LIVE YET` (completed locally / ready for deploy; current server commit remains `c0f9c48`)
 - Scope: Align group package selection across enrollment preview, enrollment submit, attendance package ordering, and student package balance preview; prefer `GROUP_MINUTES` and keep `GROUP_COUNT` fallback for legacy group classes.
 - Key files:
   - `lib/package-mode.ts`
@@ -241,6 +242,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-26-r2`
 - Date/Time (Asia/Shanghai): `2026-03-26`
+- Deployment status: `NOT LIVE YET` (completed locally / ready for deploy; current server commit remains `c0f9c48`)
 - Scope: Fix todo-center deduction status so waived assessment attendance is not shown as pending deduction.
 - Key files:
   - `app/admin/todos/page.tsx`
