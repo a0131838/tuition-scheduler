@@ -255,3 +255,20 @@ This file is the single source of truth for what changed in production.
   - attendance rows with `waiveDeduction=true` are excluded from todo pending-deduction count
   - waived assessment lessons show "无需减扣" instead of "待减扣"
 - Rollback point: previous commit before todo waived-deduction fix (`dcac9fe`).
+
+## 2026-03-26-doc-status
+
+- Release ID: `2026-03-26-doc-status`
+- Date/Time (Asia/Shanghai): `2026-03-26`
+- Deployment status: `READY FOR DEPLOY`
+- Scope: Align release documents with the actual server commit and current deploy state after startup-check verification.
+- Key files:
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260326-live-status-alignment.md`
+- Risk impact (if any): None. Documentation/process alignment only; no business logic or runtime behavior change.
+- Verification:
+  - `bash ops/server/scripts/new_chat_startup_check.sh`
+  - local/origin ahead of server is recorded explicitly
+  - `2026-03-26-r1/r2` remain marked as not live until server commit catches up
+- Rollback point: previous docs-only commit `61df3fa`.

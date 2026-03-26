@@ -17,6 +17,7 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `/admin/login` => `200`, but local/origin are ahead of server (`61df3fa` vs `c0f9c48`).
 - `2026-03-26-r1` and `2026-03-26-r2` are completed locally and ready for deploy, but are not yet live on the current server commit.
+- Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
