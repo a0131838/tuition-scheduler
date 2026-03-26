@@ -19,4 +19,4 @@
 3. `RELEASE-BOARD.md` records the current aligned server commit clearly.
 
 ## Status
-- Deployed and closed. Server/local/origin aligned at `e96ce99`.
+- Deployed and closed. Server/local/origin aligned on the current production branch.

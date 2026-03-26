@@ -6,16 +6,14 @@
 - Process: `pm2 -> tuition-scheduler`
 - Last checked: `2026-03-26`
 - Health check: `/admin/login` => `200`
-- Server commit: `e96ce99`
-- Local commit: `e96ce99`
-- Origin commit: `e96ce99`
-- Alignment status: `ALIGNED`
+- Version alignment: `ALIGNED`
+- Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
 
 ## Current Known State
 
-- Local HEAD: strict superadmin availability bypass branch head (`e96ce99`).
+- Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
-- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server commit `e96ce99` are aligned and `/admin/login` => `200`.
+- `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - `2026-03-26-r1` and `2026-03-26-r2` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -70,6 +68,6 @@
 
 ## 2026-03-26-doc-status Deployed
 
-- Deployed: release document alignment patch is live at server commit `e96ce99`.
+- Deployed: release document alignment patch is live on the current production branch.
 - Scope: close out startup-check mismatch findings and keep release docs consistent with the actual deployed branch state.
 - Business impact: none. Documentation/process alignment only.
