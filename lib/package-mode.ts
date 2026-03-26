@@ -3,6 +3,12 @@ export const GROUP_PACK_MINUTES_TAG = "[GROUP_PACK_MINUTES]";
 
 export type PackageMode = "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT";
 
+type PackageCandidate = {
+  type: string;
+  remainingMinutes: number | null;
+  note: string | null;
+};
+
 export function isGroupCountPackNote(note: string | null | undefined) {
   return typeof note === "string" && note.trim().startsWith(GROUP_PACK_TAG);
 }
@@ -42,4 +48,37 @@ export function packageModeFromNote(note: string | null | undefined): PackageMod
   if (isGroupMinutesPackNote(note)) return "GROUP_MINUTES";
   if (isGroupCountPackNote(note)) return "GROUP_COUNT";
   return "HOURS_MINUTES";
+}
+
+export function packageModeSupportsClass(mode: PackageMode, isGroupClass: boolean) {
+  return isGroupClass ? mode !== "HOURS_MINUTES" : mode === "HOURS_MINUTES";
+}
+
+export function packageModePriority(mode: PackageMode, isGroupClass: boolean) {
+  if (isGroupClass) {
+    if (mode === "GROUP_MINUTES") return 0;
+    if (mode === "GROUP_COUNT") return 1;
+    return 2;
+  }
+  return mode === "HOURS_MINUTES" ? 0 : 1;
+}
+
+export function pickPreferredActivePackage<T extends PackageCandidate>(
+  candidatePkgs: T[],
+  isGroupClass: boolean
+) {
+  const monthly = candidatePkgs.find((p) => p.type === "MONTHLY");
+  if (monthly) return monthly;
+
+  const hoursCandidates = candidatePkgs
+    .filter((p) => p.type === "HOURS" && (p.remainingMinutes ?? 0) > 0)
+    .sort((a, b) => {
+      const modeDiff =
+        packageModePriority(packageModeFromNote(a.note), isGroupClass) -
+        packageModePriority(packageModeFromNote(b.note), isGroupClass);
+      if (modeDiff !== 0) return modeDiff;
+      return (a.remainingMinutes ?? 0) - (b.remainingMinutes ?? 0);
+    });
+
+  return hoursCandidates.find((p) => packageModeSupportsClass(packageModeFromNote(p.note), isGroupClass)) ?? null;
 }

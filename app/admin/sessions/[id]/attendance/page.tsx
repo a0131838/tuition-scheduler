@@ -3,7 +3,7 @@ import { AttendanceStatus, PackageStatus } from "@prisma/client";
 import { AttendanceRow } from "./AttendanceEditor";
 import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../../_components/NoticeBanner";
-import { packageModeFromNote } from "@/lib/package-mode";
+import { packageModeFromNote, packageModePriority, packageModeSupportsClass } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminSessionAttendanceClient from "./AdminSessionAttendanceClient";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
@@ -16,12 +16,6 @@ function fmtRange(startAt: Date, endAt: Date) {
 
 function durationMinutes(startAt: Date, endAt: Date) {
   return Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
-}
-
-function packagePriority(mode: ReturnType<typeof packageModeFromNote>) {
-  if (mode === "GROUP_MINUTES") return 0;
-  if (mode === "GROUP_COUNT") return 1;
-  return 2;
 }
 
 export default async function AttendancePage({
@@ -214,11 +208,12 @@ export default async function AttendancePage({
               const opts = (pkgMap.get(e.studentId) ?? [])
                 .filter((p) => {
                   if (p.type !== "HOURS") return false;
-                  const mode = packageModeFromNote(p.note);
-                  return classIsGroup ? mode !== "HOURS_MINUTES" : mode === "HOURS_MINUTES";
+                  return packageModeSupportsClass(packageModeFromNote(p.note), classIsGroup);
                 })
                 .sort((aPkg, bPkg) => {
-                  const modeDiff = packagePriority(packageModeFromNote(aPkg.note)) - packagePriority(packageModeFromNote(bPkg.note));
+                  const modeDiff =
+                    packageModePriority(packageModeFromNote(aPkg.note), classIsGroup) -
+                    packageModePriority(packageModeFromNote(bPkg.note), classIsGroup);
                   if (modeDiff !== 0) return modeDiff;
                   const aValidTo = aPkg.validTo ? new Date(aPkg.validTo).getTime() : Number.MAX_SAFE_INTEGER;
                   const bValidTo = bPkg.validTo ? new Date(bPkg.validTo).getTime() : Number.MAX_SAFE_INTEGER;

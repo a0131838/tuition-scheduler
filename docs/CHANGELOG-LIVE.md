@@ -214,3 +214,25 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - edit area shows hint: "保存后将自动按可读模板展示备注（历史技术备注也会自动转为易读说明）"
 - Rollback point: previous deploy commit `be377a2`.
+
+## 2026-03-26-r1
+
+- Release ID: `2026-03-26-r1`
+- Date/Time (Asia/Shanghai): `2026-03-26`
+- Scope: Align group package selection across enrollment preview, enrollment submit, attendance package ordering, and student package balance preview; prefer `GROUP_MINUTES` and keep `GROUP_COUNT` fallback for legacy group classes.
+- Key files:
+  - `lib/package-mode.ts`
+  - `app/api/admin/classes/[id]/enrollment-preview/route.ts`
+  - `app/api/admin/enrollments/route.ts`
+  - `app/api/admin/students/[id]/package-balance-preview/route.ts`
+  - `app/admin/sessions/[id]/attendance/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260326-group-package-alignment.md`
+- Risk impact (if any): Medium-low. Affects group-class package matching/preview behavior only; 1-on-1 package logic remains unchanged. Main risk is inconsistent legacy `GROUP_COUNT` expectations if downstream pages assume minute-based checks.
+- Verification:
+  - `npm run build` passed
+  - group-class enrollment preview and submit use the same preferred package rule
+  - attendance page package ordering prefers `GROUP_MINUTES`, then falls back to legacy `GROUP_COUNT`
+  - package balance preview no longer treats legacy `GROUP_COUNT` as minute-based duration check
+- Rollback point: previous commit before alignment patch (`6536928` baseline before next deploy commit).

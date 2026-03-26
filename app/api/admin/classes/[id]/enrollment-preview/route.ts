@@ -1,32 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { packageModeFromNote } from "@/lib/package-mode";
+import { pickPreferredActivePackage } from "@/lib/package-mode";
 import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
-}
-
-function pickActivePackage(
-  candidatePkgs: Array<{ type: string; remainingMinutes: number | null; note: string | null }>,
-  isGroupClass: boolean
-) {
-  const monthly = candidatePkgs.find((p) => p.type === "MONTHLY");
-  if (monthly) return monthly;
-
-  const preferredMode = isGroupClass ? "GROUP_MINUTES" : "HOURS_MINUTES";
-  const preferred = candidatePkgs.find((p) => {
-    if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
-    return packageModeFromNote(p.note) === preferredMode;
-  });
-  if (preferred) return preferred;
-
-  if (!isGroupClass) return null;
-  return candidatePkgs.find((p) => {
-    if (p.type !== "HOURS" || (p.remainingMinutes ?? 0) <= 0) return false;
-    return packageModeFromNote(p.note) === "GROUP_COUNT";
-  }) ?? null;
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -105,7 +84,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     select: { id: true, type: true, remainingMinutes: true, note: true },
   });
 
-  const activePkg = pickActivePackage(candidatePkgs, cls.capacity !== 1);
+  const activePkg = pickPreferredActivePackage(candidatePkgs, cls.capacity !== 1);
 
   if (!activePkg) {
     return Response.json({

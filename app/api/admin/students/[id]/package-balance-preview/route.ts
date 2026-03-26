@@ -4,6 +4,9 @@ import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 
+const LOW_MINUTES = 120;
+const LOW_COUNTS = 3;
+
 function bad(message: string, status = 400) {
   return Response.json({ ok: false, message }, { status });
 }
@@ -71,8 +74,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     durationMin,
     rows: filtered.map((row) => {
       const remaining = row.remainingMinutes ?? 0;
-      const canSchedule = row.type === "MONTHLY" ? true : remaining >= durationMin;
       const packMode = row.type === "MONTHLY" ? "MONTHLY" : packageModeFromNote(row.note);
+      const isGroupCount = packMode === "GROUP_COUNT";
+      const canSchedule = row.type === "MONTHLY" ? true : isGroupCount ? remaining >= 1 : remaining >= durationMin;
+      const lowBalanceThreshold = isGroupCount ? LOW_COUNTS : LOW_MINUTES;
       return {
         id: row.id,
         type: row.type,
@@ -81,7 +86,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         validTo: row.validTo ? formatBusinessDateOnly(row.validTo) : null,
         paid: row.paid,
         canSchedule,
-        lowBalance: row.type === "HOURS" && remaining <= 120,
+        lowBalance: row.type === "HOURS" && remaining <= lowBalanceThreshold,
         packMode: packMode === "GROUP_COUNT" ? "GROUP" : "HOURS",
         packVariant: packMode,
       };
