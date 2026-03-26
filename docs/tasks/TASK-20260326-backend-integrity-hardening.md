@@ -52,4 +52,4 @@
 5. Scheduling duplicate writes now surface as controlled conflicts instead of silent duplicates.
 
 ## Status
-- Completed locally and on the production database; ready for deploy/doc sync.
+- Deployed on the production branch lineage; DB cleanup, migrations, and app deploy completed.

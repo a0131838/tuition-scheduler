@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- `2026-03-26-r1` and `2026-03-26-r2` are now live on the current server commit lineage.
+- `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
@@ -72,8 +72,9 @@
 - Scope: close out startup-check mismatch findings and keep release docs consistent with the actual deployed branch state.
 - Business impact: none. Documentation/process alignment only.
 
-## 2026-03-26-r3 Ready For Deploy
+## 2026-03-26-r3 Deployed
 
+- Deployed: backend integrity hardening is live on the current production branch lineage.
 - Scope: backend integrity hardening for scheduling, top-up, expense claim transitions, and teacher availability cleanup.
 - Business impact:
   - exact duplicate `Session` writes are now blocked by DB uniqueness plus controlled `409` handling
@@ -85,5 +86,5 @@
   - `npm run audit:availability-integrity`
   - `npx prisma migrate deploy`
 - Deploy note:
-  - production DB cleanup + migrations have already been applied from this branch
-  - app deploy is still required so live handlers return controlled conflicts instead of legacy error paths
+  - production DB cleanup + migrations were applied and the application branch has now been deployed
+  - `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server are aligned on the live branch head
