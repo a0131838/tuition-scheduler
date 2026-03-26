@@ -236,3 +236,20 @@ This file is the single source of truth for what changed in production.
   - attendance page package ordering prefers `GROUP_MINUTES`, then falls back to legacy `GROUP_COUNT`
   - package balance preview no longer treats legacy `GROUP_COUNT` as minute-based duration check
 - Rollback point: previous commit before alignment patch (`6536928` baseline before next deploy commit).
+
+## 2026-03-26-r2
+
+- Release ID: `2026-03-26-r2`
+- Date/Time (Asia/Shanghai): `2026-03-26`
+- Scope: Fix todo-center deduction status so waived assessment attendance is not shown as pending deduction.
+- Key files:
+  - `app/admin/todos/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260326-waived-attendance-todo-fix.md`
+- Risk impact (if any): Low. Todo/dashboard display logic only; no attendance write path or package ledger arithmetic change.
+- Verification:
+  - `npm run build` passed
+  - attendance rows with `waiveDeduction=true` are excluded from todo pending-deduction count
+  - waived assessment lessons show "无需减扣" instead of "待减扣"
+- Rollback point: previous commit before todo waived-deduction fix (`dcac9fe`).

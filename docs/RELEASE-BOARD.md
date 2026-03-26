@@ -51,3 +51,13 @@
   - `bash ops/server/scripts/new_chat_startup_check.sh`
   - group enrollment preview result matches enrollment submit result
   - legacy `GROUP_COUNT` preview is not blocked by minute-duration comparison
+
+## 2026-03-26-r2 Ready For Deploy
+
+- Target: deploy current branch commit with waived-attendance todo fix.
+- Scope: todo deduction summary respects `waiveDeduction` and does not flag assessment lessons as pending deduction.
+- Business impact: dashboard/todo card messaging only. Attendance save and package deduction behavior unchanged.
+- Validation:
+  - `npm run build`
+  - waived attendance sessions show `No deduction required / 无需减扣` in todo center
+  - `bash ops/server/scripts/new_chat_startup_check.sh`

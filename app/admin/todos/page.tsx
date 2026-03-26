@@ -278,6 +278,7 @@ export default async function AdminTodosPage({
           deductedMinutes: true,
           deductedCount: true,
           excusedCharge: true,
+          waiveDeduction: true,
         },
       })
     : [];
@@ -327,10 +328,12 @@ export default async function AdminTodosPage({
       const row = rowsByStudent.get(sid);
       if (!row) continue;
       const status = row.status;
+      const waiveDeduction = Boolean((row as any).waiveDeduction);
       const requiresDeduct =
-        status === "PRESENT" ||
-        status === "LATE" ||
-        (status === "EXCUSED" && Boolean((row as any).excusedCharge));
+        !waiveDeduction &&
+        (status === "PRESENT" ||
+          status === "LATE" ||
+          (status === "EXCUSED" && Boolean((row as any).excusedCharge)));
       if (!requiresDeduct) continue;
 
       required += 1;
@@ -1589,7 +1592,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
 
 
 
