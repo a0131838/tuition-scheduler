@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARENT_BILLING_KEY = "parent_billing_v1";
 
@@ -188,24 +189,13 @@ function sanitizeStore(input: unknown): ParentBillingStore {
 }
 
 async function loadStore(): Promise<ParentBillingStore> {
-  const row = await prisma.appSetting.findUnique({
-    where: { key: PARENT_BILLING_KEY },
-    select: { value: true },
-  });
-  if (!row?.value) return { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
-  try {
-    return sanitizeStore(JSON.parse(row.value));
-  } catch {
-    return { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
-  }
-}
-
-async function saveStore(store: ParentBillingStore) {
-  await prisma.appSetting.upsert({
-    where: { key: PARENT_BILLING_KEY },
-    update: { value: JSON.stringify(store) },
-    create: { key: PARENT_BILLING_KEY, value: JSON.stringify(store) },
-  });
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    PARENT_BILLING_KEY,
+    { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitizeStore,
+  );
+  return store;
 }
 
 function byNewest<T>(rows: T[], pickTime: (row: T) => string) {
@@ -338,10 +328,8 @@ export async function createParentInvoice(input: {
   note?: string | null;
   createdBy: string;
 }) {
-  const store = await loadStore();
   const now = new Date().toISOString();
   const normalizedInvoiceNo = input.invoiceNo.trim();
-  ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
   const item: ParentInvoiceItem = {
     id: crypto.randomUUID(),
     packageId: input.packageId,
@@ -363,9 +351,16 @@ export async function createParentInvoice(input: {
     createdAt: now,
     updatedAt: now,
   };
-  consumeInvoiceNoSequence(store, normalizedInvoiceNo);
-  store.invoices.push(item);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
+      consumeInvoiceNoSequence(store, normalizedInvoiceNo);
+      store.invoices.push(item);
+    },
+  });
   await logAudit({
     actor: { email: input.createdBy, role: "ADMIN" },
     module: "PARENT_BILLING",
@@ -389,7 +384,6 @@ export async function addParentPaymentRecord(input: {
   note?: string | null;
   uploadedBy: string;
 }) {
-  const store = await loadStore();
   const item: ParentPaymentRecordItem = {
     id: crypto.randomUUID(),
     packageId: input.packageId,
@@ -404,8 +398,14 @@ export async function addParentPaymentRecord(input: {
     relativePath: input.relativePath.trim(),
     note: input.note?.trim() || null,
   };
-  store.paymentRecords.push(item);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      store.paymentRecords.push(item);
+    },
+  });
   await logAudit({
     actor: { email: input.uploadedBy, role: "ADMIN" },
     module: "PARENT_BILLING",
@@ -434,58 +434,71 @@ export async function replaceParentPaymentRecord(input: {
   note?: string | null;
   uploadedBy: string;
 }) {
-  const store = await loadStore();
-  const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
-  if (idx < 0) throw new Error("Payment record not found");
-  const oldItem = store.paymentRecords[idx];
-  if (oldItem.packageId !== input.packageId) {
-    throw new Error("Payment record does not belong to this package");
-  }
-  const next: ParentPaymentRecordItem = {
-    ...oldItem,
-    paymentDate: normalizeNullableDateOnly(input.paymentDate),
-    paymentMethod: input.paymentMethod?.trim() || null,
-    referenceNo: input.referenceNo?.trim() || null,
-    originalFileName: input.originalFileName.trim(),
-    storedFileName: input.storedFileName.trim(),
-    relativePath: input.relativePath.trim(),
-    note: input.note?.trim() || null,
-    uploadedBy: normalizeEmail(input.uploadedBy),
-    uploadedAt: new Date().toISOString(),
-  };
-  store.paymentRecords[idx] = next;
-  await saveStore(store);
+  let oldItem: ParentPaymentRecordItem | null = null;
+  let next: ParentPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
+      if (idx < 0) throw new Error("Payment record not found");
+      oldItem = store.paymentRecords[idx];
+      if (oldItem.packageId !== input.packageId) {
+        throw new Error("Payment record does not belong to this package");
+      }
+      next = {
+        ...oldItem,
+        paymentDate: normalizeNullableDateOnly(input.paymentDate),
+        paymentMethod: input.paymentMethod?.trim() || null,
+        referenceNo: input.referenceNo?.trim() || null,
+        originalFileName: input.originalFileName.trim(),
+        storedFileName: input.storedFileName.trim(),
+        relativePath: input.relativePath.trim(),
+        note: input.note?.trim() || null,
+        uploadedBy: normalizeEmail(input.uploadedBy),
+        uploadedAt: new Date().toISOString(),
+      };
+      store.paymentRecords[idx] = next;
+    },
+  });
   await logAudit({
     actor: { email: input.uploadedBy, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "REPLACE_PAYMENT_PROOF",
     entityType: "ParentPaymentRecord",
-    entityId: next.id,
-    meta: { packageId: next.packageId, studentId: next.studentId, file: next.originalFileName },
+    entityId: next!.id,
+    meta: { packageId: next!.packageId, studentId: next!.studentId, file: next!.originalFileName },
   });
-  return { oldItem, item: next };
+  return { oldItem: oldItem!, item: next! };
 }
 
 export async function deleteParentPaymentRecord(input: { recordId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const id = input.recordId.trim();
-  const row = store.paymentRecords.find((x) => x.id === id);
-  if (!row) throw new Error("Payment record not found");
-  const usedByReceipt = store.receipts.find((x) => x.paymentRecordId === id);
-  if (usedByReceipt) {
-    throw new Error("Cannot delete payment record: linked receipt exists");
-  }
-  store.paymentRecords = store.paymentRecords.filter((x) => x.id !== id);
-  await saveStore(store);
+  let row: ParentPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const id = input.recordId.trim();
+      row = store.paymentRecords.find((x) => x.id === id) ?? null;
+      if (!row) throw new Error("Payment record not found");
+      const usedByReceipt = store.receipts.find((x) => x.paymentRecordId === id);
+      if (usedByReceipt) {
+        throw new Error("Cannot delete payment record: linked receipt exists");
+      }
+      store.paymentRecords = store.paymentRecords.filter((x) => x.id !== id);
+    },
+  });
   await logAudit({
     actor: { email: input.actorEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "DELETE_PAYMENT_PROOF",
     entityType: "ParentPaymentRecord",
-    entityId: id,
-    meta: { packageId: row.packageId, studentId: row.studentId, file: row.originalFileName },
+    entityId: input.recordId.trim(),
+    meta: { packageId: row!.packageId, studentId: row!.studentId, file: row!.originalFileName },
   });
-  return row;
+  return row!;
 }
 
 export async function createParentReceipt(input: {
@@ -506,56 +519,62 @@ export async function createParentReceipt(input: {
   note?: string | null;
   createdBy: string;
 }) {
-  const store = await loadStore();
   const now = new Date().toISOString();
   const normalizedReceiptNo = input.receiptNo.trim();
-  ensureUniqueReceiptNo(store, normalizedReceiptNo);
   const invoiceId = input.invoiceId?.trim() || null;
-  if (invoiceId) {
-    const invoice = store.invoices.find((x) => x.id === invoiceId);
-    if (!invoice) throw new Error("Selected invoice not found");
-    if (invoice.packageId !== input.packageId) {
-      throw new Error("Invoice does not belong to this package");
-    }
-    const hasLinked = store.receipts.some((x) => x.invoiceId === invoiceId);
-    if (hasLinked) throw new Error("This invoice already has a receipt");
-    const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
-    if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
-      throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
-    }
-  }
-  const item: ParentReceiptItem = {
-    id: crypto.randomUUID(),
-    packageId: input.packageId,
-    studentId: input.studentId,
-    invoiceId,
-    paymentRecordId: input.paymentRecordId?.trim() || null,
-    receiptNo: normalizedReceiptNo,
-    receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
-    receivedFrom: input.receivedFrom.trim(),
-    paidBy: input.paidBy.trim() || "Cash or Bank Transfer",
-    quantity: Math.max(1, Math.floor(input.quantity || 1)),
-    description: input.description.trim(),
-    amount: Number(input.amount) || 0,
-    gstAmount: Number(input.gstAmount) || 0,
-    totalAmount: Number(input.totalAmount) || 0,
-    amountReceived: Number(input.amountReceived) || 0,
-    note: input.note?.trim() || null,
-    createdBy: normalizeEmail(input.createdBy),
-    createdAt: now,
-    updatedAt: now,
-  };
-  store.receipts.push(item);
-  await saveStore(store);
+  let item: ParentReceiptItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      ensureUniqueReceiptNo(store, normalizedReceiptNo);
+      if (invoiceId) {
+        const invoice = store.invoices.find((x) => x.id === invoiceId);
+        if (!invoice) throw new Error("Selected invoice not found");
+        if (invoice.packageId !== input.packageId) {
+          throw new Error("Invoice does not belong to this package");
+        }
+        const hasLinked = store.receipts.some((x) => x.invoiceId === invoiceId);
+        if (hasLinked) throw new Error("This invoice already has a receipt");
+        const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
+        if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
+          throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
+        }
+      }
+      item = {
+        id: crypto.randomUUID(),
+        packageId: input.packageId,
+        studentId: input.studentId,
+        invoiceId,
+        paymentRecordId: input.paymentRecordId?.trim() || null,
+        receiptNo: normalizedReceiptNo,
+        receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
+        receivedFrom: input.receivedFrom.trim(),
+        paidBy: input.paidBy.trim() || "Cash or Bank Transfer",
+        quantity: Math.max(1, Math.floor(input.quantity || 1)),
+        description: input.description.trim(),
+        amount: Number(input.amount) || 0,
+        gstAmount: Number(input.gstAmount) || 0,
+        totalAmount: Number(input.totalAmount) || 0,
+        amountReceived: Number(input.amountReceived) || 0,
+        note: input.note?.trim() || null,
+        createdBy: normalizeEmail(input.createdBy),
+        createdAt: now,
+        updatedAt: now,
+      };
+      store.receipts.push(item);
+    },
+  });
   await logAudit({
     actor: { email: input.createdBy, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "CREATE_RECEIPT",
     entityType: "ParentReceipt",
-    entityId: item.id,
-    meta: { packageId: item.packageId, studentId: item.studentId, receiptNo: item.receiptNo },
+    entityId: item!.id,
+    meta: { packageId: item!.packageId, studentId: item!.studentId, receiptNo: item!.receiptNo },
   });
-  return item;
+  return item!;
 }
 
 export async function buildParentReceiptNoForInvoice(invoiceId: string) {
@@ -572,23 +591,29 @@ export async function buildParentReceiptNoForInvoice(invoiceId: string) {
 }
 
 export async function deleteParentInvoice(input: { invoiceId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const invoiceId = input.invoiceId.trim();
-  const invoice = store.invoices.find((x) => x.id === invoiceId);
-  if (!invoice) throw new Error("Invoice not found");
-  if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
-    throw new Error("Cannot delete invoice: linked receipt exists");
-  }
-  store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
-  rebuildInvoiceSeqByMonth(store);
-  await saveStore(store);
+  let invoice: ParentInvoiceItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const invoiceId = input.invoiceId.trim();
+      invoice = store.invoices.find((x) => x.id === invoiceId) ?? null;
+      if (!invoice) throw new Error("Invoice not found");
+      if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
+        throw new Error("Cannot delete invoice: linked receipt exists");
+      }
+      store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
+      rebuildInvoiceSeqByMonth(store);
+    },
+  });
   await logAudit({
     actor: { email: input.actorEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "DELETE_INVOICE",
     entityType: "ParentInvoice",
-    entityId: invoiceId,
-    meta: { invoiceNo: invoice.invoiceNo, packageId: invoice.packageId, studentId: invoice.studentId },
+    entityId: input.invoiceId.trim(),
+    meta: { invoiceNo: invoice!.invoiceNo, packageId: invoice!.packageId, studentId: invoice!.studentId },
   });
 }
 
@@ -605,67 +630,79 @@ export async function applyParentInvoiceNumberAssignments(
   }
   if (map.size === 0) return 0;
 
-  const store = await loadStore();
-  const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
-  for (const [invoiceId, invoiceNo] of map.entries()) {
-    if (!invoiceById.has(invoiceId)) throw new Error(`Parent invoice not found: ${invoiceId}`);
-    if (!/^RGT-\d{6}-\d{4}$/i.test(invoiceNo)) throw new Error(`Invalid invoice number format: ${invoiceNo}`);
-  }
-
-  const originalNoById = new Map<string, string>();
-  for (const inv of store.invoices) originalNoById.set(inv.id, inv.invoiceNo);
-
   let changed = 0;
-  for (const inv of store.invoices) {
-    const nextNo = map.get(inv.id);
-    if (!nextNo) continue;
-    if (inv.invoiceNo !== nextNo) {
-      inv.invoiceNo = nextNo;
-      inv.updatedAt = new Date().toISOString();
-      changed += 1;
-    }
-  }
-
-  if (changed > 0) {
-    const used = new Set<string>();
-    for (const inv of store.invoices) {
-      const key = inv.invoiceNo.trim().toLowerCase();
-      if (!key) throw new Error(`Empty invoice number on parent invoice: ${inv.id}`);
-      if (used.has(key)) throw new Error(`Duplicate parent invoice number after reassignment: ${inv.invoiceNo}`);
-      used.add(key);
-    }
-
-    for (const rec of store.receipts) {
-      if (!rec.invoiceId) continue;
-      const beforeNo = originalNoById.get(rec.invoiceId);
-      const afterNo = map.get(rec.invoiceId);
-      if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
-      const expectedOld = `${beforeNo}-RC`.toLowerCase();
-      if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
-        rec.receiptNo = `${afterNo}-RC`;
-        rec.updatedAt = new Date().toISOString();
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
+      for (const [invoiceId, invoiceNo] of map.entries()) {
+        if (!invoiceById.has(invoiceId)) throw new Error(`Parent invoice not found: ${invoiceId}`);
+        if (!/^RGT-\d{6}-\d{4}$/i.test(invoiceNo)) throw new Error(`Invalid invoice number format: ${invoiceNo}`);
       }
-    }
-  }
 
-  rebuildInvoiceSeqByMonth(store);
-  await saveStore(store);
+      const originalNoById = new Map<string, string>();
+      for (const inv of store.invoices) originalNoById.set(inv.id, inv.invoiceNo);
+
+      changed = 0;
+      for (const inv of store.invoices) {
+        const nextNo = map.get(inv.id);
+        if (!nextNo) continue;
+        if (inv.invoiceNo !== nextNo) {
+          inv.invoiceNo = nextNo;
+          inv.updatedAt = new Date().toISOString();
+          changed += 1;
+        }
+      }
+
+      if (changed > 0) {
+        const used = new Set<string>();
+        for (const inv of store.invoices) {
+          const key = inv.invoiceNo.trim().toLowerCase();
+          if (!key) throw new Error(`Empty invoice number on parent invoice: ${inv.id}`);
+          if (used.has(key)) throw new Error(`Duplicate parent invoice number after reassignment: ${inv.invoiceNo}`);
+          used.add(key);
+        }
+
+        for (const rec of store.receipts) {
+          if (!rec.invoiceId) continue;
+          const beforeNo = originalNoById.get(rec.invoiceId);
+          const afterNo = map.get(rec.invoiceId);
+          if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
+          const expectedOld = `${beforeNo}-RC`.toLowerCase();
+          if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
+            rec.receiptNo = `${afterNo}-RC`;
+            rec.updatedAt = new Date().toISOString();
+          }
+        }
+      }
+
+      rebuildInvoiceSeqByMonth(store);
+    },
+  });
   return changed;
 }
 
 export async function deleteParentReceipt(input: { receiptId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const receiptId = input.receiptId.trim();
-  const receipt = store.receipts.find((x) => x.id === receiptId);
-  if (!receipt) throw new Error("Receipt not found");
-  store.receipts = store.receipts.filter((x) => x.id !== receiptId);
-  await saveStore(store);
+  let receipt: ParentReceiptItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const receiptId = input.receiptId.trim();
+      receipt = store.receipts.find((x) => x.id === receiptId) ?? null;
+      if (!receipt) throw new Error("Receipt not found");
+      store.receipts = store.receipts.filter((x) => x.id !== receiptId);
+    },
+  });
   await logAudit({
     actor: { email: input.actorEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
     action: "DELETE_RECEIPT",
     entityType: "ParentReceipt",
-    entityId: receiptId,
-    meta: { receiptNo: receipt.receiptNo, packageId: receipt.packageId, studentId: receipt.studentId },
+    entityId: input.receiptId.trim(),
+    meta: { receiptNo: receipt!.receiptNo, packageId: receipt!.packageId, studentId: receipt!.studentId },
   });
 }

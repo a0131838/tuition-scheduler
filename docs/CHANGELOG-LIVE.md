@@ -305,3 +305,26 @@ This file is the single source of truth for what changed in production.
   - local/origin/server are aligned
   - `2026-03-26-r1/r2` are now marked live after deploy completion
 - Rollback point: previous docs-only release alignment commit.
+
+## 2026-03-27-r1
+
+- Release ID: `2026-03-27-r1`
+- Date/Time (Asia/Shanghai): `2026-03-27`
+- Scope: Add optimistic-lock retry protection for `partner/parent billing` JSON stores and related approval flows, plus regression coverage for concurrent-write preservation.
+- Key files:
+  - `lib/app-setting-lock.ts`
+  - `lib/partner-billing.ts`
+  - `lib/student-parent-billing.ts`
+  - `lib/partner-settlement-approval.ts`
+  - `lib/partner-receipt-approval.ts`
+  - `lib/parent-receipt-approval.ts`
+  - `tests/app-setting-lock.test.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260327-billing-optimistic-lock.md`
+- Risk impact (if any): Medium. Existing data model and UI flow stay unchanged, but concurrent billing/approval writes now retry against latest `AppSetting.updatedAt` and may fail explicitly instead of silently overwriting another operator's changes.
+- Verification:
+  - `npm run test:backend` passed (`22/22`)
+  - `npm run build` passed
+  - parent invoice creation test preserves a concurrent invoice after retry
+  - partner settlement reject test replays correctly after optimistic-lock conflict
+- Rollback point: previous production commit before `2026-03-27-r1` deploy (`c3800f0`).

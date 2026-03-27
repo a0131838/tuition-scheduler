@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARTNER_RECEIPT_APPROVAL_KEY = "partner_receipt_approval_v1";
 
@@ -57,19 +58,13 @@ function parseItems(raw?: string | null): PartnerReceiptApprovalItem[] {
 }
 
 async function loadItems() {
-  const row = await prisma.appSetting.findUnique({
-    where: { key: PARTNER_RECEIPT_APPROVAL_KEY },
-    select: { value: true },
-  });
-  return parseItems(row?.value ?? null);
-}
-
-async function saveItems(items: PartnerReceiptApprovalItem[]) {
-  await prisma.appSetting.upsert({
-    where: { key: PARTNER_RECEIPT_APPROVAL_KEY },
-    update: { value: JSON.stringify(items) },
-    create: { key: PARTNER_RECEIPT_APPROVAL_KEY, value: JSON.stringify(items) },
-  });
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    PARTNER_RECEIPT_APPROVAL_KEY,
+    [],
+    (input) => parseItems(typeof input === "string" ? input : null),
+  );
+  return store;
 }
 
 function ensureItem(items: PartnerReceiptApprovalItem[], receiptId: string) {
@@ -101,13 +96,18 @@ export async function getPartnerReceiptApprovalMap(receiptIds: string[]) {
 }
 
 export async function managerApprovePartnerReceipt(receiptId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
-  item.managerRejectedAt = null;
-  item.managerRejectedBy = null;
-  item.managerRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
+      item.managerRejectedAt = null;
+      item.managerRejectedBy = null;
+      item.managerRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
     module: "PARTNER_BILLING",
@@ -118,64 +118,90 @@ export async function managerApprovePartnerReceipt(receiptId: string, approverEm
 }
 
 export async function managerRejectPartnerReceipt(receiptId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  const email = normalizeEmail(approverEmail);
-  item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
-  item.financeApprovedBy = [];
-  item.managerRejectedAt = new Date().toISOString();
-  item.managerRejectedBy = email;
-  item.managerRejectReason = reason.trim();
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      const email = normalizeEmail(approverEmail);
+      item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
+      item.financeApprovedBy = [];
+      item.managerRejectedAt = new Date().toISOString();
+      item.managerRejectedBy = email;
+      item.managerRejectReason = reason.trim();
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
 }
 
 export async function financeApprovePartnerReceipt(receiptId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
 }
 
 export async function financeRejectPartnerReceipt(receiptId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  const email = normalizeEmail(approverEmail);
-  item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
-  item.financeRejectedAt = new Date().toISOString();
-  item.financeRejectedBy = email;
-  item.financeRejectReason = reason.trim();
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      const email = normalizeEmail(approverEmail);
+      item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
+      item.financeRejectedAt = new Date().toISOString();
+      item.financeRejectedBy = email;
+      item.financeRejectReason = reason.trim();
+    },
+  });
 }
 
 export async function deletePartnerReceiptApproval(receiptId: string) {
   const id = String(receiptId ?? "").trim();
   if (!id) return;
-  const items = await loadItems();
-  const next = items.filter((x) => x.receiptId !== id);
-  if (next.length === items.length) return;
-  await saveItems(next);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const next = items.filter((x) => x.receiptId !== id);
+      if (next.length === items.length) return;
+      items.splice(0, items.length, ...next);
+    },
+  });
 }
 
 export async function revokePartnerReceiptApprovalForRedo(receiptId: string, actorEmail: string, reason?: string) {
   const id = String(receiptId ?? "").trim();
   if (!id) return;
-  const items = await loadItems();
-  const item = ensureItem(items, id);
-  item.managerApprovedBy = [];
-  item.financeApprovedBy = [];
-  item.managerRejectedAt = null;
-  item.managerRejectedBy = null;
-  item.managerRejectReason = null;
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_RECEIPT_APPROVAL_KEY,
+    fallback: [] as PartnerReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, id);
+      item.managerApprovedBy = [];
+      item.financeApprovedBy = [];
+      item.managerRejectedAt = null;
+      item.managerRejectedBy = null;
+      item.managerRejectReason = null;
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: actorEmail, role: "ADMIN" },
     module: "PARTNER_BILLING",

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARENT_RECEIPT_APPROVAL_KEY = "parent_receipt_approval_v1";
 
@@ -57,19 +58,13 @@ function parseItems(raw?: string | null): ParentReceiptApprovalItem[] {
 }
 
 async function loadItems() {
-  const row = await prisma.appSetting.findUnique({
-    where: { key: PARENT_RECEIPT_APPROVAL_KEY },
-    select: { value: true },
-  });
-  return parseItems(row?.value ?? null);
-}
-
-async function saveItems(items: ParentReceiptApprovalItem[]) {
-  await prisma.appSetting.upsert({
-    where: { key: PARENT_RECEIPT_APPROVAL_KEY },
-    update: { value: JSON.stringify(items) },
-    create: { key: PARENT_RECEIPT_APPROVAL_KEY, value: JSON.stringify(items) },
-  });
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    PARENT_RECEIPT_APPROVAL_KEY,
+    [],
+    (input) => parseItems(typeof input === "string" ? input : null),
+  );
+  return store;
 }
 
 function ensureItem(items: ParentReceiptApprovalItem[], receiptId: string) {
@@ -101,13 +96,18 @@ export async function getParentReceiptApprovalMap(receiptIds: string[]) {
 }
 
 export async function managerApproveParentReceipt(receiptId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
-  item.managerRejectedAt = null;
-  item.managerRejectedBy = null;
-  item.managerRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
+      item.managerRejectedAt = null;
+      item.managerRejectedBy = null;
+      item.managerRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
@@ -118,18 +118,23 @@ export async function managerApproveParentReceipt(receiptId: string, approverEma
 }
 
 export async function managerRejectParentReceipt(receiptId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  const email = normalizeEmail(approverEmail);
-  item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
-  item.financeApprovedBy = [];
-  item.managerRejectedAt = new Date().toISOString();
-  item.managerRejectedBy = email;
-  item.managerRejectReason = reason.trim();
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      const email = normalizeEmail(approverEmail);
+      item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
+      item.financeApprovedBy = [];
+      item.managerRejectedAt = new Date().toISOString();
+      item.managerRejectedBy = email;
+      item.managerRejectReason = reason.trim();
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
     module: "PARENT_BILLING",
@@ -141,13 +146,18 @@ export async function managerRejectParentReceipt(receiptId: string, approverEmai
 }
 
 export async function financeApproveParentReceipt(receiptId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "FINANCE" },
     module: "PARENT_BILLING",
@@ -158,14 +168,19 @@ export async function financeApproveParentReceipt(receiptId: string, approverEma
 }
 
 export async function financeRejectParentReceipt(receiptId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, receiptId);
-  const email = normalizeEmail(approverEmail);
-  item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
-  item.financeRejectedAt = new Date().toISOString();
-  item.financeRejectedBy = email;
-  item.financeRejectReason = reason.trim();
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, receiptId);
+      const email = normalizeEmail(approverEmail);
+      item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
+      item.financeRejectedAt = new Date().toISOString();
+      item.financeRejectedBy = email;
+      item.financeRejectReason = reason.trim();
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "FINANCE" },
     module: "PARENT_BILLING",
@@ -179,26 +194,37 @@ export async function financeRejectParentReceipt(receiptId: string, approverEmai
 export async function deleteParentReceiptApproval(receiptId: string) {
   const id = String(receiptId ?? "").trim();
   if (!id) return;
-  const items = await loadItems();
-  const next = items.filter((x) => x.receiptId !== id);
-  if (next.length === items.length) return;
-  await saveItems(next);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const next = items.filter((x) => x.receiptId !== id);
+      if (next.length === items.length) return;
+      items.splice(0, items.length, ...next);
+    },
+  });
 }
 
 export async function revokeParentReceiptApprovalForRedo(receiptId: string, actorEmail: string, reason?: string) {
   const id = String(receiptId ?? "").trim();
   if (!id) return;
-  const items = await loadItems();
-  const item = ensureItem(items, id);
-  item.managerApprovedBy = [];
-  item.financeApprovedBy = [];
-  item.managerRejectedAt = null;
-  item.managerRejectedBy = null;
-  item.managerRejectReason = null;
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARENT_RECEIPT_APPROVAL_KEY,
+    fallback: [] as ParentReceiptApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, id);
+      item.managerApprovedBy = [];
+      item.financeApprovedBy = [];
+      item.managerRejectedAt = null;
+      item.managerRejectedBy = null;
+      item.managerRejectReason = null;
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: actorEmail, role: "ADMIN" },
     module: "PARENT_BILLING",

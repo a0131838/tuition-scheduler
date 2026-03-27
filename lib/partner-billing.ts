@@ -2,6 +2,7 @@
 import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARTNER_BILLING_KEY = "partner_billing_v1";
 
@@ -230,21 +231,13 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
 }
 
 async function loadStore(): Promise<PartnerBillingStore> {
-  const row = await prisma.appSetting.findUnique({ where: { key: PARTNER_BILLING_KEY }, select: { value: true } });
-  if (!row?.value) return { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
-  try {
-    return sanitizeStore(JSON.parse(row.value));
-  } catch {
-    return { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
-  }
-}
-
-async function saveStore(store: PartnerBillingStore) {
-  await prisma.appSetting.upsert({
-    where: { key: PARTNER_BILLING_KEY },
-    update: { value: JSON.stringify(store) },
-    create: { key: PARTNER_BILLING_KEY, value: JSON.stringify(store) },
-  });
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    PARTNER_BILLING_KEY,
+    { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitizeStore,
+  );
+  return store;
 }
 
 function byNewest<T>(rows: T[], pickTime: (row: T) => string) {
@@ -380,16 +373,9 @@ export async function createPartnerInvoice(input: {
   note?: string | null;
   createdBy: string;
 }) {
-  const store = await loadStore();
   const now = new Date().toISOString();
   const normalizedInvoiceNo = input.invoiceNo.trim();
-  ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
-
   const settlementIdSet = new Set(input.settlementIds.map((x) => String(x ?? "").trim()).filter(Boolean));
-  const alreadyUsed = new Set(store.invoices.flatMap((x) => x.settlementIds));
-  for (const sid of settlementIdSet) {
-    if (alreadyUsed.has(sid)) throw new Error(`Settlement already linked in another invoice: ${sid}`);
-  }
 
   const lines: PartnerInvoiceLine[] = input.lines
     .map((x) => ({
@@ -433,9 +419,20 @@ export async function createPartnerInvoice(input: {
     updatedAt: now,
   };
 
-  consumeInvoiceNoSequence(store, normalizedInvoiceNo);
-  store.invoices.push(item);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
+      const alreadyUsed = new Set(store.invoices.flatMap((x) => x.settlementIds));
+      for (const sid of settlementIdSet) {
+        if (alreadyUsed.has(sid)) throw new Error(`Settlement already linked in another invoice: ${sid}`);
+      }
+      consumeInvoiceNoSequence(store, normalizedInvoiceNo);
+      store.invoices.push(item);
+    },
+  });
   await logAudit({
     actor: { email: input.createdBy, role: "ADMIN" },
     module: "PARTNER_BILLING",
@@ -459,7 +456,6 @@ export async function addPartnerPaymentRecord(input: {
   note?: string | null;
   uploadedBy: string;
 }) {
-  const store = await loadStore();
   const item: PartnerPaymentRecordItem = {
     id: crypto.randomUUID(),
     mode: input.mode,
@@ -474,8 +470,14 @@ export async function addPartnerPaymentRecord(input: {
     relativePath: input.relativePath.trim(),
     note: input.note?.trim() || null,
   };
-  store.paymentRecords.push(item);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      store.paymentRecords.push(item);
+    },
+  });
   return item;
 }
 
@@ -492,42 +494,55 @@ export async function replacePartnerPaymentRecord(input: {
   note?: string | null;
   uploadedBy: string;
 }) {
-  const store = await loadStore();
-  const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
-  if (idx < 0) throw new Error("Payment record not found");
-  const oldItem = store.paymentRecords[idx];
-  if (oldItem.mode !== input.mode) throw new Error("Payment record mode mismatch");
-  if (input.mode === "OFFLINE_MONTHLY" && oldItem.monthKey !== (input.monthKey?.trim() || null)) {
-    throw new Error("Payment record month mismatch");
-  }
-  const next: PartnerPaymentRecordItem = {
-    ...oldItem,
-    paymentDate: normalizeNullableDateOnly(input.paymentDate),
-    paymentMethod: input.paymentMethod?.trim() || null,
-    referenceNo: input.referenceNo?.trim() || null,
-    originalFileName: input.originalFileName.trim(),
-    storedFileName: input.storedFileName.trim(),
-    relativePath: input.relativePath.trim(),
-    note: input.note?.trim() || null,
-    uploadedBy: normalizeEmail(input.uploadedBy),
-    uploadedAt: new Date().toISOString(),
-  };
-  store.paymentRecords[idx] = next;
-  await saveStore(store);
-  return { oldItem, item: next };
+  let oldItem: PartnerPaymentRecordItem | null = null;
+  let next: PartnerPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
+      if (idx < 0) throw new Error("Payment record not found");
+      oldItem = store.paymentRecords[idx];
+      if (oldItem.mode !== input.mode) throw new Error("Payment record mode mismatch");
+      if (input.mode === "OFFLINE_MONTHLY" && oldItem.monthKey !== (input.monthKey?.trim() || null)) {
+        throw new Error("Payment record month mismatch");
+      }
+      next = {
+        ...oldItem,
+        paymentDate: normalizeNullableDateOnly(input.paymentDate),
+        paymentMethod: input.paymentMethod?.trim() || null,
+        referenceNo: input.referenceNo?.trim() || null,
+        originalFileName: input.originalFileName.trim(),
+        storedFileName: input.storedFileName.trim(),
+        relativePath: input.relativePath.trim(),
+        note: input.note?.trim() || null,
+        uploadedBy: normalizeEmail(input.uploadedBy),
+        uploadedAt: new Date().toISOString(),
+      };
+      store.paymentRecords[idx] = next;
+    },
+  });
+  return { oldItem: oldItem!, item: next! };
 }
 
 export async function deletePartnerPaymentRecord(input: { recordId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const id = input.recordId.trim();
-  const row = store.paymentRecords.find((x) => x.id === id);
-  if (!row) throw new Error("Payment record not found");
-  if (store.receipts.some((x) => x.paymentRecordId === id)) {
-    throw new Error("Cannot delete payment record: linked receipt exists");
-  }
-  store.paymentRecords = store.paymentRecords.filter((x) => x.id !== id);
-  await saveStore(store);
-  return row;
+  let row: PartnerPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const id = input.recordId.trim();
+      row = store.paymentRecords.find((x) => x.id === id) ?? null;
+      if (!row) throw new Error("Payment record not found");
+      if (store.receipts.some((x) => x.paymentRecordId === id)) {
+        throw new Error("Cannot delete payment record: linked receipt exists");
+      }
+      store.paymentRecords = store.paymentRecords.filter((x) => x.id !== id);
+    },
+  });
+  return row!;
 }
 
 export async function createPartnerReceipt(input: {
@@ -546,46 +561,52 @@ export async function createPartnerReceipt(input: {
   note?: string | null;
   createdBy: string;
 }) {
-  const store = await loadStore();
   const now = new Date().toISOString();
   const invoiceId = input.invoiceId.trim();
-  const invoice = store.invoices.find((x) => x.id === invoiceId);
-  if (!invoice) throw new Error("Invoice not found");
-  if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
-    throw new Error("This invoice already has a receipt");
-  }
-
   const normalizedReceiptNo = input.receiptNo.trim();
-  ensureUniqueReceiptNo(store, normalizedReceiptNo);
-  const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
-  if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
-    throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
-  }
+  let item: PartnerReceiptItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const invoice = store.invoices.find((x) => x.id === invoiceId);
+      if (!invoice) throw new Error("Invoice not found");
+      if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
+        throw new Error("This invoice already has a receipt");
+      }
 
-  const item: PartnerReceiptItem = {
-    id: crypto.randomUUID(),
-    mode: invoice.mode,
-    monthKey: invoice.monthKey,
-    invoiceId,
-    paymentRecordId: input.paymentRecordId?.trim() || null,
-    receiptNo: normalizedReceiptNo,
-    receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
-    receivedFrom: input.receivedFrom.trim(),
-    paidBy: input.paidBy.trim(),
-    quantity: Math.max(1, Math.floor(input.quantity || 1)),
-    description: input.description.trim(),
-    amount: Number(input.amount) || 0,
-    gstAmount: Number(input.gstAmount) || 0,
-    totalAmount: Number(input.totalAmount) || 0,
-    amountReceived: Number(input.amountReceived) || 0,
-    note: input.note?.trim() || null,
-    createdBy: normalizeEmail(input.createdBy),
-    createdAt: now,
-    updatedAt: now,
-  };
-  store.receipts.push(item);
-  await saveStore(store);
-  return item;
+      ensureUniqueReceiptNo(store, normalizedReceiptNo);
+      const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
+      if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
+        throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
+      }
+
+      item = {
+        id: crypto.randomUUID(),
+        mode: invoice.mode,
+        monthKey: invoice.monthKey,
+        invoiceId,
+        paymentRecordId: input.paymentRecordId?.trim() || null,
+        receiptNo: normalizedReceiptNo,
+        receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
+        receivedFrom: input.receivedFrom.trim(),
+        paidBy: input.paidBy.trim(),
+        quantity: Math.max(1, Math.floor(input.quantity || 1)),
+        description: input.description.trim(),
+        amount: Number(input.amount) || 0,
+        gstAmount: Number(input.gstAmount) || 0,
+        totalAmount: Number(input.totalAmount) || 0,
+        amountReceived: Number(input.amountReceived) || 0,
+        note: input.note?.trim() || null,
+        createdBy: normalizeEmail(input.createdBy),
+        createdAt: now,
+        updatedAt: now,
+      };
+      store.receipts.push(item);
+    },
+  });
+  return item!;
 }
 
 export async function buildPartnerReceiptNoForInvoice(invoiceId: string) {
@@ -601,16 +622,21 @@ export async function buildPartnerReceiptNoForInvoice(invoiceId: string) {
 }
 
 export async function deletePartnerInvoice(input: { invoiceId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const invoiceId = input.invoiceId.trim();
-  const row = store.invoices.find((x) => x.id === invoiceId);
-  if (!row) throw new Error("Invoice not found");
-  if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
-    throw new Error("Cannot delete invoice: linked receipt exists");
-  }
-  store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
-  rebuildInvoiceSeqByMonth(store);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const invoiceId = input.invoiceId.trim();
+      const row = store.invoices.find((x) => x.id === invoiceId);
+      if (!row) throw new Error("Invoice not found");
+      if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
+        throw new Error("Cannot delete invoice: linked receipt exists");
+      }
+      store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
+      rebuildInvoiceSeqByMonth(store);
+    },
+  });
 }
 
 export async function applyPartnerInvoiceNumberAssignments(
@@ -626,58 +652,69 @@ export async function applyPartnerInvoiceNumberAssignments(
   }
   if (map.size === 0) return 0;
 
-  const store = await loadStore();
-  const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
-  for (const [invoiceId, invoiceNo] of map.entries()) {
-    if (!invoiceById.has(invoiceId)) throw new Error(`Partner invoice not found: ${invoiceId}`);
-    if (!/^RGT-\d{6}-\d{4}$/i.test(invoiceNo)) throw new Error(`Invalid invoice number format: ${invoiceNo}`);
-  }
-
-  const originalNoById = new Map<string, string>();
-  for (const inv of store.invoices) originalNoById.set(inv.id, inv.invoiceNo);
-
   let changed = 0;
-  for (const inv of store.invoices) {
-    const nextNo = map.get(inv.id);
-    if (!nextNo) continue;
-    if (inv.invoiceNo !== nextNo) {
-      inv.invoiceNo = nextNo;
-      inv.updatedAt = new Date().toISOString();
-      changed += 1;
-    }
-  }
-
-  if (changed > 0) {
-    const used = new Set<string>();
-    for (const inv of store.invoices) {
-      const key = inv.invoiceNo.trim().toLowerCase();
-      if (!key) throw new Error(`Empty invoice number on partner invoice: ${inv.id}`);
-      if (used.has(key)) throw new Error(`Duplicate partner invoice number after reassignment: ${inv.invoiceNo}`);
-      used.add(key);
-    }
-
-    for (const rec of store.receipts) {
-      const beforeNo = originalNoById.get(rec.invoiceId);
-      const afterNo = map.get(rec.invoiceId);
-      if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
-      const expectedOld = `${beforeNo}-RC`.toLowerCase();
-      if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
-        rec.receiptNo = `${afterNo}-RC`;
-        rec.updatedAt = new Date().toISOString();
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
+      for (const [invoiceId, invoiceNo] of map.entries()) {
+        if (!invoiceById.has(invoiceId)) throw new Error(`Partner invoice not found: ${invoiceId}`);
+        if (!/^RGT-\d{6}-\d{4}$/i.test(invoiceNo)) throw new Error(`Invalid invoice number format: ${invoiceNo}`);
       }
-    }
-  }
 
-  rebuildInvoiceSeqByMonth(store);
-  await saveStore(store);
+      const originalNoById = new Map<string, string>();
+      for (const inv of store.invoices) originalNoById.set(inv.id, inv.invoiceNo);
+
+      changed = 0;
+      for (const inv of store.invoices) {
+        const nextNo = map.get(inv.id);
+        if (!nextNo) continue;
+        if (inv.invoiceNo !== nextNo) {
+          inv.invoiceNo = nextNo;
+          inv.updatedAt = new Date().toISOString();
+          changed += 1;
+        }
+      }
+
+      if (changed > 0) {
+        const used = new Set<string>();
+        for (const inv of store.invoices) {
+          const key = inv.invoiceNo.trim().toLowerCase();
+          if (!key) throw new Error(`Empty invoice number on partner invoice: ${inv.id}`);
+          if (used.has(key)) throw new Error(`Duplicate partner invoice number after reassignment: ${inv.invoiceNo}`);
+          used.add(key);
+        }
+
+        for (const rec of store.receipts) {
+          const beforeNo = originalNoById.get(rec.invoiceId);
+          const afterNo = map.get(rec.invoiceId);
+          if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
+          const expectedOld = `${beforeNo}-RC`.toLowerCase();
+          if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
+            rec.receiptNo = `${afterNo}-RC`;
+            rec.updatedAt = new Date().toISOString();
+          }
+        }
+      }
+
+      rebuildInvoiceSeqByMonth(store);
+    },
+  });
   return changed;
 }
 
 export async function deletePartnerReceipt(input: { receiptId: string; actorEmail: string }) {
-  const store = await loadStore();
-  const receiptId = input.receiptId.trim();
-  const row = store.receipts.find((x) => x.id === receiptId);
-  if (!row) throw new Error("Receipt not found");
-  store.receipts = store.receipts.filter((x) => x.id !== receiptId);
-  await saveStore(store);
+  await mutateJsonAppSetting({
+    key: PARTNER_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const receiptId = input.receiptId.trim();
+      const row = store.receipts.find((x) => x.id === receiptId);
+      if (!row) throw new Error("Receipt not found");
+      store.receipts = store.receipts.filter((x) => x.id !== receiptId);
+    },
+  });
 }

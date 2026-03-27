@@ -89,3 +89,15 @@
   - production DB cleanup + migrations were applied and the application branch has now been deployed
   - `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server are aligned on the live branch head
   - release-doc closeout is tracked as a docs-only follow-up on the same production branch lineage
+
+## 2026-03-27-r1 Ready For Deploy
+
+- Scope: optimistic-lock retry guard for `partner/parent billing` blob stores and related approval writes.
+- Business impact:
+  - concurrent `AppSetting` JSON writes in billing/approval flows are retried against latest `updatedAt`
+  - conflicting writes now fail explicitly instead of silently overwriting another operator's invoice / receipt / approval update
+  - existing invoice / receipt / approval data structure and UI flow stay unchanged
+- Validation:
+  - `npm run test:backend`
+  - `npm run build`
+  - billing optimistic-lock regression tests pass

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARTNER_SETTLEMENT_APPROVAL_KEY = "partner_settlement_approval_v1";
 
@@ -61,19 +62,13 @@ function parseItems(raw?: string | null): PartnerSettlementApprovalItem[] {
 }
 
 async function loadItems() {
-  const row = await prisma.appSetting.findUnique({
-    where: { key: PARTNER_SETTLEMENT_APPROVAL_KEY },
-    select: { value: true },
-  });
-  return parseItems(row?.value ?? null);
-}
-
-async function saveItems(items: PartnerSettlementApprovalItem[]) {
-  await prisma.appSetting.upsert({
-    where: { key: PARTNER_SETTLEMENT_APPROVAL_KEY },
-    update: { value: JSON.stringify(items) },
-    create: { key: PARTNER_SETTLEMENT_APPROVAL_KEY, value: JSON.stringify(items) },
-  });
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    PARTNER_SETTLEMENT_APPROVAL_KEY,
+    [],
+    (input) => parseItems(typeof input === "string" ? input : null),
+  );
+  return store;
 }
 
 function ensureItem(items: PartnerSettlementApprovalItem[], settlementId: string) {
@@ -107,13 +102,18 @@ export async function getPartnerSettlementApprovalMap(settlementIds: string[]) {
 }
 
 export async function managerApprovePartnerSettlement(settlementId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, settlementId);
-  item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
-  item.managerRejectedAt = null;
-  item.managerRejectedBy = null;
-  item.managerRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_SETTLEMENT_APPROVAL_KEY,
+    fallback: [] as PartnerSettlementApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, settlementId);
+      item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
+      item.managerRejectedAt = null;
+      item.managerRejectedBy = null;
+      item.managerRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
     module: "PARTNER_SETTLEMENT",
@@ -124,17 +124,22 @@ export async function managerApprovePartnerSettlement(settlementId: string, appr
 }
 
 export async function managerRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, settlementId);
-  const email = normalizeEmail(approverEmail);
-  item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
-  item.financeApprovedBy = [];
-  item.exportedAt = null;
-  item.exportedBy = null;
-  item.managerRejectedAt = new Date().toISOString();
-  item.managerRejectedBy = email;
-  item.managerRejectReason = reason.trim();
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_SETTLEMENT_APPROVAL_KEY,
+    fallback: [] as PartnerSettlementApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, settlementId);
+      const email = normalizeEmail(approverEmail);
+      item.managerApprovedBy = item.managerApprovedBy.filter((x) => x !== email);
+      item.financeApprovedBy = [];
+      item.exportedAt = null;
+      item.exportedBy = null;
+      item.managerRejectedAt = new Date().toISOString();
+      item.managerRejectedBy = email;
+      item.managerRejectReason = reason.trim();
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "ADMIN" },
     module: "PARTNER_SETTLEMENT",
@@ -146,13 +151,18 @@ export async function managerRejectPartnerSettlement(settlementId: string, appro
 }
 
 export async function financeApprovePartnerSettlement(settlementId: string, approverEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, settlementId);
-  item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
-  item.financeRejectedAt = null;
-  item.financeRejectedBy = null;
-  item.financeRejectReason = null;
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_SETTLEMENT_APPROVAL_KEY,
+    fallback: [] as PartnerSettlementApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, settlementId);
+      item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
+      item.financeRejectedAt = null;
+      item.financeRejectedBy = null;
+      item.financeRejectReason = null;
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "FINANCE" },
     module: "PARTNER_SETTLEMENT",
@@ -163,16 +173,21 @@ export async function financeApprovePartnerSettlement(settlementId: string, appr
 }
 
 export async function financeRejectPartnerSettlement(settlementId: string, approverEmail: string, reason: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, settlementId);
-  const email = normalizeEmail(approverEmail);
-  item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
-  item.exportedAt = null;
-  item.exportedBy = null;
-  item.financeRejectedAt = new Date().toISOString();
-  item.financeRejectedBy = email;
-  item.financeRejectReason = reason.trim();
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_SETTLEMENT_APPROVAL_KEY,
+    fallback: [] as PartnerSettlementApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, settlementId);
+      const email = normalizeEmail(approverEmail);
+      item.financeApprovedBy = item.financeApprovedBy.filter((x) => x !== email);
+      item.exportedAt = null;
+      item.exportedBy = null;
+      item.financeRejectedAt = new Date().toISOString();
+      item.financeRejectedBy = email;
+      item.financeRejectReason = reason.trim();
+    },
+  });
   await logAudit({
     actor: { email: approverEmail, role: "FINANCE" },
     module: "PARTNER_SETTLEMENT",
@@ -184,11 +199,16 @@ export async function financeRejectPartnerSettlement(settlementId: string, appro
 }
 
 export async function markPartnerSettlementExported(settlementId: string, exporterEmail: string) {
-  const items = await loadItems();
-  const item = ensureItem(items, settlementId);
-  item.exportedAt = new Date().toISOString();
-  item.exportedBy = normalizeEmail(exporterEmail);
-  await saveItems(items);
+  await mutateJsonAppSetting({
+    key: PARTNER_SETTLEMENT_APPROVAL_KEY,
+    fallback: [] as PartnerSettlementApprovalItem[],
+    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    mutate(items) {
+      const item = ensureItem(items, settlementId);
+      item.exportedAt = new Date().toISOString();
+      item.exportedBy = normalizeEmail(exporterEmail);
+    },
+  });
   await logAudit({
     actor: { email: exporterEmail, role: "ADMIN" },
     module: "PARTNER_SETTLEMENT",
