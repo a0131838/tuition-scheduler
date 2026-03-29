@@ -20,10 +20,10 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function parseItems(raw?: string | null): PartnerReceiptApprovalItem[] {
-  if (!raw) return [];
+function parseItems(input: unknown): PartnerReceiptApprovalItem[] {
+  if (input == null) return [];
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = typeof input === "string" ? (JSON.parse(input) as unknown) : input;
     if (!Array.isArray(parsed)) return [];
     const out: PartnerReceiptApprovalItem[] = [];
     for (const item of parsed) {
@@ -62,7 +62,7 @@ async function loadItems() {
     prisma as any,
     PARTNER_RECEIPT_APPROVAL_KEY,
     [],
-    (input) => parseItems(typeof input === "string" ? input : null),
+    parseItems,
   );
   return store;
 }
@@ -99,7 +99,7 @@ export async function managerApprovePartnerReceipt(receiptId: string, approverEm
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, receiptId);
       item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
@@ -121,7 +121,7 @@ export async function managerRejectPartnerReceipt(receiptId: string, approverEma
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, receiptId);
       const email = normalizeEmail(approverEmail);
@@ -141,7 +141,7 @@ export async function financeApprovePartnerReceipt(receiptId: string, approverEm
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, receiptId);
       item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
@@ -156,7 +156,7 @@ export async function financeRejectPartnerReceipt(receiptId: string, approverEma
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, receiptId);
       const email = normalizeEmail(approverEmail);
@@ -174,7 +174,7 @@ export async function deletePartnerReceiptApproval(receiptId: string) {
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const next = items.filter((x) => x.receiptId !== id);
       if (next.length === items.length) return;
@@ -189,7 +189,7 @@ export async function revokePartnerReceiptApprovalForRedo(receiptId: string, act
   await mutateJsonAppSetting({
     key: PARTNER_RECEIPT_APPROVAL_KEY,
     fallback: [] as PartnerReceiptApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, id);
       item.managerApprovedBy = [];

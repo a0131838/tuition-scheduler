@@ -310,6 +310,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-27-r1`
 - Date/Time (Asia/Shanghai): `2026-03-27`
+- Deployment status: `LIVE` (included in the currently deployed production branch lineage)
 - Scope: Add optimistic-lock retry protection for `partner/parent billing` JSON stores and related approval flows, plus regression coverage for concurrent-write preservation.
 - Key files:
   - `lib/app-setting-lock.ts`
@@ -328,3 +329,24 @@ This file is the single source of truth for what changed in production.
   - parent invoice creation test preserves a concurrent invoice after retry
   - partner settlement reject test replays correctly after optimistic-lock conflict
 - Rollback point: previous production commit before `2026-03-27-r1` deploy (`c3800f0`).
+
+## 2026-03-29-r1
+
+- Release ID: `2026-03-29-r1`
+- Date/Time (Asia/Shanghai): `2026-03-29`
+- Deployment status: `LIVE`
+- Scope: Fix receipt/settlement approval state loading after the `AppSetting` optimistic-lock rollout so existing JSON approval rows are read correctly instead of being treated as empty.
+- Key files:
+  - `lib/parent-receipt-approval.ts`
+  - `lib/partner-receipt-approval.ts`
+  - `lib/partner-settlement-approval.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260329-receipt-approval-json-read-fix.md`
+- Risk impact (if any): Medium. No approval rules or routes changed, but approval JSON rows now hydrate from stored arrays correctly, which restores manager/finance status visibility and prevents approval flows from acting like prior approvals are missing.
+- Verification:
+  - `npm run test:backend` passed (`23/23`)
+  - `npm run build` passed
+  - parent receipt approval map regression test confirms stored JSON approvals are read back with normalized approver emails
+- Rollback point: previous production commit before `2026-03-29-r1` hotfix (`2ce03bd`).

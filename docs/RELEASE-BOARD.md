@@ -90,7 +90,7 @@
   - `bash ops/server/scripts/new_chat_startup_check.sh` confirms local/origin/server are aligned on the live branch head
   - release-doc closeout is tracked as a docs-only follow-up on the same production branch lineage
 
-## 2026-03-27-r1 Ready For Deploy
+## 2026-03-27-r1 Deployed
 
 - Scope: optimistic-lock retry guard for `partner/parent billing` blob stores and related approval writes.
 - Business impact:
@@ -101,3 +101,15 @@
   - `npm run test:backend`
   - `npm run build`
   - billing optimistic-lock regression tests pass
+
+## 2026-03-29-r1 Deployed
+
+- Scope: hotfix approval JSON hydration for parent receipt, partner receipt, and partner settlement approval stores after the optimistic-lock rollout.
+- Business impact:
+  - stored approval rows now load from `AppSetting` arrays correctly instead of falling back to empty state
+  - manager/finance receipt approval status is preserved and visible again
+  - no route, permission, or approval-order rules changed
+- Validation:
+  - `npm run test:backend`
+  - `npm run build`
+  - parent receipt approval regression test reads an existing stored approval row successfully

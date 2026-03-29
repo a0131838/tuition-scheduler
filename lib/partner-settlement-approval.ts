@@ -22,10 +22,10 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function parseItems(raw?: string | null): PartnerSettlementApprovalItem[] {
-  if (!raw) return [];
+function parseItems(input: unknown): PartnerSettlementApprovalItem[] {
+  if (input == null) return [];
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = typeof input === "string" ? (JSON.parse(input) as unknown) : input;
     if (!Array.isArray(parsed)) return [];
     const out: PartnerSettlementApprovalItem[] = [];
     for (const item of parsed) {
@@ -66,7 +66,7 @@ async function loadItems() {
     prisma as any,
     PARTNER_SETTLEMENT_APPROVAL_KEY,
     [],
-    (input) => parseItems(typeof input === "string" ? input : null),
+    parseItems,
   );
   return store;
 }
@@ -105,7 +105,7 @@ export async function managerApprovePartnerSettlement(settlementId: string, appr
   await mutateJsonAppSetting({
     key: PARTNER_SETTLEMENT_APPROVAL_KEY,
     fallback: [] as PartnerSettlementApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, settlementId);
       item.managerApprovedBy = Array.from(new Set([...item.managerApprovedBy, normalizeEmail(approverEmail)]));
@@ -127,7 +127,7 @@ export async function managerRejectPartnerSettlement(settlementId: string, appro
   await mutateJsonAppSetting({
     key: PARTNER_SETTLEMENT_APPROVAL_KEY,
     fallback: [] as PartnerSettlementApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, settlementId);
       const email = normalizeEmail(approverEmail);
@@ -154,7 +154,7 @@ export async function financeApprovePartnerSettlement(settlementId: string, appr
   await mutateJsonAppSetting({
     key: PARTNER_SETTLEMENT_APPROVAL_KEY,
     fallback: [] as PartnerSettlementApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, settlementId);
       item.financeApprovedBy = Array.from(new Set([...item.financeApprovedBy, normalizeEmail(approverEmail)]));
@@ -176,7 +176,7 @@ export async function financeRejectPartnerSettlement(settlementId: string, appro
   await mutateJsonAppSetting({
     key: PARTNER_SETTLEMENT_APPROVAL_KEY,
     fallback: [] as PartnerSettlementApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, settlementId);
       const email = normalizeEmail(approverEmail);
@@ -202,7 +202,7 @@ export async function markPartnerSettlementExported(settlementId: string, export
   await mutateJsonAppSetting({
     key: PARTNER_SETTLEMENT_APPROVAL_KEY,
     fallback: [] as PartnerSettlementApprovalItem[],
-    sanitize: (input) => parseItems(typeof input === "string" ? input : null),
+    sanitize: parseItems,
     mutate(items) {
       const item = ensureItem(items, settlementId);
       item.exportedAt = new Date().toISOString();

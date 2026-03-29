@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createParentInvoice } from "../lib/student-parent-billing";
+import { getParentReceiptApprovalMap } from "../lib/parent-receipt-approval";
 import { managerRejectPartnerSettlement } from "../lib/partner-settlement-approval";
 import { prisma } from "../lib/prisma";
 
@@ -212,4 +213,30 @@ test("partner settlement manager reject retries on conflict and clears finance a
   assert.equal(saved.exportedBy, null);
   assert.equal(saved.managerRejectedBy, "manager1@test.com");
   assert.equal(saved.managerRejectReason, "redo settlement");
+});
+
+test("parent receipt approval map reads existing stored approvals from AppSetting JSON", async () => {
+  const store = makeAppSettingStub({
+    initialValue: [
+      {
+        receiptId: "receipt-1",
+        managerApprovedBy: ["JASMINE@123.COM"],
+        financeApprovedBy: [],
+        managerRejectedAt: null,
+        managerRejectedBy: null,
+        managerRejectReason: null,
+        financeRejectedAt: null,
+        financeRejectedBy: null,
+        financeRejectReason: null,
+      },
+    ],
+  });
+
+  await withPrismaStubs(store.api, async () => {
+    const approvalMap = await getParentReceiptApprovalMap(["receipt-1"]);
+    const row = approvalMap.get("receipt-1");
+    assert.ok(row);
+    assert.deepEqual(row.managerApprovedBy, ["jasmine@123.com"]);
+    assert.deepEqual(row.financeApprovedBy, []);
+  });
 });
