@@ -350,3 +350,20 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - parent receipt approval map regression test confirms stored JSON approvals are read back with normalized approver emails
 - Rollback point: previous production commit before `2026-03-29-r1` hotfix (`2ce03bd`).
+
+## 2026-03-29-r2
+
+- Release ID: `2026-03-29-r2`
+- Date/Time (Asia/Shanghai): `2026-03-29`
+- Deployment status: `LIVE`
+- Scope: Add a guardrail around the `AppSetting` optimistic-lock helper so callers treat `sanitize` input as already-parsed JSON, plus regression coverage for that contract.
+- Key files:
+  - `lib/app-setting-lock.ts`
+  - `tests/app-setting-lock.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260329-app-setting-sanitize-guard.md`
+- Risk impact (if any): Low. Runtime business logic is unchanged; this only documents the helper contract and adds a test to catch future regressions in JSON-store callers.
+- Verification:
+  - `npm run test:backend` passed (`24/24`)
+- Rollback point: previous production commit before `2026-03-29-r2` (`06c6fc7`).

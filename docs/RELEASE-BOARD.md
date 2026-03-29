@@ -113,3 +113,13 @@
   - `npm run test:backend`
   - `npm run build`
   - parent receipt approval regression test reads an existing stored approval row successfully
+
+## 2026-03-29-r2 Deployed
+
+- Scope: add a non-runtime guardrail for the `AppSetting` optimistic-lock helper contract.
+- Business impact:
+  - no business flow or route behavior change
+  - future JSON-store callers are less likely to mis-handle already-parsed `sanitize` input
+- Validation:
+  - `npm run test:backend`
+  - parsed-json contract test for `loadJsonAppSettingForDb` passes
