@@ -94,6 +94,35 @@ test("loadJsonAppSettingForDb falls back on invalid json", async () => {
   assert.deepEqual(loaded.store, { items: [] });
 });
 
+test("loadJsonAppSettingForDb passes parsed json value into sanitize", async () => {
+  let received: unknown = null;
+
+  const loaded = await loadJsonAppSettingForDb(
+    {
+      appSetting: {
+        async findUnique() {
+          return { key: "k", value: '[{"id":"a"}]', updatedAt: new Date("2026-03-26T10:00:00.000Z") };
+        },
+        async create() {
+          throw new Error("unused");
+        },
+        async updateMany() {
+          throw new Error("unused");
+        },
+      },
+    } as any,
+    "k",
+    [] as Array<{ id: string }>,
+    (input) => {
+      received = input;
+      return Array.isArray(input) ? (input as Array<{ id: string }>) : [];
+    },
+  );
+
+  assert.deepEqual(received, [{ id: "a" }]);
+  assert.deepEqual(loaded.store, [{ id: "a" }]);
+});
+
 test("mutateJsonAppSettingForDb throws conflict after retry budget is exhausted", async () => {
   const db = {
     appSetting: {

@@ -25,6 +25,8 @@ export async function loadJsonAppSettingForDb<T>(
   db: AppSettingDb,
   key: string,
   fallback: T,
+  // `sanitize` receives the already-parsed JSON value, not the raw string from AppSetting.value.
+  // Callers should accept arrays/objects directly and only JSON.parse when the input itself is a string.
   sanitize: (input: unknown) => T,
 ): Promise<{ store: T; updatedAt: Date | null }> {
   const row = await db.appSetting.findUnique({
@@ -80,6 +82,7 @@ export async function mutateJsonAppSettingForDb<T>(
   options: {
     key: string;
     fallback: T;
+    // `sanitize` receives the already-parsed JSON value, not the raw string from AppSetting.value.
     sanitize: (input: unknown) => T;
     mutate: (store: T) => Promise<void> | void;
     maxRetries?: number;
