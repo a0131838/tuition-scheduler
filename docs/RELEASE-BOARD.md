@@ -227,3 +227,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r10 Deployed
+
+- Scope: receipt approval focus filters and collapsed history controls.
+- Business impact:
+  - queue header now shows bilingual count summaries for work buckets
+  - operators can quickly focus on only their own work, only open work, or only history
+  - completed history is collapsed by default to keep attention on active review work
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`

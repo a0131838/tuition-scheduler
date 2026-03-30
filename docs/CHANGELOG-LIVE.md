@@ -545,3 +545,22 @@ This file is the single source of truth for what changed in production.
   - completed items no longer visually compete with open work
   - selected receipt behavior and review actions remain unchanged
 - Rollback point: previous production commit before `2026-03-30-r9`.
+
+## 2026-03-30-r10
+
+- Release ID: `2026-03-30-r10`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add queue bucket summaries, one-click focus filters, and a collapsed completed-history section on the receipt approval page.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-focus-filters.md`
+- Risk impact (if any): Low. This release only changes queue focus controls and history visibility; approval order, permissions, and finance data flow stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - queue header shows bilingual counts for my actions, other open items, and completed history
+  - operators can switch to focused views such as only my actions or only completed history
+  - completed history is collapsed by default unless the history-only view is selected
+- Rollback point: previous production commit before `2026-03-30-r10`.

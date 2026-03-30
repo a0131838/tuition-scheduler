@@ -646,6 +646,7 @@ export default async function ReceiptsApprovalsPage({
     selectedId?: string;
     step?: string;
     queueFilter?: string;
+    queueBucket?: string;
     paymentRecordId?: string;
     invoiceId?: string;
   }>;
@@ -669,6 +670,10 @@ export default async function ReceiptsApprovalsPage({
     ["ALL", "PENDING", "REJECTED", "COMPLETED", "NO_PAYMENT_RECORD", "TODAY_MINE"] as const
   ).includes(queueFilterRaw as any)
     ? (queueFilterRaw as "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "TODAY_MINE")
+    : "ALL";
+  const queueBucketRaw = String(sp?.queueBucket ?? "ALL").trim().toUpperCase();
+  const queueBucket = (["ALL", "MINE", "OPEN", "HISTORY"] as const).includes(queueBucketRaw as any)
+    ? (queueBucketRaw as "ALL" | "MINE" | "OPEN" | "HISTORY")
     : "ALL";
   const selectedTypeRaw = String(sp?.selectedType ?? "").trim().toUpperCase();
   const selectedType = selectedTypeRaw === "PARENT" || selectedTypeRaw === "PARTNER" ? selectedTypeRaw : "";
@@ -826,6 +831,7 @@ export default async function ReceiptsApprovalsPage({
   if (viewMode !== "ALL") baseQuery.set("view", viewMode);
   if (workflowStep !== "upload") baseQuery.set("step", workflowStep);
   if (queueFilter !== "ALL") baseQuery.set("queueFilter", queueFilter);
+  if (queueBucket !== "ALL") baseQuery.set("queueBucket", queueBucket);
   if (preferredPaymentRecordId) baseQuery.set("paymentRecordId", preferredPaymentRecordId);
   if (preferredInvoiceId) baseQuery.set("invoiceId", preferredInvoiceId);
   const openHref = (type: "PARENT" | "PARTNER", id: string) => {
@@ -845,6 +851,12 @@ export default async function ReceiptsApprovalsPage({
     const q = new URLSearchParams(baseQuery.toString());
     if (filter === "ALL") q.delete("queueFilter");
     else q.set("queueFilter", filter);
+    return `/admin/receipts-approvals?${q.toString()}`;
+  };
+  const queueBucketHref = (bucket: "ALL" | "MINE" | "OPEN" | "HISTORY") => {
+    const q = new URLSearchParams(baseQuery.toString());
+    if (bucket === "ALL") q.delete("queueBucket");
+    else q.set("queueBucket", bucket);
     return `/admin/receipts-approvals?${q.toString()}`;
   };
 
@@ -1012,6 +1024,9 @@ export default async function ReceiptsApprovalsPage({
     return managerTodo || financeTodo;
   });
   const otherQueue = actionableQueue.filter((x) => !mineQueue.some((mine) => mine.type === x.type && mine.id === x.id));
+  const visibleMineQueue = queueBucket === "OPEN" || queueBucket === "HISTORY" ? [] : mineQueue;
+  const visibleOtherQueue = queueBucket === "MINE" || queueBucket === "HISTORY" ? [] : otherQueue;
+  const visibleCompletedQueue = queueBucket === "MINE" || queueBucket === "OPEN" ? [] : completedQueue;
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1563,6 +1578,42 @@ export default async function ReceiptsApprovalsPage({
         <div style={{ marginBottom: 8, color: "#475569", fontSize: 13 }}>
           {t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
         </div>
+        <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ ...tagStyle(mineQueue.length > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+            {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")}: {mineQueue.length}
+          </span>
+          <span style={{ ...tagStyle(otherQueue.length > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+            {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")}: {otherQueue.length}
+          </span>
+          <span style={{ ...tagStyle(completedQueue.length > 0 ? "muted" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+            {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")}: {completedQueue.length}
+          </span>
+        </div>
+        <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {([
+            ["ALL", t(lang, "Show all buckets", "显示全部分组")],
+            ["MINE", t(lang, "Only my actions", "只看我待处理的")],
+            ["OPEN", t(lang, "Only open work", "只看未完成")],
+            ["HISTORY", t(lang, "Only completed history", "只看已完成历史")],
+          ] as const).map(([bucket, label]) => (
+            <a
+              key={bucket}
+              href={queueBucketHref(bucket)}
+              style={{
+                border: queueBucket === bucket ? "1px solid #2563eb" : "1px solid #d1d5db",
+                background: queueBucket === bucket ? "#eff6ff" : "#fff",
+                color: queueBucket === bucket ? "#1d4ed8" : "#374151",
+                borderRadius: 999,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
           {([
             ["ALL", t(lang, "All", "全部")],
@@ -1609,35 +1660,41 @@ export default async function ReceiptsApprovalsPage({
               </tr>
             </thead>
             <tbody>
-              {mineQueue.length > 0 ? (
+              {visibleMineQueue.length > 0 ? (
                 <>
                   <tr style={{ background: "#eff6ff" }}>
                     <td colSpan={9} style={{ fontWeight: 700, color: "#1d4ed8" }}>
-                      {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")} ({mineQueue.length})
+                      {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")} ({visibleMineQueue.length})
                     </td>
                   </tr>
-                  {renderQueueRows(mineQueue, lang, selectedRow, roleCfg, openHref)}
+                  {renderQueueRows(visibleMineQueue, lang, selectedRow, roleCfg, openHref)}
                 </>
               ) : null}
-              {otherQueue.length > 0 ? (
+              {visibleOtherQueue.length > 0 ? (
                 <>
                   <tr style={{ background: "#fff7ed" }}>
                     <td colSpan={9} style={{ fontWeight: 700, color: "#9a3412" }}>
-                      {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")} ({otherQueue.length})
+                      {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")} ({visibleOtherQueue.length})
                     </td>
                   </tr>
-                  {renderQueueRows(otherQueue, lang, selectedRow, roleCfg, openHref)}
+                  {renderQueueRows(visibleOtherQueue, lang, selectedRow, roleCfg, openHref)}
                 </>
               ) : null}
-              {completedQueue.length > 0 ? (
-                <>
-                  <tr style={{ background: "#f8fafc" }}>
-                    <td colSpan={9} style={{ fontWeight: 700, color: "#64748b" }}>
-                      {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")} ({completedQueue.length})
-                    </td>
-                  </tr>
-                  {renderQueueRows(completedQueue, lang, selectedRow, roleCfg, openHref)}
-                </>
+              {visibleCompletedQueue.length > 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: 0, borderTop: "1px solid #eee" }}>
+                    <details open={queueBucket === "HISTORY"}>
+                      <summary style={{ cursor: "pointer", listStyle: "none", background: "#f8fafc", fontWeight: 700, color: "#64748b", padding: "8px 12px" }}>
+                        {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")} ({visibleCompletedQueue.length})
+                      </summary>
+                      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+                        <tbody>
+                          {renderQueueRows(visibleCompletedQueue, lang, selectedRow, roleCfg, openHref)}
+                        </tbody>
+                      </table>
+                    </details>
+                  </td>
+                </tr>
               ) : null}
             </tbody>
           </table>
