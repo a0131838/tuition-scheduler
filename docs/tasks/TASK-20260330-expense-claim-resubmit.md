@@ -23,4 +23,4 @@
 4. Non-rejected claims cannot use the resubmit path.
 
 ## Status
-- Ready to deploy on the current production branch lineage.
+- Deployed on the current production branch lineage.

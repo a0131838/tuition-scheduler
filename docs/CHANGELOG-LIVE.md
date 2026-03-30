@@ -430,3 +430,4 @@ This file is the single source of truth for what changed in production.
   - rejected claims return to `SUBMITTED` after resubmit
   - non-rejected claims are blocked from using the resubmit path
 - Rollback point: previous production commit before `2026-03-30-r3`.
+- Release closeout: production branch/doc alignment confirmed on follow-up docs commit `f28a145`.

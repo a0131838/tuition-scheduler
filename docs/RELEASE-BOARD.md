@@ -160,3 +160,4 @@
   - `npm run build`
   - manual deploy check confirms `local/origin/server = fa1d341`
   - `https://sgtmanage.com/admin/login` returns `200`
+- Release closeout: release-doc gate follow-up synced in the next docs commit on the same live branch lineage.
