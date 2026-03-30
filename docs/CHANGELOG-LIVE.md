@@ -675,3 +675,27 @@ This file is the single source of truth for what changed in production.
   - teacher expense form now shows a bilingual `Before you submit / 提交前请检查` checklist
   - transport, attachment, and purpose fields now include clearer bilingual helper text
 - Rollback point: previous production commit before `2026-03-30-r16`.
+
+## 2026-03-30-r17
+
+- Release ID: `2026-03-30-r17`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Move expense-claim submit and resubmit flows off volatile Next Server Actions onto stable multipart POST routes for teacher and admin entry points.
+- Key files:
+  - `app/api/teacher/expense-claims/route.ts`
+  - `app/api/teacher/expense-claims/resubmit/route.ts`
+  - `app/api/admin/expense-claims/route.ts`
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/_components/ExpenseClaimForm.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-submit-route-stability.md`
+- Risk impact (if any): Medium-low. This release keeps the same validation, duplicate guard, and approval behavior, but switches submit transport for teacher/admin expense forms to stable route handlers so already-open pages are less likely to fail across deploys.
+- Verification:
+  - `npm run build` passed
+  - teacher new submit now posts to `/api/teacher/expense-claims`
+  - teacher rejected-claim resubmit now posts to `/api/teacher/expense-claims/resubmit`
+  - admin self-submit now posts to `/api/admin/expense-claims`
+- Rollback point: previous production commit before `2026-03-30-r17`.

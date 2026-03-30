@@ -8,11 +8,11 @@ export default function ExpenseClaimForm({
   submitLabel,
 }: {
   lang: 'BILINGUAL' | 'ZH' | 'EN';
-  action: (formData: FormData) => Promise<void>;
+  action: string;
   submitLabel?: string;
 }) {
   return (
-    <form action={action} style={{ display: 'grid', gap: 12, padding: 16, border: '1px solid #dbeafe', borderRadius: 12, background: '#f8fbff' }}>
+    <form action={action} method="post" encType="multipart/form-data" style={{ display: 'grid', gap: 12, padding: 16, border: '1px solid #dbeafe', borderRadius: 12, background: '#f8fbff' }}>
       <div style={{ fontWeight: 700 }}>{t(lang, 'New Expense Claim', '新建报销单')}</div>
       <div style={{ fontSize: 13, color: '#334155', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 4 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Before you submit', '提交前请检查')}</div>

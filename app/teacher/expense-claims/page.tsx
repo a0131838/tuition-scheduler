@@ -1,24 +1,16 @@
-import { getCurrentUser, requireTeacher } from '@/lib/auth';
+import { requireTeacher } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
-import { createExpenseClaim, DuplicateExpenseClaimError, EXPENSE_CURRENCY_CODES, EXPENSE_TYPE_OPTIONS, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation, resubmitExpenseClaim } from '@/lib/expense-claims';
-import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
+import { EXPENSE_CURRENCY_CODES, EXPENSE_TYPE_OPTIONS, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import ExpenseClaimSubmitButton from '@/app/_components/ExpenseClaimSubmitButton';
-import { redirect } from 'next/navigation';
-import { access, unlink } from 'fs/promises';
+import { access } from 'fs/promises';
 import path from 'path';
 import { ExpenseClaimStatus } from '@prisma/client';
-import { formatDateOnly, formatMonthKey, formatUTCDateOnly, parseDateOnlyToUTCNoon } from '@/lib/date-only';
+import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
-}
-
-function parseMoneyToCents(value: FormDataEntryValue | null) {
-  const n = Number(String(value ?? '').trim());
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n * 100);
 }
 
 function shiftMonth(base: Date, delta: number) {
@@ -93,7 +85,6 @@ export default async function TeacherExpenseClaimsPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireTeacher();
-  const currentUser = await getCurrentUser();
   const lang = await getLang();
   const params = (await searchParams) ?? {};
   const msg = typeof params.msg === 'string' ? params.msg : '';
@@ -107,138 +98,6 @@ export default async function TeacherExpenseClaimsPage({
   const quickLastMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: statusFilter !== 'ALL' ? statusFilter : '', month: previousMonth, paymentBatchMonth: paymentBatchMonthFilter })}`;
   const quickPaidThisMonthHref = `/teacher/expense-claims?${buildFilterQuery({ status: ExpenseClaimStatus.PAID, month: '', paymentBatchMonth: currentMonth })}`;
   const quickClearHref = '/teacher/expense-claims';
-
-  async function submitClaimAction(formData: FormData) {
-    'use server';
-    const actor = await requireTeacher();
-    const current = await getCurrentUser();
-    const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
-    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
-    const description = String(formData.get('description') ?? '').trim();
-    const studentName = String(formData.get('studentName') ?? '').trim();
-    const location = String(formData.get('location') ?? '').trim();
-    const currencyCode = String(formData.get('currencyCode') ?? '').trim();
-    const expenseTypeCode = String(formData.get('expenseTypeCode') ?? '').trim().toUpperCase();
-    const amountCents = parseMoneyToCents(formData.get('amount'));
-    const gstAmountRaw = String(formData.get('gstAmount') ?? '').trim();
-    const gstAmountCents = gstAmountRaw ? parseMoneyToCents(gstAmountRaw) : null;
-    const remarks = String(formData.get('remarks') ?? '').trim();
-    const file = formData.get('receiptFile');
-    const expenseType = getExpenseTypeOption(expenseTypeCode);
-
-    if (!expenseDate || Number.isNaN(+expenseDate)) {
-      redirect('/teacher/expense-claims?err=Expense+date+is+required');
-    }
-    if (!description || amountCents === null || !expenseType) {
-      redirect('/teacher/expense-claims?err=Please+complete+all+required+fields');
-    }
-    if (requiresExpenseLocation(expenseTypeCode) && !location) {
-      redirect('/teacher/expense-claims?err=Location+is+required+for+transport+claims');
-    }
-
-    try {
-      const stored = await storeExpenseClaimFile(file as File);
-      try {
-        await createExpenseClaim({
-          submitterUserId: actor.id,
-          submitterName: current?.name || actor.name || actor.email,
-          submitterRole: actor.role,
-          expenseDate,
-          description,
-          studentName: studentName || null,
-          location: location || null,
-          amountCents,
-          gstAmountCents,
-          currencyCode,
-          expenseTypeCode,
-          accountCode: expenseType.accountCode,
-          receiptPath: stored.relativePath,
-          receiptOriginalName: stored.originalName,
-          remarks: remarks || null,
-          actor,
-        });
-      } catch (error) {
-        const absPath = toStoredFileAbsolutePath(stored.relativePath);
-        await unlink(absPath).catch(() => {});
-        if (error instanceof DuplicateExpenseClaimError) {
-          redirect('/teacher/expense-claims?msg=Expense+claim+already+submitted');
-        }
-        throw error;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Submit claim failed';
-      redirect(`/teacher/expense-claims?err=${encodeURIComponent(message)}`);
-    }
-
-    redirect('/teacher/expense-claims?msg=Expense+claim+submitted');
-  }
-
-  async function resubmitClaimAction(formData: FormData) {
-    'use server';
-    const actor = await requireTeacher();
-    const claimId = String(formData.get('claimId') ?? '').trim();
-    const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
-    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
-    const description = String(formData.get('description') ?? '').trim();
-    const studentName = String(formData.get('studentName') ?? '').trim();
-    const location = String(formData.get('location') ?? '').trim();
-    const currencyCode = String(formData.get('currencyCode') ?? '').trim();
-    const expenseTypeCode = String(formData.get('expenseTypeCode') ?? '').trim().toUpperCase();
-    const amountCents = parseMoneyToCents(formData.get('amount'));
-    const gstAmountRaw = String(formData.get('gstAmount') ?? '').trim();
-    const gstAmountCents = gstAmountRaw ? parseMoneyToCents(gstAmountRaw) : null;
-    const remarks = String(formData.get('remarks') ?? '').trim();
-    const file = formData.get('receiptFile');
-    const expenseType = getExpenseTypeOption(expenseTypeCode);
-
-    if (!claimId || !expenseDate || Number.isNaN(+expenseDate)) {
-      redirect('/teacher/expense-claims?err=Expense+date+is+required');
-    }
-    if (!description || amountCents === null || !expenseType) {
-      redirect('/teacher/expense-claims?err=Please+complete+all+required+fields');
-    }
-    if (requiresExpenseLocation(expenseTypeCode) && !location) {
-      redirect('/teacher/expense-claims?err=Location+is+required+for+transport+claims');
-    }
-
-    const hasReplacementFile = file instanceof File && file.size > 0;
-    let storedReplacement:
-      | {
-          relativePath: string;
-          originalName: string;
-        }
-      | null = null;
-
-    try {
-      if (hasReplacementFile) {
-        storedReplacement = await storeExpenseClaimFile(file);
-      }
-      await resubmitExpenseClaim({
-        claimId,
-        actor,
-        expenseDate,
-        description,
-        studentName: studentName || null,
-        location: location || null,
-        amountCents,
-        gstAmountCents,
-        currencyCode,
-        expenseTypeCode,
-        accountCode: expenseType.accountCode,
-        receiptPath: storedReplacement?.relativePath ?? null,
-        receiptOriginalName: storedReplacement?.originalName ?? null,
-        remarks: remarks || null,
-      });
-    } catch (error) {
-      if (storedReplacement) {
-        await unlink(toStoredFileAbsolutePath(storedReplacement.relativePath)).catch(() => {});
-      }
-      const message = error instanceof Error ? error.message : 'Resubmit claim failed';
-      redirect(`/teacher/expense-claims?err=${encodeURIComponent(message)}`);
-    }
-
-    redirect('/teacher/expense-claims?msg=Expense+claim+resubmitted');
-  }
 
   const claims = await listExpenseClaims({
     submitterUserId: user.id,
@@ -258,7 +117,7 @@ export default async function TeacherExpenseClaimsPage({
       <h1 style={{ margin: 0 }}>{t(lang, 'My Expense Claims', '我的报销')}</h1>
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
-      <ExpenseClaimForm lang={lang} action={submitClaimAction} submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
+      <ExpenseClaimForm lang={lang} action="/api/teacher/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
       <section style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0 }}>{t(lang, 'My submitted claims', '我提交的报销单')}</h2>
         <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
@@ -419,7 +278,9 @@ export default async function TeacherExpenseClaimsPage({
                         <div>{claim.rejectReason || claim.financeRemarks || claim.remarks || '-'}</div>
                         {claim.status === ExpenseClaimStatus.REJECTED ? (
                           <form
-                            action={resubmitClaimAction}
+                            action="/api/teacher/expense-claims/resubmit"
+                            method="post"
+                            encType="multipart/form-data"
                             style={{
                               display: 'grid',
                               gap: 8,

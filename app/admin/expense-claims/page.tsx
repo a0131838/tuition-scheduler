@@ -1,4 +1,4 @@
-import { getCurrentUser, isManagerUser, requireAdmin } from '@/lib/auth';
+import { isManagerUser, requireAdmin } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
 import { redirect } from 'next/navigation';
 import { ExpenseClaimStatus } from '@prisma/client';
@@ -8,8 +8,6 @@ import {
   archiveExpenseClaim,
   canEditExpenseApprovalConfig,
   canFinanceOperateExpense,
-  createExpenseClaim,
-  DuplicateExpenseClaimError,
   getExpenseApprovalConfig,
   getExpenseClaimReminderQueues,
   formatExpensePaymentMethod,
@@ -26,21 +24,13 @@ import {
   saveExpenseApprovalConfig,
   summarizeExpenseClaims,
 } from '@/lib/expense-claims';
-import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { revalidatePath } from 'next/cache';
-import { formatDateOnly, formatMonthKey, formatUTCDateOnly, parseDateOnlyToUTCNoon } from '@/lib/date-only';
+import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
+import path from 'path';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
-}
-
-function parseMoneyToCents(value: FormDataEntryValue | null) {
-  const n = Number(String(value ?? '').trim());
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n * 100);
 }
 
 function buildFilterQuery(input: Record<string, string | null | undefined>) {
@@ -122,71 +112,6 @@ export default async function AdminExpenseClaimsPage({
     archived: '',
   })}`;
   const quickClearHref = '/admin/expense-claims';
-
-  async function submitClaimAction(formData: FormData) {
-    'use server';
-    const actor = await requireAdmin();
-    const currentUser = await getCurrentUser();
-    const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
-    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
-    const description = String(formData.get('description') ?? '').trim();
-    const studentName = String(formData.get('studentName') ?? '').trim();
-    const location = String(formData.get('location') ?? '').trim();
-    const currencyCode = String(formData.get('currencyCode') ?? '').trim();
-    const expenseTypeCode = String(formData.get('expenseTypeCode') ?? '').trim().toUpperCase();
-    const amountCents = parseMoneyToCents(formData.get('amount'));
-    const gstAmountRaw = String(formData.get('gstAmount') ?? '').trim();
-    const gstAmountCents = gstAmountRaw ? parseMoneyToCents(gstAmountRaw) : null;
-    const remarks = String(formData.get('remarks') ?? '').trim();
-    const file = formData.get('receiptFile');
-    const expenseType = getExpenseTypeOption(expenseTypeCode);
-
-    if (!expenseDate || Number.isNaN(+expenseDate)) {
-      redirect('/admin/expense-claims?err=Expense+date+is+required');
-    }
-    if (!description || amountCents === null || !expenseType) {
-      redirect('/admin/expense-claims?err=Please+complete+all+required+fields');
-    }
-    if (expenseTypeCode === 'TRANSPORT' && !location) {
-      redirect('/admin/expense-claims?err=Location+is+required+for+transport+claims');
-    }
-
-    try {
-      const stored = await storeExpenseClaimFile(file as File);
-      try {
-        await createExpenseClaim({
-          submitterUserId: actor.id,
-          submitterName: currentUser?.name || actor.name || actor.email,
-          submitterRole: actor.role,
-          expenseDate,
-          description,
-          studentName: studentName || null,
-          location: location || null,
-          amountCents,
-          gstAmountCents,
-          currencyCode,
-          expenseTypeCode,
-          accountCode: expenseType.accountCode,
-          receiptPath: stored.relativePath,
-          receiptOriginalName: stored.originalName,
-          remarks: remarks || null,
-          actor,
-        });
-      } catch (error) {
-        const absPath = path.join(process.cwd(), 'public', stored.relativePath.replace(/^\//, '').replace(/\//g, path.sep));
-        await unlink(absPath).catch(() => {});
-        if (error instanceof DuplicateExpenseClaimError) {
-          redirect('/admin/expense-claims?msg=Expense+claim+already+submitted');
-        }
-        throw error;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Submit claim failed';
-      redirect(`/admin/expense-claims?err=${encodeURIComponent(message)}`);
-    }
-
-    redirect('/admin/expense-claims?msg=Expense+claim+submitted');
-  }
 
   async function approveAction(formData: FormData) {
     'use server';
@@ -281,7 +206,7 @@ export default async function AdminExpenseClaimsPage({
       <details>
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>{t(lang, 'Submit a claim for myself', '为自己提交报销')}</summary>
         <div style={{ marginTop: 12 }}>
-          <ExpenseClaimForm lang={lang} action={submitClaimAction} submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
+          <ExpenseClaimForm lang={lang} action="/api/admin/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
         </div>
       </details>
 

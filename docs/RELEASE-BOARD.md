@@ -299,3 +299,13 @@
   - no expense validation rule, approval rule, or duplicate-submit logic changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r17 Deployed
+
+- Scope: expense-claim route-stability fix for teacher/admin submit flows.
+- Business impact:
+  - teacher new submit and rejected-claim resubmit now go through stable POST routes instead of deployment-sensitive Server Action ids
+  - admin self-submit for expense claims now uses the same stable-route pattern
+  - validation, duplicate-submit guard, approval, payment, and archive rules stay unchanged
+- Validation:
+  - `npm run build`
