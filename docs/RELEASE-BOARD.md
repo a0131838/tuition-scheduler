@@ -289,3 +289,13 @@
   - no expense validation rule, approval rule, or duplicate-submit logic changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r16 Deployed
+
+- Scope: teacher expense-claim form guidance polish.
+- Business impact:
+  - teachers now see a clearer bilingual checklist before submit
+  - transport, attachment, and purpose fields now explain what to fill in more directly
+  - no expense validation rule, approval rule, or duplicate-submit logic changed
+- Validation:
+  - `npm run build`

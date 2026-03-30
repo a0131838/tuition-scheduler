@@ -657,3 +657,21 @@ This file is the single source of truth for what changed in production.
   - expense-claim submit button only switches to `Submitting... / 提交中...` after browser validity checks pass
   - missing required fields or files no longer leave the button stuck in a disabled pending state
 - Rollback point: previous production commit before `2026-03-30-r15`.
+
+## 2026-03-30-r16
+
+- Release ID: `2026-03-30-r16`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Clarify teacher expense-claim form requirements with bilingual pre-submit guidance and field-level hints.
+- Key files:
+  - `app/_components/ExpenseClaimForm.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-form-guidance.md`
+- Risk impact (if any): Low. This release only improves form copy and hint text; expense validation rules, submit flow, and approval logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher expense form now shows a bilingual `Before you submit / 提交前请检查` checklist
+  - transport, attachment, and purpose fields now include clearer bilingual helper text
+- Rollback point: previous production commit before `2026-03-30-r16`.

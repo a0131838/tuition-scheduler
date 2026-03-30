@@ -14,6 +14,12 @@ export default function ExpenseClaimForm({
   return (
     <form action={action} style={{ display: 'grid', gap: 12, padding: 16, border: '1px solid #dbeafe', borderRadius: 12, background: '#f8fbff' }}>
       <div style={{ fontWeight: 700 }}>{t(lang, 'New Expense Claim', '新建报销单')}</div>
+      <div style={{ fontSize: 13, color: '#334155', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 4 }}>
+        <div style={{ fontWeight: 700 }}>{t(lang, 'Before you submit', '提交前请检查')}</div>
+        <div>{t(lang, 'Required: date, expense type, amount, receipt/invoice file, and attachment description.', '必填：消费日期、报销类型、金额、收据/发票文件、附件说明。')}</div>
+        <div>{t(lang, 'Transport claims also require location.', '交通报销还必须填写地点。')}</div>
+        <div>{t(lang, 'If a required field is missing, the browser will stop the submit and highlight it first.', '如果漏填必填项，浏览器会先拦住提交并提示你补齐。')}</div>
+      </div>
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         <label>
           {t(lang, 'Date of expense', '消费日期')}*
@@ -50,10 +56,16 @@ export default function ExpenseClaimForm({
         <label>
           {t(lang, 'Location', '地点')}
           <input name="location" placeholder={t(lang, 'Required for transport claims', '交通报销请填写地点')} style={{ width: '100%' }} />
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+            {t(lang, 'For transport claims, include start/end point or route.', '交通报销请写起点、终点或路线。')}
+          </div>
         </label>
         <label>
           {t(lang, 'Receipt / invoice', '收据/发票')}*
           <input name="receiptFile" type="file" required style={{ width: '100%' }} />
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+            {t(lang, 'Upload the receipt, invoice, or payment proof file before submitting.', '提交前请先上传收据、发票或付款凭证文件。')}
+          </div>
         </label>
       </div>
       <label>
@@ -69,6 +81,9 @@ export default function ExpenseClaimForm({
           )}
           style={{ width: '100%' }}
         />
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+          {t(lang, 'Example: Taxi from home to tuition centre for student lesson.', '例如：从家到补习中心的出租车费，用于学生上课。')}
+        </div>
       </label>
       <label>
         {t(lang, 'Remarks', '备注')}
