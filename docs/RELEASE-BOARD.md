@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-03-26`
+- Last checked: `2026-03-30`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -148,7 +148,7 @@
   - `npm run build`
   - admin receipt approvals uses `/api/admin/parent-payment-records/[id]/file` for parent payment proof open/preview
 
-## 2026-03-30-r3 Ready For Deploy
+## 2026-03-30-r3 Deployed
 
 - Scope: allow rejected expense claims to be corrected and resubmitted back to `SUBMITTED`.
 - Business impact:
@@ -158,3 +158,5 @@
 - Validation:
   - `npm run test:backend`
   - `npm run build`
+  - manual deploy check confirms `local/origin/server = fa1d341`
+  - `https://sgtmanage.com/admin/login` returns `200`
