@@ -526,3 +526,22 @@ This file is the single source of truth for what changed in production.
   - queue rows show bilingual risk badges such as missing proof / file missing / ready
   - selected receipt panel shows current role focus in bilingual wording
 - Rollback point: previous production commit before `2026-03-30-r8`.
+
+## 2026-03-30-r9
+
+- Release ID: `2026-03-30-r9`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reshape the receipt approval queue into clearer work buckets: my next actions, other open items, and completed history.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-bucketed-queue.md`
+- Risk impact (if any): Low. This release only changes review-page grouping and emphasis; approval order, permissions, and finance data flow stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - queue renders separate bilingual sections for my next actions, other open items, and completed history
+  - completed items no longer visually compete with open work
+  - selected receipt behavior and review actions remain unchanged
+- Rollback point: previous production commit before `2026-03-30-r9`.

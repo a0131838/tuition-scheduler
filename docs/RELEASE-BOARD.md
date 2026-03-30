@@ -216,3 +216,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r9 Deployed
+
+- Scope: receipt approval bucketed queue with separate sections for my next actions, other open items, and completed history.
+- Business impact:
+  - unfinished work is now visually grouped into clearer operator buckets
+  - completed items are pushed into a history section so they no longer compete with open review work
+  - selected receipt details and approval actions stay on the same page and follow the same rules
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`

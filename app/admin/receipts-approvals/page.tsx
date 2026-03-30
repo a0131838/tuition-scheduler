@@ -193,6 +193,88 @@ function queueRiskBadgeKind(item: { paymentRecord: unknown; paymentFileMissing?:
   return "ok" as const;
 }
 
+function renderQueueRows(
+  rows: Array<{
+    id: string;
+    type: "PARENT" | "PARTNER";
+    receiptNo: string;
+    receiptDate: string | null;
+    invoiceNo: string;
+    partyName: string;
+    amountReceived: number;
+    status: "COMPLETED" | "REJECTED" | "PENDING";
+    approval: {
+      managerApprovedBy: string[];
+      financeApprovedBy: string[];
+    };
+    paymentRecord: { id: string; name: string; path: string; date?: string | null } | null;
+    paymentFileMissing?: boolean;
+    riskCount?: number;
+  }>,
+  lang: "BILINGUAL" | "ZH" | "EN",
+  selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null,
+  roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
+  openHref: (type: "PARENT" | "PARTNER", id: string) => string
+) {
+  return rows.map((x) => (
+    <tr
+      key={`${x.type}-${x.id}`}
+      style={{
+        borderTop: "1px solid #eee",
+        background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : x.status === "COMPLETED" ? "#fcfcfd" : undefined,
+        color: x.status === "COMPLETED" ? "#6b7280" : undefined,
+        opacity: x.status === "COMPLETED" ? 0.78 : 1,
+      }}
+    >
+      <td>{queueTypeLabel(lang, x.type)}</td>
+      <td>{x.receiptNo}</td>
+      <td>{normalizeDateOnly(x.receiptDate) ?? "-"}</td>
+      <td>{x.invoiceNo}</td>
+      <td>{x.partyName}</td>
+      <td>{money(x.amountReceived)}</td>
+      <td>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+            {queueStatusLabel(lang, x.status)}
+          </span>
+          <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+            {queueRiskBadgeLabel(lang, x)}
+          </span>
+        </div>
+      </td>
+      <td>
+        <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
+          <div>
+            {t(lang, "Manager", "管理")}:{" "}
+            {roleCfg.managerApproverEmails.length === 0
+              ? t(lang, "No config", "未配置")
+              : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
+          </div>
+          <div>
+            {t(lang, "Finance", "财务")}:{" "}
+            {roleCfg.financeApproverEmails.length === 0
+              ? t(lang, "No config", "未配置")
+              : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
+          </div>
+          <div>
+            {t(lang, "Payment record", "缴费记录")}:{" "}
+            {x.paymentRecord ? x.paymentRecord.name : t(lang, "(none)", "（无）")}
+          </div>
+        </div>
+      </td>
+      <td>
+        <a href={openHref(x.type, x.id)}>
+          {x.status === "COMPLETED"
+            ? t(lang, "Review completed item", "查看已完成项目")
+            : x.status === "REJECTED"
+              ? t(lang, "Open and fix", "打开并修复")
+              : t(lang, "Open for review", "打开审核")}
+        </a>
+      </td>
+    </tr>
+  ));
+}
+
 async function uploadPaymentRecordAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -922,6 +1004,14 @@ export default async function ReceiptsApprovalsPage({
     }
     return null;
   }).filter((line): line is string => Boolean(line));
+  const actionableQueue = unifiedQueue.filter((x) => x.status !== "COMPLETED");
+  const completedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
+  const mineQueue = actionableQueue.filter((x) => {
+    const managerTodo = isManagerApprover && x.approval.managerApprovedBy.length < roleCfg.managerApproverEmails.length;
+    const financeTodo = isFinanceApprover && x.approval.financeApprovedBy.length < roleCfg.financeApproverEmails.length;
+    return managerTodo || financeTodo;
+  });
+  const otherQueue = actionableQueue.filter((x) => !mineQueue.some((mine) => mine.type === x.type && mine.id === x.id));
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1519,63 +1609,36 @@ export default async function ReceiptsApprovalsPage({
               </tr>
             </thead>
             <tbody>
-              {unifiedQueue.map((x) => (
-                <tr
-                  key={`${x.type}-${x.id}`}
-                  style={{
-                    borderTop: "1px solid #eee",
-                    background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : x.status === "COMPLETED" ? "#fcfcfd" : undefined,
-                    color: x.status === "COMPLETED" ? "#6b7280" : undefined,
-                    opacity: x.status === "COMPLETED" ? 0.78 : 1,
-                  }}
-                >
-                  <td>{queueTypeLabel(lang, x.type)}</td>
-                  <td>{x.receiptNo}</td>
-                  <td>{normalizeDateOnly(x.receiptDate) ?? "-"}</td>
-                  <td>{x.invoiceNo}</td>
-                  <td>{x.partyName}</td>
-                  <td>{money(x.amountReceived)}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
-                      {queueStatusLabel(lang, x.status)}
-                    </span>
-                    <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
-                      {queueRiskBadgeLabel(lang, x)}
-                    </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
-                      <div>
-                        {t(lang, "Manager", "管理")}:{" "}
-                        {roleCfg.managerApproverEmails.length === 0
-                          ? t(lang, "No config", "未配置")
-                          : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
-                      </div>
-                      <div>
-                        {t(lang, "Finance", "财务")}:{" "}
-                        {roleCfg.financeApproverEmails.length === 0
-                          ? t(lang, "No config", "未配置")
-                          : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
-                      </div>
-                      <div>
-                        {t(lang, "Payment record", "缴费记录")}:{" "}
-                        {x.paymentRecord ? x.paymentRecord.name : t(lang, "(none)", "（无）")}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <a href={openHref(x.type, x.id)}>
-                      {x.status === "COMPLETED"
-                        ? t(lang, "Review completed item", "查看已完成项目")
-                        : x.status === "REJECTED"
-                          ? t(lang, "Open and fix", "打开并修复")
-                          : t(lang, "Open for review", "打开审核")}
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {mineQueue.length > 0 ? (
+                <>
+                  <tr style={{ background: "#eff6ff" }}>
+                    <td colSpan={9} style={{ fontWeight: 700, color: "#1d4ed8" }}>
+                      {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")} ({mineQueue.length})
+                    </td>
+                  </tr>
+                  {renderQueueRows(mineQueue, lang, selectedRow, roleCfg, openHref)}
+                </>
+              ) : null}
+              {otherQueue.length > 0 ? (
+                <>
+                  <tr style={{ background: "#fff7ed" }}>
+                    <td colSpan={9} style={{ fontWeight: 700, color: "#9a3412" }}>
+                      {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")} ({otherQueue.length})
+                    </td>
+                  </tr>
+                  {renderQueueRows(otherQueue, lang, selectedRow, roleCfg, openHref)}
+                </>
+              ) : null}
+              {completedQueue.length > 0 ? (
+                <>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <td colSpan={9} style={{ fontWeight: 700, color: "#64748b" }}>
+                      {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")} ({completedQueue.length})
+                    </td>
+                  </tr>
+                  {renderQueueRows(completedQueue, lang, selectedRow, roleCfg, openHref)}
+                </>
+              ) : null}
             </tbody>
           </table>
           </div>
