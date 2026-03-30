@@ -469,3 +469,22 @@ This file is the single source of truth for what changed in production.
   - selected receipt panel highlights the current item and main review action
   - fix/revoke/package-billing links moved under `More actions / 更多操作`
 - Rollback point: previous production commit before `2026-03-30-r5`.
+
+## 2026-03-30-r6
+
+- Release ID: `2026-03-30-r6`
+- Date/Time (Asia/Shanghai): `2026-03-30 16:23 CST`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Smooth receipt approval handling with next-item auto-advance, standardized bilingual reject reasons, and a lightweight timeline for the selected receipt.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-flow-smoothing.md`
+- Risk impact (if any): Low. Approval sequencing, permission rules, and receipt/billing data flow remain unchanged; this release only improves interaction flow and bilingual guidance on the receipt approval page.
+- Verification:
+  - `npm run build` passed
+  - approve/reject actions carry forward to the next queue item
+  - reject actions use standardized bilingual reasons plus optional detail
+  - selected receipt panel shows a lightweight bilingual timeline
+- Rollback point: previous production commit before `2026-03-30-r6`.

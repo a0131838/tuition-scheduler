@@ -42,6 +42,13 @@ import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
+const RECEIPT_REJECT_REASON_OPTIONS = [
+  "Missing payment proof / 缺少缴费记录",
+  "Attachment unclear / 附件不清晰",
+  "Wrong amount / 金额不一致",
+  "Wrong linked record / 关联记录错误",
+  "Incomplete details / 信息不完整",
+] as const;
 
 function canFinanceOperate(email: string, role: string) {
   const e = String(email ?? "").trim().toLowerCase();
@@ -84,6 +91,25 @@ function queueTypeLabel(lang: "BILINGUAL" | "ZH" | "EN", type: "PARENT" | "PARTN
   return type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方");
 }
 
+function renderRejectReasonFields(lang: "BILINGUAL" | "ZH" | "EN", idSuffix: string) {
+  return (
+    <>
+      <select name="reason" defaultValue="" style={{ minWidth: 240 }}>
+        <option value="">{t(lang, "Select reject reason / 选择驳回原因", "Select reject reason / 选择驳回原因")}</option>
+        {RECEIPT_REJECT_REASON_OPTIONS.map((option) => (
+          <option key={`${idSuffix}-${option}`} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <input
+        name="reasonDetail"
+        placeholder={t(lang, "Extra note (optional) / 补充备注（可选）", "Extra note (optional) / 补充备注（可选）")}
+      />
+    </>
+  );
+}
+
 function isImageFile(pathOrName: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(pathOrName);
 }
@@ -101,6 +127,24 @@ function withQuery(base: string, packageId?: string) {
 function isNextRedirectError(err: unknown) {
   const digest = (err as { digest?: unknown } | null)?.digest;
   return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+}
+
+function resolveActionHref(formData: FormData, fallback: string) {
+  const nextHref = String(formData.get("nextHref") ?? "").trim();
+  return nextHref || fallback;
+}
+
+function appendResultParam(href: string, key: "msg" | "err", value: string) {
+  const url = new URL(href, "https://sgtmanage.com");
+  url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}`;
+}
+
+function extractRejectReason(formData: FormData, reasonFieldName = "reason", detailFieldName = "reasonDetail") {
+  const preset = String(formData.get(reasonFieldName) ?? "").trim();
+  const detail = String(formData.get(detailFieldName) ?? "").trim();
+  if (preset && detail) return `${preset} | ${detail}`;
+  return preset || detail;
 }
 
 async function uploadPaymentRecordAction(formData: FormData) {
@@ -309,10 +353,10 @@ async function managerApproveReceiptAction(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent("Not allowed")}`, packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Not allowed"));
   }
   await managerApproveParentReceipt(receiptId, actorEmail);
-  redirect(withQuery("/admin/receipts-approvals?msg=Manager+approved", packageId));
+  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Manager approved"));
 }
 
 async function managerRejectReceiptAction(formData: FormData) {
@@ -322,13 +366,13 @@ async function managerRejectReceiptAction(formData: FormData) {
   const actorEmail = current?.email ?? admin.email;
   const receiptId = String(formData.get("receiptId") ?? "").trim();
   const packageId = String(formData.get("packageId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent("Reject reason required")}`, packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Reject reason required"));
   }
   await managerRejectParentReceipt(receiptId, actorEmail, reason);
-  redirect(withQuery("/admin/receipts-approvals?msg=Manager+rejected", packageId));
+  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Manager rejected"));
 }
 
 async function financeApproveReceiptAction(formData: FormData) {
@@ -340,16 +384,16 @@ async function financeApproveReceiptAction(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent("Not allowed")}`, packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Not allowed"));
   }
   const approvalMap = await getParentReceiptApprovalMap([receiptId]);
   const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
   const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
   if (!managerReady) {
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent("Manager approval is required first")}`, packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Manager approval is required first"));
   }
   await financeApproveParentReceipt(receiptId, actorEmail);
-  redirect(withQuery("/admin/receipts-approvals?msg=Finance+approved", packageId));
+  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Finance approved"));
 }
 
 async function financeRejectReceiptAction(formData: FormData) {
@@ -359,13 +403,13 @@ async function financeRejectReceiptAction(formData: FormData) {
   const actorEmail = current?.email ?? admin.email;
   const receiptId = String(formData.get("receiptId") ?? "").trim();
   const packageId = String(formData.get("packageId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent("Reject reason required")}`, packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Reject reason required"));
   }
   await financeRejectParentReceipt(receiptId, actorEmail, reason);
-  redirect(withQuery("/admin/receipts-approvals?msg=Finance+rejected", packageId));
+  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Finance rejected"));
 }
 
 async function revokeParentReceiptForRedoAction(formData: FormData) {
@@ -375,12 +419,12 @@ async function revokeParentReceiptForRedoAction(formData: FormData) {
   const actorEmail = (current?.email ?? admin.email).trim().toLowerCase();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   if (actorEmail !== SUPER_ADMIN_EMAIL || !receiptId) {
-    redirect(withQuery("/admin/receipts-approvals?err=Not+allowed", packageId));
+    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Not allowed"));
   }
   await revokeParentReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
-  redirect(withQuery("/admin/receipts-approvals?msg=Receipt+reopened+for+redo", packageId));
+  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Receipt reopened for redo"));
 }
 
 async function managerApprovePartnerReceiptAction(formData: FormData) {
@@ -391,10 +435,10 @@ async function managerApprovePartnerReceiptAction(formData: FormData) {
   const receiptId = String(formData.get("receiptId") ?? "").trim();
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect("/admin/receipts-approvals?err=Not+allowed");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
   }
   await managerApprovePartnerReceipt(receiptId, actorEmail);
-  redirect("/admin/receipts-approvals?msg=Partner+manager+approved");
+  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner manager approved"));
 }
 
 async function managerRejectPartnerReceiptAction(formData: FormData) {
@@ -403,13 +447,13 @@ async function managerRejectPartnerReceiptAction(formData: FormData) {
   const current = await getCurrentUser();
   const actorEmail = current?.email ?? admin.email;
   const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect("/admin/receipts-approvals?err=Partner+reject+reason+required");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Partner reject reason required"));
   }
   await managerRejectPartnerReceipt(receiptId, actorEmail, reason);
-  redirect("/admin/receipts-approvals?msg=Partner+manager+rejected");
+  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner manager rejected"));
 }
 
 async function financeApprovePartnerReceiptAction(formData: FormData) {
@@ -420,16 +464,16 @@ async function financeApprovePartnerReceiptAction(formData: FormData) {
   const receiptId = String(formData.get("receiptId") ?? "").trim();
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
-    redirect("/admin/receipts-approvals?err=Not+allowed");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
   }
   const approvalMap = await getPartnerReceiptApprovalMap([receiptId]);
   const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
   const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
   if (!managerReady) {
-    redirect("/admin/receipts-approvals?err=Partner+manager+approval+is+required+first");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Partner manager approval is required first"));
   }
   await financeApprovePartnerReceipt(receiptId, actorEmail);
-  redirect("/admin/receipts-approvals?msg=Partner+finance+approved");
+  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner finance approved"));
 }
 
 async function financeRejectPartnerReceiptAction(formData: FormData) {
@@ -438,13 +482,13 @@ async function financeRejectPartnerReceiptAction(formData: FormData) {
   const current = await getCurrentUser();
   const actorEmail = current?.email ?? admin.email;
   const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
-    redirect("/admin/receipts-approvals?err=Partner+reject+reason+required");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Partner reject reason required"));
   }
   await financeRejectPartnerReceipt(receiptId, actorEmail, reason);
-  redirect("/admin/receipts-approvals?msg=Partner+finance+rejected");
+  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner finance rejected"));
 }
 
 async function revokePartnerReceiptForRedoAction(formData: FormData) {
@@ -453,12 +497,12 @@ async function revokePartnerReceiptForRedoAction(formData: FormData) {
   const current = await getCurrentUser();
   const actorEmail = (current?.email ?? admin.email).trim().toLowerCase();
   const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+  const reason = extractRejectReason(formData);
   if (actorEmail !== SUPER_ADMIN_EMAIL || !receiptId) {
-    redirect("/admin/receipts-approvals?err=Not+allowed");
+    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
   }
   await revokePartnerReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
-  redirect("/admin/receipts-approvals?msg=Partner+receipt+reopened+for+redo");
+  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner receipt reopened for redo"));
 }
 
 export default async function ReceiptsApprovalsPage({
@@ -764,6 +808,18 @@ export default async function ReceiptsApprovalsPage({
   }
   unifiedQueue = unifiedQueue.sort((a, b) => (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? ""));
   const selectedRow = unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ?? unifiedQueue[0] ?? null;
+  const selectedRowIndex = selectedRow
+    ? unifiedQueue.findIndex((x) => x.type === selectedRow.type && x.id === selectedRow.id)
+    : -1;
+  const nextQueueRow =
+    selectedRowIndex >= 0
+      ? unifiedQueue[selectedRowIndex + 1] ?? unifiedQueue[selectedRowIndex - 1] ?? null
+      : unifiedQueue[0] ?? null;
+  const selectedActionNextHref = nextQueueRow
+    ? openHref(nextQueueRow.type, nextQueueRow.id)
+    : selectedRow
+      ? openHref(selectedRow.type, selectedRow.id)
+      : `/admin/receipts-approvals?${baseQuery.toString()}`;
   const selectedRowAmountDiff =
     selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
   const selectedRowPaymentFileMissing =
@@ -1474,6 +1530,34 @@ export default async function ReceiptsApprovalsPage({
                 <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
               )}
             </div>
+            <div style={{ marginBottom: 10, border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Timeline / 时间线", "Timeline / 时间线")}</div>
+              <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
+                <div>
+                  {t(lang, "Created / 创建", "Created / 创建")}: {formatBusinessDateTime(new Date(selectedRow.createdAt))} · {selectedRow.createdBy}
+                </div>
+                {selectedRow.approval.managerApprovedBy.length > 0 ? (
+                  <div>
+                    {t(lang, "Manager approved by / 管理已批准", "Manager approved by / 管理已批准")}: {selectedRow.approval.managerApprovedBy.join(", ")}
+                  </div>
+                ) : null}
+                {"managerRejectedAt" in selectedRow.approval && selectedRow.approval.managerRejectedAt ? (
+                  <div>
+                    {t(lang, "Manager rejected / 管理已驳回", "Manager rejected / 管理已驳回")}: {formatBusinessDateTime(new Date(selectedRow.approval.managerRejectedAt))} · {selectedRow.approval.managerRejectedBy ?? "-"}
+                  </div>
+                ) : null}
+                {selectedRow.approval.financeApprovedBy.length > 0 ? (
+                  <div>
+                    {t(lang, "Finance approved by / 财务已批准", "Finance approved by / 财务已批准")}: {selectedRow.approval.financeApprovedBy.join(", ")}
+                  </div>
+                ) : null}
+                {"financeRejectedAt" in selectedRow.approval && selectedRow.approval.financeRejectedAt ? (
+                  <div>
+                    {t(lang, "Finance rejected / 财务已驳回", "Finance rejected / 财务已驳回")}: {formatBusinessDateTime(new Date(selectedRow.approval.financeRejectedAt))} · {selectedRow.approval.financeRejectedBy ?? "-"}
+                  </div>
+                ) : null}
+              </div>
+            </div>
             {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Manager Rejected:", "管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
             <div className="receipt-primary-actions">
@@ -1483,12 +1567,14 @@ export default async function ReceiptsApprovalsPage({
                   <form action={managerApproveReceiptAction}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Reject reason / 管理驳回原因", "Reject reason / 管理驳回原因")} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                    {renderRejectReasonFields(lang, `parent-manager-${selectedRow.id}`)}
                     <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
                 </div>
@@ -1499,12 +1585,14 @@ export default async function ReceiptsApprovalsPage({
                   <form action={financeApproveReceiptAction}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Reject reason / 财务驳回原因", "Reject reason / 财务驳回原因")} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                    {renderRejectReasonFields(lang, `parent-finance-${selectedRow.id}`)}
                     <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
                 </div>
@@ -1514,11 +1602,13 @@ export default async function ReceiptsApprovalsPage({
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review / 管理审核", "Manager review / 管理审核")}</div>
                   <form action={managerApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Reject reason / 管理驳回原因", "Reject reason / 管理驳回原因")} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                    {renderRejectReasonFields(lang, `partner-manager-${selectedRow.id}`)}
                     <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
                 </div>
@@ -1528,11 +1618,13 @@ export default async function ReceiptsApprovalsPage({
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Finance review / 财务审核", "Finance review / 财务审核")}</div>
                   <form action={financeApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Reject reason / 财务驳回原因", "Reject reason / 财务驳回原因")} />
+                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                    {renderRejectReasonFields(lang, `partner-finance-${selectedRow.id}`)}
                     <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
                 </div>
@@ -1566,14 +1658,16 @@ export default async function ReceiptsApprovalsPage({
                     <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <input type="hidden" name="packageId" value={selectedRow.packageId} />
                       <input type="hidden" name="receiptId" value={selectedRow.id} />
-                      <input name="reason" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
+                      <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                      <input name="reasonDetail" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
                       <button type="submit">{t(lang, "Revoke to redo / 撤回重做", "Revoke to redo / 撤回重做")}</button>
                     </form>
                   ) : null}
                   {canSuperRevoke && selectedRow.type === "PARTNER" ? (
                     <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <input type="hidden" name="receiptId" value={selectedRow.id} />
-                      <input name="reason" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
+                      <input type="hidden" name="nextHref" value={selectedActionNextHref} />
+                      <input name="reasonDetail" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
                       <button type="submit">{t(lang, "Revoke to redo / 撤回重做", "Revoke to redo / 撤回重做")}</button>
                     </form>
                   ) : null}

@@ -183,3 +183,14 @@
   - no approval order, permission, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r6 Deployed
+
+- Scope: receipt approval flow smoothing with next-item auto-advance, standardized reject reasons, and a lightweight timeline.
+- Business impact:
+  - after approve/reject/revoke, the review flow can carry forward to the next queue item instead of forcing a manual reselect
+  - reject actions now use standardized bilingual reason options with optional detail for clearer operator guidance
+  - the selected receipt panel shows a lightweight bilingual timeline for created / approved / rejected milestones
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`
