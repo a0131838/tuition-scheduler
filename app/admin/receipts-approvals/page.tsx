@@ -147,12 +147,18 @@ function extractRejectReason(formData: FormData, reasonFieldName = "reason", det
   return preset || detail;
 }
 
-function queuePriority(status: "COMPLETED" | "REJECTED" | "PENDING", hasRisk: boolean, missingPaymentRecord: boolean) {
-  if (status === "PENDING" && hasRisk) return 0;
-  if (status === "PENDING" && missingPaymentRecord) return 1;
-  if (status === "PENDING") return 2;
-  if (status === "REJECTED") return 3;
-  return 4;
+function queuePriority(
+  status: "COMPLETED" | "REJECTED" | "PENDING",
+  hasRisk: boolean,
+  missingPaymentRecord: boolean,
+  paymentFileMissing: boolean
+) {
+  if (status === "PENDING" && missingPaymentRecord) return 0;
+  if (status === "PENDING" && paymentFileMissing) return 1;
+  if (status === "PENDING" && hasRisk) return 2;
+  if (status === "PENDING") return 3;
+  if (status === "REJECTED") return 4;
+  return 5;
 }
 
 function describeReceiptActionResult(
@@ -210,6 +216,7 @@ function renderQueueRows(
     paymentRecord: { id: string; name: string; path: string; date?: string | null } | null;
     paymentFileMissing?: boolean;
     riskCount?: number;
+    packageId: string;
   }>,
   lang: "BILINGUAL" | "ZH" | "EN",
   selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null,
@@ -263,13 +270,23 @@ function renderQueueRows(
         </div>
       </td>
       <td>
-        <a href={openHref(x.type, x.id)}>
-          {x.status === "COMPLETED"
-            ? t(lang, "Review completed item", "查看已完成项目")
-            : x.status === "REJECTED"
-              ? t(lang, "Open and fix", "打开并修复")
-              : t(lang, "Open for review", "打开审核")}
-        </a>
+        <div style={{ display: "grid", gap: 4 }}>
+          <a href={openHref(x.type, x.id)}>
+            {x.status === "COMPLETED"
+              ? t(lang, "Review completed item", "查看已完成项目")
+              : x.status === "REJECTED"
+                ? t(lang, "Open and fix", "打开并修复")
+                : t(lang, "Open for review", "打开审核")}
+          </a>
+          {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
+            <a
+              href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+              style={{ fontSize: 12, color: "#b45309" }}
+            >
+              {t(lang, "Fix payment proof / 修复缴费凭证", "Fix payment proof / 修复缴费凭证")}
+            </a>
+          ) : null}
+        </div>
       </td>
     </tr>
   ));
@@ -956,9 +973,10 @@ export default async function ReceiptsApprovalsPage({
     });
   }
   unifiedQueue = unifiedQueue.sort((a, b) => {
-    const aPriority = queuePriority(a.status, (a.riskCount ?? 0) > 0, !a.paymentRecord);
-    const bPriority = queuePriority(b.status, (b.riskCount ?? 0) > 0, !b.paymentRecord);
+    const aPriority = queuePriority(a.status, (a.riskCount ?? 0) > 0, !a.paymentRecord, Boolean(a.paymentFileMissing));
+    const bPriority = queuePriority(b.status, (b.riskCount ?? 0) > 0, !b.paymentRecord, Boolean(b.paymentFileMissing));
     if (aPriority !== bPriority) return aPriority - bPriority;
+    if ((a.riskCount ?? 0) !== (b.riskCount ?? 0)) return (b.riskCount ?? 0) - (a.riskCount ?? 0);
     return (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? "");
   });
   const selectedRow = unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ?? unifiedQueue[0] ?? null;

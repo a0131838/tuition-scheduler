@@ -564,3 +564,22 @@ This file is the single source of truth for what changed in production.
   - operators can switch to focused views such as only my actions or only completed history
   - completed history is collapsed by default unless the history-only view is selected
 - Rollback point: previous production commit before `2026-03-30-r10`.
+
+## 2026-03-30-r11
+
+- Release ID: `2026-03-30-r11`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add queue-level fix shortcuts for risky parent receipts and tighten queue priority so missing proof/file issues rise above generic review work.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-fix-shortcuts.md`
+- Risk impact (if any): Low. This release only changes queue shortcuts and ordering emphasis; approval order, permissions, and finance data flow stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - parent rows with rejected/missing-proof/file-missing states show a bilingual fix shortcut in the queue
+  - missing proof and missing file issues sort ahead of generic review items
+  - selected receipt actions and approval rules remain unchanged
+- Rollback point: previous production commit before `2026-03-30-r11`.

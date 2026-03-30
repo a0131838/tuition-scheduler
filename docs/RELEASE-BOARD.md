@@ -238,3 +238,13 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r11 Deployed
+
+- Scope: receipt approval queue fix shortcuts and higher-priority ordering for missing proof/file issues.
+- Business impact:
+  - risky parent receipt rows now expose a direct `Fix payment proof / 修复缴费凭证` shortcut from the queue
+  - missing proof and file-missing problems now rise above generic review items inside the queue
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`
