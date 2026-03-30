@@ -602,3 +602,21 @@ This file is the single source of truth for what changed in production.
   - duplicated bilingual labels no longer render twice in the queue and detail panel
   - `Only my actions / 只看我待处理的` no longer defaults to another bucket when there are no mine items
 - Rollback point: previous production commit before `2026-03-30-r12`.
+
+## 2026-03-30-r13
+
+- Release ID: `2026-03-30-r13`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Remove the remaining duplicated bilingual labels in the selected receipt detail and action area on the receipt approval page.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-copy-cleanup.md`
+- Risk impact (if any): Low. This release only cleans up operator-facing bilingual copy in the selected receipt panel; approval rules, permissions, and finance data flow remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - timeline, manager/finance action headers, receipt file card, and more-actions labels render once in bilingual mode
+  - revoke input/button labels no longer duplicate the same bilingual copy twice
+- Rollback point: previous production commit before `2026-03-30-r13`.

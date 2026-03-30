@@ -259,3 +259,12 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r13 Deployed
+
+- Scope: receipt approval selected-panel copy cleanup.
+- Business impact:
+  - remaining duplicated bilingual labels in the selected receipt timeline, action cards, and more-actions area are reduced back to one readable bilingual line
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`
