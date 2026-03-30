@@ -161,3 +161,14 @@
   - manual deploy check confirms `local/origin/server = fa1d341`
   - `https://sgtmanage.com/admin/login` returns `200`
 - Release closeout: release-doc gate follow-up synced in the next docs commit on the same live branch lineage.
+
+## 2026-03-30-r4 Deployed
+
+- Scope: teacher expense-claim UX wording/visibility polish for status labels, attachment health, and rejected-claim next-step guidance.
+- Business impact:
+  - statuses now read as bilingual human language instead of raw status codes
+  - missing attachments are explicitly labeled instead of only failing through open/download links
+  - rejected claims show a clearer bilingual action card to guide correction and resubmission
+  - no approval, payment, or archive rule changed
+- Validation:
+  - `npm run build`

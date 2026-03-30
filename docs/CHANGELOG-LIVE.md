@@ -431,3 +431,22 @@ This file is the single source of truth for what changed in production.
   - non-rejected claims are blocked from using the resubmit path
 - Rollback point: previous production commit before `2026-03-30-r3`.
 - Release closeout: production branch/doc alignment confirmed on follow-up docs commit `f28a145`.
+
+## 2026-03-30-r4
+
+- Release ID: `2026-03-30-r4`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Improve teacher expense-claim receipt/status UX with bilingual human-readable labels and explicit attachment-health feedback.
+- Key files:
+  - `app/teacher/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-claim-ux-copy.md`
+- Risk impact (if any): Low. Teacher-facing wording and attachment-health indicators only; approval, payment, and archive logic are unchanged.
+- Verification:
+  - `npm run build` passed
+  - expense-claim statuses render as bilingual human-readable labels
+  - missing attachments show explicit bilingual warning text
+  - rejected claims show a clearer bilingual next-step card for resubmission
+- Rollback point: previous production commit before `2026-03-30-r4`.

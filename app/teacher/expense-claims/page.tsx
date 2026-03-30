@@ -5,7 +5,7 @@ import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import ExpenseClaimSubmitButton from '@/app/_components/ExpenseClaimSubmitButton';
 import { redirect } from 'next/navigation';
-import { unlink } from 'fs/promises';
+import { access, unlink } from 'fs/promises';
 import path from 'path';
 import { ExpenseClaimStatus } from '@prisma/client';
 import { formatDateOnly, formatMonthKey, formatUTCDateOnly, parseDateOnlyToUTCNoon } from '@/lib/date-only';
@@ -36,6 +36,55 @@ function buildFilterQuery(input: Record<string, string | null | undefined>) {
 
 function toStoredFileAbsolutePath(relativePath: string) {
   return path.join(process.cwd(), 'public', relativePath.replace(/^\//, '').replace(/\//g, path.sep));
+}
+
+async function fileExists(relativePath: string | null | undefined) {
+  if (!relativePath) return false;
+  try {
+    await access(toStoredFileAbsolutePath(relativePath));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatExpenseClaimStatusLabel(lang: 'BILINGUAL' | 'ZH' | 'EN', status: ExpenseClaimStatus) {
+  switch (status) {
+    case ExpenseClaimStatus.SUBMITTED:
+      return t(lang, 'Submitted, waiting for approval', '已提交，等待审批');
+    case ExpenseClaimStatus.APPROVED:
+      return t(lang, 'Approved, waiting for payment', '已批准，等待付款');
+    case ExpenseClaimStatus.REJECTED:
+      return t(lang, 'Rejected, action needed', '已驳回，需要处理');
+    case ExpenseClaimStatus.PAID:
+      return t(lang, 'Paid', '已付款');
+    default:
+      return status;
+  }
+}
+
+function expenseClaimStatusTone(status: ExpenseClaimStatus) {
+  switch (status) {
+    case ExpenseClaimStatus.APPROVED:
+      return { color: '#166534', background: '#ecfdf5', border: '#bbf7d0' };
+    case ExpenseClaimStatus.REJECTED:
+      return { color: '#b91c1c', background: '#fef2f2', border: '#fecaca' };
+    case ExpenseClaimStatus.PAID:
+      return { color: '#1d4ed8', background: '#eff6ff', border: '#bfdbfe' };
+    default:
+      return { color: '#92400e', background: '#fffbeb', border: '#fde68a' };
+  }
+}
+
+function formatAttachmentHealthLabel(lang: 'BILINGUAL' | 'ZH' | 'EN', exists: boolean, previewable: boolean) {
+  if (!exists) return t(lang, 'Attachment missing', '附件缺失');
+  if (previewable) return t(lang, 'Attachment OK (preview available)', '附件正常（可预览）');
+  return t(lang, 'Attachment OK (download file)', '附件正常（可下载文件）');
+}
+
+function attachmentHealthTone(exists: boolean) {
+  if (exists) return { color: '#166534', background: '#ecfdf5', border: '#bbf7d0' };
+  return { color: '#b91c1c', background: '#fef2f2', border: '#fecaca' };
 }
 
 export default async function TeacherExpenseClaimsPage({
@@ -197,6 +246,12 @@ export default async function TeacherExpenseClaimsPage({
     month: monthFilter || null,
     paymentBatchMonth: paymentBatchMonthFilter || null,
   });
+  const claimsWithAttachmentState = await Promise.all(
+    claims.map(async (claim) => ({
+      ...claim,
+      attachmentExists: await fileExists(claim.receiptPath),
+    })),
+  );
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -265,14 +320,32 @@ export default async function TeacherExpenseClaimsPage({
                 </tr>
               </thead>
               <tbody>
-                {claims.map((claim) => (
+                {claimsWithAttachmentState.map((claim) => {
+                  const statusTone = expenseClaimStatusTone(claim.status);
+                  const previewable = isPreviewableImage(claim.receiptOriginalName);
+                  const attachmentTone = attachmentHealthTone(claim.attachmentExists);
+                  return (
                   <tr key={claim.id}>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{claim.claimRefNo}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatUTCDateOnly(claim.expenseDate)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
-                      <div>{claim.status}</div>
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 8px',
+                          borderRadius: 999,
+                          border: `1px solid ${statusTone.border}`,
+                          background: statusTone.background,
+                          color: statusTone.color,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {formatExpenseClaimStatusLabel(lang, claim.status)}
+                      </div>
                       {claim.approverEmail ? <div style={{ color: '#64748b', fontSize: 12 }}>{claim.approverEmail}</div> : null}
                       {claim.paidAt ? <div style={{ color: '#166534', fontSize: 12 }}>{formatDateOnly(claim.paidAt)}</div> : null}
                       {claim.paymentMethod ? <div style={{ color: '#334155', fontSize: 12 }}>{formatExpensePaymentMethod(claim.paymentMethod)}</div> : null}
@@ -301,7 +374,23 @@ export default async function TeacherExpenseClaimsPage({
                         <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
                           {claim.receiptOriginalName}
                         </div>
-                        {isPreviewableImage(claim.receiptOriginalName) ? (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            width: 'fit-content',
+                            padding: '4px 8px',
+                            borderRadius: 999,
+                            border: `1px solid ${attachmentTone.border}`,
+                            background: attachmentTone.background,
+                            color: attachmentTone.color,
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {formatAttachmentHealthLabel(lang, claim.attachmentExists, previewable)}
+                        </div>
+                        {claim.attachmentExists && previewable ? (
                           <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
@@ -312,8 +401,16 @@ export default async function TeacherExpenseClaimsPage({
                           </a>
                         ) : null}
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View', '查看')}</a>
-                          <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download', '下载')}</a>
+                          {claim.attachmentExists ? (
+                            <>
+                              <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View', '查看')}</a>
+                              <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download', '下载')}</a>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 12, color: '#b91c1c' }}>
+                              {t(lang, 'This attachment is currently unavailable. Please re-upload before resubmitting.', '当前附件不可用，请补传后再重新提交。')}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -334,8 +431,17 @@ export default async function TeacherExpenseClaimsPage({
                             }}
                           >
                             <input type="hidden" name="claimId" value={claim.id} />
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>
-                              {t(lang, 'Resubmit after fixing this claim', '补件后重新提交这张报销单')}
+                            <div style={{ display: 'grid', gap: 4 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>
+                                {t(lang, 'Rejected claim: fix the issue below and resubmit', '这张报销单已驳回：请根据下方要求修正后重新提交')}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#7f1d1d', lineHeight: 1.5 }}>
+                                {t(
+                                  lang,
+                                  'Next step: update the receipt details, replace the attachment if needed, then submit the same claim again.',
+                                  '下一步：更新收据信息，如有需要请更换附件，然后把同一张报销单重新提交。',
+                                )}
+                              </div>
                             </div>
                             <label style={{ display: 'grid', gap: 4 }}>
                               <span style={{ fontSize: 12 }}>{t(lang, 'Date of expense', '消费日期')}*</span>
@@ -395,6 +501,11 @@ export default async function TeacherExpenseClaimsPage({
                               <span style={{ fontSize: 12 }}>{t(lang, 'Replace receipt / invoice (optional)', '更换收据/发票（可选）')}</span>
                               <input name="receiptFile" type="file" />
                             </label>
+                            {!claim.attachmentExists ? (
+                              <div style={{ fontSize: 12, color: '#b91c1c' }}>
+                                {t(lang, 'Current attachment is missing on the server. Please upload a replacement file before resubmitting.', '当前附件在服务器上已缺失，请先上传替换文件再重新提交。')}
+                              </div>
+                            ) : null}
                             <ExpenseClaimSubmitButton
                               label={t(lang, 'Resubmit claim', '重新提交报销单')}
                               pendingLabel={t(lang, 'Resubmitting...', '重新提交中...')}
@@ -404,7 +515,8 @@ export default async function TeacherExpenseClaimsPage({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
