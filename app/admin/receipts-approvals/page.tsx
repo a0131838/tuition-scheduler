@@ -191,8 +191,7 @@ function queueRiskBadgeLabel(
   lang: "BILINGUAL" | "ZH" | "EN",
   item: { paymentRecord: { id: string; name: string; path: string; date?: string | null } | null; paymentFileMissing?: boolean; riskCount?: number }
 ) {
-  if (!item.paymentRecord) return t(lang, "Missing proof", "缺少凭证");
-  if (item.paymentFileMissing) return t(lang, "File missing", "文件缺失");
+  if (!item.paymentRecord || item.paymentFileMissing) return t(lang, "Blocker", "阻塞");
   if ((item.riskCount ?? 0) > 0) return t(lang, "Needs check", "需要核对");
   return t(lang, "Ready", "可处理");
 }
@@ -201,6 +200,16 @@ function queueRiskBadgeKind(item: { paymentRecord: unknown; paymentFileMissing?:
   if (!item.paymentRecord || item.paymentFileMissing) return "err" as const;
   if ((item.riskCount ?? 0) > 0) return "warn" as const;
   return "ok" as const;
+}
+
+function queueRiskAssistLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  item: { paymentRecord: { id: string; name: string; path: string; date?: string | null } | null; paymentFileMissing?: boolean; riskCount?: number }
+) {
+  if (!item.paymentRecord) return t(lang, "Missing proof", "缺少凭证");
+  if (item.paymentFileMissing) return t(lang, "File missing", "文件缺失");
+  if ((item.riskCount ?? 0) > 0) return t(lang, "Check details", "核对明细");
+  return t(lang, "Ready to approve", "可直接处理");
 }
 
 function renderQueueRows(
@@ -270,6 +279,9 @@ function renderQueueRows(
           <div>
             {t(lang, "Payment record", "缴费记录")}:{" "}
             {x.paymentRecord ? x.paymentRecord.name : t(lang, "(none)", "（无）")}
+          </div>
+          <div>
+            {t(lang, "Risk detail", "风险详情")}: {queueRiskAssistLabel(lang, x)}
           </div>
         </div>
       </td>
@@ -861,6 +873,10 @@ export default async function ReceiptsApprovalsPage({
     q.set("selectedId", id);
     return `/admin/receipts-approvals?${q.toString()}`;
   };
+  const selectedReviewHref =
+    selectedType && selectedId
+      ? openHref(selectedType, selectedId)
+      : `/admin/receipts-approvals?${baseQuery.toString()}`;
   const stepHref = (step: "upload" | "records" | "create" | "review") => {
     const q = new URLSearchParams(baseQuery.toString());
     q.set("step", step);
@@ -1060,6 +1076,12 @@ export default async function ReceiptsApprovalsPage({
     }
     return null;
   }).filter((line): line is string => Boolean(line));
+  const approveAndNextLabel = nextQueueRow
+    ? t(lang, "Approve & next", "批准并下一条")
+    : t(lang, "Approve", "批准");
+  const rejectAndNextLabel = nextQueueRow
+    ? t(lang, "Reject & next", "驳回并下一条")
+    : t(lang, "Reject", "驳回");
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1153,6 +1175,15 @@ export default async function ReceiptsApprovalsPage({
               {label}
             </a>
           ))}
+        </div>
+      ) : null}
+      {packageIdFilter && selectedType && selectedId ? (
+        <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: "8px 10px" }}>
+          <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Fix flow", "修复回流")}</span>
+          <span style={{ color: "#334155", fontSize: 13 }}>
+            {t(lang, "After updating the proof or receipt setup, return here to continue the same review item.", "修复缴费凭证或收据设置后，可回到这里继续处理同一张收据。")}
+          </span>
+          <a href={selectedReviewHref}>{t(lang, "Back to selected receipt", "返回当前收据")}</a>
         </div>
       ) : null}
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
@@ -1821,14 +1852,14 @@ export default async function ReceiptsApprovalsPage({
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{t(lang, "Approve this receipt", "批准这张收据")}</button>
+                    <button type="submit">{approveAndNextLabel}</button>
                   </form>
                   <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `parent-manager-${selectedRow.id}`)}
-                    <button type="submit">{t(lang, "Reject this receipt", "驳回这张收据")}</button>
+                    <button type="submit">{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -1839,14 +1870,14 @@ export default async function ReceiptsApprovalsPage({
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{t(lang, "Approve this receipt", "批准这张收据")}</button>
+                    <button type="submit">{approveAndNextLabel}</button>
                   </form>
                   <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `parent-finance-${selectedRow.id}`)}
-                    <button type="submit">{t(lang, "Reject this receipt", "驳回这张收据")}</button>
+                    <button type="submit">{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -1856,13 +1887,13 @@ export default async function ReceiptsApprovalsPage({
                   <form action={managerApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{t(lang, "Approve this receipt", "批准这张收据")}</button>
+                    <button type="submit">{approveAndNextLabel}</button>
                   </form>
                   <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `partner-manager-${selectedRow.id}`)}
-                    <button type="submit">{t(lang, "Reject this receipt", "驳回这张收据")}</button>
+                    <button type="submit">{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -1872,13 +1903,13 @@ export default async function ReceiptsApprovalsPage({
                   <form action={financeApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{t(lang, "Approve this receipt", "批准这张收据")}</button>
+                    <button type="submit">{approveAndNextLabel}</button>
                   </form>
                   <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `partner-finance-${selectedRow.id}`)}
-                    <button type="submit">{t(lang, "Reject this receipt", "驳回这张收据")}</button>
+                    <button type="submit">{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}

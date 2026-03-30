@@ -268,3 +268,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r14 Deployed
+
+- Scope: receipt approval batch-flow wording, stronger risk tiers, and fix-flow return guidance.
+- Business impact:
+  - selected receipt actions now make it clearer when the operator can approve or reject and continue directly to the next item
+  - queue risk badges now separate blocker items from softer review checks, with a short bilingual risk-detail hint in each row
+  - fix flows now provide a clearer bilingual link back to the currently selected receipt review item
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`

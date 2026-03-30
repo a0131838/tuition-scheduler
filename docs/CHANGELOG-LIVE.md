@@ -620,3 +620,22 @@ This file is the single source of truth for what changed in production.
   - timeline, manager/finance action headers, receipt file card, and more-actions labels render once in bilingual mode
   - revoke input/button labels no longer duplicate the same bilingual copy twice
 - Rollback point: previous production commit before `2026-03-30-r13`.
+
+## 2026-03-30-r14
+
+- Release ID: `2026-03-30-r14`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add clearer batch-style review actions, stronger risk tiers, and a fix-flow return cue on the receipt approval page.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-batch-flow-and-risk-tiers.md`
+- Risk impact (if any): Low. This release only refines operator guidance and action wording on the approval page; approval rules, permissions, and finance data flow remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - primary review buttons now read `Approve & next / 批准并下一条` and `Reject & next / 驳回并下一条` when another queue item is available
+  - queue rows now distinguish `Blocker / 阻塞`, `Needs check / 需要核对`, and `Ready / 可处理`
+  - finance fix flows show a bilingual return cue back to the selected receipt review item
+- Rollback point: previous production commit before `2026-03-30-r14`.
