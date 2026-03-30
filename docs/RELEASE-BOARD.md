@@ -123,3 +123,16 @@
 - Validation:
   - `npm run test:backend`
   - parsed-json contract test for `loadJsonAppSettingForDb` passes
+
+## 2026-03-30-r1 Deployed
+
+- Scope: expense-claim duplicate-submit guard and Ahmar duplicate-row cleanup.
+- Business impact:
+  - repeated taps on expense submission no longer create many identical `SUBMITTED` claims
+  - teacher/admin expense forms disable the submit button after the first tap
+  - Ahmar's duplicated `2026-03-29` transport claims were reduced to one retained claim plus duplicate file cleanup
+  - historical missing file cases are not auto-rewritten; those still require recovery or re-upload
+- Validation:
+  - `npm run test:backend`
+  - `npm run build`
+  - duplicate expense-claim lookup regression test passes

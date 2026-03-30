@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ExpenseClaimStatus } from "@prisma/client";
-import { updateExpenseClaimWithExpectedStatusForDb } from "../lib/expense-claims";
+import { findRecentDuplicateExpenseClaimForDb, updateExpenseClaimWithExpectedStatusForDb } from "../lib/expense-claims";
 
 test("expense claim transition uses conditional update on expected status", async () => {
   const calls: Array<unknown> = [];
@@ -61,4 +61,53 @@ test("expense claim transition rejects stale concurrent updates", async () => {
       }),
     /Only submitted claims can be approved/
   );
+});
+
+test("duplicate expense claim lookup matches exact recent submissions only", async () => {
+  let receivedWhere: unknown = null;
+  const db = {
+    expenseClaim: {
+      async findFirst(args: any) {
+        receivedWhere = args.where;
+        return { id: "claim-dup-1" };
+      },
+    },
+  };
+
+  const row = await findRecentDuplicateExpenseClaimForDb(
+    db as any,
+    {
+      submitterUserId: "teacher-1",
+      expenseDate: new Date("2026-03-29T12:00:00.000Z"),
+      description: "Travel to the center for teaching.",
+      studentName: null,
+      location: "From NTU to orchard plaza",
+      amountCents: 3180,
+      gstAmountCents: null,
+      currencyCode: "sgd",
+      expenseTypeCode: "TRANSPORT",
+      accountCode: "6040",
+      receiptOriginalName: "Screenshot_20260330_093807_Grab.jpg",
+      remarks: null,
+    },
+    new Date("2026-03-30T01:40:32.470Z"),
+  );
+
+  assert.equal(row?.id, "claim-dup-1");
+  assert.deepEqual(receivedWhere, {
+    submitterUserId: "teacher-1",
+    expenseDate: new Date("2026-03-29T12:00:00.000Z"),
+    description: "Travel to the center for teaching.",
+    studentName: null,
+    location: "From NTU to orchard plaza",
+    amountCents: 3180,
+    gstAmountCents: null,
+    currencyCode: "SGD",
+    expenseTypeCode: "TRANSPORT",
+    accountCode: "6040",
+    receiptOriginalName: "Screenshot_20260330_093807_Grab.jpg",
+    remarks: null,
+    status: { in: [ExpenseClaimStatus.SUBMITTED, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID] },
+    createdAt: { gte: new Date("2026-03-30T01:25:32.470Z") },
+  });
 });

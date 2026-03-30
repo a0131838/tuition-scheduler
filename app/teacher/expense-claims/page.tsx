@@ -1,6 +1,6 @@
 import { getCurrentUser, requireTeacher } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
-import { createExpenseClaim, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation } from '@/lib/expense-claims';
+import { createExpenseClaim, DuplicateExpenseClaimError, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation } from '@/lib/expense-claims';
 import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import { redirect } from 'next/navigation';
@@ -106,6 +106,9 @@ export default async function TeacherExpenseClaimsPage({
       } catch (error) {
         const absPath = path.join(process.cwd(), 'public', stored.relativePath.replace(/^\//, '').replace(/\//g, path.sep));
         await unlink(absPath).catch(() => {});
+        if (error instanceof DuplicateExpenseClaimError) {
+          redirect('/teacher/expense-claims?msg=Expense+claim+already+submitted');
+        }
         throw error;
       }
     } catch (error) {

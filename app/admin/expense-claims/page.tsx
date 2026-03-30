@@ -9,6 +9,7 @@ import {
   canEditExpenseApprovalConfig,
   canFinanceOperateExpense,
   createExpenseClaim,
+  DuplicateExpenseClaimError,
   getExpenseApprovalConfig,
   getExpenseClaimReminderQueues,
   formatExpensePaymentMethod,
@@ -174,6 +175,9 @@ export default async function AdminExpenseClaimsPage({
       } catch (error) {
         const absPath = path.join(process.cwd(), 'public', stored.relativePath.replace(/^\//, '').replace(/\//g, path.sep));
         await unlink(absPath).catch(() => {});
+        if (error instanceof DuplicateExpenseClaimError) {
+          redirect('/admin/expense-claims?msg=Expense+claim+already+submitted');
+        }
         throw error;
       }
     } catch (error) {

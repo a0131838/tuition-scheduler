@@ -6,6 +6,7 @@ import { formatUTCMonthKey } from '@/lib/date-only';
 
 const EXPENSE_APPROVER_KEY = 'approval_expense_approver_emails_v1';
 const EXPENSE_APPROVAL_OWNER_EMAIL = 'zhaohongwei0880@gmail.com';
+const DUPLICATE_EXPENSE_WINDOW_MS = 15 * 60 * 1000;
 
 export const EXPENSE_CURRENCY_CODES = ['SGD', 'CNY', 'USD', 'HKD', 'THB'] as const;
 export type ExpenseCurrencyCode = (typeof EXPENSE_CURRENCY_CODES)[number];
@@ -122,8 +123,15 @@ export async function canApproveExpense(user: { email?: string | null }) {
 }
 
 export async function allocateExpenseClaimRefNo(now = new Date()) {
+  return allocateExpenseClaimRefNoForDb(prisma, now);
+}
+
+export async function allocateExpenseClaimRefNoForDb(
+  db: Pick<Prisma.TransactionClient, 'expenseClaim'>,
+  now = new Date(),
+) {
   const prefix = `EC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const count = await prisma.expenseClaim.count({
+  const count = await db.expenseClaim.count({
     where: {
       createdAt: {
         gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0),
@@ -132,6 +140,60 @@ export async function allocateExpenseClaimRefNo(now = new Date()) {
     },
   });
   return `${prefix}-${String(count + 1).padStart(3, '0')}`;
+}
+
+export class DuplicateExpenseClaimError extends Error {
+  existingClaimId: string | null;
+
+  constructor(existingClaimId?: string | null) {
+    super('Duplicate expense claim already submitted');
+    this.name = 'DuplicateExpenseClaimError';
+    this.existingClaimId = existingClaimId ?? null;
+  }
+}
+
+function normalizeNullableText(value?: string | null) {
+  const normalized = String(value ?? '').trim();
+  return normalized || null;
+}
+
+export async function findRecentDuplicateExpenseClaimForDb(
+  db: Pick<Prisma.TransactionClient, 'expenseClaim'>,
+  input: {
+    submitterUserId: string;
+    expenseDate: Date;
+    description: string;
+    studentName?: string | null;
+    location?: string | null;
+    amountCents: number;
+    gstAmountCents?: number | null;
+    currencyCode: string;
+    expenseTypeCode: string;
+    accountCode: string;
+    receiptOriginalName: string;
+    remarks?: string | null;
+  },
+  now = new Date(),
+) {
+  return db.expenseClaim.findFirst({
+    where: {
+      submitterUserId: input.submitterUserId,
+      expenseDate: input.expenseDate,
+      description: input.description.trim(),
+      studentName: normalizeNullableText(input.studentName),
+      location: normalizeNullableText(input.location),
+      amountCents: input.amountCents,
+      gstAmountCents: input.gstAmountCents ?? null,
+      currencyCode: normalizeExpenseCurrencyCode(input.currencyCode),
+      expenseTypeCode: input.expenseTypeCode,
+      accountCode: input.accountCode,
+      receiptOriginalName: input.receiptOriginalName,
+      remarks: normalizeNullableText(input.remarks),
+      status: { in: [ExpenseClaimStatus.SUBMITTED, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID] },
+      createdAt: { gte: new Date(now.getTime() - DUPLICATE_EXPENSE_WINDOW_MS) },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 export async function createExpenseClaim(input: {
@@ -152,27 +214,53 @@ export async function createExpenseClaim(input: {
   remarks?: string | null;
   actor: { email?: string | null; name?: string | null; role?: string | null };
 }) {
-  const claimRefNo = await allocateExpenseClaimRefNo();
-  const row = await prisma.expenseClaim.create({
-    data: {
-      claimRefNo,
-      submitterUserId: input.submitterUserId,
-      submitterName: input.submitterName,
-      submitterRole: input.submitterRole,
-      expenseDate: input.expenseDate,
-      description: input.description,
-      studentName: input.studentName?.trim() || null,
-      location: input.location?.trim() || null,
-      amountCents: input.amountCents,
-      gstAmountCents: input.gstAmountCents ?? null,
-      currencyCode: normalizeExpenseCurrencyCode(input.currencyCode),
-      expenseTypeCode: input.expenseTypeCode,
-      accountCode: input.accountCode,
-      receiptPath: input.receiptPath,
-      receiptOriginalName: input.receiptOriginalName,
-      remarks: input.remarks?.trim() || null,
-    },
-  });
+  let row = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      row = await prisma.$transaction(
+        async (tx) => {
+          const now = new Date();
+          const duplicate = await findRecentDuplicateExpenseClaimForDb(tx, input, now);
+          if (duplicate) throw new DuplicateExpenseClaimError(duplicate.id);
+
+          const claimRefNo = await allocateExpenseClaimRefNoForDb(tx, now);
+          return tx.expenseClaim.create({
+            data: {
+              claimRefNo,
+              submitterUserId: input.submitterUserId,
+              submitterName: input.submitterName,
+              submitterRole: input.submitterRole,
+              expenseDate: input.expenseDate,
+              description: input.description,
+              studentName: normalizeNullableText(input.studentName),
+              location: normalizeNullableText(input.location),
+              amountCents: input.amountCents,
+              gstAmountCents: input.gstAmountCents ?? null,
+              currencyCode: normalizeExpenseCurrencyCode(input.currencyCode),
+              expenseTypeCode: input.expenseTypeCode,
+              accountCode: input.accountCode,
+              receiptPath: input.receiptPath,
+              receiptOriginalName: input.receiptOriginalName,
+              remarks: normalizeNullableText(input.remarks),
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+      break;
+    } catch (error) {
+      if (error instanceof DuplicateExpenseClaimError) throw error;
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034' &&
+        attempt === 0
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  if (!row) throw new Error('Submit claim failed');
 
   await logAudit({
     actor: input.actor,

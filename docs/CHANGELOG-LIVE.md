@@ -367,3 +367,26 @@ This file is the single source of truth for what changed in production.
 - Verification:
   - `npm run test:backend` passed (`24/24`)
 - Rollback point: previous production commit before `2026-03-29-r2` (`06c6fc7`).
+
+## 2026-03-30-r1
+
+- Release ID: `2026-03-30-r1`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE`
+- Scope: Prevent duplicate expense-claim submissions from repeated taps and clean up the duplicated Ahmar transport claims created on `2026-03-30`.
+- Key files:
+  - `lib/expense-claims.ts`
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/_components/ExpenseClaimForm.tsx`
+  - `app/_components/ExpenseClaimSubmitButton.tsx`
+  - `tests/expense-claims.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-claim-duplicate-guard.md`
+- Risk impact (if any): Medium. Normal expense submission flow is unchanged, but exact duplicate claims within a short window now resolve to "already submitted" instead of writing more rows.
+- Verification:
+  - `npm run test:backend` passed (`25/25`)
+  - `npm run build` passed
+  - Ahmar duplicate `2026-03-29` transport claims were reduced to a single retained submission
+- Rollback point: previous production commit before `2026-03-30-r1` (`157ea31`).

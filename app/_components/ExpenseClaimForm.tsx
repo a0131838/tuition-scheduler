@@ -1,5 +1,6 @@
 import { EXPENSE_CURRENCY_CODES, EXPENSE_TYPE_OPTIONS } from '@/lib/expense-claims';
 import { t } from '@/lib/i18n';
+import ExpenseClaimSubmitButton from '@/app/_components/ExpenseClaimSubmitButton';
 
 export default function ExpenseClaimForm({
   lang,
@@ -80,7 +81,10 @@ export default function ExpenseClaimForm({
           '报销单先提交，再审批，财务导出付款，最后标记为已付款。',
         )}
       </div>
-      <button type="submit">{submitLabel ?? t(lang, 'Submit claim', '提交报销单')}</button>
+      <ExpenseClaimSubmitButton
+        label={submitLabel ?? t(lang, 'Submit claim', '提交报销单')}
+        pendingLabel={t(lang, 'Submitting...', '提交中...')}
+      />
     </form>
   );
 }
