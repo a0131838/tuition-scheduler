@@ -507,3 +507,22 @@ This file is the single source of truth for what changed in production.
   - success banner explains the action result and next-item jump in bilingual wording
   - risk box includes explicit bilingual recommended next steps
 - Rollback point: previous production commit before `2026-03-30-r7`.
+
+## 2026-03-30-r8
+
+- Release ID: `2026-03-30-r8`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Further reduce receipt approval cognitive load by de-emphasizing completed rows, adding queue risk badges, and clarifying current role focus.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-role-focus-polish.md`
+- Risk impact (if any): Low. This release only adjusts review-page presentation and queue labeling; approval order, permissions, and billing data flow stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - completed rows render with lower visual priority in the queue
+  - queue rows show bilingual risk badges such as missing proof / file missing / ready
+  - selected receipt panel shows current role focus in bilingual wording
+- Rollback point: previous production commit before `2026-03-30-r8`.

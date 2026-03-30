@@ -177,6 +177,22 @@ function describeReceiptActionResult(
   return normalized;
 }
 
+function queueRiskBadgeLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  item: { paymentRecord: { id: string; name: string; path: string; date?: string | null } | null; paymentFileMissing?: boolean; riskCount?: number }
+) {
+  if (!item.paymentRecord) return t(lang, "Missing proof / 缺少凭证", "Missing proof / 缺少凭证");
+  if (item.paymentFileMissing) return t(lang, "File missing / 文件缺失", "File missing / 文件缺失");
+  if ((item.riskCount ?? 0) > 0) return t(lang, "Needs check / 需要核对", "Needs check / 需要核对");
+  return t(lang, "Ready / 可处理", "Ready / 可处理");
+}
+
+function queueRiskBadgeKind(item: { paymentRecord: unknown; paymentFileMissing?: boolean; riskCount?: number }) {
+  if (!item.paymentRecord || item.paymentFileMissing) return "err" as const;
+  if ((item.riskCount ?? 0) > 0) return "warn" as const;
+  return "ok" as const;
+}
+
 async function uploadPaymentRecordAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -869,6 +885,11 @@ export default async function ReceiptsApprovalsPage({
     Boolean(selectedId) &&
     Boolean(selectedRow) &&
     `${selectedType}:${selectedId}` !== `${selectedRow.type}:${selectedRow.id}`;
+  const currentRoleFocus = isFinanceApprover
+    ? t(lang, "Finance actions / 财务操作", "Finance actions / 财务操作")
+    : isManagerApprover
+      ? t(lang, "Manager actions / 管理操作", "Manager actions / 管理操作")
+      : t(lang, "View only / 仅查看", "View only / 仅查看");
   const selectedRowAmountDiff =
     selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
   const selectedRowPaymentFileMissing =
@@ -1501,7 +1522,12 @@ export default async function ReceiptsApprovalsPage({
               {unifiedQueue.map((x) => (
                 <tr
                   key={`${x.type}-${x.id}`}
-                  style={{ borderTop: "1px solid #eee", background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : undefined }}
+                  style={{
+                    borderTop: "1px solid #eee",
+                    background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : x.status === "COMPLETED" ? "#fcfcfd" : undefined,
+                    color: x.status === "COMPLETED" ? "#6b7280" : undefined,
+                    opacity: x.status === "COMPLETED" ? 0.78 : 1,
+                  }}
                 >
                   <td>{queueTypeLabel(lang, x.type)}</td>
                   <td>{x.receiptNo}</td>
@@ -1510,9 +1536,14 @@ export default async function ReceiptsApprovalsPage({
                   <td>{x.partyName}</td>
                   <td>{money(x.amountReceived)}</td>
                   <td>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
                       {queueStatusLabel(lang, x.status)}
                     </span>
+                    <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+                      {queueRiskBadgeLabel(lang, x)}
+                    </span>
+                    </div>
                   </td>
                   <td>
                     <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
@@ -1537,7 +1568,7 @@ export default async function ReceiptsApprovalsPage({
                   <td>
                     <a href={openHref(x.type, x.id)}>
                       {x.status === "COMPLETED"
-                        ? t(lang, "Open completed receipt", "打开已完成收据")
+                        ? t(lang, "Review completed item", "查看已完成项目")
                         : x.status === "REJECTED"
                           ? t(lang, "Open and fix", "打开并修复")
                           : t(lang, "Open for review", "打开审核")}
@@ -1557,6 +1588,9 @@ export default async function ReceiptsApprovalsPage({
           <div style={{ color: "#666" }}>{t(lang, "Please select one row from the queue above.", "请从上方队列选择一条记录。")}</div>
         ) : (
           <>
+            <div style={{ marginBottom: 10, color: "#475569", fontSize: 13 }}>
+              {t(lang, "Action focus / 当前操作焦点", "Action focus / 当前操作焦点")}: <b>{currentRoleFocus}</b>
+            </div>
             <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff" }}>
               <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
                 {t(lang, "You are reviewing", "当前正在处理")}

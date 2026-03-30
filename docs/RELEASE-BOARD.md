@@ -205,3 +205,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r8 Deployed
+
+- Scope: receipt approval role-focus polish with weaker completed rows, clearer queue risk badges, and a stronger cue for the operator's current action area.
+- Business impact:
+  - completed queue items are visually reduced so unfinished work stands out more clearly
+  - queue rows now show bilingual risk badges like missing proof / file missing / ready
+  - selected receipt panel now explicitly shows the operator's current role focus
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`
