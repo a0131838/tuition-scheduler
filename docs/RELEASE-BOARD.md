@@ -147,3 +147,14 @@
 - Validation:
   - `npm run build`
   - admin receipt approvals uses `/api/admin/parent-payment-records/[id]/file` for parent payment proof open/preview
+
+## 2026-03-30-r3 Ready For Deploy
+
+- Scope: allow rejected expense claims to be corrected and resubmitted back to `SUBMITTED`.
+- Business impact:
+  - teachers can resubmit a rejected claim instead of creating a second claim manually
+  - resubmit clears reject markers and sends the original claim back into the approval queue
+  - approval, payment, and archive rules remain unchanged
+- Validation:
+  - `npm run test:backend`
+  - `npm run build`

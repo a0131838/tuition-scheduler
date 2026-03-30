@@ -1,8 +1,9 @@
 import { getCurrentUser, requireTeacher } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
-import { createExpenseClaim, DuplicateExpenseClaimError, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation } from '@/lib/expense-claims';
+import { createExpenseClaim, DuplicateExpenseClaimError, EXPENSE_CURRENCY_CODES, EXPENSE_TYPE_OPTIONS, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims, requiresExpenseLocation, resubmitExpenseClaim } from '@/lib/expense-claims';
 import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
+import ExpenseClaimSubmitButton from '@/app/_components/ExpenseClaimSubmitButton';
 import { redirect } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import path from 'path';
@@ -31,6 +32,10 @@ function buildFilterQuery(input: Record<string, string | null | undefined>) {
     if (normalized) params.set(key, normalized);
   }
   return params.toString();
+}
+
+function toStoredFileAbsolutePath(relativePath: string) {
+  return path.join(process.cwd(), 'public', relativePath.replace(/^\//, '').replace(/\//g, path.sep));
 }
 
 export default async function TeacherExpenseClaimsPage({
@@ -104,7 +109,7 @@ export default async function TeacherExpenseClaimsPage({
           actor,
         });
       } catch (error) {
-        const absPath = path.join(process.cwd(), 'public', stored.relativePath.replace(/^\//, '').replace(/\//g, path.sep));
+        const absPath = toStoredFileAbsolutePath(stored.relativePath);
         await unlink(absPath).catch(() => {});
         if (error instanceof DuplicateExpenseClaimError) {
           redirect('/teacher/expense-claims?msg=Expense+claim+already+submitted');
@@ -117,6 +122,73 @@ export default async function TeacherExpenseClaimsPage({
     }
 
     redirect('/teacher/expense-claims?msg=Expense+claim+submitted');
+  }
+
+  async function resubmitClaimAction(formData: FormData) {
+    'use server';
+    const actor = await requireTeacher();
+    const claimId = String(formData.get('claimId') ?? '').trim();
+    const expenseDateRaw = String(formData.get('expenseDate') ?? '').trim();
+    const expenseDate = expenseDateRaw ? parseDateOnlyToUTCNoon(expenseDateRaw) : null;
+    const description = String(formData.get('description') ?? '').trim();
+    const studentName = String(formData.get('studentName') ?? '').trim();
+    const location = String(formData.get('location') ?? '').trim();
+    const currencyCode = String(formData.get('currencyCode') ?? '').trim();
+    const expenseTypeCode = String(formData.get('expenseTypeCode') ?? '').trim().toUpperCase();
+    const amountCents = parseMoneyToCents(formData.get('amount'));
+    const gstAmountRaw = String(formData.get('gstAmount') ?? '').trim();
+    const gstAmountCents = gstAmountRaw ? parseMoneyToCents(gstAmountRaw) : null;
+    const remarks = String(formData.get('remarks') ?? '').trim();
+    const file = formData.get('receiptFile');
+    const expenseType = getExpenseTypeOption(expenseTypeCode);
+
+    if (!claimId || !expenseDate || Number.isNaN(+expenseDate)) {
+      redirect('/teacher/expense-claims?err=Expense+date+is+required');
+    }
+    if (!description || amountCents === null || !expenseType) {
+      redirect('/teacher/expense-claims?err=Please+complete+all+required+fields');
+    }
+    if (requiresExpenseLocation(expenseTypeCode) && !location) {
+      redirect('/teacher/expense-claims?err=Location+is+required+for+transport+claims');
+    }
+
+    const hasReplacementFile = file instanceof File && file.size > 0;
+    let storedReplacement:
+      | {
+          relativePath: string;
+          originalName: string;
+        }
+      | null = null;
+
+    try {
+      if (hasReplacementFile) {
+        storedReplacement = await storeExpenseClaimFile(file);
+      }
+      await resubmitExpenseClaim({
+        claimId,
+        actor,
+        expenseDate,
+        description,
+        studentName: studentName || null,
+        location: location || null,
+        amountCents,
+        gstAmountCents,
+        currencyCode,
+        expenseTypeCode,
+        accountCode: expenseType.accountCode,
+        receiptPath: storedReplacement?.relativePath ?? null,
+        receiptOriginalName: storedReplacement?.originalName ?? null,
+        remarks: remarks || null,
+      });
+    } catch (error) {
+      if (storedReplacement) {
+        await unlink(toStoredFileAbsolutePath(storedReplacement.relativePath)).catch(() => {});
+      }
+      const message = error instanceof Error ? error.message : 'Resubmit claim failed';
+      redirect(`/teacher/expense-claims?err=${encodeURIComponent(message)}`);
+    }
+
+    redirect('/teacher/expense-claims?msg=Expense+claim+resubmitted');
   }
 
   const claims = await listExpenseClaims({
@@ -246,7 +318,90 @@ export default async function TeacherExpenseClaimsPage({
                       </div>
                     </td>
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
-                      {claim.rejectReason || claim.financeRemarks || claim.remarks || '-'}
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        <div>{claim.rejectReason || claim.financeRemarks || claim.remarks || '-'}</div>
+                        {claim.status === ExpenseClaimStatus.REJECTED ? (
+                          <form
+                            action={resubmitClaimAction}
+                            style={{
+                              display: 'grid',
+                              gap: 8,
+                              minWidth: 280,
+                              padding: 10,
+                              borderRadius: 10,
+                              border: '1px solid #fecaca',
+                              background: '#fff7f7',
+                            }}
+                          >
+                            <input type="hidden" name="claimId" value={claim.id} />
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>
+                              {t(lang, 'Resubmit after fixing this claim', '补件后重新提交这张报销单')}
+                            </div>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Date of expense', '消费日期')}*</span>
+                              <input name="expenseDate" type="date" defaultValue={formatUTCDateOnly(claim.expenseDate)} required />
+                            </label>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Expense type', '报销类型')}*</span>
+                              <select name="expenseTypeCode" defaultValue={claim.expenseTypeCode} required>
+                                {EXPENSE_TYPE_OPTIONS.map((item) => (
+                                  <option key={item.code} value={item.code}>
+                                    {item.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                              <label style={{ display: 'grid', gap: 4 }}>
+                                <span style={{ fontSize: 12 }}>{t(lang, 'Currency', '货币')}*</span>
+                                <select name="currencyCode" defaultValue={claim.currencyCode} required>
+                                  {EXPENSE_CURRENCY_CODES.map((code) => (
+                                    <option key={code} value={code}>{code}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label style={{ display: 'grid', gap: 4 }}>
+                                <span style={{ fontSize: 12 }}>{t(lang, 'Amount spent', '报销金额')}*</span>
+                                <input name="amount" type="number" step="0.01" min="0" defaultValue={(claim.amountCents / 100).toFixed(2)} required />
+                              </label>
+                              <label style={{ display: 'grid', gap: 4 }}>
+                                <span style={{ fontSize: 12 }}>{t(lang, 'GST amount', 'GST金额')}</span>
+                                <input
+                                  name="gstAmount"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  defaultValue={claim.gstAmountCents === null ? '' : (claim.gstAmountCents / 100).toFixed(2)}
+                                />
+                              </label>
+                            </div>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Student name', '学生姓名')}</span>
+                              <input name="studentName" defaultValue={claim.studentName ?? ''} />
+                            </label>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Location', '地点')}</span>
+                              <input name="location" defaultValue={claim.location ?? ''} />
+                            </label>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Attachment description / purpose', '附件说明 / 报销用途')}*</span>
+                              <textarea name="description" rows={3} defaultValue={claim.description} required />
+                            </label>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Remarks', '备注')}</span>
+                              <textarea name="remarks" rows={2} defaultValue={claim.remarks ?? ''} />
+                            </label>
+                            <label style={{ display: 'grid', gap: 4 }}>
+                              <span style={{ fontSize: 12 }}>{t(lang, 'Replace receipt / invoice (optional)', '更换收据/发票（可选）')}</span>
+                              <input name="receiptFile" type="file" />
+                            </label>
+                            <ExpenseClaimSubmitButton
+                              label={t(lang, 'Resubmit claim', '重新提交报销单')}
+                              pendingLabel={t(lang, 'Resubmitting...', '重新提交中...')}
+                            />
+                          </form>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

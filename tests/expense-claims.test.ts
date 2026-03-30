@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ExpenseClaimStatus } from "@prisma/client";
-import { findRecentDuplicateExpenseClaimForDb, updateExpenseClaimWithExpectedStatusForDb } from "../lib/expense-claims";
+import { findRecentDuplicateExpenseClaimForDb, resubmitExpenseClaim, updateExpenseClaimWithExpectedStatusForDb } from "../lib/expense-claims";
 
 test("expense claim transition uses conditional update on expected status", async () => {
   const calls: Array<unknown> = [];
@@ -110,4 +110,115 @@ test("duplicate expense claim lookup matches exact recent submissions only", asy
     status: { in: [ExpenseClaimStatus.SUBMITTED, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID] },
     createdAt: { gte: new Date("2026-03-30T01:25:32.470Z") },
   });
+});
+
+test("rejected expense claim can be resubmitted to submitted", async () => {
+  const calls: Array<unknown> = [];
+  let findCount = 0;
+  const db = {
+    expenseClaim: {
+      async findUnique(args: unknown) {
+        calls.push(["findUnique", args]);
+        findCount += 1;
+        if (findCount === 1) return { id: "claim-3", status: ExpenseClaimStatus.REJECTED };
+        return {
+          id: "claim-3",
+          claimRefNo: "EC-003",
+          status: ExpenseClaimStatus.SUBMITTED,
+          rejectReason: null,
+          remarks: "new note",
+        };
+      },
+      async updateMany(args: unknown) {
+        calls.push(["updateMany", args]);
+        return { count: 1 };
+      },
+    },
+  };
+
+  const auditCalls: Array<unknown> = [];
+  const row = await resubmitExpenseClaim(
+    {
+      claimId: "claim-3",
+      actor: { email: "teacher@example.com" },
+      description: "Updated receipt detail",
+      studentName: "Student A",
+      location: "Campus to school",
+      amountCents: 1880,
+      gstAmountCents: 120,
+      currencyCode: "sgd",
+      expenseTypeCode: "transport",
+      accountCode: "6040",
+      receiptPath: "/uploads/expense-claims/2026-03/new.png",
+      receiptOriginalName: "new.png",
+      remarks: "new note",
+    },
+    db as any,
+    async (entry) => {
+      auditCalls.push(entry);
+    },
+  );
+
+  assert.equal(row.status, ExpenseClaimStatus.SUBMITTED);
+  assert.deepEqual(calls[1], [
+    "updateMany",
+    {
+      where: { id: "claim-3", status: ExpenseClaimStatus.REJECTED },
+      data: {
+        status: ExpenseClaimStatus.SUBMITTED,
+        expenseDate: undefined,
+        description: "Updated receipt detail",
+        studentName: "Student A",
+        location: "Campus to school",
+        amountCents: 1880,
+        gstAmountCents: 120,
+        currencyCode: "SGD",
+        expenseTypeCode: "TRANSPORT",
+        accountCode: "6040",
+        receiptPath: "/uploads/expense-claims/2026-03/new.png",
+        receiptOriginalName: "new.png",
+        remarks: "new note",
+        approverEmail: null,
+        approvedAt: null,
+        rejectedAt: null,
+        rejectReason: null,
+        paidAt: null,
+        paidByEmail: null,
+        financeRemarks: null,
+        paymentMethod: null,
+        paymentReference: null,
+        paymentBatchMonth: null,
+        archivedAt: null,
+        archivedByEmail: null,
+      },
+    },
+  ]);
+  assert.equal(auditCalls.length, 1);
+});
+
+test("only rejected expense claims can be resubmitted", async () => {
+  const db = {
+    expenseClaim: {
+      async findUnique() {
+        return { id: "claim-4", status: ExpenseClaimStatus.APPROVED };
+      },
+      async updateMany() {
+        return { count: 1 };
+      },
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      resubmitExpenseClaim(
+        {
+          claimId: "claim-4",
+          actor: { email: "teacher@example.com" },
+          description: "Updated receipt detail",
+        },
+        db as any,
+        async () => {},
+      ),
+    /Only rejected claims can be resubmitted/,
+  );
 });

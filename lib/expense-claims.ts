@@ -376,6 +376,90 @@ export async function rejectExpenseClaim(input: {
   return row;
 }
 
+export async function resubmitExpenseClaim(
+  input: {
+    claimId: string;
+    actor: { email?: string | null; name?: string | null; role?: string | null };
+    expenseDate?: Date | null;
+    description: string;
+    studentName?: string | null;
+    location?: string | null;
+    amountCents?: number | null;
+    gstAmountCents?: number | null;
+    currencyCode?: string | null;
+    expenseTypeCode?: string | null;
+    accountCode?: string | null;
+    receiptPath?: string | null;
+    receiptOriginalName?: string | null;
+    remarks?: string | null;
+  },
+  db: Pick<Prisma.TransactionClient, 'expenseClaim'> = prisma,
+  auditLogger: typeof logAudit = logAudit,
+) {
+  const row = await resubmitExpenseClaimForDb(db, input);
+  await auditLogger({
+    actor: input.actor,
+    module: 'expense-claims',
+    action: 'resubmit',
+    entityType: 'ExpenseClaim',
+    entityId: row.id,
+    meta: { claimRefNo: row.claimRefNo },
+  });
+  return row;
+}
+
+export async function resubmitExpenseClaimForDb(
+  db: Pick<Prisma.TransactionClient, 'expenseClaim'>,
+  input: {
+  claimId: string;
+  actor: { email?: string | null; name?: string | null; role?: string | null };
+  expenseDate?: Date | null;
+  description: string;
+  studentName?: string | null;
+  location?: string | null;
+  amountCents?: number | null;
+  gstAmountCents?: number | null;
+  currencyCode?: string | null;
+  expenseTypeCode?: string | null;
+  accountCode?: string | null;
+  receiptPath?: string | null;
+  receiptOriginalName?: string | null;
+  remarks?: string | null;
+}) {
+  return updateExpenseClaimWithExpectedStatusForDb(db, {
+    claimId: input.claimId,
+    expectedStatus: ExpenseClaimStatus.REJECTED,
+    notAllowedMessage: 'Only rejected claims can be resubmitted',
+    data: {
+      status: ExpenseClaimStatus.SUBMITTED,
+      expenseDate: input.expenseDate ?? undefined,
+      description: input.description.trim(),
+      studentName: normalizeNullableText(input.studentName),
+      location: normalizeNullableText(input.location),
+      amountCents: input.amountCents ?? undefined,
+      gstAmountCents: input.gstAmountCents ?? null,
+      currencyCode: input.currencyCode ? normalizeExpenseCurrencyCode(input.currencyCode) : undefined,
+      expenseTypeCode: input.expenseTypeCode?.trim().toUpperCase() || undefined,
+      accountCode: input.accountCode?.trim() || undefined,
+      receiptPath: input.receiptPath?.trim() || undefined,
+      receiptOriginalName: input.receiptOriginalName?.trim() || undefined,
+      remarks: normalizeNullableText(input.remarks),
+      approverEmail: null,
+      approvedAt: null,
+      rejectedAt: null,
+      rejectReason: null,
+      paidAt: null,
+      paidByEmail: null,
+      financeRemarks: null,
+      paymentMethod: null,
+      paymentReference: null,
+      paymentBatchMonth: null,
+      archivedAt: null,
+      archivedByEmail: null,
+    },
+  });
+}
+
 export async function markExpenseClaimPaid(input: {
   claimId: string;
   paidBy: { email?: string | null; name?: string | null; role?: string | null };

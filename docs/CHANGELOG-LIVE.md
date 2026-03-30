@@ -409,3 +409,24 @@ This file is the single source of truth for what changed in production.
   - admin receipt approvals now opens parent payment proof files via `/api/admin/parent-payment-records/[id]/file`
   - existing valid payment-proof files remain reachable through the controlled route
 - Rollback point: previous production commit before `2026-03-30-r2`.
+
+## 2026-03-30-r3
+
+- Release ID: `2026-03-30-r3`
+- Date/Time (Asia/Shanghai): `2026-03-30 15:44 CST`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Allow teachers to correct rejected expense claims and resubmit the same claim back into the approval queue.
+- Key files:
+  - `lib/expense-claims.ts`
+  - `app/teacher/expense-claims/page.tsx`
+  - `tests/expense-claims.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-claim-resubmit.md`
+- Risk impact (if any): Low-to-medium. Only rejected claims gain a resubmit path; approval, payment, and archive rules stay unchanged. Teachers can now reopen a rejected claim by correcting fields and optionally replacing the attachment.
+- Verification:
+  - `npm run test:backend` passed (`27/27`)
+  - `npm run build` passed
+  - rejected claims return to `SUBMITTED` after resubmit
+  - non-rejected claims are blocked from using the resubmit path
+- Rollback point: previous production commit before `2026-03-30-r3`.
