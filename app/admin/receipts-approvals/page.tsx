@@ -76,9 +76,9 @@ function queueStatusLabel(
   lang: "BILINGUAL" | "ZH" | "EN",
   status: "COMPLETED" | "REJECTED" | "PENDING",
 ) {
-  if (status === "COMPLETED") return t(lang, "Completed / ready to archive", "已完成 / 可归档");
-  if (status === "REJECTED") return t(lang, "Rejected / needs fix", "已驳回 / 需修复");
-  return t(lang, "Pending / waiting for review", "待审批 / 等待审核");
+  if (status === "COMPLETED") return t(lang, "Completed, ready to archive", "已完成，可归档");
+  if (status === "REJECTED") return t(lang, "Rejected, needs fix", "已驳回，需修复");
+  return t(lang, "Pending, waiting for review", "待审批，等待审核");
 }
 
 function queueStatusKind(status: "COMPLETED" | "REJECTED" | "PENDING") {
@@ -91,11 +91,15 @@ function queueTypeLabel(lang: "BILINGUAL" | "ZH" | "EN", type: "PARENT" | "PARTN
   return type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方");
 }
 
+function bilingualLabel(en: string, zh: string) {
+  return `${en} / ${zh}`;
+}
+
 function renderRejectReasonFields(lang: "BILINGUAL" | "ZH" | "EN", idSuffix: string) {
   return (
     <>
       <select name="reason" defaultValue="" style={{ minWidth: 240 }}>
-        <option value="">{t(lang, "Select reject reason / 选择驳回原因", "Select reject reason / 选择驳回原因")}</option>
+        <option value="">{t(lang, "Select reject reason", "选择驳回原因")}</option>
         {RECEIPT_REJECT_REASON_OPTIONS.map((option) => (
           <option key={`${idSuffix}-${option}`} value={option}>
             {option}
@@ -104,7 +108,7 @@ function renderRejectReasonFields(lang: "BILINGUAL" | "ZH" | "EN", idSuffix: str
       </select>
       <input
         name="reasonDetail"
-        placeholder={t(lang, "Extra note (optional) / 补充备注（可选）", "Extra note (optional) / 补充备注（可选）")}
+        placeholder={t(lang, "Extra note (optional)", "补充备注（可选）")}
       />
     </>
   );
@@ -168,18 +172,18 @@ function describeReceiptActionResult(
 ) {
   const normalized = String(rawMsg || "").trim();
   const withMove = movedToNext
-    ? t(lang, "Moved to next item / 已跳转到下一条", "Moved to next item / 已跳转到下一条")
-    : t(lang, "Queue updated / 队列已更新", "Queue updated / 队列已更新");
-  if (normalized === "Manager approved") return `${t(lang, "Manager approved / 管理已批准", "Manager approved / 管理已批准")} · ${withMove}`;
-  if (normalized === "Manager rejected") return `${t(lang, "Manager rejected / 管理已驳回", "Manager rejected / 管理已驳回")} · ${withMove}`;
-  if (normalized === "Finance approved") return `${t(lang, "Finance approved / 财务已批准", "Finance approved / 财务已批准")} · ${withMove}`;
-  if (normalized === "Finance rejected") return `${t(lang, "Finance rejected / 财务已驳回", "Finance rejected / 财务已驳回")} · ${withMove}`;
-  if (normalized === "Partner manager approved") return `${t(lang, "Partner manager approved / 合作方管理已批准", "Partner manager approved / 合作方管理已批准")} · ${withMove}`;
-  if (normalized === "Partner manager rejected") return `${t(lang, "Partner manager rejected / 合作方管理已驳回", "Partner manager rejected / 合作方管理已驳回")} · ${withMove}`;
-  if (normalized === "Partner finance approved") return `${t(lang, "Partner finance approved / 合作方财务已批准", "Partner finance approved / 合作方财务已批准")} · ${withMove}`;
-  if (normalized === "Partner finance rejected") return `${t(lang, "Partner finance rejected / 合作方财务已驳回", "Partner finance rejected / 合作方财务已驳回")} · ${withMove}`;
-  if (normalized === "Receipt reopened for redo") return `${t(lang, "Receipt reopened / 收据已重新打开", "Receipt reopened / 收据已重新打开")} · ${withMove}`;
-  if (normalized === "Partner receipt reopened for redo") return `${t(lang, "Partner receipt reopened / 合作方收据已重新打开", "Partner receipt reopened / 合作方收据已重新打开")} · ${withMove}`;
+    ? t(lang, "Moved to next item", "已跳转到下一条")
+    : t(lang, "Queue updated", "队列已更新");
+  if (normalized === "Manager approved") return `${t(lang, "Manager approved", "管理已批准")} · ${withMove}`;
+  if (normalized === "Manager rejected") return `${t(lang, "Manager rejected", "管理已驳回")} · ${withMove}`;
+  if (normalized === "Finance approved") return `${t(lang, "Finance approved", "财务已批准")} · ${withMove}`;
+  if (normalized === "Finance rejected") return `${t(lang, "Finance rejected", "财务已驳回")} · ${withMove}`;
+  if (normalized === "Partner manager approved") return `${t(lang, "Partner manager approved", "合作方管理已批准")} · ${withMove}`;
+  if (normalized === "Partner manager rejected") return `${t(lang, "Partner manager rejected", "合作方管理已驳回")} · ${withMove}`;
+  if (normalized === "Partner finance approved") return `${t(lang, "Partner finance approved", "合作方财务已批准")} · ${withMove}`;
+  if (normalized === "Partner finance rejected") return `${t(lang, "Partner finance rejected", "合作方财务已驳回")} · ${withMove}`;
+  if (normalized === "Receipt reopened for redo") return `${t(lang, "Receipt reopened", "收据已重新打开")} · ${withMove}`;
+  if (normalized === "Partner receipt reopened for redo") return `${t(lang, "Partner receipt reopened", "合作方收据已重新打开")} · ${withMove}`;
   return normalized;
 }
 
@@ -187,10 +191,10 @@ function queueRiskBadgeLabel(
   lang: "BILINGUAL" | "ZH" | "EN",
   item: { paymentRecord: { id: string; name: string; path: string; date?: string | null } | null; paymentFileMissing?: boolean; riskCount?: number }
 ) {
-  if (!item.paymentRecord) return t(lang, "Missing proof / 缺少凭证", "Missing proof / 缺少凭证");
-  if (item.paymentFileMissing) return t(lang, "File missing / 文件缺失", "File missing / 文件缺失");
-  if ((item.riskCount ?? 0) > 0) return t(lang, "Needs check / 需要核对", "Needs check / 需要核对");
-  return t(lang, "Ready / 可处理", "Ready / 可处理");
+  if (!item.paymentRecord) return t(lang, "Missing proof", "缺少凭证");
+  if (item.paymentFileMissing) return t(lang, "File missing", "文件缺失");
+  if ((item.riskCount ?? 0) > 0) return t(lang, "Needs check", "需要核对");
+  return t(lang, "Ready", "可处理");
 }
 
 function queueRiskBadgeKind(item: { paymentRecord: unknown; paymentFileMissing?: boolean; riskCount?: number }) {
@@ -283,7 +287,7 @@ function renderQueueRows(
               href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
               style={{ fontSize: 12, color: "#b45309" }}
             >
-              {t(lang, "Fix payment proof / 修复缴费凭证", "Fix payment proof / 修复缴费凭证")}
+              {t(lang, "Fix payment proof", "修复缴费凭证")}
             </a>
           ) : null}
         </div>
@@ -979,61 +983,6 @@ export default async function ReceiptsApprovalsPage({
     if ((a.riskCount ?? 0) !== (b.riskCount ?? 0)) return (b.riskCount ?? 0) - (a.riskCount ?? 0);
     return (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? "");
   });
-  const selectedRow = unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ?? unifiedQueue[0] ?? null;
-  const selectedRowIndex = selectedRow
-    ? unifiedQueue.findIndex((x) => x.type === selectedRow.type && x.id === selectedRow.id)
-    : -1;
-  const nextQueueRow =
-    selectedRowIndex >= 0
-      ? unifiedQueue[selectedRowIndex + 1] ?? unifiedQueue[selectedRowIndex - 1] ?? null
-      : unifiedQueue[0] ?? null;
-  const selectedActionNextHref = nextQueueRow
-    ? openHref(nextQueueRow.type, nextQueueRow.id)
-    : selectedRow
-      ? openHref(selectedRow.type, selectedRow.id)
-      : `/admin/receipts-approvals?${baseQuery.toString()}`;
-  const actionMovedToNext =
-    Boolean(msg) &&
-    Boolean(selectedId) &&
-    Boolean(selectedRow) &&
-    `${selectedType}:${selectedId}` !== `${selectedRow.type}:${selectedRow.id}`;
-  const currentRoleFocus = isFinanceApprover
-    ? t(lang, "Finance actions / 财务操作", "Finance actions / 财务操作")
-    : isManagerApprover
-      ? t(lang, "Manager actions / 管理操作", "Manager actions / 管理操作")
-      : t(lang, "View only / 仅查看", "View only / 仅查看");
-  const selectedRowAmountDiff =
-    selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
-  const selectedRowPaymentFileMissing =
-    selectedRow?.type === "PARENT" && selectedBilling && selectedRow.paymentRecord
-      ? !(paymentRecordFileMap.get(selectedRow.paymentRecord.id) ?? false)
-      : false;
-  const selectedRiskMessages: string[] = [];
-  if (selectedRow) {
-    if (!selectedRow.paymentRecord) {
-      selectedRiskMessages.push(t(lang, "No linked payment record.", "未绑定缴费记录。"));
-    }
-    if (selectedRowPaymentFileMissing) {
-      selectedRiskMessages.push(t(lang, "Payment file is missing.", "缴费文件缺失。"));
-    }
-    if (selectedRowAmountDiff > 0.01) {
-      selectedRiskMessages.push(
-        t(lang, "Amount differs from invoice total.", "收据金额与发票总额不一致。")
-      );
-    }
-  }
-  const selectedRiskActions = selectedRiskMessages.map((line) => {
-    if (line.includes("No linked payment record") || line.includes("未绑定缴费记录")) {
-      return t(lang, "Next step: open fix tools and link a payment proof. / 下一步：打开修复工具并绑定缴费记录。", "Next step: open fix tools and link a payment proof. / 下一步：打开修复工具并绑定缴费记录。");
-    }
-    if (line.includes("Payment file is missing") || line.includes("缴费文件缺失")) {
-      return t(lang, "Next step: open fix tools and re-upload the payment file. / 下一步：打开修复工具并重新上传缴费文件。", "Next step: open fix tools and re-upload the payment file. / 下一步：打开修复工具并重新上传缴费文件。");
-    }
-    if (line.includes("Amount differs from invoice total") || line.includes("收据金额与发票总额不一致")) {
-      return t(lang, "Next step: confirm the invoice and receipt amounts before approval. / 下一步：批准前先核对发票金额和收据金额。", "Next step: confirm the invoice and receipt amounts before approval. / 下一步：批准前先核对发票金额和收据金额。");
-    }
-    return null;
-  }).filter((line): line is string => Boolean(line));
   const actionableQueue = unifiedQueue.filter((x) => x.status !== "COMPLETED");
   const completedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
   const mineQueue = actionableQueue.filter((x) => {
@@ -1045,6 +994,72 @@ export default async function ReceiptsApprovalsPage({
   const visibleMineQueue = queueBucket === "OPEN" || queueBucket === "HISTORY" ? [] : mineQueue;
   const visibleOtherQueue = queueBucket === "MINE" || queueBucket === "HISTORY" ? [] : otherQueue;
   const visibleCompletedQueue = queueBucket === "MINE" || queueBucket === "OPEN" ? [] : completedQueue;
+  const defaultVisibleQueue =
+    queueBucket === "MINE"
+      ? visibleMineQueue
+      : queueBucket === "OPEN"
+        ? [...visibleMineQueue, ...visibleOtherQueue]
+        : queueBucket === "HISTORY"
+          ? visibleCompletedQueue
+          : [...visibleMineQueue, ...visibleOtherQueue, ...visibleCompletedQueue];
+  const selectedRow =
+    unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ??
+    defaultVisibleQueue[0] ??
+    null;
+  const activeQueueForNavigation =
+    selectedRow?.status === "COMPLETED"
+      ? visibleCompletedQueue
+      : [...visibleMineQueue, ...visibleOtherQueue];
+  const selectedRowIndex = selectedRow
+    ? activeQueueForNavigation.findIndex((x) => x.type === selectedRow.type && x.id === selectedRow.id)
+    : -1;
+  const nextQueueRow =
+    selectedRowIndex >= 0
+      ? activeQueueForNavigation[selectedRowIndex + 1] ?? activeQueueForNavigation[selectedRowIndex - 1] ?? null
+      : activeQueueForNavigation[0] ?? null;
+  const selectedActionNextHref = nextQueueRow
+    ? openHref(nextQueueRow.type, nextQueueRow.id)
+    : selectedRow
+      ? openHref(selectedRow.type, selectedRow.id)
+      : `/admin/receipts-approvals?${baseQuery.toString()}`;
+  const actionMovedToNext =
+    Boolean(msg) &&
+    Boolean(selectedId) &&
+    Boolean(selectedRow) &&
+    `${selectedType}:${selectedId}` !== `${selectedRow.type}:${selectedRow.id}`;
+  const currentRoleFocus = isFinanceApprover
+    ? t(lang, "Finance actions", "财务操作")
+    : isManagerApprover
+      ? t(lang, "Manager actions", "管理操作")
+      : t(lang, "View only", "仅查看");
+  const selectedRowAmountDiff =
+    selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
+  const selectedRiskMessages: string[] = [];
+  if (selectedRow) {
+    if (!selectedRow.paymentRecord) {
+      selectedRiskMessages.push(t(lang, "No linked payment record.", "未绑定缴费记录。"));
+    }
+    if (selectedRow.paymentFileMissing) {
+      selectedRiskMessages.push(t(lang, "Payment file is missing.", "缴费文件缺失。"));
+    }
+    if (selectedRowAmountDiff > 0.01) {
+      selectedRiskMessages.push(
+        t(lang, "Amount differs from invoice total.", "收据金额与发票总额不一致。")
+      );
+    }
+  }
+  const selectedRiskActions = selectedRiskMessages.map((line) => {
+    if (line.includes("No linked payment record") || line.includes("未绑定缴费记录")) {
+      return t(lang, "Next step: open fix tools and link a payment proof.", "下一步：打开修复工具并绑定缴费记录。");
+    }
+    if (line.includes("Payment file is missing") || line.includes("缴费文件缺失")) {
+      return t(lang, "Next step: open fix tools and re-upload the payment file.", "下一步：打开修复工具并重新上传缴费文件。");
+    }
+    if (line.includes("Amount differs from invoice total") || line.includes("收据金额与发票总额不一致")) {
+      return t(lang, "Next step: confirm the invoice and receipt amounts before approval.", "下一步：批准前先核对发票金额和收据金额。");
+    }
+    return null;
+  }).filter((line): line is string => Boolean(line));
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1598,13 +1613,13 @@ export default async function ReceiptsApprovalsPage({
         </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ ...tagStyle(mineQueue.length > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")}: {mineQueue.length}
+            {bilingualLabel("My next actions", "我待处理的")}: {mineQueue.length}
           </span>
           <span style={{ ...tagStyle(otherQueue.length > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")}: {otherQueue.length}
+            {bilingualLabel("Other open items", "其他待处理项")}: {otherQueue.length}
           </span>
           <span style={{ ...tagStyle(completedQueue.length > 0 ? "muted" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")}: {completedQueue.length}
+            {bilingualLabel("Completed history", "已完成历史")}: {completedQueue.length}
           </span>
         </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1682,7 +1697,7 @@ export default async function ReceiptsApprovalsPage({
                 <>
                   <tr style={{ background: "#eff6ff" }}>
                     <td colSpan={9} style={{ fontWeight: 700, color: "#1d4ed8" }}>
-                      {t(lang, "My next actions / 我待处理的", "My next actions / 我待处理的")} ({visibleMineQueue.length})
+                      {bilingualLabel("My next actions", "我待处理的")} ({visibleMineQueue.length})
                     </td>
                   </tr>
                   {renderQueueRows(visibleMineQueue, lang, selectedRow, roleCfg, openHref)}
@@ -1692,7 +1707,7 @@ export default async function ReceiptsApprovalsPage({
                 <>
                   <tr style={{ background: "#fff7ed" }}>
                     <td colSpan={9} style={{ fontWeight: 700, color: "#9a3412" }}>
-                      {t(lang, "Other open items / 其他待处理项", "Other open items / 其他待处理项")} ({visibleOtherQueue.length})
+                      {bilingualLabel("Other open items", "其他待处理项")} ({visibleOtherQueue.length})
                     </td>
                   </tr>
                   {renderQueueRows(visibleOtherQueue, lang, selectedRow, roleCfg, openHref)}
@@ -1703,7 +1718,7 @@ export default async function ReceiptsApprovalsPage({
                   <td colSpan={9} style={{ padding: 0, borderTop: "1px solid #eee" }}>
                     <details open={queueBucket === "HISTORY"}>
                       <summary style={{ cursor: "pointer", listStyle: "none", background: "#f8fafc", fontWeight: 700, color: "#64748b", padding: "8px 12px" }}>
-                        {t(lang, "Completed history / 已完成历史", "Completed history / 已完成历史")} ({visibleCompletedQueue.length})
+                        {bilingualLabel("Completed history", "已完成历史")} ({visibleCompletedQueue.length})
                       </summary>
                       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
                         <tbody>
@@ -1727,7 +1742,7 @@ export default async function ReceiptsApprovalsPage({
         ) : (
           <>
             <div style={{ marginBottom: 10, color: "#475569", fontSize: 13 }}>
-              {t(lang, "Action focus / 当前操作焦点", "Action focus / 当前操作焦点")}: <b>{currentRoleFocus}</b>
+              {bilingualLabel("Action focus", "当前操作焦点")}: <b>{currentRoleFocus}</b>
             </div>
             <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff" }}>
               <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
@@ -1746,7 +1761,7 @@ export default async function ReceiptsApprovalsPage({
                   ))}
                   {selectedRiskActions.map((line, idx) => (
                     <div key={`action-${idx}`} style={{ color: "#7c2d12", fontWeight: 600 }}>
-                      {idx === 0 ? t(lang, "Recommended action / 建议操作", "Recommended action / 建议操作") : t(lang, "Also check / 也请检查", "Also check / 也请检查")}: {line}
+                      {idx === 0 ? t(lang, "Recommended action", "建议操作") : t(lang, "Also check", "也请检查")}: {line}
                     </div>
                   ))}
                 </div>
@@ -1769,7 +1784,7 @@ export default async function ReceiptsApprovalsPage({
               )}
             </div>
             <div style={{ marginBottom: 10, border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Timeline / 时间线", "Timeline / 时间线")}</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{bilingualLabel("Timeline", "时间线")}</div>
               <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
                 <div>
                   {t(lang, "Created / 创建", "Created / 创建")}: {formatBusinessDateTime(new Date(selectedRow.createdAt))} · {selectedRow.createdBy}

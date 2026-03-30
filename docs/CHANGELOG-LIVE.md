@@ -583,3 +583,22 @@ This file is the single source of truth for what changed in production.
   - missing proof and missing file issues sort ahead of generic review items
   - selected receipt actions and approval rules remain unchanged
 - Rollback point: previous production commit before `2026-03-30-r11`.
+
+## 2026-03-30-r12
+
+- Release ID: `2026-03-30-r12`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Align receipt approval queue and detail-panel risk signals, remove duplicated bilingual copy, and keep `Only my actions` from auto-selecting unrelated open work when the bucket is empty.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-qa-followups.md`
+- Risk impact (if any): Low. This release only fixes approval-page guidance and selection behavior; approval rules, permissions, and finance data flow remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - selected receipt risk panel now matches queue-level file-missing and missing-proof signals
+  - duplicated bilingual labels no longer render twice in the queue and detail panel
+  - `Only my actions / 只看我待处理的` no longer defaults to another bucket when there are no mine items
+- Rollback point: previous production commit before `2026-03-30-r12`.

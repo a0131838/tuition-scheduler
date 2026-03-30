@@ -248,3 +248,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r12 Deployed
+
+- Scope: receipt approval QA follow-up fixes for risk-message consistency, duplicated bilingual copy, and empty-my-actions default selection behavior.
+- Business impact:
+  - right-side receipt details now reflect the same file-missing and missing-proof risk state shown in the queue
+  - duplicated bilingual labels in the queue and detail panel are reduced back to a single readable bilingual line
+  - `Only my actions / 只看我待处理的` no longer auto-selects unrelated open work when the current operator has zero pending items
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`
