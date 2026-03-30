@@ -11,7 +11,16 @@ export default function ExpenseClaimSubmitButton({
 }) {
   const [pending, setPending] = useState(false);
   return (
-    <button type="submit" disabled={pending} aria-disabled={pending} onClick={() => setPending(true)}>
+    <button
+      type="submit"
+      disabled={pending}
+      aria-disabled={pending}
+      onClick={(event) => {
+        const form = event.currentTarget.form;
+        if (form && !form.reportValidity()) return;
+        setPending(true);
+      }}
+    >
       {pending ? pendingLabel : label}
     </button>
   );

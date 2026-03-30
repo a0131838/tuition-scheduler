@@ -639,3 +639,21 @@ This file is the single source of truth for what changed in production.
   - queue rows now distinguish `Blocker / 阻塞`, `Needs check / 需要核对`, and `Ready / 可处理`
   - finance fix flows show a bilingual return cue back to the selected receipt review item
 - Rollback point: previous production commit before `2026-03-30-r14`.
+
+## 2026-03-30-r15
+
+- Release ID: `2026-03-30-r15`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Hotfix the teacher expense-claim submit button so browser-side validation no longer leaves the UI stuck on `Submitting...`.
+- Key files:
+  - `app/_components/ExpenseClaimSubmitButton.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-expense-submit-validation-hotfix.md`
+- Risk impact (if any): Low. This release only changes client-side pending behavior for expense-claim submission buttons; expense validation rules, submit flow, and duplicate protection remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - expense-claim submit button only switches to `Submitting... / 提交中...` after browser validity checks pass
+  - missing required fields or files no longer leave the button stuck in a disabled pending state
+- Rollback point: previous production commit before `2026-03-30-r15`.

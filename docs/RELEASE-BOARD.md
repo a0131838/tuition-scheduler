@@ -279,3 +279,13 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r15 Deployed
+
+- Scope: expense-claim submit pending-state hotfix for browser validation failures.
+- Business impact:
+  - missing required fields or files no longer make the expense submit button get stuck on `Submitting...`
+  - valid expense submits still lock the button once a real submit starts
+  - no expense validation rule, approval rule, or duplicate-submit logic changed
+- Validation:
+  - `npm run build`
