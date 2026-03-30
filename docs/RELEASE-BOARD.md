@@ -194,3 +194,14 @@
   - no approval order, permission, receipt creation, or finance data flow changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r7 Deployed
+
+- Scope: receipt approval worklist polish with task-first queue ordering, clearer post-action success messaging, and action-oriented risk guidance.
+- Business impact:
+  - pending risky items now sort ahead of completed items so the queue behaves more like a to-do list
+  - success banners explain both the action result and whether the page moved to the next item
+  - risk boxes now include clearer bilingual suggested next steps instead of only describing the problem
+  - no approval order, permission, receipt creation, or finance data flow changed
+- Validation:
+  - `npm run build`

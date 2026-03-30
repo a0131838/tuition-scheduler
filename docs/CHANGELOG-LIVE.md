@@ -488,3 +488,22 @@ This file is the single source of truth for what changed in production.
   - reject actions use standardized bilingual reasons plus optional detail
   - selected receipt panel shows a lightweight bilingual timeline
 - Rollback point: previous production commit before `2026-03-30-r6`.
+
+## 2026-03-30-r7
+
+- Release ID: `2026-03-30-r7`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the receipt approval queue feel more like a worklist with task-first ordering, clearer success feedback, and action-oriented risk guidance.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-worklist-polish.md`
+- Risk impact (if any): Low. This release only adjusts queue ordering and bilingual review-page messaging; approval sequence, permissions, and billing data flow remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - pending risky items sort ahead of completed items in the review queue
+  - success banner explains the action result and next-item jump in bilingual wording
+  - risk box includes explicit bilingual recommended next steps
+- Rollback point: previous production commit before `2026-03-30-r7`.

@@ -147,6 +147,36 @@ function extractRejectReason(formData: FormData, reasonFieldName = "reason", det
   return preset || detail;
 }
 
+function queuePriority(status: "COMPLETED" | "REJECTED" | "PENDING", hasRisk: boolean, missingPaymentRecord: boolean) {
+  if (status === "PENDING" && hasRisk) return 0;
+  if (status === "PENDING" && missingPaymentRecord) return 1;
+  if (status === "PENDING") return 2;
+  if (status === "REJECTED") return 3;
+  return 4;
+}
+
+function describeReceiptActionResult(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  rawMsg: string,
+  movedToNext: boolean
+) {
+  const normalized = String(rawMsg || "").trim();
+  const withMove = movedToNext
+    ? t(lang, "Moved to next item / 已跳转到下一条", "Moved to next item / 已跳转到下一条")
+    : t(lang, "Queue updated / 队列已更新", "Queue updated / 队列已更新");
+  if (normalized === "Manager approved") return `${t(lang, "Manager approved / 管理已批准", "Manager approved / 管理已批准")} · ${withMove}`;
+  if (normalized === "Manager rejected") return `${t(lang, "Manager rejected / 管理已驳回", "Manager rejected / 管理已驳回")} · ${withMove}`;
+  if (normalized === "Finance approved") return `${t(lang, "Finance approved / 财务已批准", "Finance approved / 财务已批准")} · ${withMove}`;
+  if (normalized === "Finance rejected") return `${t(lang, "Finance rejected / 财务已驳回", "Finance rejected / 财务已驳回")} · ${withMove}`;
+  if (normalized === "Partner manager approved") return `${t(lang, "Partner manager approved / 合作方管理已批准", "Partner manager approved / 合作方管理已批准")} · ${withMove}`;
+  if (normalized === "Partner manager rejected") return `${t(lang, "Partner manager rejected / 合作方管理已驳回", "Partner manager rejected / 合作方管理已驳回")} · ${withMove}`;
+  if (normalized === "Partner finance approved") return `${t(lang, "Partner finance approved / 合作方财务已批准", "Partner finance approved / 合作方财务已批准")} · ${withMove}`;
+  if (normalized === "Partner finance rejected") return `${t(lang, "Partner finance rejected / 合作方财务已驳回", "Partner finance rejected / 合作方财务已驳回")} · ${withMove}`;
+  if (normalized === "Receipt reopened for redo") return `${t(lang, "Receipt reopened / 收据已重新打开", "Receipt reopened / 收据已重新打开")} · ${withMove}`;
+  if (normalized === "Partner receipt reopened for redo") return `${t(lang, "Partner receipt reopened / 合作方收据已重新打开", "Partner receipt reopened / 合作方收据已重新打开")} · ${withMove}`;
+  return normalized;
+}
+
 async function uploadPaymentRecordAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -737,6 +767,9 @@ export default async function ReceiptsApprovalsPage({
       : approval.managerRejectReason || approval.financeRejectReason
         ? "REJECTED"
         : "PENDING";
+    const paymentFileMissing = Boolean(pay && !(paymentRecordFileMap.get(pay.id) ?? false));
+    const amountDiff = Math.abs((Number(r.amountReceived) || 0) - (Number(inv?.totalAmount ?? 0) || 0));
+    const riskCount = (pay ? 0 : 1) + (paymentFileMissing ? 1 : 0) + (amountDiff > 0.01 ? 1 : 0);
     return {
       id: r.id,
       type: "PARENT" as const,
@@ -750,6 +783,8 @@ export default async function ReceiptsApprovalsPage({
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate } : null,
+      paymentFileMissing,
+      riskCount,
       packageId: r.packageId,
       createdBy: r.createdBy,
       createdAt: r.createdAt,
@@ -773,6 +808,8 @@ export default async function ReceiptsApprovalsPage({
       : approval.managerRejectReason || approval.financeRejectReason
         ? "REJECTED"
         : "PENDING";
+    const amountDiff = Math.abs((Number(r.amountReceived) || 0) - (Number(inv?.totalAmount ?? 0) || 0));
+    const riskCount = (pay ? 0 : 1) + (amountDiff > 0.01 ? 1 : 0);
     return {
       id: r.id,
       type: "PARTNER" as const,
@@ -786,6 +823,8 @@ export default async function ReceiptsApprovalsPage({
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
+      paymentFileMissing: false,
+      riskCount,
       packageId: "",
       createdBy: r.createdBy,
       createdAt: r.createdAt,
@@ -806,7 +845,12 @@ export default async function ReceiptsApprovalsPage({
       return createdBy === String(actorEmail).trim().toLowerCase() || createdAt.startsWith(todayPrefix) || createdAt.startsWith(today);
     });
   }
-  unifiedQueue = unifiedQueue.sort((a, b) => (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? ""));
+  unifiedQueue = unifiedQueue.sort((a, b) => {
+    const aPriority = queuePriority(a.status, (a.riskCount ?? 0) > 0, !a.paymentRecord);
+    const bPriority = queuePriority(b.status, (b.riskCount ?? 0) > 0, !b.paymentRecord);
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    return (normalizeDateOnly(b.receiptDate) ?? "").localeCompare(normalizeDateOnly(a.receiptDate) ?? "");
+  });
   const selectedRow = unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ?? unifiedQueue[0] ?? null;
   const selectedRowIndex = selectedRow
     ? unifiedQueue.findIndex((x) => x.type === selectedRow.type && x.id === selectedRow.id)
@@ -820,6 +864,11 @@ export default async function ReceiptsApprovalsPage({
     : selectedRow
       ? openHref(selectedRow.type, selectedRow.id)
       : `/admin/receipts-approvals?${baseQuery.toString()}`;
+  const actionMovedToNext =
+    Boolean(msg) &&
+    Boolean(selectedId) &&
+    Boolean(selectedRow) &&
+    `${selectedType}:${selectedId}` !== `${selectedRow.type}:${selectedRow.id}`;
   const selectedRowAmountDiff =
     selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
   const selectedRowPaymentFileMissing =
@@ -840,6 +889,18 @@ export default async function ReceiptsApprovalsPage({
       );
     }
   }
+  const selectedRiskActions = selectedRiskMessages.map((line) => {
+    if (line.includes("No linked payment record") || line.includes("未绑定缴费记录")) {
+      return t(lang, "Next step: open fix tools and link a payment proof. / 下一步：打开修复工具并绑定缴费记录。", "Next step: open fix tools and link a payment proof. / 下一步：打开修复工具并绑定缴费记录。");
+    }
+    if (line.includes("Payment file is missing") || line.includes("缴费文件缺失")) {
+      return t(lang, "Next step: open fix tools and re-upload the payment file. / 下一步：打开修复工具并重新上传缴费文件。", "Next step: open fix tools and re-upload the payment file. / 下一步：打开修复工具并重新上传缴费文件。");
+    }
+    if (line.includes("Amount differs from invoice total") || line.includes("收据金额与发票总额不一致")) {
+      return t(lang, "Next step: confirm the invoice and receipt amounts before approval. / 下一步：批准前先核对发票金额和收据金额。", "Next step: confirm the invoice and receipt amounts before approval. / 下一步：批准前先核对发票金额和收据金额。");
+    }
+    return null;
+  }).filter((line): line is string => Boolean(line));
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -879,7 +940,7 @@ export default async function ReceiptsApprovalsPage({
       ) : null}
       {msg ? (
         <div style={{ marginBottom: 12, color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "8px 10px" }}>
-          {t(lang, "Success", "成功")}: {msg}
+          {t(lang, "Success", "成功")}: {describeReceiptActionResult(lang, msg, actionMovedToNext)}
         </div>
       ) : null}
 
@@ -1510,6 +1571,11 @@ export default async function ReceiptsApprovalsPage({
                 <div style={{ display: "grid", gap: 2 }}>
                   {selectedRiskMessages.map((line, idx) => (
                     <div key={idx}>- {line}</div>
+                  ))}
+                  {selectedRiskActions.map((line, idx) => (
+                    <div key={`action-${idx}`} style={{ color: "#7c2d12", fontWeight: 600 }}>
+                      {idx === 0 ? t(lang, "Recommended action / 建议操作", "Recommended action / 建议操作") : t(lang, "Also check / 也请检查", "Also check / 也请检查")}: {line}
+                    </div>
                   ))}
                 </div>
               </div>
