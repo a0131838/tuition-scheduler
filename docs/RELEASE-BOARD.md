@@ -136,3 +136,14 @@
   - `npm run test:backend`
   - `npm run build`
   - duplicate expense-claim lookup regression test passes
+
+## 2026-03-30-r2 Deployed
+
+- Scope: controlled admin route for parent payment proof open/preview in receipt approvals.
+- Business impact:
+  - admin receipt approvals no longer depends on direct static `relativePath` links for parent payment proof files
+  - payment proof open/preview now resolves from `paymentRecordId`, which avoids false "404 means no upload" conclusions when original filename and stored filename differ
+  - upload, receipt creation, and approval logic remain unchanged
+- Validation:
+  - `npm run build`
+  - admin receipt approvals uses `/api/admin/parent-payment-records/[id]/file` for parent payment proof open/preview

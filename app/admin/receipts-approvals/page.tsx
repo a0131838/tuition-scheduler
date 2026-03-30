@@ -69,6 +69,10 @@ function isImageFile(pathOrName: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(pathOrName);
 }
 
+function parentPaymentRecordFileHref(recordId: string) {
+  return `/api/admin/parent-payment-records/${encodeURIComponent(recordId)}/file`;
+}
+
 function withQuery(base: string, packageId?: string) {
   if (!packageId) return base;
   const q = `packageId=${encodeURIComponent(packageId)}`;
@@ -682,7 +686,7 @@ export default async function ReceiptsApprovalsPage({
       invoiceTotalAmount: Number(inv?.totalAmount ?? 0) || 0,
       approval,
       status,
-      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
+      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate } : null,
       packageId: r.packageId,
       createdBy: r.createdBy,
       createdAt: r.createdAt,
@@ -1086,7 +1090,7 @@ export default async function ReceiptsApprovalsPage({
                             <td>{r.referenceNo || "-"}</td>
                             <td>
                               {fileExists ? (
-                                <a href={r.relativePath} target="_blank" rel="noreferrer">
+                                <a href={parentPaymentRecordFileHref(r.id)} target="_blank" rel="noreferrer">
                                   {t(lang, "Open File", "打开文件")}
                                 </a>
                               ) : (
@@ -1102,9 +1106,9 @@ export default async function ReceiptsApprovalsPage({
                                 </span>
                               ) : isImageFile(r.relativePath) || isImageFile(r.originalFileName) ? (
                                 <ImagePreviewWithFallback
-                                  src={r.relativePath}
+                                  src={parentPaymentRecordFileHref(r.id)}
                                   alt={r.originalFileName}
-                                  href={r.relativePath}
+                                  href={parentPaymentRecordFileHref(r.id)}
                                   noPreviewLabel={t(lang, "No preview", "无法预览")}
                                 />
                               ) : (

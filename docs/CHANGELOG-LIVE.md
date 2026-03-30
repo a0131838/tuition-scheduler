@@ -390,3 +390,22 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - Ahmar duplicate `2026-03-29` transport claims were reduced to a single retained submission
 - Rollback point: previous production commit before `2026-03-30-r1` (`157ea31`).
+
+## 2026-03-30-r2
+
+- Release ID: `2026-03-30-r2`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE`
+- Scope: Route admin parent payment proof open/preview through a controlled record-id endpoint in receipt approvals.
+- Key files:
+  - `app/api/admin/parent-payment-records/[id]/file/route.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-parent-payment-proof-route.md`
+- Risk impact (if any): Low. No parent billing storage, upload, receipt creation, or approval rules changed; only the admin file open/preview path for parent payment proof records now resolves via a controlled route.
+- Verification:
+  - `npm run build` passed
+  - admin receipt approvals now opens parent payment proof files via `/api/admin/parent-payment-records/[id]/file`
+  - existing valid payment-proof files remain reachable through the controlled route
+- Rollback point: previous production commit before `2026-03-30-r2`.
