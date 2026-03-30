@@ -65,6 +65,25 @@ function tagStyle(kind: "ok" | "warn" | "err" | "muted") {
   return { color: "#374151", background: "#f3f4f6", border: "1px solid #d1d5db" };
 }
 
+function queueStatusLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  status: "COMPLETED" | "REJECTED" | "PENDING",
+) {
+  if (status === "COMPLETED") return t(lang, "Completed / ready to archive", "已完成 / 可归档");
+  if (status === "REJECTED") return t(lang, "Rejected / needs fix", "已驳回 / 需修复");
+  return t(lang, "Pending / waiting for review", "待审批 / 等待审核");
+}
+
+function queueStatusKind(status: "COMPLETED" | "REJECTED" | "PENDING") {
+  if (status === "COMPLETED") return "ok" as const;
+  if (status === "REJECTED") return "err" as const;
+  return "warn" as const;
+}
+
+function queueTypeLabel(lang: "BILINGUAL" | "ZH" | "EN", type: "PARENT" | "PARTNER") {
+  return type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方");
+}
+
 function isImageFile(pathOrName: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(pathOrName);
 }
@@ -1299,10 +1318,23 @@ export default async function ReceiptsApprovalsPage({
           min-width: 240px;
           flex: 1 1 240px;
         }
+        .receipt-primary-actions {
+          display: grid;
+          gap: 10px;
+        }
+        .receipt-primary-actions > div {
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 10px;
+          background: #fff;
+        }
       `}</style>
       <div className="receipt-workspace">
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Unified Receipt Queue", "统一收据队列")}</h3>
+        <div style={{ marginBottom: 8, color: "#475569", fontSize: 13 }}>
+          {t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
+        </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
           {([
             ["ALL", t(lang, "All", "全部")],
@@ -1342,13 +1374,10 @@ export default async function ReceiptsApprovalsPage({
                 <th align="left">{t(lang, "Date", "日期")}</th>
                 <th align="left">{t(lang, "Invoice No.", "发票号")}</th>
                 <th align="left">{t(lang, "Name / Party", "学生/对象")}</th>
-                <th align="left">{t(lang, "Payment Record", "缴费记录")}</th>
                 <th align="left">{t(lang, "Amount", "金额")}</th>
-                <th align="left">{t(lang, "Manager", "管理")}</th>
-                <th align="left">{t(lang, "Finance", "财务")}</th>
                 <th align="left">{t(lang, "Status", "状态")}</th>
-                <th align="left">{t(lang, "Open", "打开")}</th>
-                <th align="left">{t(lang, "Fix", "修复")}</th>
+                <th align="left">{t(lang, "Review Progress", "审核进度")}</th>
+                <th align="left">{t(lang, "Primary Action", "主要操作")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1357,51 +1386,45 @@ export default async function ReceiptsApprovalsPage({
                   key={`${x.type}-${x.id}`}
                   style={{ borderTop: "1px solid #eee", background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : undefined }}
                 >
-                  <td>{x.type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")}</td>
+                  <td>{queueTypeLabel(lang, x.type)}</td>
                   <td>{x.receiptNo}</td>
                   <td>{normalizeDateOnly(x.receiptDate) ?? "-"}</td>
                   <td>{x.invoiceNo}</td>
                   <td>{x.partyName}</td>
-                  <td>
-                    {x.paymentRecord ? (
-                      <a href={x.paymentRecord.path} target="_blank" rel="noreferrer">{x.paymentRecord.name}</a>
-                    ) : (
-                      <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
-                    )}
-                  </td>
                   <td>{money(x.amountReceived)}</td>
                   <td>
-                    {roleCfg.managerApproverEmails.length === 0
-                      ? t(lang, "No config", "未配置")
-                      : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
+                    <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+                      {queueStatusLabel(lang, x.status)}
+                    </span>
                   </td>
                   <td>
-                    {roleCfg.financeApproverEmails.length === 0
-                      ? t(lang, "No config", "未配置")
-                      : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
+                    <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
+                      <div>
+                        {t(lang, "Manager", "管理")}:{" "}
+                        {roleCfg.managerApproverEmails.length === 0
+                          ? t(lang, "No config", "未配置")
+                          : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
+                      </div>
+                      <div>
+                        {t(lang, "Finance", "财务")}:{" "}
+                        {roleCfg.financeApproverEmails.length === 0
+                          ? t(lang, "No config", "未配置")
+                          : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
+                      </div>
+                      <div>
+                        {t(lang, "Payment record", "缴费记录")}:{" "}
+                        {x.paymentRecord ? x.paymentRecord.name : t(lang, "(none)", "（无）")}
+                      </div>
+                    </div>
                   </td>
                   <td>
-                    {x.status === "COMPLETED" ? (
-                      <span style={{ color: "#166534", fontWeight: 600 }}>{t(lang, "Completed", "已完成")}</span>
-                    ) : x.status === "REJECTED" ? (
-                      <span style={{ color: "#b00", fontWeight: 600 }}>{t(lang, "Rejected", "已驳回")}</span>
-                    ) : (
-                      <span style={{ color: "#b45309", fontWeight: 600 }}>{t(lang, "Pending", "待审批")}</span>
-                    )}
-                  </td>
-                  <td>
-                    <a href={openHref(x.type, x.id)}>{t(lang, "Open", "打开")}</a>
-                  </td>
-                  <td>
-                    {x.type === "PARENT" ? (
-                      <a
-                        href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=${encodeURIComponent(x.type)}&selectedId=${encodeURIComponent(x.id)}`}
-                      >
-                        {t(lang, "Fix", "修复")}
-                      </a>
-                    ) : (
-                      <span style={{ color: "#9ca3af" }}>-</span>
-                    )}
+                    <a href={openHref(x.type, x.id)}>
+                      {x.status === "COMPLETED"
+                        ? t(lang, "Open completed receipt", "打开已完成收据")
+                        : x.status === "REJECTED"
+                          ? t(lang, "Open and fix", "打开并修复")
+                          : t(lang, "Open for review", "打开审核")}
+                    </a>
                   </td>
                 </tr>
               ))}
@@ -1417,6 +1440,14 @@ export default async function ReceiptsApprovalsPage({
           <div style={{ color: "#666" }}>{t(lang, "Please select one row from the queue above.", "请从上方队列选择一条记录。")}</div>
         ) : (
           <>
+            <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff" }}>
+              <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
+                {t(lang, "You are reviewing", "当前正在处理")}
+              </div>
+              <div style={{ color: "#334155" }}>
+                {queueTypeLabel(lang, selectedRow.type)} | {selectedRow.receiptNo} | {selectedRow.partyName}
+              </div>
+            </div>
             {selectedRiskMessages.length > 0 ? (
               <div style={{ marginBottom: 10, color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 10px" }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(lang, "Risk checks", "风险检查")}</div>
@@ -1432,7 +1463,7 @@ export default async function ReceiptsApprovalsPage({
               </div>
             )}
             <div style={{ marginBottom: 10 }}>
-              <b>{t(lang, "Type", "类型")}:</b> {selectedRow.type === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")} |{" "}
+              <b>{t(lang, "Type", "类型")}:</b> {queueTypeLabel(lang, selectedRow.type)} |{" "}
               <b>{t(lang, "Receipt No.", "收据号")}:</b> {selectedRow.receiptNo} | <b>{t(lang, "Invoice No.", "发票号")}:</b> {selectedRow.invoiceNo}
             </div>
             <div style={{ marginBottom: 10 }}>
@@ -1445,90 +1476,69 @@ export default async function ReceiptsApprovalsPage({
             </div>
             {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Manager Rejected:", "管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
-            {selectedRow.type === "PARENT" ? (
-              <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
-                  {t(lang, "Fix in create step", "到创建步骤修复")}
-                </a>
-                <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
-                  {t(lang, "Open package billing", "打开课包账单页")}
-                </a>
-              </div>
-            ) : null}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="receipt-primary-actions">
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isManagerApprover ? (
-                <>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review / 管理审核", "Manager review / 管理审核")}</div>
                   <form action={managerApproveReceiptAction}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <button type="submit">{t(lang, "Manager Approve", "管理审批通过")}</button>
+                    <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Manager reject reason", "管理驳回原因")} />
-                    <button type="submit">{t(lang, "Manager Reject", "管理驳回")}</button>
+                    <input name="reason" placeholder={t(lang, "Reject reason / 管理驳回原因", "Reject reason / 管理驳回原因")} />
+                    <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
-                </>
+                </div>
               ) : null}
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isFinanceApprover ? (
-                <>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Finance review / 财务审核", "Finance review / 财务审核")}</div>
                   <form action={financeApproveReceiptAction}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <button type="submit">{t(lang, "Finance Approve", "财务审批通过")}</button>
+                    <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Finance reject reason", "财务驳回原因")} />
-                    <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
+                    <input name="reason" placeholder={t(lang, "Reject reason / 财务驳回原因", "Reject reason / 财务驳回原因")} />
+                    <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
-                </>
+                </div>
               ) : null}
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARTNER" && isManagerApprover ? (
-                <>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review / 管理审核", "Manager review / 管理审核")}</div>
                   <form action={managerApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <button type="submit">{t(lang, "Manager Approve", "管理审批通过")}</button>
+                    <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Manager reject reason", "管理驳回原因")} />
-                    <button type="submit">{t(lang, "Manager Reject", "管理驳回")}</button>
+                    <input name="reason" placeholder={t(lang, "Reject reason / 管理驳回原因", "Reject reason / 管理驳回原因")} />
+                    <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
-                </>
+                </div>
               ) : null}
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARTNER" && isFinanceApprover ? (
-                <>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Finance review / 财务审核", "Finance review / 财务审核")}</div>
                   <form action={financeApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <button type="submit">{t(lang, "Finance Approve", "财务审批通过")}</button>
+                    <button type="submit">{t(lang, "Approve this receipt / 批准这张收据", "Approve this receipt / 批准这张收据")}</button>
                   </form>
                   <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input name="reason" placeholder={t(lang, "Finance reject reason", "财务驳回原因")} />
-                    <button type="submit">{t(lang, "Finance Reject", "财务驳回")}</button>
+                    <input name="reason" placeholder={t(lang, "Reject reason / 财务驳回原因", "Reject reason / 财务驳回原因")} />
+                    <button type="submit">{t(lang, "Reject this receipt / 驳回这张收据", "Reject this receipt / 驳回这张收据")}</button>
                   </form>
-                </>
+                </div>
               ) : null}
-              {canSuperRevoke && selectedRow.type === "PARENT" ? (
-                <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <input type="hidden" name="packageId" value={selectedRow.packageId} />
-                  <input type="hidden" name="receiptId" value={selectedRow.id} />
-                  <input name="reason" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
-                  <button type="submit">{t(lang, "Revoke To Redo", "撤回重做")}</button>
-                </form>
-              ) : null}
-              {canSuperRevoke && selectedRow.type === "PARTNER" ? (
-                <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <input type="hidden" name="receiptId" value={selectedRow.id} />
-                  <input name="reason" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
-                  <button type="submit">{t(lang, "Revoke To Redo", "撤回重做")}</button>
-                </form>
-              ) : null}
-              <div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Receipt file / 收据文件", "Receipt file / 收据文件")}</div>
                 <b>PDF:</b>{" "}
                 {selectedRow.status === "COMPLETED" ? (
                   <a href={selectedRow.exportHref}>{t(lang, "Export PDF", "导出PDF")}</a>
@@ -1536,6 +1546,39 @@ export default async function ReceiptsApprovalsPage({
                   <span style={{ color: "#b45309" }}>{t(lang, "Pending approval", "等待审批")}</span>
                 )}
               </div>
+
+              <details style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                  {t(lang, "More actions / 更多操作", "More actions / 更多操作")}
+                </summary>
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {selectedRow.type === "PARENT" ? (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                        {t(lang, "Open fix tools / 打开修复工具", "Open fix tools / 打开修复工具")}
+                      </a>
+                      <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                        {t(lang, "Open package billing / 打开课包账单页", "Open package billing / 打开课包账单页")}
+                      </a>
+                    </div>
+                  ) : null}
+                  {canSuperRevoke && selectedRow.type === "PARENT" ? (
+                    <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                      <input type="hidden" name="receiptId" value={selectedRow.id} />
+                      <input name="reason" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
+                      <button type="submit">{t(lang, "Revoke to redo / 撤回重做", "Revoke to redo / 撤回重做")}</button>
+                    </form>
+                  ) : null}
+                  {canSuperRevoke && selectedRow.type === "PARTNER" ? (
+                    <form action={revokePartnerReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <input type="hidden" name="receiptId" value={selectedRow.id} />
+                      <input name="reason" placeholder={t(lang, "Revoke reason (optional) / 撤回原因（可选）", "Revoke reason (optional) / 撤回原因（可选）")} />
+                      <button type="submit">{t(lang, "Revoke to redo / 撤回重做", "Revoke to redo / 撤回重做")}</button>
+                    </form>
+                  ) : null}
+                </div>
+              </details>
             </div>
           </>
         )}

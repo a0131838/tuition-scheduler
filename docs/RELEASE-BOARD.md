@@ -172,3 +172,14 @@
   - no approval, payment, or archive rule changed
 - Validation:
   - `npm run build`
+
+## 2026-03-30-r5 Deployed
+
+- Scope: receipt approval page low-risk UX polish for queue readability and main-action focus.
+- Business impact:
+  - queue status and action labels are clearer and more bilingual
+  - selected receipt panel now emphasizes the active item and main review action
+  - fix/revoke/package-billing tools are tucked under `More actions / 更多操作`
+  - no approval order, permission, or finance data flow changed
+- Validation:
+  - `npm run build`

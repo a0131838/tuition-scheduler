@@ -450,3 +450,22 @@ This file is the single source of truth for what changed in production.
   - missing attachments show explicit bilingual warning text
   - rejected claims show a clearer bilingual next-step card for resubmission
 - Rollback point: previous production commit before `2026-03-30-r4`.
+
+## 2026-03-30-r5
+
+- Release ID: `2026-03-30-r5`
+- Date/Time (Asia/Shanghai): `2026-03-30`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reduce clutter on the admin receipt approval page with clearer queue wording, stronger focus on the selected receipt, and secondary tools moved into `More actions / 更多操作`.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260330-receipt-approval-ux-polish.md`
+- Risk impact (if any): Low. Review/approval business rules, permissions, and finance workflows are unchanged; this release only changes interaction emphasis and bilingual copy on the receipt approval page.
+- Verification:
+  - `npm run build` passed
+  - queue rows show bilingual human-readable status labels
+  - selected receipt panel highlights the current item and main review action
+  - fix/revoke/package-billing links moved under `More actions / 更多操作`
+- Rollback point: previous production commit before `2026-03-30-r5`.
