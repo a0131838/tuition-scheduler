@@ -784,3 +784,20 @@ This file is the single source of truth for what changed in production.
   - `bash ops/server/scripts/report-large-dirs.sh` passed
   - `npm run build` passed
 - Rollback point: previous production commit before `2026-03-31-r04`.
+
+## 2026-03-31-r05
+
+- Release ID: `2026-03-31-r05`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Hotfix object-storage upload path for ops backup archives by avoiding multipart upload on the current S3-compatible endpoint.
+- Key files:
+  - `ops/server/scripts/upload_object_storage_s3.sh`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-upload-object-storage-hotfix.md`
+- Risk impact (if any): Low. This release only changes the ops backup upload method for archive files; runtime upload flows, file paths, and business features stay unchanged.
+- Verification:
+  - `bash -n ops/server/scripts/upload_object_storage_s3.sh` passed
+  - upload backup archive can be written to the configured object-storage bucket without the previous multipart `MissingContentLength` error
+- Rollback point: previous production commit before `2026-03-31-r05`.

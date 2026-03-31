@@ -353,3 +353,13 @@
   - `bash ops/server/scripts/check-disk-usage.sh`
   - `bash ops/server/scripts/report-large-dirs.sh`
   - `npm run build`
+
+## 2026-03-31-r05 Deployed
+
+- Scope: object-storage backup upload hotfix for archive files.
+- Business impact:
+  - upload archive backups now avoid the multipart code path that the current S3-compatible endpoint rejected with `MissingContentLength`
+  - runtime business uploads, receipt access, expense-claim files, and ticket files stay unchanged
+- Validation:
+  - `bash -n ops/server/scripts/upload_object_storage_s3.sh`
+  - manual backup archive upload succeeds against the configured object-storage bucket
