@@ -930,3 +930,20 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - clicking `Open history / 打开历史` now lands on an expanded billing-history section
 - Rollback point: previous production commit before `2026-03-31-r11`.
+
+## 2026-03-31-r12
+
+- Release ID: `2026-03-31-r12`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Fix the partner settlement integrity-workbench Todo Center shortcut so it points to the real admin todo route.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-todo-link-fix.md`
+- Risk impact (if any): Low. This only fixes a broken navigation link from the integrity workbench; settlement logic, warnings, billing flows, and permissions remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - `Open todo center / 打开待办中心` now targets `/admin/todos`
+- Rollback point: previous production commit before `2026-03-31-r12`.

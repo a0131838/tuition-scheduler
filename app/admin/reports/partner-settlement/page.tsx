@@ -988,7 +988,7 @@ export default async function PartnerSettlementPage({
               <a href="/admin/reports/undeducted-completed" style={{ fontWeight: 700 }}>
                 {t(lang, "Open repair report", "打开减扣修复报表")}
               </a>
-              <a href="/admin/todo-center" style={{ fontWeight: 700 }}>
+              <a href="/admin/todos" style={{ fontWeight: 700 }}>
                 {t(lang, "Open todo center", "打开待办中心")}
               </a>
             </div>

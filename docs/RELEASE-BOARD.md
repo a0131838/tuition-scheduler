@@ -437,3 +437,12 @@
   - no settlement actions, warnings, billing flows, or permission checks changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r12 Deployed
+
+- Scope: partner settlement Todo Center shortcut fix.
+- Business impact:
+  - `Open todo center / 打开待办中心` inside the integrity workbench now opens the real admin todo page instead of a 404 route
+  - no settlement actions, repair logic, warnings, or permissions changed
+- Validation:
+  - `npm run build`
