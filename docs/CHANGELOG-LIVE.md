@@ -722,7 +722,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-03-31-r02`
 - Date/Time (Asia/Shanghai): `2026-03-31`
-- Deployment status: `READY FOR DEPLOY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: Let teachers withdraw their own submitted expense claims before review instead of needing hard delete.
 - Key files:
   - `prisma/schema.prisma`

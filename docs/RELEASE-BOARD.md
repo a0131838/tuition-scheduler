@@ -320,7 +320,7 @@
 - Validation:
   - `npm run build`
 
-## 2026-03-31-r02 Ready For Deploy
+## 2026-03-31-r02 Deployed
 
 - Scope: teacher expense-claim withdraw flow for submitted claims.
 - Business impact:
