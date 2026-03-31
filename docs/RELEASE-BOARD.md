@@ -339,3 +339,17 @@
   - no submit, withdraw, approval, payment, or archive rules changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r04 Deployed
+
+- Scope: upload ops toolkit for backup, integrity audit, disk alerts, and large-directory reporting.
+- Business impact:
+  - operators can now audit whether upload records still point to files that exist on disk
+  - server can be configured to alert earlier when storage usage climbs or upload files go missing
+  - uploads can be archived to S3-compatible object storage on a schedule without changing runtime upload behavior
+  - no upload route, receipt flow, expense flow, or approval rule changed
+- Validation:
+  - `npm run audit:upload-integrity`
+  - `bash ops/server/scripts/check-disk-usage.sh`
+  - `bash ops/server/scripts/report-large-dirs.sh`
+  - `npm run build`

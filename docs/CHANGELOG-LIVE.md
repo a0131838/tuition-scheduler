@@ -757,3 +757,30 @@ This file is the single source of truth for what changed in production.
   - `All active claims / 全部有效报销单` now excludes `WITHDRAWN` by default
   - teachers can still review withdrawn claims by explicitly selecting `WITHDRAWN`
 - Rollback point: previous production commit before `2026-03-31-r03`.
+
+## 2026-03-31-r04
+
+- Release ID: `2026-03-31-r04`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add uploads backup/audit/disk-monitoring ops toolkit for safer file retention and earlier storage alerts.
+- Key files:
+  - `scripts/audit-upload-integrity.ts`
+  - `ops/server/scripts/run_upload_integrity_with_alert.sh`
+  - `ops/server/scripts/setup_upload_integrity_cron.sh`
+  - `ops/server/scripts/check-disk-usage.sh`
+  - `ops/server/scripts/setup_disk_usage_cron.sh`
+  - `ops/server/scripts/report-large-dirs.sh`
+  - `ops/server/scripts/backup_uploads_to_object_storage.sh`
+  - `ops/server/scripts/setup_uploads_backup_cron.sh`
+  - `package.json`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-upload-ops-toolkit.md`
+- Risk impact (if any): Low. This release adds server-side audit/backup/monitoring tooling only; no upload business logic, approval flow, or file path format changed.
+- Verification:
+  - `npm run audit:upload-integrity` passed and wrote reports under `ops/reports/`
+  - `bash ops/server/scripts/check-disk-usage.sh` passed
+  - `bash ops/server/scripts/report-large-dirs.sh` passed
+  - `npm run build` passed
+- Rollback point: previous production commit before `2026-03-31-r04`.

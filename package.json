@@ -8,6 +8,7 @@
         "postinstall": "prisma generate",
         "build": "next build",
         "audit:ledger-integrity": "tsx scripts/reconciliation/daily-ledger-integrity.ts",
+        "audit:upload-integrity": "tsx scripts/audit-upload-integrity.ts",
         "audit:availability-integrity": "tsx scripts/report-availability-integrity.ts",
         "cleanup:availability-integrity": "tsx scripts/clean-availability-integrity.ts",
         "test:auth": "tsx --test tests/route-guards.test.ts",
