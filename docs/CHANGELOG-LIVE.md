@@ -739,3 +739,21 @@ This file is the single source of truth for what changed in production.
   - teachers now see `Withdraw claim / 撤回报销单` on their own submitted claims
   - only `SUBMITTED` claims can be withdrawn
 - Rollback point: previous production commit before `2026-03-31-r02`.
+
+## 2026-03-31-r03
+
+- Release ID: `2026-03-31-r03`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Hide withdrawn expense claims from the default teacher list while keeping them available through the status filter.
+- Key files:
+  - `app/teacher/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-expense-claim-default-hide-withdrawn.md`
+- Risk impact (if any): Low. This release only changes the default teacher list view for expense claims; withdraw, submit, approval, payment, and archive behavior stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - `All active claims / 全部有效报销单` now excludes `WITHDRAWN` by default
+  - teachers can still review withdrawn claims by explicitly selecting `WITHDRAWN`
+- Rollback point: previous production commit before `2026-03-31-r03`.

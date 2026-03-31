@@ -110,10 +110,12 @@ export default async function TeacherExpenseClaimsPage({
     paymentBatchMonth: paymentBatchMonthFilter || null,
   });
   const claimsWithAttachmentState = await Promise.all(
-    claims.map(async (claim) => ({
+    claims
+      .filter((claim) => statusFilter !== 'ALL' || claim.status !== ExpenseClaimStatus.WITHDRAWN)
+      .map(async (claim) => ({
       ...claim,
       attachmentExists: await fileExists(claim.receiptPath),
-    })),
+      })),
   );
 
   return (
@@ -138,11 +140,14 @@ export default async function TeacherExpenseClaimsPage({
                 <label style={{ display: 'grid', gap: 6 }}>
                   <span>{t(lang, 'Status', '状态')}</span>
                   <select name="status" defaultValue={statusFilter}>
-                    <option value="ALL">{t(lang, 'All', '全部')}</option>
+                    <option value="ALL">{t(lang, 'All active claims', '全部有效报销单')}</option>
                     {Object.values(ExpenseClaimStatus).map((status) => (
                       <option key={status} value={status}>{status}</option>
                     ))}
                   </select>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {t(lang, 'Withdrawn claims are hidden by default. Select WITHDRAWN to review them.', '已撤回报销单默认隐藏；如需查看，请在状态里选择 WITHDRAWN。')}
+                  </div>
                 </label>
                 <label style={{ display: 'grid', gap: 6 }}>
                   <span>{t(lang, 'Expense month', '消费月份')}</span>

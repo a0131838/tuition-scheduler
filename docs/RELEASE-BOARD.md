@@ -329,3 +329,13 @@
   - approval, reject, paid, and archive paths for existing claims stay unchanged
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r03 Deployed
+
+- Scope: teacher expense-claim default list hides withdrawn items.
+- Business impact:
+  - teachers no longer see `WITHDRAWN / 已撤回` claims mixed into the default `All active claims / 全部有效报销单` view
+  - withdrawn claims remain available through the explicit status filter when needed
+  - no submit, withdraw, approval, payment, or archive rules changed
+- Validation:
+  - `npm run build`
