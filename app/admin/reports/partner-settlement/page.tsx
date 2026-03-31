@@ -747,6 +747,10 @@ export default async function PartnerSettlementPage({
     if (historyFilter === "receipt-pending") return !r.receiptNo;
     return true;
   });
+  const warningSummary = {
+    missingFeedbackRows: offlineWarnings.filter((w) => w.missingFeedbackCount > 0).length,
+    statusExcludedRows: offlineWarnings.filter((w) => w.statusExcludedCount > 0).length,
+  };
 
   const selectedItem = (() => {
     if (focusType === "record" && focusId) {
@@ -761,7 +765,7 @@ export default async function PartnerSettlementPage({
           hours: row.hours,
           note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
           actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(row.mode)}&month=${encodeURIComponent(row.monthKey ?? month)}`,
-          actionLabel: t(lang, "Open billing workspace", "打开账单工作区"),
+          actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
         };
       }
     }
@@ -777,7 +781,7 @@ export default async function PartnerSettlementPage({
           hours: toHours(row.pendingMinutes ?? 0),
           note: t(lang, "Next step: create one settlement item for this completed package.", "下一步：为这个已完结课包生成一条结算记录。"),
           actionHref: "#action-queue-online",
-          actionLabel: t(lang, "Create from online queue", "到线上队列生成"),
+          actionLabel: t(lang, "Create online settlement", "生成线上结算"),
         };
       }
     }
@@ -793,7 +797,7 @@ export default async function PartnerSettlementPage({
           hours: row.hours,
           note: t(lang, "Next step: confirm attendance and feedback, then create the monthly settlement.", "下一步：确认点名与反馈后，生成该学生的月度结算。"),
           actionHref: "#action-queue-offline",
-          actionLabel: t(lang, "Create from offline queue", "到线下队列生成"),
+          actionLabel: t(lang, "Create offline settlement", "生成线下结算"),
         };
       }
     }
@@ -809,7 +813,7 @@ export default async function PartnerSettlementPage({
           hours: null,
           note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
           actionHref: studentAttendanceHref(row.studentId, month),
-          actionLabel: t(lang, "Open attendance details", "打开点名明细"),
+          actionLabel: t(lang, "Fix attendance issues", "修复点名异常"),
         };
       }
     }
@@ -825,7 +829,7 @@ export default async function PartnerSettlementPage({
         hours: defaultRecord.hours,
         note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
         actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(defaultRecord.mode)}&month=${encodeURIComponent(defaultRecord.monthKey ?? month)}`,
-        actionLabel: t(lang, "Open billing workspace", "打开账单工作区"),
+        actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
       };
     }
     const defaultWarning = offlineWarnings[0];
@@ -839,7 +843,7 @@ export default async function PartnerSettlementPage({
         hours: null,
         note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
         actionHref: studentAttendanceHref(defaultWarning.studentId, month),
-        actionLabel: t(lang, "Open attendance details", "打开点名明细"),
+        actionLabel: t(lang, "Fix attendance issues", "修复点名异常"),
       };
     }
     return null;
@@ -978,6 +982,18 @@ export default async function PartnerSettlementPage({
                 ? t(lang, `${offlineWarnings.length} offline warning rows need review before billing.`, `当前有 ${offlineWarnings.length} 条线下预警，建议先核对后再结算。`)
                 : t(lang, "No offline warning rows need attention right now.", "当前没有需要优先处理的线下预警。")}
             </div>
+            {offlineWarnings.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, marginTop: 10 }}>
+                <div style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
+                  <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Missing feedback rows", "缺反馈条目")}</div>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>{warningSummary.missingFeedbackRows}</div>
+                </div>
+                <div style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
+                  <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Status excluded rows", "状态不纳入条目")}</div>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>{warningSummary.statusExcludedRows}</div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

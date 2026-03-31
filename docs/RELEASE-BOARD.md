@@ -408,3 +408,13 @@
   - no settlement rules, amounts, permissions, invoice creation, or revert behavior changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r09 Deployed
+
+- Scope: partner settlement action-focused wording and grouped warning summary.
+- Business impact:
+  - the sticky selected-item panel now presents clearer direct-action labels such as `Review billing record`, `Create online settlement`, and `Fix attendance issues`
+  - the integrity workbench now shows grouped warning counts for missing feedback rows and status-excluded rows
+  - no settlement logic, billing flows, permissions, or calculations changed
+- Validation:
+  - `npm run build`

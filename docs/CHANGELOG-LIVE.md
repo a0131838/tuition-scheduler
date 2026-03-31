@@ -877,3 +877,21 @@ This file is the single source of truth for what changed in production.
   - queue tables provide `Focus / 聚焦` actions
   - billing history supports `All history / 全部历史`, `Invoice only / 仅已开票`, and `Receipt created / 仅已开收据`
 - Rollback point: previous production commit before `2026-03-31-r08`.
+
+## 2026-03-31-r09
+
+- Release ID: `2026-03-31-r09`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the partner settlement focus panel more action-oriented and add warning-type summary cards inside the integrity workbench.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-action-focus.md`
+- Risk impact (if any): Low. This only adjusts UI copy and warning summaries on the partner settlement page; no settlement rules, calculations, permissions, or actions changed.
+- Verification:
+  - `npm run build` passed
+  - selected-item primary actions now read like direct next steps
+  - integrity workbench shows grouped counts for missing-feedback and status-excluded warning rows
+- Rollback point: previous production commit before `2026-03-31-r09`.
