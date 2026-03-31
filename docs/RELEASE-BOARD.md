@@ -375,3 +375,14 @@
 - Validation:
   - `bash -n ops/server/scripts/upload_object_storage_s3.sh`
   - manual backup archive upload succeeds against the configured object-storage bucket
+
+## 2026-03-31-r06 Deployed
+
+- Scope: admin student list counter fix.
+- Business impact:
+  - `Full List / 完整列表` now shows the true total number of students instead of reusing the current filtered-view count
+  - `Showing x / y` and pagination continue to reflect the active filter correctly
+  - no student records, filters, or edit/delete behavior changed
+- Validation:
+  - `npm run build`
+  - production total verified as `73`

@@ -822,3 +822,21 @@ This file is the single source of truth for what changed in production.
   - `bash -n ops/server/scripts/upload_object_storage_s3.sh` passed
   - upload backup archive can be written to the configured object-storage bucket without the previous multipart `MissingContentLength` error
 - Rollback point: previous production commit before `2026-03-31-r05`.
+
+## 2026-03-31-r06
+
+- Release ID: `2026-03-31-r06`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Fix admin student list counters so the `Full List / 完整列表` card shows the true total student count instead of the current filtered view count.
+- Key files:
+  - `app/admin/students/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-student-full-list-count-fix.md`
+- Risk impact (if any): Low. This only corrects display counters and pagination math labels on the admin students page; no student data, filters, or mutation behavior changed.
+- Verification:
+  - `npm run build` passed
+  - production total student count verified as `73`
+  - `Full List / 完整列表` now uses the real total instead of the active view count
+- Rollback point: previous production commit before `2026-03-31-r06`.
