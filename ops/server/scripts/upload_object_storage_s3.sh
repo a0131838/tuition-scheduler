@@ -61,9 +61,9 @@ if [[ -n "$S3_ENDPOINT_URL" ]]; then
   AWS_ARGS+=(--endpoint-url "$S3_ENDPOINT_URL")
 fi
 
-CP_ARGS=()
+OBJECT_ARGS=()
 if [[ -n "$S3_STORAGE_CLASS" ]]; then
-  CP_ARGS+=(--storage-class "$S3_STORAGE_CLASS")
+  OBJECT_ARGS+=(--storage-class "$S3_STORAGE_CLASS")
 fi
 
 AWS_CONFIG_FILE_TMP=""
@@ -88,9 +88,23 @@ EOF
   AWS_ENV+=(AWS_CONFIG_FILE="$AWS_CONFIG_FILE_TMP")
 fi
 
-if [[ "${#AWS_ENV[@]}" -gt 0 ]]; then
-  env "${AWS_ENV[@]}" "$AWS_BIN" "${AWS_ARGS[@]}" s3 cp "${CP_ARGS[@]}" "$FILE" "$DEST"
-else
-  "$AWS_BIN" "${AWS_ARGS[@]}" s3 cp "${CP_ARGS[@]}" "$FILE" "$DEST"
+run_aws() {
+  if [[ "${#AWS_ENV[@]}" -gt 0 ]]; then
+    env "${AWS_ENV[@]}" "$AWS_BIN" "${AWS_ARGS[@]}" "$@"
+  else
+    "$AWS_BIN" "${AWS_ARGS[@]}" "$@"
+  fi
+}
+
+KEY="$BN"
+if [[ -n "$S3_PREFIX" ]]; then
+  KEY="${S3_PREFIX%/}/$BN"
 fi
+
+run_aws s3api put-object \
+  --bucket "$S3_BUCKET" \
+  --key "$KEY" \
+  --body "$FILE" \
+  "${OBJECT_ARGS[@]}" >/dev/null
+
 echo "Uploaded: $DEST"
