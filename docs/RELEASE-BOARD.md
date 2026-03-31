@@ -309,3 +309,13 @@
   - validation, duplicate-submit guard, approval, payment, and archive rules stay unchanged
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r01 Deployed
+
+- Scope: expense submit-button timing hotfix for browsers that cancel native form submission when the clicked submit button disables itself too early.
+- Business impact:
+  - teacher/admin expense submit buttons still lock after a valid submit starts
+  - mobile browsers now get a chance to send the real multipart POST before the button becomes disabled
+  - no expense validation rule, duplicate-submit guard, approval, payment, or archive logic changed
+- Validation:
+  - `npm run build`

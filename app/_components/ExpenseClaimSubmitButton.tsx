@@ -18,7 +18,9 @@ export default function ExpenseClaimSubmitButton({
       onClick={(event) => {
         const form = event.currentTarget.form;
         if (form && !form.reportValidity()) return;
-        setPending(true);
+        window.setTimeout(() => {
+          setPending(true);
+        }, 0);
       }}
     >
       {pending ? pendingLabel : label}

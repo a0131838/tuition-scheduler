@@ -699,3 +699,21 @@ This file is the single source of truth for what changed in production.
   - teacher rejected-claim resubmit now posts to `/api/teacher/expense-claims/resubmit`
   - admin self-submit now posts to `/api/admin/expense-claims`
 - Rollback point: previous production commit before `2026-03-30-r17`.
+
+## 2026-03-31-r01
+
+- Release ID: `2026-03-31-r01`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Fix teacher/admin expense submit buttons so mobile browsers do not get stuck on `Submitting...` before the browser sends the real multipart POST.
+- Key files:
+  - `app/_components/ExpenseClaimSubmitButton.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-expense-submit-button-timing.md`
+- Risk impact (if any): Low. This release only delays the pending-state UI flip by one tick so native form submission can start first; expense validation, duplicate-submit handling, and approval/payment logic stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - reproduced locally that disabling a submit button inside its click handler can prevent the browser from sending the form request
+  - expense submit button now enters `Submitting... / 提交中...` after the browser has a chance to dispatch the native submit
+- Rollback point: previous production commit before `2026-03-31-r01`.
