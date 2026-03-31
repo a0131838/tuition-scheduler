@@ -858,3 +858,22 @@ This file is the single source of truth for what changed in production.
   - pending work queue now appears before history and setup sections
   - rate settings and package mode config are collapsed into `Settlement setup / 结算配置`
 - Rollback point: previous production commit before `2026-03-31-r07`.
+
+## 2026-03-31-r08
+
+- Release ID: `2026-03-31-r08`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add a selected-item focus panel, integrity workbench entry points, and billing-history filters to the partner settlement page.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-focus-panel.md`
+- Risk impact (if any): Low. This only changes page navigation, focus helpers, and history filtering on the partner settlement page; settlement calculations, invoice creation, permissions, and data mutations remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - partner settlement page shows a sticky `Selected item / 当前处理项` card
+  - queue tables provide `Focus / 聚焦` actions
+  - billing history supports `All history / 全部历史`, `Invoice only / 仅已开票`, and `Receipt created / 仅已开收据`
+- Rollback point: previous production commit before `2026-03-31-r08`.

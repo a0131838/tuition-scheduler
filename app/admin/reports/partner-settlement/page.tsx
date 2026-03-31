@@ -359,7 +359,14 @@ async function revertSettlementRecordAction(formData: FormData) {
 export default async function PartnerSettlementPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; msg?: string; err?: string }>;
+  searchParams?: Promise<{
+    month?: string;
+    msg?: string;
+    err?: string;
+    focusType?: string;
+    focusId?: string;
+    history?: string;
+  }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -368,6 +375,9 @@ export default async function PartnerSettlementPage({
   const month = sp?.month ?? monthKey(new Date());
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
+  const focusType = sp?.focusType ?? "";
+  const focusId = sp?.focusId ?? "";
+  const historyFilter = sp?.history ?? "all";
   const rates = await getSettlementRates();
   const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
@@ -719,6 +729,121 @@ export default async function PartnerSettlementPage({
   const donePill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
   const sectionTitleStyle = { marginTop: 0, marginBottom: 12 } as const;
   const sectionHintStyle = { color: "#6b7280", fontSize: 13, marginTop: -4, marginBottom: 12 } as const;
+  const buildPageHref = (overrides: Record<string, string | null | undefined>) => {
+    const params = new URLSearchParams();
+    params.set("month", month);
+    if (historyFilter && historyFilter !== "all") params.set("history", historyFilter);
+    if (focusType) params.set("focusType", focusType);
+    if (focusId) params.set("focusId", focusId);
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value === null || value === undefined || value === "") params.delete(key);
+      else params.set(key, value);
+    }
+    return `/admin/reports/partner-settlement?${params.toString()}`;
+  };
+
+  const filteredInvoiceStats = recentInvoiceStats.filter((r) => {
+    if (historyFilter === "receipt-created") return Boolean(r.receiptNo);
+    if (historyFilter === "receipt-pending") return !r.receiptNo;
+    return true;
+  });
+
+  const selectedItem = (() => {
+    if (focusType === "record" && focusId) {
+      const row = recentPendingSettlements.find((r) => r.id === focusId);
+      if (row) {
+        return {
+          type: "record" as const,
+          title: t(lang, "Pending billing record", "待开票记录"),
+          name: row.student?.name ?? "-",
+          summary: `${row.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")} · ${row.monthKey ?? month}`,
+          amount: row.amount,
+          hours: row.hours,
+          note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
+          actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(row.mode)}&month=${encodeURIComponent(row.monthKey ?? month)}`,
+          actionLabel: t(lang, "Open billing workspace", "打开账单工作区"),
+        };
+      }
+    }
+    if (focusType === "online" && focusId) {
+      const row = onlinePending.find((r) => r.id === focusId);
+      if (row) {
+        return {
+          type: "online" as const,
+          title: t(lang, "Online settlement candidate", "线上结算候选"),
+          name: row.student?.name ?? "-",
+          summary: row.course?.name ?? "-",
+          amount: calcAmountByRatePer45(Number(row.pendingMinutes ?? 0), rates.onlineRatePer45),
+          hours: toHours(row.pendingMinutes ?? 0),
+          note: t(lang, "Next step: create one settlement item for this completed package.", "下一步：为这个已完结课包生成一条结算记录。"),
+          actionHref: "#action-queue-online",
+          actionLabel: t(lang, "Create from online queue", "到线上队列生成"),
+        };
+      }
+    }
+    if (focusType === "offline" && focusId) {
+      const row = offlinePending.find((r) => r.studentId === focusId);
+      if (row) {
+        return {
+          type: "offline" as const,
+          title: t(lang, "Offline settlement candidate", "线下结算候选"),
+          name: row.studentName,
+          summary: month,
+          amount: calcAmountByRatePer45(row.totalMinutes, rates.offlineRatePer45),
+          hours: row.hours,
+          note: t(lang, "Next step: confirm attendance and feedback, then create the monthly settlement.", "下一步：确认点名与反馈后，生成该学生的月度结算。"),
+          actionHref: "#action-queue-offline",
+          actionLabel: t(lang, "Create from offline queue", "到线下队列生成"),
+        };
+      }
+    }
+    if (focusType === "warning" && focusId) {
+      const row = offlineWarnings.find((r) => r.studentId === focusId);
+      if (row) {
+        return {
+          type: "warning" as const,
+          title: t(lang, "Settlement warning", "结算预警"),
+          name: row.studentName,
+          summary: `${t(lang, "Gap", "差额")}: ${row.totalAttendances - row.eligibleAttendances}`,
+          amount: null,
+          hours: null,
+          note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
+          actionHref: studentAttendanceHref(row.studentId, month),
+          actionLabel: t(lang, "Open attendance details", "打开点名明细"),
+        };
+      }
+    }
+
+    const defaultRecord = recentPendingSettlements[0];
+    if (defaultRecord) {
+      return {
+        type: "record" as const,
+        title: t(lang, "Pending billing record", "待开票记录"),
+        name: defaultRecord.student?.name ?? "-",
+        summary: `${defaultRecord.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")} · ${defaultRecord.monthKey ?? month}`,
+        amount: defaultRecord.amount,
+        hours: defaultRecord.hours,
+        note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
+        actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(defaultRecord.mode)}&month=${encodeURIComponent(defaultRecord.monthKey ?? month)}`,
+        actionLabel: t(lang, "Open billing workspace", "打开账单工作区"),
+      };
+    }
+    const defaultWarning = offlineWarnings[0];
+    if (defaultWarning) {
+      return {
+        type: "warning" as const,
+        title: t(lang, "Settlement warning", "结算预警"),
+        name: defaultWarning.studentName,
+        summary: `${t(lang, "Gap", "差额")}: ${defaultWarning.totalAttendances - defaultWarning.eligibleAttendances}`,
+        amount: null,
+        hours: null,
+        note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
+        actionHref: studentAttendanceHref(defaultWarning.studentId, month),
+        actionLabel: t(lang, "Open attendance details", "打开点名明细"),
+      };
+    }
+    return null;
+  })();
 
   return (
     <div>
@@ -825,6 +950,69 @@ export default async function PartnerSettlementPage({
           <a href="#action-queue-records" style={{ fontWeight: 700 }}>{t(lang, "Pending billing records", "待开票记录")}</a>
           <a href="#action-queue-online" style={{ fontWeight: 700 }}>{t(lang, "Online queue", "线上队列")}</a>
           <a href="#action-queue-offline" style={{ fontWeight: 700 }}>{t(lang, "Offline queue", "线下队列")}</a>
+          <a href="#integrity-workbench" style={{ fontWeight: 700 }}>{t(lang, "Integrity workbench", "异常工作台")}</a>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(320px, 0.9fr)", gap: 14, alignItems: "start" }}>
+        <div>
+          <div id="integrity-workbench" style={{ ...cardStyle, background: "#fffbeb", borderColor: "#f59e0b" }}>
+            <h3 style={sectionTitleStyle}>{t(lang, "Integrity workbench", "异常工作台")}</h3>
+            <div style={sectionHintStyle}>
+              {t(
+                lang,
+                "Handle students with settlement gaps or package-binding issues here before creating billing records.",
+                "先在这里处理结算差额或课包绑定异常，再继续生成账单。"
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="/admin/reports/undeducted-completed" style={{ fontWeight: 700 }}>
+                {t(lang, "Open repair report", "打开减扣修复报表")}
+              </a>
+              <a href="/admin/todo-center" style={{ fontWeight: 700 }}>
+                {t(lang, "Open todo center", "打开待办中心")}
+              </a>
+            </div>
+            <div style={{ marginTop: 10, color: "#92400e", fontSize: 13 }}>
+              {offlineWarnings.length > 0
+                ? t(lang, `${offlineWarnings.length} offline warning rows need review before billing.`, `当前有 ${offlineWarnings.length} 条线下预警，建议先核对后再结算。`)
+                : t(lang, "No offline warning rows need attention right now.", "当前没有需要优先处理的线下预警。")}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, position: "sticky", top: 92 }}>
+          <h3 style={sectionTitleStyle}>{t(lang, "Selected item", "当前处理项")}</h3>
+          {selectedItem ? (
+            <>
+              <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 6 }}>{selectedItem.title}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{selectedItem.name}</div>
+              <div style={{ color: "#334155", marginBottom: 10 }}>{selectedItem.summary}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 10 }}>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
+                  <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Hours", "课时")}</div>
+                  <div style={{ fontWeight: 700 }}>{selectedItem.hours ?? "-"}</div>
+                </div>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
+                  <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Amount", "金额")}</div>
+                  <div style={{ fontWeight: 700 }}>{selectedItem.amount === null ? "-" : `SGD ${Number(selectedItem.amount).toFixed(2)}`}</div>
+                </div>
+              </div>
+              <div style={{ color: "#475569", fontSize: 13, marginBottom: 12 }}>{selectedItem.note}</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href={selectedItem.actionHref} style={{ ...primaryBtn, textDecoration: "none", display: "inline-block" }}>
+                  {selectedItem.actionLabel}
+                </a>
+                <a href={buildPageHref({ focusType: null, focusId: null })} style={{ fontWeight: 700 }}>
+                  {t(lang, "Clear focus", "清除聚焦")}
+                </a>
+              </div>
+            </>
+          ) : (
+            <div style={{ color: "#6b7280" }}>
+              {t(lang, "No pending item is selected yet. Choose one row from the queues below.", "当前还没有选中待处理项，请从下方队列里选择一条。")}
+            </div>
+          )}
         </div>
       </div>
 
@@ -858,6 +1046,7 @@ export default async function PartnerSettlementPage({
                 <th align="left">{t(lang, "Hours", "课时")}</th>
                 <th align="left">{t(lang, "Amount", "金额")}</th>
                 <th align="left">{t(lang, "Status", "状态")}</th>
+                <th align="left">{t(lang, "Focus", "聚焦")}</th>
                 <th align="left">{t(lang, "Next step", "下一步")}</th>
               </tr>
             </thead>
@@ -872,6 +1061,11 @@ export default async function PartnerSettlementPage({
                   <td>{r.hours}</td>
                   <td>{r.amount}</td>
                   <td><span style={pendingPill}>{r.status}</span></td>
+                  <td>
+                    <a href={buildPageHref({ focusType: "record", focusId: r.id })} style={{ fontWeight: 700 }}>
+                      {t(lang, "Focus", "聚焦")}
+                    </a>
+                  </td>
                   <td>
                     {!isFinanceOnlyUser ? (
                       <form action={revertSettlementRecordAction}>
@@ -912,6 +1106,7 @@ export default async function PartnerSettlementPage({
               <th align="left" style={thCell}>{t(lang, "Package Status", "课包状态")}</th>
               <th align="left" style={thCell}>{t(lang, "Hours", "课时")}</th>
               <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
+              <th align="left" style={thCell}>{t(lang, "Focus", "聚焦")}</th>
               <th align="left" style={thCell}>{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -925,6 +1120,11 @@ export default async function PartnerSettlementPage({
                 <td>{p.status}</td>
                 <td>{toHours(p.pendingMinutes ?? 0)}</td>
                 <td>{calcAmountByRatePer45(Number(p.pendingMinutes ?? 0), rates.onlineRatePer45)}</td>
+                <td>
+                  <a href={buildPageHref({ focusType: "online", focusId: p.id })} style={{ fontWeight: 700 }}>
+                    {t(lang, "Focus", "聚焦")}
+                  </a>
+                </td>
                 <td>
                   {!isFinanceOnlyUser ? (
                     <form action={createOnlineSettlementAction}>
@@ -983,6 +1183,7 @@ export default async function PartnerSettlementPage({
                 <th align="left">{t(lang, "Gap", "差额")}</th>
                 <th align="left">{t(lang, "Missing Feedback", "缺反馈")}</th>
                 <th align="left">{t(lang, "Status Excluded", "状态不纳入")}</th>
+                <th align="left">{t(lang, "Focus", "聚焦")}</th>
               </tr>
             </thead>
             <tbody>
@@ -996,6 +1197,11 @@ export default async function PartnerSettlementPage({
                   <td style={{ color: "#b45309", fontWeight: 700 }}>{w.totalAttendances - w.eligibleAttendances}</td>
                   <td>{w.missingFeedbackCount}</td>
                   <td>{w.statusExcludedCount}</td>
+                  <td>
+                    <a href={buildPageHref({ focusType: "warning", focusId: w.studentId })} style={{ fontWeight: 700 }}>
+                      {t(lang, "Focus", "聚焦")}
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1016,6 +1222,7 @@ export default async function PartnerSettlementPage({
               <th align="left" style={thCell}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
               <th align="left" style={thCell}>{t(lang, "Hours", "课时")}</th>
               <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
+              <th align="left" style={thCell}>{t(lang, "Focus", "聚焦")}</th>
               <th align="left" style={thCell}>{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
@@ -1030,6 +1237,11 @@ export default async function PartnerSettlementPage({
                 <td style={{ color: r.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{r.chargedExcusedSessions}</td>
                 <td>{r.hours}</td>
                 <td>{calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45)}</td>
+                <td>
+                  <a href={buildPageHref({ focusType: "offline", focusId: r.studentId })} style={{ fontWeight: 700 }}>
+                    {t(lang, "Focus", "聚焦")}
+                  </a>
+                </td>
                 <td>
                   {!isFinanceOnlyUser ? (
                     <form action={createOfflineSettlementAction}>
@@ -1060,7 +1272,18 @@ export default async function PartnerSettlementPage({
             "这里用于查看已开票历史，和当前待处理队列分开显示，避免主工作区过于拥挤。"
           )}
         </div>
-        {recentInvoiceStats.length === 0 ? (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <a href={buildPageHref({ history: "all" })} style={{ fontWeight: historyFilter === "all" ? 800 : 600 }}>
+            {t(lang, "All history", "全部历史")}
+          </a>
+          <a href={buildPageHref({ history: "receipt-pending" })} style={{ fontWeight: historyFilter === "receipt-pending" ? 800 : 600 }}>
+            {t(lang, "Invoice only", "仅已开票")}
+          </a>
+          <a href={buildPageHref({ history: "receipt-created" })} style={{ fontWeight: historyFilter === "receipt-created" ? 800 : 600 }}>
+            {t(lang, "Receipt created", "仅已开收据")}
+          </a>
+        </div>
+        {filteredInvoiceStats.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No invoiced records yet.", "暂无已开票记录。")}</div>
         ) : (
           <>
@@ -1082,7 +1305,7 @@ export default async function PartnerSettlementPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentInvoiceStats.map((r) => (
+                  {filteredInvoiceStats.map((r) => (
                     <tr key={r.invoiceId} style={{ borderTop: "1px solid #eee" }}>
                       <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
                       <td>
@@ -1176,4 +1399,3 @@ export default async function PartnerSettlementPage({
     </div>
   );
 }
-

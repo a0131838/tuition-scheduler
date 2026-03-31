@@ -397,3 +397,14 @@
   - no settlement rules, rates, permissions, invoice creation, or revert logic changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r08 Deployed
+
+- Scope: partner settlement focus helpers and history filters.
+- Business impact:
+  - finance and management users can now pick one queue row and work from a sticky `Selected item / 当前处理项` panel instead of scanning large tables
+  - the page now exposes an `Integrity workbench / 异常工作台` section with direct repair/report links
+  - invoiced history can be filtered by all records, invoice-only items, or records that already have receipts
+  - no settlement rules, amounts, permissions, invoice creation, or revert behavior changed
+- Validation:
+  - `npm run build`
