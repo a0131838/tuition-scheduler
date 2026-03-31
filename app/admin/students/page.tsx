@@ -103,8 +103,9 @@ export default async function StudentsPage({
     ];
   }
 
-  const [totalCount, todayCount, todayPartnerCount] = await Promise.all([
+  const [filteredCount, allStudentsCount, todayCount, todayPartnerCount] = await Promise.all([
     prisma.student.count({ where }),
+    prisma.student.count(),
     prisma.student.count({ where: { createdAt: { gte: todayStart, lt: todayEnd } } }),
     prisma.student.count({
       where: {
@@ -114,7 +115,7 @@ export default async function StudentsPage({
       },
     }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const page = Math.min(requestedPage, totalPages);
 
   const students = await prisma.student.findMany({
@@ -212,7 +213,7 @@ export default async function StudentsPage({
         >
           <div style={{ fontSize: 12, color: "#4b5563" }}>{t(lang, "Full List", "完整列表")}</div>
           <div style={{ fontWeight: 700, marginTop: 4 }}>{t(lang, "All Students", "全部学生")}</div>
-          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{totalCount}</div>
+          <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{allStudentsCount}</div>
         </a>
       </div>
 
@@ -261,7 +262,7 @@ export default async function StudentsPage({
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, fontSize: 13 }}>
         <span>
-          {t(lang, "Showing", "显示")} {students.length} / {totalCount}
+          {t(lang, "Showing", "显示")} {students.length} / {filteredCount}
         </span>
         <span>
           {t(lang, "Page", "页")} {page} / {totalPages}
