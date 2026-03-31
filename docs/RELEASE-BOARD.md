@@ -428,3 +428,12 @@
   - no settlement formulas, permission rules, invoicing, or revert semantics changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r11 Deployed
+
+- Scope: partner settlement history open-state fix.
+- Business impact:
+  - `Open history / 打开历史` from the overview card now opens the billing history section instead of only jumping to a collapsed anchor
+  - no settlement actions, warnings, billing flows, or permission checks changed
+- Validation:
+  - `npm run build`

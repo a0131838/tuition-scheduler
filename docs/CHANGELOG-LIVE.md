@@ -913,3 +913,20 @@ This file is the single source of truth for what changed in production.
   - selected-item panel can directly submit online/offline settlement creation when the user is allowed to act
   - integrity workbench summary cards can jump straight to the first matching warning row
 - Rollback point: previous production commit before `2026-03-31-r10`.
+
+## 2026-03-31-r11
+
+- Release ID: `2026-03-31-r11`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make `Open history / 打开历史` on the partner settlement overview actually expand the billing history section.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-history-open.md`
+- Risk impact (if any): Low. This only adjusts a history-panel open state on the partner settlement page; settlement logic, queues, permissions, and calculations remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - clicking `Open history / 打开历史` now lands on an expanded billing-history section
+- Rollback point: previous production commit before `2026-03-31-r11`.

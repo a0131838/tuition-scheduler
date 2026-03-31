@@ -366,6 +366,7 @@ export default async function PartnerSettlementPage({
     focusType?: string;
     focusId?: string;
     history?: string;
+    panel?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -378,6 +379,7 @@ export default async function PartnerSettlementPage({
   const focusType = sp?.focusType ?? "";
   const focusId = sp?.focusId ?? "";
   const historyFilter = sp?.history ?? "all";
+  const openPanel = sp?.panel ?? "";
   const rates = await getSettlementRates();
   const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
@@ -735,6 +737,7 @@ export default async function PartnerSettlementPage({
     if (historyFilter && historyFilter !== "all") params.set("history", historyFilter);
     if (focusType) params.set("focusType", focusType);
     if (focusId) params.set("focusId", focusId);
+    if (openPanel) params.set("panel", openPanel);
     for (const [key, value] of Object.entries(overrides)) {
       if (value === null || value === undefined || value === "") params.delete(key);
       else params.set(key, value);
@@ -945,7 +948,9 @@ export default async function PartnerSettlementPage({
             <div style={{ fontSize: 24, fontWeight: 700 }}>{recentInvoiceStats.length}</div>
             <div style={{ color: "#334155" }}>{t(lang, "Grouped by invoice", "按Invoice聚合")}</div>
             <div style={{ marginTop: 8 }}>
-              <a href="#billing-history" style={{ fontWeight: 700 }}>{t(lang, "Open history", "打开历史")}</a>
+              <a href={`${buildPageHref({ panel: "history" })}#billing-history`} style={{ fontWeight: 700 }}>
+                {t(lang, "Open history", "打开历史")}
+              </a>
             </div>
           </div>
         </div>
@@ -1331,7 +1336,7 @@ export default async function PartnerSettlementPage({
       )}
       </div>
 
-      <details id="billing-history" style={{ ...cardStyle, background: "#fafafa" }}>
+      <details id="billing-history" open={openPanel === "history"} style={{ ...cardStyle, background: "#fafafa" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Billing history", "开票历史")}
         </summary>
