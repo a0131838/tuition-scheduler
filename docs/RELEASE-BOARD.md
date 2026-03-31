@@ -319,3 +319,13 @@
   - no expense validation rule, duplicate-submit guard, approval, payment, or archive logic changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r02 Ready For Deploy
+
+- Scope: teacher expense-claim withdraw flow for submitted claims.
+- Business impact:
+  - teachers can withdraw their own `SUBMITTED` expense claims before approval if they uploaded the wrong file or details
+  - withdrawn claims are preserved for audit as `WITHDRAWN` instead of being hard-deleted
+  - approval, reject, paid, and archive paths for existing claims stay unchanged
+- Validation:
+  - `npm run build`

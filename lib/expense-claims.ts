@@ -460,6 +460,70 @@ export async function resubmitExpenseClaimForDb(
   });
 }
 
+export async function withdrawExpenseClaim(input: {
+  claimId: string;
+  actor: { id?: string | null; email?: string | null; name?: string | null; role?: string | null };
+}) {
+  const row = await prisma.$transaction(async (tx) => {
+    const existing = await tx.expenseClaim.findUnique({
+      where: { id: input.claimId },
+      select: {
+        id: true,
+        status: true,
+        submitterUserId: true,
+        claimRefNo: true,
+      },
+    });
+    if (!existing) throw new Error('Expense claim not found');
+    if (existing.submitterUserId !== String(input.actor.id ?? '').trim()) {
+      throw new Error('You can only withdraw your own expense claim');
+    }
+    if (existing.status !== ExpenseClaimStatus.SUBMITTED) {
+      throw new Error('Only submitted claims can be withdrawn');
+    }
+
+    const updated = await tx.expenseClaim.updateMany({
+      where: {
+        id: input.claimId,
+        submitterUserId: String(input.actor.id ?? '').trim(),
+        status: ExpenseClaimStatus.SUBMITTED,
+      },
+      data: {
+        status: ExpenseClaimStatus.WITHDRAWN,
+        approverEmail: null,
+        approvedAt: null,
+        rejectedAt: null,
+        rejectReason: null,
+        paidAt: null,
+        paidByEmail: null,
+        financeRemarks: null,
+        paymentMethod: null,
+        paymentReference: null,
+        paymentBatchMonth: null,
+        archivedAt: null,
+        archivedByEmail: null,
+      },
+    });
+    if (updated.count === 0) {
+      throw new Error('Only submitted claims can be withdrawn');
+    }
+
+    const row = await tx.expenseClaim.findUnique({ where: { id: input.claimId } });
+    if (!row) throw new Error('Expense claim not found');
+    return row;
+  });
+
+  await logAudit({
+    actor: input.actor,
+    module: 'expense-claims',
+    action: 'withdraw',
+    entityType: 'ExpenseClaim',
+    entityId: row.id,
+    meta: { claimRefNo: row.claimRefNo },
+  });
+  return row;
+}
+
 export async function markExpenseClaimPaid(input: {
   claimId: string;
   paidBy: { email?: string | null; name?: string | null; role?: string | null };
@@ -580,6 +644,7 @@ export function summarizeExpenseClaims(rows: Array<{
   let approvedCount = 0;
   let rejectedCount = 0;
   let paidCount = 0;
+  let withdrawnCount = 0;
 
   for (const row of rows) {
     const total = row.amountCents + (row.gstAmountCents ?? 0);
@@ -588,6 +653,7 @@ export function summarizeExpenseClaims(rows: Array<{
     else if (row.status === ExpenseClaimStatus.APPROVED) approvedCount += 1;
     else if (row.status === ExpenseClaimStatus.REJECTED) rejectedCount += 1;
     else if (row.status === ExpenseClaimStatus.PAID) paidCount += 1;
+    else if (row.status === ExpenseClaimStatus.WITHDRAWN) withdrawnCount += 1;
   }
 
   return {
@@ -595,6 +661,7 @@ export function summarizeExpenseClaims(rows: Array<{
     approvedCount,
     rejectedCount,
     paidCount,
+    withdrawnCount,
     totalsByCurrency: Array.from(totalsByCurrency.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([currencyCode, cents]) => ({ currencyCode, cents })),

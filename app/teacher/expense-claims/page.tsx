@@ -50,6 +50,8 @@ function formatExpenseClaimStatusLabel(lang: 'BILINGUAL' | 'ZH' | 'EN', status: 
       return t(lang, 'Rejected, action needed', '已驳回，需要处理');
     case ExpenseClaimStatus.PAID:
       return t(lang, 'Paid', '已付款');
+    case ExpenseClaimStatus.WITHDRAWN:
+      return t(lang, 'Withdrawn', '已撤回');
     default:
       return status;
   }
@@ -63,6 +65,8 @@ function expenseClaimStatusTone(status: ExpenseClaimStatus) {
       return { color: '#b91c1c', background: '#fef2f2', border: '#fecaca' };
     case ExpenseClaimStatus.PAID:
       return { color: '#1d4ed8', background: '#eff6ff', border: '#bfdbfe' };
+    case ExpenseClaimStatus.WITHDRAWN:
+      return { color: '#475569', background: '#f8fafc', border: '#cbd5e1' };
     default:
       return { color: '#92400e', background: '#fffbeb', border: '#fde68a' };
   }
@@ -276,6 +280,33 @@ export default async function TeacherExpenseClaimsPage({
                     <td style={{ padding: '8px 6px', borderBottom: '1px solid #f1f5f9' }}>
                       <div style={{ display: 'grid', gap: 8 }}>
                         <div>{claim.rejectReason || claim.financeRemarks || claim.remarks || '-'}</div>
+                        {claim.status === ExpenseClaimStatus.SUBMITTED ? (
+                          <form
+                            action="/api/teacher/expense-claims/withdraw"
+                            method="post"
+                            style={{
+                              display: 'grid',
+                              gap: 8,
+                              minWidth: 240,
+                              padding: 10,
+                              borderRadius: 10,
+                              border: '1px solid #cbd5e1',
+                              background: '#f8fafc',
+                            }}
+                          >
+                            <input type="hidden" name="claimId" value={claim.id} />
+                            <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                              {t(
+                                lang,
+                                'Uploaded the wrong file or details? You can withdraw this submitted claim before it is reviewed.',
+                                '如果上传错了附件或内容，可在审批前先撤回这张已提交报销单。',
+                              )}
+                            </div>
+                            <button type="submit" style={{ width: 'fit-content' }}>
+                              {t(lang, 'Withdraw claim', '撤回报销单')}
+                            </button>
+                          </form>
+                        ) : null}
                         {claim.status === ExpenseClaimStatus.REJECTED ? (
                           <form
                             action="/api/teacher/expense-claims/resubmit"

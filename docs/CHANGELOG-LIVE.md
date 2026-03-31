@@ -717,3 +717,25 @@ This file is the single source of truth for what changed in production.
   - reproduced locally that disabling a submit button inside its click handler can prevent the browser from sending the form request
   - expense submit button now enters `Submitting... / 提交中...` after the browser has a chance to dispatch the native submit
 - Rollback point: previous production commit before `2026-03-31-r01`.
+
+## 2026-03-31-r02
+
+- Release ID: `2026-03-31-r02`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `READY FOR DEPLOY`
+- Scope: Let teachers withdraw their own submitted expense claims before review instead of needing hard delete.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260331095000_add_expense_claim_withdrawn_status/migration.sql`
+  - `lib/expense-claims.ts`
+  - `app/api/teacher/expense-claims/withdraw/route.ts`
+  - `app/teacher/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-expense-claim-withdraw.md`
+- Risk impact (if any): Medium-low. This adds a new `WITHDRAWN` status and a teacher-only withdraw path for `SUBMITTED` claims; approval, rejection, payment, and archive logic for all existing statuses stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - teachers now see `Withdraw claim / 撤回报销单` on their own submitted claims
+  - only `SUBMITTED` claims can be withdrawn
+- Rollback point: previous production commit before `2026-03-31-r02`.

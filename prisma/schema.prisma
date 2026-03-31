@@ -85,6 +85,7 @@ enum ExpenseClaimStatus {
   APPROVED
   REJECTED
   PAID
+  WITHDRAWN
 }
 
 enum SharedDocumentStatus {
