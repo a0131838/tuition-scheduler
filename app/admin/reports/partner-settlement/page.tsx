@@ -751,6 +751,8 @@ export default async function PartnerSettlementPage({
     missingFeedbackRows: offlineWarnings.filter((w) => w.missingFeedbackCount > 0).length,
     statusExcludedRows: offlineWarnings.filter((w) => w.statusExcludedCount > 0).length,
   };
+  const firstMissingFeedbackWarning = offlineWarnings.find((w) => w.missingFeedbackCount > 0) ?? null;
+  const firstStatusExcludedWarning = offlineWarnings.find((w) => w.statusExcludedCount > 0) ?? null;
 
   const selectedItem = (() => {
     if (focusType === "record" && focusId) {
@@ -764,8 +766,10 @@ export default async function PartnerSettlementPage({
           amount: row.amount,
           hours: row.hours,
           note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
+          actionKind: "link" as const,
           actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(row.mode)}&month=${encodeURIComponent(row.monthKey ?? month)}`,
           actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
+          hiddenMonth: row.monthKey ?? month,
         };
       }
     }
@@ -780,8 +784,9 @@ export default async function PartnerSettlementPage({
           amount: calcAmountByRatePer45(Number(row.pendingMinutes ?? 0), rates.onlineRatePer45),
           hours: toHours(row.pendingMinutes ?? 0),
           note: t(lang, "Next step: create one settlement item for this completed package.", "下一步：为这个已完结课包生成一条结算记录。"),
-          actionHref: "#action-queue-online",
+          actionKind: "create-online" as const,
           actionLabel: t(lang, "Create online settlement", "生成线上结算"),
+          packageId: row.id,
         };
       }
     }
@@ -796,8 +801,9 @@ export default async function PartnerSettlementPage({
           amount: calcAmountByRatePer45(row.totalMinutes, rates.offlineRatePer45),
           hours: row.hours,
           note: t(lang, "Next step: confirm attendance and feedback, then create the monthly settlement.", "下一步：确认点名与反馈后，生成该学生的月度结算。"),
-          actionHref: "#action-queue-offline",
+          actionKind: "create-offline" as const,
           actionLabel: t(lang, "Create offline settlement", "生成线下结算"),
+          studentId: row.studentId,
         };
       }
     }
@@ -812,6 +818,7 @@ export default async function PartnerSettlementPage({
           amount: null,
           hours: null,
           note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
+          actionKind: "link" as const,
           actionHref: studentAttendanceHref(row.studentId, month),
           actionLabel: t(lang, "Fix attendance issues", "修复点名异常"),
         };
@@ -828,8 +835,10 @@ export default async function PartnerSettlementPage({
         amount: defaultRecord.amount,
         hours: defaultRecord.hours,
         note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
+        actionKind: "link" as const,
         actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(defaultRecord.mode)}&month=${encodeURIComponent(defaultRecord.monthKey ?? month)}`,
         actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
+        hiddenMonth: defaultRecord.monthKey ?? month,
       };
     }
     const defaultWarning = offlineWarnings[0];
@@ -842,6 +851,7 @@ export default async function PartnerSettlementPage({
         amount: null,
         hours: null,
         note: t(lang, "Next step: open the student attendance view and check missing feedback or excluded statuses before billing.", "下一步：打开学生点名视图，先核对缺失反馈或不纳入状态，再决定是否生成账单。"),
+        actionKind: "link" as const,
         actionHref: studentAttendanceHref(defaultWarning.studentId, month),
         actionLabel: t(lang, "Fix attendance issues", "修复点名异常"),
       };
@@ -987,10 +997,30 @@ export default async function PartnerSettlementPage({
                 <div style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Missing feedback rows", "缺反馈条目")}</div>
                   <div style={{ fontWeight: 700, fontSize: 18 }}>{warningSummary.missingFeedbackRows}</div>
+                  {firstMissingFeedbackWarning ? (
+                    <div style={{ marginTop: 6 }}>
+                      <a
+                        href={buildPageHref({ focusType: "warning", focusId: firstMissingFeedbackWarning.studentId })}
+                        style={{ fontWeight: 700 }}
+                      >
+                        {t(lang, "Review first row", "查看首条")}
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
                 <div style={{ border: "1px solid #fde68a", borderRadius: 8, padding: 8, background: "#fff" }}>
                   <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Status excluded rows", "状态不纳入条目")}</div>
                   <div style={{ fontWeight: 700, fontSize: 18 }}>{warningSummary.statusExcludedRows}</div>
+                  {firstStatusExcludedWarning ? (
+                    <div style={{ marginTop: 6 }}>
+                      <a
+                        href={buildPageHref({ focusType: "warning", focusId: firstStatusExcludedWarning.studentId })}
+                        style={{ fontWeight: 700 }}
+                      >
+                        {t(lang, "Review first row", "查看首条")}
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -1016,9 +1046,33 @@ export default async function PartnerSettlementPage({
               </div>
               <div style={{ color: "#475569", fontSize: 13, marginBottom: 12 }}>{selectedItem.note}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href={selectedItem.actionHref} style={{ ...primaryBtn, textDecoration: "none", display: "inline-block" }}>
-                  {selectedItem.actionLabel}
-                </a>
+                {selectedItem.actionKind === "link" ? (
+                  <a href={selectedItem.actionHref} style={{ ...primaryBtn, textDecoration: "none", display: "inline-block" }}>
+                    {selectedItem.actionLabel}
+                  </a>
+                ) : selectedItem.actionKind === "create-online" ? (
+                  !isFinanceOnlyUser ? (
+                    <form action={createOnlineSettlementAction}>
+                      <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="packageId" value={selectedItem.packageId} />
+                      <button type="submit" style={primaryBtn}>
+                        {selectedItem.actionLabel}
+                      </button>
+                    </form>
+                  ) : (
+                    <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
+                  )
+                ) : !isFinanceOnlyUser ? (
+                  <form action={createOfflineSettlementAction}>
+                    <input type="hidden" name="month" value={month} />
+                    <input type="hidden" name="studentId" value={selectedItem.studentId} />
+                    <button type="submit" style={primaryBtn}>
+                      {selectedItem.actionLabel}
+                    </button>
+                  </form>
+                ) : (
+                  <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
+                )}
                 <a href={buildPageHref({ focusType: null, focusId: null })} style={{ fontWeight: 700 }}>
                   {t(lang, "Clear focus", "清除聚焦")}
                 </a>

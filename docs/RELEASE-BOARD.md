@@ -418,3 +418,13 @@
   - no settlement logic, billing flows, permissions, or calculations changed
 - Validation:
   - `npm run build`
+
+## 2026-03-31-r10 Deployed
+
+- Scope: partner settlement direct actions and warning review shortcuts.
+- Business impact:
+  - the sticky `Selected item / 当前处理项` panel can now directly trigger online or offline settlement creation instead of sending the user back to the queue first
+  - the integrity workbench warning cards now provide `Review first row / 查看首条` shortcuts for missing-feedback and status-excluded groups
+  - no settlement formulas, permission rules, invoicing, or revert semantics changed
+- Validation:
+  - `npm run build`

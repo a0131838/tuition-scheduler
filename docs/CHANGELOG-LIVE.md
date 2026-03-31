@@ -895,3 +895,21 @@ This file is the single source of truth for what changed in production.
   - selected-item primary actions now read like direct next steps
   - integrity workbench shows grouped counts for missing-feedback and status-excluded warning rows
 - Rollback point: previous production commit before `2026-03-31-r09`.
+
+## 2026-03-31-r10
+
+- Release ID: `2026-03-31-r10`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the partner settlement focus panel actionable and add direct warning-type review shortcuts in the integrity workbench.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-direct-actions.md`
+- Risk impact (if any): Low. This only changes partner settlement page interaction flow and shortcut links; settlement calculations, permissions, settlement creation rules, invoice behavior, and revert behavior remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - selected-item panel can directly submit online/offline settlement creation when the user is allowed to act
+  - integrity workbench summary cards can jump straight to the first matching warning row
+- Rollback point: previous production commit before `2026-03-31-r10`.
