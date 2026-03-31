@@ -840,3 +840,21 @@ This file is the single source of truth for what changed in production.
   - production total student count verified as `73`
   - `Full List / 完整列表` now uses the real total instead of the active view count
 - Rollback point: previous production commit before `2026-03-31-r06`.
+
+## 2026-03-31-r07
+
+- Release ID: `2026-03-31-r07`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reorganize the partner settlement page so daily work focuses on pending actions first, while billing history and settlement setup are moved into lower-priority collapsed sections.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260331-partner-settlement-ux-reorder.md`
+- Risk impact (if any): Low. This only changes layout, section ordering, and action-oriented bilingual copy on the partner settlement page; settlement logic, permissions, rates, and billing actions stay unchanged.
+- Verification:
+  - `npm run build` passed
+  - pending work queue now appears before history and setup sections
+  - rate settings and package mode config are collapsed into `Settlement setup / 结算配置`
+- Rollback point: previous production commit before `2026-03-31-r07`.

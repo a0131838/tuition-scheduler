@@ -386,3 +386,14 @@
 - Validation:
   - `npm run build`
   - production total verified as `73`
+
+## 2026-03-31-r07 Deployed
+
+- Scope: partner settlement page workflow reorder.
+- Business impact:
+  - daily settlement work now focuses on pending billing records and pending online/offline queues before history and setup
+  - invoiced history is separated into its own collapsed section to reduce clutter
+  - rate settings and package mode config are moved into a collapsed `Settlement setup / 结算配置` area
+  - no settlement rules, rates, permissions, invoice creation, or revert logic changed
+- Validation:
+  - `npm run build`

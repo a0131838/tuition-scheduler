@@ -717,6 +717,8 @@ export default async function PartnerSettlementPage({
   const thCell = { position: "sticky", top: 0, background: "#f5f5f5", zIndex: 1 } as const;
   const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
   const donePill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
+  const sectionTitleStyle = { marginTop: 0, marginBottom: 12 } as const;
+  const sectionHintStyle = { color: "#6b7280", fontSize: 13, marginTop: -4, marginBottom: 12 } as const;
 
   return (
     <div>
@@ -772,85 +774,125 @@ export default async function PartnerSettlementPage({
         </form>
       </div>
 
-      <div style={{ ...cardStyle, background: "#f8fafc" }}>
+      <div id="overview" style={{ ...cardStyle, background: "#f8fafc" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Pending Overview", "待结算概览")}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
             <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Online Pending", "线上待结算")}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>{onlinePending.length}</div>
             <div style={{ color: "#334155" }}>SGD {onlinePendingTotalAmount.toFixed(2)}</div>
+            <div style={{ marginTop: 8 }}>
+              <a href="#action-queue-online" style={{ fontWeight: 700 }}>{t(lang, "Go to queue", "前往处理")}</a>
+            </div>
           </div>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
             <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Offline Pending", "线下待结算")}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>{offlinePending.length}</div>
             <div style={{ color: "#334155" }}>SGD {offlinePendingTotalAmount.toFixed(2)}</div>
+            <div style={{ marginTop: 8 }}>
+              <a href="#action-queue-offline" style={{ fontWeight: 700 }}>{t(lang, "Go to queue", "前往处理")}</a>
+            </div>
           </div>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
             <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Pending Records", "待开票记录")}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>{recentPendingSettlements.length}</div>
             <div style={{ color: "#334155" }}>{t(lang, "Can be reverted", "可撤回")}</div>
+            <div style={{ marginTop: 8 }}>
+              <a href="#action-queue-records" style={{ fontWeight: 700 }}>{t(lang, "Review now", "立即查看")}</a>
+            </div>
           </div>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
             <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Invoiced Records", "已开票记录")}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>{recentInvoiceStats.length}</div>
             <div style={{ color: "#334155" }}>{t(lang, "Grouped by invoice", "按Invoice聚合")}</div>
+            <div style={{ marginTop: 8 }}>
+              <a href="#billing-history" style={{ fontWeight: 700 }}>{t(lang, "Open history", "打开历史")}</a>
+            </div>
           </div>
         </div>
       </div>
 
-      {!isFinanceOnlyUser ? <div style={cardStyle}><h3 style={{ marginTop: 0 }}>{t(lang, "Rate Settings", "费率设置")}</h3>
-      {!isFinanceOnlyUser ? <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-        <input type="hidden" name="month" value={month} />
-        <label>
-          {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
-          <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
-        </label>
-        <label>
-          {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
-          <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
-        </label>
-        <button type="submit" style={primaryBtn}>{t(lang, "Save Rates", "保存费率")}</button>
-      </form> : null}
-      {!isFinanceOnlyUser ? <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
-        {t(
-          lang,
-          "Bill amount formula: amount = (minutes / 45) x rate.",
-          "账单金额公式：金额 = （总分钟 / 45）x 单价。"
+      <div id="action-queue" style={cardStyle}>
+        <h3 style={sectionTitleStyle}>{t(lang, "What needs action now", "当前待处理")}</h3>
+        <div style={sectionHintStyle}>
+          {t(
+            lang,
+            "Focus on pending billing work first. History and settlement setup are below.",
+            "先处理待结算和待开票项目，历史记录和结算配置在页面下方。"
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="#action-queue-records" style={{ fontWeight: 700 }}>{t(lang, "Pending billing records", "待开票记录")}</a>
+          <a href="#action-queue-online" style={{ fontWeight: 700 }}>{t(lang, "Online queue", "线上队列")}</a>
+          <a href="#action-queue-offline" style={{ fontWeight: 700 }}>{t(lang, "Offline queue", "线下队列")}</a>
+        </div>
+      </div>
+
+      <div id="action-queue-records" style={cardStyle}>
+        <h3 style={sectionTitleStyle}>{t(lang, "Pending billing records", "待开票记录")}</h3>
+        <div style={sectionHintStyle}>
+          {t(
+            lang,
+            "These settlement records are created and waiting for invoice review. Revert only when the settlement should not continue.",
+            "这些结算记录已经生成，正在等待开票处理。只有在确认不应继续结算时才使用撤回。"
+          )}
+        </div>
+        {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
+          <input type="hidden" name="month" value={month} />
+          <button type="submit" style={dangerBtn}>
+            {t(lang, "Clear Test Records", "清空测试结算记录")}
+          </button>
+        </form> : null}
+        {recentPendingSettlements.length === 0 ? (
+          <div style={{ color: "#999" }}>{t(lang, "No pending billing records.", "暂无待开票结算记录。")}</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
+            <thead>
+              <tr style={{ background: "#f5f5f5" }}>
+                <th align="left">{t(lang, "Created", "创建时间")}</th>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Mode", "模式")}</th>
+                <th align="left">{t(lang, "Month", "月份")}</th>
+                <th align="left">{t(lang, "Course", "课程")}</th>
+                <th align="left">{t(lang, "Hours", "课时")}</th>
+                <th align="left">{t(lang, "Amount", "金额")}</th>
+                <th align="left">{t(lang, "Status", "状态")}</th>
+                <th align="left">{t(lang, "Next step", "下一步")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentPendingSettlements.map((r) => (
+                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
+                  <td>{r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}</td>
+                  <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
+                  <td>{r.monthKey ?? "-"}</td>
+                  <td>{r.courseName}</td>
+                  <td>{r.hours}</td>
+                  <td>{r.amount}</td>
+                  <td><span style={pendingPill}>{r.status}</span></td>
+                  <td>
+                    {!isFinanceOnlyUser ? (
+                      <form action={revertSettlementRecordAction}>
+                        <input type="hidden" name="month" value={month} />
+                        <input type="hidden" name="settlementId" value={r.id} />
+                        <button type="submit" style={dangerBtn}>{t(lang, "Revert", "撤回")}</button>
+                      </form>
+                    ) : (
+                      <span style={{ color: "#0f766e", fontWeight: 700 }}>{t(lang, "Review in billing workspace", "到账单工作区处理")}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
         )}
-      </div> : null}</div> : null}
-
-      <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
-      <div style={{ overflowX: "auto" }}>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
-        <thead>
-          <tr style={{ background: "#f5f5f5" }}>
-            <th align="left" style={thCell}>{t(lang, "Student", "学生")}</th>
-            <th align="left" style={thCell}>{t(lang, "Course", "课程")}</th>
-            <th align="left" style={thCell}>{t(lang, "Type", "类型")}</th>
-            <th align="left" style={thCell}>{t(lang, "Remaining", "剩余")}</th>
-            <th align="left" style={thCell}>{t(lang, "Status", "状态")}</th>
-            <th align="left" style={thCell}>{t(lang, "Mode", "模式")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {modePackages.map((p) => (
-            <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
-              <td>{p.student?.name ?? "-"}</td>
-              <td>{p.course?.name ?? "-"}</td>
-              <td>{p.type}</td>
-              <td>{p.remainingMinutes ?? "-"}</td>
-              <td>{p.status}</td>
-              <td>{modeLabel(p.settlementMode)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
       </div>
 
-      <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>{t(lang, "Online Pending (Package Completed)", "线上待结算（课包完结）")}</h3>
+      <div id="action-queue-online" style={cardStyle}>
+      <h3 style={sectionTitleStyle}>{t(lang, "Ready to settle: completed online packages", "可结算：已完结线上课包")}</h3>
       <div style={{ marginBottom: 8, color: "#4b5563", fontSize: 13 }}>
         {t(
           lang,
@@ -902,8 +944,8 @@ export default async function PartnerSettlementPage({
       )}
       </div>
 
-      <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>{t(lang, "Offline Pending (Monthly)", "线下待结算（按月）")}</h3>
+      <div id="action-queue-offline" style={cardStyle}>
+      <h3 style={sectionTitleStyle}>{t(lang, "Ready to settle: offline monthly attendance", "可结算：线下月度课次")}</h3>
       <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
         {t(
           lang,
@@ -1007,70 +1049,23 @@ export default async function PartnerSettlementPage({
       )}
       </div>
 
-      <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>{t(lang, "Recent Settlement Records", "最近结算记录")}</h3>
-      {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
-        <input type="hidden" name="month" value={month} />
-        <button type="submit" style={dangerBtn}>
-          {t(lang, "Clear Test Records", "清空测试结算记录")}
-        </button>
-      </form> : null}
-      {recentPendingSettlements.length === 0 && recentInvoiceStats.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No settlement records yet.", "暂无结算记录。")}</div>
-      ) : (
-        <>
-          {recentPendingSettlements.length > 0 ? (
-            <>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Pending Settlement Records (Before Invoice)", "待开票结算记录（可撤回）")}</div>
-              <div style={{ overflowX: "auto" }}>
-              <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12, minWidth: 1100 }}>
-                <thead>
-                  <tr style={{ background: "#f5f5f5" }}>
-                    <th align="left">{t(lang, "Created", "创建时间")}</th>
-                    <th align="left">{t(lang, "Student", "学生")}</th>
-                    <th align="left">{t(lang, "Mode", "模式")}</th>
-                    <th align="left">{t(lang, "Month", "月份")}</th>
-                    <th align="left">{t(lang, "Course", "课程")}</th>
-                    <th align="left">{t(lang, "Hours", "课时")}</th>
-                    <th align="left">{t(lang, "Amount", "金额")}</th>
-                    <th align="left">{t(lang, "Status", "状态")}</th>
-                    <th align="left">{t(lang, "Action", "操作")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentPendingSettlements.map((r) => (
-                    <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
-                      <td>{r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}</td>
-                      <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
-                      <td>{r.monthKey ?? "-"}</td>
-                      <td>{r.courseName}</td>
-                      <td>{r.hours}</td>
-                      <td>{r.amount}</td>
-                      <td><span style={pendingPill}>{r.status}</span></td>
-                      <td>
-                        {!isFinanceOnlyUser ? (
-                          <form action={revertSettlementRecordAction}>
-                            <input type="hidden" name="month" value={month} />
-                            <input type="hidden" name="settlementId" value={r.id} />
-                            <button type="submit" style={dangerBtn}>{t(lang, "Revert", "撤回")}</button>
-                          </form>
-                        ) : (
-                          <span style={{ color: "#999" }}>{t(lang, "Read only", "只读")}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            </>
-          ) : null}
-
-          {recentInvoiceStats.length > 0 ? (
-            <>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced Records (Grouped by Invoice No.)", "已开票记录（按Invoice聚合）")}</div>
-              <div style={{ overflowX: "auto" }}>
+      <details id="billing-history" style={{ ...cardStyle, background: "#fafafa" }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Billing history", "开票历史")}
+        </summary>
+        <div style={{ ...sectionHintStyle, marginTop: 10 }}>
+          {t(
+            lang,
+            "Use this section to review previously invoiced records. It is separated from the live work queue to reduce clutter.",
+            "这里用于查看已开票历史，和当前待处理队列分开显示，避免主工作区过于拥挤。"
+          )}
+        </div>
+        {recentInvoiceStats.length === 0 ? (
+          <div style={{ color: "#999" }}>{t(lang, "No invoiced records yet.", "暂无已开票记录。")}</div>
+        ) : (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced records (grouped by Invoice No.)", "已开票记录（按Invoice聚合）")}</div>
+            <div style={{ overflowX: "auto" }}>
               <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
                 <thead>
                   <tr style={{ background: "#f5f5f5" }}>
@@ -1109,14 +1104,76 @@ export default async function PartnerSettlementPage({
                   ))}
                 </tbody>
               </table>
-              </div>
-            </>
-          ) : null}
-        </>
-      )}
-      </div>
+            </div>
+          </>
+        )}
+      </details>
+
+      <details id="settlement-setup" style={cardStyle}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Settlement setup", "结算配置")}
+        </summary>
+        <div style={{ ...sectionHintStyle, marginTop: 10 }}>
+          {t(
+            lang,
+            "These settings affect how future settlement records are created. They are kept collapsed to keep daily work focused.",
+            "这些配置会影响后续结算记录的生成。默认折叠，避免干扰日常操作。"
+          )}
+        </div>
+        {!isFinanceOnlyUser ? <div style={{ marginBottom: 14 }}>
+          <h3 style={sectionTitleStyle}>{t(lang, "Rate Settings", "费率设置")}</h3>
+          <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+            <input type="hidden" name="month" value={month} />
+            <label>
+              {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
+              <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+            </label>
+            <label>
+              {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
+              <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+            </label>
+            <button type="submit" style={primaryBtn}>{t(lang, "Save Rates", "保存费率")}</button>
+          </form>
+          <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
+            {t(
+              lang,
+              "Bill amount formula: amount = (minutes / 45) x rate.",
+              "账单金额公式：金额 = （总分钟 / 45）x 单价。"
+            )}
+          </div>
+        </div> : null}
+
+        <div>
+          <h3 style={sectionTitleStyle}>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
+              <thead>
+                <tr style={{ background: "#f5f5f5" }}>
+                  <th align="left" style={thCell}>{t(lang, "Student", "学生")}</th>
+                  <th align="left" style={thCell}>{t(lang, "Course", "课程")}</th>
+                  <th align="left" style={thCell}>{t(lang, "Type", "类型")}</th>
+                  <th align="left" style={thCell}>{t(lang, "Remaining", "剩余")}</th>
+                  <th align="left" style={thCell}>{t(lang, "Status", "状态")}</th>
+                  <th align="left" style={thCell}>{t(lang, "Mode", "模式")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modePackages.map((p) => (
+                  <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+                    <td>{p.student?.name ?? "-"}</td>
+                    <td>{p.course?.name ?? "-"}</td>
+                    <td>{p.type}</td>
+                    <td>{p.remainingMinutes ?? "-"}</td>
+                    <td>{p.status}</td>
+                    <td>{modeLabel(p.settlementMode)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
-
 
