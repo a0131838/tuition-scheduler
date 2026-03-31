@@ -1,5 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { formatBusinessDateOnly } from "@/lib/date-only";
 import { getVisibleSessionStudents } from "@/lib/session-students";
 
 function parseMonth(s?: string) {
@@ -14,7 +15,7 @@ function monthKey(d: Date) {
 }
 
 function ymd(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return formatBusinessDateOnly(d);
 }
 
 function fromMin(min: number) {

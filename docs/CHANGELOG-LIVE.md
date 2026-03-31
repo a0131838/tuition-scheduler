@@ -14,6 +14,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-03-31-r3
+
+- Release ID: `2026-03-31-r3`
+- Date/Time (Asia/Shanghai): `2026-03-31`
+- Scope: Extend teacher session visibility window and normalize availability date handling to business timezone across teacher/admin views.
+- Key files:
+  - `app/teacher/sessions/page.tsx`
+  - `app/teacher/availability/page.tsx`
+  - `app/api/teacher/availability/_lib.ts`
+  - `app/api/teacher/availability/slots/route.ts`
+  - `app/api/teacher/availability/clear-day/route.ts`
+  - `app/api/admin/teachers/[id]/availability/route.ts`
+  - `app/api/admin/teachers/[id]/availability/date/route.ts`
+  - `app/api/admin/teachers/[id]/availability/generate-month/route.ts`
+  - `app/admin/teachers/[id]/calendar/page.tsx`
+- Risk impact (if any): Low-to-medium. Changes how date-only availability rows are queried/rendered, but does not change scheduling rules or slot durations.
+- Verification:
+  - `npm run build` passed.
+  - production probe confirmed Yunfeng still has `46` April sessions and `57` April date-availability rows; the issue was display logic, not missing data.
+- Rollback point: Previous production commit before `2026-03-31-r3`.
+
 ## 2026-03-22-r1
 
 - Release ID: `2026-03-22-r1`

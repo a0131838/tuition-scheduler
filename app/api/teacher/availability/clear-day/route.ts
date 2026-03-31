@@ -1,14 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { parseYMD, undoKey, ymd, type AvailabilityUndoPayload } from "../_lib";
+import { parseBusinessDateEnd } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
 }
 
 function dayRange(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+  const start = date;
+  const end = parseBusinessDateEnd(ymd(date)) ?? new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1);
   return { start, end };
 }
 

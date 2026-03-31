@@ -45,6 +45,18 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
+## 2026-03-31-r3 Ready For Deploy
+
+- Scope: fix teacher session visibility window and align availability date-only handling with business timezone in teacher/admin views.
+- Business impact:
+  - teacher `My Sessions / 我的课次` now shows the next `30` days instead of stopping at day `14`
+  - availability dates no longer drift across days because teacher/admin date routes now use business-date parsing/formatting consistently
+  - Yunfeng's April schedule and availability were verified on production data before patching; no underlying lesson rows were missing
+- Validation:
+  - `npm run build`
+  - direct production data probe showed `46` April sessions for Yunfeng
+  - direct production data probe showed intact weekly template plus `57` April date-availability rows
+
 ## 2026-03-26-r1 Deployed
 
 - Deployed: group package alignment is live on the current production branch lineage.

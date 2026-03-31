@@ -3,14 +3,14 @@ import { requireAdmin } from "@/lib/auth";
 import { inAllowedWindow, toMin, AVAIL_MAX_TIME, AVAIL_MIN_TIME } from "@/app/api/teacher/availability/_lib";
 import { deleteTeacherAvailabilityDateSlot } from "@/lib/admin-teacher-availability";
 import { findDateAvailabilityOverlap, isAvailabilityDuplicateError } from "@/lib/availability-conflict";
+import { parseBusinessDateStart } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
 }
 
 function parseYMD(s: string) {
-  const [Y, M, D] = s.split("-").map(Number);
-  return new Date(Y, M - 1, D, 0, 0, 0, 0);
+  return parseBusinessDateStart(s) ?? new Date(NaN);
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { overlapsMinutes } from "@/lib/availability-conflict";
+import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 
 function bad(message: string, status = 400) {
   return new Response(message, { status });
@@ -12,13 +13,6 @@ function parseMonth(s?: string | null) {
   if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
   if (m < 1 || m > 12) return null;
   return { year: y, monthIndex: m - 1 };
-}
-
-function ymd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -39,8 +33,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!parsed) return bad("Invalid month");
 
   const { year, monthIndex } = parsed;
-  const first = new Date(year, monthIndex, 1, 0, 0, 0, 0);
-  const last = new Date(year, monthIndex + 1, 0, 0, 0, 0, 0);
+  const monthKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  const firstKey = `${monthKey}-01`;
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const lastKey = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+  const first = parseBusinessDateStart(firstKey);
+  const last = parseBusinessDateEnd(lastKey);
+  if (!first || !last) return bad("Invalid month");
 
   const weekly = await prisma.teacherAvailability.findMany({
     where: { teacherId },
@@ -55,8 +54,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const slots = weekly.filter((w) => w.weekday === weekday);
     if (slots.length === 0) continue;
     for (const s of slots) {
+      const dateKey = formatBusinessDateOnly(d);
+      const date = parseBusinessDateStart(dateKey);
+      if (!date) continue;
       creates.push({
-        date: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0),
+        date,
         startMin: s.startMin,
         endMin: s.endMin,
       });
@@ -81,14 +83,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     where: { teacherId, date: { gte: first, lte: last } },
     select: { date: true, startMin: true, endMin: true },
   });
-  const exists = new Set(existing.map((e) => `${ymd(e.date)}|${e.startMin}|${e.endMin}`));
+  const exists = new Set(existing.map((e) => `${formatBusinessDateOnly(e.date)}|${e.startMin}|${e.endMin}`));
   const existingByDate = new Map<string, Array<{ startMin: number; endMin: number }>>();
   for (const row of existing) {
-    const key = ymd(row.date);
+    const key = formatBusinessDateOnly(row.date);
     existingByDate.set(key, [...(existingByDate.get(key) ?? []), { startMin: row.startMin, endMin: row.endMin }]);
   }
   const missing = creates.filter((c) => {
-    const dateKey = ymd(c.date);
+    const dateKey = formatBusinessDateOnly(c.date);
     if (exists.has(`${dateKey}|${c.startMin}|${c.endMin}`)) return false;
     const overlapsExisting = (existingByDate.get(dateKey) ?? []).some((row) => overlapsMinutes(c.startMin, c.endMin, row.startMin, row.endMin));
     if (overlapsExisting) return false;

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { AVAIL_MAX_TIME, AVAIL_MIN_TIME, inAllowedWindow, parseYMD, toMin } from "../_lib";
-import { formatDateOnly } from "@/lib/date-only";
+import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { findDateAvailabilityOverlap, isAvailabilityDuplicateError } from "@/lib/availability-conflict";
 
 function bad(message: string, status = 400) {
@@ -17,9 +17,10 @@ export async function GET(req: Request) {
   const toStr = String(url.searchParams.get("to") ?? "");
 
   const today = new Date();
-  const defaultFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-  const defaultTo = new Date(defaultFrom);
-  defaultTo.setDate(defaultTo.getDate() + 30);
+  const defaultFrom = parseBusinessDateStart(formatBusinessDateOnly(today)) ?? today;
+  const defaultToCursor = new Date(today);
+  defaultToCursor.setDate(defaultToCursor.getDate() + 30);
+  const defaultTo = parseBusinessDateEnd(formatBusinessDateOnly(defaultToCursor)) ?? defaultToCursor;
 
   let from = defaultFrom;
   let to = defaultTo;
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
   return Response.json({
     slots: slots.map((s) => ({
       id: s.id,
-      date: formatDateOnly(s.date),
+      date: formatBusinessDateOnly(s.date),
       startMin: s.startMin,
       endMin: s.endMin,
     })),
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
   return Response.json({
     slot: {
       id: created.id,
-      date: formatDateOnly(created.date),
+      date: formatBusinessDateOnly(created.date),
       startMin: created.startMin,
       endMin: created.endMin,
     },

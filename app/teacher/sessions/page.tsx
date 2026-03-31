@@ -77,7 +77,7 @@ export default async function TeacherSessionsPage() {
   const start = new Date(now);
   start.setDate(start.getDate() - 1);
   const end = new Date(now);
-  end.setDate(end.getDate() + 14);
+  end.setDate(end.getDate() + 30);
 
   const sessionsRaw = (await prisma.session.findMany({
     where: {
@@ -120,7 +120,7 @@ export default async function TeacherSessionsPage() {
     <div style={{ display: "grid", gap: 14 }}>
       <h2 style={{ marginBottom: 0 }}>{t(lang, "My Sessions", "我的课次")}</h2>
       <div style={{ color: "#64748b", fontSize: 12 }}>
-        {t(lang, "Timeline view for the next 14 days and recent sessions.", "按履历时间轴展示最近和未来14天课次。")}
+        {t(lang, "Timeline view for the next 30 days and recent sessions.", "按履历时间轴展示最近和未来30天课次。")}
       </div>
 
       {sessions.length === 0 ? (
@@ -233,6 +233,5 @@ export default async function TeacherSessionsPage() {
     </div>
   );
 }
-
 
 

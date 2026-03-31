@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
-import { formatDateOnly } from "@/lib/date-only";
+import { formatBusinessDateOnly, parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import TeacherAvailabilityClient from "./TeacherAvailabilityClient";
 
 function undoKey(teacherId: string) {
@@ -35,9 +35,12 @@ export default async function TeacherAvailabilityPage() {
   }
 
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 30);
+  const startKey = formatBusinessDateOnly(today);
+  const endCursor = new Date(today);
+  endCursor.setDate(endCursor.getDate() + 30);
+  const endKey = formatBusinessDateOnly(endCursor);
+  const start = parseBusinessDateStart(startKey) ?? today;
+  const end = parseBusinessDateEnd(endKey) ?? endCursor;
 
   const slots = await prisma.teacherAvailabilityDate.findMany({
     where: { teacherId: teacher.id, date: { gte: start, lte: end } },
@@ -54,7 +57,7 @@ export default async function TeacherAvailabilityPage() {
     <TeacherAvailabilityClient
       lang={lang as Lang}
       teacherId={teacher.id}
-      initialSlots={slots.map((s) => ({ id: s.id, date: formatDateOnly(s.date), startMin: s.startMin, endMin: s.endMin }))}
+      initialSlots={slots.map((s) => ({ id: s.id, date: formatBusinessDateOnly(s.date), startMin: s.startMin, endMin: s.endMin }))}
       initialUndoPayload={undoPayload}
     />
   );
