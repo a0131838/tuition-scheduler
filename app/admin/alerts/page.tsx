@@ -117,7 +117,7 @@ export default async function AdminAlertsPage({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const focus = (sp?.focus ?? "all") as AlertFocus;
 
-  const [{ thresholdMin, activeCount }, threshold] = await Promise.all([
+  const [{ thresholdMin }, threshold] = await Promise.all([
     syncSignInAlerts(),
     getSignInAlertThresholdMin(),
   ]);
@@ -181,6 +181,7 @@ export default async function AdminAlertsPage({
       return {
         sessionId: group.session.id,
         session,
+        issueCount: items.length,
         hasTeacherAlert,
         hasFeedbackAlert,
         missingStudentIds,
@@ -205,10 +206,11 @@ export default async function AdminAlertsPage({
 
   const urgentRows = filteredRows.filter((row) => row.severity !== "normal");
   const normalRows = filteredRows.filter((row) => row.severity === "normal");
-  const teacherMissCount = rows.filter((row) => row.hasTeacherAlert).length;
-  const studentMissCount = rows.reduce((sum, row) => sum + row.missingStudentIds.length, 0);
-  const feedbackMissCount = rows.filter((row) => row.hasFeedbackAlert).length;
-  const criticalCount = rows.filter((row) => row.severity === "critical").length;
+  const activeCount = filteredRows.reduce((sum, row) => sum + row.issueCount, 0);
+  const teacherMissCount = filteredRows.filter((row) => row.hasTeacherAlert).length;
+  const studentMissCount = filteredRows.reduce((sum, row) => sum + row.missingStudentIds.length, 0);
+  const feedbackMissCount = filteredRows.filter((row) => row.hasFeedbackAlert).length;
+  const criticalCount = filteredRows.filter((row) => row.severity === "critical").length;
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -224,13 +226,13 @@ export default async function AdminAlertsPage({
           {t(lang, "Urgent board: unresolved sign-in and feedback issues", "紧急看板：未处理签到与反馈问题")}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8, marginTop: 8 }}>
-          <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 8 }}>
-            <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Alert rows", "告警条目")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#991b1b" }}>{activeCount}</div>
-          </div>
+            <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 8 }}>
+              <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Alert rows", "告警条目")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#991b1b" }}>{activeCount}</div>
+            </div>
           <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 8 }}>
             <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Affected sessions", "受影响课次")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#991b1b" }}>{rows.length}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#991b1b" }}>{filteredRows.length}</div>
           </div>
           <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 8 }}>
             <div style={{ fontSize: 12, color: "#991b1b" }}>{t(lang, "Critical", "严重")}</div>
