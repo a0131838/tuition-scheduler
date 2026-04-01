@@ -232,6 +232,37 @@ async function financeMarkPaidPayrollAction(formData: FormData) {
   redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&finpaid=1`);
 }
 
+async function financeBatchMarkPaidPayrollAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const scope = typeof formData.get("scope") === "string" && String(formData.get("scope")) === "completed" ? "completed" : "all";
+  const cfg = await getApprovalRoleConfig();
+  if (!isRoleApprover(user.email, cfg.financeApproverEmails)) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-perm`);
+  }
+  const teacherIds = formData
+    .getAll("teacherIds")
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  if (teacherIds.length === 0) {
+    redirect(`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&error=fin-batch-empty`);
+  }
+
+  let successCount = 0;
+  let failedCount = 0;
+  for (const teacherId of teacherIds) {
+    const ok = await financeMarkTeacherPayrollPaid({ teacherId, month, scope, financeEmail: user.email });
+    if (ok) successCount += 1;
+    else failedCount += 1;
+  }
+
+  revalidatePath("/admin/reports/teacher-payroll");
+  redirect(
+    `/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}&batchpaid=${encodeURIComponent(String(successCount))}&batchfail=${encodeURIComponent(String(failedCount))}`
+  );
+}
+
 async function financeRejectPayrollAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -266,6 +297,8 @@ export default async function TeacherPayrollPage({
     cfg?: string;
     mgr?: string;
     finpaid?: string;
+    batchpaid?: string;
+    batchfail?: string;
     fincfm?: string;
     finrej?: string;
     error?: string;
@@ -304,6 +337,8 @@ export default async function TeacherPayrollPage({
   const cfgSaved = sp?.cfg === "1";
   const mgrDone = sp?.mgr === "1";
   const finPaidDone = sp?.finpaid === "1";
+  const batchPaidCount = Number(sp?.batchpaid ?? "0");
+  const batchFailedCount = Number(sp?.batchfail ?? "0");
   const finConfirmDone = sp?.fincfm === "1";
   const finRejectedDone = sp?.finrej === "1";
   const sendError = sp?.error === "send";
@@ -463,12 +498,29 @@ export default async function TeacherPayrollPage({
       queueLabel,
     };
   });
+  const teacherExceptionMap = new Map<
+    string,
+    {
+      fallbackComboCount: number;
+      chargedExcusedSessions: number;
+    }
+  >();
+  for (const breakdownRow of data.breakdownRows) {
+    const prev = teacherExceptionMap.get(breakdownRow.teacherId) ?? {
+      fallbackComboCount: 0,
+      chargedExcusedSessions: 0,
+    };
+    if (breakdownRow.usedRateFallback) prev.fallbackComboCount += 1;
+    if (breakdownRow.chargedExcusedSessions > 0) prev.chargedExcusedSessions += breakdownRow.chargedExcusedSessions;
+    teacherExceptionMap.set(breakdownRow.teacherId, prev);
+  }
   const myQueueRows = workflowRows.filter((item) => {
     if (isFinanceOnlyUser) return item.queueKey === "financeConfirm" || item.queueKey === "financePaid";
     if (item.queueKey === "send" || item.queueKey === "manager") return true;
     if (isFinanceApprover && (item.queueKey === "financeConfirm" || item.queueKey === "financePaid")) return true;
     return false;
   });
+  const financePayableQueueRows = myQueueRows.filter((item) => item.queueKey === "financePaid" && item.publish && isFinanceApprover);
   const selectedWorkflowRow =
     workflowRows.find((item) => item.row.teacherId === focusTeacherId) ??
     myQueueRows[0] ??
@@ -535,6 +587,39 @@ export default async function TeacherPayrollPage({
               <button type="submit">{t(lang, "Confirm reject", "确认驳回")}</button>
             </form>
           </details>
+        ) : null}
+      </div>
+    );
+  };
+  const renderSelectedTimeline = (item: (typeof workflowRows)[number] | null) => {
+    if (!item?.publish) {
+      return (
+        <div style={{ color: "#64748b", fontSize: 13 }}>
+          {t(lang, "Payroll has not been sent yet.", "工资单尚未发送。")}
+        </div>
+      );
+    }
+    const timelineItems = [
+      { label: t(lang, "Sent", "已发送"), at: item.publish.sentAt },
+      { label: t(lang, "Teacher confirmed", "老师已确认"), at: item.publish.confirmedAt },
+      { label: t(lang, "Manager approved", "管理已审批"), at: item.publish.managerApprovedAt },
+      { label: t(lang, "Finance confirmed", "财务已确认"), at: item.publish.financeConfirmedAt },
+      { label: t(lang, "Finance paid", "财务已发薪"), at: item.publish.financePaidAt },
+    ].filter((entry) => entry.at);
+    if (item.publish.financeRejectedAt) {
+      timelineItems.push({ label: t(lang, "Finance rejected", "财务已驳回"), at: item.publish.financeRejectedAt });
+    }
+    return (
+      <div style={{ display: "grid", gap: 6 }}>
+        {timelineItems.map((entry) => (
+          <div key={`${entry.label}-${entry.at}`} style={{ fontSize: 13, color: "#334155" }}>
+            <strong>{entry.label}</strong>: {PERIOD_DATE_FMT.format(new Date(String(entry.at)))}
+          </div>
+        ))}
+        {item.publish.financeRejectReason ? (
+          <div style={{ fontSize: 13, color: "#991b1b" }}>
+            <strong>{t(lang, "Reject reason", "驳回原因")}</strong>: {item.publish.financeRejectReason}
+          </div>
         ) : null}
       </div>
     );
@@ -617,6 +702,12 @@ export default async function TeacherPayrollPage({
       {mgrDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Manager approval recorded.", "管理审批已记录。")}</div> : null}
       {finConfirmDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance confirmation recorded.", "财务确认已记录。")}</div> : null}
       {finPaidDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance payout recorded.", "财务发薪已记录。")}</div> : null}
+      {Number.isFinite(batchPaidCount) && batchPaidCount > 0 ? (
+        <div style={{ marginBottom: 12, color: "#166534" }}>
+          {t(lang, "Batch payout recorded for", "批量发薪已记录")} {batchPaidCount} {t(lang, "teachers.", "位老师。")}
+          {Number.isFinite(batchFailedCount) && batchFailedCount > 0 ? ` ${t(lang, "Failed", "失败")} ${batchFailedCount}.` : ""}
+        </div>
+      ) : null}
       {finRejectedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance rejection recorded.", "财务驳回已记录。")}</div> : null}
       {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
@@ -630,6 +721,7 @@ export default async function TeacherPayrollPage({
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
       {sp?.error === "fin-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance approval failed.", "财务审批失败。")}</div> : null}
       {sp?.error === "fin-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance payout failed.", "财务发薪失败。")}</div> : null}
+      {sp?.error === "fin-batch-empty" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please select at least one teacher for batch payout.", "请至少选择一位老师进行批量发薪。")}</div> : null}
       {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
       {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only zhao hongwei can edit approval role config.", "只有 zhao hongwei 可以修改审批角色配置。")}</div> : null}
@@ -686,39 +778,60 @@ export default async function TeacherPayrollPage({
               {t(lang, "No payroll items need your action right now.", "当前没有需要你处理的工资单。")}
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {myQueueRows.map((item) => (
-                <a
-                  key={item.row.teacherId}
-                  href={buildPayrollPageHref(item.row.teacherId)}
-                  style={{
-                    border: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "2px solid #2563eb" : "1px solid #dbe4f0",
-                    borderRadius: 12,
-                    padding: 12,
-                    background: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "#eff6ff" : "#f8fafc",
-                    color: "inherit",
-                    textDecoration: "none",
-                    display: "grid",
-                    gap: 6,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                    <strong>{item.row.teacherName}</strong>
-                    <span style={{ ...workflowChipStyle(item.queueKey === "send" ? "pending" : item.queueKey === "done" ? "done" : "pending"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                      {item.queueLabel}
-                    </span>
+            <form action={financeBatchMarkPaidPayrollAction} style={{ display: "grid", gap: 10 }}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              {financePayableQueueRows.length > 1 ? (
+                <div style={{ marginBottom: 2, padding: 10, border: "1px solid #dbeafe", borderRadius: 10, background: "#eff6ff", display: "grid", gap: 8 }}>
+                  <div style={{ fontWeight: 600, color: "#1d4ed8" }}>
+                    {t(lang, "Finance batch payout", "财务批量发薪")}
                   </div>
-                  <div style={{ fontSize: 13, color: "#475569" }}>
-                    {t(lang, "Pending sessions", "待完成课次")}: <strong>{item.row.pendingSessions}</strong> · {t(lang, "Hours", "课时")}: <strong>{item.row.totalHours}</strong>
+                  <div style={{ fontSize: 13, color: "#334155" }}>
+                    {t(lang, "Select one or more finance-ready teachers below, then mark them paid together.", "先在下方勾选已到财务发薪阶段的老师，再一起标记发薪。")}
                   </div>
-                  <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>
-                    {item.row.currencyTotals.length === 0
-                      ? formatMoneyCents(0)
-                      : item.row.currencyTotals.map((currencyItem) => formatMoneyCents(currencyItem.amountCents, currencyItem.currencyCode)).join(" / ")}
+                  <div>
+                    <button type="submit">{t(lang, "Mark selected paid", "标记选中已发薪")}</button>
                   </div>
-                </a>
-              ))}
-            </div>
+                </div>
+              ) : null}
+              <div style={{ display: "grid", gap: 10 }}>
+                {myQueueRows.map((item) => (
+                  <div
+                    key={item.row.teacherId}
+                    style={{
+                      border: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "2px solid #2563eb" : "1px solid #dbe4f0",
+                      borderRadius: 12,
+                      padding: 12,
+                      background: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "#eff6ff" : "#f8fafc",
+                      display: "grid",
+                      gap: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
+                        {item.queueKey === "financePaid" && item.publish && isFinanceApprover ? (
+                          <input type="checkbox" name="teacherIds" value={item.row.teacherId} />
+                        ) : null}
+                        <a href={buildPayrollPageHref(item.row.teacherId)} style={{ color: "inherit", textDecoration: "none", fontWeight: 700 }}>
+                          {item.row.teacherName}
+                        </a>
+                      </div>
+                      <span style={{ ...workflowChipStyle(item.queueKey === "send" ? "pending" : item.queueKey === "done" ? "done" : "pending"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                        {item.queueLabel}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: "#475569" }}>
+                      {t(lang, "Pending sessions", "待完成课次")}: <strong>{item.row.pendingSessions}</strong> · {t(lang, "Hours", "课时")}: <strong>{item.row.totalHours}</strong>
+                    </div>
+                    <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>
+                      {item.row.currencyTotals.length === 0
+                        ? formatMoneyCents(0)
+                        : item.row.currencyTotals.map((currencyItem) => formatMoneyCents(currencyItem.amountCents, currencyItem.currencyCode)).join(" / ")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </form>
           )}
         </section>
 
@@ -736,6 +849,24 @@ export default async function TeacherPayrollPage({
                 </div>
                 <div style={{ fontSize: 13, color: "#334155" }}>
                   {t(lang, "Current period", "当前周期")}: {periodText}
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                <div style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
+                  <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Pending sessions", "待完成课次")}</div>
+                  <div style={{ fontWeight: 700, color: "#b45309" }}>{selectedWorkflowRow.row.pendingSessions}</div>
+                </div>
+                <div style={{ border: "1px solid #fed7aa", borderRadius: 10, padding: 10, background: "#fff7ed" }}>
+                  <div style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Cancelled+charged", "取消但计薪")}</div>
+                  <div style={{ fontWeight: 700, color: "#c2410c" }}>
+                    {teacherExceptionMap.get(selectedWorkflowRow.row.teacherId)?.chargedExcusedSessions ?? 0}
+                  </div>
+                </div>
+                <div style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fefce8" }}>
+                  <div style={{ fontSize: 12, color: "#854d0e" }}>{t(lang, "Fallback-rate combos", "费率回退组合")}</div>
+                  <div style={{ fontWeight: 700, color: "#a16207" }}>
+                    {teacherExceptionMap.get(selectedWorkflowRow.row.teacherId)?.fallbackComboCount ?? 0}
+                  </div>
                 </div>
               </div>
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
@@ -761,6 +892,10 @@ export default async function TeacherPayrollPage({
                   <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next step", "下一步")}</div>
                   <div style={{ fontWeight: 700 }}>{selectedWorkflowRow.queueLabel}</div>
                 </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>{t(lang, "Approval history", "审批历史")}</div>
+                {renderSelectedTimeline(selectedWorkflowRow)}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 <span style={{ ...workflowChipStyle(selectedWorkflowRow.teacherState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>

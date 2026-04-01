@@ -662,3 +662,14 @@
   - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r21 Deployed
+
+- Scope: teacher payroll finance batch payout and exception-summary follow-up.
+- Business impact:
+  - finance can now batch-mark multiple finance-ready teachers as paid from the payroll work queue instead of processing one teacher at a time
+  - the selected payroll panel now highlights pending sessions, cancelled-but-charged sessions, fallback-rate combos, and approval timeline context before the operator takes action
+  - teacher payroll detail now surfaces exception summary cards at the top so staff can see pending/fallback/charged issues before scanning the full tables
+  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
+- Validation:
+  - `npm run build`

@@ -1331,3 +1331,23 @@ This file is the single source of truth for what changed in production.
   - payroll overview now shows a role-aware `My work queue / 我的待处理` and a `Selected payroll / 当前处理老师` action panel
   - teacher payroll detail now supports quick anomaly filters for pending rows, fallback-rate rows, and cancelled-but-charged rows
 - Rollback point: previous production commit before `2026-04-01-r20`.
+
+## 2026-04-01-r21
+
+- Release ID: `2026-04-01-r21`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add finance batch payout, exception summaries, and approval timeline guidance to the teacher payroll workflow.
+- Key files:
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-payroll-batch-and-summary.md`
+- Risk impact (if any): Low. This only changes teacher payroll page workflow and summary presentation; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - finance can batch-mark multiple finance-ready teachers as paid from the payroll work queue
+  - the selected payroll panel now highlights pending sessions, fallback-rate combos, cancelled-but-charged sessions, and approval history
+  - teacher payroll detail now opens with exception summary cards before the combo/session tables
+- Rollback point: previous production commit before `2026-04-01-r21`.
