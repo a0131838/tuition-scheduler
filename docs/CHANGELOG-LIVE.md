@@ -1060,3 +1060,22 @@ This file is the single source of truth for what changed in production.
   - the queue keeps only receipt number, party, amount, status, and risk at list level
   - normal-width screens no longer require horizontal scrolling to understand the finance queue
 - Rollback point: previous production commit before `2026-04-01-r06`.
+
+## 2026-04-01-r07
+
+- Release ID: `2026-04-01-r07`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Clarify package-level finance mode versus the global receipt queue on the receipt-approval page.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-receipt-approval-package-mode-clarity.md`
+- Risk impact (if any): Low. This only changes page context and presentation while working inside one package; receipt approval, reject, redo, receipt creation, and payment-record rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - selecting a package now shows a dedicated package-workspace context card with clear back-to-queue actions
+  - the package finance workspace stays open by default once a package is selected
+  - the global receipt queue is still available but is visually downgraded to a secondary section while package mode is active
+- Rollback point: previous production commit before `2026-04-01-r07`.

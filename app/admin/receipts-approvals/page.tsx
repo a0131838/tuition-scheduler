@@ -952,6 +952,15 @@ export default async function ReceiptsApprovalsPage({
     else q.set("queueBucket", bucket);
     return `/admin/receipts-approvals?${q.toString()}`;
   };
+  const globalQueueQuery = new URLSearchParams(baseQuery.toString());
+  globalQueueQuery.delete("packageId");
+  globalQueueQuery.delete("step");
+  globalQueueQuery.delete("paymentRecordId");
+  globalQueueQuery.delete("invoiceId");
+  const globalQueueHref = globalQueueQuery.toString()
+    ? `/admin/receipts-approvals?${globalQueueQuery.toString()}`
+    : "/admin/receipts-approvals";
+  const packageWorkspaceMode = Boolean(packageIdFilter);
 
   const parentQueue = rows.map((r) => {
     const pkg = packageMap.get(r.packageId);
@@ -1242,6 +1251,48 @@ export default async function ReceiptsApprovalsPage({
           <a href={selectedReviewHref}>{t(lang, "Back to selected receipt", "返回当前收据")}</a>
         </div>
       ) : null}
+      {packageWorkspaceMode && selectedPackage ? (
+        <div style={{ marginBottom: 12, display: "grid", gap: 8, border: "1px solid #bfdbfe", background: "#f8fbff", borderRadius: 12, padding: "12px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
+                {t(lang, "Package finance workspace", "课包财务工作区")}
+              </div>
+              <div style={{ color: "#334155", marginTop: 2 }}>
+                {selectedPackage.student.name} | {selectedPackage.course.name}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a href={globalQueueHref}>{t(lang, "Back to global receipt queue", "返回统一收据队列")}</a>
+              <a href={stepHref("review")}>{t(lang, "Open package review step", "打开当前课包审核步骤")}</a>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Package ID", "课包ID")}: {packageIdFilter}
+            </span>
+            <span style={{ ...tagStyle("warn"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Current step", "当前步骤")}: {workflowStep === "upload"
+                ? t(lang, "Upload proof", "上传凭证")
+                : workflowStep === "records"
+                  ? t(lang, "Check records", "查看记录")
+                  : workflowStep === "create"
+                    ? t(lang, "Create receipt", "创建收据")
+                    : t(lang, "Review queue", "审核队列")}
+            </span>
+            <span style={{ ...tagStyle("ok"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Package mode active", "当前处于课包模式")}
+            </span>
+          </div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {t(
+              lang,
+              "You are now working inside one package. Use the workspace below to upload proof, check records, and create a receipt. Return to the global queue when this package is done.",
+              "你现在正在处理单个课包。请使用下方工作区上传凭证、查看记录并创建收据。处理完成后再返回统一收据队列。"
+            )}
+          </div>
+        </div>
+      ) : null}
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Recent Finance Actions", "最近财务操作")} ({recentOps.length})
@@ -1340,9 +1391,9 @@ export default async function ReceiptsApprovalsPage({
         ) : !selectedBilling ? (
           <div style={{ color: "#b00" }}>{t(lang, "Unable to load billing data for this package.", "无法加载该课包账单数据。")}</div>
         ) : (
-          <details>
+          <details open>
             <summary style={{ cursor: "pointer", fontWeight: 600, marginBottom: 8 }}>
-              {t(lang, "Open Parent Finance Operations", "展开家长财务操作")}
+              {t(lang, "Current package finance workspace", "当前课包财务工作区")}
             </summary>
             <div style={{ marginBottom: 10 }}>
               <b>{t(lang, "Student", "学生")}:</b> {selectedPackage.student.name} | <b>{t(lang, "Course", "课程")}:</b> {selectedPackage.course.name}
@@ -1693,10 +1744,20 @@ export default async function ReceiptsApprovalsPage({
         }
       `}</style>
       <div className="receipt-workspace">
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+      <details
+        open={!packageWorkspaceMode || workflowStep === "review"}
+        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}
+      >
+        <summary style={{ cursor: "pointer", fontWeight: 700, marginBottom: 8 }}>
+          {packageWorkspaceMode
+            ? t(lang, "Global receipt queue", "全局收据队列")
+            : t(lang, "Unified Receipt Queue", "统一收据队列")}
+        </summary>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Unified Receipt Queue", "统一收据队列")}</h3>
         <div style={{ marginBottom: 8, color: "#475569", fontSize: 13 }}>
-          {t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
+          {packageWorkspaceMode
+            ? t(lang, "This is the global queue. It stays available for cross-package review, but the package workspace above is now your main focus.", "这里是全局队列，仍可用于跨课包查看；但你当前的主要工作区是上方课包模式。")
+            : t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
         </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ ...tagStyle(mineQueue.length > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
@@ -1802,7 +1863,7 @@ export default async function ReceiptsApprovalsPage({
             ) : null}
           </div>
         )}
-      </div>
+      </details>
 
       <div className="receipt-actions" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>

@@ -512,3 +512,14 @@
   - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r07 Deployed
+
+- Scope: receipt-approval package-mode clarity for finance users.
+- Business impact:
+  - selecting one package now switches the page into a clearer `Package finance workspace / 课包财务工作区` context
+  - a dedicated top context card shows the student, course, package id, current step, and a clear way back to the global receipt queue
+  - the package workspace opens by default, while the global receipt queue stays available as a secondary section instead of competing with the current package flow
+  - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
+- Validation:
+  - `npm run build`
