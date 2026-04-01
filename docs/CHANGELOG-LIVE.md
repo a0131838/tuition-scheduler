@@ -1496,3 +1496,22 @@ This file is the single source of truth for what changed in production.
   - teacher midterm report list now starts with the same workspace hero and summary cards before the task table
   - teacher midterm report detail now starts with a clearer context hero and report summary cards before the form body
 - Rollback point: previous production commit before `2026-04-01-r28`.
+
+## 2026-04-02-r01
+
+- Release ID: `2026-04-02-r01`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reduce first-screen density on the teacher expense-claims and teacher payroll pages.
+- Key files:
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-teacher-finance-density-followup.md`
+- Risk impact (if any): Low. This is a teacher-side presentation pass only; expense-claim submission, resubmission, withdrawal, payroll confirmation, payroll calculation, and approval workflow logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher expense claims now starts with action-first cards, keeps new-claim creation in a lighter secondary section, and hides the full claim table inside a history disclosure unless filters are active
+  - teacher payroll now focuses first on current action/status, removes repeated status blocks, and keeps detailed calculation tables behind a collapsible section
+- Rollback point: previous production commit before `2026-04-02-r01`.

@@ -748,3 +748,13 @@
   - no teacher intro save behavior, midterm report save/submit rules, report lock rules, or PDF export logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r01 Deployed
+
+- Scope: reduce first-screen density on teacher expense claims and teacher payroll.
+- Business impact:
+  - teacher `My Expense Claims` now surfaces the most common next actions first, keeps new-claim creation in a lighter secondary block, and moves the full claim list/history behind a disclosure so the first screen is less crowded in bilingual mode
+  - teacher `My Payroll` now focuses first on the current action/status card and moves the detailed payroll calculations behind a disclosure so the page feels less like a dense admin report
+  - no expense-claim submission, resubmission, withdrawal, payroll calculation, teacher confirmation, or payroll approval rules changed
+- Validation:
+  - `npm run build`
