@@ -1431,3 +1431,26 @@ This file is the single source of truth for what changed in production.
   - teacher homepage now opens with a task-oriented dashboard instead of a flat menu-style page
   - teachers can switch `中文 / English / Bilingual` from the teacher layout without needing admin-side pages
 - Rollback point: previous production commit before `2026-04-01-r25`.
+
+## 2026-04-01-r26
+
+- Release ID: `2026-04-01-r26`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Unify the first-screen look and task framing across high-frequency teacher pages.
+- Key files:
+  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
+  - `app/teacher/sessions/page.tsx`
+  - `app/teacher/availability/page.tsx`
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-portal-high-frequency-pages.md`
+- Risk impact (if any): Low. This changes teacher-side page framing, summary cards, and quick-entry presentation only; attendance, availability, expense-claim, and payroll business logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher sessions now opens with a unified teacher workspace hero and summary cards for today, next 30 days, pending feedback, and overdue feedback
+  - teacher availability now opens with the same workspace shell plus clear summaries for covered days, ranges, next 7 days, and undo state
+  - teacher expense claims and teacher payroll now use the same teacher-first page framing and top summary cards as the new dashboard
+- Rollback point: previous production commit before `2026-04-01-r26`.

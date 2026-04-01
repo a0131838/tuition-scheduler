@@ -4,6 +4,7 @@ import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudents, isSessionFullyCancelled } from "@/lib/session-students";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 type SessionWithMeta = {
   id: string;
@@ -66,6 +67,15 @@ function feedbackMeta(feedback: { isProxyDraft: boolean; status: string } | null
   return { label: lang === "EN" ? "Submitted" : "已提交", bg: "#dcfce7", color: "#166534", border: "#bbf7d0" };
 }
 
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
+}
+
 export default async function TeacherSessionsPage() {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
@@ -105,6 +115,10 @@ export default async function TeacherSessionsPage() {
   })) as SessionWithMeta[];
 
   const sessions = sessionsRaw.filter((s) => !isSessionFullyCancelled(s));
+  const todayKey = dayKey(now);
+  const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
+  const pendingFeedbackCount = sessions.filter((s) => !s.feedbacks[0]).length;
+  const overdueFeedbackCount = sessions.filter((s) => !s.feedbacks[0] && new Date() > new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000)).length;
 
   const grouped = new Map<string, SessionWithMeta[]>();
   for (const s of sessions) {
@@ -118,10 +132,37 @@ export default async function TeacherSessionsPage() {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "My Sessions", "我的课次")}</h2>
-      <div style={{ color: "#64748b", fontSize: 12 }}>
-        {t(lang, "Timeline view for the next 30 days and recent sessions.", "按履历时间轴展示最近和未来30天课次。")}
-      </div>
+      <TeacherWorkspaceHero
+        title={t(lang, "My Sessions", "我的课次")}
+        subtitle={t(lang, "Timeline view for today, recent classes, and the next 30 days. Open one session to finish attendance and feedback without hunting across multiple menus.", "在这里集中查看今天、最近以及未来30天的课次时间线。打开单节课后即可完成点名和反馈，不必再到处找入口。")}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/availability", label: t(lang, "Open availability", "打开可上课时间") },
+        ]}
+      />
+
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div style={statCard("#fffbeb", "#fde68a")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e" }}>{t(lang, "Today", "今天")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#92400e", marginTop: 8 }}>{todayCount}</div>
+          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Classes scheduled today.", "今天安排的课程。")}</div>
+        </div>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Next 30 days", "未来30天")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{sessions.length}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Visible sessions in this timeline.", "当前时间线里的可见课次。")}</div>
+        </div>
+        <div style={statCard("#fefce8", "#fde68a")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#a16207" }}>{t(lang, "Feedback pending", "待提交反馈")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#a16207", marginTop: 8 }}>{pendingFeedbackCount}</div>
+          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Sessions without teacher feedback yet.", "还没有提交老师反馈的课次。")}</div>
+        </div>
+        <div style={statCard("#fef2f2", "#fecaca")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#b91c1c" }}>{t(lang, "Feedback overdue", "反馈超时")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#b91c1c", marginTop: 8 }}>{overdueFeedbackCount}</div>
+          <div style={{ color: "#991b1b", marginTop: 4 }}>{t(lang, "Past the 12-hour feedback window.", "已经超过课后12小时反馈窗口。")}</div>
+        </div>
+      </section>
 
       {sessions.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No sessions in range.", "当前范围内没有课次。")}</div>
@@ -233,5 +274,4 @@ export default async function TeacherSessionsPage() {
     </div>
   );
 }
-
 

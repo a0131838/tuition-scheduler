@@ -716,3 +716,13 @@
   - no teacher auth, attendance, feedback, availability, payroll, or expense-claim business rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r26 Deployed
+
+- Scope: unify high-frequency teacher pages under the new teacher workspace visual language.
+- Business impact:
+  - teacher `My Sessions`, `My Availability`, `My Expense Claims`, and `My Payroll` now open with the same teacher-workspace hero and summary-card structure as the refreshed dashboard
+  - each page now gives a clearer first-screen explanation of what it is for and where to go next, which should reduce the “looks messy / hard to orient” feedback from teachers
+  - no attendance rules, availability editing rules, expense-claim rules, or payroll workflow rules changed
+- Validation:
+  - `npm run build`

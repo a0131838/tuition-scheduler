@@ -13,6 +13,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Shanghai",
@@ -194,6 +195,15 @@ function teacherPayrollActionPrompt(
   };
 }
 
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -252,8 +262,15 @@ export default async function TeacherPayrollSelfPage({
       : false;
 
   return (
-    <div>
-      <h2>{t(lang, "My Payroll", "我的工资单")}</h2>
+    <div style={{ display: "grid", gap: 14 }}>
+      <TeacherWorkspaceHero
+        title={t(lang, "My Payroll", "我的工资单")}
+        subtitle={t(lang, "Review the current payroll owner, confirmation timeline, and whether you need to act now. This page is now part of the teacher finance workspace.", "在这里查看当前处理方、确认时间线，以及你现在是否需要操作。这一页现在是老师财务工作区的一部分。")}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/expense-claims", label: t(lang, "Open expense claims", "打开报销") },
+        ]}
+      />
       {msg === "confirmed" ? <div style={{ marginBottom: 10, color: "#166534" }}>{t(lang, "Payroll confirmed.", "工资单已确认。")}</div> : null}
       {err === "not-sent" ? <div style={{ marginBottom: 10, color: "#b00" }}>{t(lang, "This payroll has not been sent by admin yet.", "该工资单尚未由管理端发送。")}</div> : null}
       {err === "month" ? <div style={{ marginBottom: 10, color: "#b00" }}>{t(lang, "Invalid month format.", "月份格式错误。")}</div> : null}
@@ -352,9 +369,36 @@ async function TeacherPayrollBody({
   ];
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
+  const totalAmountLabel =
+    data.totalCurrencyTotals.length === 0
+      ? formatMoneyCents(0)
+      : data.totalCurrencyTotals.map((item) => formatMoneyCents(item.amountCents, item.currencyCode)).join(" / ");
 
   return (
     <>
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Current stage", "当前阶段")}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{teacherPayrollStageLabel(lang, stage)}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{stageOwner.owner}</div>
+        </div>
+        <div style={statCard("#f0fdf4", "#bbf7d0")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Total salary", "总工资")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 8 }}>{totalAmountLabel}</div>
+          <div style={{ color: "#166534", marginTop: 4 }}>{t(lang, "Across all currencies in this payroll period.", "该工资周期内所有币种的合计。")}</div>
+        </div>
+        <div style={statCard("#fffbeb", "#fde68a")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e" }}>{t(lang, "Sessions in cycle", "周期课次")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#92400e", marginTop: 8 }}>{data.totalSessions}</div>
+          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "All sessions included in this payroll range.", "当前工资统计周期内纳入的全部课次。")}</div>
+        </div>
+        <div style={statCard("#f8fafc", "#e2e8f0")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>{t(lang, "Cycle window", "统计周期")}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#334155", marginTop: 8 }}>{periodText}</div>
+          <div style={{ color: "#475569", marginTop: 4 }}>{t(lang, "The teaching period used for this payroll.", "这张工资单所使用的教学统计周期。")}</div>
+        </div>
+      </section>
+
       <div style={{ marginBottom: 12, padding: "8px 10px", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, color: "#1e3a8a" }}>
         {t(lang, "Sent by admin", "管理端发送时间")}: {formatBusinessDateTime(new Date(sentAt))}
         <br />
