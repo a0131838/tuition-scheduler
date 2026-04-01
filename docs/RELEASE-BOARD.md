@@ -458,3 +458,14 @@
   - no approval rules, rejection rules, finance payment rules, or archive behavior changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r02 Deployed
+
+- Scope: admin expense-claim review-page noise reduction.
+- Business impact:
+  - the main review queue now appears before reminders and before the self-submit tool, so management lands on the approval workflow faster
+  - follow-up reminders are condensed into a collapsed summary block instead of expanding a long list above the queue
+  - the collapsed full-history section no longer preloads receipt thumbnails, which reduces avoidable 404 console noise from legacy missing files
+  - no expense approval, rejection, payment, archive, or export rules changed
+- Validation:
+  - `npm run build`

@@ -243,13 +243,6 @@ export default async function AdminExpenseClaimsPage({
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
 
-      <details>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>{t(lang, 'Submit a claim for myself', '为自己提交报销')}</summary>
-        <div style={{ marginTop: 12 }}>
-          <ExpenseClaimForm lang={lang} action="/api/admin/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
-        </div>
-      </details>
-
       <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Expense Approval Config', '报销审批配置')}</div>
         <div style={{ color: '#475569', fontSize: 14 }}>
@@ -309,32 +302,6 @@ export default async function AdminExpenseClaimsPage({
           )) : <div style={{ color: '#64748b' }}>-</div>}
         </div>
       </section>
-
-      {(reminders.staleSubmitted.length || reminders.staleApprovedUnpaid.length) ? (
-        <section style={{ border: '1px solid #fecaca', borderRadius: 12, padding: 16, display: 'grid', gap: 12, background: '#fff7f7' }}>
-          <div style={{ fontWeight: 700 }}>{t(lang, 'Follow-up reminders', '跟进提醒')}</div>
-          {reminders.staleSubmitted.length ? (
-            <div style={{ display: 'grid', gap: 6 }}>
-              <div style={{ fontWeight: 600 }}>{t(lang, 'Submitted more than 3 days ago', '提交超过3天未审批')}</div>
-              {reminders.staleSubmitted.map((claim) => (
-                <div key={claim.id} style={{ fontSize: 14 }}>
-                  {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {reminders.staleApprovedUnpaid.length ? (
-            <div style={{ display: 'grid', gap: 6 }}>
-              <div style={{ fontWeight: 600 }}>{t(lang, 'Approved more than 3 days ago but not paid', '批准超过3天仍未付款')}</div>
-              {reminders.staleApprovedUnpaid.map((claim) => (
-                <div key={claim.id} style={{ fontSize: 14 }}>
-                  {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       <section style={{ border: '1px solid #dbeafe', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#f8fbff' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -504,6 +471,46 @@ export default async function AdminExpenseClaimsPage({
         </div>
       </section>
 
+      {(reminders.staleSubmitted.length || reminders.staleApprovedUnpaid.length) ? (
+        <details style={{ border: '1px solid #fecaca', borderRadius: 12, padding: 16, background: '#fff7f7' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+            {t(lang, 'Follow-up reminders', '跟进提醒')} ({reminders.staleSubmitted.length + reminders.staleApprovedUnpaid.length})
+          </summary>
+          <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+            {reminders.staleSubmitted.length ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ fontWeight: 600 }}>{t(lang, 'Submitted more than 3 days ago', '提交超过3天未审批')}</div>
+                {reminders.staleSubmitted.slice(0, 8).map((claim) => (
+                  <div key={claim.id} style={{ fontSize: 14 }}>
+                    {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
+                  </div>
+                ))}
+                {reminders.staleSubmitted.length > 8 ? (
+                  <div style={{ color: '#64748b', fontSize: 13 }}>
+                    {t(lang, 'More stale submitted claims remain in the queue below.', '还有更多超时待审批记录，请在下方队列继续处理。')}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {reminders.staleApprovedUnpaid.length ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ fontWeight: 600 }}>{t(lang, 'Approved more than 3 days ago but not paid', '批准超过3天仍未付款')}</div>
+                {reminders.staleApprovedUnpaid.slice(0, 8).map((claim) => (
+                  <div key={claim.id} style={{ fontSize: 14 }}>
+                    {claim.claimRefNo} | {claim.submitterName} | {formatUTCDateOnly(claim.expenseDate)} | {formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}
+                  </div>
+                ))}
+                {reminders.staleApprovedUnpaid.length > 8 ? (
+                  <div style={{ color: '#64748b', fontSize: 13 }}>
+                    {t(lang, 'More approved-unpaid claims remain in the filtered list below.', '还有更多已批未付记录，请在下方列表继续处理。')}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+
       <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
@@ -650,16 +657,6 @@ export default async function AdminExpenseClaimsPage({
                       <div style={{ fontSize: 12, color: '#64748b', maxWidth: 220, wordBreak: 'break-all' }}>
                         {claim.receiptOriginalName}
                       </div>
-                      {isPreviewableImage(claim.receiptOriginalName) ? (
-                        <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`}
-                            alt={claim.receiptOriginalName || 'receipt'}
-                            style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' }}
-                          />
-                        </a>
-                      ) : null}
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View', '查看')}</a>
                         <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download', '下载')}</a>
@@ -732,6 +729,15 @@ export default async function AdminExpenseClaimsPage({
             })}
           </tbody>
         </table>
+        </div>
+      </details>
+
+      <details>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#475569' }}>
+          {t(lang, 'Submit a claim for myself', '为自己提交报销')}
+        </summary>
+        <div style={{ marginTop: 12 }}>
+          <ExpenseClaimForm lang={lang} action="/api/admin/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
         </div>
       </details>
     </div>

@@ -966,3 +966,22 @@ This file is the single source of truth for what changed in production.
   - the selected-claim panel supports `Approve & next / 批准并下一条` and `Reject & next / 驳回并下一条`
   - the full claim list remains available in a collapsed history/details section
 - Rollback point: previous production commit before `2026-04-01-r01`.
+
+## 2026-04-01-r02
+
+- Release ID: `2026-04-01-r02`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reduce admin expense-claim review-page noise by demoting reminders and self-submit tools, and stop the collapsed history list from preloading missing receipt thumbnails.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-expense-claim-review-noise-reduction.md`
+- Risk impact (if any): Low. This only changes admin expense-claim page presentation and image-loading behavior in the collapsed history list; approval, rejection, payment, and archive logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - follow-up reminders now appear in a collapsed summary block below the main review queue
+  - the self-submit form moved to a lower-priority collapsed section
+  - the collapsed history list no longer preloads receipt thumbnails that could spam 404 console errors
+- Rollback point: previous production commit before `2026-04-01-r02`.
