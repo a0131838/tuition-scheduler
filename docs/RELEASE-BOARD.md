@@ -610,3 +610,13 @@
   - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r16 Deployed
+
+- Scope: package edit/top-up context card.
+- Business impact:
+  - the package modal now shows a stronger top context card so staff can always see the student, course, source, status, remaining balance, and total balance before editing or topping up
+  - switching between `Edit package / 编辑课包` and `Top-up / 增购` no longer feels like changing to a different record because the current package context stays fixed at the top
+  - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

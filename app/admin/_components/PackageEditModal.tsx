@@ -228,6 +228,50 @@ export default function PackageEditModal({
           </button>
         </div>
 
+        <div
+          style={{
+            marginTop: 12,
+            border: "1px solid #dbeafe",
+            borderRadius: 14,
+            padding: 14,
+            background: "#eff6ff",
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
+            {mode === "edit"
+              ? "You are editing this package / 你正在编辑这个课包"
+              : "You are topping up this package / 你正在给这个课包增购"}
+          </div>
+          <div style={{ display: "grid", gap: 6, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Student / 学生</div>
+              <strong>{pkg.studentName ?? "-"}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Course / 课程</div>
+              <strong>{pkg.courseName ?? "-"}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Source / 来源</div>
+              <strong>{pkg.sourceChannelName ?? "Standard / 常规"}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Status / 状态</div>
+              <strong>{pkg.status}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Remaining / 剩余</div>
+              <strong>{currentRemaining}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#475569" }}>Total / 总量</div>
+              <strong>{currentTotal ?? "Not tracked / 未记录"}</strong>
+            </div>
+          </div>
+        </div>
+
         <form
           style={{ display: "grid", gap: 8, marginTop: 12 }}
           hidden={mode !== "edit"}

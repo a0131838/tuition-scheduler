@@ -1234,3 +1234,21 @@ This file is the single source of truth for what changed in production.
   - paid-only fields in edit mode only expand when staff explicitly mark the package as paid
   - top-up now shows a clearer human confirmation sentence before submit
 - Rollback point: previous production commit before `2026-04-01-r15`.
+
+## 2026-04-01-r16
+
+- Release ID: `2026-04-01-r16`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add a clear package context card to the edit and top-up modal so staff can always see which student and course they are working on.
+- Key files:
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-edit-context-card.md`
+- Risk impact (if any): Low. This only changes package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - the package modal now shows a top context card with student, course, source, status, remaining balance, and total balance
+  - switching between `Edit package / 编辑课包` and `Top-up / 增购` keeps the current package context visible at the top
+- Rollback point: previous production commit before `2026-04-01-r16`.
