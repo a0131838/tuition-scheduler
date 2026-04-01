@@ -272,9 +272,9 @@ export default function PackageEditModal({
           </div>
         </div>
 
+        {mode === "edit" ? (
         <form
           style={{ display: "grid", gap: 8, marginTop: 12 }}
-          hidden={mode !== "edit"}
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
@@ -428,12 +428,9 @@ export default function PackageEditModal({
             {busy ? `${labels.update}...` : labels.update}
           </button>
         </form>
-
-        <hr style={{ margin: "16px 0" }} />
-
+        ) : (
         <form
-          style={{ display: "grid", gap: 8 }}
-          hidden={mode !== "topup"}
+          style={{ display: "grid", gap: 8, marginTop: 12 }}
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
@@ -573,40 +570,43 @@ export default function PackageEditModal({
             {busy ? `${labels.topUpSubmit}...` : labels.topUpSubmit}
           </button>
         </form>
+        )}
 
-        <form
-          onSubmit={(e) => {
-            if (!window.confirm(labels.deleteConfirm)) e.preventDefault();
-          }}
-          style={{ marginTop: 12 }}
-        >
-          <input type="hidden" name="id" value={pkg.id} />
-          <button
-            type="button"
-            disabled={busy}
-            style={{ color: "#b00" }}
-            onClick={async () => {
-              if (busy) return;
-              if (!window.confirm(labels.deleteConfirm)) return;
-              setErr("");
-              setBusy(true);
-              try {
-                const res = await fetch(`/api/admin/packages/${encodeURIComponent(pkg.id)}`, { method: "DELETE" });
-                const data = (await res.json().catch(() => null)) as any;
-                if (!res.ok || !data?.ok) {
-                  setErr(String(data?.message ?? `Request failed (${res.status})`));
-                  return;
-                }
-                dialogRef.current?.close();
-                preserveRefresh("Deleted");
-              } finally {
-                setBusy(false);
-              }
+        {mode === "edit" ? (
+          <form
+            onSubmit={(e) => {
+              if (!window.confirm(labels.deleteConfirm)) e.preventDefault();
             }}
+            style={{ marginTop: 12 }}
           >
-            {busy ? `${labels.deleteLabel}...` : labels.deleteLabel}
-          </button>
-        </form>
+            <input type="hidden" name="id" value={pkg.id} />
+            <button
+              type="button"
+              disabled={busy}
+              style={{ color: "#b00" }}
+              onClick={async () => {
+                if (busy) return;
+                if (!window.confirm(labels.deleteConfirm)) return;
+                setErr("");
+                setBusy(true);
+                try {
+                  const res = await fetch(`/api/admin/packages/${encodeURIComponent(pkg.id)}`, { method: "DELETE" });
+                  const data = (await res.json().catch(() => null)) as any;
+                  if (!res.ok || !data?.ok) {
+                    setErr(String(data?.message ?? `Request failed (${res.status})`));
+                    return;
+                  }
+                  dialogRef.current?.close();
+                  preserveRefresh("Deleted");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? `${labels.deleteLabel}...` : labels.deleteLabel}
+            </button>
+          </form>
+        ) : null}
         </div>
       </dialog>
     </>

@@ -1252,3 +1252,21 @@ This file is the single source of truth for what changed in production.
   - the package modal now shows a top context card with student, course, source, status, remaining balance, and total balance
   - switching between `Edit package / 编辑课包` and `Top-up / 增购` keeps the current package context visible at the top
 - Rollback point: previous production commit before `2026-04-01-r16`.
+
+## 2026-04-01-r17
+
+- Release ID: `2026-04-01-r17`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the package modal switch more clearly between edit and top-up by moving the active form directly under the package context card.
+- Key files:
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-edit-topup-mode-layout.md`
+- Risk impact (if any): Low. This only changes admin package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - switching to `Top-up / 增购` now brings the top-up form immediately under the fixed package context card
+  - the always-visible divider between edit and top-up content is removed, so staff no longer feel like they are still inside the edit form when they switch modes
+- Rollback point: previous production commit before `2026-04-01-r17`.
