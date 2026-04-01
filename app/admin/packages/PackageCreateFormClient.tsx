@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
+import SearchableMultiSelect from "../_components/SearchableMultiSelect";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
@@ -130,6 +131,8 @@ export default function PackageCreateFormClient({
   const [paidAmountValue, setPaidAmountValue] = useState("");
   const [noteValue, setNoteValue] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [sharedStudentIds, setSharedStudentIds] = useState<string[]>([]);
+  const [sharedCourseIds, setSharedCourseIds] = useState<string[]>([]);
   const settlementModeLabel = labels.settlementMode ?? "Settlement Mode";
   const settlementNoneLabel = labels.settlementNone ?? "Not Included";
   const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
@@ -204,6 +207,34 @@ export default function PackageCreateFormClient({
       validFromValue,
       validToValue,
     ]
+  );
+
+  const sharedStudentOptions = useMemo(
+    () =>
+      students.map((student) => ({
+        id: student.id,
+        label: student.name,
+        description: [
+          student.sourceChannelName ? `Source / 来源: ${student.sourceChannelName}` : null,
+          typeof student.activePackageCount === "number"
+            ? `Active / 有效课包: ${student.activePackageCount}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        searchText: [student.name, student.id, student.sourceChannelName].filter(Boolean).join(" "),
+      })),
+    [students]
+  );
+
+  const sharedCourseOptions = useMemo(
+    () =>
+      courses.map((course) => ({
+        id: course.id,
+        label: course.name,
+        searchText: `${course.name} ${course.id}`,
+      })),
+    [courses]
   );
 
   function validateStep(index: number) {
@@ -591,24 +622,30 @@ export default function PackageCreateFormClient({
                   <div style={{ display: "grid", gap: 14, marginTop: 12 }}>
                     <label style={{ display: "grid", gap: 6 }}>
                       <span>{labels.sharedStudents}</span>
-                      <select name="sharedStudentIds" multiple size={6} style={{ minWidth: 320 }}>
-                        {students.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
+                      <SearchableMultiSelect
+                        name="sharedStudentIds"
+                        options={sharedStudentOptions}
+                        selectedIds={sharedStudentIds}
+                        onChange={setSharedStudentIds}
+                        excludeIds={selectedStudentId ? [selectedStudentId] : []}
+                        searchPlaceholder="Search student name / 搜索学生姓名"
+                        selectedTitle="Selected shared students / 已选共享学生"
+                        emptyText="No matching students. / 没有匹配的学生。"
+                      />
                     </label>
 
                     <label style={{ display: "grid", gap: 6 }}>
                       <span>{labels.sharedCourses}</span>
-                      <select name="sharedCourseIds" multiple size={6} style={{ minWidth: 320 }}>
-                        {courses.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
+                      <SearchableMultiSelect
+                        name="sharedCourseIds"
+                        options={sharedCourseOptions}
+                        selectedIds={sharedCourseIds}
+                        onChange={setSharedCourseIds}
+                        excludeIds={selectedCourseId ? [selectedCourseId] : []}
+                        searchPlaceholder="Search course name / 搜索课程名称"
+                        selectedTitle="Selected shared courses / 已选共享课程"
+                        emptyText="No matching courses. / 没有匹配的课程。"
+                      />
                     </label>
 
                     <label style={{ display: "grid", gap: 6 }}>

@@ -630,3 +630,14 @@
   - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r18 Deployed
+
+- Scope: searchable shared-student and shared-course selectors in package create/edit flows.
+- Business impact:
+  - package create and package edit now use searchable add/remove pickers instead of long native multi-select boxes for `Shared Students / 共享学生` and `Shared Courses / 共享课程`
+  - the current student and course are excluded from their own sharing lists, which reduces accidental self-selection
+  - shared student results now show source and active-package context to make similar names easier to distinguish
+  - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

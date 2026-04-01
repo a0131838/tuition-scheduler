@@ -1270,3 +1270,25 @@ This file is the single source of truth for what changed in production.
   - switching to `Top-up / 增购` now brings the top-up form immediately under the fixed package context card
   - the always-visible divider between edit and top-up content is removed, so staff no longer feel like they are still inside the edit form when they switch modes
 - Rollback point: previous production commit before `2026-04-01-r17`.
+
+## 2026-04-01-r18
+
+- Release ID: `2026-04-01-r18`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Replace hard-to-scan shared student and shared course multi-selects with searchable add/remove pickers in package create and edit flows.
+- Key files:
+  - `app/admin/_components/SearchableMultiSelect.tsx`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-shared-selector-search.md`
+- Risk impact (if any): Low. This only changes the admin package create/edit presentation; package creation API behavior, package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - shared students and shared courses can now be searched and added as tags instead of using long native multi-select lists
+  - the current student and current course are excluded from their own sharing pickers to reduce accidental self-selection
+  - shared student results now show source and active-package context to reduce misclicks when names are similar
+- Rollback point: previous production commit before `2026-04-01-r18`.

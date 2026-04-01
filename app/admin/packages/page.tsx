@@ -458,11 +458,18 @@ export default async function AdminPackagesPage({
                             <PackageEditModal
                               pkg={{
                                 ...p,
+                                studentId: p.student?.id ?? "",
                                 studentName: p.student?.name ?? "",
+                                courseId: p.course?.id ?? "",
                                 courseName: p.course?.name ?? "",
                                 sourceChannelName: p.student?.sourceChannel?.name ?? "",
                               }}
-                              students={students.map((s) => ({ id: s.id, name: s.name }))}
+                              students={students.map((s) => ({
+                                id: s.id,
+                                name: s.name,
+                                sourceChannelName: s.sourceChannel?.name ?? "",
+                                activePackageCount: s.packages.length,
+                              }))}
                               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
                               labels={{
                                 edit: t(lang, "Edit", "编辑"),

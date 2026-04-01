@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import SearchableMultiSelect from "./SearchableMultiSelect";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 
@@ -34,6 +35,8 @@ type Labels = {
 
 type PackageRow = {
   id: string;
+  studentId?: string | null;
+  courseId?: string | null;
   type?: string | null;
   totalMinutes?: number | null;
   studentName?: string | null;
@@ -75,7 +78,7 @@ export default function PackageEditModal({
   labels,
 }: {
   pkg: PackageRow;
-  students: Array<{ id: string; name: string }>;
+  students: Array<{ id: string; name: string; sourceChannelName?: string; activePackageCount?: number }>;
   courses: Array<{ id: string; name: string }>;
   labels: Labels;
 }) {
@@ -94,6 +97,12 @@ export default function PackageEditModal({
   const [topUpNoteValue, setTopUpNoteValue] = useState("");
   const [topUpPaidValue, setTopUpPaidValue] = useState(false);
   const [topUpPaidAmountValue, setTopUpPaidAmountValue] = useState("");
+  const [editSharedStudentIds, setEditSharedStudentIds] = useState(() =>
+    pkg.sharedStudents.map((s) => s.studentId)
+  );
+  const [editSharedCourseIds, setEditSharedCourseIds] = useState(() =>
+    pkg.sharedCourses.map((c) => c.courseId)
+  );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -133,6 +142,32 @@ export default function PackageEditModal({
       },
     ],
     [currentRemaining, currentTotal, nextRemaining, nextTotal, pkg.courseName, pkg.studentName, topUpMinutesNumber]
+  );
+  const sharedStudentOptions = useMemo(
+    () =>
+      students.map((student) => ({
+        id: student.id,
+        label: student.name,
+        description: [
+          student.sourceChannelName ? `Source / 来源: ${student.sourceChannelName}` : null,
+          typeof student.activePackageCount === "number"
+            ? `Active / 有效课包: ${student.activePackageCount}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        searchText: [student.name, student.id, student.sourceChannelName].filter(Boolean).join(" "),
+      })),
+    [students]
+  );
+  const sharedCourseOptions = useMemo(
+    () =>
+      courses.map((course) => ({
+        id: course.id,
+        label: course.name,
+        searchText: `${course.name} ${course.id}`,
+      })),
+    [courses]
   );
 
   const preserveRefresh = (okMsg?: string) => {
@@ -187,6 +222,8 @@ export default function PackageEditModal({
           setTopUpNoteValue("");
           setTopUpPaidValue(false);
           setTopUpPaidAmountValue("");
+          setEditSharedStudentIds(pkg.sharedStudents.map((s) => s.studentId));
+          setEditSharedCourseIds(pkg.sharedCourses.map((c) => c.courseId));
           setContentKey((v) => v + 1);
         }}
       >
@@ -387,35 +424,33 @@ export default function PackageEditModal({
             <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
               <label>
                 {labels.sharedStudents}:
-                <select
-                  name="sharedStudentIds"
-                  multiple
-                  size={6}
-                  defaultValue={pkg.sharedStudents.map((s) => s.studentId)}
-                  style={{ marginLeft: 8, width: "100%" }}
-                >
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ marginTop: 8 }}>
+                  <SearchableMultiSelect
+                    name="sharedStudentIds"
+                    options={sharedStudentOptions}
+                    selectedIds={editSharedStudentIds}
+                    onChange={setEditSharedStudentIds}
+                    excludeIds={pkg.studentId ? [pkg.studentId] : []}
+                    searchPlaceholder="Search student name / 搜索学生姓名"
+                    selectedTitle="Selected shared students / 已选共享学生"
+                    emptyText="No matching students. / 没有匹配的学生。"
+                  />
+                </div>
               </label>
               <label>
                 {labels.sharedCourses}:
-                <select
-                  name="sharedCourseIds"
-                  multiple
-                  size={6}
-                  defaultValue={pkg.sharedCourses.map((c) => c.courseId)}
-                  style={{ marginLeft: 8, width: "100%" }}
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ marginTop: 8 }}>
+                  <SearchableMultiSelect
+                    name="sharedCourseIds"
+                    options={sharedCourseOptions}
+                    selectedIds={editSharedCourseIds}
+                    onChange={setEditSharedCourseIds}
+                    excludeIds={pkg.courseId ? [pkg.courseId] : []}
+                    searchPlaceholder="Search course name / 搜索课程名称"
+                    selectedTitle="Selected shared courses / 已选共享课程"
+                    emptyText="No matching courses. / 没有匹配的课程。"
+                  />
+                </div>
               </label>
               <label>
                 {labels.note}:
