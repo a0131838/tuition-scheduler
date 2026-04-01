@@ -265,7 +265,7 @@ export default async function TeacherPayrollSelfPage({
     <div style={{ display: "grid", gap: 14 }}>
       <TeacherWorkspaceHero
         title={t(lang, "My Payroll", "我的工资单")}
-        subtitle={t(lang, "Review the current payroll owner, confirmation timeline, and whether you need to act now. This page is now part of the teacher finance workspace.", "在这里查看当前处理方、确认时间线，以及你现在是否需要操作。这一页现在是老师财务工作区的一部分。")}
+        subtitle={t(lang, "Start with the current action status, then open calculation details only when you need to audit the numbers.", "先看当前处理状态，再在需要核对数字时展开工资明细。")}
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/expense-claims", label: t(lang, "Open expense claims", "打开报销") },
@@ -398,14 +398,6 @@ async function TeacherPayrollBody({
           <div style={{ color: "#475569", marginTop: 4 }}>{t(lang, "The teaching period used for this payroll.", "这张工资单所使用的教学统计周期。")}</div>
         </div>
       </section>
-
-      <div style={{ marginBottom: 12, padding: "8px 10px", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, color: "#1e3a8a" }}>
-        {t(lang, "Sent by admin", "管理端发送时间")}: {formatBusinessDateTime(new Date(sentAt))}
-        <br />
-        {confirmedAt
-          ? `${t(lang, "Confirmed at", "确认时间")}: ${formatBusinessDateTime(new Date(confirmedAt))}`
-          : t(lang, "Please review and confirm this payroll.", "请核对后确认此工资单。")}
-      </div>
       <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8 }}>
         <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 6 }}>
           {t(lang, "Current payroll status / 当前工资状态", "当前工资状态 / Current payroll status")}
@@ -466,39 +458,44 @@ async function TeacherPayrollBody({
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
-          <div>{t(lang, "Sent / 已发送", "已发送 / Sent")}: {formatBusinessDateTime(new Date(sentAt))}</div>
-          <div>{t(lang, "Teacher confirmed / 老师确认", "老师确认 / Teacher confirmed")}: {confirmedAt ? formatBusinessDateTime(new Date(confirmedAt)) : "-"}</div>
-          <div>{t(lang, "Manager approved / 管理审批", "管理审批 / Manager approved")}: {managerApprovedAt ? formatBusinessDateTime(new Date(managerApprovedAt)) : "-"}</div>
-          <div>{t(lang, "Finance confirmed / 财务确认", "财务确认 / Finance confirmed")}: {financeConfirmedAt ? formatBusinessDateTime(new Date(financeConfirmedAt)) : "-"}</div>
-          <div>{t(lang, "Paid / 已发薪", "已发薪 / Paid")}: {financePaidAt ? formatBusinessDateTime(new Date(financePaidAt)) : "-"}</div>
-          {financeRejectReason ? <div style={{ color: "#991b1b" }}>{t(lang, "Finance note / 财务备注", "财务备注 / Finance note")}: {financeRejectReason}</div> : null}
-        </div>
+        {financeRejectReason ? (
+          <div style={{ fontSize: 13, color: "#991b1b" }}>
+            {t(lang, "Finance note / 财务备注", "财务备注 / Finance note")}: {financeRejectReason}
+          </div>
+        ) : null}
+        {!confirmedAt ? (
+          <form action={confirmPayrollAction} style={{ marginTop: 12 }}>
+            <input type="hidden" name="month" value={month} />
+            <input type="hidden" name="scope" value={scope} />
+            <button type="submit">{t(lang, "Confirm Payroll", "确认工资单")}</button>
+          </form>
+        ) : null}
       </div>
       {cycleInfo ? (
-        <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #d1fae5", background: "#ecfdf5", borderRadius: 8, color: "#065f46" }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Payroll Cycle Notes", "工资周期说明")}</div>
-          <div>{t(lang, "Pay Date", "发放日期")}: <b>{cycleInfo.payoutDate}</b></div>
-          <div>{t(lang, "Salary Month", "对应工资月份")}: <b>{month}</b> ({cycleInfo.salaryMonthZh})</div>
-          <div>{t(lang, "Hours Count Window", "课时统计周期")}: <b>{cycleInfo.periodStart} - {cycleInfo.periodEnd}</b></div>
-          <div style={{ marginTop: 6, color: "#047857" }}>
-            {t(
-              lang,
-              `Example: ${cycleInfo.payoutDate} pays ${month} salary, counting hours from ${cycleInfo.periodStart} to ${cycleInfo.periodEnd}.`,
-              `示例：${cycleInfo.payoutDate} 发放 ${cycleInfo.salaryMonthZh} 工资，统计 ${cycleInfo.periodStart} - ${cycleInfo.periodEnd} 的上课课时。`
-            )}
+        <details style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #d1fae5", background: "#ecfdf5", borderRadius: 8, color: "#065f46" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+            {t(lang, "Payroll cycle notes", "工资周期说明")}
+          </summary>
+          <div style={{ marginTop: 8 }}>
+            <div>{t(lang, "Pay Date", "发放日期")}: <b>{cycleInfo.payoutDate}</b></div>
+            <div>{t(lang, "Salary Month", "对应工资月份")}: <b>{month}</b> ({cycleInfo.salaryMonthZh})</div>
+            <div>{t(lang, "Hours Count Window", "课时统计周期")}: <b>{cycleInfo.periodStart} - {cycleInfo.periodEnd}</b></div>
+            <div style={{ marginTop: 6, color: "#047857" }}>
+              {t(
+                lang,
+                `Example: ${cycleInfo.payoutDate} pays ${month} salary, counting hours from ${cycleInfo.periodStart} to ${cycleInfo.periodEnd}.`,
+                `示例：${cycleInfo.payoutDate} 发放 ${cycleInfo.salaryMonthZh} 工资，统计 ${cycleInfo.periodStart} - ${cycleInfo.periodEnd} 的上课课时。`
+              )}
+            </div>
           </div>
-        </div>
+        </details>
       ) : null}
 
-      {!confirmedAt ? (
-        <form action={confirmPayrollAction} style={{ marginBottom: 12 }}>
-          <input type="hidden" name="month" value={month} />
-          <input type="hidden" name="scope" value={scope} />
-          <button type="submit">{t(lang, "Confirm Payroll", "确认工资单")}</button>
-        </form>
-      ) : null}
-
+      <details style={{ marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 12, background: "#ffffff" }}>
+        <summary style={{ cursor: "pointer", padding: "12px 14px", fontWeight: 700 }}>
+          {t(lang, "Open payroll calculations", "展开工资计算明细")}
+        </summary>
+        <div style={{ padding: "0 14px 14px" }}>
       <div style={{ marginBottom: 12 }}>
         <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
       </div>
@@ -605,6 +602,8 @@ async function TeacherPayrollBody({
           </tbody>
         </table>
       )}
+        </div>
+      </details>
     </>
   );
 }

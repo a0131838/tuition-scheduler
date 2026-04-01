@@ -131,12 +131,36 @@ export default async function TeacherExpenseClaimsPage({
   const rejectedCount = claimsWithAttachmentState.filter((claim) => claim.status === ExpenseClaimStatus.REJECTED).length;
   const approvedUnpaidCount = claimsWithAttachmentState.filter((claim) => claim.status === ExpenseClaimStatus.APPROVED).length;
   const paidCount = claimsWithAttachmentState.filter((claim) => claim.status === ExpenseClaimStatus.PAID).length;
+  const hasFocusedFilters = statusFilter !== 'ALL' || Boolean(monthFilter) || Boolean(paymentBatchMonthFilter);
+  const actionCards = [
+    {
+      title: t(lang, 'Fix rejected claims', '处理被驳回报销'),
+      count: rejectedCount,
+      body: t(lang, 'Open the claims that need updates or replacement attachments first.', '先处理需要更新资料或补附件的报销单。'),
+      href: '/teacher/expense-claims?status=REJECTED',
+      tone: { border: '#fecaca', background: '#fff7f7', color: '#b91c1c' },
+    },
+    {
+      title: t(lang, 'Track approved unpaid', '跟进已批未付'),
+      count: approvedUnpaidCount,
+      body: t(lang, 'Check which approved claims are still waiting for finance payment.', '查看哪些已批准报销还在等待财务付款。'),
+      href: '/teacher/expense-claims?status=APPROVED',
+      tone: { border: '#fde68a', background: '#fffbeb', color: '#92400e' },
+    },
+    {
+      title: t(lang, 'Submit a new claim', '提交新报销'),
+      count: null,
+      body: t(lang, 'Create a new claim only after your updates and payment tracking are clear.', '先理清待处理事项，再新建新的报销单。'),
+      href: '#new-expense-claim',
+      tone: { border: '#bfdbfe', background: '#eff6ff', color: '#1d4ed8' },
+    },
+  ];
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <TeacherWorkspaceHero
         title={t(lang, 'My Expense Claims', '我的报销')}
-        subtitle={t(lang, 'Use this page to submit new claims, fix rejected ones, and follow payment progress without mixing them into teaching tasks.', '在这里集中提交新报销、补件重提，并跟踪付款进度，不再和教学任务混在一起。')}
+        subtitle={t(lang, 'Start with claims that need action, then submit new ones or review full history only when needed.', '先处理需要跟进的报销，再在需要时新建报销或查看完整历史。')}
         actions={[
           { href: '/teacher', label: t(lang, 'Back to dashboard', '返回工作台') },
           { href: '/teacher/payroll', label: t(lang, 'Open payroll', '打开工资单') },
@@ -166,12 +190,52 @@ export default async function TeacherExpenseClaimsPage({
       </section>
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
-      <section style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: 16, background: '#ffffff' }}>
-        <div style={{ fontWeight: 800, marginBottom: 10 }}>{t(lang, 'New expense claim', '新建报销')}</div>
-        <ExpenseClaimForm lang={lang} action="/api/teacher/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
+      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        {actionCards.map((card) => (
+          <a
+            key={card.title}
+            href={card.href}
+            style={{
+              display: 'grid',
+              gap: 8,
+              padding: 16,
+              borderRadius: 16,
+              border: `1px solid ${card.tone.border}`,
+              background: card.tone.background,
+              color: card.tone.color,
+              textDecoration: 'none',
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 800 }}>{card.title}</div>
+            {typeof card.count === 'number' ? (
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{card.count}</div>
+            ) : (
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{t(lang, 'Open', '打开')}</div>
+            )}
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>{card.body}</div>
+          </a>
+        ))}
       </section>
+      <details
+        id="new-expense-claim"
+        style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: 16, background: '#ffffff' }}
+      >
+        <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+          {t(lang, 'Create a new expense claim', '创建新的报销单')}
+        </summary>
+        <div style={{ marginTop: 12 }}>
+          <ExpenseClaimForm lang={lang} action="/api/teacher/expense-claims" submitLabel={t(lang, 'Submit expense claim', '提交报销单')} />
+        </div>
+      </details>
       <section style={{ display: 'grid', gap: 12 }}>
-        <h2 style={{ margin: 0 }}>{t(lang, 'My submitted claims', '我提交的报销单')}</h2>
+        <details
+          open={hasFocusedFilters}
+          style={{ border: '1px solid #e5e7eb', borderRadius: 16, padding: 16, background: '#ffffff' }}
+        >
+          <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+            {t(lang, 'My submitted claims and history', '我的报销单与历史')}
+          </summary>
+          <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
         <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <a href={quickThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
@@ -466,6 +530,8 @@ export default async function TeacherExpenseClaimsPage({
         ) : (
           <div style={{ color: '#64748b' }}>{t(lang, 'No expense claims yet.', '暂无报销单。')}</div>
         )}
+          </div>
+        </details>
       </section>
     </div>
   );
