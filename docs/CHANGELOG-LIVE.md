@@ -1023,3 +1023,21 @@ This file is the single source of truth for what changed in production.
   - finance can select multiple claims in one group and submit shared payment details once
   - the page still preserves the existing single-claim payment behavior in the full history section
 - Rollback point: previous production commit before `2026-04-01-r04`.
+
+## 2026-04-01-r05
+
+- Release ID: `2026-04-01-r05`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Clarify quick filters versus advanced filters on the admin expense-claim page.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-expense-claim-filter-clarity.md`
+- Risk impact (if any): Low. This only changes filter presentation and explanatory copy on the admin expense-claim page; claim review, finance batch payout, export behavior, and archive rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - quick work filters now sit above the main queues and clearly state they affect the queues, history list, and CSV export together
+  - advanced filters now live in a dedicated details block with matching explanatory copy
+- Rollback point: previous production commit before `2026-04-01-r05`.

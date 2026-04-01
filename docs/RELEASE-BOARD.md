@@ -491,3 +491,13 @@
   - the underlying payment write path and audit trail remain claim-level and unchanged
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r05 Deployed
+
+- Scope: expense-claim filter clarity on the admin review page.
+- Business impact:
+  - the page now separates `Quick work filters / 工作流快速筛选` from `Advanced filters / 高级筛选`
+  - finance and management users get a clearer explanation that the active filter set affects the review queue, finance queue, full history list, and CSV export together
+  - no approval, payment, archive, grouping, or export rules changed
+- Validation:
+  - `npm run build`

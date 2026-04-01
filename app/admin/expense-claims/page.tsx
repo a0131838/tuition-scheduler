@@ -150,7 +150,26 @@ export default async function AdminExpenseClaimsPage({
     approvedUnpaidOnly: '1',
     archived: '',
   })}`;
+  const quickSubmittedHref = `/admin/expense-claims?${buildFilterQuery({
+    status: ExpenseClaimStatus.SUBMITTED,
+    month: '',
+    paymentBatchMonth: '',
+    expenseType: '',
+    currency: '',
+    q: '',
+    approvedUnpaidOnly: '',
+    archived: '',
+  })}`;
   const quickClearHref = '/admin/expense-claims';
+  const hasAdvancedFilters =
+    statusFilter !== 'ALL' ||
+    Boolean(monthFilter) ||
+    Boolean(paymentBatchMonthFilter) ||
+    Boolean(expenseTypeFilter) ||
+    Boolean(currencyFilter) ||
+    Boolean(submitterQuery) ||
+    approvedUnpaidOnly ||
+    archivedOnly;
 
   async function approveAction(formData: FormData) {
     'use server';
@@ -386,6 +405,24 @@ export default async function AdminExpenseClaimsPage({
               {formatExpenseMoney(item.cents, item.currencyCode)}
             </div>
           )) : <div style={{ color: '#64748b' }}>-</div>}
+        </div>
+      </section>
+
+      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 12, background: '#f8fafc' }}>
+        <div style={{ fontWeight: 700 }}>{t(lang, 'Quick work filters', '工作流快速筛选')}</div>
+        <div style={{ color: '#475569', fontSize: 14 }}>
+          {t(
+            lang,
+            'Use these shortcuts to quickly switch the page dataset. They affect the review queue, finance queue, history list, and CSV export together.',
+            '这些快捷筛选会一起影响审批队列、财务队列、历史列表和 CSV 导出。',
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a href={quickSubmittedHref}>{t(lang, 'Submitted review queue', '待审批队列')}</a>
+          <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
+          <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
+          <a href={quickExpenseLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
+          <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
         </div>
       </section>
 
@@ -777,14 +814,21 @@ export default async function AdminExpenseClaimsPage({
         </details>
       ) : null}
 
-      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
-          <a href={quickExpenseLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
-          <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
-          <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+      <details
+        open={hasAdvancedFilters}
+        style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 14 }}
+      >
+        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+          {t(lang, 'Advanced filters and export', '高级筛选与导出')}
+        </summary>
+        <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
+          {t(
+            lang,
+            'Use advanced filters when you need to narrow by month, type, currency, submitter, payment batch, or archived status. CSV export follows the same filtered dataset.',
+            '当你需要按月份、类型、币种、提交人、付款批次或归档状态精确筛选时，使用这里的高级筛选。CSV 导出也会跟随同一份筛选结果。',
+          )}
         </div>
-        <form style={{ display: 'grid', gap: 14 }}>
+        <form style={{ display: 'grid', gap: 14, marginTop: 4 }}>
           <div style={{ display: 'grid', gap: 10 }}>
             <div style={{ fontWeight: 600, color: '#334155' }}>{t(lang, 'Expense filters', '消费筛选')}</div>
             <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
@@ -849,7 +893,7 @@ export default async function AdminExpenseClaimsPage({
             <a href={exportHref}>{t(lang, 'Export CSV', '导出 CSV')}</a>
           </div>
         </form>
-      </section>
+      </details>
 
       <details>
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
