@@ -544,3 +544,14 @@
   - no alert thresholds, sync rules, card grouping, or action links changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r10 Deployed
+
+- Scope: package-create flow clarity on the admin packages page.
+- Business impact:
+  - the create-package modal now guides staff through four steps instead of one long stacked form
+  - a live `Package summary / 课包摘要` card keeps the selected student, course, package type, balance, validity, payment, and settlement mode visible while editing
+  - sharing fields and internal notes move into an advanced section so common package creation stays simpler
+  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

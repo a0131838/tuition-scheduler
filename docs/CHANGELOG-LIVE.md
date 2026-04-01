@@ -1115,3 +1115,22 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - when switching to `Urgent first`, `Attendance only`, or `Feedback only`, the top summary now matches the filtered queue instead of keeping the full-page totals
 - Rollback point: previous production commit before `2026-04-01-r09`.
+
+## 2026-04-01-r10
+
+- Release ID: `2026-04-01-r10`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reduce confusion in the admin package-create flow by turning the large modal into a guided step-by-step form with a live summary card.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-create-flow-clarity.md`
+- Risk impact (if any): Low. This changes package-create presentation only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - package creation now guides staff through four steps instead of one long form
+  - a live summary card keeps student, course, balance, validity, payment, and settlement mode visible while filling the form
+  - advanced sharing and note fields are moved into a secondary advanced section
+- Rollback point: previous production commit before `2026-04-01-r10`.
