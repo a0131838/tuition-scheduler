@@ -1,4 +1,5 @@
 import { requireTeacherProfile } from "@/lib/auth";
+import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
 import {
   confirmTeacherPayroll,
@@ -60,6 +61,18 @@ function buildPayrollCycleInfo(monthKeyValue: string) {
   };
 }
 
+function teacherPayrollStageLabel(
+  lang: Awaited<ReturnType<typeof getLang>>,
+  stage: "teacher" | "manager" | "financeConfirm" | "financePaid" | "done" | "financeRejected"
+) {
+  if (stage === "teacher") return t(lang, "Waiting for your confirmation / 等待你确认", "等待你确认 / Waiting for your confirmation");
+  if (stage === "manager") return t(lang, "Waiting manager approval / 等待管理审批", "等待管理审批 / Waiting manager approval");
+  if (stage === "financeConfirm") return t(lang, "Waiting finance confirmation / 等待财务确认", "等待财务确认 / Waiting finance confirmation");
+  if (stage === "financePaid") return t(lang, "Waiting payout / 等待发薪", "等待发薪 / Waiting payout");
+  if (stage === "financeRejected") return t(lang, "Finance sent it back / 财务已退回", "财务已退回 / Finance sent it back");
+  return t(lang, "Paid / 已发薪", "已发薪 / Paid");
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -111,6 +124,11 @@ export default async function TeacherPayrollSelfPage({
   }
 
   const publish = await getTeacherPayrollPublishForTeacher({ teacherId: teacher.id, month, scope });
+  const approvalCfg = publish ? await getApprovalRoleConfig() : null;
+  const managerApproved =
+    publish && approvalCfg
+      ? areAllApproversConfirmed(publish.managerApprovedBy, approvalCfg.managerApproverEmails)
+      : false;
 
   return (
     <div>
@@ -137,7 +155,19 @@ export default async function TeacherPayrollSelfPage({
       {!publish ? (
         <div style={{ color: "#666" }}>{t(lang, "Admin has not sent this month's payroll yet.", "管理端尚未发送该月工资单。")}</div>
       ) : (
-        <TeacherPayrollBody teacherId={teacher.id} month={month} scope={scope} sentAt={publish.sentAt} confirmedAt={publish.confirmedAt} lang={lang} />
+        <TeacherPayrollBody
+          teacherId={teacher.id}
+          month={month}
+          scope={scope}
+          sentAt={publish.sentAt}
+          confirmedAt={publish.confirmedAt}
+          managerApprovedAt={managerApproved ? publish.managerApprovedAt : null}
+          financeConfirmedAt={publish.financeConfirmedAt}
+          financePaidAt={publish.financePaidAt}
+          financeRejectedAt={publish.financeRejectedAt}
+          financeRejectReason={publish.financeRejectReason}
+          lang={lang}
+        />
       )}
     </div>
   );
@@ -149,6 +179,11 @@ async function TeacherPayrollBody({
   scope,
   sentAt,
   confirmedAt,
+  managerApprovedAt,
+  financeConfirmedAt,
+  financePaidAt,
+  financeRejectedAt,
+  financeRejectReason,
   lang,
 }: {
   teacherId: string;
@@ -156,6 +191,11 @@ async function TeacherPayrollBody({
   scope: "all" | "completed";
   sentAt: string;
   confirmedAt: string | null;
+  managerApprovedAt: string | null;
+  financeConfirmedAt: string | null;
+  financePaidAt: string | null;
+  financeRejectedAt: string | null;
+  financeRejectReason: string | null;
   lang: Awaited<ReturnType<typeof getLang>>;
 }) {
   const data = await loadTeacherPayrollDetail(month, teacherId, scope);
@@ -163,6 +203,17 @@ async function TeacherPayrollBody({
     return <div style={{ color: "#b00" }}>{t(lang, "Payroll data not found.", "未找到工资数据。")}</div>;
   }
   const cycleInfo = buildPayrollCycleInfo(month);
+  const stage: "teacher" | "manager" | "financeConfirm" | "financePaid" | "done" | "financeRejected" = financeRejectedAt
+    ? "financeRejected"
+    : !confirmedAt
+      ? "teacher"
+      : !managerApprovedAt
+        ? "manager"
+        : !financeConfirmedAt
+          ? "financeConfirm"
+          : !financePaidAt
+            ? "financePaid"
+            : "done";
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
 
@@ -174,6 +225,22 @@ async function TeacherPayrollBody({
         {confirmedAt
           ? `${t(lang, "Confirmed at", "确认时间")}: ${formatBusinessDateTime(new Date(confirmedAt))}`
           : t(lang, "Please review and confirm this payroll.", "请核对后确认此工资单。")}
+      </div>
+      <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8 }}>
+        <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 6 }}>
+          {t(lang, "Current payroll status / 当前工资状态", "当前工资状态 / Current payroll status")}
+        </div>
+        <div style={{ color: "#334155", marginBottom: 8 }}>
+          {teacherPayrollStageLabel(lang, stage)}
+        </div>
+        <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
+          <div>{t(lang, "Sent / 已发送", "已发送 / Sent")}: {formatBusinessDateTime(new Date(sentAt))}</div>
+          <div>{t(lang, "Teacher confirmed / 老师确认", "老师确认 / Teacher confirmed")}: {confirmedAt ? formatBusinessDateTime(new Date(confirmedAt)) : "-"}</div>
+          <div>{t(lang, "Manager approved / 管理审批", "管理审批 / Manager approved")}: {managerApprovedAt ? formatBusinessDateTime(new Date(managerApprovedAt)) : "-"}</div>
+          <div>{t(lang, "Finance confirmed / 财务确认", "财务确认 / Finance confirmed")}: {financeConfirmedAt ? formatBusinessDateTime(new Date(financeConfirmedAt)) : "-"}</div>
+          <div>{t(lang, "Paid / 已发薪", "已发薪 / Paid")}: {financePaidAt ? formatBusinessDateTime(new Date(financePaidAt)) : "-"}</div>
+          {financeRejectReason ? <div style={{ color: "#991b1b" }}>{t(lang, "Finance note / 财务备注", "财务备注 / Finance note")}: {financeRejectReason}</div> : null}
+        </div>
       </div>
       {cycleInfo ? (
         <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #d1fae5", background: "#ecfdf5", borderRadius: 8, color: "#065f46" }}>

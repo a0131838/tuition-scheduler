@@ -521,6 +521,19 @@ export default async function TeacherPayrollPage({
     return false;
   });
   const financePayableQueueRows = myQueueRows.filter((item) => item.queueKey === "financePaid" && item.publish && isFinanceApprover);
+  const financeCurrencyGroups = Array.from(
+    financePayableQueueRows.reduce((map, item) => {
+      for (const currencyItem of item.row.currencyTotals) {
+        const prev = map.get(currencyItem.currencyCode) ?? { teacherCount: 0, amountCents: 0 };
+        prev.teacherCount += 1;
+        prev.amountCents += currencyItem.amountCents;
+        map.set(currencyItem.currencyCode, prev);
+      }
+      return map;
+    }, new Map<PayrollCurrencyCode, { teacherCount: number; amountCents: number }>())
+  )
+    .map(([currencyCode, info]) => ({ currencyCode, ...info }))
+    .sort((a, b) => a.currencyCode.localeCompare(b.currencyCode));
   const selectedWorkflowRow =
     workflowRows.find((item) => item.row.teacherId === focusTeacherId) ??
     myQueueRows[0] ??
@@ -781,6 +794,19 @@ export default async function TeacherPayrollPage({
             <form action={financeBatchMarkPaidPayrollAction} style={{ display: "grid", gap: 10 }}>
               <input type="hidden" name="month" value={month} />
               <input type="hidden" name="scope" value={scope} />
+              {financeCurrencyGroups.length > 0 ? (
+                <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                  {financeCurrencyGroups.map((group) => (
+                    <div key={group.currencyCode} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Finance-ready currency group", "可发薪币种组")}</div>
+                      <div style={{ fontWeight: 700 }}>{group.currencyCode}</div>
+                      <div style={{ fontSize: 13, color: "#334155" }}>
+                        {group.teacherCount} {t(lang, "teachers", "位老师")} · {formatMoneyCents(group.amountCents, group.currencyCode)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {financePayableQueueRows.length > 1 ? (
                 <div style={{ marginBottom: 2, padding: 10, border: "1px solid #dbeafe", borderRadius: 10, background: "#eff6ff", display: "grid", gap: 8 }}>
                   <div style={{ fontWeight: 600, color: "#1d4ed8" }}>

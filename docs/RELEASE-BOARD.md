@@ -673,3 +673,14 @@
   - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r22 Deployed
+
+- Scope: teacher payroll status-clarity follow-up for teachers and finance.
+- Business impact:
+  - teacher self-service payroll now shows a clearer bilingual stage card so staff can tell whether the sheet is waiting for teacher confirmation, manager approval, finance confirmation, payout, or has been returned by finance
+  - teacher payroll detail anomaly summary cards now jump directly into the matching filtered rows, which reduces extra clicks when drilling into pending, fallback-rate, or cancelled-but-charged issues
+  - finance batch payout now shows a currency-group summary before payout so finance can understand payable totals by currency at a glance
+  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
+- Validation:
+  - `npm run build`

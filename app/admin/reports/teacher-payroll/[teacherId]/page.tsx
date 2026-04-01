@@ -87,6 +87,15 @@ export default async function TeacherPayrollDetailPage({
   const pendingCount = data.sessionRows.filter((row) => !row.isCompleted).length;
   const fallbackCount = data.sessionRows.filter((row) => row.usedRateFallback).length;
   const chargedCount = data.sessionRows.filter((row) => row.isChargedExcused).length;
+  const buildDetailHref = (kind?: "pending" | "fallback" | "charged") => {
+    const params = new URLSearchParams();
+    params.set("month", month);
+    params.set("scope", scope);
+    if (kind === "pending") params.set("pendingOnly", "1");
+    if (kind === "fallback") params.set("fallbackOnly", "1");
+    if (kind === "charged") params.set("chargedOnly", "1");
+    return `/admin/reports/teacher-payroll/${encodeURIComponent(p.teacherId)}?${params.toString()}`;
+  };
 
   return (
     <div>
@@ -189,14 +198,29 @@ export default async function TeacherPayrollDetailPage({
         <div style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
           <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Pending sessions", "待完成课次")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#b45309" }}>{pendingCount}</div>
+          {pendingCount > 0 ? (
+            <div style={{ marginTop: 6 }}>
+              <a href={buildDetailHref("pending")}>{t(lang, "Open pending rows", "打开未完成条目")}</a>
+            </div>
+          ) : null}
         </div>
         <div style={{ border: "1px solid #fcd34d", borderRadius: 10, padding: 10, background: "#fefce8" }}>
           <div style={{ color: "#854d0e", fontSize: 12 }}>{t(lang, "Fallback-rate rows", "费率回退条目")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#a16207" }}>{fallbackCount}</div>
+          {fallbackCount > 0 ? (
+            <div style={{ marginTop: 6 }}>
+              <a href={buildDetailHref("fallback")}>{t(lang, "Open fallback rows", "打开费率回退条目")}</a>
+            </div>
+          ) : null}
         </div>
         <div style={{ border: "1px solid #fed7aa", borderRadius: 10, padding: 10, background: "#fff7ed" }}>
           <div style={{ color: "#9a3412", fontSize: 12 }}>{t(lang, "Cancelled+charged rows", "取消但计薪条目")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#c2410c" }}>{chargedCount}</div>
+          {chargedCount > 0 ? (
+            <div style={{ marginTop: 6 }}>
+              <a href={buildDetailHref("charged")}>{t(lang, "Open charged rows", "打开计薪条目")}</a>
+            </div>
+          ) : null}
         </div>
       </div>
 

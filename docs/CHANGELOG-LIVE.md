@@ -1351,3 +1351,24 @@ This file is the single source of truth for what changed in production.
   - the selected payroll panel now highlights pending sessions, fallback-rate combos, cancelled-but-charged sessions, and approval history
   - teacher payroll detail now opens with exception summary cards before the combo/session tables
 - Rollback point: previous production commit before `2026-04-01-r21`.
+
+## 2026-04-01-r22
+
+- Release ID: `2026-04-01-r22`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Clarify teacher payroll status on the teacher side, add anomaly-summary deep links, and surface finance-ready currency grouping for payroll payout.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-payroll-status-followup.md`
+- Risk impact (if any): Low. This changes payroll page guidance, status wording, and navigation only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher payroll now shows a bilingual current-status card with sent, teacher-confirmed, manager-approved, finance-confirmed, and paid milestones
+  - payroll detail anomaly summary cards now deep-link into the matching filtered rows
+  - finance-ready payroll queue now shows a currency grouping summary before batch payout
+- Rollback point: previous production commit before `2026-04-01-r22`.
