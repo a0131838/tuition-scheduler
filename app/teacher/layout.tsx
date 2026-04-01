@@ -1,7 +1,7 @@
 ﻿import { getCurrentUser, requireTeacher } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import Link from "next/link";
 import TeacherLanguageSelectorClient from "./TeacherLanguageSelectorClient";
+import TeacherSidebarNavClient from "./TeacherSidebarNavClient";
 
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
   const lang = await getLang();
@@ -55,41 +55,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         <div style={{ fontWeight: 700 }}>{t(lang, "Language", "语言")}</div>
         <TeacherLanguageSelectorClient initialLang={user?.language || lang} />
       </div>
-      <nav style={{ display: "grid", gap: 12 }}>
-        {navGroups.map((group) => (
-          <section
-            key={group.title}
-            style={{
-              display: "grid",
-              gap: 6,
-              padding: 10,
-              borderRadius: 14,
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.2 }}>{group.title}</div>
-            {group.items.map((item) => (
-              <Link
-                key={item.href}
-                scroll={false}
-                href={item.href}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  background: "#f8fafc",
-                  border: "1px solid #dbeafe",
-                  color: "#0f172a",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </section>
-        ))}
-      </nav>
+      <TeacherSidebarNavClient groups={navGroups} />
       <hr style={{ margin: "16px 0" }} />
       <a href="/teacher/logout">
         <button type="button">{t(lang, "Logout", "退出登录")}</button>
@@ -144,4 +110,3 @@ export default async function TeacherLayout({ children }: { children: React.Reac
     </div>
   );
 }
-

@@ -4,10 +4,12 @@ export default function TeacherWorkspaceHero({
   title,
   subtitle,
   actions = [],
+  collapseGuide = true,
 }: {
   title: string;
   subtitle: string;
   actions?: Array<{ href: string; label: string }>;
+  collapseGuide?: boolean;
 }) {
   return (
     <section
@@ -24,7 +26,16 @@ export default function TeacherWorkspaceHero({
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 30, lineHeight: 1.1, color: "#0f172a" }}>{title}</h1>
-          <div style={{ color: "#475569", marginTop: 6, maxWidth: 720 }}>{subtitle}</div>
+          {collapseGuide ? (
+            <details style={{ marginTop: 8, maxWidth: 720 }}>
+              <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 700 }}>
+                Quick guide / 快速说明
+              </summary>
+              <div style={{ color: "#475569", marginTop: 8 }}>{subtitle}</div>
+            </details>
+          ) : (
+            <div style={{ color: "#475569", marginTop: 6, maxWidth: 720 }}>{subtitle}</div>
+          )}
         </div>
         {actions.length ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

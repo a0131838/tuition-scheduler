@@ -758,3 +758,14 @@
   - no expense-claim submission, resubmission, withdrawal, payroll calculation, teacher confirmation, or payroll approval rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r02 Deployed
+
+- Scope: collapse low-priority teacher sidebar groups and page guides.
+- Business impact:
+  - teacher sidebar groups now collapse by work area so bilingual mode no longer shows every navigation block expanded at once
+  - the currently active teacher area auto-expands, which keeps orientation clear without forcing the whole sidebar open
+  - teacher workspace hero subtitles now live behind a `Quick guide / 快速说明` disclosure, reducing first-screen text density across teacher pages
+  - no teacher auth, navigation permissions, attendance, availability, payroll, expense-claim, or report logic changed
+- Validation:
+  - `npm run build`

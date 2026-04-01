@@ -1515,3 +1515,23 @@ This file is the single source of truth for what changed in production.
   - teacher expense claims now starts with action-first cards, keeps new-claim creation in a lighter secondary section, and hides the full claim table inside a history disclosure unless filters are active
   - teacher payroll now focuses first on current action/status, removes repeated status blocks, and keeps detailed calculation tables behind a collapsible section
 - Rollback point: previous production commit before `2026-04-02-r01`.
+
+## 2026-04-02-r02
+
+- Release ID: `2026-04-02-r02`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Collapse low-priority teacher sidebar groups and page guides to reduce bilingual-mode density.
+- Key files:
+  - `app/teacher/layout.tsx`
+  - `app/teacher/TeacherSidebarNavClient.tsx`
+  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-teacher-sidebar-collapse-followup.md`
+- Risk impact (if any): Low. This is a teacher-side navigation and presentation pass only; no teacher auth, attendance, availability, payroll, expense-claim, or report business rules changed.
+- Verification:
+  - `npm run build` passed
+  - teacher sidebar groups now collapse by section and auto-open the active area
+  - teacher page guides now sit behind `Quick guide / 快速说明`, reducing first-screen text density in bilingual mode
+- Rollback point: previous production commit before `2026-04-02-r02`.
