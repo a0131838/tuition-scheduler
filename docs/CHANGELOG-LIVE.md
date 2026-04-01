@@ -985,3 +985,22 @@ This file is the single source of truth for what changed in production.
   - the self-submit form moved to a lower-priority collapsed section
   - the collapsed history list no longer preloads receipt thumbnails that could spam 404 console errors
 - Rollback point: previous production commit before `2026-04-01-r02`.
+
+## 2026-04-01-r03
+
+- Release ID: `2026-04-01-r03`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add a finance-focused payout queue and selected-payout workflow to the admin expense-claim page.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-expense-claim-finance-flow.md`
+- Risk impact (if any): Low. This only reorganizes the admin expense-claim payment workflow and button flow for finance users; approval, rejection, payment persistence, archive behavior, and export rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - approved unpaid claims now appear in a dedicated finance queue
+  - the selected payout panel keeps payment method, payment reference, batch month, and remarks together
+  - finance users can use `Mark paid & next / 标记已付款并下一条` to move through the queue
+- Rollback point: previous production commit before `2026-04-01-r03`.

@@ -469,3 +469,14 @@
   - no expense approval, rejection, payment, archive, or export rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r03 Deployed
+
+- Scope: admin expense-claim finance queue and selected payout flow.
+- Business impact:
+  - finance users now get a dedicated `Approved unpaid / 已批未付` queue instead of working only from the mixed full-history table
+  - a `Selected payout item / 当前付款项` panel keeps payment method, reference, batch month, and remarks together in one place
+  - `Mark paid & next / 标记已付款并下一条` speeds up multi-claim finance processing
+  - no approval, rejection, archive, export, or payment-record persistence rules changed
+- Validation:
+  - `npm run build`

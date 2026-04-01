@@ -181,6 +181,7 @@ export default async function AdminExpenseClaimsPage({
       redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Only finance can mark paid' })}`);
     }
     const claimId = String(formData.get('claimId') ?? '').trim();
+    const nextClaimId = String(formData.get('nextClaimId') ?? '').trim();
     const paymentBatchMonth = String(formData.get('paymentBatchMonth') ?? '').trim();
     const financeRemarks = String(formData.get('financeRemarks') ?? '').trim();
     const paymentMethod = String(formData.get('paymentMethod') ?? '').trim();
@@ -194,7 +195,12 @@ export default async function AdminExpenseClaimsPage({
       paymentReference: paymentReference || null,
       paidBy: actor,
     });
-    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), msg: 'Expense claim marked paid' })}`);
+    redirect(`/admin/expense-claims?${buildFilterQuery({
+      ...Object.fromEntries(new URLSearchParams(filterQuery)),
+      approvedUnpaidOnly: '1',
+      claimId: nextClaimId,
+      msg: nextClaimId ? 'Expense claim marked paid. Moved to next payout item.' : 'Expense claim marked paid',
+    })}`);
   }
 
   async function saveApprovalConfigAction(formData: FormData) {
@@ -236,6 +242,10 @@ export default async function AdminExpenseClaimsPage({
   const selectedReviewClaim = reviewQueue.find((claim) => claim.id === selectedClaimIdParam) ?? reviewQueue[0] ?? null;
   const selectedReviewIndex = selectedReviewClaim ? reviewQueue.findIndex((claim) => claim.id === selectedReviewClaim.id) : -1;
   const nextReviewClaimId = selectedReviewIndex >= 0 && selectedReviewIndex + 1 < reviewQueue.length ? reviewQueue[selectedReviewIndex + 1]?.id ?? '' : '';
+  const financeQueue = claims.filter((claim) => claim.status === ExpenseClaimStatus.APPROVED);
+  const selectedFinanceClaim = financeQueue.find((claim) => claim.id === selectedClaimIdParam) ?? financeQueue[0] ?? null;
+  const selectedFinanceIndex = selectedFinanceClaim ? financeQueue.findIndex((claim) => claim.id === selectedFinanceClaim.id) : -1;
+  const nextFinanceClaimId = selectedFinanceIndex >= 0 && selectedFinanceIndex + 1 < financeQueue.length ? financeQueue[selectedFinanceIndex + 1]?.id ?? '' : '';
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -470,6 +480,160 @@ export default async function AdminExpenseClaimsPage({
           </section>
         </div>
       </section>
+
+      {canFinance ? (
+        <section style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#fffbeb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>{t(lang, 'Finance queue', '财务待处理队列')}</div>
+              <div style={{ color: '#475569', fontSize: 14 }}>
+                {t(lang, 'Focus on approved claims waiting for payment, then mark them paid one by one.', '先处理已批准未付款报销单，再逐条完成付款登记。')}
+              </div>
+            </div>
+            <div style={{ color: '#a16207', fontWeight: 700 }}>
+              {t(lang, 'Approved unpaid now', '当前已批未付')}: {financeQueue.length}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)' }}>
+            <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid #fde68a', fontWeight: 700 }}>
+                {t(lang, 'Approved unpaid queue', '已批未付队列')}
+              </div>
+              {financeQueue.length ? (
+                <div style={{ display: 'grid' }}>
+                  {financeQueue.map((claim) => {
+                    const isSelected = claim.id === selectedFinanceClaim?.id;
+                    const financeTypeLabel = getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode;
+                    return (
+                      <a
+                        key={claim.id}
+                        href={focusClaimHref(buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), approvedUnpaidOnly: '1' }), claim.id)}
+                        style={{
+                          display: 'grid',
+                          gap: 8,
+                          padding: 14,
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          borderTop: '1px solid #fef3c7',
+                          background: isSelected ? '#fef3c7' : '#fff',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                          <div style={{ fontWeight: 700 }}>{claim.claimRefNo}</div>
+                          <span style={{ fontSize: 12, color: '#a16207', fontWeight: 700 }}>
+                            {t(lang, 'Focus', '聚焦')}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14 }}>
+                          <span>{claim.submitterName}</span>
+                          <span>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: '#475569', fontSize: 13 }}>
+                          <span>{claim.approverEmail || t(lang, 'Approved', '已批准')}</span>
+                          <span>{financeTypeLabel}</span>
+                        </div>
+                        <div style={{ color: '#334155', fontSize: 12 }}>
+                          {t(lang, 'Expense month / currency', '消费月份 / 币种')}: {monthKey(claim.expenseDate)} · {claim.currencyCode}
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ padding: 16, color: '#64748b' }}>
+                  {t(lang, 'No approved unpaid claims match the current filters.', '当前筛选下没有已批未付报销单。')}
+                </div>
+              )}
+            </section>
+
+            <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', padding: 16, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{t(lang, 'Selected payout item', '当前付款项')}</div>
+                  <div style={{ color: '#475569', fontSize: 14 }}>
+                    {selectedFinanceClaim
+                      ? t(lang, 'Keep payment details together and move through approved claims in one flow.', '把付款信息集中在一起，按同一流程处理已批准报销单。')
+                      : t(lang, 'Pick one approved unpaid claim from the finance queue to record payment here.', '从左侧财务队列选择一条已批未付报销单，在这里登记付款。')}
+                  </div>
+                </div>
+                {selectedFinanceClaim ? (
+                  <div style={{ color: '#a16207', fontWeight: 700, fontSize: 13 }}>
+                    {t(lang, 'Queue position', '队列位置')} {selectedFinanceIndex + 1} / {financeQueue.length}
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedFinanceClaim ? (
+                <>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedFinanceClaim.claimRefNo}</div>
+                    <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                      <div><strong>{t(lang, 'Submitter', '提交人')}:</strong> {selectedFinanceClaim.submitterName}</div>
+                      <div><strong>{t(lang, 'Approved by', '批准人')}:</strong> {selectedFinanceClaim.approverEmail || '-'}</div>
+                      <div><strong>{t(lang, 'Type', '类型')}:</strong> {getExpenseTypeOption(selectedFinanceClaim.expenseTypeCode)?.label ?? selectedFinanceClaim.expenseTypeCode}</div>
+                      <div><strong>{t(lang, 'Amount', '金额')}:</strong> {formatExpenseMoney(selectedFinanceClaim.amountCents + (selectedFinanceClaim.gstAmountCents ?? 0), selectedFinanceClaim.currencyCode)}</div>
+                      <div><strong>{t(lang, 'Expense date', '消费日期')}:</strong> {formatUTCDateOnly(selectedFinanceClaim.expenseDate)}</div>
+                      <div><strong>{t(lang, 'Payment batch month', '付款批次月份')}:</strong> {paymentBatchMonthFilter || formatMonthKey(new Date())}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ fontWeight: 700 }}>{t(lang, 'Receipt and notes', '附件与说明')}</div>
+                    <div style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #fde68a', background: '#fffdf5', whiteSpace: 'pre-wrap' }}>
+                      {selectedFinanceClaim.description}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <a href={`/api/expense-claims/${encodeURIComponent(selectedFinanceClaim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View attachment', '查看附件')}</a>
+                      <a href={`/api/expense-claims/${encodeURIComponent(selectedFinanceClaim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download attachment', '下载附件')}</a>
+                    </div>
+                  </div>
+
+                  <form action={markPaidAction} style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fde68a', background: '#fffdf5' }}>
+                    <div style={{ fontWeight: 700 }}>{t(lang, 'Finance action', '财务处理')}</div>
+                    <div style={{ color: '#475569', fontSize: 14 }}>
+                      {nextFinanceClaimId
+                        ? t(lang, 'Record payment here and the panel will move to the next approved unpaid claim.', '在这里登记付款后，面板会自动切到下一条已批未付报销单。')
+                        : t(lang, 'This is the last approved unpaid claim in the current finance queue.', '这是当前财务队列中的最后一条已批未付报销单。')}
+                    </div>
+                    <input type="hidden" name="claimId" value={selectedFinanceClaim.id} />
+                    <input type="hidden" name="nextClaimId" value={nextFinanceClaimId} />
+                    <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span>{t(lang, 'Payment method', '付款方式')}</span>
+                        <select name="paymentMethod" defaultValue="BANK_TRANSFER">
+                          {EXPENSE_PAYMENT_METHODS.map((method) => (
+                            <option key={method} value={method}>{formatExpensePaymentMethod(method)}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span>{t(lang, 'Payment reference', '付款参考号')}</span>
+                        <input name="paymentReference" placeholder={t(lang, 'Bank ref / transaction id', '银行流水号 / 交易号')} />
+                      </label>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span>{t(lang, 'Payment batch month', '付款批次月份')}</span>
+                        <input type="month" name="paymentBatchMonth" defaultValue={paymentBatchMonthFilter || formatMonthKey(new Date())} />
+                      </label>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span>{t(lang, 'Finance remarks', '财务备注')}</span>
+                        <input name="financeRemarks" placeholder={t(lang, 'Optional payment note', '可选付款备注')} />
+                      </label>
+                    </div>
+                    <button type="submit">
+                      {nextFinanceClaimId ? t(lang, 'Mark paid & next', '标记已付款并下一条') : t(lang, 'Mark paid', '标记已付款')}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div style={{ padding: '12px 0', color: '#64748b' }}>
+                  {t(lang, 'No approved unpaid claim is selected. Adjust filters or choose a finance item from the queue.', '当前没有选中的已批未付报销单。你可以调整筛选，或从左侧财务队列选择一条。')}
+                </div>
+              )}
+            </section>
+          </div>
+        </section>
+      ) : null}
 
       {(reminders.staleSubmitted.length || reminders.staleApprovedUnpaid.length) ? (
         <details style={{ border: '1px solid #fecaca', borderRadius: 12, padding: 16, background: '#fff7f7' }}>
