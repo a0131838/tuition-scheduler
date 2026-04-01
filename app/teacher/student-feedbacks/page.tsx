@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 type FeedbackFlatRow = {
   feedbackId: string;
@@ -70,6 +71,15 @@ function summarizeHandoffItem(x: FeedbackFlatRow) {
   if (x.homework) parts.push(`作业:${summarize(x.homework, 24)}`);
   if (!x.classPerformance && !x.homework) parts.push(`反馈:${summarize(x.content, 36)}`);
   return parts.join(" | ");
+}
+
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
 }
 
 async function markFeedbackReadAction(formData: FormData) {
@@ -314,6 +324,8 @@ export default async function TeacherStudentFeedbacksPage({
     });
 
   const totalStudents = students.length;
+  const unreadOtherTotal = students.reduce((sum, student) => sum + student.unreadOtherCount, 0);
+  const handoffRiskTotal = students.filter((student) => student.hasHandoffRisk).length;
   const totalPages = Math.max(1, Math.ceil(totalStudents / pageSize));
   const safePage = Math.min(page, totalPages);
   const startIdx = (safePage - 1) * pageSize;
@@ -458,10 +470,46 @@ export default async function TeacherStudentFeedbacksPage({
         }
       `}</style>
       <div className={`page-shell${selectedStudentId ? " with-drawer" : ""}`} style={{ display: "grid", gap: 14 }}>
-      <h2 id="feedback-list-top" style={{ marginBottom: 0 }}>{t(lang, "Student Feedbacks", "学生课后反馈")}</h2>
+      <TeacherWorkspaceHero
+        title={t(lang, "Student Feedbacks", "学生课后反馈")}
+        subtitle={t(
+          lang,
+          "Track recent handoffs, unread feedback from other teachers, and the latest teaching context for each student before your next class.",
+          "在下一节课前，先查看学生最近的交接反馈、其他老师未读反馈，以及最新教学上下文。"
+        )}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开课次") },
+          { href: "/teacher/student-feedbacks?onlyOthers=1&onlyUnreadOthers=1&handoffRisk=1", label: t(lang, "Open handoff risks", "查看交接风险") },
+        ]}
+      />
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Students in view", "当前学生数")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{totalStudents}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Students matching your current filters.", "符合当前筛选的学生数量。")}</div>
+        </div>
+        <div style={statCard("#f8fafc", "#cbd5e1")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155" }}>{t(lang, "Feedback entries", "反馈条数")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 8 }}>{visible.length}</div>
+          <div style={{ color: "#475569", marginTop: 4 }}>{t(lang, "Entries inside the current date range and search.", "当前日期范围和搜索下的反馈记录。")}</div>
+        </div>
+        <div style={statCard("#fffbeb", "#fde68a")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e" }}>{t(lang, "Unread handoffs", "未读交接")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#92400e", marginTop: 8 }}>{unreadOtherTotal}</div>
+          <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Unread feedback entries written by other teachers.", "其他老师写的、你还没读过的反馈条数。")}</div>
+        </div>
+        <div style={statCard("#fff7ed", "#fdba74")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#9a3412" }}>{t(lang, "Handoff risks", "交接风险")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#9a3412", marginTop: 8 }}>{handoffRiskTotal}</div>
+          <div style={{ color: "#9a3412", marginTop: 4 }}>{t(lang, "Students with unread cross-teacher items from the last 7 days.", "近7天内存在未读跨老师交接反馈的学生。")}</div>
+        </div>
+      </section>
       {sp?.msg === "marked-read" ? <div style={{ color: "#166534" }}>{t(lang, "Marked as read.", "已标记为已读。")}</div> : null}
       {sp?.err ? <div style={{ color: "#b91c1c" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, background: "#ffffff", display: "grid", gap: 12 }}>
+      <div style={{ fontWeight: 700 }}>{t(lang, "Feedback filters", "反馈筛选")}</div>
       <form method="GET" className="filter-bar ts-filter-bar">
         <input
           name="q"
@@ -492,6 +540,10 @@ export default async function TeacherStudentFeedbacksPage({
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
+      <div style={{ color: "#334155", fontSize: 13 }}>
+        {t(lang, "Use filters to focus on cross-teacher handoffs, unread updates, or a specific student before class.", "用这些筛选快速聚焦跨老师交接、未读更新，或某位学生的上课前信息。")}
+      </div>
+      </section>
 
       <div style={{ color: "#334155" }}>
         {t(lang, "Students", "学生")}: <b>{totalStudents}</b> | {t(lang, "Feedback entries", "反馈条数")}: <b>{visible.length}</b>

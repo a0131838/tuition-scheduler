@@ -11,6 +11,7 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
 import TeacherAlertsQuickMarkClient from "./TeacherAlertsQuickMarkClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
@@ -85,6 +86,15 @@ function badgeStyle(kind: "danger" | "warn" | "ok" | "muted") {
     color: "#334155",
     border: "1px solid #e2e8f0",
     fontSize: 12,
+  } as const;
+}
+
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
   } as const;
 }
 
@@ -180,40 +190,38 @@ export default async function TeacherAlertsPage({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>{t(lang, "Sign-in Alerts", "签到告警")}</h2>
-        <a
-          href={showResolved ? "/teacher/alerts" : "/teacher/alerts?showResolved=1"}
-          style={{
-            display: "inline-block",
-            padding: "6px 10px",
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-          }}
-        >
-          {showResolved ? t(lang, "Show pending only", "只看待处理") : t(lang, "Show resolved too", "显示已处理")}
-        </a>
-      </div>
+      <TeacherWorkspaceHero
+        title={t(lang, "Sign-in Alerts", "签到告警")}
+        subtitle={t(
+          lang,
+          "Handle attendance gaps and overdue feedback by session, then jump straight into the affected class without scanning multiple menus.",
+          "按课次处理点名缺口和反馈超时，再直接进入对应课程，不需要在多个菜单之间来回找。"
+        )}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开课次") },
+          { href: showResolved ? "/teacher/alerts" : "/teacher/alerts?showResolved=1", label: showResolved ? t(lang, "Show pending only", "只看待处理") : t(lang, "Show resolved too", "显示已处理") },
+        ]}
+      />
 
       <div style={{ color: "#64748b", fontSize: 12 }}>
         {t(lang, "Optimized flow: process by session card, one click to open session or quick mark students.", "流程优化：按课次卡片处理，一键打开课次或快速标记学生状态。")}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-        <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff1f2", padding: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={statCard("#fff1f2", "#fecaca")}>
           <div style={{ fontSize: 12, color: "#9f1239" }}>{t(lang, "Pending Sessions", "待处理课次")}</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{pendingRows.length}</div>
         </div>
-        <div style={{ border: "1px solid #fde68a", borderRadius: 10, background: "#fffbeb", padding: 10 }}>
+        <div style={statCard("#fffbeb", "#fde68a")}>
           <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Teacher Not Signed", "老师未签到")}</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{pendingTeacher}</div>
         </div>
-        <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#eff6ff", padding: 10 }}>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
           <div style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Students Not Signed", "学生未签到")}</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{pendingStudent}</div>
         </div>
-        <div style={{ border: "1px solid #ddd6fe", borderRadius: 10, background: "#f5f3ff", padding: 10 }}>
+        <div style={statCard("#f5f3ff", "#ddd6fe")}>
           <div style={{ fontSize: 12, color: "#6d28d9" }}>{t(lang, "Feedback Overdue", "反馈超时")}</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{pendingFeedback}</div>
         </div>

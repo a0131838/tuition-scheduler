@@ -1454,3 +1454,24 @@ This file is the single source of truth for what changed in production.
   - teacher availability now opens with the same workspace shell plus clear summaries for covered days, ranges, next 7 days, and undo state
   - teacher expense claims and teacher payroll now use the same teacher-first page framing and top summary cards as the new dashboard
 - Rollback point: previous production commit before `2026-04-01-r26`.
+
+## 2026-04-01-r27
+
+- Release ID: `2026-04-01-r27`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Extend the refreshed teacher workspace framing to alerts, student feedbacks, and tickets.
+- Key files:
+  - `app/teacher/alerts/page.tsx`
+  - `app/teacher/student-feedbacks/page.tsx`
+  - `app/teacher/tickets/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-portal-supporting-pages.md`
+- Risk impact (if any): Low. This is a teacher-side presentation and navigation pass only; alert sync rules, feedback read/write logic, ticket transitions, proof links, and completion actions remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher alerts now opens with the same teacher workspace hero and summary-card framing as the refreshed dashboard and high-frequency pages
+  - teacher student feedbacks now starts with clear handoff-focused summaries and a dedicated filter section instead of dropping teachers directly into a long list
+  - teacher tickets now opens with the same task-oriented framing plus open/urgent/missing-proof summaries before the board table
+- Rollback point: previous production commit before `2026-04-01-r27`.

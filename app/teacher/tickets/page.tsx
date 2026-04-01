@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { existsSync } from "fs";
 import path from "path";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 function proofItems(proof: string | null | undefined) {
   if (!proof) return [];
@@ -48,6 +49,15 @@ function isTicketProofMissing(item: string) {
   if (!filename) return false;
   const abs = path.join(process.cwd(), "public", "uploads", "tickets", filename);
   return !existsSync(abs);
+}
+
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
 }
 
 async function markDoneTeacherAction(formData: FormData) {
@@ -133,10 +143,46 @@ export default async function TeacherTicketsPage({
   });
 
   const backHref = `/teacher/tickets?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}`;
+  const urgentCount = rows.filter((row) => ["high", "urgent"].includes(String(row.priority ?? "").trim().toLowerCase())).length;
+  const missingProofCount = rows.filter((row) => proofItems(row.proof).some((item) => isTicketProofMissing(item))).length;
+  const openActionCount = rows.filter((row) => row.status !== "Completed").length;
 
   return (
-    <div>
-      <h2>{t(lang, "Ticket Board", "工单看板")}</h2>
+    <div style={{ display: "grid", gap: 14 }}>
+      <TeacherWorkspaceHero
+        title={t(lang, "Ticket Board", "工单看板")}
+        subtitle={t(
+          lang,
+          "Track your open tickets, spot missing proof early, and close work with a clear completion note instead of scanning a dense board.",
+          "集中查看自己的未完成工单，尽早发现缺失证据，并用清晰的完成说明收尾，不再需要在密集表格里来回扫描。"
+        )}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/tickets?status=Open", label: t(lang, "Open active tickets", "查看未完成工单") },
+        ]}
+      />
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Open tickets", "未归档工单")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{rows.length}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Tickets currently assigned to you.", "当前分配给你的工单数量。")}</div>
+        </div>
+        <div style={statCard("#fff7ed", "#fdba74")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#9a3412" }}>{t(lang, "Urgent priority", "高优先级")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#9a3412", marginTop: 8 }}>{urgentCount}</div>
+          <div style={{ color: "#9a3412", marginTop: 4 }}>{t(lang, "High / urgent tickets needing attention.", "需要优先处理的高优先级工单。")}</div>
+        </div>
+        <div style={statCard("#fef2f2", "#fecaca")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#b91c1c" }}>{t(lang, "Missing proof", "证据缺失")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#b91c1c", marginTop: 8 }}>{missingProofCount}</div>
+          <div style={{ color: "#991b1b", marginTop: 4 }}>{t(lang, "Tickets with proof files missing locally.", "本地证据文件已经缺失的工单。")}</div>
+        </div>
+        <div style={statCard("#ecfdf5", "#bbf7d0")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Need completion", "待完成")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#166534", marginTop: 8 }}>{openActionCount}</div>
+          <div style={{ color: "#166534", marginTop: 4 }}>{t(lang, "Tickets still waiting for your completion note.", "仍在等待你填写完成说明的工单。")}</div>
+        </div>
+      </section>
       {err === "status-flow" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
           状态流转不允许 / Invalid status transition
@@ -158,7 +204,9 @@ export default async function TeacherTicketsPage({
         </div>
       ) : null}
 
-      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, background: "#ffffff", display: "grid", gap: 12 }}>
+      <div style={{ fontWeight: 700 }}>{t(lang, "Ticket filters", "工单筛选")}</div>
+      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 0 }}>
         <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
         <select name="status" defaultValue={status}>
           <option value="">{t(lang, "All Status", "全部状态")}</option>
@@ -170,6 +218,10 @@ export default async function TeacherTicketsPage({
         </select>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
       </form>
+      <div style={{ fontSize: 13, color: "#475569" }}>
+        {t(lang, "Tip: filter to one status first, then work through completion notes from top to bottom.", "建议先按状态收窄范围，再从上到下处理完成说明，会比整张看板来回扫更稳。")}
+      </div>
+      </section>
 
       <div className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1020 }}>

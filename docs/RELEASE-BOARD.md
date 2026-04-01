@@ -726,3 +726,14 @@
   - no attendance rules, availability editing rules, expense-claim rules, or payroll workflow rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r27 Deployed
+
+- Scope: bring teacher alerts, feedbacks, and tickets into the same teacher-workspace first-screen structure.
+- Business impact:
+  - teacher `Sign-in Alerts` now starts with the same workspace hero and summary cards as the refreshed teacher dashboard, sessions, availability, expense claims, and payroll pages
+  - teacher `Student Feedbacks` now leads with handoff-focused summary cards and a clearer filter workspace before the student timeline list
+  - teacher `Ticket Board` now leads with open/urgent/missing-proof summaries and a clearer filter card before the ticket table
+  - no sign-in alert sync logic, feedback timeline read/write logic, ticket transition rules, or proof-file access rules changed
+- Validation:
+  - `npm run build`
