@@ -1372,3 +1372,21 @@ This file is the single source of truth for what changed in production.
   - payroll detail anomaly summary cards now deep-link into the matching filtered rows
   - finance-ready payroll queue now shows a currency grouping summary before batch payout
 - Rollback point: previous production commit before `2026-04-01-r22`.
+
+## 2026-04-01-r23
+
+- Release ID: `2026-04-01-r23`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add clearer current-owner and next-step guidance to the teacher payroll self-service page.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-payroll-owner-guidance.md`
+- Risk impact (if any): Low. Teacher-side wording and status guidance only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher payroll status card now shows the current owner and the next expected step in bilingual wording
+  - manager/finance waiting states now explicitly name the next handling side instead of only showing a status label
+- Rollback point: previous production commit before `2026-04-01-r23`.

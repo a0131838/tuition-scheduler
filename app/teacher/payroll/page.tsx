@@ -73,6 +73,69 @@ function teacherPayrollStageLabel(
   return t(lang, "Paid / 已发薪", "已发薪 / Paid");
 }
 
+function approverSummary(emails: string[] | null | undefined) {
+  if (!emails || emails.length === 0) return "-";
+  return emails.join(", ");
+}
+
+function teacherPayrollOwnerLabel(
+  lang: Awaited<ReturnType<typeof getLang>>,
+  stage: "teacher" | "manager" | "financeConfirm" | "financePaid" | "done" | "financeRejected",
+  managerApproverEmails: string[],
+  financeApproverEmails: string[]
+) {
+  if (stage === "teacher") {
+    return {
+      owner: t(lang, "You / 你", "你 / You"),
+      hint: t(lang, "Please review this payroll and confirm it on this page.", "请在本页核对并确认这张工资单。"),
+    };
+  }
+  if (stage === "manager") {
+    return {
+      owner: t(lang, "Management approver / 管理审批人", "管理审批人 / Management approver"),
+      hint: t(
+        lang,
+        `Next step owner: management (${approverSummary(managerApproverEmails)}).`,
+        `下一步由管理审批处理（${approverSummary(managerApproverEmails)}）。`
+      ),
+    };
+  }
+  if (stage === "financeConfirm") {
+    return {
+      owner: t(lang, "Finance approver / 财务审批人", "财务审批人 / Finance approver"),
+      hint: t(
+        lang,
+        `Next step owner: finance (${approverSummary(financeApproverEmails)}).`,
+        `下一步由财务审批处理（${approverSummary(financeApproverEmails)}）。`
+      ),
+    };
+  }
+  if (stage === "financePaid") {
+    return {
+      owner: t(lang, "Finance payout / 财务发薪", "财务发薪 / Finance payout"),
+      hint: t(
+        lang,
+        `Next step owner: finance payout (${approverSummary(financeApproverEmails)}).`,
+        `下一步由财务发薪处理（${approverSummary(financeApproverEmails)}）。`
+      ),
+    };
+  }
+  if (stage === "financeRejected") {
+    return {
+      owner: t(lang, "Admin / Finance follow-up / 管理与财务跟进", "管理与财务跟进 / Admin and finance follow-up"),
+      hint: t(
+        lang,
+        "Please check the finance note below and contact admin if a resend or correction is needed.",
+        "请查看下方财务备注；如需重发或修正，请联系管理端。"
+      ),
+    };
+  }
+  return {
+    owner: t(lang, "Done / 已完成", "已完成 / Done"),
+    hint: t(lang, "No further action is needed on your side.", "你这边暂时不需要再操作。"),
+  };
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -166,6 +229,8 @@ export default async function TeacherPayrollSelfPage({
           financePaidAt={publish.financePaidAt}
           financeRejectedAt={publish.financeRejectedAt}
           financeRejectReason={publish.financeRejectReason}
+          managerApproverEmails={approvalCfg?.managerApproverEmails ?? []}
+          financeApproverEmails={approvalCfg?.financeApproverEmails ?? []}
           lang={lang}
         />
       )}
@@ -184,6 +249,8 @@ async function TeacherPayrollBody({
   financePaidAt,
   financeRejectedAt,
   financeRejectReason,
+  managerApproverEmails,
+  financeApproverEmails,
   lang,
 }: {
   teacherId: string;
@@ -196,6 +263,8 @@ async function TeacherPayrollBody({
   financePaidAt: string | null;
   financeRejectedAt: string | null;
   financeRejectReason: string | null;
+  managerApproverEmails: string[];
+  financeApproverEmails: string[];
   lang: Awaited<ReturnType<typeof getLang>>;
 }) {
   const data = await loadTeacherPayrollDetail(month, teacherId, scope);
@@ -214,6 +283,7 @@ async function TeacherPayrollBody({
           : !financePaidAt
             ? "financePaid"
             : "done";
+  const stageOwner = teacherPayrollOwnerLabel(lang, stage, managerApproverEmails, financeApproverEmails);
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
 
@@ -232,6 +302,13 @@ async function TeacherPayrollBody({
         </div>
         <div style={{ color: "#334155", marginBottom: 8 }}>
           {teacherPayrollStageLabel(lang, stage)}
+        </div>
+        <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Current owner / 当前处理方", "当前处理方 / Current owner")}
+          </div>
+          <div style={{ fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{stageOwner.owner}</div>
+          <div style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>{stageOwner.hint}</div>
         </div>
         <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
           <div>{t(lang, "Sent / 已发送", "已发送 / Sent")}: {formatBusinessDateTime(new Date(sentAt))}</div>

@@ -684,3 +684,13 @@
   - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r23 Deployed
+
+- Scope: teacher payroll current-owner guidance on the teacher self-service page.
+- Business impact:
+  - teacher payroll now explicitly shows which side currently owns the flow and what the next expected step is, instead of only showing a high-level status label
+  - waiting-for-manager, waiting-for-finance, waiting-for-payout, and finance-returned states are now easier for teachers to understand without asking operations for clarification
+  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
+- Validation:
+  - `npm run build`
