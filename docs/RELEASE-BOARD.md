@@ -599,3 +599,14 @@
   - no package creation API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r15 Deployed
+
+- Scope: package edit/top-up follow-up polish.
+- Business impact:
+  - less-common edit fields now stay inside a collapsed advanced block, so everyday validity/status edits are easier to scan
+  - edit mode only expands paid-related fields when staff explicitly mark the package as paid
+  - top-up now shows a stronger human-readable confirmation sentence with student, course, and before/after balance values before submission
+  - no package update API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

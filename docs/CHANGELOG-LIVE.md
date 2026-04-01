@@ -1215,3 +1215,22 @@ This file is the single source of truth for what changed in production.
   - edit and top-up now appear as separate focused flows inside the package modal
   - top-up now shows before/after balance summary and realistic quick presets for regular and New Oriental package patterns
 - Rollback point: previous production commit before `2026-04-01-r14`.
+
+## 2026-04-01-r15
+
+- Release ID: `2026-04-01-r15`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Reduce remaining package edit noise by hiding less-common fields and adding a stronger human confirmation in top-up.
+- Key files:
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-edit-topup-followup-polish.md`
+- Risk impact (if any): Low. This only changes the admin package modal presentation; package update API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - edit mode now keeps less-common fields inside a collapsed advanced block
+  - paid-only fields in edit mode only expand when staff explicitly mark the package as paid
+  - top-up now shows a clearer human confirmation sentence before submit
+- Rollback point: previous production commit before `2026-04-01-r15`.

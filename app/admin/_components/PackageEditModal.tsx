@@ -86,6 +86,8 @@ export default function PackageEditModal({
   const [busy, setBusy] = useState(false);
   const [contentKey, setContentKey] = useState(0);
   const [mode, setMode] = useState<"edit" | "topup">("edit");
+  const [editPaidValue, setEditPaidValue] = useState(pkg.paid);
+  const [showEditAdvanced, setShowEditAdvanced] = useState(false);
   const [topUpMinutesValue, setTopUpMinutesValue] = useState(
     () => (((pkg.sourceChannelName ?? "").includes("新东方") ? "270" : "600"))
   );
@@ -179,6 +181,8 @@ export default function PackageEditModal({
           setErr("");
           setMsg("");
           setMode("edit");
+          setEditPaidValue(pkg.paid);
+          setShowEditAdvanced(false);
           setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
           setTopUpNoteValue("");
           setTopUpPaidValue(false);
@@ -299,61 +303,82 @@ export default function PackageEditModal({
             </select>
           </label>
           <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <input type="checkbox" name="paid" defaultChecked={pkg.paid} />
+            <input
+              type="checkbox"
+              name="paid"
+              checked={editPaidValue}
+              onChange={(e) => setEditPaidValue(e.target.checked)}
+            />
             {labels.paid}
           </label>
-          <label>
-            {labels.paidAt}:
-            <DateTimeSplitInput
-              name="paidAt"
-              defaultValue={pkg.paidAt ? pkg.paidAt.toISOString().slice(0, 16) : ""}
-              wrapperStyle={{ marginLeft: 8 }}
-            />
-          </label>
-          <label>
-            {labels.paidAmount}:
-            <input name="paidAmount" type="number" min={0} step={1} defaultValue={pkg.paidAmount ?? ""} style={{ marginLeft: 8 }} />
-          </label>
-          <label>
-            {labels.paidNote}:
-            <input name="paidNote" type="text" defaultValue={pkg.paidNote ?? ""} style={{ marginLeft: 8, width: "100%" }} />
-          </label>
-          <label>
-            {labels.sharedStudents}:
-            <select
-              name="sharedStudentIds"
-              multiple
-              size={6}
-              defaultValue={pkg.sharedStudents.map((s) => s.studentId)}
-              style={{ marginLeft: 8, width: "100%" }}
-            >
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.sharedCourses}:
-            <select
-              name="sharedCourseIds"
-              multiple
-              size={6}
-              defaultValue={pkg.sharedCourses.map((c) => c.courseId)}
-              style={{ marginLeft: 8, width: "100%" }}
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {labels.note}:
-            <input name="note" type="text" defaultValue={pkg.note ?? ""} style={{ marginLeft: 8, width: "100%" }} />
-          </label>
+          {editPaidValue ? (
+            <>
+              <label>
+                {labels.paidAt}:
+                <DateTimeSplitInput
+                  name="paidAt"
+                  defaultValue={pkg.paidAt ? pkg.paidAt.toISOString().slice(0, 16) : ""}
+                  wrapperStyle={{ marginLeft: 8 }}
+                />
+              </label>
+              <label>
+                {labels.paidAmount}:
+                <input name="paidAmount" type="number" min={0} step={1} defaultValue={pkg.paidAmount ?? ""} style={{ marginLeft: 8 }} />
+              </label>
+              <label>
+                {labels.paidNote}:
+                <input name="paidNote" type="text" defaultValue={pkg.paidNote ?? ""} style={{ marginLeft: 8, width: "100%" }} />
+              </label>
+            </>
+          ) : null}
+
+          <details
+            open={showEditAdvanced}
+            onToggle={(e) => setShowEditAdvanced((e.currentTarget as HTMLDetailsElement).open)}
+            style={{ border: "1px dashed #cbd5e1", borderRadius: 12, padding: 12 }}
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              Less-common fields / 不常改字段
+            </summary>
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              <label>
+                {labels.sharedStudents}:
+                <select
+                  name="sharedStudentIds"
+                  multiple
+                  size={6}
+                  defaultValue={pkg.sharedStudents.map((s) => s.studentId)}
+                  style={{ marginLeft: 8, width: "100%" }}
+                >
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {labels.sharedCourses}:
+                <select
+                  name="sharedCourseIds"
+                  multiple
+                  size={6}
+                  defaultValue={pkg.sharedCourses.map((c) => c.courseId)}
+                  style={{ marginLeft: 8, width: "100%" }}
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {labels.note}:
+                <input name="note" type="text" defaultValue={pkg.note ?? ""} style={{ marginLeft: 8, width: "100%" }} />
+              </label>
+            </div>
+          </details>
 
           <button type="submit" disabled={busy}>
             {busy ? `${labels.update}...` : labels.update}
@@ -413,6 +438,14 @@ export default function PackageEditModal({
           </div>
           <div style={{ color: "#475569", fontSize: 13 }}>
             Use top-up only to add balance. Do not use it to correct the original package. / 增购只用于增加课时，不应用来修正原始课包录入。
+          </div>
+          <div style={{ border: "1px solid #f59e0b", borderRadius: 12, padding: 12, background: "#fff7ed", color: "#9a3412" }}>
+            You are adding <strong>{topUpMinutesNumber > 0 ? topUpMinutesNumber : 0}</strong> minutes to{" "}
+            <strong>{pkg.studentName ?? "this student"}</strong>'s <strong>{pkg.courseName ?? "package"}</strong>.
+            Remaining balance will change from <strong>{currentRemaining}</strong> to <strong>{nextRemaining}</strong>. /
+            你正在给 <strong>{pkg.studentName ?? "该学生"}</strong> 的 <strong>{pkg.courseName ?? "课包"}</strong> 增加{" "}
+            <strong>{topUpMinutesNumber > 0 ? topUpMinutesNumber : 0}</strong> 分钟，剩余课时将从{" "}
+            <strong>{currentRemaining}</strong> 变成 <strong>{nextRemaining}</strong>。
           </div>
           <label>
             {labels.topUpMinutes}:
