@@ -1004,3 +1004,22 @@ This file is the single source of truth for what changed in production.
   - the selected payout panel keeps payment method, payment reference, batch month, and remarks together
   - finance users can use `Mark paid & next / 标记已付款并下一条` to move through the queue
 - Rollback point: previous production commit before `2026-04-01-r03`.
+
+## 2026-04-01-r04
+
+- Release ID: `2026-04-01-r04`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add a grouped batch-payout flow for finance on the admin expense-claim page.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-expense-claim-finance-batch-payout.md`
+- Risk impact (if any): Low. This changes finance-side page workflow only; the system still records payment claim-by-claim using the existing payment logic, audit trail, and archive rules.
+- Verification:
+  - `npm run build` passed
+  - approved unpaid claims now group by submitter and currency
+  - finance can select multiple claims in one group and submit shared payment details once
+  - the page still preserves the existing single-claim payment behavior in the full history section
+- Rollback point: previous production commit before `2026-04-01-r04`.

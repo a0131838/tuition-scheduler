@@ -480,3 +480,14 @@
   - no approval, rejection, archive, export, or payment-record persistence rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r04 Deployed
+
+- Scope: admin expense-claim grouped batch payout flow for finance.
+- Business impact:
+  - approved unpaid claims now group by submitter and currency so finance can process a teacher's batch together
+  - each group opens into a shared payment form with checkboxes for included claims
+  - finance can mark selected claims paid in one action with shared payment details instead of repeating the same form claim by claim
+  - the underlying payment write path and audit trail remain claim-level and unchanged
+- Validation:
+  - `npm run build`
