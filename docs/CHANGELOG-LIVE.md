@@ -947,3 +947,22 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - `Open todo center / 打开待办中心` now targets `/admin/todos`
 - Rollback point: previous production commit before `2026-03-31-r12`.
+
+## 2026-04-01-r01
+
+- Release ID: `2026-04-01-r01`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Rework the admin expense-claim approval page into a focused review queue with a selected-claim panel and next-step review actions.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-expense-claim-review-flow.md`
+- Risk impact (if any): Low. This changes review-page layout and action wording on the admin expense-claim page only; approval, rejection, payment, archive, and export rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - submitted claims now appear in a dedicated review queue
+  - the selected-claim panel supports `Approve & next / 批准并下一条` and `Reject & next / 驳回并下一条`
+  - the full claim list remains available in a collapsed history/details section
+- Rollback point: previous production commit before `2026-04-01-r01`.

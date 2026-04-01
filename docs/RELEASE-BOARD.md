@@ -446,3 +446,15 @@
   - no settlement actions, repair logic, warnings, or permissions changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r01 Deployed
+
+- Scope: admin expense-claim review queue and selected-claim workflow polish.
+- Business impact:
+  - the page now leads with a dedicated submitted-claim queue instead of making managers scan one full table first
+  - a selected-claim panel keeps attachment preview, claim details, and approval actions together in one place
+  - `Approve & next / 批准并下一条` and `Reject & next / 驳回并下一条` speed up multi-claim review
+  - the full claim list is still available below in a collapsed details/history section
+  - no approval rules, rejection rules, finance payment rules, or archive behavior changed
+- Validation:
+  - `npm run build`
