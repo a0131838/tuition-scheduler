@@ -1194,3 +1194,24 @@ This file is the single source of truth for what changed in production.
   - New Oriental partner students now show 45-minute lesson presets (6 / 8 / 10 / 20 / 40 lessons)
   - course-based minute suggestions still work, and manual minute edits are not overwritten
 - Rollback point: previous production commit before `2026-04-01-r13`.
+
+## 2026-04-01-r14
+
+- Release ID: `2026-04-01-r14`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make package creation default to ACTIVE and reduce mistakes in the package edit and top-up flow.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-edit-topup-clarity.md`
+- Risk impact (if any): Low. This changes admin package-create/edit presentation and defaults only; package creation API behavior, top-up API behavior, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - new packages now default to `ACTIVE`
+  - edit and top-up now appear as separate focused flows inside the package modal
+  - top-up now shows before/after balance summary and realistic quick presets for regular and New Oriental package patterns
+- Rollback point: previous production commit before `2026-04-01-r14`.

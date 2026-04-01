@@ -588,3 +588,14 @@
   - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r14 Deployed
+
+- Scope: package-create ACTIVE defaults and package edit/top-up clarity improvements.
+- Business impact:
+  - newly created packages now default to `ACTIVE`, which better matches common teaching-office workflow
+  - the package modal now separates `Edit package / 编辑课包` and `Top-up / 增购` into clearer focused flows instead of mixing both jobs inside one long form
+  - top-up now shows a before/after balance summary and realistic quick-add presets for regular packages and New Oriental partner packages
+  - no package creation API rules, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

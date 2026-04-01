@@ -124,7 +124,7 @@ export default function PackageCreateFormClient({
   const [minutesTouched, setMinutesTouched] = useState(false);
   const [validFromValue, setValidFromValue] = useState(defaultYmd);
   const [validToValue, setValidToValue] = useState("");
-  const [statusValue, setStatusValue] = useState("PAUSED");
+  const [statusValue, setStatusValue] = useState("ACTIVE");
   const [settlementModeValue, setSettlementModeValue] = useState("");
   const [paidValue, setPaidValue] = useState(false);
   const [paidAmountValue, setPaidAmountValue] = useState("");
@@ -249,7 +249,7 @@ export default function PackageCreateFormClient({
             studentId: String(fd.get("studentId") ?? ""),
             courseId: String(fd.get("courseId") ?? ""),
             type: String(fd.get("type") ?? "HOURS"),
-            status: String(fd.get("status") ?? "PAUSED"),
+            status: String(fd.get("status") ?? "ACTIVE"),
             settlementMode: String(fd.get("settlementMode") ?? ""),
             totalMinutes: Number(fd.get("totalMinutes") ?? 0),
             validFrom: String(fd.get("validFrom") ?? ""),

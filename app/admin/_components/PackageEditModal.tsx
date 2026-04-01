@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -34,6 +34,11 @@ type Labels = {
 
 type PackageRow = {
   id: string;
+  type?: string | null;
+  totalMinutes?: number | null;
+  studentName?: string | null;
+  courseName?: string | null;
+  sourceChannelName?: string | null;
   remainingMinutes: number | null;
   validFrom: Date;
   validTo: Date | null;
@@ -47,6 +52,21 @@ type PackageRow = {
   sharedCourses: Array<{ courseId: string }>;
   note: string | null;
 };
+
+const STANDARD_TOP_UP_PRESETS = [
+  { minutes: 600, label: "10h / 10小时" },
+  { minutes: 1200, label: "20h / 20小时" },
+  { minutes: 2400, label: "40h / 40小时" },
+  { minutes: 6000, label: "100h / 100小时" },
+] as const;
+
+const XDF_TOP_UP_PRESETS = [
+  { minutes: 270, label: "6 lessons / 6课时" },
+  { minutes: 360, label: "8 lessons / 8课时" },
+  { minutes: 450, label: "10 lessons / 10课时" },
+  { minutes: 900, label: "20 lessons / 20课时" },
+  { minutes: 1800, label: "40 lessons / 40课时" },
+] as const;
 
 export default function PackageEditModal({
   pkg,
@@ -65,6 +85,13 @@ export default function PackageEditModal({
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [contentKey, setContentKey] = useState(0);
+  const [mode, setMode] = useState<"edit" | "topup">("edit");
+  const [topUpMinutesValue, setTopUpMinutesValue] = useState(
+    () => (((pkg.sourceChannelName ?? "").includes("新东方") ? "270" : "600"))
+  );
+  const [topUpNoteValue, setTopUpNoteValue] = useState("");
+  const [topUpPaidValue, setTopUpPaidValue] = useState(false);
+  const [topUpPaidAmountValue, setTopUpPaidAmountValue] = useState("");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -72,6 +99,39 @@ export default function PackageEditModal({
   const settlementNoneLabel = labels.settlementNone ?? "Not Included";
   const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
+  const isXdfPartner = (pkg.sourceChannelName ?? "").includes("新东方");
+  const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_TOP_UP_PRESETS;
+  const currentRemaining = pkg.remainingMinutes ?? 0;
+  const currentTotal = pkg.totalMinutes ?? null;
+  const topUpMinutesNumber = Number(topUpMinutesValue || 0);
+  const nextRemaining = topUpMinutesNumber > 0 ? currentRemaining + topUpMinutesNumber : currentRemaining;
+  const nextTotal =
+    currentTotal != null && topUpMinutesNumber > 0 ? currentTotal + topUpMinutesNumber : currentTotal;
+  const topUpSummaryRows = useMemo(
+    () => [
+      {
+        label: "Package / 课包",
+        value: `${pkg.studentName ?? "-"} · ${pkg.courseName ?? "-"}`,
+      },
+      {
+        label: "Before top-up / 增购前剩余",
+        value: String(currentRemaining),
+      },
+      {
+        label: "Add now / 本次增加",
+        value: topUpMinutesNumber > 0 ? String(topUpMinutesNumber) : "0",
+      },
+      {
+        label: "After top-up / 增购后剩余",
+        value: String(nextRemaining),
+      },
+      {
+        label: "Total package balance / 课包总量",
+        value: nextTotal != null ? `${currentTotal ?? 0} → ${nextTotal}` : "Not tracked / 未记录",
+      },
+    ],
+    [currentRemaining, currentTotal, nextRemaining, nextTotal, pkg.courseName, pkg.studentName, topUpMinutesNumber]
+  );
 
   const preserveRefresh = (okMsg?: string) => {
     if (okMsg) {
@@ -118,6 +178,11 @@ export default function PackageEditModal({
         onClose={() => {
           setErr("");
           setMsg("");
+          setMode("edit");
+          setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
+          setTopUpNoteValue("");
+          setTopUpPaidValue(false);
+          setTopUpPaidAmountValue("");
           setContentKey((v) => v + 1);
         }}
       >
@@ -130,8 +195,38 @@ export default function PackageEditModal({
         {err ? <div style={{ color: "#b00", marginTop: 10 }}>{err}</div> : null}
         {msg ? <div style={{ color: "#087", marginTop: 10 }}>{msg}</div> : null}
 
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setMode("edit")}
+            style={{
+              borderRadius: 999,
+              padding: "8px 14px",
+              border: mode === "edit" ? "2px solid #2563eb" : "1px solid #cbd5e1",
+              background: mode === "edit" ? "#dbeafe" : "#fff",
+              fontWeight: 700,
+            }}
+          >
+            Edit package / 编辑课包
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("topup")}
+            style={{
+              borderRadius: 999,
+              padding: "8px 14px",
+              border: mode === "topup" ? "2px solid #2563eb" : "1px solid #cbd5e1",
+              background: mode === "topup" ? "#dbeafe" : "#fff",
+              fontWeight: 700,
+            }}
+          >
+            {labels.topUp} / 增购
+          </button>
+        </div>
+
         <form
           style={{ display: "grid", gap: 8, marginTop: 12 }}
+          hidden={mode !== "edit"}
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
@@ -269,6 +364,7 @@ export default function PackageEditModal({
 
         <form
           style={{ display: "grid", gap: 8 }}
+          hidden={mode !== "topup"}
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
@@ -304,32 +400,98 @@ export default function PackageEditModal({
             }
           }}
         >
-          <b>{labels.topUp}</b>
+          <b>{labels.topUp} / 增购课时</b>
           <input type="hidden" name="id" value={pkg.id} />
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>Top-up summary / 增购摘要</div>
+            {topUpSummaryRows.map((row) => (
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14 }}>
+                <span style={{ color: "#475569" }}>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            Use top-up only to add balance. Do not use it to correct the original package. / 增购只用于增加课时，不应用来修正原始课包录入。
+          </div>
           <label>
             {labels.topUpMinutes}:
-            <input name="addMinutes" type="number" min={1} step={1} defaultValue={60} style={{ marginLeft: 8 }} />
+            <input
+              name="addMinutes"
+              type="number"
+              min={1}
+              step={1}
+              value={topUpMinutesValue}
+              onChange={(e) => setTopUpMinutesValue(e.target.value)}
+              style={{ marginLeft: 8 }}
+            />
           </label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {topUpPresets.map((preset) => (
+              <button
+                key={preset.minutes}
+                type="button"
+                onClick={() => setTopUpMinutesValue(String(preset.minutes))}
+                style={{
+                  minHeight: 34,
+                  padding: "0 12px",
+                  borderRadius: 999,
+                  border: topUpMinutesValue === String(preset.minutes) ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                  background: topUpMinutesValue === String(preset.minutes) ? "#dbeafe" : "#fff",
+                }}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ color: isXdfPartner ? "#92400e" : "#475569", fontSize: 13 }}>
+            {isXdfPartner
+              ? "New Oriental partner packages usually follow 45-minute lesson bundles. / 新东方合作方课包通常按 45 分钟课时打包。"
+              : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。"}
+          </div>
           <label>
             {labels.topUpNote}:
-            <input name="note" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
+            <input
+              name="note"
+              type="text"
+              value={topUpNoteValue}
+              onChange={(e) => setTopUpNoteValue(e.target.value)}
+              style={{ marginLeft: 8, width: "100%" }}
+            />
           </label>
           <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <input type="checkbox" name="paid" defaultChecked={false} />
+            <input
+              type="checkbox"
+              name="paid"
+              checked={topUpPaidValue}
+              onChange={(e) => setTopUpPaidValue(e.target.checked)}
+            />
             {labels.paid}
           </label>
-          <label>
-            {labels.paidAt}:
-            <DateTimeSplitInput name="paidAt" defaultValue="" wrapperStyle={{ marginLeft: 8 }} />
-          </label>
-          <label>
-            {labels.paidAmount}:
-            <input name="paidAmount" type="number" min={0} step={1} defaultValue="" style={{ marginLeft: 8 }} />
-          </label>
-          <label>
-            {labels.paidNote}:
-            <input name="paidNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
-          </label>
+          {topUpPaidValue ? (
+            <>
+              <label>
+                {labels.paidAt}:
+                <DateTimeSplitInput name="paidAt" defaultValue="" wrapperStyle={{ marginLeft: 8 }} />
+              </label>
+              <label>
+                {labels.paidAmount}:
+                <input
+                  name="paidAmount"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={topUpPaidAmountValue}
+                  onChange={(e) => setTopUpPaidAmountValue(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                />
+              </label>
+              <label>
+                {labels.paidNote}:
+                <input name="paidNote" type="text" defaultValue="" style={{ marginLeft: 8, width: "100%" }} />
+              </label>
+            </>
+          ) : null}
           <button type="submit" disabled={busy}>
             {busy ? `${labels.topUpSubmit}...` : labels.topUpSubmit}
           </button>

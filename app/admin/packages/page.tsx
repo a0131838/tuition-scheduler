@@ -456,7 +456,12 @@ export default async function AdminPackagesPage({
                         <div style={{ display: "grid", gap: 8 }}>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                             <PackageEditModal
-                              pkg={p}
+                              pkg={{
+                                ...p,
+                                studentName: p.student?.name ?? "",
+                                courseName: p.course?.name ?? "",
+                                sourceChannelName: p.student?.sourceChannel?.name ?? "",
+                              }}
                               students={students.map((s) => ({ id: s.id, name: s.name }))}
                               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
                               labels={{
