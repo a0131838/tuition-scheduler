@@ -523,3 +523,14 @@
   - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r08 Deployed
+
+- Scope: admin sign-in alert workbench readability.
+- Business impact:
+  - the admin sign-in alert page now groups all issues for one session into one warning card instead of mixing teacher-sign-in, student-sign-in, and feedback rows inside a wide table
+  - teaching staff can switch between `All open sessions`, `Urgent first`, `Attendance only`, and `Feedback only` without scanning unrelated rows
+  - alert settings stay available in a secondary collapsed block, while the main page leads with action-focused session cards and clearer next-step guidance
+  - no alert thresholds, sync rules, attendance marking logic, or feedback rules changed
+- Validation:
+  - `npm run build`

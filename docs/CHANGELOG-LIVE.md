@@ -1079,3 +1079,22 @@ This file is the single source of truth for what changed in production.
   - the package finance workspace stays open by default once a package is selected
   - the global receipt queue is still available but is visually downgraded to a secondary section while package mode is active
 - Rollback point: previous production commit before `2026-04-01-r07`.
+
+## 2026-04-01-r08
+
+- Release ID: `2026-04-01-r08`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Rework the admin sign-in alert page into a session-card workbench so teaching staff can scan the warning board without misreading mixed rows.
+- Key files:
+  - `app/admin/alerts/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-admin-signin-alert-workbench.md`
+- Risk impact (if any): Low. This changes admin alert presentation only; alert sync, thresholds, attendance logic, feedback logic, and session actions remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - the admin page now groups alert rows by session card instead of showing one wide mixed table
+  - quick-focus filters separate urgent, attendance-only, and feedback-only queues
+  - feedback overdue timing is now displayed from the actual post-class feedback due time instead of the sign-in threshold time
+- Rollback point: previous production commit before `2026-04-01-r08`.
