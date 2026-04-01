@@ -1174,3 +1174,23 @@ This file is the single source of truth for what changed in production.
   - step 4 now shows a yellow warning when the same student already has active packages for the same course
   - manual minute edits still work and are not overwritten after staff starts typing
 - Rollback point: previous production commit before `2026-04-01-r12`.
+
+## 2026-04-01-r13
+
+- Release ID: `2026-04-01-r13`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Align package-create minute presets and fallback suggestions with the teaching-office's real package patterns.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-create-minute-patterns.md`
+- Risk impact (if any): Low. This only changes create-form defaults and preset chips; package creation API behavior, validation rules, settlement mode rules, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - normal package creation now shows 10h / 20h / 40h / 100h presets
+  - New Oriental partner students now show 45-minute lesson presets (6 / 8 / 10 / 20 / 40 lessons)
+  - course-based minute suggestions still work, and manual minute edits are not overwritten
+- Rollback point: previous production commit before `2026-04-01-r13`.

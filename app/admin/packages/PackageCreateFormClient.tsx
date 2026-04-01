@@ -12,8 +12,24 @@ type StudentOpt = {
   courseNames?: string[];
   courseIds?: string[];
   activePackageCount?: number;
+  sourceChannelName?: string;
 };
 type CourseOpt = { id: string; name: string };
+
+const STANDARD_HOUR_PRESETS = [
+  { minutes: 600, label: "10h / 10小时" },
+  { minutes: 1200, label: "20h / 20小时" },
+  { minutes: 2400, label: "40h / 40小时" },
+  { minutes: 6000, label: "100h / 100小时" },
+] as const;
+
+const XDF_LESSON_PRESETS = [
+  { minutes: 270, label: "6 lessons / 6课时" },
+  { minutes: 360, label: "8 lessons / 8课时" },
+  { minutes: 450, label: "10 lessons / 10课时" },
+  { minutes: 900, label: "20 lessons / 20课时" },
+  { minutes: 1800, label: "40 lessons / 40课时" },
+] as const;
 
 function preserveRefresh(router: ReturnType<typeof useRouter>) {
   const y = window.scrollY;
@@ -122,11 +138,15 @@ export default function PackageCreateFormClient({
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
   const isMonthly = typeValue === "MONTHLY";
   const totalMinutesNumber = Number(totalMinutesValue || 0);
+  const isXdfPartnerStudent = (selectedStudent?.sourceChannelName ?? "").includes("新东方");
   const sameCourseActive =
     selectedStudent && selectedCourseId
       ? (selectedStudent.courseIds ?? []).filter((id) => id === selectedCourseId).length
       : 0;
-  const suggestedMinutes = defaultMinutesByCourseId[selectedCourseId] ?? 600;
+  const presetOptions = isXdfPartnerStudent ? XDF_LESSON_PRESETS : STANDARD_HOUR_PRESETS;
+  const suggestedMinutes =
+    defaultMinutesByCourseId[selectedCourseId] ??
+    (isXdfPartnerStudent ? 450 : 600);
 
   useEffect(() => {
     if (isMonthly) return;
@@ -415,24 +435,37 @@ export default function PackageCreateFormClient({
                     <div style={{ color: "#475569", fontSize: 13 }}>
                       Suggested for this course / 此课程推荐默认分钟数: <strong>{suggestedMinutes}</strong>
                     </div>
+                    {isXdfPartnerStudent ? (
+                      <div style={{ color: "#92400e", fontSize: 13 }}>
+                        XDF partner default: 1 lesson = 45 minutes. / 新东方合作方默认按 45 分钟 = 1 课时。
+                      </div>
+                    ) : (
+                      <div style={{ color: "#475569", fontSize: 13 }}>
+                        Standard package defaults usually follow 10h / 20h / 40h / 100h. / 常规课时包通常按 10 / 20 / 40 / 100 小时录入。
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                      {[600, 900, 1200, 1800].map((preset) => (
+                      {presetOptions.map((preset) => (
                         <button
-                          key={preset}
+                          key={preset.minutes}
                           type="button"
                           onClick={() => {
                             setMinutesTouched(true);
-                            setTotalMinutesValue(String(preset));
+                            setTotalMinutesValue(String(preset.minutes));
                           }}
                           style={{
                             minHeight: 34,
                             padding: "0 12px",
                             borderRadius: 999,
-                            border: totalMinutesValue === String(preset) ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                            background: totalMinutesValue === String(preset) ? "#dbeafe" : "#fff",
+                            border:
+                              totalMinutesValue === String(preset.minutes)
+                                ? "2px solid #2563eb"
+                                : "1px solid #cbd5e1",
+                            background:
+                              totalMinutesValue === String(preset.minutes) ? "#dbeafe" : "#fff",
                           }}
                         >
-                          {preset}
+                          {preset.label}
                         </button>
                       ))}
                     </div>

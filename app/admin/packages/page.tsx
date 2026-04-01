@@ -71,6 +71,7 @@ export default async function AdminPackagesPage({
   let students: Array<{
     id: string;
     name: string;
+    sourceChannel: { name: string } | null;
     packages: Array<{ courseId: string; course: { name: string } }>;
   }> = [];
   let courses: Array<{ id: string; name: string }> = [];
@@ -84,6 +85,7 @@ export default async function AdminPackagesPage({
         select: {
           id: true,
           name: true,
+          sourceChannel: { select: { name: true } },
           packages: {
             where: { status: "ACTIVE" },
             select: {
@@ -268,6 +270,7 @@ export default async function AdminPackagesPage({
               students={students.map((s) => ({
                 id: s.id,
                 name: s.name,
+                sourceChannelName: s.sourceChannel?.name ?? "",
                 activePackageCount: s.packages.length,
                 courseIds: s.packages.map((pkg) => pkg.courseId),
                 courseNames: s.packages.map((pkg) => pkg.course.name),

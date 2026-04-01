@@ -577,3 +577,14 @@
   - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r13 Deployed
+
+- Scope: package-create minute presets and fallback defaults aligned to real teaching-office package patterns.
+- Business impact:
+  - regular package creation now surfaces 10h / 20h / 40h / 100h quick presets instead of mixed minute chips
+  - New Oriental partner students now get 45-minute lesson presets (6 / 8 / 10 / 20 / 40 lessons), which better matches how those packages are sold and recorded
+  - course-based suggested balances still apply first, while fallback defaults now follow the more realistic package patterns for each student context
+  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`
