@@ -737,3 +737,14 @@
   - no sign-in alert sync logic, feedback timeline read/write logic, ticket transition rules, or proof-file access rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r28 Deployed
+
+- Scope: bring teacher card and midterm-report pages into the same teacher-workspace first-screen structure.
+- Business impact:
+  - teacher `My Teacher Card` now starts with the same workspace hero and summary cards before intro editing and PDF export
+  - teacher `Midterm Reports` now starts with the same workspace hero and task summaries before the report list
+  - teacher midterm report detail now starts with a clearer report context header and summary cards before the long evaluation form
+  - no teacher intro save behavior, midterm report save/submit rules, report lock rules, or PDF export logic changed
+- Validation:
+  - `npm run build`

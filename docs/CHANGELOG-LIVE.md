@@ -1475,3 +1475,24 @@ This file is the single source of truth for what changed in production.
   - teacher student feedbacks now starts with clear handoff-focused summaries and a dedicated filter section instead of dropping teachers directly into a long list
   - teacher tickets now opens with the same task-oriented framing plus open/urgent/missing-proof summaries before the board table
 - Rollback point: previous production commit before `2026-04-01-r27`.
+
+## 2026-04-01-r28
+
+- Release ID: `2026-04-01-r28`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Extend the refreshed teacher workspace framing to teacher card and midterm report pages.
+- Key files:
+  - `app/teacher/card/page.tsx`
+  - `app/teacher/midterm-reports/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-portal-card-and-midterm.md`
+- Risk impact (if any): Low. This is a teacher-side presentation pass only; intro editing, midterm report save/submit behavior, report locking, and PDF export logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher card now starts with the same teacher workspace hero and summary cards before intro editing and PDF export
+  - teacher midterm report list now starts with the same workspace hero and summary cards before the task table
+  - teacher midterm report detail now starts with a clearer context hero and report summary cards before the form body
+- Rollback point: previous production commit before `2026-04-01-r28`.

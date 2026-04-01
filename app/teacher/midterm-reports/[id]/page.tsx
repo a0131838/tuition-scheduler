@@ -5,8 +5,18 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatBusinessDateOnly } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../../_components/TeacherWorkspaceHero";
 
 const LEVEL_OPTIONS = ["", "A1", "A2", "B1", "B2", "C1"] as const;
+
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
+}
 
 function asScore(v: string) {
   const text = v.trim();
@@ -149,13 +159,38 @@ export default async function TeacherMidtermReportDetailPage({
   const draft = parseReportDraft(report.reportJson ?? EMPTY_REPORT_DRAFT);
 
   return (
-    <div>
-      <a href="/teacher/midterm-reports">{t(lang, "Back", "返回中期报告列表")}</a>
-      <h2 style={{ marginBottom: 4 }}>{t(lang, "MID-TERM / PROGRESS ASSESSMENT REPORT", "阶段性学习评估报告")}</h2>
-      <div style={{ color: "#666", marginBottom: 10 }}>
-        {report.student.name} | {report.course.name}
-        {report.subject ? ` / ${report.subject.name}` : ""}
-      </div>
+    <div style={{ display: "grid", gap: 14 }}>
+      <TeacherWorkspaceHero
+        title={t(lang, "Mid-term Report", "阶段性学习评估报告")}
+        subtitle={`${report.student.name} | ${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}`}
+        actions={[
+          { href: "/teacher/midterm-reports", label: t(lang, "Back to report list", "返回报告列表") },
+        ]}
+      />
+
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div style={statCard("#fff7ed", "#fdba74")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#9a3412" }}>{t(lang, "Current status", "当前状态")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#9a3412", marginTop: 10 }}>
+            {report.status === "SUBMITTED" ? t(lang, "Submitted", "已提交") : t(lang, "Pending", "待填写")}
+          </div>
+        </div>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Assigned date", "推送日期")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1d4ed8", marginTop: 10 }}>{formatBusinessDateOnly(new Date(report.assignedAt))}</div>
+        </div>
+        <div style={statCard("#ecfdf5", "#bbf7d0")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Progress", "学习进度")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 10 }}>{report.progressPercent}%</div>
+          <div style={{ color: "#166534", marginTop: 4 }}>{`${report.consumedMinutes} / ${report.totalMinutes} min`}</div>
+        </div>
+        <div style={statCard("#f5f3ff", "#ddd6fe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9" }}>{t(lang, "Report mode", "报告模式")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#6d28d9", marginTop: 10 }}>
+            {isLocked ? t(lang, "Read only", "只读") : t(lang, "Editable", "可编辑")}
+          </div>
+        </div>
+      </section>
 
       {ok ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>

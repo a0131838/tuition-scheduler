@@ -3,10 +3,20 @@ import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 function fmt(d?: Date | null) {
   if (!d) return "-";
   return formatBusinessDateTime(new Date(d));
+}
+
+function statCard(bg: string, border: string) {
+  return {
+    padding: 14,
+    borderRadius: 16,
+    border: `1px solid ${border}`,
+    background: bg,
+  } as const;
 }
 
 export default async function TeacherMidtermReportsPage() {
@@ -29,23 +39,44 @@ export default async function TeacherMidtermReportsPage() {
 
   const pending = rows.filter((r) => r.status === "ASSIGNED");
   const submitted = rows.filter((r) => r.status === "SUBMITTED");
+  const latestAssignedAt = rows[0]?.assignedAt ?? null;
 
   return (
-    <div>
-      <h2 style={{ marginBottom: 4 }}>{t(lang, "Midterm Reports", "中期报告")}</h2>
-      <div style={{ color: "#666", marginBottom: 10 }}>
-        {t(lang, "Open pending students, fill template, then submit.", "打开待处理学生，填写模板后提交。")}
-      </div>
+    <div style={{ display: "grid", gap: 14 }}>
+      <TeacherWorkspaceHero
+        title={t(lang, "Midterm Reports", "中期报告")}
+        subtitle={t(
+          lang,
+          "Review your pending report tasks, open one student at a time, and submit the completed report without scanning a dense admin-style table.",
+          "在这里查看待处理的中期报告任务，一次打开一位学生完成填写，再提交，不必在密集后台表格里来回扫。"
+        )}
+        actions={[
+          { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          { href: "/teacher/midterm-reports?focus=pending", label: t(lang, "Focus pending", "聚焦待填写") },
+        ]}
+      />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(180px, 1fr))", gap: 8, marginBottom: 12 }}>
-        <div style={{ border: "1px solid #f59e0b", background: "#fff7ed", borderRadius: 8, padding: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={statCard("#fff7ed", "#f59e0b")}>
           <div style={{ color: "#9a3412" }}>{t(lang, "Pending", "待填写")}</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{pending.length}</div>
         </div>
-        <div style={{ border: "1px solid #34d399", background: "#ecfdf3", borderRadius: 8, padding: 10 }}>
+        <div style={statCard("#ecfdf3", "#34d399")}>
           <div style={{ color: "#166534" }}>{t(lang, "Submitted", "已提交")}</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{submitted.length}</div>
         </div>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ color: "#1d4ed8" }}>{t(lang, "Total tasks", "任务总数")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8" }}>{rows.length}</div>
+        </div>
+        <div style={statCard("#f8fafc", "#cbd5e1")}>
+          <div style={{ color: "#334155" }}>{t(lang, "Latest assigned", "最近推送")}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginTop: 12 }}>{fmt(latestAssignedAt)}</div>
+        </div>
+      </div>
+
+      <div style={{ color: "#666", marginTop: -2 }}>
+        {t(lang, "Open pending students, fill template, then submit.", "打开待处理学生，填写模板后提交。")}
       </div>
 
       {rows.length === 0 ? (
