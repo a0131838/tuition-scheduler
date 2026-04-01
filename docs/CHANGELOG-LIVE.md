@@ -1409,3 +1409,25 @@ This file is the single source of truth for what changed in production.
   - teacher payroll now shows a stronger action-needed banner plus a visual timeline for send/confirm/approve/payout milestones
   - finance-ready payroll queue now breaks currency groups into clean vs issue-carrying teachers before batch payout
 - Rollback point: previous production commit before `2026-04-01-r24`.
+
+## 2026-04-01-r25
+
+- Release ID: `2026-04-01-r25`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: First-round teacher portal cleanup with a today-first dashboard, grouped teacher navigation, and teacher-side language switching.
+- Key files:
+  - `app/api/teacher/language/route.ts`
+  - `app/teacher/TeacherLanguageSelectorClient.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/teacher/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-portal-first-pass.md`
+- Risk impact (if any): Low. This changes teacher-side layout, navigation, and language selection only; teacher auth, attendance, feedback, availability, payroll, and expense-claim business rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher portal now groups navigation into `Today / My Work / Schedule / Finance`
+  - teacher homepage now opens with a task-oriented dashboard instead of a flat menu-style page
+  - teachers can switch `中文 / English / Bilingual` from the teacher layout without needing admin-side pages
+- Rollback point: previous production commit before `2026-04-01-r25`.

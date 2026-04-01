@@ -705,3 +705,14 @@
   - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r25 Deployed
+
+- Scope: first-round teacher portal cleanup with grouped navigation, teacher-side language switching, and a today-first dashboard.
+- Business impact:
+  - teachers now get a clearer `Today / My Work / Schedule / Finance` information architecture instead of a flat menu feel
+  - the teacher homepage now prioritizes today, task cards, schedule, and finance so the portal feels more like a workbench and less like a mini admin backend
+  - teachers can now switch `中文 / English / Bilingual` directly from the teacher portal sidebar
+  - no teacher auth, attendance, feedback, availability, payroll, or expense-claim business rules changed
+- Validation:
+  - `npm run build`
