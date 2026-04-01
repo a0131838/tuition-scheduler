@@ -694,3 +694,14 @@
   - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r24 Deployed
+
+- Scope: teacher payroll action-clarity and finance grouping follow-up.
+- Business impact:
+  - teacher payroll now clearly tells teachers whether they need to act right now, instead of only showing a status label and owner hint
+  - teacher payroll milestones are now shown as a visual timeline for sent, teacher confirm, manager approve, finance confirm, and payout
+  - finance-ready payroll queue now shows how many teachers in each currency group are clean vs still carrying issues, so payout batches are easier to judge at a glance
+  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
+- Validation:
+  - `npm run build`

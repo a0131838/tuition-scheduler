@@ -524,13 +524,20 @@ export default async function TeacherPayrollPage({
   const financeCurrencyGroups = Array.from(
     financePayableQueueRows.reduce((map, item) => {
       for (const currencyItem of item.row.currencyTotals) {
-        const prev = map.get(currencyItem.currencyCode) ?? { teacherCount: 0, amountCents: 0 };
+        const exceptionInfo = teacherExceptionMap.get(item.row.teacherId);
+        const hasIssue =
+          item.row.pendingSessions > 0 ||
+          (exceptionInfo?.fallbackComboCount ?? 0) > 0 ||
+          (exceptionInfo?.chargedExcusedSessions ?? 0) > 0;
+        const prev = map.get(currencyItem.currencyCode) ?? { teacherCount: 0, amountCents: 0, issueTeacherCount: 0, cleanTeacherCount: 0 };
         prev.teacherCount += 1;
         prev.amountCents += currencyItem.amountCents;
+        if (hasIssue) prev.issueTeacherCount += 1;
+        else prev.cleanTeacherCount += 1;
         map.set(currencyItem.currencyCode, prev);
       }
       return map;
-    }, new Map<PayrollCurrencyCode, { teacherCount: number; amountCents: number }>())
+    }, new Map<PayrollCurrencyCode, { teacherCount: number; amountCents: number; issueTeacherCount: number; cleanTeacherCount: number }>())
   )
     .map(([currencyCode, info]) => ({ currencyCode, ...info }))
     .sort((a, b) => a.currencyCode.localeCompare(b.currencyCode));
@@ -802,6 +809,9 @@ export default async function TeacherPayrollPage({
                       <div style={{ fontWeight: 700 }}>{group.currencyCode}</div>
                       <div style={{ fontSize: 13, color: "#334155" }}>
                         {group.teacherCount} {t(lang, "teachers", "位老师")} · {formatMoneyCents(group.amountCents, group.currencyCode)}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                        {t(lang, "Clean", "无异常")}: {group.cleanTeacherCount} · {t(lang, "Has issues", "有异常")}: {group.issueTeacherCount}
                       </div>
                     </div>
                   ))}

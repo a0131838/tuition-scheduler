@@ -136,6 +136,64 @@ function teacherPayrollOwnerLabel(
   };
 }
 
+function teacherPayrollActionPrompt(
+  lang: Awaited<ReturnType<typeof getLang>>,
+  stage: "teacher" | "manager" | "financeConfirm" | "financePaid" | "done" | "financeRejected"
+) {
+  if (stage === "teacher") {
+    return {
+      tone: "#92400e",
+      bg: "#fffbeb",
+      border: "#fde68a",
+      title: t(lang, "Action needed now / 现在需要你操作", "现在需要你操作 / Action needed now"),
+      body: t(lang, "Please review this payroll and click Confirm Payroll below.", "请核对这张工资单，然后点击下方“确认工资单”。"),
+    };
+  }
+  if (stage === "manager") {
+    return {
+      tone: "#1d4ed8",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      body: t(lang, "Your payroll is waiting for management approval.", "你的工资单正在等待管理审批。"),
+    };
+  }
+  if (stage === "financeConfirm") {
+    return {
+      tone: "#1d4ed8",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      body: t(lang, "Your payroll has passed management approval and is waiting for finance confirmation.", "你的工资单已通过管理审批，正在等待财务确认。"),
+    };
+  }
+  if (stage === "financePaid") {
+    return {
+      tone: "#1d4ed8",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      body: t(lang, "Finance has confirmed the payroll and payout is the next step.", "财务已经确认工资单，下一步是发薪。"),
+    };
+  }
+  if (stage === "financeRejected") {
+    return {
+      tone: "#991b1b",
+      bg: "#fef2f2",
+      border: "#fecaca",
+      title: t(lang, "Follow-up needed / 需要跟进", "需要跟进 / Follow-up needed"),
+      body: t(lang, "Finance has returned this payroll. Please review the finance note and contact admin if a resend or correction is needed.", "财务已退回这张工资单。请查看财务备注，如需重发或修正，请联系管理端。"),
+    };
+  }
+  return {
+    tone: "#166534",
+    bg: "#ecfdf5",
+    border: "#bbf7d0",
+    title: t(lang, "Done / 已完成", "已完成 / Done"),
+    body: t(lang, "This payroll has been paid. No further action is needed.", "这张工资单已发薪，你这边无需继续操作。"),
+  };
+}
+
 async function confirmPayrollAction(formData: FormData) {
   "use server";
   const { teacher, user } = await requireTeacherProfile();
@@ -284,6 +342,14 @@ async function TeacherPayrollBody({
             ? "financePaid"
             : "done";
   const stageOwner = teacherPayrollOwnerLabel(lang, stage, managerApproverEmails, financeApproverEmails);
+  const actionPrompt = teacherPayrollActionPrompt(lang, stage);
+  const timelineSteps = [
+    { key: "sent", label: t(lang, "Sent / 已发送", "已发送 / Sent"), at: sentAt, done: true },
+    { key: "teacher", label: t(lang, "Teacher confirmed / 老师确认", "老师确认 / Teacher confirmed"), at: confirmedAt, done: Boolean(confirmedAt) },
+    { key: "manager", label: t(lang, "Manager approved / 管理审批", "管理审批 / Manager approved"), at: managerApprovedAt, done: Boolean(managerApprovedAt) },
+    { key: "financeConfirm", label: t(lang, "Finance confirmed / 财务确认", "财务确认 / Finance confirmed"), at: financeConfirmedAt, done: Boolean(financeConfirmedAt) },
+    { key: "paid", label: t(lang, "Paid / 已发薪", "已发薪 / Paid"), at: financePaidAt, done: Boolean(financePaidAt) },
+  ];
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
 
@@ -303,12 +369,58 @@ async function TeacherPayrollBody({
         <div style={{ color: "#334155", marginBottom: 8 }}>
           {teacherPayrollStageLabel(lang, stage)}
         </div>
+        <div
+          style={{
+            marginBottom: 8,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: actionPrompt.bg,
+            border: `1px solid ${actionPrompt.border}`,
+            color: actionPrompt.tone,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>{actionPrompt.title}</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>{actionPrompt.body}</div>
+        </div>
         <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e2e8f0" }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>
             {t(lang, "Current owner / 当前处理方", "当前处理方 / Current owner")}
           </div>
           <div style={{ fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{stageOwner.owner}</div>
           <div style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>{stageOwner.hint}</div>
+        </div>
+        <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Timeline / 时间线", "时间线 / Timeline")}</div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {timelineSteps.map((step) => (
+              <div
+                key={step.key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  background: step.done ? "#eff6ff" : "#f8fafc",
+                  border: `1px solid ${step.done ? "#bfdbfe" : "#e2e8f0"}`,
+                }}
+              >
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 999,
+                    background: step.done ? "#2563eb" : "#cbd5e1",
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{step.label}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{step.at ? formatBusinessDateTime(new Date(step.at)) : "-"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
           <div>{t(lang, "Sent / 已发送", "已发送 / Sent")}: {formatBusinessDateTime(new Date(sentAt))}</div>

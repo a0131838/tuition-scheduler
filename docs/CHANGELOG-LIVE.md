@@ -1390,3 +1390,22 @@ This file is the single source of truth for what changed in production.
   - teacher payroll status card now shows the current owner and the next expected step in bilingual wording
   - manager/finance waiting states now explicitly name the next handling side instead of only showing a status label
 - Rollback point: previous production commit before `2026-04-01-r23`.
+
+## 2026-04-01-r24
+
+- Release ID: `2026-04-01-r24`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make teacher payroll more action-oriented for teachers and add cleaner finance grouping context for payout.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-payroll-action-clarity.md`
+- Risk impact (if any): Low. Teacher-side guidance and finance queue grouping only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - teacher payroll now shows a stronger action-needed banner plus a visual timeline for send/confirm/approve/payout milestones
+  - finance-ready payroll queue now breaks currency groups into clean vs issue-carrying teachers before batch payout
+- Rollback point: previous production commit before `2026-04-01-r24`.
