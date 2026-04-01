@@ -212,7 +212,30 @@ function queueRiskAssistLabel(
   return t(lang, "Ready to approve", "可直接处理");
 }
 
-function renderQueueRows(
+function queueReviewProgressLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
+  approval: { managerApprovedBy: string[]; financeApprovedBy: string[] }
+) {
+  const managerSummary = roleCfg.managerApproverEmails.length === 0
+    ? t(lang, "Manager no config", "管理未配置")
+    : `${t(lang, "Manager", "管理")}: ${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`;
+  const financeSummary = roleCfg.financeApproverEmails.length === 0
+    ? t(lang, "Finance no config", "财务未配置")
+    : `${t(lang, "Finance", "财务")}: ${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`;
+  return `${managerSummary} · ${financeSummary}`;
+}
+
+function queuePrimaryActionLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  status: "COMPLETED" | "REJECTED" | "PENDING"
+) {
+  if (status === "COMPLETED") return t(lang, "Review completed item", "查看已完成项目");
+  if (status === "REJECTED") return t(lang, "Open and fix", "打开并修复");
+  return t(lang, "Open for review", "打开审核");
+}
+
+function renderQueueCards(
   rows: Array<{
     id: string;
     type: "PARENT" | "PARTNER";
@@ -237,75 +260,108 @@ function renderQueueRows(
   openHref: (type: "PARENT" | "PARTNER", id: string) => string
 ) {
   return rows.map((x) => (
-    <tr
+    <article
       key={`${x.type}-${x.id}`}
       style={{
-        borderTop: "1px solid #eee",
-        background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f9fafb" : x.status === "COMPLETED" ? "#fcfcfd" : undefined,
+        border: selectedRow?.type === x.type && selectedRow?.id === x.id ? "1px solid #93c5fd" : "1px solid #e5e7eb",
+        borderRadius: 12,
+        background: selectedRow?.type === x.type && selectedRow?.id === x.id ? "#f8fbff" : x.status === "COMPLETED" ? "#fcfcfd" : "#fff",
         color: x.status === "COMPLETED" ? "#6b7280" : undefined,
-        opacity: x.status === "COMPLETED" ? 0.78 : 1,
+        opacity: x.status === "COMPLETED" ? 0.8 : 1,
+        padding: 12,
+        display: "grid",
+        gap: 8,
       }}
     >
-      <td>{queueTypeLabel(lang, x.type)}</td>
-      <td>{x.receiptNo}</td>
-      <td>{normalizeDateOnly(x.receiptDate) ?? "-"}</td>
-      <td>{x.invoiceNo}</td>
-      <td>{x.partyName}</td>
-      <td>{money(x.amountReceived)}</td>
-      <td>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
-            {queueStatusLabel(lang, x.status)}
-          </span>
-          <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
-            {queueRiskBadgeLabel(lang, x)}
-          </span>
-        </div>
-      </td>
-      <td>
-        <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
-          <div>
-            {t(lang, "Manager", "管理")}:{" "}
-            {roleCfg.managerApproverEmails.length === 0
-              ? t(lang, "No config", "未配置")
-              : `${x.approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
-          </div>
-          <div>
-            {t(lang, "Finance", "财务")}:{" "}
-            {roleCfg.financeApproverEmails.length === 0
-              ? t(lang, "No config", "未配置")
-              : `${x.approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
-          </div>
-          <div>
-            {t(lang, "Payment record", "缴费记录")}:{" "}
-            {x.paymentRecord ? x.paymentRecord.name : t(lang, "(none)", "（无）")}
-          </div>
-          <div>
-            {t(lang, "Risk detail", "风险详情")}: {queueRiskAssistLabel(lang, x)}
-          </div>
-        </div>
-      </td>
-      <td>
+      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ display: "grid", gap: 4 }}>
-          <a href={openHref(x.type, x.id)}>
-            {x.status === "COMPLETED"
-              ? t(lang, "Review completed item", "查看已完成项目")
-              : x.status === "REJECTED"
-                ? t(lang, "Open and fix", "打开并修复")
-                : t(lang, "Open for review", "打开审核")}
-          </a>
-          {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
-            <a
-              href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
-              style={{ fontSize: 12, color: "#b45309" }}
-            >
-              {t(lang, "Fix payment proof", "修复缴费凭证")}
-            </a>
-          ) : null}
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>{x.receiptNo}</div>
+          <div style={{ color: "#334155", fontSize: 14 }}>{x.partyName}</div>
         </div>
-      </td>
-    </tr>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontWeight: 700, color: "#111827" }}>{money(x.amountReceived)}</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>{normalizeDateOnly(x.receiptDate) ?? "-"}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+          {queueTypeLabel(lang, x.type)}
+        </span>
+        <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+          {queueStatusLabel(lang, x.status)}
+        </span>
+        <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+          {queueRiskBadgeLabel(lang, x)}
+        </span>
+      </div>
+      <div style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
+        <div>
+          <b>{t(lang, "Invoice", "发票")}</b>: {x.invoiceNo}
+        </div>
+        <div>
+          <b>{t(lang, "Progress", "进度")}</b>: {queueReviewProgressLabel(lang, roleCfg, x.approval)}
+        </div>
+        <div>
+          <b>{t(lang, "Risk", "风险")}</b>: {queueRiskAssistLabel(lang, x)}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <a href={openHref(x.type, x.id)} style={{ fontWeight: 600 }}>
+          {queuePrimaryActionLabel(lang, x.status)}
+        </a>
+        {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
+          <a
+            href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+            style={{ fontSize: 12, color: "#b45309" }}
+          >
+            {t(lang, "Fix payment proof", "修复缴费凭证")}
+          </a>
+        ) : null}
+      </div>
+    </article>
   ));
+}
+
+function renderQueueSection(
+  rows: Array<{
+    id: string;
+    type: "PARENT" | "PARTNER";
+    receiptNo: string;
+    receiptDate: string | null;
+    invoiceNo: string;
+    partyName: string;
+    amountReceived: number;
+    status: "COMPLETED" | "REJECTED" | "PENDING";
+    approval: {
+      managerApprovedBy: string[];
+      financeApprovedBy: string[];
+    };
+    paymentRecord: { id: string; name: string; path: string; date?: string | null } | null;
+    paymentFileMissing?: boolean;
+    riskCount?: number;
+    packageId: string;
+  }>,
+  opts: {
+    heading: string;
+    count: number;
+    tone: "ok" | "warn" | "muted";
+    lang: "BILINGUAL" | "ZH" | "EN";
+    selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null;
+    roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] };
+    openHref: (type: "PARENT" | "PARTNER", id: string) => string;
+  }
+) {
+  if (rows.length === 0) return null;
+  return (
+    <section style={{ display: "grid", gap: 8 }}>
+      <div style={{ ...tagStyle(opts.tone), borderRadius: 10, padding: "8px 10px", fontWeight: 700 }}>
+        {opts.heading} ({opts.count})
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {renderQueueCards(rows, opts.lang, opts.selectedRow, opts.roleCfg, opts.openHref)}
+      </div>
+    </section>
+  );
 }
 
 async function uploadPaymentRecordAction(formData: FormData) {
@@ -1610,9 +1666,9 @@ export default async function ReceiptsApprovalsPage({
       <style>{`
         .receipt-workspace { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
         .receipt-workspace > div { min-width: 0; }
-        .receipt-table-wrap { overflow-x: auto; }
-        @media (min-width: 1900px) {
-          .receipt-workspace { grid-template-columns: minmax(900px, 1.25fr) minmax(520px, 1fr); }
+        .receipt-queue-pane { display: grid; gap: 12px; }
+        @media (min-width: 1500px) {
+          .receipt-workspace { grid-template-columns: minmax(460px, 0.92fr) minmax(540px, 1.08fr); }
         }
         .receipt-actions form {
           display: flex;
@@ -1708,60 +1764,42 @@ export default async function ReceiptsApprovalsPage({
         {unifiedQueue.length === 0 ? (
           <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
         ) : (
-          <div className="receipt-table-wrap">
-          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 980 }}>
-            <thead>
-              <tr style={{ background: "#f3f4f6" }}>
-                <th align="left">{t(lang, "Type", "类型")}</th>
-                <th align="left">{t(lang, "Receipt No.", "收据号")}</th>
-                <th align="left">{t(lang, "Date", "日期")}</th>
-                <th align="left">{t(lang, "Invoice No.", "发票号")}</th>
-                <th align="left">{t(lang, "Name / Party", "学生/对象")}</th>
-                <th align="left">{t(lang, "Amount", "金额")}</th>
-                <th align="left">{t(lang, "Status", "状态")}</th>
-                <th align="left">{t(lang, "Review Progress", "审核进度")}</th>
-                <th align="left">{t(lang, "Primary Action", "主要操作")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleMineQueue.length > 0 ? (
-                <>
-                  <tr style={{ background: "#eff6ff" }}>
-                    <td colSpan={9} style={{ fontWeight: 700, color: "#1d4ed8" }}>
-                      {bilingualLabel("My next actions", "我待处理的")} ({visibleMineQueue.length})
-                    </td>
-                  </tr>
-                  {renderQueueRows(visibleMineQueue, lang, selectedRow, roleCfg, openHref)}
-                </>
-              ) : null}
-              {visibleOtherQueue.length > 0 ? (
-                <>
-                  <tr style={{ background: "#fff7ed" }}>
-                    <td colSpan={9} style={{ fontWeight: 700, color: "#9a3412" }}>
-                      {bilingualLabel("Other open items", "其他待处理项")} ({visibleOtherQueue.length})
-                    </td>
-                  </tr>
-                  {renderQueueRows(visibleOtherQueue, lang, selectedRow, roleCfg, openHref)}
-                </>
-              ) : null}
-              {visibleCompletedQueue.length > 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: 0, borderTop: "1px solid #eee" }}>
-                    <details open={queueBucket === "HISTORY"}>
-                      <summary style={{ cursor: "pointer", listStyle: "none", background: "#f8fafc", fontWeight: 700, color: "#64748b", padding: "8px 12px" }}>
-                        {bilingualLabel("Completed history", "已完成历史")} ({visibleCompletedQueue.length})
-                      </summary>
-                      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-                        <tbody>
-                          {renderQueueRows(visibleCompletedQueue, lang, selectedRow, roleCfg, openHref)}
-                        </tbody>
-                      </table>
-                    </details>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <div className="receipt-queue-pane">
+            <div style={{ color: "#64748b", fontSize: 12 }}>
+              {t(
+                lang,
+                "Queue cards now show only the essentials. Open one item to read invoice, payment proof, timeline, and review controls on the right.",
+                "队列卡片现在只保留核心信息。点开任一项目后，可在右侧查看发票、缴费记录、时间线和审批操作。"
+              )}
+            </div>
+            {renderQueueSection(visibleMineQueue, {
+              heading: bilingualLabel("My next actions", "我待处理的"),
+              count: visibleMineQueue.length,
+              tone: "ok",
+              lang,
+              selectedRow,
+              roleCfg,
+              openHref,
+            })}
+            {renderQueueSection(visibleOtherQueue, {
+              heading: bilingualLabel("Other open items", "其他待处理项"),
+              count: visibleOtherQueue.length,
+              tone: "warn",
+              lang,
+              selectedRow,
+              roleCfg,
+              openHref,
+            })}
+            {visibleCompletedQueue.length > 0 ? (
+              <details open={queueBucket === "HISTORY"}>
+                <summary style={{ cursor: "pointer", listStyle: "none", background: "#f8fafc", fontWeight: 700, color: "#64748b", padding: "8px 12px", borderRadius: 10, border: "1px solid #e5e7eb" }}>
+                  {bilingualLabel("Completed history", "已完成历史")} ({visibleCompletedQueue.length})
+                </summary>
+                <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                  {renderQueueCards(visibleCompletedQueue, lang, selectedRow, roleCfg, openHref)}
+                </div>
+              </details>
+            ) : null}
           </div>
         )}
       </div>

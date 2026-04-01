@@ -1041,3 +1041,22 @@ This file is the single source of truth for what changed in production.
   - quick work filters now sit above the main queues and clearly state they affect the queues, history list, and CSV export together
   - advanced filters now live in a dedicated details block with matching explanatory copy
 - Rollback point: previous production commit before `2026-04-01-r05`.
+
+## 2026-04-01-r06
+
+- Release ID: `2026-04-01-r06`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the receipt-approval finance queue easier to use on normal-width screens by converting the unified queue from a wide table into a compact worklist.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-receipt-approval-finance-queue-narrowing.md`
+- Risk impact (if any): Low. This changes receipt-approval queue presentation only; finance approval, manager approval, reject reasons, redo flow, and receipt creation rules remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - unified receipt queue now renders as compact cards instead of a 9-column table
+  - the queue keeps only receipt number, party, amount, status, and risk at list level
+  - normal-width screens no longer require horizontal scrolling to understand the finance queue
+- Rollback point: previous production commit before `2026-04-01-r06`.

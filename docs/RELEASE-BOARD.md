@@ -501,3 +501,14 @@
   - no approval, payment, archive, grouping, or export rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r06 Deployed
+
+- Scope: receipt-approval finance queue readability and width reduction.
+- Business impact:
+  - the unified receipt queue now uses compact card items instead of a wide 9-column table
+  - core finance triage stays visible without horizontal scrolling on normal-width laptop screens
+  - invoice number, progress, and risk detail move into compact supporting text and the full review context remains on the right-side selected panel
+  - no receipt approval, reject, redo, receipt creation, or payment-record rules changed
+- Validation:
+  - `npm run build`
