@@ -566,3 +566,14 @@
   - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r12 Deployed
+
+- Scope: package-create smart defaults and duplicate-package warnings on the admin packages page.
+- Business impact:
+  - selecting a course now auto-suggests the most common minute balance used for that course
+  - staff still keep full control because manual minute edits are not overwritten after they start typing
+  - the final review step now shows a stronger yellow warning when the selected student already has active packages for the same course
+  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

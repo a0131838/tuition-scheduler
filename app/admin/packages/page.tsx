@@ -75,6 +75,7 @@ export default async function AdminPackagesPage({
   }> = [];
   let courses: Array<{ id: string; name: string }> = [];
   let packages: any[] = [];
+  let defaultMinutesByCourseId: Record<string, number> = {};
 
   try {
     [students, courses] = await Promise.all([
@@ -145,6 +146,39 @@ export default async function AdminPackagesPage({
       loadFailed = true;
       console.error("[admin/packages] failed to load packages", err);
     }
+  }
+
+  try {
+    const recentMinutePackages = await prisma.coursePackage.findMany({
+      where: { type: "HOURS", totalMinutes: { gt: 0 } },
+      orderBy: { createdAt: "desc" },
+      take: 1000,
+      select: {
+        courseId: true,
+        totalMinutes: true,
+        note: true,
+      },
+    });
+    const grouped = new Map<string, Map<number, number>>();
+    for (const row of recentMinutePackages) {
+      if (packageModeFromNote(row.note) !== "HOURS_MINUTES") continue;
+      const minute = row.totalMinutes ?? 0;
+      if (!minute || minute <= 0) continue;
+      const perCourse = grouped.get(row.courseId) ?? new Map<number, number>();
+      perCourse.set(minute, (perCourse.get(minute) ?? 0) + 1);
+      grouped.set(row.courseId, perCourse);
+    }
+    defaultMinutesByCourseId = Object.fromEntries(
+      Array.from(grouped.entries()).map(([courseId, counts]) => {
+        const best = Array.from(counts.entries()).sort((a, b) => {
+          if (b[1] !== a[1]) return b[1] - a[1];
+          return a[0] - b[0];
+        })[0];
+        return [courseId, best?.[0] ?? 600];
+      })
+    );
+  } catch (error) {
+    console.error("[admin/packages] failed to build default minute suggestions", error);
   }
 
   let packageRiskMap: Map<string, any> = new Map(
@@ -238,6 +272,7 @@ export default async function AdminPackagesPage({
                 courseIds: s.packages.map((pkg) => pkg.courseId),
                 courseNames: s.packages.map((pkg) => pkg.course.name),
               }))}
+              defaultMinutesByCourseId={defaultMinutesByCourseId}
               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
               labels={{
                 student: t(lang, "Student", "学生"),

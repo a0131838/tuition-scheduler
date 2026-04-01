@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
@@ -53,6 +53,7 @@ function rowCardStyle(active: boolean) {
 type PackageCreateFormClientProps = {
   students: StudentOpt[];
   courses: CourseOpt[];
+  defaultMinutesByCourseId: Record<string, number>;
   defaultYmd: string;
   labels: {
     student: string;
@@ -89,6 +90,7 @@ type PackageCreateFormClientProps = {
 export default function PackageCreateFormClient({
   students,
   courses,
+  defaultMinutesByCourseId,
   defaultYmd,
   labels,
   close,
@@ -103,6 +105,7 @@ export default function PackageCreateFormClient({
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id ?? "");
   const [typeValue, setTypeValue] = useState("HOURS");
   const [totalMinutesValue, setTotalMinutesValue] = useState("20");
+  const [minutesTouched, setMinutesTouched] = useState(false);
   const [validFromValue, setValidFromValue] = useState(defaultYmd);
   const [validToValue, setValidToValue] = useState("");
   const [statusValue, setStatusValue] = useState("PAUSED");
@@ -123,6 +126,13 @@ export default function PackageCreateFormClient({
     selectedStudent && selectedCourseId
       ? (selectedStudent.courseIds ?? []).filter((id) => id === selectedCourseId).length
       : 0;
+  const suggestedMinutes = defaultMinutesByCourseId[selectedCourseId] ?? 600;
+
+  useEffect(() => {
+    if (isMonthly) return;
+    if (minutesTouched) return;
+    setTotalMinutesValue(String(suggestedMinutes));
+  }, [isMonthly, minutesTouched, suggestedMinutes, selectedCourseId, typeValue]);
 
   const summaryRows = useMemo(
     () => [
@@ -395,16 +405,25 @@ export default function PackageCreateFormClient({
                       min={1}
                       step={1}
                       value={totalMinutesValue}
-                      onChange={(e) => setTotalMinutesValue(e.target.value)}
+                      onChange={(e) => {
+                        setMinutesTouched(true);
+                        setTotalMinutesValue(e.target.value);
+                      }}
                       style={{ width: 220, minHeight: 40 }}
                     />
                     <span style={{ color: "#666", fontSize: 13 }}>{labels.totalMinutesHint}</span>
+                    <div style={{ color: "#475569", fontSize: 13 }}>
+                      Suggested for this course / 此课程推荐默认分钟数: <strong>{suggestedMinutes}</strong>
+                    </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                       {[600, 900, 1200, 1800].map((preset) => (
                         <button
                           key={preset}
                           type="button"
-                          onClick={() => setTotalMinutesValue(String(preset))}
+                          onClick={() => {
+                            setMinutesTouched(true);
+                            setTotalMinutesValue(String(preset));
+                          }}
                           style={{
                             minHeight: 34,
                             padding: "0 12px",
@@ -589,6 +608,17 @@ export default function PackageCreateFormClient({
                 <div style={{ color: "#475569", fontSize: 14 }}>
                   Review the package summary before creating it. / 创建前请确认右侧课包摘要，避免学生、课程、分钟数或有效期填错。
                 </div>
+                {sameCourseActive > 0 ? (
+                  <div style={{ border: "1px solid #f59e0b", borderRadius: 12, padding: 12, background: "#fff7ed", color: "#9a3412" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                      Same-course package warning / 同课程课包提醒
+                    </div>
+                    <div>
+                      This student already has {sameCourseActive} active package(s) for the same course. Please confirm you really want to create another one. /
+                      当前学生已有 {sameCourseActive} 个同课程有效课包，请确认这次确实需要再创建一个。
+                    </div>
+                  </div>
+                ) : null}
                 <div style={{ border: "1px dashed #cbd5e1", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>Quick checks / 快速检查</div>
                   <div>1. Student and course match the intended learner. / 学生与课程是否对应正确。</div>

@@ -1154,3 +1154,23 @@ This file is the single source of truth for what changed in production.
   - common minute presets are available for quick entry
   - selecting a student now shows active-package and same-course reminders before creation
 - Rollback point: previous production commit before `2026-04-01-r11`.
+
+## 2026-04-01-r12
+
+- Release ID: `2026-04-01-r12`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add smarter course-based defaults and stronger duplicate-package warnings to the admin package-create flow.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-create-smart-defaults.md`
+- Risk impact (if any): Low. This changes package-create suggestions and warnings only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - selecting a course now auto-suggests the most common minute balance used for that course
+  - step 4 now shows a yellow warning when the same student already has active packages for the same course
+  - manual minute edits still work and are not overwritten after staff starts typing
+- Rollback point: previous production commit before `2026-04-01-r12`.
