@@ -1098,3 +1098,20 @@ This file is the single source of truth for what changed in production.
   - quick-focus filters separate urgent, attendance-only, and feedback-only queues
   - feedback overdue timing is now displayed from the actual post-class feedback due time instead of the sign-in threshold time
 - Rollback point: previous production commit before `2026-04-01-r08`.
+
+## 2026-04-01-r09
+
+- Release ID: `2026-04-01-r09`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Make the sign-in alert summary follow the current quick-focus filter.
+- Key files:
+  - `app/admin/alerts/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-admin-signin-alert-focus-summary.md`
+- Risk impact (if any): Low. This only changes the alert summary counts shown at the top of the page; sync rules, thresholds, card layout, and action links remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - when switching to `Urgent first`, `Attendance only`, or `Feedback only`, the top summary now matches the filtered queue instead of keeping the full-page totals
+- Rollback point: previous production commit before `2026-04-01-r09`.

@@ -534,3 +534,13 @@
   - no alert thresholds, sync rules, attendance marking logic, or feedback rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r09 Deployed
+
+- Scope: sign-in alert quick-focus summary alignment.
+- Business impact:
+  - when users switch to `Urgent first`, `Attendance only`, or `Feedback only`, the top summary cards now shrink to match the currently filtered queue
+  - this removes the confusing state where the queue looked filtered but the summary still showed full-page totals
+  - no alert thresholds, sync rules, card grouping, or action links changed
+- Validation:
+  - `npm run build`
