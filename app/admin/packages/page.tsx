@@ -469,6 +469,7 @@ export default async function AdminPackagesPage({
                                 name: s.name,
                                 sourceChannelName: s.sourceChannel?.name ?? "",
                                 activePackageCount: s.packages.length,
+                                courseIds: s.packages.map((pkg) => pkg.courseId),
                               }))}
                               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
                               labels={{

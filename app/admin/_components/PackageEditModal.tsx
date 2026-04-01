@@ -78,7 +78,13 @@ export default function PackageEditModal({
   labels,
 }: {
   pkg: PackageRow;
-  students: Array<{ id: string; name: string; sourceChannelName?: string; activePackageCount?: number }>;
+  students: Array<{
+    id: string;
+    name: string;
+    sourceChannelName?: string;
+    activePackageCount?: number;
+    courseIds?: string[];
+  }>;
   courses: Array<{ id: string; name: string }>;
   labels: Labels;
 }) {
@@ -169,6 +175,29 @@ export default function PackageEditModal({
       })),
     [courses]
   );
+  const selectedEditSharedStudents = useMemo(
+    () => students.filter((student) => editSharedStudentIds.includes(student.id)),
+    [editSharedStudentIds, students]
+  );
+  const selectedEditSharedCourses = useMemo(
+    () => courses.filter((course) => editSharedCourseIds.includes(course.id)),
+    [courses, editSharedCourseIds]
+  );
+  const editSharedStudentsSameCourse = useMemo(
+    () =>
+      pkg.courseId
+        ? selectedEditSharedStudents.filter((student) => (student.courseIds ?? []).includes(pkg.courseId ?? ""))
+        : [],
+    [pkg.courseId, selectedEditSharedStudents]
+  );
+  const editSharedStudentNamesPreview = selectedEditSharedStudents
+    .slice(0, 5)
+    .map((student) => student.name)
+    .join(", ");
+  const editSharedCourseNamesPreview = selectedEditSharedCourses
+    .slice(0, 5)
+    .map((course) => course.name)
+    .join(", ");
 
   const preserveRefresh = (okMsg?: string) => {
     if (okMsg) {
@@ -436,6 +465,34 @@ export default function PackageEditModal({
                     emptyText="No matching students. / 没有匹配的学生。"
                   />
                 </div>
+                <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
+                  Selected shared students / 已选共享学生: <strong>{selectedEditSharedStudents.length}</strong>
+                  {selectedEditSharedStudents.length
+                    ? ` · ${editSharedStudentNamesPreview}${
+                        selectedEditSharedStudents.length > 5
+                          ? ` +${selectedEditSharedStudents.length - 5} more / 更多`
+                          : ""
+                      }`
+                    : " · None yet / 暂未选择"}
+                </div>
+                {editSharedStudentsSameCourse.length ? (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      border: "1px solid #fcd34d",
+                      borderRadius: 10,
+                      padding: 10,
+                      background: "#fffbeb",
+                      color: "#92400e",
+                      fontSize: 13,
+                    }}
+                  >
+                    Same-course active package warning / 同课程有效课包提醒:{" "}
+                    <strong>{editSharedStudentsSameCourse.length}</strong> selected shared student(s) already have an
+                    active package for this course. /
+                    已选共享学生里有 <strong>{editSharedStudentsSameCourse.length}</strong> 人已经有这门课的有效课包。
+                  </div>
+                ) : null}
               </label>
               <label>
                 {labels.sharedCourses}:
@@ -450,6 +507,16 @@ export default function PackageEditModal({
                     selectedTitle="Selected shared courses / 已选共享课程"
                     emptyText="No matching courses. / 没有匹配的课程。"
                   />
+                </div>
+                <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
+                  Selected shared courses / 已选共享课程: <strong>{selectedEditSharedCourses.length}</strong>
+                  {selectedEditSharedCourses.length
+                    ? ` · ${editSharedCourseNamesPreview}${
+                        selectedEditSharedCourses.length > 5
+                          ? ` +${selectedEditSharedCourses.length - 5} more / 更多`
+                          : ""
+                      }`
+                    : " · None yet / 暂未选择"}
                 </div>
               </label>
               <label>

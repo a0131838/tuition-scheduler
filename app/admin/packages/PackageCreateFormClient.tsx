@@ -236,6 +236,29 @@ export default function PackageCreateFormClient({
       })),
     [courses]
   );
+  const selectedSharedStudents = useMemo(
+    () => students.filter((student) => sharedStudentIds.includes(student.id)),
+    [sharedStudentIds, students]
+  );
+  const selectedSharedCourses = useMemo(
+    () => courses.filter((course) => sharedCourseIds.includes(course.id)),
+    [courses, sharedCourseIds]
+  );
+  const sharedStudentsSameCourse = useMemo(
+    () =>
+      selectedCourseId
+        ? selectedSharedStudents.filter((student) => (student.courseIds ?? []).includes(selectedCourseId))
+        : [],
+    [selectedCourseId, selectedSharedStudents]
+  );
+  const sharedStudentNamesPreview = selectedSharedStudents
+    .slice(0, 5)
+    .map((student) => student.name)
+    .join(", ");
+  const sharedCourseNamesPreview = selectedSharedCourses
+    .slice(0, 5)
+    .map((course) => course.name)
+    .join(", ");
 
   function validateStep(index: number) {
     if (index === 0) {
@@ -632,6 +655,33 @@ export default function PackageCreateFormClient({
                         selectedTitle="Selected shared students / 已选共享学生"
                         emptyText="No matching students. / 没有匹配的学生。"
                       />
+                      <div style={{ fontSize: 13, color: "#475569" }}>
+                        Selected shared students / 已选共享学生: <strong>{selectedSharedStudents.length}</strong>
+                        {selectedSharedStudents.length
+                          ? ` · ${sharedStudentNamesPreview}${
+                              selectedSharedStudents.length > 5
+                                ? ` +${selectedSharedStudents.length - 5} more / 更多`
+                                : ""
+                            }`
+                          : " · None yet / 暂未选择"}
+                      </div>
+                      {sharedStudentsSameCourse.length ? (
+                        <div
+                          style={{
+                            border: "1px solid #fcd34d",
+                            borderRadius: 10,
+                            padding: 10,
+                            background: "#fffbeb",
+                            color: "#92400e",
+                            fontSize: 13,
+                          }}
+                        >
+                          Same-course active package warning / 同课程有效课包提醒:{" "}
+                          <strong>{sharedStudentsSameCourse.length}</strong> selected shared student(s) already have an
+                          active package for this course. /
+                          已选共享学生里有 <strong>{sharedStudentsSameCourse.length}</strong> 人已经有这门课的有效课包。
+                        </div>
+                      ) : null}
                     </label>
 
                     <label style={{ display: "grid", gap: 6 }}>
@@ -646,6 +696,16 @@ export default function PackageCreateFormClient({
                         selectedTitle="Selected shared courses / 已选共享课程"
                         emptyText="No matching courses. / 没有匹配的课程。"
                       />
+                      <div style={{ fontSize: 13, color: "#475569" }}>
+                        Selected shared courses / 已选共享课程: <strong>{selectedSharedCourses.length}</strong>
+                        {selectedSharedCourses.length
+                          ? ` · ${sharedCourseNamesPreview}${
+                              selectedSharedCourses.length > 5
+                                ? ` +${selectedSharedCourses.length - 5} more / 更多`
+                                : ""
+                            }`
+                          : " · None yet / 暂未选择"}
+                      </div>
                     </label>
 
                     <label style={{ display: "grid", gap: 6 }}>

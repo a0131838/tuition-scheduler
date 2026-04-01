@@ -1292,3 +1292,23 @@ This file is the single source of truth for what changed in production.
   - the current student and current course are excluded from their own sharing pickers to reduce accidental self-selection
   - shared student results now show source and active-package context to reduce misclicks when names are similar
 - Rollback point: previous production commit before `2026-04-01-r18`.
+
+## 2026-04-01-r19
+
+- Release ID: `2026-04-01-r19`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add selected-sharing summaries and same-course warnings to package create/edit so teaching staff can see sharing scope before saving.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-sharing-warning-summary.md`
+- Risk impact (if any): Low. This only adds package form guidance; package creation API behavior, package update API behavior, top-up API behavior, settlement mode rules, overlap checks, and ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - package create and package edit now show selected shared-student and shared-course counts with quick name previews
+  - when selected shared students already have an active package for the same course, the form shows a yellow warning before staff save
+- Rollback point: previous production commit before `2026-04-01-r19`.

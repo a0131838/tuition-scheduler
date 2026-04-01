@@ -641,3 +641,13 @@
   - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r19 Deployed
+
+- Scope: package sharing selection summaries and same-course warnings.
+- Business impact:
+  - package create and package edit now show how many shared students and shared courses are currently selected, so teaching staff can confirm scope without reopening the picker
+  - both forms now show a yellow warning when selected shared students already have an active package for the same course, which reduces accidental duplicate sharing across the same course
+  - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`
