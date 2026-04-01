@@ -40,7 +40,7 @@ export default async function TeacherPayrollDetailPage({
   searchParams,
 }: {
   params: Promise<{ teacherId: string }>;
-  searchParams?: Promise<{ month?: string; scope?: string }>;
+  searchParams?: Promise<{ month?: string; scope?: string; pendingOnly?: string; fallbackOnly?: string; chargedOnly?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -48,6 +48,9 @@ export default async function TeacherPayrollDetailPage({
   const sp = await searchParams;
   const month = sp?.month ?? monthKey(new Date());
   const scope = sp?.scope === "completed" ? "completed" : "all";
+  const pendingOnly = sp?.pendingOnly === "1";
+  const fallbackOnly = sp?.fallbackOnly === "1";
+  const chargedOnly = sp?.chargedOnly === "1";
 
   if (!parseMonth(month)) {
     return (
@@ -70,6 +73,17 @@ export default async function TeacherPayrollDetailPage({
   }
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
+  const filteredComboRows = data.comboRows.filter((row) => {
+    if (fallbackOnly && !row.usedRateFallback) return false;
+    if (chargedOnly && row.chargedExcusedSessions <= 0) return false;
+    return true;
+  });
+  const filteredSessionRows = data.sessionRows.filter((row) => {
+    if (pendingOnly && row.isCompleted) return false;
+    if (fallbackOnly && !row.usedRateFallback) return false;
+    if (chargedOnly && !row.isChargedExcused) return false;
+    return true;
+  });
 
   return (
     <div>
@@ -94,6 +108,23 @@ export default async function TeacherPayrollDetailPage({
           </select>
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+      </form>
+      <form method="GET" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+        <input type="hidden" name="month" value={month} />
+        <input type="hidden" name="scope" value={scope} />
+        <label>
+          <input type="checkbox" name="pendingOnly" value="1" defaultChecked={pendingOnly} /> {t(lang, "Only pending", "只看未完成")}
+        </label>
+        <label>
+          <input type="checkbox" name="fallbackOnly" value="1" defaultChecked={fallbackOnly} /> {t(lang, "Only fallback rate", "只看费率回退")}
+        </label>
+        <label>
+          <input type="checkbox" name="chargedOnly" value="1" defaultChecked={chargedOnly} /> {t(lang, "Only cancelled+charged", "只看取消但扣课时")}
+        </label>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply anomaly filters", "应用异常筛选")}</button>
+        <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(p.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+          {t(lang, "Clear", "清除")}
+        </a>
       </form>
 
       <div style={{ marginBottom: 12 }}>
@@ -145,7 +176,7 @@ export default async function TeacherPayrollDetailPage({
       </div>
 
       <h3>{t(lang, "Combo Summary", "课程组合汇总")}</h3>
-      {data.comboRows.length === 0 ? (
+      {filteredComboRows.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No data in this period.", "当前周期无数据。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
@@ -161,7 +192,7 @@ export default async function TeacherPayrollDetailPage({
             </tr>
           </thead>
           <tbody>
-            {data.comboRows.map((row) => (
+            {filteredComboRows.map((row) => (
               <tr key={`${row.courseId}-${row.subjectId ?? "-"}-${row.levelId ?? "-"}-${row.teachingMode}-${row.currencyCode}`} style={{ borderTop: "1px solid #eee" }}>
                 <td>
                   <div>{formatComboLabel(row.courseName, row.subjectName, row.levelName, row.teachingMode)}</div>
@@ -183,7 +214,7 @@ export default async function TeacherPayrollDetailPage({
       )}
 
       <h3>{t(lang, "Session Details", "逐课次明细")}</h3>
-      {data.sessionRows.length === 0 ? (
+      {filteredSessionRows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No session rows.", "暂无课次明细。")}</div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -203,7 +234,7 @@ export default async function TeacherPayrollDetailPage({
             </tr>
           </thead>
           <tbody>
-            {data.sessionRows.map((row) => (
+            {filteredSessionRows.map((row) => (
               <tr key={row.sessionId} style={{ borderTop: "1px solid #eee" }}>
                 <td>{DATE_TIME_FMT.format(row.startAt)}</td>
                 <td>{DATE_TIME_FMT.format(row.endAt)}</td>

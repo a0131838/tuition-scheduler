@@ -1312,3 +1312,22 @@ This file is the single source of truth for what changed in production.
   - package create and package edit now show selected shared-student and shared-course counts with quick name previews
   - when selected shared students already have an active package for the same course, the form shows a yellow warning before staff save
 - Rollback point: previous production commit before `2026-04-01-r19`.
+
+## 2026-04-01-r20
+
+- Release ID: `2026-04-01-r20`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Turn teacher payroll into a more focused workbench with a role-based work queue and anomaly filters on the detail page.
+- Key files:
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-teacher-payroll-work-queue.md`
+- Risk impact (if any): Low. This changes payroll page structure and filtering only; payroll calculation logic, send flow, approval rules, finance payout rules, and audit logging remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - payroll overview now shows a role-aware `My work queue / 我的待处理` and a `Selected payroll / 当前处理老师` action panel
+  - teacher payroll detail now supports quick anomaly filters for pending rows, fallback-rate rows, and cancelled-but-charged rows
+- Rollback point: previous production commit before `2026-04-01-r20`.

@@ -32,6 +32,7 @@ const PERIOD_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 const APPROVAL_CONFIG_OWNER_EMAIL = "zhaohongwei0880@gmail.com";
+type WorkflowChipState = "done" | "pending" | "blocked" | "rejected";
 
 function canEditApprovalRoleConfig(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase() === APPROVAL_CONFIG_OWNER_EMAIL;
@@ -272,6 +273,7 @@ export default async function TeacherPayrollPage({
     pendingOnly?: string;
     unsentOnly?: string;
     rateMissingOnly?: string;
+    focusTeacherId?: string;
     savedTeacherId?: string;
     savedCourseId?: string;
     savedSubjectId?: string;
@@ -293,6 +295,7 @@ export default async function TeacherPayrollPage({
   const pendingOnly = sp?.pendingOnly === "1";
   const unsentOnly = sp?.unsentOnly === "1";
   const rateMissingOnly = sp?.rateMissingOnly === "1";
+  const focusTeacherId = String(sp?.focusTeacherId ?? "").trim();
   const savedTeacherId = String(sp?.savedTeacherId ?? "");
   const savedCourseId = String(sp?.savedCourseId ?? "");
   const savedSubjectId = typeof sp?.savedSubjectId === "string" ? sp.savedSubjectId : "";
@@ -399,11 +402,142 @@ export default async function TeacherPayrollPage({
     borderRight: "1px solid #f1f5f9",
     whiteSpace: "nowrap" as const,
   };
-  const workflowChipStyle = (state: "done" | "pending" | "blocked" | "rejected") => {
+  const workflowChipStyle = (state: WorkflowChipState) => {
     if (state === "done") return { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" };
     if (state === "pending") return { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" };
     if (state === "rejected") return { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" };
     return { background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" };
+  };
+  const buildPayrollPageHref = (teacherId?: string | null) => {
+    const params = new URLSearchParams();
+    params.set("month", month);
+    params.set("scope", scope);
+    if (q) params.set("q", q);
+    if (pendingOnly) params.set("pendingOnly", "1");
+    if (unsentOnly) params.set("unsentOnly", "1");
+    if (rateMissingOnly) params.set("rateMissingOnly", "1");
+    if (teacherId) params.set("focusTeacherId", teacherId);
+    return `/admin/reports/teacher-payroll?${params.toString()}`;
+  };
+  const workflowRows = payrollRows.map((row) => {
+    const publish = publishMap.get(row.teacherId) ?? null;
+    const managerAllConfirmed = publish
+      ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
+      : false;
+    const teacherState: WorkflowChipState = publish?.confirmedAt ? "done" : "pending";
+    const managerState: WorkflowChipState = !publish?.confirmedAt ? "blocked" : managerAllConfirmed ? "done" : "pending";
+    const financeConfirmState: WorkflowChipState =
+      !publish?.confirmedAt || !managerAllConfirmed ? "blocked" : publish.financeConfirmedAt ? "done" : "pending";
+    const financePaidState: WorkflowChipState = !publish?.financeConfirmedAt
+      ? "blocked"
+      : publish.financePaidAt
+        ? "done"
+        : "pending";
+    let queueKey: "send" | "manager" | "financeConfirm" | "financePaid" | "teacherConfirm" | "done" = "done";
+    let queueLabel = t(lang, "Completed workflow", "流程已完成");
+    if (!publish) {
+      queueKey = "send";
+      queueLabel = t(lang, "Ready to send", "可发送");
+    } else if (!publish.confirmedAt) {
+      queueKey = "teacherConfirm";
+      queueLabel = t(lang, "Waiting teacher confirm", "待老师确认");
+    } else if (!managerAllConfirmed) {
+      queueKey = "manager";
+      queueLabel = t(lang, "Waiting manager approval", "待管理审批");
+    } else if (!publish.financeConfirmedAt) {
+      queueKey = "financeConfirm";
+      queueLabel = t(lang, "Waiting finance confirm", "待财务确认");
+    } else if (!publish.financePaidAt) {
+      queueKey = "financePaid";
+      queueLabel = t(lang, "Ready to mark paid", "可标记发薪");
+    }
+    return {
+      row,
+      publish,
+      managerAllConfirmed,
+      teacherState,
+      managerState,
+      financeConfirmState,
+      financePaidState,
+      queueKey,
+      queueLabel,
+    };
+  });
+  const myQueueRows = workflowRows.filter((item) => {
+    if (isFinanceOnlyUser) return item.queueKey === "financeConfirm" || item.queueKey === "financePaid";
+    if (item.queueKey === "send" || item.queueKey === "manager") return true;
+    if (isFinanceApprover && (item.queueKey === "financeConfirm" || item.queueKey === "financePaid")) return true;
+    return false;
+  });
+  const selectedWorkflowRow =
+    workflowRows.find((item) => item.row.teacherId === focusTeacherId) ??
+    myQueueRows[0] ??
+    workflowRows[0] ??
+    null;
+  const renderSelectedActionArea = (item: (typeof workflowRows)[number] | null) => {
+    if (!item) return null;
+    const { row, publish, managerAllConfirmed, queueKey } = item;
+    return (
+      <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+            {t(lang, "Open detail", "打开详情")}
+          </a>
+          {queueKey === "send" && !isFinanceOnlyUser ? (
+            <form action={sendPayrollAction}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="teacherId" value={row.teacherId} />
+              <button type="submit">{t(lang, "Send payroll", "发送工资单")}</button>
+            </form>
+          ) : null}
+          {queueKey === "manager" && publish && isManagerApprover && publish.confirmedAt && !managerAllConfirmed ? (
+            <form action={managerApprovePayrollAction}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="teacherId" value={row.teacherId} />
+              <button type="submit">{t(lang, "Manager approve", "管理审批")}</button>
+            </form>
+          ) : null}
+          {queueKey === "financeConfirm" && publish && isFinanceApprover ? (
+            <form action={financeApprovePayrollAction}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="teacherId" value={row.teacherId} />
+              <button type="submit">{t(lang, "Finance confirm", "财务确认")}</button>
+            </form>
+          ) : null}
+          {queueKey === "financePaid" && publish && isFinanceApprover ? (
+            <form action={financeMarkPaidPayrollAction}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="teacherId" value={row.teacherId} />
+              <button type="submit">{t(lang, "Mark paid", "标记发薪")}</button>
+            </form>
+          ) : null}
+        </div>
+        {publish && isFinanceApprover && publish.financeConfirmedAt && !publish.financePaidAt ? (
+          <details>
+            <summary style={{ cursor: "pointer", color: "#b91c1c", fontWeight: 600 }}>
+              {t(lang, "Finance reject", "财务驳回")}
+            </summary>
+            <form action={financeRejectPayrollAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="teacherId" value={row.teacherId} />
+              <input
+                type="text"
+                name="rejectReason"
+                required
+                placeholder={t(lang, "Reject reason", "驳回原因")}
+                style={{ minWidth: 220 }}
+              />
+              <button type="submit">{t(lang, "Confirm reject", "确认驳回")}</button>
+            </form>
+          </details>
+        ) : null}
+      </div>
+    );
   };
 
   return (
@@ -531,6 +665,121 @@ export default async function TeacherPayrollPage({
           <div style={{ color: "#92400e", fontSize: 12 }}>{t(lang, "Pending Sessions", "待完成课次")}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#b45309" }}>{shownPending}</div>
         </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gap: 16,
+          gridTemplateColumns: "minmax(280px, 0.95fr) minmax(340px, 1.05fr)",
+          alignItems: "start",
+          marginBottom: 18,
+        }}
+      >
+        <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 14 }}>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>{t(lang, "My work queue", "我的待处理")}</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>
+            {t(lang, "Focus on the next teacher who needs your action, instead of scanning the whole payroll table first.", "先处理下一位需要你动作的老师，而不是先扫完整工资总表。")}
+          </div>
+          {myQueueRows.length === 0 ? (
+            <div style={{ color: "#94a3b8", fontSize: 14 }}>
+              {t(lang, "No payroll items need your action right now.", "当前没有需要你处理的工资单。")}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {myQueueRows.map((item) => (
+                <a
+                  key={item.row.teacherId}
+                  href={buildPayrollPageHref(item.row.teacherId)}
+                  style={{
+                    border: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "2px solid #2563eb" : "1px solid #dbe4f0",
+                    borderRadius: 12,
+                    padding: 12,
+                    background: item.row.teacherId === selectedWorkflowRow?.row.teacherId ? "#eff6ff" : "#f8fafc",
+                    color: "inherit",
+                    textDecoration: "none",
+                    display: "grid",
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <strong>{item.row.teacherName}</strong>
+                    <span style={{ ...workflowChipStyle(item.queueKey === "send" ? "pending" : item.queueKey === "done" ? "done" : "pending"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                      {item.queueLabel}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#475569" }}>
+                    {t(lang, "Pending sessions", "待完成课次")}: <strong>{item.row.pendingSessions}</strong> · {t(lang, "Hours", "课时")}: <strong>{item.row.totalHours}</strong>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>
+                    {item.row.currencyTotals.length === 0
+                      ? formatMoneyCents(0)
+                      : item.row.currencyTotals.map((currencyItem) => formatMoneyCents(currencyItem.amountCents, currencyItem.currencyCode)).join(" / ")}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 14 }}>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>{t(lang, "Selected payroll", "当前处理老师")}</div>
+          {!selectedWorkflowRow ? (
+            <div style={{ color: "#94a3b8", fontSize: 14 }}>
+              {t(lang, "Select one teacher from the work queue to review payroll actions.", "从待处理队列里选一位老师查看工资单动作。")}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#eff6ff" }}>
+                <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
+                  {selectedWorkflowRow.row.teacherName}
+                </div>
+                <div style={{ fontSize: 13, color: "#334155" }}>
+                  {t(lang, "Current period", "当前周期")}: {periodText}
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Salary", "工资")}</div>
+                  <div style={{ fontWeight: 700 }}>
+                    {selectedWorkflowRow.row.currencyTotals.length === 0
+                      ? formatMoneyCents(0)
+                      : selectedWorkflowRow.row.currencyTotals.map((currencyItem) => formatMoneyCents(currencyItem.amountCents, currencyItem.currencyCode)).join(" / ")}
+                  </div>
+                </div>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Sessions", "课次数")}</div>
+                  <div style={{ fontWeight: 700 }}>{selectedWorkflowRow.row.totalSessions}</div>
+                </div>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Pending", "未完成")}</div>
+                  <div style={{ fontWeight: 700, color: selectedWorkflowRow.row.pendingSessions > 0 ? "#b45309" : "#0f766e" }}>
+                    {selectedWorkflowRow.row.pendingSessions}
+                  </div>
+                </div>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next step", "下一步")}</div>
+                  <div style={{ fontWeight: 700 }}>{selectedWorkflowRow.queueLabel}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ ...workflowChipStyle(selectedWorkflowRow.teacherState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                  {t(lang, "Teacher", "老师")}: {selectedWorkflowRow.teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}
+                </span>
+                <span style={{ ...workflowChipStyle(selectedWorkflowRow.managerState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                  {t(lang, "Manager", "管理")}: {selectedWorkflowRow.managerState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${selectedWorkflowRow.publish?.managerApprovedBy.length ?? 0}/${roleConfig.managerApproverEmails.length}`}
+                </span>
+                <span style={{ ...workflowChipStyle(selectedWorkflowRow.financeConfirmState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                  {t(lang, "Finance Confirm", "财务确认")}: {selectedWorkflowRow.financeConfirmState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
+                </span>
+                <span style={{ ...workflowChipStyle(selectedWorkflowRow.financePaidState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                  {t(lang, "Finance Paid", "财务发薪")}: {selectedWorkflowRow.financePaidState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
+                </span>
+              </div>
+              {renderSelectedActionArea(selectedWorkflowRow)}
+            </div>
+          )}
+        </section>
       </div>
 
       <h3 id="salary-slips" style={{ scrollMarginTop: 80 }}>{t(lang, "Salary Slips by Teacher", "按老师工资单")}</h3>

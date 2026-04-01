@@ -651,3 +651,14 @@
   - no package creation API rules, package update API behavior, top-up API behavior, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r20 Deployed
+
+- Scope: teacher payroll work queue and anomaly-filter pass.
+- Business impact:
+  - teacher payroll now shows a role-aware `My work queue / 我的待处理` so management and finance can jump into the next teacher that needs action instead of scanning the full salary table first
+  - the page now surfaces a `Selected payroll / 当前处理老师` panel with the next workflow action, which reduces table-scanning and hidden-details clicks
+  - teacher payroll detail now supports quick anomaly filters for pending rows, fallback-rate rows, and cancelled-but-charged rows
+  - no payroll calculation logic, send flow, approval rules, finance payout rules, or audit logging changed
+- Validation:
+  - `npm run build`
