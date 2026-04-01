@@ -555,3 +555,14 @@
   - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
 - Validation:
   - `npm run build`
+
+## 2026-04-01-r11 Deployed
+
+- Scope: package-create defaults and reminders on the admin packages page.
+- Business impact:
+  - the default package type now starts from `HOURS / 课时包`, which better matches common teaching-office usage
+  - common minute presets reduce repeated manual typing during package creation
+  - selecting a student now shows active-package and same-course reminders before staff create another package
+  - no package creation API rules, settlement mode behavior, overlap checks, or ledger writes changed
+- Validation:
+  - `npm run build`

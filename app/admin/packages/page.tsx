@@ -68,7 +68,11 @@ export default async function AdminPackagesPage({
 
   let schemaNotReady = false;
   let loadFailed = false;
-  let students: Array<{ id: string; name: string }> = [];
+  let students: Array<{
+    id: string;
+    name: string;
+    packages: Array<{ courseId: string; course: { name: string } }>;
+  }> = [];
   let courses: Array<{ id: string; name: string }> = [];
   let packages: any[] = [];
 
@@ -76,7 +80,17 @@ export default async function AdminPackagesPage({
     [students, courses] = await Promise.all([
       prisma.student.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          packages: {
+            where: { status: "ACTIVE" },
+            select: {
+              courseId: true,
+              course: { select: { name: true } },
+            },
+          },
+        },
       }),
       prisma.course.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     ]);
@@ -217,7 +231,13 @@ export default async function AdminPackagesPage({
         <SimpleModal buttonLabel={t(lang, "Create Package", "创建课包")} title={t(lang, "Create Package", "创建课包")} closeOnSubmit>
             <PackageCreateFormClient
               defaultYmd={ymd}
-              students={students.map((s) => ({ id: s.id, name: s.name }))}
+              students={students.map((s) => ({
+                id: s.id,
+                name: s.name,
+                activePackageCount: s.packages.length,
+                courseIds: s.packages.map((pkg) => pkg.courseId),
+                courseNames: s.packages.map((pkg) => pkg.course.name),
+              }))}
               courses={courses.map((c) => ({ id: c.id, name: c.name }))}
               labels={{
                 student: t(lang, "Student", "学生"),

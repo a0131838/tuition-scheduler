@@ -1134,3 +1134,23 @@ This file is the single source of truth for what changed in production.
   - a live summary card keeps student, course, balance, validity, payment, and settlement mode visible while filling the form
   - advanced sharing and note fields are moved into a secondary advanced section
 - Rollback point: previous production commit before `2026-04-01-r10`.
+
+## 2026-04-01-r11
+
+- Release ID: `2026-04-01-r11`
+- Date/Time (Asia/Shanghai): `2026-04-01`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Fine-tune the admin package-create flow so the default type matches common usage and staff get stronger balance reminders while creating packages.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260401-package-create-defaults-and-reminders.md`
+- Risk impact (if any): Low. This changes package-create defaults and reminders only; package validation, package creation API behavior, settlement mode rules, and package ledger writes remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - the default create type now starts from `HOURS / 课时包`
+  - common minute presets are available for quick entry
+  - selecting a student now shows active-package and same-course reminders before creation
+- Rollback point: previous production commit before `2026-04-01-r11`.

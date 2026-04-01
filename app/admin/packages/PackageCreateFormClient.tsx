@@ -6,7 +6,13 @@ import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
-type StudentOpt = { id: string; name: string };
+type StudentOpt = {
+  id: string;
+  name: string;
+  courseNames?: string[];
+  courseIds?: string[];
+  activePackageCount?: number;
+};
 type CourseOpt = { id: string; name: string };
 
 function preserveRefresh(router: ReturnType<typeof useRouter>) {
@@ -95,7 +101,7 @@ export default function PackageCreateFormClient({
   const [step, setStep] = useState(0);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id ?? "");
-  const [typeValue, setTypeValue] = useState("GROUP_MINUTES");
+  const [typeValue, setTypeValue] = useState("HOURS");
   const [totalMinutesValue, setTotalMinutesValue] = useState("20");
   const [validFromValue, setValidFromValue] = useState(defaultYmd);
   const [validToValue, setValidToValue] = useState("");
@@ -113,6 +119,10 @@ export default function PackageCreateFormClient({
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
   const isMonthly = typeValue === "MONTHLY";
   const totalMinutesNumber = Number(totalMinutesValue || 0);
+  const sameCourseActive =
+    selectedStudent && selectedCourseId
+      ? (selectedStudent.courseIds ?? []).filter((id) => id === selectedCourseId).length
+      : 0;
 
   const summaryRows = useMemo(
     () => [
@@ -292,8 +302,16 @@ export default function PackageCreateFormClient({
 
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.35fr) minmax(280px, 0.9fr)", alignItems: "start" }}>
         <div style={{ display: "grid", gap: 14 }}>
-          {step === 0 ? (
-            <section style={{ border: "1px solid #dbe4f0", borderRadius: 14, padding: 16, background: "#fff" }}>
+          <section
+            style={{
+              border: "1px solid #dbe4f0",
+              borderRadius: 14,
+              padding: 16,
+              background: "#fff",
+              display: step === 0 ? "block" : "none",
+            }}
+            aria-hidden={step !== 0}
+          >
               <div style={{ fontWeight: 700, marginBottom: 12 }}>{stepLabel(0)}</div>
               <div style={{ display: "grid", gap: 14 }}>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -336,12 +354,36 @@ export default function PackageCreateFormClient({
                     <option value="MONTHLY">{labels.typeMonthly}</option>
                   </select>
                 </label>
+                <div style={{ border: "1px solid #dbeafe", borderRadius: 10, padding: 12, background: "#eff6ff", color: "#1e3a8a" }}>
+                  Default type now starts with `HOURS / 课时包` because that is the most common package. / 默认类型现在从 `HOURS / 课时包` 开始，更贴近日常录入。
+                </div>
+                {selectedStudent ? (
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#f8fafc" }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                      Active package reminder / 当前有效课包提醒
+                    </div>
+                    <div>
+                      {selectedStudent.name} now has {selectedStudent.activePackageCount ?? 0} active package(s). / 当前共有{" "}
+                      {selectedStudent.activePackageCount ?? 0} 个有效课包。
+                    </div>
+                    <div style={{ marginTop: 4 }}>
+                      Same-course active packages: {sameCourseActive}. / 同课程有效课包：{sameCourseActive}。
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
-          ) : null}
 
-          {step === 1 ? (
-            <section style={{ border: "1px solid #dbe4f0", borderRadius: 14, padding: 16, background: "#fff" }}>
+          <section
+            style={{
+              border: "1px solid #dbe4f0",
+              borderRadius: 14,
+              padding: 16,
+              background: "#fff",
+              display: step === 1 ? "block" : "none",
+            }}
+            aria-hidden={step !== 1}
+          >
               <div style={{ fontWeight: 700, marginBottom: 12 }}>{stepLabel(1)}</div>
               <div style={{ display: "grid", gap: 14 }}>
                 {!isMonthly ? (
@@ -357,6 +399,24 @@ export default function PackageCreateFormClient({
                       style={{ width: 220, minHeight: 40 }}
                     />
                     <span style={{ color: "#666", fontSize: 13 }}>{labels.totalMinutesHint}</span>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                      {[600, 900, 1200, 1800].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTotalMinutesValue(String(preset))}
+                          style={{
+                            minHeight: 34,
+                            padding: "0 12px",
+                            borderRadius: 999,
+                            border: totalMinutesValue === String(preset) ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                            background: totalMinutesValue === String(preset) ? "#dbeafe" : "#fff",
+                          }}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                   </label>
                 ) : (
                   <>
@@ -405,10 +465,17 @@ export default function PackageCreateFormClient({
                 ) : null}
               </div>
             </section>
-          ) : null}
 
-          {step === 2 ? (
-            <section style={{ border: "1px solid #dbe4f0", borderRadius: 14, padding: 16, background: "#fff" }}>
+          <section
+            style={{
+              border: "1px solid #dbe4f0",
+              borderRadius: 14,
+              padding: 16,
+              background: "#fff",
+              display: step === 2 ? "block" : "none",
+            }}
+            aria-hidden={step !== 2}
+          >
               <div style={{ fontWeight: 700, marginBottom: 12 }}>{stepLabel(2)}</div>
               <div style={{ display: "grid", gap: 14 }}>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -506,10 +573,17 @@ export default function PackageCreateFormClient({
                 </details>
               </div>
             </section>
-          ) : null}
 
-          {step === 3 ? (
-            <section style={{ border: "1px solid #dbe4f0", borderRadius: 14, padding: 16, background: "#fff" }}>
+          <section
+            style={{
+              border: "1px solid #dbe4f0",
+              borderRadius: 14,
+              padding: 16,
+              background: "#fff",
+              display: step === 3 ? "block" : "none",
+            }}
+            aria-hidden={step !== 3}
+          >
               <div style={{ fontWeight: 700, marginBottom: 12 }}>{stepLabel(3)}</div>
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ color: "#475569", fontSize: 14 }}>
@@ -524,7 +598,6 @@ export default function PackageCreateFormClient({
                 </div>
               </div>
             </section>
-          ) : null}
 
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <button
