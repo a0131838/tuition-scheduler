@@ -40,6 +40,12 @@ import {
 } from "@/lib/approval-flow";
 import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+} from "../_components/workbenchStyles";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const RECEIPT_REJECT_REASON_OPTIONS = [
@@ -1175,6 +1181,18 @@ export default async function ReceiptsApprovalsPage({
   ]
     .sort((a, b) => +new Date(b.at) - +new Date(a.at))
     .slice(0, 8);
+  const queueBlockerCount = actionableQueue.filter(
+    (x) => !x.paymentRecord || Boolean(x.paymentFileMissing) || (x.riskCount ?? 0) > 0
+  ).length;
+  const packageWorkspaceRiskCount = packageWorkspaceMode
+    ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
+    : 0;
+  const controlsOpen =
+    Boolean(packageIdFilter) ||
+    Boolean(monthFilter) ||
+    viewMode !== "ALL" ||
+    queueFilter !== "ALL" ||
+    queueBucket !== "ALL";
 
   return (
     <div>
@@ -1190,58 +1208,138 @@ export default async function ReceiptsApprovalsPage({
         </div>
       ) : null}
 
-      <form method="get" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        {workflowStep !== "upload" ? <input type="hidden" name="step" value={workflowStep} /> : null}
-        {queueFilter !== "ALL" ? <input type="hidden" name="queueFilter" value={queueFilter} /> : null}
-        {preferredPaymentRecordId ? <input type="hidden" name="paymentRecordId" value={preferredPaymentRecordId} /> : null}
-        {preferredInvoiceId ? <input type="hidden" name="invoiceId" value={preferredInvoiceId} /> : null}
-        <label>
-          {t(lang, "Package ID", "课包ID")}
-          <input name="packageId" defaultValue={packageIdFilter} style={{ marginLeft: 6, minWidth: 260 }} />
-        </label>
-        <label>
-          {t(lang, "Month", "月份")}
-          <input name="month" type="month" defaultValue={monthFilter} style={{ marginLeft: 6 }} />
-        </label>
-        <label>
-          {t(lang, "View", "视图")}
-          <select name="view" defaultValue={viewMode} style={{ marginLeft: 6 }}>
-            <option value="ALL">{t(lang, "All", "全部")}</option>
-            <option value="PARENT">{t(lang, "Parent", "家长")}</option>
-            <option value="PARTNER">{t(lang, "Partner", "合作方")}</option>
-          </select>
-        </label>
-        <button type="submit">{t(lang, "Filter", "筛选")}</button>
-        <a href="/admin/receipts-approvals">{t(lang, "Reset", "重置")}</a>
-      </form>
-      {packageIdFilter ? (
-        <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Workflow", "流程")}</span>
-          {([
-            ["upload", t(lang, "Step 1 Upload", "步骤1 上传")],
-            ["records", t(lang, "Step 2 Check Records", "步骤2 查看记录")],
-            ["create", t(lang, "Step 3 Create Receipt", "步骤3 创建收据")],
-            ["review", t(lang, "Step 4 Review Queue", "步骤4 审核队列")],
-          ] as const).map(([step, label]) => (
-            <a
-              key={step}
-              href={stepHref(step)}
-              style={{
-                border: workflowStep === step ? "1px solid #2563eb" : "1px solid #d1d5db",
-                background: workflowStep === step ? "#eff6ff" : "#fff",
-                color: workflowStep === step ? "#1d4ed8" : "#374151",
-                borderRadius: 999,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {label}
-            </a>
-          ))}
+      <div style={workbenchHeroStyle("indigo")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+            {packageWorkspaceMode ? t(lang, "Package Mode", "课包模式") : t(lang, "Global Queue Mode", "全局队列模式")}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>
+            {packageWorkspaceMode
+              ? t(lang, "Finish one package cleanly, then return to the queue", "先把单个课包处理干净，再返回队列")
+              : t(lang, "Pick the next blocked receipt and clear it", "选中下一条被阻塞的收据并清掉它")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {packageWorkspaceMode && selectedPackage
+              ? `${selectedPackage.student.name} | ${selectedPackage.course.name}`
+              : t(
+                  lang,
+                  "Use the queue for prioritization, then use the workspace below only for the package or receipt you are actively resolving.",
+                  "先用队列确定优先级，再只在下方工作区处理当前正在解决的课包或收据。"
+                )}
+          </div>
         </div>
-      ) : null}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{bilingualLabel("My next actions", "我待处理的")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{mineQueue.length}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Items currently waiting on my role.", "当前需要我这个角色处理的项。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{bilingualLabel("Open work", "未完成工作")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#c2410c" }}>{actionableQueue.length}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Pending and rejected receipts still in circulation.", "仍在流转中的待审批和已驳回收据。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("rose")}>
+            <div style={workbenchMetricLabelStyle("rose")}>{bilingualLabel("Blockers", "阻塞项")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#be123c" }}>{queueBlockerCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Missing proof, missing file, or risky rows.", "缺少凭证、文件缺失或高风险行。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{packageWorkspaceMode ? t(lang, "Package risks", "课包风险") : bilingualLabel("Completed history", "已完成历史")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#3730a3" }}>
+              {packageWorkspaceMode ? packageWorkspaceRiskCount : completedQueue.length}
+            </div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              {packageWorkspaceMode
+                ? t(lang, "Missing files, pending receipt amount, or paid-not-invoiced issues.", "文件缺失、待开收据金额或已付未开票问题。")
+                : t(lang, "Receipts already fully completed.", "已经完成的收据历史。")}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+          {t(lang, "Month", "月份")}: {monthFilter || t(lang, "All months", "全部月份")}
+        </span>
+        <span style={{ ...tagStyle(viewMode === "ALL" ? "muted" : "ok"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+          {t(lang, "View", "视图")}: {viewMode === "ALL" ? t(lang, "All", "全部") : viewMode === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")}
+        </span>
+        <span style={{ ...tagStyle(queueFilter === "ALL" ? "muted" : "warn"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+          {t(lang, "Queue filter", "队列筛选")}: {queueFilter}
+        </span>
+        <span style={{ ...tagStyle(packageWorkspaceMode ? "ok" : "muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+          {packageWorkspaceMode ? t(lang, "Package workspace active", "当前课包工作区已启用") : t(lang, "Working from global queue", "当前从全局队列工作")}
+        </span>
+      </div>
+
+      <details open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Queue filters & mode controls", "队列筛选与模式控制")}
+        </summary>
+        <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
+          {t(
+            lang,
+            "Use this area only when you need to switch queue scope, open a package workspace, or move between review steps.",
+            "只有在需要切换队列范围、打开单个课包工作区或切换审核步骤时，再展开这里。"
+          )}
+        </div>
+        <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+          <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {workflowStep !== "upload" ? <input type="hidden" name="step" value={workflowStep} /> : null}
+            {queueFilter !== "ALL" ? <input type="hidden" name="queueFilter" value={queueFilter} /> : null}
+            {preferredPaymentRecordId ? <input type="hidden" name="paymentRecordId" value={preferredPaymentRecordId} /> : null}
+            {preferredInvoiceId ? <input type="hidden" name="invoiceId" value={preferredInvoiceId} /> : null}
+            <label>
+              {t(lang, "Package ID", "课包ID")}
+              <input name="packageId" defaultValue={packageIdFilter} style={{ marginLeft: 6, minWidth: 260 }} />
+            </label>
+            <label>
+              {t(lang, "Month", "月份")}
+              <input name="month" type="month" defaultValue={monthFilter} style={{ marginLeft: 6 }} />
+            </label>
+            <label>
+              {t(lang, "View", "视图")}
+              <select name="view" defaultValue={viewMode} style={{ marginLeft: 6 }}>
+                <option value="ALL">{t(lang, "All", "全部")}</option>
+                <option value="PARENT">{t(lang, "Parent", "家长")}</option>
+                <option value="PARTNER">{t(lang, "Partner", "合作方")}</option>
+              </select>
+            </label>
+            <button type="submit">{t(lang, "Filter", "筛选")}</button>
+            <a href="/admin/receipts-approvals">{t(lang, "Reset", "重置")}</a>
+          </form>
+          {packageIdFilter ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Workflow", "流程")}</span>
+              {([
+                ["upload", t(lang, "Step 1 Upload", "步骤1 上传")],
+                ["records", t(lang, "Step 2 Check Records", "步骤2 查看记录")],
+                ["create", t(lang, "Step 3 Create Receipt", "步骤3 创建收据")],
+                ["review", t(lang, "Step 4 Review Queue", "步骤4 审核队列")],
+              ] as const).map(([step, label]) => (
+                <a
+                  key={step}
+                  href={stepHref(step)}
+                  style={{
+                    border: workflowStep === step ? "1px solid #2563eb" : "1px solid #d1d5db",
+                    background: workflowStep === step ? "#eff6ff" : "#fff",
+                    color: workflowStep === step ? "#1d4ed8" : "#374151",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </details>
+
       {packageIdFilter && selectedType && selectedId ? (
         <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: "8px 10px" }}>
           <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Fix flow", "修复回流")}</span>
@@ -1332,48 +1430,50 @@ export default async function ReceiptsApprovalsPage({
       </details>
 
       {!packageIdFilter ? (
-        <form
-          method="get"
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 12,
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
-          {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
-          <label>
-            {t(lang, "Quick Select Package", "快捷选择课包")}
-            <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
-              <option value="" disabled>
-                {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
-              </option>
-              {packageIdsFromInvoices
-                .map((id) => {
-                  const pkg = invoicePackageMap.get(id);
-                  const invoiceCount = invoiceCountByPackage.get(id) ?? 0;
-                  const receiptCount = receiptCountByPackage.get(id) ?? 0;
-                  const remaining = Math.max(0, invoiceCount - receiptCount);
-                  return {
-                    id,
-                    label: `${pkg?.student?.name ?? "Unknown"} | ${pkg?.course?.name ?? "-"} | ${id.slice(0, 8)}... | Invoices ${invoiceCount}, Receipts ${receiptCount}, Pending ${remaining}`,
-                  };
-                })
-                .sort((a, b) => a.label.localeCompare(b.label))
-                .map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.label}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
-        </form>
+        <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+            {t(lang, "Open one package workspace", "打开单个课包工作区")}
+          </summary>
+          <form
+            method="get"
+            style={{
+              marginTop: 10,
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
+            {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
+            <label>
+              {t(lang, "Quick Select Package", "快捷选择课包")}
+              <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
+                <option value="" disabled>
+                  {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
+                </option>
+                {packageIdsFromInvoices
+                  .map((id) => {
+                    const pkg = invoicePackageMap.get(id);
+                    const invoiceCount = invoiceCountByPackage.get(id) ?? 0;
+                    const receiptCount = receiptCountByPackage.get(id) ?? 0;
+                    const remaining = Math.max(0, invoiceCount - receiptCount);
+                    return {
+                      id,
+                      label: `${pkg?.student?.name ?? "Unknown"} | ${pkg?.course?.name ?? "-"} | ${id.slice(0, 8)}... | Invoices ${invoiceCount}, Receipts ${receiptCount}, Pending ${remaining}`,
+                    };
+                  })
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
+          </form>
+        </details>
       ) : null}
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
@@ -1770,58 +1870,65 @@ export default async function ReceiptsApprovalsPage({
             {bilingualLabel("Completed history", "已完成历史")}: {completedQueue.length}
           </span>
         </div>
-        <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {([
-            ["ALL", t(lang, "Show all buckets", "显示全部分组")],
-            ["MINE", t(lang, "Only my actions", "只看我待处理的")],
-            ["OPEN", t(lang, "Only open work", "只看未完成")],
-            ["HISTORY", t(lang, "Only completed history", "只看已完成历史")],
-          ] as const).map(([bucket, label]) => (
-            <a
-              key={bucket}
-              href={queueBucketHref(bucket)}
-              style={{
-                border: queueBucket === bucket ? "1px solid #2563eb" : "1px solid #d1d5db",
-                background: queueBucket === bucket ? "#eff6ff" : "#fff",
-                color: queueBucket === bucket ? "#1d4ed8" : "#374151",
-                borderRadius: 999,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {label}
-            </a>
-          ))}
-        </div>
-        <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {([
-            ["ALL", t(lang, "All", "全部")],
-            ["PENDING", t(lang, "Pending", "待审批")],
-            ["REJECTED", t(lang, "Rejected", "已驳回")],
-            ["COMPLETED", t(lang, "Completed", "已完成")],
-            ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
-            ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
-          ] as const).map(([filter, label]) => (
-            <a
-              key={filter}
-              href={queueFilterHref(filter)}
-              style={{
-                border: queueFilter === filter ? "1px solid #2563eb" : "1px solid #d1d5db",
-                background: queueFilter === filter ? "#eff6ff" : "#fff",
-                color: queueFilter === filter ? "#1d4ed8" : "#374151",
-                borderRadius: 999,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {label}
-            </a>
-          ))}
-        </div>
+        <details open={queueBucket !== "ALL" || queueFilter !== "ALL"} style={{ marginBottom: 8 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700, color: "#475569" }}>
+            {t(lang, "Queue display controls", "队列显示控制")}
+          </summary>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {([
+                ["ALL", t(lang, "Show all buckets", "显示全部分组")],
+                ["MINE", t(lang, "Only my actions", "只看我待处理的")],
+                ["OPEN", t(lang, "Only open work", "只看未完成")],
+                ["HISTORY", t(lang, "Only completed history", "只看已完成历史")],
+              ] as const).map(([bucket, label]) => (
+                <a
+                  key={bucket}
+                  href={queueBucketHref(bucket)}
+                  style={{
+                    border: queueBucket === bucket ? "1px solid #2563eb" : "1px solid #d1d5db",
+                    background: queueBucket === bucket ? "#eff6ff" : "#fff",
+                    color: queueBucket === bucket ? "#1d4ed8" : "#374151",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {([
+                ["ALL", t(lang, "All", "全部")],
+                ["PENDING", t(lang, "Pending", "待审批")],
+                ["REJECTED", t(lang, "Rejected", "已驳回")],
+                ["COMPLETED", t(lang, "Completed", "已完成")],
+                ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
+                ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
+              ] as const).map(([filter, label]) => (
+                <a
+                  key={filter}
+                  href={queueFilterHref(filter)}
+                  style={{
+                    border: queueFilter === filter ? "1px solid #2563eb" : "1px solid #d1d5db",
+                    background: queueFilter === filter ? "#eff6ff" : "#fff",
+                    color: queueFilter === filter ? "#1d4ed8" : "#374151",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </details>
         {unifiedQueue.length === 0 ? (
           <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
         ) : (
@@ -1901,6 +2008,38 @@ export default async function ReceiptsApprovalsPage({
                 {t(lang, "No risk detected for this receipt.", "该收据未发现风险项。")}
               </div>
             )}
+            <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipt status", "收据状态")}</div>
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ ...tagStyle(queueStatusKind(selectedRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                    {queueStatusLabel(lang, selectedRow.status)}
+                  </span>
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Type", "类型")}</div>
+                <div style={{ fontWeight: 700, marginTop: 4 }}>{queueTypeLabel(lang, selectedRow.type)}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{selectedRow.invoiceNo}</div>
+              </div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Proof status", "凭证状态")}</div>
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ ...tagStyle(selectedRow.paymentRecord && !selectedRow.paymentFileMissing ? "ok" : "err"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                    {selectedRow.paymentRecord && !selectedRow.paymentFileMissing
+                      ? t(lang, "Linked and usable", "已关联且可用")
+                      : t(lang, "Need proof fix", "需要修复凭证")}
+                  </span>
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Risk count", "风险数量")}</div>
+                <div style={{ fontWeight: 700, marginTop: 4, color: selectedRiskMessages.length > 0 ? "#b45309" : "#166534" }}>
+                  {selectedRiskMessages.length}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{currentRoleFocus}</div>
+              </div>
+            </div>
             <div style={{ marginBottom: 10 }}>
               <b>{t(lang, "Type", "类型")}:</b> {queueTypeLabel(lang, selectedRow.type)} |{" "}
               <b>{t(lang, "Receipt No.", "收据号")}:</b> {selectedRow.receiptNo} | <b>{t(lang, "Invoice No.", "发票号")}:</b> {selectedRow.invoiceNo}

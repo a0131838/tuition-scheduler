@@ -6,6 +6,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID:
 - Date/Time (Asia/Shanghai):
+- Deployment status:
 - Scope:
 - Key files:
 - Risk impact (if any):
@@ -13,6 +14,36 @@ This file is the single source of truth for what changed in production.
 - Rollback point:
 
 ---
+
+## 2026-04-02-r03
+
+- Release ID: `2026-04-02-r03`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Turn the admin workspace into a lighter task-first workbench across navigation, homepage, todo center, students, approvals, packages, and feedback flows.
+- Key files:
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `app/admin/_components/workbenchStyles.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `app/admin/students/AdminStudentsClient.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/packages/page.tsx`
+  - `app/admin/feedbacks/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-admin-workbench-ux-rollout.md`
+- Risk impact (if any): Medium-low. This ship changes admin navigation and high-frequency page presentation across many screens, but does not change routes, permissions, approval order, or underlying business logic.
+- Verification:
+  - `npm run build` passed
+  - admin sidebar now groups work by task area instead of one long always-open menu
+  - admin homepage now opens as a task-first workbench instead of a setup-first landing page
+  - todo center, students, receipts, expense claims, packages, and feedback pages now lead with current context and next actions before long forms/tables
+- Rollback point: previous production commit before `2026-04-02-r03`.
 
 ## 2026-03-31-r3
 

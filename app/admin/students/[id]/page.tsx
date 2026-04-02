@@ -17,6 +17,11 @@ import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClie
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+} from "../../_components/workbenchStyles";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1430,33 +1435,92 @@ export default async function StudentDetailPage({
   if (quickStartAt) baseParams.set("quickStartAt", quickStartAt);
   if (quickCampusId) baseParams.set("quickCampusId", quickCampusId);
   if (quickRoomId) baseParams.set("quickRoomId", quickRoomId);
+  const activePackageCount = packages.filter((p) => p.status === "ACTIVE").length;
+  const packageRiskCount = packages.filter((p) => {
+    if (p.type !== "HOURS" || p.status !== "ACTIVE") return false;
+    const remaining = p.remainingMinutes ?? 0;
+    const deducted30 = deducted30Map.get(p.id) ?? 0;
+    const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
+    const estDays = avgPerDay > 0 ? Math.ceil(remaining / avgPerDay) : null;
+    return remaining <= LOW_MINUTES || (estDays != null && estDays <= LOW_DAYS);
+  }).length;
+  const nextUpcomingSession =
+    upcomingSessions.find((s) => upcomingAttendanceMap.get(s.id)?.status !== "EXCUSED") ??
+    upcomingSessions[0] ??
+    null;
+  const nextUpcomingAttendance = nextUpcomingSession ? upcomingAttendanceMap.get(nextUpcomingSession.id) ?? null : null;
+  const nextUpcomingCancelled = nextUpcomingAttendance?.status === "EXCUSED";
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-        <div>
-          <h2 style={{ marginBottom: 6 }}>{tl(lang, "Student Detail")}</h2>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", color: "#666" }}>
-            <a href="/admin/students" style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
-              &lt;&lt; {tl(lang, "Back to Students")}
+      <div style={{ ...workbenchHeroStyle("indigo"), gap: 14, marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+              {tl(lang, "Student Detail")}
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>{student.name}</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", color: "#475569", fontSize: 13 }}>
+                <span>{student.school ?? "-"}</span>
+                <span>{student.grade ?? "-"}</span>
+                <span>{student.sourceChannel?.name ?? "-"}</span>
+                <span>{student.studentType?.name ?? "-"}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", color: "#64748b", flexWrap: "wrap" }}>
+              <a href="/admin/students" style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 999, background: "#fff", textDecoration: "none" }}>
+                &lt;&lt; {tl(lang, "Back to Students")}
+              </a>
+              <span style={{ fontSize: 11 }} title={student.id}>
+                ID: STU-{student.id.length > 10 ? `${student.id.slice(0, 4)}…${student.id.slice(-4)}` : student.id}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a
+              href={`/api/exports/student-detail/${studentId}`}
+              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+            >
+              {tl(lang, "Export Student Report")}
             </a>
-            <span style={{ fontSize: 11, color: "#64748b" }} title={student.id}>
-              ID: STU-{student.id.length > 10 ? `${student.id.slice(0, 4)}…${student.id.slice(-4)}` : student.id}
-            </span>
+            <a
+              href="#calendar-tools"
+              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+            >
+              {tl(lang, "Quick Schedule Calendar")}
+            </a>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a
-            href={`/api/exports/student-detail/${studentId}`}
-            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f9fafb" }}
-          >
-            {tl(lang, "Export Student Report")}
-          </a>
-          <a
-            href={`/api/exports/student-schedule/${studentId}?month=${monthLabel(monthDate)}`}
-            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f9fafb" }}
-          >
-            {tl(lang, "Download Schedule PDF")}
-          </a>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{tl(lang, "Packages")}</div>
+            <div style={{ fontWeight: 800, fontSize: 22 }}>{activePackageCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Active packages", "有效课包")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{tl(lang, "Alert")}</div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: packageRiskCount > 0 ? "#c2410c" : "#166534" }}>{packageRiskCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Packages near low balance", "接近低余额的课包")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("rose")}>
+            <div style={workbenchMetricLabelStyle("rose")}>{tl(lang, "Unpaid packages")}</div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: unpaidPackageCount > 0 ? "#be123c" : "#166534" }}>{unpaidPackageCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Needs billing follow-up", "需要账单跟进")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{tl(lang, "Upcoming Sessions")}</div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>
+              {nextUpcomingSession
+                ? `${formatBusinessDateOnly(new Date(nextUpcomingSession.startAt))} ${fmtHHMM(new Date(nextUpcomingSession.startAt))}`
+                : "-"}
+            </div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              {nextUpcomingSession
+                ? `${nextUpcomingSession.class.course.name}${nextUpcomingCancelled ? ` (${tl(lang, "Cancelled")})` : ""}`
+                : tl(lang, "No upcoming sessions.")}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1464,102 +1528,142 @@ export default async function StudentDetailPage({
       {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
 
       <div style={{ display: "grid", gap: 16 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 10,
-            padding: 12,
-            border: "1px solid #eee",
-            borderRadius: 8,
-            background: "#fafafa",
-          }}
-        >
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Name")}</div>
-              <div style={{ fontWeight: 700 }}>{student.name}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "School")}</div>
-              <div style={{ fontWeight: 700 }}>{student.school ?? "-"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Grade")}</div>
-              <div style={{ fontWeight: 700 }}>{student.grade ?? "-"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Source")}</div>
-              <div style={{ fontWeight: 700 }}>{student.sourceChannel?.name ?? "-"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Type")}</div>
-              <div style={{ fontWeight: 700 }}>{student.studentType?.name ?? "-"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Enrollments")}</div>
-              <div style={{ fontWeight: 700 }}>{enrollCount}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Packages")}</div>
-              <div style={{ fontWeight: 700 }}>{packageCount}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Unpaid packages")}</div>
-              <div style={{ fontWeight: 700, color: unpaidPackageCount > 0 ? "#b00" : undefined }}>
-                {unpaidPackageCount}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.15fr)", gap: 14 }}>
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              padding: 14,
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              background: "#ffffff",
+            }}
+          >
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Profile snapshot", "档案概览")}</div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>
+                {t(lang, "Use this card to confirm identity and background before touching schedules or billing.", "先在这里确认学生身份和背景，再进入排课或账务操作。")}
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
-              <div style={{ fontWeight: 700 }}>{excusedCount}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "School")}</div>
+                <div style={{ fontWeight: 700 }}>{student.school ?? "-"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Grade")}</div>
+                <div style={{ fontWeight: 700 }}>{student.grade ?? "-"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Source")}</div>
+                <div style={{ fontWeight: 700 }}>{student.sourceChannel?.name ?? "-"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Type")}</div>
+                <div style={{ fontWeight: 700 }}>{student.studentType?.name ?? "-"}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Enrollments")}</div>
+                <div style={{ fontWeight: 700 }}>{enrollCount}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Packages")}</div>
+                <div style={{ fontWeight: 700 }}>{packageCount}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
+                <div style={{ fontWeight: 700 }}>{excusedCount}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Recent Attendance")}</div>
+                <div style={{ fontWeight: 700 }}>{attendances.length}</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Recent Attendance")}</div>
-              <div style={{ fontWeight: 700 }}>{attendances.length}</div>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: 14,
+              background: "#f8fafc",
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Next actions", "下一步操作")}</div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>
+                {packageRiskCount > 0
+                  ? t(lang, "This profile has package risk. Check packages first, then schedule changes.", "这个学生当前有课包风险，建议先看课包，再处理排课。")
+                  : unpaidPackageCount > 0
+                    ? t(lang, "This profile has unpaid packages. Confirm billing follow-up before making more changes.", "这个学生当前有未付款课包，建议先确认账务跟进。")
+                    : t(lang, "No urgent package issue detected. Start from the next lesson or the planning tools below.", "当前未发现紧急课包问题，可先从下一节课或下方排课工具开始。")}
+              </div>
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Unpaid packages")}</div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: unpaidPackageCount > 0 ? "#be123c" : "#166534" }}>{unpaidPackageCount}</div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Alert")}</div>
+                <div style={{ fontWeight: 800, fontSize: 20, color: packageRiskCount > 0 ? "#c2410c" : "#166534" }}>{packageRiskCount}</div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Upcoming Sessions")}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  {nextUpcomingSession ? fmtHHMM(new Date(nextUpcomingSession.startAt)) : "-"}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569" }}>
+                  {nextUpcomingSession ? formatBusinessDateOnly(new Date(nextUpcomingSession.startAt)) : tl(lang, "No upcoming sessions.")}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <a
+                href="#quick-schedule"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {tl(lang, "Quick Schedule")}
+              </a>
+              <a
+                href="#upcoming-sessions"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {tl(lang, "Upcoming Sessions")}
+              </a>
+              <a
+                href="#packages"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {tl(lang, "Packages")}
+              </a>
+              <a
+                href="#attendance"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {tl(lang, "Attendance")}
+              </a>
+              <a
+                href="#edit-student"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {tl(lang, "Edit Student")}
+              </a>
+            </div>
+          </div>
         </div>
 
-        <div
-          style={{
-            border: "1px solid #eee",
-            borderRadius: 10,
-            padding: 12,
-            background: "#fafafa",
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>{tl(lang, "Actions")}</div>
-          <a
-            href="#quick-schedule"
-            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#fff" }}
-          >
-            {tl(lang, "Quick Schedule")}
-          </a>
-          <a
-            href="#edit-student"
-            style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#fff" }}
-          >
-            {tl(lang, "Edit Student")}
-          </a>
-          {unpaidPackageCount > 0 ? (
-            <div style={{ color: "#b00", fontWeight: 700 }}>
-              {tl(lang, "Unpaid packages")}: {unpaidPackageCount}
-            </div>
-          ) : null}
-        </div>
-
-        <details open style={{ marginBottom: 14 }}>
-            <summary style={{ fontWeight: 700 }}>{tl(lang, "Quick Schedule Calendar")}</summary>
+        <details id="calendar-tools" open={Boolean(quickOpen)} style={{ marginBottom: 14 }}>
+            <summary style={{ fontWeight: 700 }}>{t(lang, "Planning tools & calendar", "排课工具与日历")}</summary>
             <div
               style={{
                 margin: "6px 0 10px",
-                border: "1px solid #eee",
-                borderRadius: 10,
-                padding: 10,
-                background: "#fafafa",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: 12,
+                background: "#f8fafc",
                 display: "grid",
                 gap: 6,
               }}
@@ -1756,7 +1860,7 @@ export default async function StudentDetailPage({
             </details>
 
       <details style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Enrollments")}</summary>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Enrollments")} ({enrollments.length})</summary>
       {enrollments.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No enrollments.")}</div>
       ) : (
@@ -1799,8 +1903,8 @@ export default async function StudentDetailPage({
       )}
       </details>
 
-      <details style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")}</summary>
+      <details id="packages" style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>
       {packages.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No packages.")}</div>
       ) : (
@@ -1920,7 +2024,7 @@ export default async function StudentDetailPage({
       </details>
 
       <details id="attendance" open={attendanceOpen} style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")}</summary>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")} ({attendances.length})</summary>
       <StudentAttendanceFilterForm
         studentId={studentId}
         courses={courses.map((c) => ({ id: c.id, name: c.name }))}
@@ -2033,8 +2137,8 @@ export default async function StudentDetailPage({
       )}
       </details>
 
-      <details open style={{ marginBottom: 14 }}>
-        <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")}</summary>
+      <details id="upcoming-sessions" open style={{ marginBottom: 14 }}>
+        <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")} ({upcomingSessions.length})</summary>
       {upcomingSessions.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No upcoming sessions.")}</div>
       ) : (

@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-03-30`
+- Last checked: `2026-04-02`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,6 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
+- Current release line on this branch: `2026-04-02-r03` (admin workbench UI rollout).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -44,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-02-r03 Deployed
+
+- Scope: admin workspace task-first UI rollout across navigation, homepage, todo center, students, receipts, expense claims, packages, and feedback pages.
+- Business impact:
+  - admin sidebar becomes grouped/collapsible so operators scan by task area instead of one long dense menu
+  - admin homepage and todo center now lead with current work and next actions instead of long setup/supporting blocks
+  - students, student detail, receipts, expense claims, packages, and feedback pages now share the same workbench framing before long forms and tables
+  - no admin routes, permissions, approval order, attendance rules, billing logic, package logic, feedback logic, or student business logic changed
+- Validation:
+  - `npm run build`
+  - `bash ops/server/scripts/new_chat_startup_check.sh`
+  - manual logged-in QA confirmed current production still shows the older dense admin information architecture, which matches the intended value of this rollout
 
 ## 2026-03-31-r3 Ready For Deploy
 

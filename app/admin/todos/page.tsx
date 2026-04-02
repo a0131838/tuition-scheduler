@@ -15,6 +15,12 @@ import {
 import { getOverdueUnmarkedFollowupGroups } from "@/lib/unmarked-followups";
 import { LEDGER_INTEGRITY_ALERT_KEY, parseLedgerIntegrityAlertState } from "@/lib/ledger-integrity-alert";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
 
 const FORECAST_WINDOW_DAYS = 30;
 const DEFAULT_WARN_DAYS = 3;
@@ -780,10 +786,8 @@ export default async function AdminTodosPage({
     boxShadow: "0 2px 6px rgba(37, 99, 235, 0.08)",
   } as const;
   const heroStyle = {
+    ...workbenchHeroStyle("amber"),
     border: "2px solid #f59e0b",
-    borderRadius: 14,
-    padding: 16,
-    background: "linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%)",
     boxShadow: "0 2px 6px rgba(245, 158, 11, 0.15)",
   } as const;
   const sectionHeaderStyle = {
@@ -798,6 +802,11 @@ export default async function AdminTodosPage({
     fontSize: 12,
     color: "#334155",
     lineHeight: 1.4,
+  } as const;
+  const summaryCardStyle = {
+    display: "grid",
+    gap: 4,
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.04)",
   } as const;
   const pageWrapStyle = {
     display: "grid",
@@ -818,152 +827,204 @@ export default async function AdminTodosPage({
     });
     return `/admin/todos?${p.toString()}`;
   };
+  const overdueUnmarkedSessionCount = overdueUnmarkedGroups.reduce((sum, group) => sum + group.count, 0);
+  const reminderPendingCount = teacherRemindersPending.length + studentRemindersPending.length;
+  const systemRiskCount =
+    (ledgerAlert?.totalIssueCount ?? 0) +
+    dailyConflictAudit.totalIssues +
+    undeductedCompletedCount;
 
   return (
-    <div>
-      <h2>{t(lang, "Todo Center", "待办中心")}</h2>
-      <p style={{ color: "#666" }}>
-        {t(
-          lang,
-          "Focus on today's attendance tasks and package renewal alerts.",
-          "聚焦今日点名任务和课包续费预警。"
-        )}
-      </p>
-      {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div
+        style={{
+          ...workbenchHeroStyle("amber"),
+          padding: 18,
+          marginBottom: 0,
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e", letterSpacing: 0.4 }}>
+          {t(lang, "Today First", "今天先处理")}
+        </div>
+        <h2 style={{ margin: "6px 0 0" }}>{t(lang, "Todo Center", "待办中心")}</h2>
+        <p style={{ color: "#475569", lineHeight: 1.5, margin: "8px 0 0" }}>
+          {t(
+            lang,
+            "This page works best when the first screen only answers three questions: what needs action now, what is blocked, and what can wait until after today's queue is clear.",
+            "这个页面最好先回答三个问题：现在最该处理什么、哪里被阻塞了、哪些可以等今天队列清完再看。"
+          )}
+        </p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <div style={{ ...workbenchMetricCardStyle("amber"), ...summaryCardStyle, background: "#fff7ed" }}>
+          <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Need attendance", "待点名")}</div>
+          <div style={workbenchMetricValueStyle("amber")}>{sessionsToday.length}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Today's sessions that still need marking.", "今天仍需完成点名的课次。")}</div>
+        </div>
+        <div style={{ ...workbenchMetricCardStyle("amber"), ...summaryCardStyle, background: "#fff7ed" }}>
+          <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Overdue follow-up", "超时跟进")}</div>
+          <div style={workbenchMetricValueStyle("amber")}>{overdueUnmarkedSessionCount}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Older unmarked sessions that need escalation.", "需要催办的历史未点名课次。")}</div>
+        </div>
         <div
           style={{
-            border: "2px solid #ef4444",
-            borderRadius: 12,
-            padding: 12,
-            background: "#fff1f2",
-            marginBottom: 14,
-            boxShadow: "0 2px 6px rgba(239, 68, 68, 0.15)",
+            ...workbenchMetricCardStyle(systemRiskCount > 0 ? "rose" : "emerald"),
+            ...summaryCardStyle,
+            background: systemRiskCount > 0 ? "#fff1f2" : "#f0fdf4",
           }}
         >
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#991b1b" }}>
-            {t(lang, "Ledger Integrity Alert", "课包对账告警")}
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#991b1b" }}>
-            {t(lang, `${ledgerAlert.totalIssueCount} issues found`, `发现${ledgerAlert.totalIssueCount}个异常`)}
-          </div>
-          <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
-            {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} ·
-            {" "}
-            {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} ·
-            {" "}
-            {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <a href="/admin/reports/undeducted-completed">{t(lang, "Open Repair Report", "打开减扣修复报表")}</a>
-          </div>
+          <div style={workbenchMetricLabelStyle(systemRiskCount > 0 ? "rose" : "emerald")}>{t(lang, "System risks", "系统风险")}</div>
+          <div style={workbenchMetricValueStyle(systemRiskCount > 0 ? "rose" : "emerald")}>{systemRiskCount}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Ledger, conflict, and deduction repair issues.", "对账、冲突和减扣修复类问题。")}</div>
         </div>
-      ) : null}
+        <div style={{ ...workbenchMetricCardStyle("blue"), ...summaryCardStyle, background: "#eff6ff" }}>
+          <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Reminder desk", "提醒台")}</div>
+          <div style={workbenchMetricValueStyle("blue")}>{reminderPendingCount}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Teacher and student reminders still pending.", "老师和学生提醒中仍待确认的项。")}</div>
+        </div>
+      </div>
 
-      <div
-        style={{
-          border: dailyConflictAudit.totalIssues > 0 ? "2px solid #ef4444" : "2px solid #22c55e",
-          borderRadius: 12,
-          padding: 12,
-          background: dailyConflictAudit.totalIssues > 0 ? "#fff1f2" : "#f0fdf4",
-          marginBottom: 14,
-          boxShadow:
-            dailyConflictAudit.totalIssues > 0
-              ? "0 2px 6px rgba(239, 68, 68, 0.15)"
-              : "0 2px 6px rgba(34, 197, 94, 0.12)",
-        }}
+      <details
+        open={Boolean((ledgerAlert?.totalIssueCount ?? 0) > 0 || dailyConflictAudit.totalIssues > 0)}
+        style={{ ...sectionStyle, marginBottom: 0, background: "#fcfcfd" }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
-              {t(lang, "Daily Conflict Audit", "每日冲突巡检")}
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
-              {dailyConflictAudit.totalIssues > 0
-                ? t(lang, `${dailyConflictAudit.totalIssues} issues found`, `发现${dailyConflictAudit.totalIssues}个问题`)
-                : t(lang, "No issues found", "未发现问题")}
-            </div>
-            <div style={{ color: "#64748b", fontSize: 12 }}>
-              {t(lang, "Range", "范围")}: {dailyConflictAudit.scannedFrom} ~ {dailyConflictAudit.scannedTo}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <a
-              href={`/admin/conflicts?${new URLSearchParams({
-                from: dailyConflictAudit.scannedFrom,
-                to: dailyConflictAudit.scannedTo,
-              }).toString()}`}
+        <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+          {t(lang, "System Checks & Risks", "系统巡检与风险")}
+        </summary>
+        <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
+          {ledgerAlert && ledgerAlert.totalIssueCount > 0 ? (
+            <div
               style={{
-                display: "inline-block",
-                padding: "6px 10px",
-                borderRadius: 8,
-                border: dailyConflictAudit.totalIssues > 0 ? "1px solid #ef4444" : "1px solid #16a34a",
-                background: "#fff",
-                color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534",
-                fontWeight: 700,
-                textDecoration: "none",
+                border: "2px solid #ef4444",
+                borderRadius: 12,
+                padding: 12,
+                background: "#fff1f2",
+                boxShadow: "0 2px 6px rgba(239, 68, 68, 0.15)",
               }}
             >
-              {t(lang, "Open Conflict Desk", "去冲突处理")}
-            </a>
-            <AdminTodosOpsClient
-              payload={{
-                warnDays: String(warnDays),
-                warnMinutes: String(warnMinutes),
-                pastDays: String(pastDays),
-                showConfirmed: showConfirmed ? "1" : "",
-              }}
-              labels={{
-                ok: t(lang, "OK", "成功"),
-                error: t(lang, "Error", "错误"),
-                recheckNow: t(lang, "Recheck Now", "立即复检"),
-                runNow: t(lang, "Run Now", "立即执行"),
-              }}
-            />
-          </div>
-        </div>
-        <div style={{ marginTop: 8, fontSize: 12, color: "#334155" }}>
-          {dailyConflictAudit.sample.join(" | ")}
-        </div>
-      </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#991b1b" }}>
+                {t(lang, "Ledger Integrity Alert", "课包对账告警")}
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#991b1b" }}>
+                {t(lang, `${ledgerAlert.totalIssueCount} issues found`, `发现${ledgerAlert.totalIssueCount}个异常`)}
+              </div>
+              <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
+                {t(lang, "Mismatch", "流水不匹配")}: {ledgerAlert.mismatchCount} ·{" "}
+                {t(lang, "No package binding", "无课包绑定扣减")}: {ledgerAlert.noPackageDeductCount} ·{" "}
+                {t(lang, "Updated", "更新时间")}: {formatBusinessDateTime(new Date(ledgerAlert.generatedAt))}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <a href="/admin/reports/undeducted-completed">{t(lang, "Open Repair Report", "打开减扣修复报表")}</a>
+              </div>
+            </div>
+          ) : null}
 
-      <div
-        style={{
-          border: "1px solid #cbd5e1",
-          borderRadius: 12,
-          padding: 12,
-          background: "#f8fafc",
-          marginBottom: 14,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
-              {t(lang, "Teacher Conflict Auto-fix Log", "老师冲突自动修复日志")}
+          <div
+            style={{
+              border: dailyConflictAudit.totalIssues > 0 ? "2px solid #ef4444" : "2px solid #22c55e",
+              borderRadius: 12,
+              padding: 12,
+              background: dailyConflictAudit.totalIssues > 0 ? "#fff1f2" : "#f0fdf4",
+              boxShadow:
+                dailyConflictAudit.totalIssues > 0
+                  ? "0 2px 6px rgba(239, 68, 68, 0.15)"
+                  : "0 2px 6px rgba(34, 197, 94, 0.12)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
+                  {t(lang, "Daily Conflict Audit", "每日冲突巡检")}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534" }}>
+                  {dailyConflictAudit.totalIssues > 0
+                    ? t(lang, `${dailyConflictAudit.totalIssues} issues found`, `发现${dailyConflictAudit.totalIssues}个问题`)
+                    : t(lang, "No issues found", "未发现问题")}
+                </div>
+                <div style={{ color: "#64748b", fontSize: 12 }}>
+                  {t(lang, "Range", "范围")}: {dailyConflictAudit.scannedFrom} ~ {dailyConflictAudit.scannedTo}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <a
+                  href={`/admin/conflicts?${new URLSearchParams({
+                    from: dailyConflictAudit.scannedFrom,
+                    to: dailyConflictAudit.scannedTo,
+                  }).toString()}`}
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: dailyConflictAudit.totalIssues > 0 ? "1px solid #ef4444" : "1px solid #16a34a",
+                    background: "#fff",
+                    color: dailyConflictAudit.totalIssues > 0 ? "#991b1b" : "#166534",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                  }}
+                >
+                  {t(lang, "Open Conflict Desk", "去冲突处理")}
+                </a>
+                <AdminTodosOpsClient
+                  payload={{
+                    warnDays: String(warnDays),
+                    warnMinutes: String(warnMinutes),
+                    pastDays: String(pastDays),
+                    showConfirmed: showConfirmed ? "1" : "",
+                  }}
+                  labels={{
+                    ok: t(lang, "OK", "成功"),
+                    error: t(lang, "Error", "错误"),
+                    recheckNow: t(lang, "Recheck Now", "立即复检"),
+                    runNow: t(lang, "Run Now", "立即执行"),
+                  }}
+                />
+              </div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-              {lastAutoFix?.day === todayYmd
-                ? t(lang, "Auto-fix ran today", "今日已执行自动修复")
-                : t(lang, "Auto-fix not run today", "今日未执行自动修复")}
+            <div style={{ marginTop: 8, fontSize: 12, color: "#334155" }}>
+              {dailyConflictAudit.sample.join(" | ")}
             </div>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #cbd5e1",
+              borderRadius: 12,
+              padding: 12,
+              background: "#f8fafc",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
+                  {t(lang, "Teacher Conflict Auto-fix Log", "老师冲突自动修复日志")}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+                  {lastAutoFix?.day === todayYmd
+                    ? t(lang, "Auto-fix ran today", "今日已执行自动修复")
+                    : t(lang, "Auto-fix not run today", "今日未执行自动修复")}
+                </div>
+              </div>
+            </div>
+            {lastAutoFix?.result ? (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#334155", display: "grid", gap: 2 }}>
+                <div>
+                  {t(lang, "Last run date", "最近执行日期")}: {lastAutoFix.day ?? "-"}
+                </div>
+                <div>
+                  {t(lang, "Detected pairs", "检测冲突对")}: {lastAutoFix.result.detectedPairs} | {t(lang, "Fixed sessions", "已修复课次")}:{" "}
+                  {lastAutoFix.result.fixedSessions} | {t(lang, "Skipped pairs", "跳过冲突对")}: {lastAutoFix.result.skippedPairs}
+                </div>
+                <div>{lastAutoFix.result.notes.slice(0, 3).join(" | ") || t(lang, "No notes", "无备注")}</div>
+              </div>
+            ) : (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
+                {t(lang, "No auto-fix run record yet.", "暂无自动修复执行记录。")}
+              </div>
+            )}
           </div>
         </div>
-        {lastAutoFix?.result ? (
-          <div style={{ marginTop: 8, fontSize: 12, color: "#334155", display: "grid", gap: 2 }}>
-            <div>
-              {t(lang, "Last run date", "最近执行日期")}: {lastAutoFix.day ?? "-"}
-            </div>
-            <div>
-              {t(lang, "Detected pairs", "检测冲突对")}: {lastAutoFix.result.detectedPairs} | {t(lang, "Fixed sessions", "已修复课次")}:{" "}
-              {lastAutoFix.result.fixedSessions} | {t(lang, "Skipped pairs", "跳过冲突对")}: {lastAutoFix.result.skippedPairs}
-            </div>
-            <div>{lastAutoFix.result.notes.slice(0, 3).join(" | ") || t(lang, "No notes", "无备注")}</div>
-          </div>
-        ) : (
-          <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
-            {t(lang, "No auto-fix run record yet.", "暂无自动修复执行记录。")}
-          </div>
-        )}
-      </div>
+      </details>
 
       <div style={heroStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -1068,7 +1129,12 @@ export default async function AdminTodosPage({
         )}
       </div>
 
-      <div style={{ ...sectionStyle, borderColor: "#fca5a5", background: "linear-gradient(180deg, #fff5f5 0%, #fff 100%)" }}>
+      <details style={{ ...sectionStyle, marginBottom: 0 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+          {t(lang, "Reminder Desk & Supporting Views", "提醒台与辅助视图")}
+        </summary>
+        <div style={{ marginTop: 14, display: "grid", gap: 16 }}>
+      <div style={{ ...sectionStyle, borderColor: "#fca5a5", background: "linear-gradient(180deg, #fff5f5 0%, #fff 100%)", marginBottom: 0 }}>
         <div style={sectionHeaderStyle}>
           <h3 style={{ margin: 0 }}>{t(lang, "Yesterday Unmarked Details", "昨日未点名明细")}</h3>
           <span style={{ color: "#666", fontSize: 12 }}>
@@ -1589,11 +1655,11 @@ export default async function AdminTodosPage({
           </details>
         </div>
       </div>
+        </div>
+      </details>
     </div>
   );
 }
-
-
 
 
 

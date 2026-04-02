@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import AdminStudentsClient from "./AdminStudentsClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchInfoBarStyle,
+} from "../_components/workbenchStyles";
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 const PARTNER_TYPE_NAME = "合作方学生";
@@ -161,10 +166,37 @@ export default async function StudentsPage({
       : view === "all"
         ? t(lang, "No students yet.", "暂无学生")
         : t(lang, "No students added today.", "今天暂无新增学生");
+  const activeFilterCount = [q, sourceChannelId, studentTypeId].filter(Boolean).length;
+  const filtersOpen = activeFilterCount > 0 || view !== "today";
 
   return (
     <div>
-      <h2>{t(lang, "Students", "学生")}</h2>
+      <div style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+            {t(lang, "Student Intake Desk", "学生录入工作台")}
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Students", "学生")}</h2>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {t(
+              lang,
+              "Use the top cards to choose today's intake view first, then use the list below for search, follow-up, and profile edits.",
+              "先用上方卡片切换今天的录入视图，再在下方列表里做搜索、跟进和资料编辑。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Current view", "当前视图")}: <b>{activeViewLabel}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Filtered students", "筛选后学生")}: <b>{filteredCount}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Active filters", "生效筛选")}: <b>{activeFilterCount}</b>
+          </span>
+        </div>
+      </div>
 
       <div style={{ display: "grid", gap: 10, marginBottom: 14, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
         <a
@@ -217,68 +249,79 @@ export default async function StudentsPage({
         </a>
       </div>
 
-      <div style={{ marginBottom: 12, padding: 10, borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff", color: "#1e3a8a" }}>
-        {t(lang, "Current view", "当前视图")}: <b>{activeViewLabel}</b>
-      </div>
+      <details open={filtersOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Search & filters", "搜索与筛选")} ({activeFilterCount})
+        </summary>
+        <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
+          {t(
+            lang,
+            "Keep this folded when you are processing one intake queue. Open it only when you need a broader search.",
+            "专注处理单一录入队列时可先收起；只有需要跨范围搜索时再展开。"
+          )}
+        </div>
+        <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder={t(lang, "Search name/school/notes/ID", "搜索姓名/学校/备注/ID")}
+            style={{ minWidth: 240 }}
+          />
+          <select name="view" defaultValue={view}>
+            <option value="today">{t(lang, "Today New Students", "今日新增")}</option>
+            <option value="today_partner">{t(lang, "Today Partner Students", "今日合作方新增")}</option>
+            <option value="all">{t(lang, "All Students", "全部学生")}</option>
+          </select>
+          <select name="sourceChannelId" defaultValue={sourceChannelId}>
+            <option value="">{t(lang, "All Sources", "全部来源")}</option>
+            {sources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <select name="studentTypeId" defaultValue={studentTypeId}>
+            <option value="">{t(lang, "All Types", "全部类型")}</option>
+            {types.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <select name="pageSize" defaultValue={String(pageSize)}>
+            <option value="20">20 / {t(lang, "page", "页")}</option>
+            <option value="50">50 / {t(lang, "page", "页")}</option>
+            <option value="100">100 / {t(lang, "page", "页")}</option>
+          </select>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+          <a href="/admin/students">{t(lang, "Clear", "清除")}</a>
+        </form>
+      </details>
 
-      <h3>{t(lang, "Filter", "筛选")}</h3>
-      <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder={t(lang, "Search name/school/notes/ID", "搜索姓名/学校/备注/ID")}
-          style={{ minWidth: 240 }}
-        />
-        <select name="view" defaultValue={view}>
-          <option value="today">{t(lang, "Today New Students", "今日新增")}</option>
-          <option value="today_partner">{t(lang, "Today Partner Students", "今日合作方新增")}</option>
-          <option value="all">{t(lang, "All Students", "全部学生")}</option>
-        </select>
-        <select name="sourceChannelId" defaultValue={sourceChannelId}>
-          <option value="">{t(lang, "All Sources", "全部来源")}</option>
-          {sources.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select name="studentTypeId" defaultValue={studentTypeId}>
-          <option value="">{t(lang, "All Types", "全部类型")}</option>
-          {types.map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name}
-            </option>
-          ))}
-        </select>
-        <select name="pageSize" defaultValue={String(pageSize)}>
-          <option value="20">20 / {t(lang, "page", "页")}</option>
-          <option value="50">50 / {t(lang, "page", "页")}</option>
-          <option value="100">100 / {t(lang, "page", "页")}</option>
-        </select>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-        <a href="/admin/students">{t(lang, "Clear", "清除")}</a>
-      </form>
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, fontSize: 13 }}>
-        <span>
-          {t(lang, "Showing", "显示")} {students.length} / {filteredCount}
-        </span>
-        <span>
-          {t(lang, "Page", "页")} {page} / {totalPages}
-        </span>
-        <a
-          href={page > 1 ? buildPageHref(page - 1, view) : "#"}
-          style={{ pointerEvents: page > 1 ? "auto" : "none", opacity: page > 1 ? 1 : 0.4 }}
-        >
-          {t(lang, "Prev", "上一页")}
-        </a>
-        <a
-          href={page < totalPages ? buildPageHref(page + 1, view) : "#"}
-          style={{ pointerEvents: page < totalPages ? "auto" : "none", opacity: page < totalPages ? 1 : 0.4 }}
-        >
-          {t(lang, "Next", "下一页")}
-        </a>
+      <div style={workbenchInfoBarStyle}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 13 }}>
+          <span>
+            {t(lang, "Showing", "显示")} {students.length} / {filteredCount}
+          </span>
+          <span>
+            {t(lang, "Page", "页")} {page} / {totalPages}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a
+            href={page > 1 ? buildPageHref(page - 1, view) : "#"}
+            style={{ pointerEvents: page > 1 ? "auto" : "none", opacity: page > 1 ? 1 : 0.4 }}
+          >
+            {t(lang, "Prev", "上一页")}
+          </a>
+          <a
+            href={page < totalPages ? buildPageHref(page + 1, view) : "#"}
+            style={{ pointerEvents: page < totalPages ? "auto" : "none", opacity: page < totalPages ? 1 : 0.4 }}
+          >
+            {t(lang, "Next", "下一页")}
+          </a>
+        </div>
       </div>
 
       <AdminStudentsClient
@@ -327,6 +370,11 @@ export default async function StudentsPage({
           error: t(lang, "Error", "错误"),
           created: t(lang, "Created", "已创建"),
           noStudents: noStudentsLabel,
+          listHint: t(
+            lang,
+            "Open one student profile at a time, then return here only when you need to switch queues.",
+            "一次只打开一个学生档案；只有在需要切换处理对象时再回到这里。"
+          ),
         }}
       />
     </div>

@@ -28,6 +28,13 @@ import {
 import { revalidatePath } from 'next/cache';
 import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
 import path from 'path';
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from '../_components/workbenchStyles';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -341,20 +348,66 @@ export default async function AdminExpenseClaimsPage({
     financeGroups[0] ??
     null;
   const selectedFinanceGroupIndex = selectedFinanceGroup ? financeGroups.findIndex((group) => group.key === selectedFinanceGroup.key) : -1;
+  const activeFilterCount = [
+    statusFilter !== 'ALL',
+    Boolean(monthFilter),
+    Boolean(paymentBatchMonthFilter),
+    Boolean(expenseTypeFilter),
+    Boolean(currencyFilter),
+    Boolean(submitterQuery),
+    approvedUnpaidOnly,
+    archivedOnly,
+  ].filter(Boolean).length;
+  const reminderCount = reminders.staleSubmitted.length + reminders.staleApprovedUnpaid.length;
+  const currentDatasetLabel = approvedUnpaidOnly
+    ? t(lang, 'Approved but unpaid only', '仅看已批未付')
+    : archivedOnly
+      ? t(lang, 'Archived claims only', '仅看已归档报销单')
+      : statusFilter !== 'ALL'
+        ? formatClaimStatusLabel(lang, statusFilter as ExpenseClaimStatus)
+        : t(lang, 'All working states', '全部工作状态');
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <h1 style={{ margin: 0 }}>{t(lang, 'Expense Claims', '报销审批')}</h1>
+      <section style={workbenchHeroStyle('amber')}>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#a16207', letterSpacing: 0.4 }}>
+            {t(lang, 'Expense Operations Desk', '报销工作台')}
+          </div>
+          <h1 style={{ margin: 0 }}>{t(lang, 'Expense Claims', '报销审批')}</h1>
+          <div style={{ color: '#475569', lineHeight: 1.5 }}>
+            {t(
+              lang,
+              'Start from submitted review or approved payout groups, then use history only for follow-up and exports.',
+              '优先处理待审批队列和已批未付分组，历史列表只作为跟进和导出使用。'
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #e5e7eb', color: '#334155', fontSize: 12 }}>
+            {t(lang, 'Current dataset', '当前数据集')}: <b>{currentDatasetLabel}</b>
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #e5e7eb', color: '#334155', fontSize: 12 }}>
+            {t(lang, 'Active filters', '生效筛选')}: <b>{activeFilterCount}</b>
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #e5e7eb', color: '#334155', fontSize: 12 }}>
+            {t(lang, 'Follow-up reminders', '跟进提醒')}: <b>{reminderCount}</b>
+          </span>
+        </div>
+      </section>
+
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
 
-      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
-        <div style={{ fontWeight: 700 }}>{t(lang, 'Expense Approval Config', '报销审批配置')}</div>
-        <div style={{ color: '#475569', fontSize: 14 }}>
+      <details style={{ ...workbenchFilterPanelStyle, padding: 16 }} open={canEditApprovalConfig}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+          {t(lang, 'Expense approval config', '报销审批配置')}
+        </summary>
+        <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
           {t(lang, 'Approved expense claims are controlled by this approver list.', '报销单的批准权限由这组审批人控制。')}
         </div>
         {canEditApprovalConfig ? (
-          <form action={saveApprovalConfigAction} style={{ display: 'grid', gap: 8, maxWidth: 980 }}>
+          <form action={saveApprovalConfigAction} style={{ display: 'grid', gap: 8, maxWidth: 980, marginTop: 12 }}>
             <label style={{ display: 'grid', gap: 6 }}>
               <span>{t(lang, 'Expense approver emails (comma-separated)', '报销审批人邮箱（逗号分隔）')}</span>
               <textarea
@@ -372,28 +425,28 @@ export default async function AdminExpenseClaimsPage({
             </div>
           </form>
         ) : (
-          <div style={{ color: '#334155', fontSize: 14 }}>
+          <div style={{ color: '#334155', fontSize: 14, marginTop: 12 }}>
             {approvalCfg.approverEmails.length ? approvalCfg.approverEmails.join(', ') : '-'}
           </div>
         )}
-      </section>
+      </details>
 
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        <div style={{ border: '1px solid #dbeafe', borderRadius: 12, padding: 14, background: '#f8fbff' }}>
-          <div style={{ color: '#475569', fontSize: 13 }}>{t(lang, 'Submitted', '待审批')}</div>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{summary.submittedCount}</div>
+        <div style={{ ...workbenchMetricCardStyle('blue'), background: '#f8fbff' }}>
+          <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Submitted', '待审批')}</div>
+          <div style={workbenchMetricValueStyle('slate')}>{summary.submittedCount}</div>
         </div>
-        <div style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 14, background: '#fffbeb' }}>
-          <div style={{ color: '#475569', fontSize: 13 }}>{t(lang, 'Approved but unpaid', '已批未付')}</div>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{summary.approvedCount}</div>
+        <div style={{ ...workbenchMetricCardStyle('amber'), background: '#fffbeb' }}>
+          <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Approved but unpaid', '已批未付')}</div>
+          <div style={workbenchMetricValueStyle('amber')}>{summary.approvedCount}</div>
         </div>
-        <div style={{ border: '1px solid #dcfce7', borderRadius: 12, padding: 14, background: '#f0fdf4' }}>
-          <div style={{ color: '#475569', fontSize: 13 }}>{t(lang, 'Paid', '已付款')}</div>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{summary.paidCount}</div>
+        <div style={{ ...workbenchMetricCardStyle('emerald'), background: '#f0fdf4' }}>
+          <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Paid', '已付款')}</div>
+          <div style={workbenchMetricValueStyle('emerald')}>{summary.paidCount}</div>
         </div>
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
-          <div style={{ color: '#475569', fontSize: 13 }}>{t(lang, 'Rejected', '已驳回')}</div>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{summary.rejectedCount}</div>
+        <div style={workbenchMetricCardStyle('slate')}>
+          <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Rejected', '已驳回')}</div>
+          <div style={workbenchMetricValueStyle('slate')}>{summary.rejectedCount}</div>
         </div>
       </div>
 
@@ -408,14 +461,16 @@ export default async function AdminExpenseClaimsPage({
         </div>
       </section>
 
-      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 12, background: '#f8fafc' }}>
-        <div style={{ fontWeight: 700 }}>{t(lang, 'Quick work filters', '工作流快速筛选')}</div>
-        <div style={{ color: '#475569', fontSize: 14 }}>
-          {t(
-            lang,
-            'Use these shortcuts to quickly switch the page dataset. They affect the review queue, finance queue, history list, and CSV export together.',
-            '这些快捷筛选会一起影响审批队列、财务队列、历史列表和 CSV 导出。',
-          )}
+      <section style={{ ...workbenchFilterPanelStyle, padding: 16, display: 'grid', gap: 12, background: '#f8fafc' }}>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ fontWeight: 700 }}>{t(lang, 'Quick work filters', '工作流快速筛选')}</div>
+          <div style={{ color: '#475569', fontSize: 14 }}>
+            {t(
+              lang,
+              'Use these shortcuts to quickly switch the page dataset. They affect the review queue, finance queue, history list, and CSV export together.',
+              '这些快捷筛选会一起影响审批队列、财务队列、历史列表和 CSV 导出。',
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href={quickSubmittedHref}>{t(lang, 'Submitted review queue', '待审批队列')}</a>
@@ -821,6 +876,20 @@ export default async function AdminExpenseClaimsPage({
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
           {t(lang, 'Advanced filters and export', '高级筛选与导出')}
         </summary>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
+            {t(lang, 'Status', '状态')}: {statusFilter === 'ALL' ? t(lang, 'All', '全部') : formatClaimStatusLabel(lang, statusFilter as ExpenseClaimStatus)}
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
+            {t(lang, 'Expense month', '消费月份')}: {monthFilter || '-'}
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
+            {t(lang, 'Payment batch month', '付款批次月份')}: {paymentBatchMonthFilter || '-'}
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
+            {t(lang, 'Submitter query', '提交人搜索')}: {submitterQuery || '-'}
+          </span>
+        </div>
         <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
           {t(
             lang,
@@ -897,7 +966,7 @@ export default async function AdminExpenseClaimsPage({
 
       <details>
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
-          {t(lang, 'Full claim list and history', '完整报销列表与历史')}
+          {t(lang, 'Full claim list and history', '完整报销列表与历史')} ({claims.length})
         </summary>
         <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

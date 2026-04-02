@@ -10,6 +10,14 @@ import {
   stripGroupPackTag,
 } from "@/lib/package-mode";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchInfoBarStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
 
 const LOW_MINUTES = 120;
 const LOW_COUNTS = 3;
@@ -233,10 +241,62 @@ export default async function AdminPackagesPage({
 
   const today = new Date();
   const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const alertCount = filteredPackages.filter((p) => packageRiskMap.get(p.id)?.isAlert).length;
+  const unpaidCount = filteredPackages.filter((p) => !p.paid).length;
+  const activeCount = filteredPackages.filter((p) => p.status === "ACTIVE").length;
+  const activeFilterCount = [q, filterCourseId, filterPaid, filterWarn].filter(Boolean).length;
+  const filtersOpen = activeFilterCount > 0;
 
   return (
     <div>
-      <h2>{t(lang, "Packages", "课时包")}</h2>
+      <div style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+            {t(lang, "Package Workbench", "课包工作台")}
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Packages", "课时包")}</h2>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {t(
+              lang,
+              "Use the summary cards to spot low-balance risk first, then narrow the list and open billing or ledger only for the package you are actively handling.",
+              "先用摘要卡片识别低余额风险，再缩小列表范围，只打开你当前正在处理的课包账单或流水。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Visible packages", "当前可见课包")}</div>
+            <div style={workbenchMetricValueStyle("slate")}>{filteredPackages.length}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Current list after filters.", "当前筛选后的列表数量。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Alert", "预警")}</div>
+            <div style={{ ...workbenchMetricValueStyle("amber"), color: alertCount > 0 ? "#c2410c" : "#166534" }}>{alertCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Low balance or likely to run out soon.", "余额低或即将用完。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("rose")}>
+            <div style={workbenchMetricLabelStyle("rose")}>{t(lang, "Unpaid", "未付款")}</div>
+            <div style={{ ...workbenchMetricValueStyle("rose"), color: unpaidCount > 0 ? "#be123c" : "#166534" }}>{unpaidCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Packages still waiting on payment follow-up.", "仍需付款跟进的课包。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Active", "生效中")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{activeCount}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Packages currently in service.", "当前正在使用中的课包。")}</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Active filters", "生效筛选")}: <b>{activeFilterCount}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Course", "课程")}: <b>{filterCourseId ? courses.find((c) => c.id === filterCourseId)?.name ?? filterCourseId : t(lang, "All", "全部")}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Payment", "付款")}: <b>{filterPaid || t(lang, "All", "全部")}</b>
+          </span>
+        </div>
+      </div>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
@@ -263,7 +323,13 @@ export default async function AdminPackagesPage({
         />
       ) : null}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+      <div style={{ ...workbenchInfoBarStyle, background: "#f8fafc" }}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Create package", "创建课包")}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {t(lang, "Add a new package only after confirming the student, course, package mode, and paid state.", "先确认学生、课程、课包模式和付款状态，再创建新的课包。")}
+          </div>
+        </div>
         <SimpleModal buttonLabel={t(lang, "Create Package", "创建课包")} title={t(lang, "Create Package", "创建课包")} closeOnSubmit>
             <PackageCreateFormClient
               defaultYmd={ymd}
@@ -310,9 +376,14 @@ export default async function AdminPackagesPage({
         </SimpleModal>
       </div>
 
-      <h3>{t(lang, "Packages List", "课包列表")}</h3>
-      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
-        <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <details open={filtersOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Package filters", "课包筛选")} ({activeFilterCount})
+        </summary>
+        <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
+          {t(lang, "Open this only when you need to narrow the workbench by student, course, payment status, or alert state.", "只有在需要按学生、课程、付款状态或预警状态缩小时，再展开这里。")}
+        </div>
+        <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
           <input
             name="q"
             placeholder={t(lang, "Search student name", "搜索学生姓名")}
@@ -344,29 +415,42 @@ export default async function AdminPackagesPage({
             {t(lang, "Showing", "显示")} {filteredPackages.length}
           </span>
         </form>
+      </details>
+
+      <div style={workbenchInfoBarStyle}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Packages list", "课包列表")}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {t(lang, "Work through one package at a time. Open billing or ledger only when that package becomes your active task.", "一次处理一个课包；只有在它成为当前任务时，再打开账单或流水。")}
+          </div>
+        </div>
+        <div style={{ color: "#475569", fontSize: 13 }}>
+          {t(lang, "Showing", "显示")} {filteredPackages.length}
+        </div>
       </div>
 
       {filteredPackages.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No packages yet.", "暂无课包")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ background: "#f5f5f5" }}>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Course", "课程")}</th>
-              <th align="left">{t(lang, "Type", "类型")}</th>
-              <th align="left">{t(lang, "Remaining", "剩余")}</th>
-              <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
-              <th align="left">{t(lang, "Forecast", "预计用完")}</th>
-              <th align="left">{t(lang, "Alert", "预警")}</th>
-              <th align="left">{t(lang, "Valid", "有效期")}</th>
-              <th align="left">{t(lang, "Status", "状态")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPackages.map((p) => (
-              <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+        <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
+          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1180 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                <th align="left">{t(lang, "Student", "学生")}</th>
+                <th align="left">{t(lang, "Course", "课程")}</th>
+                <th align="left">{t(lang, "Type", "类型")}</th>
+                <th align="left">{t(lang, "Remaining", "剩余")}</th>
+                <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
+                <th align="left">{t(lang, "Forecast", "预计用完")}</th>
+                <th align="left">{t(lang, "Alert", "预警")}</th>
+                <th align="left">{t(lang, "Valid", "有效期")}</th>
+                <th align="left">{t(lang, "Status", "状态")}</th>
+                <th align="left">{t(lang, "Action", "操作")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPackages.map((p) => (
+                <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
                 {(() => {
                   const remaining = p.remainingMinutes ?? 0;
                   const risk = packageRiskMap.get(p.id);
@@ -533,10 +617,11 @@ export default async function AdminPackagesPage({
                     </>
                   );
                 })()}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

@@ -7,6 +7,11 @@ import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchInfoBarStyle,
+} from "../_components/workbenchStyles";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
 
@@ -215,31 +220,75 @@ export default async function AdminFeedbacksPage({
     if (studentId) params.set("studentId", studentId);
     return `/admin/feedbacks?${params.toString()}`;
   };
+  const activeStudentFilterCount = studentId ? 1 : 0;
+  const currentQueueLabel =
+    status === "proxy"
+      ? t(lang, "Proxy draft pending teacher", "代填草稿待老师补全")
+      : status === "pending"
+      ? t(lang, "Pending Forward", "待转发")
+      : status === "forwarded"
+      ? t(lang, "Forwarded", "已转发")
+      : status === "all"
+      ? t(lang, "All Final Feedback", "全部正式反馈")
+      : t(lang, "Missing > 12h", "超过12小时未反馈");
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Teacher Feedback Desk", "老师课后反馈工作台")}</h2>
+      <div style={workbenchHeroStyle("indigo")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+            {t(lang, "Teacher Feedback Desk", "老师课后反馈工作台")}
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Teacher Feedback Desk", "老师课后反馈工作台")}</h2>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {t(
+              lang,
+              "Start from overdue and pending-forward queues first, then use forwarded and full-history views only when you need confirmation or lookup.",
+              "先处理超时和待转发队列，再在需要确认或查询时查看已转发和完整历史。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Current queue", "当前队列")}: <b>{currentQueueLabel}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Student filter", "学生筛选")}: <b>{selectedStudentName ?? t(lang, "All students", "全部学生")}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Work items now", "当前工作项")}: <b>{isOverdueTab ? shownOverdueRows.length : rows.length}</b>
+          </span>
+        </div>
+      </div>
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
 
-      <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input type="hidden" name="status" value={status} />
-        <select name="studentId" defaultValue={studentId} style={{ minWidth: 280 }}>
-          <option value="">{t(lang, "All students", "全部学生")}</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} (STU-{s.id.slice(0, 4)}…{s.id.slice(-4)})
-            </option>
-          ))}
-        </select>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-        <a href={tabHref(status)}>{t(lang, "Clear", "清除")}</a>
-        {selectedStudentName ? (
-          <span style={{ color: "#334155", fontSize: 13 }}>
-            {t(lang, "Current student", "当前学生")}: {selectedStudentName}
-          </span>
-        ) : null}
-      </form>
+      <details open={activeStudentFilterCount > 0} style={workbenchFilterPanelStyle}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+          {t(lang, "Student scope filter", "学生范围筛选")} ({activeStudentFilterCount})
+        </summary>
+        <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
+          {t(lang, "Keep this collapsed during normal queue processing. Open it only when you need to inspect one student's feedback trail.", "平时处理队列时可保持收起；只有在需要查看单个学生的反馈轨迹时再展开。")}
+        </div>
+        <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
+          <input type="hidden" name="status" value={status} />
+          <select name="studentId" defaultValue={studentId} style={{ minWidth: 280 }}>
+            <option value="">{t(lang, "All students", "全部学生")}</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} (STU-{s.id.slice(0, 4)}…{s.id.slice(-4)})
+              </option>
+            ))}
+          </select>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+          <a href={tabHref(status)}>{t(lang, "Clear", "清除")}</a>
+          {selectedStudentName ? (
+            <span style={{ color: "#334155", fontSize: 13 }}>
+              {t(lang, "Current student", "当前学生")}: {selectedStudentName}
+            </span>
+          ) : null}
+        </form>
+      </details>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <a
@@ -321,6 +370,22 @@ export default async function AdminFeedbacksPage({
         <div style={{ border: "1px solid #86efac", background: "#f0fdf4", borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Forwarded", "已转发")}</div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{forwardedCount}</div>
+        </div>
+      </div>
+
+      <div style={workbenchInfoBarStyle}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{currentQueueLabel}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {isOverdueTab
+              ? t(lang, "Handle one overdue session at a time: either create/update the proxy draft or move it out of the overdue queue.", "一次处理一条超时课次：创建/更新代填草稿，或把它移出超时队列。")
+              : status === "pending"
+                ? t(lang, "Copy and mark one feedback at a time, then move on to the next item waiting to be forwarded.", "一次复制并标记一条待转发反馈，再继续下一条。")
+                : t(lang, "This view is mainly for confirmation and lookup after the main queue work is done.", "这个视图主要用于主队列处理完成后的确认和查询。")}
+          </div>
+        </div>
+        <div style={{ color: "#475569", fontSize: 13 }}>
+          {t(lang, "Showing", "显示")} {isOverdueTab ? shownOverdueRows.length : rows.length}
         </div>
       </div>
 
