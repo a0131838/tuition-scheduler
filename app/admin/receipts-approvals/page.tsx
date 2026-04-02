@@ -2033,6 +2033,29 @@ export default async function ReceiptsApprovalsPage({
                 {t(lang, "No risk detected for this receipt.", "该收据未发现风险项。")}
               </div>
             )}
+            {!selectedRow.paymentRecord || selectedRow.paymentFileMissing ? (
+              <div style={{ marginBottom: 10, display: "grid", gap: 8, color: "#7f1d1d", background: "#fff7f7", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontWeight: 700 }}>{t(lang, "Proof repair path", "凭证修复路径")}</div>
+                <div style={{ fontSize: 13 }}>
+                  {selectedRow.paymentRecord
+                    ? t(lang, "The receipt already points to a proof record, but the file is missing on the server. Open the fix tools first, then return here to continue review.", "当前收据已经关联了缴费记录，但服务器上缺少文件。请先打开修复工具处理，再回到这里继续审核。")
+                    : t(lang, "This receipt has no usable payment proof yet. Open the fix tools to upload or relink a proof before continuing review.", "当前收据还没有可用的缴费凭证。请先打开修复工具上传或重新关联凭证，再继续审核。")}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+                  {selectedRow.type === "PARENT" ? (
+                    <>
+                      <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                        {t(lang, "Open fix tools", "打开修复工具")}
+                      </a>
+                      <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                        {t(lang, "Open package billing", "打开课包账单页")}
+                      </a>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipt status", "收据状态")}</div>

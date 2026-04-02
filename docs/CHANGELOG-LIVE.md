@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r05
+
+- Release ID: `2026-04-02-r05`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `READY FOR DEPLOY`
+- Scope: Shorten the finance attachment-repair path on admin expense claims and receipt approvals without changing approval logic.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-finance-attachment-repair-path.md`
+- Risk impact (if any): Low. This ship adds stronger repair-entry cards and shortcut links around existing attachment-issue states, but does not change approval order, queue data, payment rules, receipt creation, or expense-claim workflow logic.
+- Verification:
+  - `npm run build` passed
+  - admin expense claims now shows an explicit `Attachment repair path / 附件修复路径` card whenever the selected review item is missing its file
+  - admin expense claims finance payout groups now expose direct repair/history shortcuts when any claim in the selected batch has attachment issues
+  - admin receipt approvals now shows an explicit `Proof repair path / 凭证修复路径` card above the receipt detail area whenever proof is missing or the linked file is gone
+- Rollback point: previous production commit before `2026-04-02-r05`.
+
 ## 2026-04-02-r04
 
 - Release ID: `2026-04-02-r04`

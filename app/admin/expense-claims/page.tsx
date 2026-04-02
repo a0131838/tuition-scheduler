@@ -87,6 +87,11 @@ function focusClaimHref(baseQuery: string, claimId: string) {
   return `/admin/expense-claims?${params.toString()}`;
 }
 
+function buildExpenseClaimsHref(input: Record<string, string | null | undefined>) {
+  const query = buildFilterQuery(input);
+  return query ? `/admin/expense-claims?${query}` : '/admin/expense-claims';
+}
+
 function buildFinanceGroupKey(submitterUserId: string, currencyCode: string) {
   return `${submitterUserId}::${currencyCode}`;
 }
@@ -391,6 +396,60 @@ export default async function AdminExpenseClaimsPage({
   const attachmentIssueCount = visibleClaims.filter((claim) => !claim.attachmentExists).length;
   const reviewAttachmentIssueCount = reviewQueue.filter((claim) => !claim.attachmentExists).length;
   const financeAttachmentIssueCount = financeQueue.filter((claim) => !claim.attachmentExists).length;
+  const selectedReviewAttachmentRepairHref = selectedReviewClaim
+    ? buildExpenseClaimsHref({
+        status: '',
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: selectedReviewClaim.currencyCode,
+        q: selectedReviewClaim.submitterName,
+        approvedUnpaidOnly: '',
+        archived: '',
+        attachmentIssueOnly: '1',
+        claimId: selectedReviewClaim.id,
+      })
+    : quickAttachmentIssueHref;
+  const selectedReviewSubmitterHistoryHref = selectedReviewClaim
+    ? buildExpenseClaimsHref({
+        status: '',
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: '',
+        q: selectedReviewClaim.submitterName,
+        approvedUnpaidOnly: '',
+        archived: '',
+        attachmentIssueOnly: '',
+      })
+    : quickClearHref;
+  const selectedFinanceRepairHref = selectedFinanceGroup
+    ? buildExpenseClaimsHref({
+        status: '',
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: selectedFinanceGroup.currencyCode,
+        q: selectedFinanceGroup.submitterName,
+        approvedUnpaidOnly: '',
+        archived: '',
+        attachmentIssueOnly: '1',
+        financeGroup: selectedFinanceGroup.key,
+      })
+    : quickAttachmentIssueHref;
+  const selectedFinanceSubmitterHistoryHref = selectedFinanceGroup
+    ? buildExpenseClaimsHref({
+        status: '',
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: '',
+        q: selectedFinanceGroup.submitterName,
+        approvedUnpaidOnly: '',
+        archived: '',
+        attachmentIssueOnly: '',
+      })
+    : quickClearHref;
   const currentDatasetLabel = approvedUnpaidOnly
     ? t(lang, 'Approved but unpaid only', '仅看已批未付')
     : attachmentIssueOnly
@@ -662,6 +721,34 @@ export default async function AdminExpenseClaimsPage({
                   </div>
                 </div>
 
+                {!selectedReviewClaim.attachmentExists ? (
+                  <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fecaca', background: '#fff7f7' }}>
+                    <div style={{ fontWeight: 700, color: '#b91c1c' }}>{t(lang, 'Attachment repair path', '附件修复路径')}</div>
+                    <div style={{ color: '#7f1d1d', fontSize: 14 }}>
+                      {t(
+                        lang,
+                        'This claim cannot move forward until the file is replaced or the submitter resubmits. Start from one of the shortcuts below instead of searching manually.',
+                        '这条报销单在文件补回或提交人重提之前不能继续。请直接使用下方快捷入口，不用手动再找。'
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <a href={selectedReviewAttachmentRepairHref}>{t(lang, 'Open this submitter attachment issues', '查看该提交人的附件异常')}</a>
+                      <a href={selectedReviewSubmitterHistoryHref}>{t(lang, 'Open submitter history', '查看提交人历史')}</a>
+                      <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+                    </div>
+                    {canApprove ? (
+                      <form action={rejectAction} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input type="hidden" name="claimId" value={selectedReviewClaim.id} />
+                        <input type="hidden" name="nextClaimId" value={nextReviewClaimId} />
+                        <input type="hidden" name="reason" value="Missing attachment / 缺少附件" />
+                        <button type="submit" style={{ background: '#b91c1c' }}>
+                          {nextReviewClaimId ? t(lang, 'Reject missing attachment & next', '按缺少附件驳回并下一条') : t(lang, 'Reject as missing attachment', '按缺少附件驳回')}
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {canApprove ? (
                   <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff' }}>
                     <div style={{ fontWeight: 700 }}>{t(lang, 'Quick review flow', '快速审批流')}</div>
@@ -814,8 +901,15 @@ export default async function AdminExpenseClaimsPage({
                     <div style={{ display: 'grid', gap: 8 }}>
                       <div style={{ fontWeight: 700 }}>{t(lang, 'Group claims', '组内报销单')}</div>
                       {selectedFinanceGroup.claims.some((claim) => !claim.attachmentExists) ? (
-                        <div style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff7f7', color: '#b91c1c', fontSize: 13 }}>
-                          {t(lang, 'One or more claims in this payout group have missing attachments. Repair the files before marking the batch paid.', '这一付款分组里有报销单附件缺失。请先修复文件，再批量标记付款。')}
+                        <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff7f7', color: '#b91c1c', fontSize: 13 }}>
+                          <div>
+                            {t(lang, 'One or more claims in this payout group have missing attachments. Repair the files before marking the batch paid.', '这一付款分组里有报销单附件缺失。请先修复文件，再批量标记付款。')}
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <a href={selectedFinanceRepairHref}>{t(lang, 'Open this submitter attachment issues', '查看该提交人的附件异常')}</a>
+                            <a href={selectedFinanceSubmitterHistoryHref}>{t(lang, 'Open submitter history', '查看提交人历史')}</a>
+                            <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+                          </div>
                         </div>
                       ) : null}
                       {selectedFinanceGroup.claims.map((claim) => (
