@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r11
+
+- Release ID: `2026-04-02-r11`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `READY` pending deploy
+- Scope: Extend the same context-return and next-step shortcut pattern to the admin partner settlement workspace so rate edits and settlement creation / revert actions keep operators oriented.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-partner-settlement-context-return.md`
+- Risk impact (if any): Low. This ship only changes post-action navigation, focus anchors, and flow-card guidance on the admin partner settlement page; no settlement rate values, online/offline settlement creation rules, revert semantics, billing rules, or payout calculations changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed:
+    - `online-created` flow shows `Online settlement record created.` plus `Open billing workspace / Open next online item`
+    - `offline-created` flow shows `Offline settlement record created.` plus `Open billing workspace / Open next offline item`
+    - `settlement-reverted` flow shows `Settlement record reverted.` plus `Back to online queue / Back to offline queue`
+    - `rate-updated` flow shows `Settlement rates updated.` plus `Jump to setup / Back to live queue`
+    - `focusType=online` and `focusType=offline` both land on stable highlighted queue rows with `partner-online-*` / `partner-offline-*` anchors
+- Rollback point: previous production commit before `2026-04-02-r11`.
+
 ## 2026-04-02-r10
 
 - Release ID: `2026-04-02-r10`

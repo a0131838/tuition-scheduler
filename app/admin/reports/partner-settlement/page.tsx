@@ -101,6 +101,18 @@ function studentAttendanceHref(studentId: string, attendanceMonth?: string | nul
   return `/admin/students/${encodeURIComponent(studentId)}?focus=attendance&limit=500${monthPart}#attendance`;
 }
 
+function buildSettlementPageUrl(
+  month: string,
+  extras?: Record<string, string | null | undefined>
+) {
+  const params = new URLSearchParams();
+  params.set("month", month);
+  for (const [key, value] of Object.entries(extras ?? {})) {
+    if (value) params.set(key, value);
+  }
+  return `/admin/reports/partner-settlement?${params.toString()}`;
+}
+
 async function updateRateSettingsAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -131,7 +143,13 @@ async function updateRateSettingsAction(formData: FormData) {
   ]);
 
   revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=rate-updated`);
+  redirect(
+    buildSettlementPageUrl(month, {
+      msg: "rate-updated",
+      settlementFlow: "rate-updated",
+      panel: "setup",
+    })
+  );
 }
 
 async function createOnlineSettlementAction(formData: FormData) {
@@ -190,8 +208,9 @@ async function createOnlineSettlementAction(formData: FormData) {
     redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
   }
 
+  let created: { id: string };
   try {
-    await prisma.partnerSettlement.create({
+    created = await prisma.partnerSettlement.create({
       data: {
         studentId: pkg.studentId,
         packageId: pkg.id,
@@ -211,7 +230,14 @@ async function createOnlineSettlementAction(formData: FormData) {
   }
 
   revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=online-created`);
+  redirect(
+    buildSettlementPageUrl(month, {
+      msg: "online-created",
+      settlementFlow: "online-created",
+      focusType: "record",
+      focusId: created.id,
+    })
+  );
 }
 
 async function createOfflineSettlementAction(formData: FormData) {
@@ -273,8 +299,9 @@ async function createOfflineSettlementAction(formData: FormData) {
   const courseNote = Array.from(courseNames).join(", ");
   const rates = await getSettlementRates();
 
+  let created: { id: string };
   try {
-    await prisma.partnerSettlement.create({
+    created = await prisma.partnerSettlement.create({
       data: {
         studentId,
         monthKey: month,
@@ -295,7 +322,14 @@ async function createOfflineSettlementAction(formData: FormData) {
   }
 
   revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=offline-created`);
+  redirect(
+    buildSettlementPageUrl(month, {
+      msg: "offline-created",
+      settlementFlow: "offline-created",
+      focusType: "record",
+      focusId: created.id,
+    })
+  );
 }
 
 async function clearSettlementRecordsAction(formData: FormData) {
@@ -316,7 +350,14 @@ async function clearSettlementRecordsAction(formData: FormData) {
   });
 
   revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlements-cleared`);
+  redirect(
+    buildSettlementPageUrl(month, {
+      msg: "settlements-cleared",
+      settlementFlow: "settlements-cleared",
+      focusType: null,
+      focusId: null,
+    })
+  );
 }
 
 async function revertSettlementRecordAction(formData: FormData) {
@@ -353,7 +394,14 @@ async function revertSettlementRecordAction(formData: FormData) {
 
   await prisma.partnerSettlement.delete({ where: { id: settlementId } });
   revalidatePath("/admin/reports/partner-settlement");
-  redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=settlement-reverted`);
+  redirect(
+    buildSettlementPageUrl(month, {
+      msg: "settlement-reverted",
+      settlementFlow: "settlement-reverted",
+      focusType: null,
+      focusId: null,
+    })
+  );
 }
 
 export default async function PartnerSettlementPage({
@@ -367,6 +415,7 @@ export default async function PartnerSettlementPage({
     focusId?: string;
     history?: string;
     panel?: string;
+    settlementFlow?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -380,6 +429,7 @@ export default async function PartnerSettlementPage({
   const focusId = sp?.focusId ?? "";
   const historyFilter = sp?.history ?? "all";
   const openPanel = sp?.panel ?? "";
+  const settlementFlow = sp?.settlementFlow ?? "";
   const rates = await getSettlementRates();
   const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
@@ -744,6 +794,20 @@ export default async function PartnerSettlementPage({
     }
     return `/admin/reports/partner-settlement?${params.toString()}`;
   };
+  const translatedMsg =
+    msg === "rate-updated"
+      ? t(lang, "Settlement rates updated.", "结算费率已更新。")
+      : msg === "online-created"
+      ? t(lang, "Online settlement record created.", "线上结算记录已创建。")
+      : msg === "offline-created"
+      ? t(lang, "Offline settlement record created.", "线下结算记录已创建。")
+      : msg === "settlements-cleared"
+      ? t(lang, "Settlement test records cleared.", "测试结算记录已清空。")
+      : msg === "settlement-reverted"
+      ? t(lang, "Settlement record reverted.", "结算记录已撤回。")
+      : msg === "already-settled"
+      ? t(lang, "This item has already been settled.", "该项目已经结算过。")
+      : msg;
 
   const filteredInvoiceStats = recentInvoiceStats.filter((r) => {
     if (historyFilter === "receipt-created") return Boolean(r.receiptNo);
@@ -756,6 +820,85 @@ export default async function PartnerSettlementPage({
   };
   const firstMissingFeedbackWarning = offlineWarnings.find((w) => w.missingFeedbackCount > 0) ?? null;
   const firstStatusExcludedWarning = offlineWarnings.find((w) => w.statusExcludedCount > 0) ?? null;
+  const focusedRecordRow = focusType === "record" ? recentPendingSettlements.find((r) => r.id === focusId) ?? null : null;
+  const nextPendingRecord = recentPendingSettlements.find((r) => r.id !== focusId) ?? recentPendingSettlements[0] ?? null;
+  const flowCard =
+    settlementFlow === "online-created"
+      ? {
+          tone: "green" as const,
+          title: t(lang, "Online settlement record created.", "线上结算记录已创建。"),
+          detail: focusedRecordRow
+            ? t(lang, "The new billing record stays highlighted below so you can continue in billing workspace without re-scanning the queue.", "新生成的结算记录会在下方继续高亮，方便你直接进入账单工作区，不用重新扫描队列。")
+            : t(lang, "The record was created. Continue in billing workspace or move to the next online package.", "结算记录已经生成。你可以继续进入账单工作区，或回到下一条线上课包。"),
+          links: [
+            focusedRecordRow
+              ? { href: "#partner-record-" + focusedRecordRow.id, label: t(lang, "Jump to new record", "跳到新记录") }
+              : null,
+            { href: `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`, label: t(lang, "Open billing workspace", "打开账单工作区") },
+            onlinePending[0]
+              ? { href: buildPageHref({ focusType: "online", focusId: onlinePending[0].id }) + "#partner-online-" + onlinePending[0].id, label: t(lang, "Open next online item", "打开下一条线上项") }
+              : null,
+          ].filter((item): item is { href: string; label: string } => Boolean(item)),
+        }
+      : settlementFlow === "offline-created"
+      ? {
+          tone: "green" as const,
+          title: t(lang, "Offline settlement record created.", "线下结算记录已创建。"),
+          detail: focusedRecordRow
+            ? t(lang, "The new billing record stays highlighted below so you can continue with invoice review or move back to the next offline student.", "新生成的结算记录会在下方继续高亮，方便你继续开票，或回到下一位线下学生。")
+            : t(lang, "The record was created. Continue in billing workspace or return to the next offline queue item.", "结算记录已经生成。你可以继续进入账单工作区，或回到下一条线下队列。"),
+          links: [
+            focusedRecordRow
+              ? { href: "#partner-record-" + focusedRecordRow.id, label: t(lang, "Jump to new record", "跳到新记录") }
+              : null,
+            { href: `/admin/reports/partner-settlement/billing?mode=OFFLINE_MONTHLY&month=${encodeURIComponent(month)}`, label: t(lang, "Open billing workspace", "打开账单工作区") },
+            offlinePending[0]
+              ? { href: buildPageHref({ focusType: "offline", focusId: offlinePending[0].studentId }) + "#partner-offline-" + offlinePending[0].studentId, label: t(lang, "Open next offline item", "打开下一条线下项") }
+              : null,
+          ].filter((item): item is { href: string; label: string } => Boolean(item)),
+        }
+      : settlementFlow === "settlement-reverted"
+      ? {
+          tone: "amber" as const,
+          title: t(lang, "Settlement record reverted.", "结算记录已撤回。"),
+          detail: nextPendingRecord
+            ? t(lang, "The queue has been refreshed. Move straight to the next pending billing record so work keeps flowing.", "队列已经刷新。你可以直接继续处理下一条待开票记录。")
+            : t(lang, "The selected record was removed from billing queue. Return to online or offline queues if you need to recreate it.", "这条记录已经从待开票队列移除；如果需要重建，请返回线上或线下队列。"),
+          links: [
+            nextPendingRecord
+              ? { href: buildPageHref({ focusType: "record", focusId: nextPendingRecord.id }) + "#partner-record-" + nextPendingRecord.id, label: t(lang, "Open next billing record", "打开下一条待开票记录") }
+              : null,
+            { href: "#action-queue-online", label: t(lang, "Back to online queue", "回到线上队列") },
+            { href: "#action-queue-offline", label: t(lang, "Back to offline queue", "回到线下队列") },
+          ].filter((item): item is { href: string; label: string } => Boolean(item)),
+        }
+      : settlementFlow === "rate-updated"
+      ? {
+          tone: "blue" as const,
+          title: t(lang, "Settlement rates updated.", "结算费率已更新。"),
+          detail: t(lang, "The new rates will apply to future settlement records. Return to the active queue when you are ready to keep working.", "新的费率会应用到后续结算记录。确认后可以回到当前队列继续处理。"),
+          links: [
+            { href: "#settlement-setup", label: t(lang, "Jump to setup", "跳到结算配置") },
+            { href: "#action-queue-records", label: t(lang, "Back to live queue", "回到实时队列") },
+          ],
+        }
+      : settlementFlow === "settlements-cleared"
+      ? {
+          tone: "amber" as const,
+          title: t(lang, "Settlement test records cleared.", "测试结算记录已清空。"),
+          detail: t(lang, "The billing queue has been reset for this source. Rebuild only the records you actually need next.", "该来源的测试结算记录已经清空。接下来只重建真正需要继续处理的记录即可。"),
+          links: [
+            { href: "#action-queue-online", label: t(lang, "Open online queue", "打开线上队列") },
+            { href: "#action-queue-offline", label: t(lang, "Open offline queue", "打开线下队列") },
+          ],
+        }
+      : null;
+  const flowCardStyle =
+    flowCard?.tone === "green"
+      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
+      : flowCard?.tone === "blue"
+      ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
+      : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
 
   const selectedItem = (() => {
     if (focusType === "record" && focusId) {
@@ -891,7 +1034,7 @@ export default async function PartnerSettlementPage({
         </div>
       ) : null}
 
-      {msg ? <div style={{ marginBottom: 8, color: "#166534" }}>{msg}</div> : null}
+      {translatedMsg ? <div style={{ marginBottom: 8, color: "#166534" }}>{translatedMsg}</div> : null}
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
       {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
       {err === "invalid-settlement" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement record not found.", "未找到结算记录。")}</div> : null}
@@ -900,6 +1043,28 @@ export default async function PartnerSettlementPage({
       {err === "finance-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
       {err === "settlement-locked" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement already exported and locked.", "该结算单已导出并锁定。")}</div> : null}
+      {flowCard ? (
+        <div
+          style={{
+            ...flowCardStyle,
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
+          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {flowCard.links.map((link) => (
+              <a key={link.href + link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
         <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -1127,7 +1292,15 @@ export default async function PartnerSettlementPage({
             </thead>
             <tbody>
               {recentPendingSettlements.map((r) => (
-                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                <tr
+                  key={r.id}
+                  id={`partner-record-${r.id}`}
+                  style={{
+                    borderTop: "1px solid #eee",
+                    background: focusType === "record" && focusId === r.id ? "#eff6ff" : "#fff",
+                    boxShadow: focusType === "record" && focusId === r.id ? "inset 0 0 0 2px rgba(37,99,235,0.28)" : "none",
+                  }}
+                >
                   <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
                   <td>{r.student ? <a href={studentAttendanceHref(r.student.id, r.monthKey ?? month)}>{r.student.name}</a> : "-"}</td>
                   <td>{r.mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : t(lang, "Offline Monthly", "线下按月")}</td>
@@ -1187,7 +1360,15 @@ export default async function PartnerSettlementPage({
           </thead>
           <tbody>
             {onlinePending.map((p) => (
-              <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+              <tr
+                key={p.id}
+                id={`partner-online-${p.id}`}
+                style={{
+                  borderTop: "1px solid #eee",
+                  background: focusType === "online" && focusId === p.id ? "#eff6ff" : "#fff",
+                  boxShadow: focusType === "online" && focusId === p.id ? "inset 0 0 0 2px rgba(37,99,235,0.28)" : "none",
+                }}
+              >
                 <td>
                   {p.student ? <a href={studentAttendanceHref(p.student.id, month)}>{p.student.name}</a> : "-"}
                 </td>
@@ -1263,7 +1444,15 @@ export default async function PartnerSettlementPage({
             </thead>
             <tbody>
               {offlineWarnings.map((w) => (
-                <tr key={w.studentId} style={{ borderTop: "1px solid #fde68a" }}>
+                <tr
+                  key={w.studentId}
+                  id={`partner-warning-${w.studentId}`}
+                  style={{
+                    borderTop: "1px solid #fde68a",
+                    background: focusType === "warning" && focusId === w.studentId ? "#eff6ff" : "#fff",
+                    boxShadow: focusType === "warning" && focusId === w.studentId ? "inset 0 0 0 2px rgba(37,99,235,0.28)" : "none",
+                  }}
+                >
                   <td>
                     <a href={studentAttendanceHref(w.studentId, month)}>{w.studentName}</a>
                   </td>
@@ -1303,7 +1492,15 @@ export default async function PartnerSettlementPage({
           </thead>
           <tbody>
             {offlinePending.map((r) => (
-              <tr key={`${r.studentId}-${month}`} style={{ borderTop: "1px solid #eee" }}>
+              <tr
+                key={`${r.studentId}-${month}`}
+                id={`partner-offline-${r.studentId}`}
+                style={{
+                  borderTop: "1px solid #eee",
+                  background: focusType === "offline" && focusId === r.studentId ? "#eff6ff" : "#fff",
+                  boxShadow: focusType === "offline" && focusId === r.studentId ? "inset 0 0 0 2px rgba(37,99,235,0.28)" : "none",
+                }}
+              >
                 <td>
                   <a href={studentAttendanceHref(r.studentId, month)}>{r.studentName}</a>
                 </td>
