@@ -1,6 +1,7 @@
 ﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   BUSINESS_UPLOAD_PREFIX,
@@ -42,6 +43,7 @@ import {
   isRoleApprover,
 } from "@/lib/approval-flow";
 import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
   workbenchFilterPanelStyle,
@@ -51,6 +53,7 @@ import {
 } from "../_components/workbenchStyles";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
+const RECEIPTS_QUEUE_COOKIE = "adminReceiptsPreferredQueue";
 const RECEIPT_REJECT_REASON_OPTIONS = [
   "Missing payment proof / 缺少缴费记录",
   "Attachment unclear / 附件不清晰",
@@ -121,6 +124,51 @@ function renderRejectReasonFields(lang: "BILINGUAL" | "ZH" | "EN", idSuffix: str
       />
     </>
   );
+}
+
+function normalizeReceiptView(value: string) {
+  return value === "PARENT" || value === "PARTNER" ? value : "ALL";
+}
+
+function normalizeReceiptQueueFilter(value: string) {
+  return (
+    ["ALL", "PENDING", "REJECTED", "COMPLETED", "NO_PAYMENT_RECORD", "FILE_ISSUE", "TODAY_MINE"] as const
+  ).includes(value as any)
+    ? (value as "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE")
+    : "ALL";
+}
+
+function normalizeReceiptQueueBucket(value: string) {
+  return (["ALL", "MINE", "OPEN", "HISTORY"] as const).includes(value as any)
+    ? (value as "ALL" | "MINE" | "OPEN" | "HISTORY")
+    : "ALL";
+}
+
+function parseRememberedReceiptsQueue(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const monthRaw = String(params.get("month") ?? "").trim();
+  const month = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
+  const view = normalizeReceiptView(String(params.get("view") ?? "").trim().toUpperCase());
+  const queueFilter = normalizeReceiptQueueFilter(String(params.get("queueFilter") ?? "").trim().toUpperCase());
+  const queueBucket = normalizeReceiptQueueBucket(String(params.get("queueBucket") ?? "").trim().toUpperCase());
+  const normalized = new URLSearchParams();
+  if (month) normalized.set("month", month);
+  if (view !== "ALL") normalized.set("view", view);
+  if (queueFilter !== "ALL") normalized.set("queueFilter", queueFilter);
+  if (queueBucket !== "ALL") normalized.set("queueBucket", queueBucket);
+  return {
+    month,
+    view,
+    queueFilter,
+    queueBucket,
+    value: normalized.toString(),
+  };
 }
 
 function isImageFile(pathOrName: string) {
@@ -751,29 +799,48 @@ export default async function ReceiptsApprovalsPage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
-  const monthRaw = sp?.month ? String(sp.month).trim() : "";
-  const monthFilter = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
-  const viewRaw = String(sp?.view ?? "ALL").trim().toUpperCase();
-  const viewMode = viewRaw === "PARENT" || viewRaw === "PARTNER" ? viewRaw : "ALL";
+  const monthParamRaw = sp?.month ? String(sp.month).trim() : "";
+  const viewParamRaw = sp?.view ? String(sp.view).trim() : "";
+  const queueFilterParamRaw = sp?.queueFilter ? String(sp.queueFilter).trim() : "";
+  const queueBucketParamRaw = sp?.queueBucket ? String(sp.queueBucket).trim() : "";
   const stepRaw = String(sp?.step ?? "upload").trim().toLowerCase();
   const workflowStep = (["upload", "records", "create", "review"] as const).includes(stepRaw as any)
     ? (stepRaw as "upload" | "records" | "create" | "review")
     : "upload";
-  const queueFilterRaw = String(sp?.queueFilter ?? "ALL").trim().toUpperCase();
-  const queueFilter = (
-    ["ALL", "PENDING", "REJECTED", "COMPLETED", "NO_PAYMENT_RECORD", "FILE_ISSUE", "TODAY_MINE"] as const
-  ).includes(queueFilterRaw as any)
-    ? (queueFilterRaw as "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE")
-    : "ALL";
-  const queueBucketRaw = String(sp?.queueBucket ?? "ALL").trim().toUpperCase();
-  const queueBucket = (["ALL", "MINE", "OPEN", "HISTORY"] as const).includes(queueBucketRaw as any)
-    ? (queueBucketRaw as "ALL" | "MINE" | "OPEN" | "HISTORY")
-    : "ALL";
   const selectedTypeRaw = String(sp?.selectedType ?? "").trim().toUpperCase();
   const selectedType = selectedTypeRaw === "PARENT" || selectedTypeRaw === "PARTNER" ? selectedTypeRaw : "";
   const selectedId = String(sp?.selectedId ?? "").trim();
   const preferredPaymentRecordId = String(sp?.paymentRecordId ?? "").trim();
   const preferredInvoiceId = String(sp?.invoiceId ?? "").trim();
+  const canResumeRememberedQueue =
+    !packageIdFilter &&
+    !monthParamRaw &&
+    !viewParamRaw &&
+    !queueFilterParamRaw &&
+    !queueBucketParamRaw &&
+    !String(sp?.step ?? "").trim() &&
+    !selectedType &&
+    !selectedId &&
+    !preferredPaymentRecordId &&
+    !preferredInvoiceId;
+  const cookieStore = await cookies();
+  const rememberedQueue = canResumeRememberedQueue
+    ? parseRememberedReceiptsQueue(cookieStore.get(RECEIPTS_QUEUE_COOKIE)?.value ?? "")
+    : { month: "", view: "ALL" as const, queueFilter: "ALL" as const, queueBucket: "ALL" as const, value: "" };
+  const monthFilter = monthParamRaw
+    ? (/^\d{4}-\d{2}$/.test(monthParamRaw) ? monthParamRaw : "")
+    : rememberedQueue.month;
+  const viewMode = viewParamRaw
+    ? normalizeReceiptView(viewParamRaw.trim().toUpperCase())
+    : rememberedQueue.view;
+  const queueFilter = queueFilterParamRaw
+    ? normalizeReceiptQueueFilter(queueFilterParamRaw.trim().toUpperCase())
+    : rememberedQueue.queueFilter;
+  const queueBucket = queueBucketParamRaw
+    ? normalizeReceiptQueueBucket(queueBucketParamRaw.trim().toUpperCase())
+    : rememberedQueue.queueBucket;
+  const resumedRememberedQueue =
+    canResumeRememberedQueue && Boolean(rememberedQueue.value);
 
   const [current, roleCfg, all, partnerAll] = await Promise.all([
     getCurrentUser(),
@@ -1212,9 +1279,24 @@ export default async function ReceiptsApprovalsPage({
     viewMode !== "ALL" ||
     queueFilter !== "ALL" ||
     queueBucket !== "ALL";
+  const rememberedQueueValue = (() => {
+    const params = new URLSearchParams();
+    if (monthFilter) params.set("month", monthFilter);
+    if (viewMode !== "ALL") params.set("view", viewMode);
+    if (queueFilter !== "ALL") params.set("queueFilter", queueFilter);
+    if (queueBucket !== "ALL") params.set("queueBucket", queueBucket);
+    return params.toString();
+  })();
 
   return (
     <div>
+      {!packageWorkspaceMode ? (
+        <RememberedWorkbenchQueryClient
+          cookieKey={RECEIPTS_QUEUE_COOKIE}
+          storageKey="adminReceiptsPreferredQueue"
+          value={rememberedQueueValue}
+        />
+      ) : null}
       <h2>{t(lang, "Receipt Approval Center", "收据审批中心")}</h2>
       {err ? (
         <div style={{ marginBottom: 12, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 10px" }}>
@@ -1276,6 +1358,33 @@ export default async function ReceiptsApprovalsPage({
           </div>
         </div>
       </div>
+
+      {!packageWorkspaceMode && resumedRememberedQueue ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {t(
+              lang,
+              "Resumed your last receipt queue. Use the chips below if you want to jump back to the default queue.",
+              "已恢复你上次的收据队列；如果要回到默认队列，可直接用下方标签切回。"
+            )}
+          </div>
+          <a href="/admin/receipts-approvals">{t(lang, "Back to default queue", "回到默认队列")}</a>
+        </div>
+      ) : null}
 
       <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>

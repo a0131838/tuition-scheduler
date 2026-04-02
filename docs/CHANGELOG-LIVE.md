@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r12
+
+- Release ID: `2026-04-02-r12`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `READY` pending deploy
+- Scope: Remember the last queue/filter state on admin receipt approvals and expense claims so operators can reopen the same working dataset without rebuilding it.
+- Key files:
+  - `app/admin/_components/RememberedWorkbenchQueryClient.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-finance-queue-memory.md`
+- Risk impact (if any): Low. This ship only remembers and restores queue/filter context on finance workbench pages; no approval order, selected-item logic, receipt creation rules, expense approval rules, payout logic, or attachment business logic changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed:
+    - receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when the page is opened without URL params
+    - expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when the page is opened without URL params
+    - both pages show an explicit “resumed last queue/filter” hint plus a direct return-to-default link
+- Rollback point: previous production commit before `2026-04-02-r12`.
+
 ## 2026-04-02-r11
 
 - Release ID: `2026-04-02-r11`

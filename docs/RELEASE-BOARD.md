@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r11` (partner settlement context-return follow-up).
+- Current release line on this branch: `2026-04-02-r12` (finance queue-memory follow-up, ready to deploy).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-02-r12 Ready For Deploy
+
+- Scope: remember the last working queue/filter state on admin receipt approvals and expense claims.
+- Business impact:
+  - receipt approvals can now reopen the last remembered global queue filter/bucket/month view when operators return without explicit URL params
+  - expense claims can now reopen the last remembered finance dataset/filter set when operators return without explicit URL params
+  - both pages now show an explicit resume hint and a direct shortcut back to the default desk/queue
+  - no approval order, selected item routing, receipt creation rules, expense approval rules, payout logic, or attachment business logic changed
+- Validation:
+  - `npm run build`
+  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when opened without URL params
+  - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when opened without URL params
+  - both pages show an explicit resume hint plus a direct return-to-default link
 
 ## 2026-04-02-r11 Deployed
 

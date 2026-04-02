@@ -1,6 +1,7 @@
 import { isManagerUser, requireAdmin } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
 import type { Lang } from '@/lib/i18n';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ExpenseClaimStatus } from '@prisma/client';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
@@ -29,6 +30,7 @@ import { revalidatePath } from 'next/cache';
 import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
 import path from 'path';
 import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
+import RememberedWorkbenchQueryClient from '../_components/RememberedWorkbenchQueryClient';
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -36,6 +38,8 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from '../_components/workbenchStyles';
+
+const EXPENSE_FILTER_COOKIE = 'adminExpenseClaimsPreferredFilters';
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -110,6 +114,55 @@ function withExpenseRepairReturn(
   };
 }
 
+function normalizeExpenseStatus(value: string) {
+  return value && Object.values(ExpenseClaimStatus).includes(value as ExpenseClaimStatus)
+    ? (value as ExpenseClaimStatus)
+    : 'ALL';
+}
+
+function parseRememberedExpenseFilters(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const status = normalizeExpenseStatus(String(params.get('status') ?? '').trim());
+  const monthRaw = String(params.get('month') ?? '').trim();
+  const paymentBatchMonthRaw = String(params.get('paymentBatchMonth') ?? '').trim();
+  const month = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : '';
+  const paymentBatchMonth = /^\d{4}-\d{2}$/.test(paymentBatchMonthRaw) ? paymentBatchMonthRaw : '';
+  const expenseType = String(params.get('expenseType') ?? '').trim();
+  const currency = String(params.get('currency') ?? '').trim().toUpperCase();
+  const q = String(params.get('q') ?? '').trim();
+  const approvedUnpaidOnly = params.get('approvedUnpaidOnly') === '1';
+  const archived = params.get('archived') === '1';
+  const attachmentIssueOnly = params.get('attachmentIssueOnly') === '1';
+  return {
+    status,
+    month,
+    paymentBatchMonth,
+    expenseType,
+    currency,
+    q,
+    approvedUnpaidOnly,
+    archived,
+    attachmentIssueOnly,
+    value: buildFilterQuery({
+      status: status !== 'ALL' ? status : '',
+      month,
+      paymentBatchMonth,
+      expenseType,
+      currency,
+      q,
+      approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
+      archived: archived ? '1' : '',
+      attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
+    }),
+  };
+}
+
 export default async function AdminExpenseClaimsPage({
   searchParams,
 }: {
@@ -120,12 +173,12 @@ export default async function AdminExpenseClaimsPage({
   const params = (await searchParams) ?? {};
   const msg = typeof params.msg === 'string' ? params.msg : '';
   const err = typeof params.err === 'string' ? params.err : '';
-  const statusFilter = typeof params.status === 'string' ? params.status : 'ALL';
-  const monthFilter = typeof params.month === 'string' ? params.month : '';
-  const paymentBatchMonthFilter = typeof params.paymentBatchMonth === 'string' ? params.paymentBatchMonth : '';
-  const expenseTypeFilter = typeof params.expenseType === 'string' ? params.expenseType : '';
-  const currencyFilter = typeof params.currency === 'string' ? params.currency : '';
-  const submitterQuery = typeof params.q === 'string' ? params.q : '';
+  const statusParam = typeof params.status === 'string' ? params.status : '';
+  const monthParam = typeof params.month === 'string' ? params.month : '';
+  const paymentBatchMonthParam = typeof params.paymentBatchMonth === 'string' ? params.paymentBatchMonth : '';
+  const expenseTypeParam = typeof params.expenseType === 'string' ? params.expenseType : '';
+  const currencyParam = typeof params.currency === 'string' ? params.currency : '';
+  const submitterQueryParam = typeof params.q === 'string' ? params.q : '';
   const selectedClaimIdParam = typeof params.claimId === 'string' ? params.claimId : '';
   const selectedFinanceGroupKeyParam = typeof params.financeGroup === 'string' ? params.financeGroup : '';
   const repairReturnMode =
@@ -135,9 +188,52 @@ export default async function AdminExpenseClaimsPage({
   const repairReturnClaimId = typeof params.repairReturnClaimId === 'string' ? params.repairReturnClaimId : '';
   const repairReturnFinanceGroup = typeof params.repairReturnFinanceGroup === 'string' ? params.repairReturnFinanceGroup : '';
   const repairReturnConfirmed = typeof params.repairReturn === 'string' ? params.repairReturn === '1' : false;
-  const approvedUnpaidOnly = typeof params.approvedUnpaidOnly === 'string' ? params.approvedUnpaidOnly === '1' : false;
-  const archivedOnly = typeof params.archived === 'string' ? params.archived === '1' : false;
-  const attachmentIssueOnly = typeof params.attachmentIssueOnly === 'string' ? params.attachmentIssueOnly === '1' : false;
+  const approvedUnpaidOnlyParam = typeof params.approvedUnpaidOnly === 'string' ? params.approvedUnpaidOnly === '1' : false;
+  const archivedOnlyParam = typeof params.archived === 'string' ? params.archived === '1' : false;
+  const attachmentIssueOnlyParam = typeof params.attachmentIssueOnly === 'string' ? params.attachmentIssueOnly === '1' : false;
+  const canResumeRememberedFilters =
+    !statusParam &&
+    !monthParam &&
+    !paymentBatchMonthParam &&
+    !expenseTypeParam &&
+    !currencyParam &&
+    !submitterQueryParam &&
+    !approvedUnpaidOnlyParam &&
+    !archivedOnlyParam &&
+    !attachmentIssueOnlyParam &&
+    !selectedClaimIdParam &&
+    !selectedFinanceGroupKeyParam &&
+    !repairReturnMode &&
+    !repairReturnClaimId &&
+    !repairReturnFinanceGroup &&
+    !msg &&
+    !err;
+  const cookieStore = await cookies();
+  const rememberedFilters = canResumeRememberedFilters
+    ? parseRememberedExpenseFilters(cookieStore.get(EXPENSE_FILTER_COOKIE)?.value ?? '')
+    : {
+        status: 'ALL' as const,
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: '',
+        q: '',
+        approvedUnpaidOnly: false,
+        archived: false,
+        attachmentIssueOnly: false,
+        value: '',
+      };
+  const statusFilter = statusParam ? normalizeExpenseStatus(statusParam) : rememberedFilters.status;
+  const monthFilter = monthParam || rememberedFilters.month;
+  const paymentBatchMonthFilter = paymentBatchMonthParam || rememberedFilters.paymentBatchMonth;
+  const expenseTypeFilter = expenseTypeParam || rememberedFilters.expenseType;
+  const currencyFilter = currencyParam || rememberedFilters.currency;
+  const submitterQuery = submitterQueryParam || rememberedFilters.q;
+  const approvedUnpaidOnly = approvedUnpaidOnlyParam || rememberedFilters.approvedUnpaidOnly;
+  const archivedOnly = archivedOnlyParam || rememberedFilters.archived;
+  const attachmentIssueOnly = attachmentIssueOnlyParam || rememberedFilters.attachmentIssueOnly;
+  const resumedRememberedFilters =
+    canResumeRememberedFilters && Boolean(rememberedFilters.value);
   const canApprove = await canApproveExpense(user);
   const canFinance = canFinanceOperateExpense(user);
   const isManager = await isManagerUser(user);
@@ -552,6 +648,11 @@ export default async function AdminExpenseClaimsPage({
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      <RememberedWorkbenchQueryClient
+        cookieKey={EXPENSE_FILTER_COOKIE}
+        storageKey="adminExpenseClaimsPreferredFilters"
+        value={filterQuery}
+      />
       <section style={workbenchHeroStyle('amber')}>
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#a16207', letterSpacing: 0.4 }}>
@@ -581,6 +682,32 @@ export default async function AdminExpenseClaimsPage({
           </span>
         </div>
       </section>
+
+      {resumedRememberedFilters ? (
+        <div
+          style={{
+            padding: 10,
+            borderRadius: 10,
+            border: '1px solid #fde68a',
+            background: '#fffbeb',
+            color: '#92400e',
+            display: 'flex',
+            gap: 10,
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {t(
+              lang,
+              'Resumed your last expense filter set. Use clear filters if you want to return to the default desk.',
+              '已恢复你上次的报销筛选；如果要回到默认工作台，可直接清空筛选。'
+            )}
+          </div>
+          <a href={quickClearHref}>{t(lang, 'Back to default desk', '回到默认工作台')}</a>
+        </div>
+      ) : null}
 
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
