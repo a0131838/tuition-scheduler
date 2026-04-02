@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r12` (finance queue-memory follow-up, ready to deploy).
+- Current release line on this branch: `2026-04-02-r12` (finance queue-memory follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -46,7 +46,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-02-r12 Ready For Deploy
+## 2026-04-02-r12 Deployed
 
 - Scope: remember the last working queue/filter state on admin receipt approvals and expense claims.
 - Business impact:
@@ -59,6 +59,8 @@
   - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when opened without URL params
   - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when opened without URL params
   - both pages show an explicit resume hint plus a direct return-to-default link
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `0ff6b71` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed both finance pages restore the remembered cookie state on production when opened without explicit URL params
 
 ## 2026-04-02-r11 Deployed
 

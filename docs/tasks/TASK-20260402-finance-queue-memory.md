@@ -59,6 +59,8 @@ Reduce repeated filter setup on the two highest-frequency finance workbench page
   - receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when opened without URL params
   - expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when opened without URL params
   - both pages show an explicit resume hint plus a direct return-to-default link
+- post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `0ff6b71` and `https://sgtmanage.com/admin/login` returned `200`
+- logged-in live QA confirmed both finance pages restore the remembered cookie state on production when opened without explicit URL params
 
 ## Release notes
 

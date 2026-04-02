@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-02-r12`
 - Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `READY` pending deploy
+- Deployment status: `LIVE` after deploy completion
 - Scope: Remember the last queue/filter state on admin receipt approvals and expense claims so operators can reopen the same working dataset without rebuilding it.
 - Key files:
   - `app/admin/_components/RememberedWorkbenchQueryClient.tsx`
@@ -35,6 +35,9 @@ This file is the single source of truth for what changed in production.
     - receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie when the page is opened without URL params
     - expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie when the page is opened without URL params
     - both pages show an explicit “resumed last queue/filter” hint plus a direct return-to-default link
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `0ff6b71` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed receipts approvals restores `queueFilter=FILE_ISSUE&queueBucket=OPEN` from cookie on production when the page is opened without URL params
+  - logged-in live QA confirmed expense claims restores `approvedUnpaidOnly=1&currency=SGD` from cookie on production when the page is opened without URL params
 - Rollback point: previous production commit before `2026-04-02-r12`.
 
 ## 2026-04-02-r11
