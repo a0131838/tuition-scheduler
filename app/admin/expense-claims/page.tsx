@@ -307,6 +307,7 @@ export default async function AdminExpenseClaimsPage({
     archived: '',
     attachmentIssueOnly: '1',
   })}`;
+  const attachmentHealthDeskHref = "/admin/recovery/uploads?source=expense";
   const quickClearHref = '/admin/expense-claims';
   const hasAdvancedFilters =
     statusFilter !== 'ALL' ||
@@ -755,6 +756,7 @@ export default async function AdminExpenseClaimsPage({
               <a href={financeRepairNextStepHref}>{t(lang, 'Jump to payment details', '跳到付款信息')}</a>
             ) : null}
             <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+            <a href={attachmentHealthDeskHref}>{t(lang, 'Open attachment health desk', '打开附件异常总览')}</a>
           </div>
         </div>
       ) : null}
@@ -840,6 +842,7 @@ export default async function AdminExpenseClaimsPage({
           <a href={quickSubmittedHref}>{t(lang, 'Submitted review queue', '待审批队列')}</a>
           <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
           <a href={quickAttachmentIssueHref}>{t(lang, 'Attachment issues', '附件异常')}</a>
+          <a href={attachmentHealthDeskHref}>{t(lang, 'Attachment health desk', '附件异常总览')}</a>
           <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
           <a href={quickExpenseLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
           <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
@@ -999,6 +1002,7 @@ export default async function AdminExpenseClaimsPage({
                       <a href={selectedReviewAttachmentRepairHref}>{t(lang, 'Open this submitter attachment issues', '查看该提交人的附件异常')}</a>
                       <a href={selectedReviewSubmitterHistoryHref}>{t(lang, 'Open submitter history', '查看提交人历史')}</a>
                       <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+                      <a href={attachmentHealthDeskHref}>{t(lang, 'Open attachment health desk', '打开附件异常总览')}</a>
                     </div>
                     {canApprove ? (
                       <form action={rejectAction} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1173,6 +1177,7 @@ export default async function AdminExpenseClaimsPage({
                             <a href={selectedFinanceRepairHref}>{t(lang, 'Open this submitter attachment issues', '查看该提交人的附件异常')}</a>
                             <a href={selectedFinanceSubmitterHistoryHref}>{t(lang, 'Open submitter history', '查看提交人历史')}</a>
                             <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+                            <a href={attachmentHealthDeskHref}>{t(lang, 'Open attachment health desk', '打开附件异常总览')}</a>
                           </div>
                         </div>
                       ) : null}

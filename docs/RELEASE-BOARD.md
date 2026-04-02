@@ -989,3 +989,14 @@
   - no attendance task calculation, reminder confirmation logic, conflict-audit logic, deduction repair logic, or renewal-alert logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r18 Deployed
+
+- Scope: unify attachment anomaly visibility into a single admin workbench and connect finance anomaly links back to it.
+- Business impact:
+  - `/admin/recovery/uploads` now acts like an `Attachment Health Desk`, with summary metrics, source filters, workflow shortcuts, and the existing bulk re-upload recovery action on one page
+  - finance users can now open the attachment-health desk directly from the finance/review navigation instead of being redirected away
+  - receipt proof issues and expense attachment issues now expose a direct jump into the global anomaly desk, while still keeping their local queue views available
+  - no attachment storage rules, receipt approval logic, expense approval logic, recovery matching logic, or ticket workflow logic changed
+- Validation:
+  - `npm run build`

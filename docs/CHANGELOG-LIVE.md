@@ -1894,3 +1894,24 @@ This file is the single source of truth for what changed in production.
   - fresh local logged-in QA on `http://127.0.0.1:3320` confirmed `/admin/todos` reopens with the remembered desk context and shows the resumed-desk banner plus next-step shortcut bar when no explicit URL params are present
   - explicit `warnDays` / `pastDays` URL params still suppress the resumed-desk banner so one-off deep links keep priority over remembered state
 - Rollback point: previous production commit before `2026-04-02-r17`.
+
+## 2026-04-02-r18
+
+- Release ID: `2026-04-02-r18`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: turn the existing upload recovery page into an attachment-health workbench and unify finance anomaly entry points toward it.
+- Key files:
+  - `app/admin/recovery/uploads/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-attachment-health-desk.md`
+- Risk impact (if any): Low. This is an admin navigation, access, and presentation pass only; attachment storage rules, recovery/backfill matching, receipt approval logic, expense approval logic, and ticket workflow logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3321` confirmed `/admin/recovery/uploads` renders the new `Attachment Health Desk` workbench, source-filter reopen still works, and both receipts/expense pages expose the new desk entry
+  - finance access to `/admin/recovery/uploads` was added through the admin layout allowlist rather than a new auth model
+- Rollback point: previous production commit before `2026-04-02-r18`.

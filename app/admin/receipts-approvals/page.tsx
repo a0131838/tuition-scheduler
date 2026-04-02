@@ -1432,6 +1432,7 @@ export default async function ReceiptsApprovalsPage({
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+          <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
           {queueFilter !== "ALL" ? <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a> : null}
         </div>
       </div>
@@ -2231,6 +2232,7 @@ export default async function ReceiptsApprovalsPage({
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+                  <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
                   {selectedRow.type === "PARENT" ? (
                     <>
                       <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>

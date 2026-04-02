@@ -5,6 +5,13 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  workbenchHeroStyle,
+  workbenchInfoBarStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "@/app/admin/_components/workbenchStyles";
 
 type MissingRecord = {
   relPath: string;
@@ -12,6 +19,8 @@ type MissingRecord = {
   refNo: string;
   owner: string;
 };
+
+type SourceFilter = "ALL" | MissingRecord["source"];
 
 const PARENT_BILLING_KEYS = ["parent_billing_v1", "parent_billing_records_v1"] as const;
 const PARTNER_BILLING_KEYS = ["partner_billing_v1", "partner_billing_records_v1"] as const;
@@ -124,6 +133,59 @@ async function getMissingUploads(): Promise<MissingRecord[]> {
   return out;
 }
 
+function sourceLabel(source: MissingRecord["source"]) {
+  switch (source) {
+    case "ticket":
+      return "Ticket attachments / 工单附件";
+    case "expense":
+      return "Expense attachments / 报销附件";
+    case "package_payment":
+      return "Parent payment proofs / 家长缴费凭证";
+    case "partner_payment":
+      return "Partner payment proofs / 合作方付款凭证";
+  }
+}
+
+function sourceBadgeColor(source: MissingRecord["source"]) {
+  switch (source) {
+    case "ticket":
+      return { border: "#93c5fd", bg: "#eff6ff", fg: "#1d4ed8" };
+    case "expense":
+      return { border: "#fda4af", bg: "#fff1f2", fg: "#be123c" };
+    case "package_payment":
+      return { border: "#fdba74", bg: "#fff7ed", fg: "#c2410c" };
+    case "partner_payment":
+      return { border: "#c4b5fd", bg: "#f5f3ff", fg: "#6d28d9" };
+  }
+}
+
+function sourceWorkflowHref(source: MissingRecord["source"], record?: MissingRecord) {
+  switch (source) {
+    case "ticket":
+      return "/admin/tickets";
+    case "expense":
+      return "/admin/expense-claims?attachmentIssueOnly=1";
+    case "package_payment":
+      if (record?.refNo) return `/admin/receipts-approvals?packageId=${encodeURIComponent(record.refNo)}&queueFilter=FILE_ISSUE`;
+      return "/admin/receipts-approvals?queueFilter=FILE_ISSUE";
+    case "partner_payment":
+      return "/admin/reports/partner-settlement/billing";
+  }
+}
+
+function sourceWorkflowLabel(source: MissingRecord["source"]) {
+  switch (source) {
+    case "ticket":
+      return "Open ticket center / 打开工单中心";
+    case "expense":
+      return "Open expense attachment issues / 打开报销附件异常";
+    case "package_payment":
+      return "Open receipt proof issues / 打开收据凭证异常";
+    case "partner_payment":
+      return "Open partner settlement billing / 打开合作方结算账单";
+  }
+}
+
 async function recoverUploadsAction(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -168,7 +230,7 @@ async function recoverUploadsAction(formData: FormData) {
 export default async function AdminRecoveryUploadsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ ok?: string; err?: string; recovered?: string; unmatched?: string }>;
+  searchParams?: Promise<{ ok?: string; err?: string; recovered?: string; unmatched?: string; source?: string }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
@@ -176,6 +238,9 @@ export default async function AdminRecoveryUploadsPage({
   const ok = String(sp?.ok ?? "").trim();
   const recovered = Number(String(sp?.recovered ?? "0")) || 0;
   const unmatched = Number(String(sp?.unmatched ?? "0")) || 0;
+  const sourceFilter = (["ticket", "expense", "package_payment", "partner_payment"].includes(String(sp?.source ?? ""))
+    ? String(sp?.source)
+    : "ALL") as SourceFilter;
 
   const missing = await getMissingUploads();
   const byType = {
@@ -184,18 +249,100 @@ export default async function AdminRecoveryUploadsPage({
     packagePayment: missing.filter((x) => x.source === "package_payment"),
     partnerPayment: missing.filter((x) => x.source === "partner_payment"),
   };
+  const filteredMissing = sourceFilter === "ALL" ? missing : missing.filter((item) => item.source === sourceFilter);
+  const financeIssueCount = byType.expense.length + byType.packagePayment.length + byType.partnerPayment.length;
+  const dominantSource = [
+    { source: "ticket" as const, count: byType.ticket.length },
+    { source: "expense" as const, count: byType.expense.length },
+    { source: "package_payment" as const, count: byType.packagePayment.length },
+    { source: "partner_payment" as const, count: byType.partnerPayment.length },
+  ].sort((a, b) => b.count - a.count)[0];
+  const filterHref = (value: SourceFilter) => (value === "ALL" ? "/admin/recovery/uploads" : `/admin/recovery/uploads?source=${encodeURIComponent(value)}`);
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>附件恢复中心 / Upload Recovery</h2>
-        <Link scroll={false} href="/admin/tickets" style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 8 }}>
-          返回工单中心
-        </Link>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.2, color: "#9a3412" }}>Attachment Health Desk / 附件异常工作台</div>
+            <h2 style={{ margin: 0 }}>Catch missing files early, then jump back to the right workflow.</h2>
+            <div style={{ color: "#475569", maxWidth: 880, fontSize: 14 }}>
+              这里汇总工单、报销、家长缴费凭证和合作方付款凭证的文件缺失情况。先判断异常来源，再回到对应工作流修复，不用分散到每个页面单独查找。
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link scroll={false} href="/admin/receipts-approvals?queueFilter=FILE_ISSUE" style={{ padding: "8px 12px", border: "1px solid #fdba74", borderRadius: 999, background: "#fff7ed" }}>
+              Receipt proof issues / 收据凭证异常
+            </Link>
+            <Link scroll={false} href="/admin/expense-claims?attachmentIssueOnly=1" style={{ padding: "8px 12px", border: "1px solid #fda4af", borderRadius: 999, background: "#fff1f2" }}>
+              Expense attachment issues / 报销附件异常
+            </Link>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          <div style={workbenchMetricCardStyle("rose")}>
+            <div style={workbenchMetricLabelStyle("rose")}>Open anomalies / 当前异常总数</div>
+            <div style={workbenchMetricValueStyle("rose")}>{missing.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>Finance-linked / 财务相关</div>
+            <div style={workbenchMetricValueStyle("amber")}>{financeIssueCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>Ticket-linked / 工单相关</div>
+            <div style={workbenchMetricValueStyle("blue")}>{byType.ticket.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>Largest bucket / 当前最大来源</div>
+            <div style={{ ...workbenchMetricValueStyle("slate"), fontSize: 18 }}>{sourceLabel(dominantSource.source)}</div>
+          </div>
+        </div>
+      </section>
+
+      <div style={workbenchInfoBarStyle}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 700 }}>Next step shortcuts / 下一步快捷入口</div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {sourceFilter === "ALL"
+              ? "当前显示全部异常来源。可先切到某一类，再回到对应工作流。"
+              : `当前只看 ${sourceLabel(sourceFilter)}。修复后可直接回到对应工作流继续处理。`}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/admin/receipts-approvals?queueFilter=FILE_ISSUE">Open receipt queue / 打开收据异常队列</Link>
+          <Link href="/admin/expense-claims?attachmentIssueOnly=1">Open expense queue / 打开报销异常队列</Link>
+          <Link href="/admin/reports/partner-settlement/billing">Open partner billing / 打开合作方账单</Link>
+          <Link href="/admin/tickets">Open ticket center / 打开工单中心</Link>
+        </div>
       </div>
 
-      <div style={{ border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 10, padding: 10, color: "#7f1d1d" }}>
-        当前缺失：工单附件 {byType.ticket.length}，报销附件 {byType.expense.length}，家长缴费 {byType.packagePayment.length}，合作方凭证 {byType.partnerPayment.length}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {([
+          { key: "ALL", label: "All anomalies / 全部异常", count: missing.length },
+          { key: "expense", label: "Expense / 报销", count: byType.expense.length },
+          { key: "package_payment", label: "Receipts / 收据凭证", count: byType.packagePayment.length },
+          { key: "partner_payment", label: "Partner billing / 合作方结算", count: byType.partnerPayment.length },
+          { key: "ticket", label: "Tickets / 工单", count: byType.ticket.length },
+        ] as { key: SourceFilter; label: string; count: number }[]).map((item) => {
+          const active = sourceFilter === item.key;
+          return (
+            <Link
+              key={item.key}
+              href={filterHref(item.key)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: `1px solid ${active ? "#f97316" : "#cbd5e1"}`,
+                background: active ? "#fff7ed" : "#ffffff",
+                color: active ? "#9a3412" : "#334155",
+                fontWeight: active ? 700 : 500,
+              }}
+            >
+              {item.label}: {item.count}
+            </Link>
+          );
+        })}
       </div>
 
       {err === "no-files" ? <div style={{ color: "#b91c1c" }}>请先选择文件再上传。/ Please select files first.</div> : null}
@@ -205,17 +352,43 @@ export default async function AdminRecoveryUploadsPage({
         </div>
       ) : null}
 
-      <form action={recoverUploadsAction} encType="multipart/form-data" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
-        <div style={{ fontWeight: 700 }}>批量上传补回 / Bulk Re-upload</div>
-        <div style={{ color: "#475569", fontSize: 12 }}>
-          按缺失清单中的原文件名自动匹配并写回到原路径。支持一次多选上传。
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(280px, 0.8fr)", gap: 14 }}>
+        <form action={recoverUploadsAction} encType="multipart/form-data" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 700 }}>Bulk re-upload / 批量补回附件</div>
+          <div style={{ color: "#475569", fontSize: 12 }}>
+            按缺失清单里的原文件名自动匹配并写回原路径。适合已经从聊天记录、邮箱或本地备份中找回文件后，一次性回填。
+          </div>
+          <input name="files" type="file" multiple />
+          <button type="submit" style={{ width: 220 }}>Upload and restore / 上传并回填</button>
+        </form>
+
+        <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 700 }}>Source workflow guide / 来源工作流指引</div>
+          <div style={{ color: "#475569", fontSize: 13 }}>不同来源的异常需要回到不同的业务页处理。先看来源，再用右侧快捷入口跳回去。</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {(["expense", "package_payment", "partner_payment", "ticket"] as MissingRecord["source"][]).map((source) => {
+              const tone = sourceBadgeColor(source);
+              return (
+                <div key={source} style={{ border: `1px solid ${tone.border}`, background: tone.bg, color: tone.fg, borderRadius: 12, padding: 10, display: "grid", gap: 6 }}>
+                  <div style={{ fontWeight: 700 }}>{sourceLabel(source)}</div>
+                  <Link href={sourceWorkflowHref(source)} style={{ color: tone.fg }}>
+                    {sourceWorkflowLabel(source)}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <input name="files" type="file" multiple />
-        <button type="submit" style={{ width: 220 }}>上传并自动回填</button>
-      </form>
+      </div>
 
       <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>缺失明细（前60条）</div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontWeight: 700 }}>
+            Missing file detail / 缺失明细
+            <span style={{ color: "#64748b", fontWeight: 500 }}>（showing {Math.min(filteredMissing.length, 80)} / {filteredMissing.length}）</span>
+          </div>
+          {sourceFilter !== "ALL" ? <Link href="/admin/recovery/uploads">Show all sources / 查看全部来源</Link> : null}
+        </div>
         <div style={{ maxHeight: 420, overflow: "auto" }}>
           <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
@@ -225,18 +398,36 @@ export default async function AdminRecoveryUploadsPage({
                 <th align="left">归属</th>
                 <th align="left">路径</th>
                 <th align="left">文件名</th>
+                <th align="left">下一步</th>
               </tr>
             </thead>
             <tbody>
-              {missing.slice(0, 60).map((m, idx) => (
+              {filteredMissing.slice(0, 80).map((m, idx) => {
+                const tone = sourceBadgeColor(m.source);
+                return (
                 <tr key={`${m.relPath}-${idx}`} style={{ borderTop: "1px solid #e2e8f0" }}>
-                  <td>{m.source}</td>
+                  <td>
+                    <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, border: `1px solid ${tone.border}`, background: tone.bg, color: tone.fg, fontSize: 12 }}>
+                      {sourceLabel(m.source)}
+                    </span>
+                  </td>
                   <td>{m.refNo || "-"}</td>
                   <td>{m.owner || "-"}</td>
                   <td style={{ fontFamily: "monospace", fontSize: 12 }}>{m.relPath}</td>
                   <td style={{ fontFamily: "monospace", fontSize: 12 }}>{path.basename(m.relPath)}</td>
+                  <td>
+                    <Link href={sourceWorkflowHref(m.source, m)}>{sourceWorkflowLabel(m.source)}</Link>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
+              {filteredMissing.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 18, color: "#166534", background: "#f0fdf4" }}>
+                    当前筛选下没有缺失附件。可以回到原工作流继续处理，或切换其他来源查看。
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

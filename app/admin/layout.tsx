@@ -52,6 +52,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
+  if (matchesPath(pathname, "/admin/recovery/uploads")) return t(lang, "Attachment Health Desk", "附件异常工作台");
   return t(lang, "Admin Workspace", "管理工作台");
 }
 
@@ -68,6 +69,13 @@ function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFina
       lang,
       "Start with today's attendance and overdue follow-ups, then open system checks only if something looks off.",
       "先处理今天点名和超时跟进，再在有异常时打开系统巡检。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/recovery/uploads")) {
+    return t(
+      lang,
+      "Use this desk to spot missing files, then jump back into the right workflow without rebuilding context.",
+      "先在这里定位缺失附件，再直接跳回对应工作流，不要重新拼上下文。"
     );
   }
   return t(
@@ -110,6 +118,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/reports/audit-logs" ||
     pathname === "/admin/expense-claims" ||
     pathname === "/admin/receipts-approvals" ||
+    pathname === "/admin/recovery/uploads" ||
     (pathname.startsWith("/admin/packages/") && pathname.endsWith("/billing"));
 
   if (isFinance && !financeAllowedPath) {
@@ -170,6 +179,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
         { href: "/admin/receipts-approvals", label: t(lang, "Receipt Approvals", "收据审批"), tone: "warning" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
+        { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
         { href: "/admin/reports/undeducted-completed", label: t(lang, "Undeducted Completed", "已完成未减扣"), tone: "danger" as const },
       ],
     },
