@@ -381,19 +381,21 @@ async function uploadPaymentRecordAction(formData: FormData) {
   }
   const packageId = String(formData.get("packageId") ?? "").trim();
   if (!packageId) redirect("/admin/receipts-approvals?err=Missing+package+id");
+  const fallbackHref = withQuery("/admin/receipts-approvals", packageId);
+  const actionHref = resolveActionHref(formData, fallbackHref);
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
     include: { student: true },
   });
-  if (!pkg) redirect(withQuery("/admin/receipts-approvals?err=Package+not+found", packageId));
+  if (!pkg) redirect(appendResultParam(actionHref, "err", "Package not found"));
 
   const file = formData.get("paymentProof");
   if (!(file instanceof File) || !file.size) {
-    redirect(withQuery("/admin/receipts-approvals?err=Please+choose+a+file", packageId));
+    redirect(appendResultParam(actionHref, "err", "Please choose a file"));
   }
   if (file.size > 10 * 1024 * 1024) {
-    redirect(withQuery("/admin/receipts-approvals?err=File+too+large+(max+10MB)", packageId));
+    redirect(appendResultParam(actionHref, "err", "File too large (max 10MB)"));
   }
 
   const stored = await storeBusinessUpload(file, {
@@ -423,12 +425,12 @@ async function uploadPaymentRecordAction(formData: FormData) {
         uploadedBy: admin.email,
       });
       await deleteStoredBusinessFile(oldItem.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
-      redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+replaced", packageId));
+      redirect(appendResultParam(actionHref, "msg", "Payment record replaced"));
     } catch (e) {
       if (isNextRedirectError(e)) throw e;
       await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
       const msg = e instanceof Error ? e.message : "Replace payment record failed";
-      redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+      redirect(appendResultParam(actionHref, "err", msg));
     }
   }
 
@@ -445,7 +447,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
     uploadedBy: admin.email,
   });
 
-  redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+uploaded", packageId));
+  redirect(appendResultParam(actionHref, "msg", "Payment record uploaded"));
 }
 
 async function deletePaymentRecordAction(formData: FormData) {
@@ -456,17 +458,19 @@ async function deletePaymentRecordAction(formData: FormData) {
   }
   const packageId = String(formData.get("packageId") ?? "").trim();
   const recordId = String(formData.get("recordId") ?? "").trim();
+  const fallbackHref = withQuery("/admin/receipts-approvals", packageId);
+  const actionHref = resolveActionHref(formData, fallbackHref);
   if (!packageId || !recordId) {
-    redirect(withQuery("/admin/receipts-approvals?err=Missing+payment+record+id", packageId));
+    redirect(appendResultParam(actionHref, "err", "Missing payment record id"));
   }
   try {
     const row = await deleteParentPaymentRecord({ recordId, actorEmail: admin.email });
     await deleteStoredBusinessFile(row.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete payment record failed";
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+    redirect(appendResultParam(actionHref, "err", msg));
   }
-  redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+deleted", packageId));
+  redirect(appendResultParam(actionHref, "msg", "Payment record deleted"));
 }
 
 async function createReceiptAction(formData: FormData) {
@@ -477,12 +481,14 @@ async function createReceiptAction(formData: FormData) {
   }
   const packageId = String(formData.get("packageId") ?? "").trim();
   if (!packageId) redirect("/admin/receipts-approvals?err=Missing+package+id");
+  const fallbackHref = withQuery("/admin/receipts-approvals", packageId);
+  const actionHref = resolveActionHref(formData, fallbackHref);
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
     include: { student: true, course: true },
   });
-  if (!pkg) redirect(withQuery("/admin/receipts-approvals?err=Package+not+found", packageId));
+  if (!pkg) redirect(appendResultParam(actionHref, "err", "Package not found"));
 
   const amount = parseNum(formData.get("amount"), 0);
   const gstAmount = parseNum(formData.get("gstAmount"), 0);
@@ -492,22 +498,22 @@ async function createReceiptAction(formData: FormData) {
   const amountReceived = Number.isFinite(amountReceivedRaw) ? amountReceivedRaw : totalAmount;
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
   if (!invoiceId) {
-    redirect(withQuery("/admin/receipts-approvals?err=Please+select+an+invoice+for+this+receipt", packageId));
+    redirect(appendResultParam(actionHref, "err", "Please select an invoice for this receipt"));
   }
   const linkedInvoice = await getParentInvoiceById(invoiceId);
   if (!linkedInvoice) {
-    redirect(withQuery("/admin/receipts-approvals?err=Selected+invoice+not+found", packageId));
+    redirect(appendResultParam(actionHref, "err", "Selected invoice not found"));
   }
   const billing = await listParentBillingForPackage(packageId);
   const hasAnyPaymentRecords = billing.paymentRecords.length > 0;
   const paymentRecordId = String(formData.get("paymentRecordId") ?? "").trim() || null;
   if (hasAnyPaymentRecords && !paymentRecordId) {
-    redirect(withQuery("/admin/receipts-approvals?err=Please+select+a+payment+record+before+creating+receipt", packageId));
+    redirect(appendResultParam(actionHref, "err", "Please select a payment record before creating receipt"));
   }
   if (paymentRecordId) {
     const paymentRecord = await getParentPaymentRecordById(paymentRecordId);
     if (!paymentRecord || paymentRecord.packageId !== packageId) {
-      redirect(withQuery("/admin/receipts-approvals?err=Selected+payment+record+not+found+for+this+package", packageId));
+      redirect(appendResultParam(actionHref, "err", "Selected payment record not found for this package"));
     }
   }
   const receiptNoInput = String(formData.get("receiptNo") ?? "").trim();
@@ -517,16 +523,16 @@ async function createReceiptAction(formData: FormData) {
       receiptNo = await buildParentReceiptNoForInvoice(invoiceId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to generate receipt no";
-      redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+      redirect(appendResultParam(actionHref, "err", msg));
     }
   }
   const receivedFrom = String(formData.get("receivedFrom") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
   if (!receivedFrom) {
-    redirect(withQuery("/admin/receipts-approvals?err=Received+From+is+required", packageId));
+    redirect(appendResultParam(actionHref, "err", "Received From is required"));
   }
   if (!paidBy) {
-    redirect(withQuery("/admin/receipts-approvals?err=Paid+By+is+required", packageId));
+    redirect(appendResultParam(actionHref, "err", "Paid By is required"));
   }
 
   try {
@@ -550,10 +556,10 @@ async function createReceiptAction(formData: FormData) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create receipt failed";
-    redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
+    redirect(appendResultParam(actionHref, "err", msg));
   }
 
-  redirect(withQuery("/admin/receipts-approvals?msg=Receipt+created", packageId));
+  redirect(appendResultParam(actionHref, "msg", "Receipt created"));
 }
 
 async function managerApproveReceiptAction(formData: FormData) {
@@ -929,6 +935,10 @@ export default async function ReceiptsApprovalsPage({
     q.set("step", step);
     return `/admin/receipts-approvals?${q.toString()}`;
   };
+  const selectedRepairReturnHref =
+    selectedType && selectedId
+      ? selectedReviewHref
+      : stepHref(workflowStep === "upload" ? "records" : workflowStep);
   const queueFilterHref = (
     filter: "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE"
   ) => {
@@ -1413,6 +1423,15 @@ export default async function ReceiptsApprovalsPage({
               "你现在正在处理单个课包。请使用下方工作区上传凭证、查看记录并创建收据。处理完成后再返回统一收据队列。"
             )}
           </div>
+          {selectedType && selectedId ? (
+            <div style={{ color: "#1d4ed8", fontSize: 13 }}>
+              {t(
+                lang,
+                "Repair actions in this workspace will return you to the selected receipt review item.",
+                "在这个工作区里的修复操作完成后，会自动带你回到当前选中的收据审核项。"
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
@@ -1572,6 +1591,7 @@ export default async function ReceiptsApprovalsPage({
                 style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginTop: 8 }}
               >
                 <input type="hidden" name="packageId" value={packageIdFilter} />
+                <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 8 }}>
                   <label>Payment Proof
                     <input
@@ -1693,6 +1713,7 @@ export default async function ReceiptsApprovalsPage({
                               <form action={deletePaymentRecordAction}>
                                 <input type="hidden" name="packageId" value={packageIdFilter} />
                                 <input type="hidden" name="recordId" value={r.id} />
+                                <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
                                 <button type="submit">{t(lang, "Delete", "删除")}</button>
                               </form>
                             </td>
@@ -1721,6 +1742,9 @@ export default async function ReceiptsApprovalsPage({
                 {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
                 <input type="hidden" name="step" value="create" />
                 {queueFilter !== "ALL" ? <input type="hidden" name="queueFilter" value={queueFilter} /> : null}
+                {queueBucket !== "ALL" ? <input type="hidden" name="queueBucket" value={queueBucket} /> : null}
+                {selectedType ? <input type="hidden" name="selectedType" value={selectedType} /> : null}
+                {selectedId ? <input type="hidden" name="selectedId" value={selectedId} /> : null}
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{t(lang, "Smart fill source", "智能带入来源")}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(200px, 1fr))", gap: 8 }}>
                   <label>{t(lang, "Invoice", "发票")}
@@ -1746,6 +1770,7 @@ export default async function ReceiptsApprovalsPage({
               </form>
               <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginTop: 8 }}>
               <input type="hidden" name="packageId" value={packageIdFilter} />
+              <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
                 <label>{t(lang, "Source Invoice", "来源发票")}
                   <select name="invoiceId" defaultValue={selectedCreateInvoice?.id ?? ""} required style={{ width: "100%" }}>

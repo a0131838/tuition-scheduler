@@ -96,6 +96,41 @@ export default async function TeacherSessionDetailPage({
     session.attendances.length > 0
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
       : null;
+  const feedbackStateLabel = feedback
+    ? feedback.isProxyDraft
+      ? t(lang, "Admin draft waiting for your update", "教务代填草稿等待你补全")
+      : feedback.status === "LATE"
+        ? t(lang, "Feedback submitted late", "反馈已提交，状态为迟交")
+        : t(lang, "Feedback submitted on time", "反馈已按时提交")
+    : feedbackOverdue
+      ? t(lang, "Feedback is overdue and still not submitted", "反馈已超时，且尚未提交")
+      : t(lang, "Feedback not submitted yet", "反馈尚未提交");
+  const nextActionTitle =
+    pendingAttendanceCount > 0
+      ? t(lang, "Finish attendance before anything else", "先把点名补齐")
+      : feedback
+        ? feedback.isProxyDraft
+          ? t(lang, "Review the draft and resubmit it yourself", "检查草稿并由你重新提交")
+          : t(lang, "Double-check feedback details if you need to revise", "如需修改，可先复核当前反馈内容")
+        : t(lang, "Attendance is done, so submit after-class feedback next", "点名已完成，下一步提交课后反馈");
+  const nextActionDetail =
+    pendingAttendanceCount > 0
+      ? t(
+          lang,
+          `${pendingAttendanceCount} students are still unmarked. Save attendance first so the rest of the page becomes simpler to scan.`,
+          `还有 ${pendingAttendanceCount} 位学生未点名。先保存点名，下面的页面状态会更清晰。`
+        )
+      : feedback
+        ? t(
+            lang,
+            "You already have a feedback record on this session. Use the form below only if you need to update what was submitted.",
+            "这节课已经有一条反馈记录。只有在需要补充或修订时，才继续编辑下方表单。"
+          )
+        : t(
+            lang,
+            "Move to the feedback section now and record class performance, homework, and any follow-up points.",
+            "现在可以进入反馈区，补充课堂表现、作业和后续跟进点。"
+          );
 
   const msg = decode(sp?.msg);
   const err = decode(sp?.err);
@@ -168,6 +203,81 @@ export default async function TeacherSessionDetailPage({
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 800, color: "#0369a1", letterSpacing: 0.2 }}>
+            {t(lang, "Attendance status", "点名状态")}
+          </div>
+          <div style={{ fontWeight: 700 }}>
+            {pendingAttendanceCount > 0
+              ? t(lang, `${attendanceDoneCount}/${attendanceRows.length} students marked`, `已点名 ${attendanceDoneCount}/${attendanceRows.length} 位学生`)
+              : t(lang, `All ${attendanceDoneCount} students marked`, `已完成全部 ${attendanceDoneCount} 位学生点名`)}
+          </div>
+          <div style={{ color: "#0f172a", fontSize: 13 }}>
+            {lastAttendanceSavedAt
+              ? `${t(lang, "Last attendance save", "最近点名保存")}: ${formatBusinessDateTime(lastAttendanceSavedAt)}`
+              : t(lang, "Attendance has not been saved yet on this session.", "这节课的点名还没有保存过。")}
+          </div>
+          <a href="#attendance">{t(lang, "Jump to attendance", "跳到点名区")}</a>
+        </div>
+        <div
+          style={{
+            border: "1px solid #ddd6fe",
+            background: "#f5f3ff",
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9", letterSpacing: 0.2 }}>
+            {t(lang, "Feedback status", "反馈状态")}
+          </div>
+          <div style={{ fontWeight: 700 }}>{feedbackStateLabel}</div>
+          <div style={{ color: "#0f172a", fontSize: 13 }}>
+            {feedback
+              ? `${t(lang, "Last saved", "最近保存")}: ${formatBusinessDateTime(new Date(feedback.submittedAt))}`
+              : `${t(lang, "Deadline", "截止")}: ${formatBusinessDateTime(deadline)}`}
+          </div>
+          <a href="#feedback">{t(lang, "Jump to feedback", "跳到反馈区")}</a>
+        </div>
+        <div
+          style={{
+            border: pendingAttendanceCount > 0 ? "1px solid #fdba74" : "1px solid #86efac",
+            background: pendingAttendanceCount > 0 ? "#fff7ed" : "#f0fdf4",
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: pendingAttendanceCount > 0 ? "#c2410c" : "#166534", letterSpacing: 0.2 }}>
+            {t(lang, "Next action", "下一步")}
+          </div>
+          <div style={{ fontWeight: 700 }}>{nextActionTitle}</div>
+          <div style={{ color: "#0f172a", fontSize: 13 }}>{nextActionDetail}</div>
+          <a href={pendingAttendanceCount > 0 ? "#attendance" : "#feedback"}>
+            {pendingAttendanceCount > 0 ? t(lang, "Go finish attendance", "去完成点名") : t(lang, "Go write feedback", "去填写反馈")}
+          </a>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          marginBottom: 16,
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid #bae6fd",
+            background: "#f0f9ff",
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#0369a1", letterSpacing: 0.2 }}>
             {t(lang, "Step 1", "步骤 1")}
           </div>
           <div style={{ fontWeight: 700 }}>{t(lang, "Finish attendance first", "先完成点名")}</div>
@@ -209,7 +319,7 @@ export default async function TeacherSessionDetailPage({
         </div>
       </div>
 
-      <h3>{t(lang, "Attendance", "点名")}</h3>
+      <h3 id="attendance">{t(lang, "Attendance", "点名")}</h3>
       <TeacherAttendanceClient
         sessionId={session.id}
         initialRows={attendanceRows}
@@ -223,7 +333,7 @@ export default async function TeacherSessionDetailPage({
         }}
       />
 
-      <h3 style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
+      <h3 id="feedback" style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
       {pendingAttendanceCount > 0 ? (
         <div
           style={{

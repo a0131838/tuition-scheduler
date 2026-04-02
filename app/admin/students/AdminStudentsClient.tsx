@@ -91,6 +91,7 @@ export default function AdminStudentsClient({
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("adminStudentsPreferredView", currentView);
+    document.cookie = `adminStudentsPreferredView=${encodeURIComponent(currentView)}; path=/; max-age=31536000; SameSite=Lax`;
   }, [currentView]);
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import AdminStudentsClient from "./AdminStudentsClient";
 import {
   workbenchFilterPanelStyle,
@@ -9,6 +10,8 @@ import {
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 const PARTNER_TYPE_NAME = "合作方学生";
+const STUDENT_VIEW_COOKIE = "adminStudentsPreferredView";
+type StudentView = "today" | "today_partner" | "all";
 
 const GRADE_OPTIONS = [
   "G1",
@@ -36,6 +39,10 @@ const GRADE_OPTIONS = [
 
 function first(v?: string | string[]) {
   return Array.isArray(v) ? v[0] ?? "" : v ?? "";
+}
+
+function normalizeStudentView(value: string): StudentView {
+  return value === "all" || value === "today_partner" ? value : "today";
 }
 
 function getSingaporeDayBounds(now = new Date()) {
@@ -72,7 +79,13 @@ export default async function StudentsPage({
   const q = first(sp?.q).trim();
   const requestedView = first(sp?.view).trim();
   const hasExplicitView = requestedView.length > 0;
-  const view = requestedView === "all" || requestedView === "today_partner" ? requestedView : "today";
+  const cookieStore = await cookies();
+  const canResumeRememberedView = !hasExplicitView && !sourceChannelId && !studentTypeId && !q;
+  const rememberedView = canResumeRememberedView
+    ? normalizeStudentView(cookieStore.get(STUDENT_VIEW_COOKIE)?.value ?? "")
+    : "today";
+  const view = hasExplicitView ? normalizeStudentView(requestedView) : rememberedView;
+  const resumedRememberedView = canResumeRememberedView && rememberedView !== "today";
   const requestedPage = Math.max(1, Number.parseInt(first(sp?.page) || "1", 10) || 1);
   const pageSizeRaw = Number.parseInt(first(sp?.pageSize) || "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
@@ -158,6 +171,12 @@ export default async function StudentsPage({
     view === "today_partner"
       ? t(lang, "Today Partner Intake", "今日合作方新增")
       : view === "all"
+        ? t(lang, "All Students", "全部学生")
+        : t(lang, "Today New Students", "今日新增");
+  const rememberedViewLabel =
+    rememberedView === "today_partner"
+      ? t(lang, "Today Partner Intake", "今日合作方新增")
+      : rememberedView === "all"
         ? t(lang, "All Students", "全部学生")
         : t(lang, "Today New Students", "今日新增");
 
@@ -337,6 +356,33 @@ export default async function StudentsPage({
           </a>
         </div>
       </div>
+
+      {resumedRememberedView ? (
+        <div
+          style={{
+            ...workbenchInfoBarStyle,
+            marginTop: 10,
+            marginBottom: 10,
+            borderColor: "#c7d2fe",
+            background: "#eef2ff",
+            color: "#3730a3",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last queue", "已恢复你上次使用的队列")}</div>
+            <div style={{ fontSize: 13 }}>
+              {t(
+                lang,
+                `You came back without an explicit view filter, so this desk reopened ${rememberedViewLabel}.`,
+                `你这次没有显式指定视图，所以工作台自动恢复到了 ${rememberedViewLabel}。`
+              )}
+            </div>
+          </div>
+          <a href={buildPageHref(1, "today")} style={{ fontWeight: 700 }}>
+            {t(lang, "Switch to today queue", "切回今日队列")}
+          </a>
+        </div>
+      ) : null}
 
       {showEmptyQueueCta ? (
         <div

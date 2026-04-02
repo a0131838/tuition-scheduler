@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r06
+
+- Release ID: `2026-04-02-r06`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Tighten finance repair-loop navigation, restore remembered student queues on first paint, and add clearer teacher session status summaries.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `app/admin/students/AdminStudentsClient.tsx`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-repair-loop-and-queue-resume.md`
+- Risk impact (if any): Low. This ship only adjusts navigation return paths, remembered-view presentation, and teacher page summaries; no approval order, receipt creation rules, student data rules, attendance submission logic, or feedback submission logic changed.
+- Verification:
+  - `npm run build` passed
+  - local logged-in QA confirmed admin students restores the remembered queue on first render and shows the new resume banner / `Switch to today queue` escape hatch when no explicit `view` is provided
+  - local logged-in QA confirmed admin receipt approvals package workspace now carries `nextHref` through upload/delete/create repair flows and keeps the selected receipt return path visible
+  - local logged-in QA confirmed teacher session detail now shows `Attendance status / Feedback status / Next action` summary cards while preserving the existing `Step 1 / Step 2` guidance
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
+- Rollback point: previous production commit before `2026-04-02-r06`.
+
 ## 2026-04-02-r05
 
 - Release ID: `2026-04-02-r05`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r05` (finance attachment repair path).
+- Current release line on this branch: `2026-04-02-r06` (repair-loop return path and queue-resume follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-02-r06 Deployed
+
+- Scope: finance repair-loop return-path follow-up plus remembered admin student queues and clearer teacher session status summaries.
+- Business impact:
+  - admin receipt approvals now keeps finance users anchored to the selected receipt review item while they repair proofs or create receipts inside package workspace
+  - admin students can now reopen their remembered queue on first paint instead of briefly landing on the default queue first, with an explicit `Switch to today queue` escape hatch
+  - teacher session detail now surfaces attendance status, feedback status, and the next recommended action before the existing step cards
+  - no approval order, receipt creation rule, student CRUD logic, attendance save behavior, or feedback submission rule changed
+- Validation:
+  - `npm run build`
+  - local logged-in QA confirmed admin students remembered-queue resume and escape hatch
+  - local logged-in QA confirmed admin receipt approvals repair workspace carries return context through repair actions
+  - local logged-in QA confirmed teacher session detail shows the new summary cards and jump links while keeping `Step 1 / Step 2`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-02-r05 Deployed
 
