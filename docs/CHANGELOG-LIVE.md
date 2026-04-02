@@ -51,6 +51,7 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - `npm run audit:upload-integrity` was run locally; high missing counts were confirmed as local-environment file-disk mismatch, not a regression in the new helper
   - helper smoke check passed for `expense_claim / payment_proof / partner_payment_proof / shared_docs_local / tickets` store-read-delete cycle
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
   - logged-in live QA confirmed:
     - `/api/expense-claims/[id]/receipt` returns `200`
     - `/api/admin/parent-payment-records/[id]/file` returns `200`

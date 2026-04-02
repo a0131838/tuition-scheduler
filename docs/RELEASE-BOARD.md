@@ -72,13 +72,13 @@
   - `npm run build`
   - `npm run audit:upload-integrity` on local workspace only highlighted missing production uploads on the local machine; this was confirmed as environment mismatch, not a helper regression
   - local helper smoke cycle passed for store/read/delete across all currently wired prefixes
+  - quick deploy completed on `feat/strict-superadmin-availability-bypass` and the post-deploy startup check confirmed branch alignment plus `admin/login -> 200`
   - logged-in live QA confirmed real attachment endpoints still return `200` or trigger the expected file-download flow for:
     - expense claim receipt route
     - parent payment proof route
     - partner payment proof static upload path
     - shared-doc download route
     - ticket attachment route
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-03-31-r3 Ready For Deploy
 

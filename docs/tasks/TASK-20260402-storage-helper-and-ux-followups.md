@@ -95,3 +95,4 @@ Ship a low-risk follow-up release that improves attachment triage and page guida
 - Release ID: `2026-04-02-r04`
 - Risk: medium-low
 - Rollback: revert this release if any uploaded attachment type stops opening, downloading, or being detected correctly
+- Post-deploy closeout: `quick_deploy.sh` finished successfully, `new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `feat/strict-superadmin-availability-bypass`, and `https://sgtmanage.com/admin/login` returned `200`
