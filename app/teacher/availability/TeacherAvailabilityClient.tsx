@@ -89,6 +89,17 @@ function buildCalendarDays(start: Date, end: Date) {
   return days;
 }
 
+function addDays(ymdValue: string, days: number) {
+  const [y, m, d] = ymdValue.split("-").map(Number);
+  const date = new Date(y, (m || 1) - 1, d || 1);
+  date.setDate(date.getDate() + days);
+  return ymd(date);
+}
+
+function overlapsMinutes(startMin: number, endMin: number, otherStartMin: number, otherEndMin: number) {
+  return startMin < otherEndMin && otherStartMin < endMin;
+}
+
 async function fetchTextIfNotOk(res: Response) {
   if (res.ok) return "";
   const t = await res.text().catch(() => "");
@@ -107,6 +118,17 @@ export default function TeacherAvailabilityClient(props: {
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [quickFormPreset, setQuickFormPreset] = useState({ version: 0, date: "", start: "16:00", end: "20:00" });
+  const [bulkFormPreset, setBulkFormPreset] = useState({
+    version: 0,
+    from: "",
+    to: "",
+    start: "16:00",
+    end: "20:00",
+    weekdays: [1, 2, 3, 4, 5] as number[],
+  });
+  const [copySourceDate, setCopySourceDate] = useState("");
+  const [copyTargetDate, setCopyTargetDate] = useState("");
 
   useEffect(() => {
     setSlots(props.initialSlots);
@@ -147,6 +169,47 @@ export default function TeacherAvailabilityClient(props: {
     return ymd(d);
   }, [today]);
 
+  useEffect(() => {
+    setQuickFormPreset((prev) => ({ ...prev, date: prev.date || todayYMD }));
+    setBulkFormPreset((prev) => ({
+      ...prev,
+      from: prev.from || todayYMD,
+      to: prev.to || in4WeeksYMD,
+    }));
+    setCopySourceDate((prev) => prev || todayYMD);
+    setCopyTargetDate((prev) => prev || addDays(todayYMD, 1));
+  }, [todayYMD, in4WeeksYMD]);
+
+  function loadQuickTemplate(startHHMM: string, endHHMM: string, offsetDays = 0) {
+    setQuickFormPreset((prev) => ({
+      version: prev.version + 1,
+      date: addDays(todayYMD, offsetDays),
+      start: startHHMM,
+      end: endHHMM,
+    }));
+    setMsg(tr(lang, "Quick add template loaded", "单日模板已载入"));
+    setErr("");
+  }
+
+  function loadBulkTemplate(template: {
+    from?: string;
+    to?: string;
+    start: string;
+    end: string;
+    weekdays: number[];
+  }) {
+    setBulkFormPreset((prev) => ({
+      version: prev.version + 1,
+      from: template.from ?? todayYMD,
+      to: template.to ?? in4WeeksYMD,
+      start: template.start,
+      end: template.end,
+      weekdays: template.weekdays,
+    }));
+    setMsg(tr(lang, "Bulk template loaded", "批量模板已载入"));
+    setErr("");
+  }
+
   async function addSingle(date: string, startHHMM: string, endHHMM: string) {
     const startMin = toMin(startHHMM);
     const endMin = toMin(endHHMM);
@@ -163,6 +226,7 @@ export default function TeacherAvailabilityClient(props: {
     if (e) throw new Error(e);
     const data = (await res.json()) as { slot: Slot };
     setSlots((prev) => [...prev, data.slot]);
+    return data.slot;
   }
 
   async function onQuickAdd(e: React.FormEvent<HTMLFormElement>) {
@@ -344,6 +408,64 @@ export default function TeacherAvailabilityClient(props: {
     }
   }
 
+  async function copyDaySlots(sourceDate: string, targetDate: string) {
+    if (sourceDate === targetDate) throw new Error(tr(lang, "Choose a different target day", "请选择不同的目标日期"));
+    const sourceSlots = slotMap.get(sourceDate) ?? [];
+    if (sourceSlots.length === 0) {
+      throw new Error(tr(lang, "No slots on source day", "来源日期没有可复制的时段"));
+    }
+
+    let added = 0;
+    let skipped = 0;
+    const targetWorking = [...(slotMap.get(targetDate) ?? [])].map((slot) => ({
+      startMin: slot.startMin,
+      endMin: slot.endMin,
+    }));
+
+    for (const slot of sourceSlots) {
+      const duplicateOrOverlap = targetWorking.some((existing) =>
+        overlapsMinutes(slot.startMin, slot.endMin, existing.startMin, existing.endMin)
+      );
+      if (duplicateOrOverlap) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await addSingle(targetDate, fromMin(slot.startMin), fromMin(slot.endMin));
+        targetWorking.push({ startMin: slot.startMin, endMin: slot.endMin });
+        added += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+
+    if (added === 0 && skipped > 0) {
+      throw new Error(tr(lang, "No new slots copied because the target day already overlaps existing availability", "没有复制到新时段，目标日期已存在重叠可上课时间"));
+    }
+    setMsg(
+      tr(
+        lang,
+        `Copied ${added} slot(s) to ${targetDate}${skipped ? `, skipped ${skipped}` : ""}`,
+        `已复制 ${added} 条时段到 ${targetDate}${skipped ? `，跳过 ${skipped} 条` : ""}`
+      )
+    );
+  }
+
+  async function onQuickCopy(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await copyDaySlots(copySourceDate, copyTargetDate);
+    } catch (error: any) {
+      setErr(error?.message ?? String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <h2>{tr(lang, "My Availability", "我的可上课时间")}</h2>
@@ -361,42 +483,103 @@ export default function TeacherAvailabilityClient(props: {
         </div>
       ) : null}
 
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff", display: "grid", gap: 10 }}>
+        <div style={{ fontWeight: 700 }}>{tr(lang, "Common templates", "常用模板")}</div>
+        <div style={{ color: "#64748b", fontSize: 13 }}>
+          {tr(
+            lang,
+            "Load a preset into the quick-add or bulk-add areas first, then adjust only if you need something special.",
+            "先把常用模板载入到单日或批量表单里，再按需要微调，能少点很多次。"
+          )}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          <div style={{ border: "1px solid #dbeafe", borderRadius: 10, padding: 10, background: "#f8fbff", display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>{tr(lang, "Weekday after school", "工作日放学后")}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>Mon-Fri · 16:00-20:00</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => loadBulkTemplate({ start: "16:00", end: "20:00", weekdays: [1, 2, 3, 4, 5] })} disabled={busy}>
+                {tr(lang, "Load to bulk add", "载入批量添加")}
+              </button>
+              <button type="button" onClick={() => loadQuickTemplate("16:00", "20:00")} disabled={busy}>
+                {tr(lang, "Load to single day", "载入单日添加")}
+              </button>
+            </div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", borderRadius: 10, padding: 10, background: "#f8fbff", display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>{tr(lang, "Weekday evening", "工作日晚间")}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>Mon-Fri · 18:00-21:00</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => loadBulkTemplate({ start: "18:00", end: "21:00", weekdays: [1, 2, 3, 4, 5] })} disabled={busy}>
+                {tr(lang, "Load to bulk add", "载入批量添加")}
+              </button>
+              <button type="button" onClick={() => loadQuickTemplate("18:00", "21:00")} disabled={busy}>
+                {tr(lang, "Load to single day", "载入单日添加")}
+              </button>
+            </div>
+          </div>
+          <div style={{ border: "1px solid #dcfce7", borderRadius: 10, padding: 10, background: "#f0fdf4", display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>{tr(lang, "Weekend morning", "周末上午")}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>Sat-Sun · 09:00-12:00</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => loadBulkTemplate({ start: "09:00", end: "12:00", weekdays: [0, 6] })} disabled={busy}>
+                {tr(lang, "Load to bulk add", "载入批量添加")}
+              </button>
+              <button type="button" onClick={() => loadQuickTemplate("09:00", "12:00", 1)} disabled={busy}>
+                {tr(lang, "Load to single day", "载入单日添加")}
+              </button>
+            </div>
+          </div>
+          <div style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fffbeb", display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>{tr(lang, "Weekend afternoon", "周末下午")}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>Sat-Sun · 13:00-18:00</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => loadBulkTemplate({ start: "13:00", end: "18:00", weekdays: [0, 6] })} disabled={busy}>
+                {tr(lang, "Load to bulk add", "载入批量添加")}
+              </button>
+              <button type="button" onClick={() => loadQuickTemplate("13:00", "18:00", 1)} disabled={busy}>
+                {tr(lang, "Load to single day", "载入单日添加")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Quick Add (Single Day)", "快速添加（单日）")}</div>
-        <form onSubmit={onQuickAdd} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input name="date" type="date" required defaultValue={todayYMD} />
-          <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="16:00" />
-          <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" />
+        <form key={`quick-${quickFormPreset.version}`} onSubmit={onQuickAdd} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input name="date" type="date" required defaultValue={quickFormPreset.date || todayYMD} />
+          <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue={quickFormPreset.start} />
+          <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue={quickFormPreset.end} />
           <button type="submit" disabled={busy}>{tr(lang, "Add", "添加")}</button>
         </form>
       </div>
 
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>{tr(lang, "Bulk Add by Date Range", "批量添加（日期区间）")}</div>
-        <form onSubmit={onBulkAdd} style={{ display: "grid", gap: 8 }}>
+        <form key={`bulk-${bulkFormPreset.version}`} onSubmit={onBulkAdd} style={{ display: "grid", gap: 8 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <label>
               {tr(lang, "From", "从")}
-              <input name="from" type="date" required defaultValue={todayYMD} style={{ marginLeft: 6 }} />
+              <input name="from" type="date" required defaultValue={bulkFormPreset.from || todayYMD} style={{ marginLeft: 6 }} />
             </label>
             <label>
               {tr(lang, "To", "到")}
-              <input name="to" type="date" required defaultValue={in4WeeksYMD} style={{ marginLeft: 6 }} />
+              <input name="to" type="date" required defaultValue={bulkFormPreset.to || in4WeeksYMD} style={{ marginLeft: 6 }} />
             </label>
             <label>
               {tr(lang, "Start", "开始")}
-              <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="16:00" style={{ marginLeft: 6 }} />
+              <BlurTimeInput name="start" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue={bulkFormPreset.start} style={{ marginLeft: 6 }} />
             </label>
             <label>
               {tr(lang, "End", "结束")}
-              <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue="20:00" style={{ marginLeft: 6 }} />
+              <BlurTimeInput name="end" min={AVAIL_MIN_TIME} max={AVAIL_MAX_TIME} step={600} required defaultValue={bulkFormPreset.end} style={{ marginLeft: 6 }} />
             </label>
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {WEEKDAYS.map((d) => (
               <label key={d.value} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-                <input type="checkbox" name="weekday" value={String(d.value)} defaultChecked={d.value >= 1 && d.value <= 5} />
+                <input type="checkbox" name="weekday" value={String(d.value)} defaultChecked={bulkFormPreset.weekdays.includes(d.value)} />
                 {tr(lang, d.en, d.zh)}
               </label>
             ))}
@@ -405,6 +588,38 @@ export default function TeacherAvailabilityClient(props: {
           <div>
             <button type="submit" disabled={busy}>{tr(lang, "Bulk Add", "批量添加")}</button>
           </div>
+        </form>
+      </div>
+
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff", display: "grid", gap: 8 }}>
+        <div style={{ fontWeight: 700 }}>{tr(lang, "Quick Copy by Date", "按日期快速复制")}</div>
+        <div style={{ color: "#64748b", fontSize: 13 }}>
+          {tr(
+            lang,
+            "Copy all slots from one day to another day. Existing overlaps on the target day are skipped automatically.",
+            "把某一天的全部时段复制到另一日期。目标日期已有重叠时段时会自动跳过。"
+          )}
+        </div>
+        <form onSubmit={onQuickCopy} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label>
+            {tr(lang, "Source", "来源")}
+            <input type="date" value={copySourceDate} onChange={(e) => setCopySourceDate(e.target.value)} style={{ marginLeft: 6 }} />
+          </label>
+          <label>
+            {tr(lang, "Target", "目标")}
+            <input type="date" value={copyTargetDate} onChange={(e) => setCopyTargetDate(e.target.value)} style={{ marginLeft: 6 }} />
+          </label>
+          <button type="submit" disabled={busy}>{tr(lang, "Copy day slots", "复制当天时段")}</button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setCopySourceDate(todayYMD);
+              setCopyTargetDate(addDays(todayYMD, 7));
+            }}
+          >
+            {tr(lang, "Use today -> +7d", "今天 -> 7天后")}
+          </button>
         </form>
       </div>
 
@@ -473,6 +688,49 @@ export default function TeacherAvailabilityClient(props: {
                         ) : (
                           <div style={{ color: "#cbd5e1", fontSize: 12 }}>{tr(lang, "Out of range", "超范围")}</div>
                         )}
+
+                        {inRange && daySlots.length > 0 ? (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              style={{ fontSize: 11 }}
+                              onClick={async () => {
+                                setBusy(true);
+                                setErr("");
+                                setMsg("");
+                                try {
+                                  await copyDaySlots(key, addDays(key, 1));
+                                } catch (error: any) {
+                                  setErr(error?.message ?? String(error));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              {tr(lang, "Copy +1d", "复制到次日")}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              style={{ fontSize: 11 }}
+                              onClick={async () => {
+                                setBusy(true);
+                                setErr("");
+                                setMsg("");
+                                try {
+                                  await copyDaySlots(key, addDays(key, 7));
+                                } catch (error: any) {
+                                  setErr(error?.message ?? String(error));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              {tr(lang, "Copy +7d", "复制到下周")}
+                            </button>
+                          </div>
+                        ) : null}
 
                         {inRange && daySlots.length > 0 ? (
                           <details style={{ marginTop: 2 }}>

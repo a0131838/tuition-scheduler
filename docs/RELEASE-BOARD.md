@@ -1010,3 +1010,13 @@
   - no student edit logic, quick-schedule logic, attendance filter logic, package/billing logic, or session action logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r20 Deployed
+
+- Scope: speed up teacher availability editing with reusable templates and quick date-copy actions.
+- Business impact:
+  - `/teacher/availability` now provides common templates that can preload either quick-add or bulk-add forms for common weekday/weekend patterns
+  - the page now supports quick date-to-date copy plus one-click `Copy +1d` and `Copy +7d` actions directly from calendar days that already have slots
+  - no availability overlap rules, clear-day behavior, undo behavior, or slot save/delete APIs changed
+- Validation:
+  - `npm run build`

@@ -1932,3 +1932,20 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - fresh local logged-in QA on `http://127.0.0.1:3322` confirmed the student detail page renders the new `Student workbench`, exposes `Back to action bar`, and includes the new `#enrollments`, `#quick-schedule`, and `#edit-student` anchors
 - Rollback point: previous production commit before `2026-04-02-r19`.
+
+## 2026-04-02-r20
+
+- Release ID: `2026-04-02-r20`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add reusable templates plus quick date-copy actions to teacher availability.
+- Key files:
+  - `app/teacher/availability/TeacherAvailabilityClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-teacher-availability-templates-and-copy.md`
+- Risk impact (if any): Low. This is a teacher-side availability interaction pass only; availability overlap rules, clear-day rules, undo rules, and slot save/delete APIs remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3323` confirmed `/teacher/availability` renders `Common templates`, `Quick Copy by Date`, `Copy +1d`, and `Copy +7d`
+- Rollback point: previous production commit before `2026-04-02-r20`.
