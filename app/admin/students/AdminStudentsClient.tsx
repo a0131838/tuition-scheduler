@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -25,8 +25,6 @@ type StudentRow = {
   unpaidCount: number;
 };
 
-type StudentView = "today" | "today_partner" | "all";
-
 function sortStudents(rows: StudentRow[]) {
   return [...rows].sort((a, b) => {
     const createdDiff = +new Date(b.createdAt) - +new Date(a.createdAt);
@@ -40,16 +38,14 @@ export default function AdminStudentsClient({
   sources,
   types,
   gradeOptions,
-  currentView,
-  hasExplicitView,
+  hasExplicitContext,
   labels,
 }: {
   initialStudents: StudentRow[];
   sources: SourceOption[];
   types: TypeOption[];
   gradeOptions: string[];
-  currentView: StudentView;
-  hasExplicitView: boolean;
+  hasExplicitContext: boolean;
   labels: {
     add: string;
     addStudent: string;
@@ -78,7 +74,6 @@ export default function AdminStudentsClient({
   };
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [students, setStudents] = useState<StudentRow[]>(initialStudents);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -87,29 +82,6 @@ export default function AdminStudentsClient({
   useEffect(() => {
     setStudents(initialStudents);
   }, [initialStudents]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("adminStudentsPreferredView", currentView);
-    document.cookie = `adminStudentsPreferredView=${encodeURIComponent(currentView)}; path=/; max-age=31536000; SameSite=Lax`;
-  }, [currentView]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (hasExplicitView) return;
-    const hasScopedFilters = Boolean(
-      searchParams.get("q") || searchParams.get("sourceChannelId") || searchParams.get("studentTypeId")
-    );
-    if (hasScopedFilters) return;
-    const preferredView = window.localStorage.getItem("adminStudentsPreferredView");
-    if (preferredView !== "today" && preferredView !== "today_partner" && preferredView !== "all") return;
-    if (preferredView === currentView) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", preferredView);
-    params.delete("page");
-    const nextQuery = params.toString();
-    router.replace(nextQuery ? `/admin/students?${nextQuery}` : "/admin/students");
-  }, [currentView, hasExplicitView, router, searchParams]);
 
   const formatId = useMemo(
     () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
@@ -201,7 +173,7 @@ export default function AdminStudentsClient({
               ? labels.noStudents
               : `${students.length} ${labels.name} / ${labels.school} / ${labels.type}`}
           </div>
-          {!hasExplicitView ? (
+          {!hasExplicitContext ? (
             <div style={{ color: "#94a3b8", fontSize: 12 }}>{labels.rememberedViewHint}</div>
           ) : null}
         </div>

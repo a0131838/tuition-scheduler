@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { cookies } from "next/headers";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import AdminStudentsClient from "./AdminStudentsClient";
 import {
   workbenchFilterPanelStyle,
@@ -45,6 +46,49 @@ function normalizeStudentView(value: string): StudentView {
   return value === "all" || value === "today_partner" ? value : "today";
 }
 
+function normalizeStudentPageSize(value: string) {
+  return value === "50" || value === "100" ? value : "20";
+}
+
+function parseRememberedStudentDesk(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  if (!normalizedRaw.includes("=")) {
+    return {
+      view: normalizeStudentView(normalizedRaw),
+      sourceChannelId: "",
+      studentTypeId: "",
+      q: "",
+      pageSize: "20",
+      value: normalizeStudentView(normalizedRaw) === "today" ? "" : `view=${normalizeStudentView(normalizedRaw)}`,
+    };
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const view = normalizeStudentView(String(params.get("view") ?? "").trim());
+  const sourceChannelId = String(params.get("sourceChannelId") ?? "").trim();
+  const studentTypeId = String(params.get("studentTypeId") ?? "").trim();
+  const q = String(params.get("q") ?? "").trim();
+  const pageSize = normalizeStudentPageSize(String(params.get("pageSize") ?? "").trim());
+  const normalized = new URLSearchParams();
+  if (view !== "today") normalized.set("view", view);
+  if (sourceChannelId) normalized.set("sourceChannelId", sourceChannelId);
+  if (studentTypeId) normalized.set("studentTypeId", studentTypeId);
+  if (q) normalized.set("q", q);
+  if (pageSize !== "20") normalized.set("pageSize", pageSize);
+  return {
+    view,
+    sourceChannelId,
+    studentTypeId,
+    q,
+    pageSize,
+    value: normalized.toString(),
+  };
+}
+
 function getSingaporeDayBounds(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
@@ -76,18 +120,42 @@ export default async function StudentsPage({
   const sp = await searchParams;
   const sourceChannelId = first(sp?.sourceChannelId);
   const studentTypeId = first(sp?.studentTypeId);
-  const q = first(sp?.q).trim();
+  const qParam = first(sp?.q).trim();
   const requestedView = first(sp?.view).trim();
   const hasExplicitView = requestedView.length > 0;
+  const requestedPageSize = first(sp?.pageSize).trim();
   const cookieStore = await cookies();
-  const canResumeRememberedView = !hasExplicitView && !sourceChannelId && !studentTypeId && !q;
-  const rememberedView = canResumeRememberedView
-    ? normalizeStudentView(cookieStore.get(STUDENT_VIEW_COOKIE)?.value ?? "")
-    : "today";
-  const view = hasExplicitView ? normalizeStudentView(requestedView) : rememberedView;
-  const resumedRememberedView = canResumeRememberedView && rememberedView !== "today";
+  const canResumeRememberedDesk =
+    !hasExplicitView && !sourceChannelId && !studentTypeId && !qParam && !requestedPageSize;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedStudentDesk(cookieStore.get(STUDENT_VIEW_COOKIE)?.value ?? "")
+    : {
+        view: "today" as StudentView,
+        sourceChannelId: "",
+        studentTypeId: "",
+        q: "",
+        pageSize: "20",
+        value: "",
+      };
+  const q = qParam || rememberedDesk.q;
+  const resolvedSourceChannelId = sourceChannelId || rememberedDesk.sourceChannelId;
+  const resolvedStudentTypeId = studentTypeId || rememberedDesk.studentTypeId;
+  const view = hasExplicitView ? normalizeStudentView(requestedView) : rememberedDesk.view;
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (view !== "today") params.set("view", view);
+    if (resolvedSourceChannelId) params.set("sourceChannelId", resolvedSourceChannelId);
+    if (resolvedStudentTypeId) params.set("studentTypeId", resolvedStudentTypeId);
+    if (q) params.set("q", q);
+    const normalizedPageSize = normalizeStudentPageSize(requestedPageSize || rememberedDesk.pageSize);
+    if (normalizedPageSize !== "20") params.set("pageSize", normalizedPageSize);
+    return params.toString();
+  })();
+  const hasExplicitContext =
+    hasExplicitView || Boolean(sourceChannelId || studentTypeId || qParam || requestedPageSize);
   const requestedPage = Math.max(1, Number.parseInt(first(sp?.page) || "1", 10) || 1);
-  const pageSizeRaw = Number.parseInt(first(sp?.pageSize) || "20", 10);
+  const pageSizeRaw = Number.parseInt(requestedPageSize || rememberedDesk.pageSize || "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
   const { start: todayStart, end: todayEnd } = getSingaporeDayBounds();
 
@@ -100,8 +168,8 @@ export default async function StudentsPage({
   const partnerTypeId = types.find((x) => x.name === PARTNER_TYPE_NAME)?.id ?? "";
 
   const where: Record<string, unknown> = {};
-  if (sourceChannelId) where.sourceChannelId = sourceChannelId;
-  if (studentTypeId) where.studentTypeId = studentTypeId;
+  if (resolvedSourceChannelId) where.sourceChannelId = resolvedSourceChannelId;
+  if (resolvedStudentTypeId) where.studentTypeId = resolvedStudentTypeId;
   if (view !== "all") {
     where.createdAt = { gte: todayStart, lt: todayEnd };
   }
@@ -157,8 +225,8 @@ export default async function StudentsPage({
 
   const buildPageHref = (targetPage: number, nextView = view) => {
     const params = new URLSearchParams();
-    if (sourceChannelId) params.set("sourceChannelId", sourceChannelId);
-    if (studentTypeId) params.set("studentTypeId", studentTypeId);
+    if (resolvedSourceChannelId) params.set("sourceChannelId", resolvedSourceChannelId);
+    if (resolvedStudentTypeId) params.set("studentTypeId", resolvedStudentTypeId);
     if (q) params.set("q", q);
     if (nextView !== "today") params.set("view", nextView);
     params.set("pageSize", String(pageSize));
@@ -174,9 +242,9 @@ export default async function StudentsPage({
         ? t(lang, "All Students", "全部学生")
         : t(lang, "Today New Students", "今日新增");
   const rememberedViewLabel =
-    rememberedView === "today_partner"
+    rememberedDesk.view === "today_partner"
       ? t(lang, "Today Partner Intake", "今日合作方新增")
-      : rememberedView === "all"
+      : rememberedDesk.view === "all"
         ? t(lang, "All Students", "全部学生")
         : t(lang, "Today New Students", "今日新增");
 
@@ -186,9 +254,9 @@ export default async function StudentsPage({
       : view === "all"
         ? t(lang, "No students yet.", "暂无学生")
         : t(lang, "No students added today.", "今天暂无新增学生");
-  const activeFilterCount = [q, sourceChannelId, studentTypeId].filter(Boolean).length;
+  const activeFilterCount = [q, resolvedSourceChannelId, resolvedStudentTypeId].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0 || view !== "today";
-  const showEmptyQueueCta = filteredCount === 0 && !q && !sourceChannelId && !studentTypeId && view !== "all";
+  const showEmptyQueueCta = filteredCount === 0 && !q && !resolvedSourceChannelId && !resolvedStudentTypeId && view !== "all";
   const emptyQueueMessage =
     view === "today_partner"
       ? t(
@@ -204,6 +272,11 @@ export default async function StudentsPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={STUDENT_VIEW_COOKIE}
+        storageKey="adminStudentsPreferredView"
+        value={rememberedDeskValue}
+      />
       <div style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
@@ -306,7 +379,7 @@ export default async function StudentsPage({
             <option value="today_partner">{t(lang, "Today Partner Students", "今日合作方新增")}</option>
             <option value="all">{t(lang, "All Students", "全部学生")}</option>
           </select>
-          <select name="sourceChannelId" defaultValue={sourceChannelId}>
+          <select name="sourceChannelId" defaultValue={resolvedSourceChannelId}>
             <option value="">{t(lang, "All Sources", "全部来源")}</option>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
@@ -314,7 +387,7 @@ export default async function StudentsPage({
               </option>
             ))}
           </select>
-          <select name="studentTypeId" defaultValue={studentTypeId}>
+          <select name="studentTypeId" defaultValue={resolvedStudentTypeId}>
             <option value="">{t(lang, "All Types", "全部类型")}</option>
             {types.map((x) => (
               <option key={x.id} value={x.id}>
@@ -357,7 +430,7 @@ export default async function StudentsPage({
         </div>
       </div>
 
-      {resumedRememberedView ? (
+      {resumedRememberedDesk ? (
         <div
           style={{
             ...workbenchInfoBarStyle,
@@ -369,17 +442,17 @@ export default async function StudentsPage({
           }}
         >
           <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last queue", "已恢复你上次使用的队列")}</div>
+            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last student desk", "已恢复你上次使用的学生工作台")}</div>
             <div style={{ fontSize: 13 }}>
               {t(
                 lang,
-                `You came back without an explicit view filter, so this desk reopened ${rememberedViewLabel}.`,
-                `你这次没有显式指定视图，所以工作台自动恢复到了 ${rememberedViewLabel}。`
+                `You came back without an explicit queue or filter, so this desk reopened ${rememberedViewLabel} with your last search context.`,
+                `你这次没有显式指定队列或筛选，所以工作台自动恢复到了 ${rememberedViewLabel} 以及你上次的搜索范围。`
               )}
             </div>
           </div>
-          <a href={buildPageHref(1, "today")} style={{ fontWeight: 700 }}>
-            {t(lang, "Switch to today queue", "切回今日队列")}
+          <a href="/admin/students" style={{ fontWeight: 700 }}>
+            {t(lang, "Back to default desk", "回到默认工作台")}
           </a>
         </div>
       ) : null}
@@ -424,8 +497,7 @@ export default async function StudentsPage({
         sources={sources.map((s) => ({ id: s.id, name: s.name }))}
         types={types.map((x) => ({ id: x.id, name: x.name }))}
         gradeOptions={GRADE_OPTIONS}
-        currentView={view}
-        hasExplicitView={hasExplicitView}
+        hasExplicitContext={hasExplicitContext}
         labels={{
           add: t(lang, "Add", "新增"),
           addStudent: t(lang, "Add Student", "新增学生"),
@@ -460,8 +532,8 @@ export default async function StudentsPage({
           ),
           rememberedViewHint: t(
             lang,
-            "This desk remembers your last queue when you return without an explicit view filter.",
-            "当你未显式指定视图时，这里会记住你上次使用的队列。"
+            "This desk remembers your last queue and search filters when you return without explicit params.",
+            "当你未显式指定参数时，这里会记住你上次使用的队列和筛选。"
           ),
         }}
       />

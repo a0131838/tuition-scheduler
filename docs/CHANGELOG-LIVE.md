@@ -1857,3 +1857,22 @@ This file is the single source of truth for what changed in production.
   - teacher sidebar groups now collapse by section and auto-open the active area
   - teacher page guides now sit behind `Quick guide / 快速说明`, reducing first-screen text density in bilingual mode
 - Rollback point: previous production commit before `2026-04-02-r02`.
+
+## 2026-04-02-r16
+
+- Release ID: `2026-04-02-r16`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Expand remembered student-desk context so the admin students workbench restores the last queue plus lightweight filters when reopened without explicit URL params.
+- Key files:
+  - `app/admin/students/page.tsx`
+  - `app/admin/students/AdminStudentsClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-students-desk-memory.md`
+- Risk impact (if any): Low. This is a student-workbench context and presentation change only; student creation, deletion, filtering semantics, pagination semantics, and student profile/business data logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3319` confirmed `/admin/students` restores the remembered queue plus `q / sourceChannelId / studentTypeId / pageSize` when opened without explicit URL params
+  - the resumed-desk banner appears only on the plain reopen path and stays suppressed when explicit `view` or `q` params are present
+- Rollback point: previous production commit before `2026-04-02-r16`.

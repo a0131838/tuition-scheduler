@@ -967,3 +967,14 @@
   - no teacher auth, navigation permissions, attendance, availability, payroll, expense-claim, or report logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r16 Deployed
+
+- Scope: remember the last admin students desk context, not just the queue label.
+- Business impact:
+  - `/admin/students` now restores the operator's last queue together with lightweight search context (`q`, source, type, and page size) when the page is reopened without explicit URL params
+  - the resumed-desk banner now explains that both queue and filters were restored, and gives a direct way back to the default student desk
+  - explicit `view` and search params still win, so deep links and one-off filtered URLs keep their intended behavior
+  - no student creation, deletion, filtering semantics, pagination semantics, or student profile/business rules changed
+- Validation:
+  - `npm run build`
