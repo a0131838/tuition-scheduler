@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r09
+
+- Release ID: `2026-04-02-r09`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add context-return and focus highlighting to the admin feedback desk so forwarded and proxy-draft actions keep operators oriented.
+- Key files:
+  - `app/admin/feedbacks/page.tsx`
+  - `app/admin/feedbacks/MarkForwardedFormClient.tsx`
+  - `app/admin/feedbacks/ProxyDraftFormClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-feedbacks-context-return.md`
+- Risk impact (if any): Low. This ship only changes post-action navigation, card highlighting, and focus anchors on the admin feedback desk; no feedback write rules, forward-mark rules, proxy-draft persistence, or teacher workflows changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed the forwarded flow card appears with `Open next pending item`
+  - fresh local logged-in QA confirmed forwarded/proxy return URLs keep the expected queue-return links when the focused item is not visible
+  - source verification confirmed stable anchors now render for feedback cards and overdue-session cards
+- Rollback point: previous production commit before `2026-04-02-r09`.
+
 ## 2026-04-02-r08
 
 - Release ID: `2026-04-02-r08`

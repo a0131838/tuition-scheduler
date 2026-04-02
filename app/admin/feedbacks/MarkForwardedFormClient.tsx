@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 
 export default function MarkForwardedFormClient({
   id,
+  afterSuccessStatus = "forwarded",
+  successFlow = "forwarded",
   labels,
 }: {
   id: string;
+  afterSuccessStatus?: string;
+  successFlow?: string;
   labels: {
     channelPlaceholder: string;
     notePlaceholder: string;
@@ -21,9 +25,9 @@ export default function MarkForwardedFormClient({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  function refreshPreserveScroll() {
+  function replacePreserveScroll(nextUrl: string) {
     const y = window.scrollY;
-    router.refresh();
+    router.replace(nextUrl, { scroll: false });
     setTimeout(() => window.scrollTo(0, y), 0);
   }
 
@@ -39,7 +43,14 @@ export default function MarkForwardedFormClient({
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Save failed"));
-      refreshPreserveScroll();
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("status", afterSuccessStatus);
+      nextUrl.searchParams.set("focusFeedbackId", id);
+      nextUrl.searchParams.set("feedbackFlow", successFlow);
+      nextUrl.searchParams.delete("focusSessionId");
+      nextUrl.searchParams.delete("msg");
+      nextUrl.searchParams.delete("err");
+      replacePreserveScroll(`${nextUrl.pathname}?${nextUrl.searchParams.toString()}`);
     } catch (e: any) {
       alert(`${labels.errorPrefix}: ${e?.message ?? "Save failed"}`);
     } finally {
@@ -59,4 +70,3 @@ export default function MarkForwardedFormClient({
     </form>
   );
 }
-

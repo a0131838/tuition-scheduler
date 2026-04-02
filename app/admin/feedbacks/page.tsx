@@ -86,7 +86,7 @@ function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; statu
 export default async function AdminFeedbacksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string; msg?: string; err?: string; studentId?: string }>;
+  searchParams?: Promise<{ status?: string; msg?: string; err?: string; studentId?: string; focusFeedbackId?: string; focusSessionId?: string; feedbackFlow?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
@@ -96,6 +96,9 @@ export default async function AdminFeedbacksPage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const studentId = String(sp?.studentId ?? "").trim();
+  const focusFeedbackId = String(sp?.focusFeedbackId ?? "").trim();
+  const focusSessionId = String(sp?.focusSessionId ?? "").trim();
+  const feedbackFlow = String(sp?.feedbackFlow ?? "").trim();
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
@@ -214,10 +217,13 @@ export default async function AdminFeedbacksPage({
   });
   const selectedStudentName = studentId ? students.find((s) => s.id === studentId)?.name ?? null : null;
 
-  const tabHref = (nextStatus: string) => {
+  const tabHref = (nextStatus: string, extras?: Record<string, string | null | undefined>) => {
     const params = new URLSearchParams();
     params.set("status", nextStatus);
     if (studentId) params.set("studentId", studentId);
+    for (const [key, value] of Object.entries(extras ?? {})) {
+      if (value) params.set(key, value);
+    }
     return `/admin/feedbacks?${params.toString()}`;
   };
   const activeStudentFilterCount = studentId ? 1 : 0;
@@ -231,6 +237,47 @@ export default async function AdminFeedbacksPage({
       : status === "all"
       ? t(lang, "All Final Feedback", "全部正式反馈")
       : t(lang, "Missing > 12h", "超过12小时未反馈");
+  const focusedFeedbackRow = rows.find((r) => r.id === focusFeedbackId) ?? null;
+  const focusedOverdueRow = shownOverdueRows.find((r) => r.session.id === focusSessionId) ?? null;
+  const nextPendingRow = pendingRows.find((r) => r.id !== focusFeedbackId) ?? pendingRows[0] ?? null;
+  const backToPendingHref = tabHref("pending");
+  const nextPendingHref = nextPendingRow ? `${tabHref("pending")}#feedback-card-${nextPendingRow.id}` : backToPendingHref;
+  const focusedFeedbackAnchor = focusedFeedbackRow ? `#feedback-card-${focusedFeedbackRow.id}` : "";
+  const focusedOverdueAnchor = focusedOverdueRow ? `#overdue-card-${focusedOverdueRow.session.id}` : "";
+  const flowCard =
+    feedbackFlow === "forwarded"
+      ? {
+          tone: "green" as const,
+          title: t(lang, "Feedback marked as forwarded.", "反馈已标记为已转发。"),
+          detail: focusedFeedbackRow
+            ? t(lang, "Use the highlighted card below for confirmation, or jump back to the next pending item.", "你可以先确认下面高亮的卡片，或直接回到下一条待转发项。")
+            : t(lang, "This item has left the pending queue. You can confirm it in forwarded history or return to the next pending item.", "这条记录已经离开待转发队列。你可以在已转发队列确认它，或回到下一条待转发项。"),
+          links: [
+            focusedFeedbackAnchor
+              ? { href: focusedFeedbackAnchor, label: t(lang, "Jump to forwarded card", "跳到已转发卡片") }
+              : null,
+            { href: nextPendingHref, label: t(lang, "Open next pending item", "打开下一条待转发项") },
+          ].filter((item): item is { href: string; label: string } => Boolean(item)),
+        }
+      : feedbackFlow === "proxy-draft"
+        ? {
+            tone: "amber" as const,
+            title: t(lang, "Proxy draft saved.", "代填草稿已保存。"),
+            detail: focusedOverdueRow
+              ? t(lang, "The same overdue session stays highlighted below so you can continue editing it or move back to the main overdue queue.", "下面会继续高亮同一条超时课次，方便你继续编辑，或返回主超时队列。")
+              : t(lang, "The proxy queue has been refreshed. Continue on the same session or go back to the missing queue.", "代填队列已刷新。你可以继续处理这条课次，或返回缺失队列。"),
+            links: [
+              focusedOverdueAnchor
+                ? { href: focusedOverdueAnchor, label: t(lang, "Jump to this session", "跳到当前课次") }
+                : null,
+              { href: tabHref("missing"), label: t(lang, "Open missing queue", "打开缺失队列") },
+            ].filter((item): item is { href: string; label: string } => Boolean(item)),
+          }
+        : null;
+  const flowCardStyle =
+    flowCard?.tone === "green"
+      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
+      : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -262,6 +309,27 @@ export default async function AdminFeedbacksPage({
       </div>
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
+      {flowCard ? (
+        <div
+          style={{
+            ...flowCardStyle,
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
+          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {flowCard.links.map((link) => (
+              <a key={link.href + link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <details open={activeStudentFilterCount > 0} style={workbenchFilterPanelStyle}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
@@ -418,7 +486,18 @@ export default async function AdminFeedbacksPage({
                     ? { border: "1px solid #fcd34d", background: "#fffbeb" }
                     : { border: "1px solid #fecaca", background: "#fff7f7" };
                 return (
-                  <div key={r.session.id} style={{ ...cardTone, borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+                  <div
+                    id={`overdue-card-${r.session.id}`}
+                    key={r.session.id}
+                    style={{
+                      ...cardTone,
+                      borderRadius: 12,
+                      padding: 12,
+                      display: "grid",
+                      gap: 8,
+                      boxShadow: focusSessionId === r.session.id ? "0 0 0 3px rgba(37,99,235,0.18)" : "none",
+                    }}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ display: "grid", gap: 4 }}>
                         <div style={{ fontWeight: 700 }}>{fmtRange(r.session.startAt, r.session.endAt)}</div>
@@ -465,6 +544,7 @@ export default async function AdminFeedbacksPage({
                         sessionId={r.session.id}
                         teacherId={r.teacherId}
                         initialNote={r.feedback?.proxyNote ?? ""}
+                        afterSuccessStatus="proxy"
                         labels={{
                           placeholder: t(lang, "Proxy note", "代填备注"),
                           submit:
@@ -489,7 +569,18 @@ export default async function AdminFeedbacksPage({
           {rows.map((r) => {
             const studentNames = getStudentNames(r.session);
             return (
-              <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+              <div
+                id={`feedback-card-${r.id}`}
+                key={r.id}
+                style={{
+                  border: focusFeedbackId === r.id ? "1px solid #60a5fa" : "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  padding: 12,
+                  display: "grid",
+                  gap: 8,
+                  boxShadow: focusFeedbackId === r.id ? "0 0 0 3px rgba(37,99,235,0.14)" : "none",
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <div style={{ display: "grid", gap: 4 }}>
                     <div style={{ fontWeight: 700 }}>{fmtRange(r.session.startAt, r.session.endAt)}</div>
@@ -566,6 +657,8 @@ export default async function AdminFeedbacksPage({
                   ) : (
                     <MarkForwardedFormClient
                       id={r.id}
+                      afterSuccessStatus="forwarded"
+                      successFlow="forwarded"
                       labels={{
                         channelPlaceholder: t(lang, "Channel (e.g. WeChat)", "渠道(如微信)"),
                         notePlaceholder: t(lang, "Forward note", "转发备注"),
