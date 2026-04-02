@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-02-r11`
 - Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `READY` pending deploy
+- Deployment status: `LIVE` after deploy completion
 - Scope: Extend the same context-return and next-step shortcut pattern to the admin partner settlement workspace so rate edits and settlement creation / revert actions keep operators oriented.
 - Key files:
   - `app/admin/reports/partner-settlement/page.tsx`
@@ -35,6 +35,9 @@ This file is the single source of truth for what changed in production.
     - `settlement-reverted` flow shows `Settlement record reverted.` plus `Back to online queue / Back to offline queue`
     - `rate-updated` flow shows `Settlement rates updated.` plus `Jump to setup / Back to live queue`
     - `focusType=online` and `focusType=offline` both land on stable highlighted queue rows with `partner-online-*` / `partner-offline-*` anchors
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `294e118` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the same `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards render on production for `month=2026-04`
+  - logged-in live QA confirmed both `partner-online-*` and `partner-offline-*` focus-row anchors render on production and still expose `Create online settlement / Create offline settlement`
 - Rollback point: previous production commit before `2026-04-02-r11`.
 
 ## 2026-04-02-r10

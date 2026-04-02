@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r11` (partner settlement context-return follow-up, ready to deploy).
+- Current release line on this branch: `2026-04-02-r11` (partner settlement context-return follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -46,7 +46,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-02-r11 Ready For Deploy
+## 2026-04-02-r11 Deployed
 
 - Scope: partner settlement workspace context-return follow-up for settlement rate updates, online/offline settlement creation, and settlement revert actions.
 - Business impact:
@@ -58,6 +58,8 @@
   - `npm run build`
   - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed the `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards render with the expected shortcuts
   - fresh local logged-in QA on `http://127.0.0.1:3315` confirmed both online and offline queue rows now expose stable `partner-online-*` / `partner-offline-*` anchors and focused-row styling when return params are present
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `294e118` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the same production page renders the `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards plus stable `partner-online-*` / `partner-offline-*` row anchors for `month=2026-04`
 
 ## 2026-04-02-r10 Deployed
 

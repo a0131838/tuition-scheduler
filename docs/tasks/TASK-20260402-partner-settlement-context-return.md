@@ -48,6 +48,8 @@ Make the admin partner settlement workspace feel more task-oriented by keeping o
   - `settlement-reverted` flow shows `Settlement record reverted.` plus `Back to online queue / Back to offline queue`
   - `rate-updated` flow shows `Settlement rates updated.` plus `Jump to setup / Back to live queue`
   - `focusType=online` and `focusType=offline` both land on stable highlighted queue rows with `partner-online-*` / `partner-offline-*` anchors
+- post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `294e118` and `https://sgtmanage.com/admin/login` returned `200`
+- logged-in live QA confirmed the same production page renders the `online-created`, `offline-created`, `settlement-reverted`, and `rate-updated` flow cards plus stable `partner-online-*` / `partner-offline-*` row anchors for `month=2026-04`
 
 ## Release notes
 
