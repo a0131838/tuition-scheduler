@@ -19,6 +19,7 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
   workbenchHeroStyle,
+  workbenchInfoBarStyle,
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
 } from "../../_components/workbenchStyles";
@@ -151,6 +152,42 @@ const zhMap: Record<string, string> = {
 
 function tl(lang: Lang, en: string) {
   return t(lang, en, zhMap[en] ?? en);
+}
+
+function sectionReturnBar(
+  lang: Lang,
+  options: {
+    hint: string;
+    links: { href: string; label: string }[];
+  }
+) {
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        marginBottom: 8,
+        padding: "10px 12px",
+        borderRadius: 10,
+        border: "1px solid #e2e8f0",
+        background: "#f8fafc",
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 10,
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ color: "#475569", fontSize: 13 }}>{options.hint}</div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <a href="#student-workbench-bar">{t(lang, "Back to action bar", "返回主操作条")}</a>
+        {options.links.map((link) => (
+          <a key={link.href} href={link.href}>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const GRADE_OPTIONS = [
@@ -1528,6 +1565,37 @@ export default async function StudentDetailPage({
       {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
 
       <div style={{ display: "grid", gap: 16 }}>
+        <div
+          id="student-workbench-bar"
+          style={{
+            ...workbenchInfoBarStyle,
+            position: "sticky",
+            top: 12,
+            zIndex: 5,
+            boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作条")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {packageRiskCount > 0
+                ? t(lang, "Package risk is active. Start with packages, then return here to jump into attendance or upcoming sessions.", "当前有课包风险，建议先看课包，再从这里回到点名或即将上课。")
+                : unpaidPackageCount > 0
+                  ? t(lang, "Billing follow-up is active. Check packages first, then move into planning or attendance.", "当前有账务跟进，建议先看课包，再进入排课或点名。")
+                  : t(lang, "No urgent billing risk detected. Use this bar to move between profile, schedule, packages, attendance, and edit actions without rescanning the page.", "当前没有紧急账务风险，可通过这里在档案、排课、课包、点名和编辑操作间快速切换。")}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
+            <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
+            <a href="#packages">{tl(lang, "Packages")}</a>
+            <a href="#attendance">{tl(lang, "Attendance")}</a>
+            <a href="#enrollments">{tl(lang, "Enrollments")}</a>
+            <a href="#edit-student">{tl(lang, "Edit Student")}</a>
+            <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
+          </div>
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.15fr)", gap: 14 }}>
           <div
             style={{
@@ -1859,8 +1927,15 @@ export default async function StudentDetailPage({
       </table>
             </details>
 
-      <details style={{ marginBottom: 14 }}>
+      <details id="enrollments" style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Enrollments")} ({enrollments.length})</summary>
+      {sectionReturnBar(lang, {
+        hint: t(lang, "Use enrollments to confirm the current teaching container before changing packages or future sessions.", "先在这里确认当前报名归属，再决定是否去改课包或未来课次。"),
+        links: [
+          { href: "#packages", label: tl(lang, "Packages") },
+          { href: "#upcoming-sessions", label: tl(lang, "Upcoming Sessions") },
+        ],
+      })}
       {enrollments.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No enrollments.")}</div>
       ) : (
@@ -1905,6 +1980,13 @@ export default async function StudentDetailPage({
 
       <details id="packages" style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>
+      {sectionReturnBar(lang, {
+        hint: t(lang, "Package balance and payment status usually decide whether the next step should be billing follow-up or schedule work.", "课包余额和付款状态通常决定下一步该先走账务跟进还是排课处理。"),
+        links: [
+          { href: "#attendance", label: tl(lang, "Attendance") },
+          { href: "#quick-schedule", label: tl(lang, "Quick Schedule") },
+        ],
+      })}
       {packages.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No packages.")}</div>
       ) : (
@@ -2025,6 +2107,13 @@ export default async function StudentDetailPage({
 
       <details id="attendance" open={attendanceOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Attendance")} ({attendances.length})</summary>
+      {sectionReturnBar(lang, {
+        hint: t(lang, "After checking recent attendance, jump straight into upcoming sessions or planning if you need to fix the next lesson.", "看完近期点名后，如果要调整下一节课，可直接跳到即将上课或排课工具。"),
+        links: [
+          { href: "#upcoming-sessions", label: tl(lang, "Upcoming Sessions") },
+          { href: "#quick-schedule", label: tl(lang, "Quick Schedule") },
+        ],
+      })}
       <StudentAttendanceFilterForm
         studentId={studentId}
         courses={courses.map((c) => ({ id: c.id, name: c.name }))}
@@ -2139,6 +2228,13 @@ export default async function StudentDetailPage({
 
       <details id="upcoming-sessions" open style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Upcoming Sessions")} ({upcomingSessions.length})</summary>
+      {sectionReturnBar(lang, {
+        hint: t(lang, "Use this section for the next real lesson, then return to the workbench bar if you need packages, attendance, or edit tools.", "这里适合处理下一节真实课次；如果还要看课包、点名或学生资料，就从这里回到工作条。"),
+        links: [
+          { href: "#packages", label: tl(lang, "Packages") },
+          { href: "#edit-student", label: tl(lang, "Edit Student") },
+        ],
+      })}
       {upcomingSessions.length === 0 ? (
         <div style={{ color: "#999" }}>{tl(lang, "No upcoming sessions.")}</div>
       ) : (
@@ -2256,6 +2352,13 @@ export default async function StudentDetailPage({
 
       <details open id="quick-schedule" style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Quick Schedule (by Student Time)")}</summary>
+        {sectionReturnBar(lang, {
+          hint: t(lang, "Finish planning here, then jump back to upcoming sessions or packages instead of rescanning the whole student page.", "在这里完成排课后，可直接跳回即将上课或课包区，不用重新扫完整个学生页。"),
+          links: [
+            { href: "#upcoming-sessions", label: tl(lang, "Upcoming Sessions") },
+            { href: "#packages", label: tl(lang, "Packages") },
+          ],
+        })}
         <QuickScheduleModal
           studentId={studentId}
           month={monthLabel(monthDate)}
@@ -2325,36 +2428,45 @@ export default async function StudentDetailPage({
         />
       </details>
 
-      <StudentEditClient
-        studentId={studentId}
-        initial={{
-          name: student.name,
-          school: student.school ?? "",
-          grade: student.grade ?? "",
-          birthDate: fmtDateInput(student.birthDate),
-          sourceChannelId: student.sourceChannelId ?? "",
-          studentTypeId: student.studentTypeId ?? "",
-          note: student.note ?? "",
-        }}
-        sources={sources.map((s) => ({ id: s.id, name: s.name }))}
-        types={types.map((t) => ({ id: t.id, name: t.name }))}
-        gradeOptions={GRADE_OPTIONS}
-        labels={{
-          title: tl(lang, "Edit Student"),
-          name: tl(lang, "Name"),
-          school: tl(lang, "School"),
-          grade: tl(lang, "Grade"),
-          birthDate: tl(lang, "Birth Date"),
-          source: tl(lang, "Source"),
-          type: tl(lang, "Type"),
-          notes: tl(lang, "Notes"),
-          save: tl(lang, "Save"),
-          deleteStudent: tl(lang, "Delete Student"),
-          deleteConfirm: tl(lang, "Delete student? This also deletes enrollments/appointments/packages."),
-          ok: tl(lang, "OK"),
-          error: tl(lang, "Error"),
-        }}
-      />
+      <div id="edit-student" style={{ display: "grid", gap: 8 }}>
+        {sectionReturnBar(lang, {
+          hint: t(lang, "Use student editing after you finish queue work, then jump back to packages or attendance if needed.", "建议在队列型工作处理完后再编辑学生资料，改完可直接回课包或点名。"),
+          links: [
+            { href: "#packages", label: tl(lang, "Packages") },
+            { href: "#attendance", label: tl(lang, "Attendance") },
+          ],
+        })}
+        <StudentEditClient
+          studentId={studentId}
+          initial={{
+            name: student.name,
+            school: student.school ?? "",
+            grade: student.grade ?? "",
+            birthDate: fmtDateInput(student.birthDate),
+            sourceChannelId: student.sourceChannelId ?? "",
+            studentTypeId: student.studentTypeId ?? "",
+            note: student.note ?? "",
+          }}
+          sources={sources.map((s) => ({ id: s.id, name: s.name }))}
+          types={types.map((t) => ({ id: t.id, name: t.name }))}
+          gradeOptions={GRADE_OPTIONS}
+          labels={{
+            title: tl(lang, "Edit Student"),
+            name: tl(lang, "Name"),
+            school: tl(lang, "School"),
+            grade: tl(lang, "Grade"),
+            birthDate: tl(lang, "Birth Date"),
+            source: tl(lang, "Source"),
+            type: tl(lang, "Type"),
+            notes: tl(lang, "Notes"),
+            save: tl(lang, "Save"),
+            deleteStudent: tl(lang, "Delete Student"),
+            deleteConfirm: tl(lang, "Delete student? This also deletes enrollments/appointments/packages."),
+            ok: tl(lang, "OK"),
+            error: tl(lang, "Error"),
+          }}
+        />
+      </div>
       </div>
     </div>
   );

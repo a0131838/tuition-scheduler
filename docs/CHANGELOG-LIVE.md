@@ -1915,3 +1915,20 @@ This file is the single source of truth for what changed in production.
   - fresh local logged-in QA on `http://127.0.0.1:3321` confirmed `/admin/recovery/uploads` renders the new `Attachment Health Desk` workbench, source-filter reopen still works, and both receipts/expense pages expose the new desk entry
   - finance access to `/admin/recovery/uploads` was added through the admin layout allowlist rather than a new auth model
 - Rollback point: previous production commit before `2026-04-02-r18`.
+
+## 2026-04-02-r19
+
+- Release ID: `2026-04-02-r19`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add a sticky action bar plus section return links to the admin student detail page.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-student-detail-action-bar.md`
+- Risk impact (if any): Low. This is a student-detail presentation and navigation pass only; student edit logic, quick-schedule submission logic, attendance filter logic, package/billing logic, and session action logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3322` confirmed the student detail page renders the new `Student workbench`, exposes `Back to action bar`, and includes the new `#enrollments`, `#quick-schedule`, and `#edit-student` anchors
+- Rollback point: previous production commit before `2026-04-02-r19`.

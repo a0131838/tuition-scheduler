@@ -1000,3 +1000,13 @@
   - no attachment storage rules, receipt approval logic, expense approval logic, recovery matching logic, or ticket workflow logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r19 Deployed
+
+- Scope: reduce context loss on the admin student detail page with a sticky action bar and section return links.
+- Business impact:
+  - `/admin/students/[id]` now keeps a sticky `Student workbench` bar in view so operators can jump between packages, attendance, upcoming sessions, planning, edit actions, and export without rescanning the long page
+  - the major student-detail sections now include lightweight return bars that point back to the sticky workbench or the next likely section
+  - no student edit logic, quick-schedule logic, attendance filter logic, package/billing logic, or session action logic changed
+- Validation:
+  - `npm run build`
