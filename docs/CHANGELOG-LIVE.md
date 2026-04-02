@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r08
+
+- Release ID: `2026-04-02-r08`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add one more finance follow-up layer so repair-return cards can jump directly to approval or payment areas when the selected item is ready.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-finance-next-action-shortcuts.md`
+- Risk impact (if any): Low. This ship only adds anchor shortcuts and conditional next-step links around existing finance return cards; no approval order, payout batching logic, receipt creation rule, or attachment business logic changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed receipt approvals still shows the unresolved-state safety links (`Open fix tools again`, `Stay on this receipt`) when the selected receipt is not ready yet
+  - fresh local logged-in QA on `http://127.0.0.1:3313` confirmed expense claims still shows `Back to selected claim` and `Open all attachment issues` for unresolved repair-return states
+  - source verification confirmed the resolved-state paths now include direct anchors to `#receipt-primary-actions`, `#expense-review-actions`, and `#expense-payment-details`
+- Rollback point: previous production commit before `2026-04-02-r08`.
+
 ## 2026-04-02-r07
 
 - Release ID: `2026-04-02-r07`

@@ -1163,6 +1163,12 @@ export default async function ReceiptsApprovalsPage({
     Boolean(selectedRow.paymentRecord) &&
     !selectedRow.paymentFileMissing &&
     selectedRiskMessages.length === 0;
+  const selectedPrimaryActionsHref =
+    selectedRow && selectedRow.status !== "COMPLETED" ? `${selectedReviewHref}#receipt-primary-actions` : "";
+  const selectedFixToolsHref =
+    selectedRow && selectedRow.type === "PARENT"
+      ? `/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
+      : "";
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1419,6 +1425,15 @@ export default async function ReceiptsApprovalsPage({
             {selectedRepairReady
               ? t(lang, "The proof is now linked and no receipt-level risk is blocking this item, so the approval controls below are the main next step.", "当前凭证已可用，且这条收据没有剩余风险项；下方审批操作现在就是主步骤。")
               : t(lang, "You are back on the same receipt, but proof linking, file health, or amount checks still show a blocker below.", "你已经回到同一张收据，但下方仍有凭证、文件或金额核对项没有通过。")}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {selectedRepairReady && selectedPrimaryActionsHref ? (
+              <a href={selectedPrimaryActionsHref}>{t(lang, "Jump to approval controls", "跳到审批操作")}</a>
+            ) : null}
+            {!selectedRepairReady && selectedFixToolsHref ? (
+              <a href={selectedFixToolsHref}>{t(lang, "Open fix tools again", "重新打开修复工具")}</a>
+            ) : null}
+            <a href={selectedReviewHref}>{t(lang, "Stay on this receipt", "继续查看当前收据")}</a>
           </div>
         </div>
       ) : null}
@@ -2194,7 +2209,7 @@ export default async function ReceiptsApprovalsPage({
             </div>
             {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Manager Rejected:", "管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
-            <div className="receipt-primary-actions">
+            <div id="receipt-primary-actions" className="receipt-primary-actions">
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isManagerApprover ? (
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review", "管理审核")}</div>

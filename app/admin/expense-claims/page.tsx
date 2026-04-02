@@ -538,6 +538,8 @@ export default async function AdminExpenseClaimsPage({
       : repairReturnMode === 'finance'
         ? repairReturnConfirmed && Boolean(selectedFinanceGroup) && !selectedFinanceGroup.claims.some((claim) => !claim.attachmentExists)
         : false;
+  const reviewRepairNextStepHref = reviewRepairReturnHref ? `${reviewRepairReturnHref}#expense-review-actions` : '';
+  const financeRepairNextStepHref = financeRepairReturnHref ? `${financeRepairReturnHref}#expense-payment-details` : '';
   const currentDatasetLabel = approvedUnpaidOnly
     ? t(lang, 'Approved but unpaid only', '仅看已批未付')
     : attachmentIssueOnly
@@ -618,6 +620,12 @@ export default async function AdminExpenseClaimsPage({
             ) : null}
             {repairReturnMode === 'finance' && financeRepairReturnHref ? (
               <a href={financeRepairReturnHref}>{t(lang, 'Back to selected payout group', '返回当前付款分组')}</a>
+            ) : null}
+            {repairReturnResolved && repairReturnMode === 'review' && reviewRepairNextStepHref ? (
+              <a href={reviewRepairNextStepHref}>{t(lang, 'Jump to review actions', '跳到审批操作')}</a>
+            ) : null}
+            {repairReturnResolved && repairReturnMode === 'finance' && financeRepairNextStepHref ? (
+              <a href={financeRepairNextStepHref}>{t(lang, 'Jump to payment details', '跳到付款信息')}</a>
             ) : null}
             <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
           </div>
@@ -879,7 +887,7 @@ export default async function AdminExpenseClaimsPage({
                 ) : null}
 
                 {canApprove ? (
-                  <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff' }}>
+                  <div id="expense-review-actions" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff' }}>
                     <div style={{ fontWeight: 700 }}>{t(lang, 'Quick review flow', '快速审批流')}</div>
                     <div style={{ color: '#475569', fontSize: 14 }}>
                       {nextReviewClaimId
@@ -1077,7 +1085,7 @@ export default async function AdminExpenseClaimsPage({
                       ))}
                     </div>
 
-                    <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fde68a', background: '#fffdf5' }}>
+                    <div id="expense-payment-details" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fde68a', background: '#fffdf5' }}>
                       <div style={{ fontWeight: 700 }}>{t(lang, 'Batch payment details', '批量付款信息')}</div>
                       <div style={{ color: '#475569', fontSize: 14 }}>
                         {t(lang, 'Fill once for the selected claims in this teacher-and-currency group.', '对这一组同老师同币种的选中报销单，只需填写一次付款信息。')}
