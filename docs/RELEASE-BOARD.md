@@ -59,7 +59,7 @@
   - `bash ops/server/scripts/new_chat_startup_check.sh`
   - manual logged-in QA confirmed current production still shows the older dense admin information architecture, which matches the intended value of this rollout
 
-## 2026-04-02-r04 Ready For Deploy
+## 2026-04-02-r04 Deployed
 
 - Scope: targeted admin/teacher UX follow-ups plus shared local business-file-storage abstraction for expense claims, payment proofs, partner payment proofs, shared docs local fallback, and ticket attachments.
 - Business impact:
@@ -78,6 +78,7 @@
     - partner payment proof static upload path
     - shared-doc download route
     - ticket attachment route
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-03-31-r3 Ready For Deploy
 
