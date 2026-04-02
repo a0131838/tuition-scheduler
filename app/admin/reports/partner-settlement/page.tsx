@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import RememberedWorkbenchQueryClient from "../../_components/RememberedWorkbenchQueryClient";
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PARTNER_SOURCE_NAME = "\u65b0\u4e1c\u65b9\u5b66\u751f";
@@ -14,6 +16,7 @@ const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
 const DEFAULT_ONLINE_RATE_PER_45 = 70;
 const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
+const PARTNER_SETTLEMENT_COOKIE = "adminPartnerSettlementPreferredView";
 
 function isAttendanceSettlementEligible(a: { status: string; excusedCharge?: boolean | null }) {
   return ATTENDED_STATUSES.includes(a.status as any) || (a.status === "EXCUSED" && Boolean(a.excusedCharge));
@@ -35,6 +38,38 @@ function parseMonth(s?: string | null) {
   const month = Number(m[2]);
   if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
   return { year, month };
+}
+
+function normalizeSettlementHistory(value: string) {
+  return value === "receipt-pending" || value === "receipt-created" ? value : "all";
+}
+
+function normalizeSettlementPanel(value: string) {
+  return value === "history" || value === "setup" ? value : "";
+}
+
+function parseRememberedPartnerSettlementView(raw: string, fallbackMonth: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const monthRaw = String(params.get("month") ?? "").trim();
+  const month = parseMonth(monthRaw) ? monthRaw : fallbackMonth;
+  const history = normalizeSettlementHistory(String(params.get("history") ?? "").trim());
+  const panel = normalizeSettlementPanel(String(params.get("panel") ?? "").trim());
+  const normalized = new URLSearchParams();
+  if (month !== fallbackMonth) normalized.set("month", month);
+  if (history !== "all") normalized.set("history", history);
+  if (panel) normalized.set("panel", panel);
+  return {
+    month,
+    history,
+    panel,
+    value: normalized.toString(),
+  };
 }
 
 function toBizMonthRange(month: string) {
@@ -422,14 +457,44 @@ export default async function PartnerSettlementPage({
   const current = await getCurrentUser();
   const lang = await getLang();
   const sp = await searchParams;
-  const month = sp?.month ?? monthKey(new Date());
+  const defaultMonth = monthKey(new Date());
+  const monthParam = typeof sp?.month === "string" ? sp.month : "";
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
   const focusType = sp?.focusType ?? "";
   const focusId = sp?.focusId ?? "";
-  const historyFilter = sp?.history ?? "all";
-  const openPanel = sp?.panel ?? "";
+  const historyParam = typeof sp?.history === "string" ? sp.history : "";
+  const panelParam = typeof sp?.panel === "string" ? sp.panel : "";
   const settlementFlow = sp?.settlementFlow ?? "";
+  const canResumeRememberedView =
+    !monthParam &&
+    !historyParam &&
+    !panelParam &&
+    !focusType &&
+    !focusId &&
+    !settlementFlow &&
+    !msg &&
+    !err;
+  const cookieStore = await cookies();
+  const rememberedView = canResumeRememberedView
+    ? parseRememberedPartnerSettlementView(cookieStore.get(PARTNER_SETTLEMENT_COOKIE)?.value ?? "", defaultMonth)
+    : {
+        month: defaultMonth,
+        history: "all" as const,
+        panel: "",
+        value: "",
+      };
+  const month = monthParam || rememberedView.month;
+  const historyFilter = historyParam ? normalizeSettlementHistory(historyParam) : rememberedView.history;
+  const openPanel = panelParam ? normalizeSettlementPanel(panelParam) : rememberedView.panel;
+  const resumedRememberedView = canResumeRememberedView && Boolean(rememberedView.value);
+  const rememberedViewValue = (() => {
+    const params = new URLSearchParams();
+    if (month !== defaultMonth) params.set("month", month);
+    if (historyFilter !== "all") params.set("history", historyFilter);
+    if (openPanel) params.set("panel", openPanel);
+    return params.toString();
+  })();
   const rates = await getSettlementRates();
   const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
@@ -1007,6 +1072,11 @@ export default async function PartnerSettlementPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={PARTNER_SETTLEMENT_COOKIE}
+        storageKey="adminPartnerSettlementPreferredView"
+        value={rememberedViewValue}
+      />
       <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
       <div style={{ marginBottom: 10, color: "#666" }}>
         {t(
@@ -1015,6 +1085,32 @@ export default async function PartnerSettlementPage({
           `仅纳入来源为${PARTNER_SOURCE_NAME}的学生。`
         )}
       </div>
+      {resumedRememberedView ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {t(
+              lang,
+              "Resumed your last settlement view. Use the shortcut on the right if you want to return to the default workbench.",
+              "已恢复你上次的结算工作视图；如果要回到默认工作台，可直接使用右侧快捷入口。"
+            )}
+          </div>
+          <a href="/admin/reports/partner-settlement">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
+        </div>
+      ) : null}
       {schemaNotReady || err === "schema-not-ready" ? (
         <div
           style={{
@@ -1604,7 +1700,7 @@ export default async function PartnerSettlementPage({
         )}
       </details>
 
-      <details id="settlement-setup" style={cardStyle}>
+      <details id="settlement-setup" open={openPanel === "setup"} style={cardStyle}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Settlement setup", "结算配置")}
         </summary>

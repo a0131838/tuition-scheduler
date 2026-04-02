@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r14
+
+- Release ID: `2026-04-02-r14`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Remember the last admin partner-settlement month/history/panel view so operators can reopen the same workbench context without rebuilding it.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-partner-settlement-view-memory.md`
+- Risk impact (if any): Low. This ship only remembers and restores the partner-settlement workbench view on first open when no explicit URL params are provided; no settlement math, settlement creation rules, invoice generation, revert semantics, or approval behavior changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3317` confirmed:
+    - `/admin/reports/partner-settlement` restores `month=2026-03&history=receipt-created&panel=history` from cookie when the page is opened without URL params
+    - `/admin/reports/partner-settlement` restores `month=2026-03&panel=setup` and now opens the setup disclosure when resumed
+    - the resumed-view banner renders on the plain queue-open path and does not appear on `settlementFlow=rate-updated` return pages
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production `/admin/reports/partner-settlement` restores the remembered month/history/panel view and still suppresses the resume banner on settlement-flow return pages
+- Rollback point: previous production commit before `2026-04-02-r14`.
+
 ## 2026-04-02-r13
 
 - Release ID: `2026-04-02-r13`
