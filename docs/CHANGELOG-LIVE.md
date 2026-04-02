@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-02-r05`
 - Date/Time (Asia/Shanghai): `2026-04-02`
-- Deployment status: `READY FOR DEPLOY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: Shorten the finance attachment-repair path on admin expense claims and receipt approvals without changing approval logic.
 - Key files:
   - `app/admin/expense-claims/page.tsx`
@@ -33,6 +33,7 @@ This file is the single source of truth for what changed in production.
   - admin expense claims now shows an explicit `Attachment repair path / 附件修复路径` card whenever the selected review item is missing its file
   - admin expense claims finance payout groups now expose direct repair/history shortcuts when any claim in the selected batch has attachment issues
   - admin receipt approvals now shows an explicit `Proof repair path / 凭证修复路径` card above the receipt detail area whenever proof is missing or the linked file is gone
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the release branch and `https://sgtmanage.com/admin/login` returned `200`
 - Rollback point: previous production commit before `2026-04-02-r05`.
 
 ## 2026-04-02-r04

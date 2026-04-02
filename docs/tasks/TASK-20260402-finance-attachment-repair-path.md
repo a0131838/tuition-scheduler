@@ -53,3 +53,4 @@ Reduce finance-side backtracking when a receipt proof or expense attachment is m
 - Release ID: `2026-04-02-r05`
 - Risk: low
 - Rollback: revert this release if finance repair shortcuts misroute users or hide existing approval actions
+- Post-deploy closeout: `quick_deploy.sh` finished successfully, `new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `feat/strict-superadmin-availability-bypass`, and `https://sgtmanage.com/admin/login` returned `200`

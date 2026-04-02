@@ -46,7 +46,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-02-r05 Ready For Deploy
+## 2026-04-02-r05 Deployed
 
 - Scope: finance attachment-repair path follow-up for admin expense claims and receipt approvals.
 - Business impact:
@@ -59,6 +59,7 @@
   - selected expense-claim review area now surfaces `Attachment repair path / 附件修复路径` with direct queue/history shortcuts
   - selected finance payout group now surfaces direct repair/history shortcuts when one or more claims have missing attachments
   - selected receipt detail now surfaces `Proof repair path / 凭证修复路径` before the approval controls when proof is missing or the linked file is broken
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-02-r03 Deployed
 
