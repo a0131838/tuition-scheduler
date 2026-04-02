@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r07
+
+- Release ID: `2026-04-02-r07`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Finish the second finance repair-loop pass so receipt proof repairs and expense-claim attachment cleanup return to a clearer ready-to-review state.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-finance-repair-loop-phase-2.md`
+- Risk impact (if any): Low. This ship only changes finance repair-result messaging and return-path presentation; no approval order, payout batching, receipt creation rule, attachment storage rule, or business workflow transition changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed receipt approvals now shows the localized proof-repair success label plus the new repair follow-up state card after returning to the selected receipt
+  - fresh local logged-in QA on `http://127.0.0.1:3311` confirmed expense claims now shows the repair-loop card with `Back to selected claim` and `Open all attachment issues` when return-context params are present
+- Rollback point: previous production commit before `2026-04-02-r07`.
+
 ## 2026-04-02-r06
 
 - Release ID: `2026-04-02-r06`

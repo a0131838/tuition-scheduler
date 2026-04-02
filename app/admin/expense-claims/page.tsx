@@ -96,6 +96,20 @@ function buildFinanceGroupKey(submitterUserId: string, currencyCode: string) {
   return `${submitterUserId}::${currencyCode}`;
 }
 
+function withExpenseRepairReturn(
+  input: Record<string, string | null | undefined>,
+  repairReturnMode: 'review' | 'finance' | '',
+  repairReturnClaimId: string,
+  repairReturnFinanceGroup: string,
+) {
+  return {
+    ...input,
+    repairReturnMode,
+    repairReturnClaimId,
+    repairReturnFinanceGroup,
+  };
+}
+
 export default async function AdminExpenseClaimsPage({
   searchParams,
 }: {
@@ -114,6 +128,13 @@ export default async function AdminExpenseClaimsPage({
   const submitterQuery = typeof params.q === 'string' ? params.q : '';
   const selectedClaimIdParam = typeof params.claimId === 'string' ? params.claimId : '';
   const selectedFinanceGroupKeyParam = typeof params.financeGroup === 'string' ? params.financeGroup : '';
+  const repairReturnMode =
+    typeof params.repairReturnMode === 'string' && (params.repairReturnMode === 'review' || params.repairReturnMode === 'finance')
+      ? params.repairReturnMode
+      : '';
+  const repairReturnClaimId = typeof params.repairReturnClaimId === 'string' ? params.repairReturnClaimId : '';
+  const repairReturnFinanceGroup = typeof params.repairReturnFinanceGroup === 'string' ? params.repairReturnFinanceGroup : '';
+  const repairReturnConfirmed = typeof params.repairReturn === 'string' ? params.repairReturn === '1' : false;
   const approvedUnpaidOnly = typeof params.approvedUnpaidOnly === 'string' ? params.approvedUnpaidOnly === '1' : false;
   const archivedOnly = typeof params.archived === 'string' ? params.archived === '1' : false;
   const attachmentIssueOnly = typeof params.attachmentIssueOnly === 'string' ? params.attachmentIssueOnly === '1' : false;
@@ -398,58 +419,125 @@ export default async function AdminExpenseClaimsPage({
   const financeAttachmentIssueCount = financeQueue.filter((claim) => !claim.attachmentExists).length;
   const selectedReviewAttachmentRepairHref = selectedReviewClaim
     ? buildExpenseClaimsHref({
-        status: '',
-        month: '',
-        paymentBatchMonth: '',
-        expenseType: '',
-        currency: selectedReviewClaim.currencyCode,
-        q: selectedReviewClaim.submitterName,
-        approvedUnpaidOnly: '',
-        archived: '',
-        attachmentIssueOnly: '1',
-        claimId: selectedReviewClaim.id,
+        ...withExpenseRepairReturn(
+          {
+            status: '',
+            month: '',
+            paymentBatchMonth: '',
+            expenseType: '',
+            currency: selectedReviewClaim.currencyCode,
+            q: selectedReviewClaim.submitterName,
+            approvedUnpaidOnly: '',
+            archived: '',
+            attachmentIssueOnly: '1',
+            claimId: selectedReviewClaim.id,
+          },
+          'review',
+          selectedReviewClaim.id,
+          '',
+        ),
       })
     : quickAttachmentIssueHref;
   const selectedReviewSubmitterHistoryHref = selectedReviewClaim
     ? buildExpenseClaimsHref({
-        status: '',
-        month: '',
-        paymentBatchMonth: '',
-        expenseType: '',
-        currency: '',
-        q: selectedReviewClaim.submitterName,
-        approvedUnpaidOnly: '',
-        archived: '',
-        attachmentIssueOnly: '',
+        ...withExpenseRepairReturn(
+          {
+            status: '',
+            month: '',
+            paymentBatchMonth: '',
+            expenseType: '',
+            currency: '',
+            q: selectedReviewClaim.submitterName,
+            approvedUnpaidOnly: '',
+            archived: '',
+            attachmentIssueOnly: '',
+          },
+          'review',
+          selectedReviewClaim.id,
+          '',
+        ),
       })
     : quickClearHref;
   const selectedFinanceRepairHref = selectedFinanceGroup
     ? buildExpenseClaimsHref({
-        status: '',
-        month: '',
-        paymentBatchMonth: '',
-        expenseType: '',
-        currency: selectedFinanceGroup.currencyCode,
-        q: selectedFinanceGroup.submitterName,
-        approvedUnpaidOnly: '',
-        archived: '',
-        attachmentIssueOnly: '1',
-        financeGroup: selectedFinanceGroup.key,
+        ...withExpenseRepairReturn(
+          {
+            status: '',
+            month: '',
+            paymentBatchMonth: '',
+            expenseType: '',
+            currency: selectedFinanceGroup.currencyCode,
+            q: selectedFinanceGroup.submitterName,
+            approvedUnpaidOnly: '',
+            archived: '',
+            attachmentIssueOnly: '1',
+            financeGroup: selectedFinanceGroup.key,
+          },
+          'finance',
+          '',
+          selectedFinanceGroup.key,
+        ),
       })
     : quickAttachmentIssueHref;
   const selectedFinanceSubmitterHistoryHref = selectedFinanceGroup
+    ? buildExpenseClaimsHref({
+        ...withExpenseRepairReturn(
+          {
+            status: '',
+            month: '',
+            paymentBatchMonth: '',
+            expenseType: '',
+            currency: '',
+            q: selectedFinanceGroup.submitterName,
+            approvedUnpaidOnly: '',
+            archived: '',
+            attachmentIssueOnly: '',
+          },
+          'finance',
+          '',
+          selectedFinanceGroup.key,
+        ),
+      })
+    : quickClearHref;
+  const reviewRepairReturnHref = repairReturnClaimId
+    ? buildExpenseClaimsHref({
+        status: ExpenseClaimStatus.SUBMITTED,
+        month: '',
+        paymentBatchMonth: '',
+        expenseType: '',
+        currency: '',
+        q: '',
+        approvedUnpaidOnly: '',
+        archived: '',
+        attachmentIssueOnly: '',
+        claimId: repairReturnClaimId,
+        repairReturn: '1',
+      })
+    : '';
+  const financeRepairReturnHref = repairReturnFinanceGroup
     ? buildExpenseClaimsHref({
         status: '',
         month: '',
         paymentBatchMonth: '',
         expenseType: '',
         currency: '',
-        q: selectedFinanceGroup.submitterName,
-        approvedUnpaidOnly: '',
+        q: '',
+        approvedUnpaidOnly: '1',
         archived: '',
         attachmentIssueOnly: '',
+        financeGroup: repairReturnFinanceGroup,
+        repairReturn: '1',
       })
-    : quickClearHref;
+    : '';
+  const showRepairLoopCard =
+    (repairReturnMode === 'review' && Boolean(reviewRepairReturnHref)) ||
+    (repairReturnMode === 'finance' && Boolean(financeRepairReturnHref));
+  const repairReturnResolved =
+    repairReturnMode === 'review'
+      ? repairReturnConfirmed && Boolean(selectedReviewClaim?.attachmentExists)
+      : repairReturnMode === 'finance'
+        ? repairReturnConfirmed && Boolean(selectedFinanceGroup) && !selectedFinanceGroup.claims.some((claim) => !claim.attachmentExists)
+        : false;
   const currentDatasetLabel = approvedUnpaidOnly
     ? t(lang, 'Approved but unpaid only', '仅看已批未付')
     : attachmentIssueOnly
@@ -494,6 +582,47 @@ export default async function AdminExpenseClaimsPage({
 
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
+      {showRepairLoopCard ? (
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 10,
+            border: `1px solid ${repairReturnResolved ? '#86efac' : '#bfdbfe'}`,
+            background: repairReturnResolved ? '#f0fdf4' : '#eff6ff',
+            color: repairReturnResolved ? '#166534' : '#1d4ed8',
+            display: 'grid',
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {repairReturnMode === 'review'
+              ? repairReturnResolved
+                ? t(lang, 'Repair loop complete. Resume this review item.', '修复回流已完成，回到当前审核项继续处理。')
+                : t(lang, 'Repair loop: come back to this review item', '修复回流：处理完后回到这条审核项')
+              : repairReturnResolved
+                ? t(lang, 'Repair loop complete. Resume this payout group.', '修复回流已完成，回到当前付款分组继续处理。')
+                : t(lang, 'Repair loop: come back to this payout group', '修复回流：处理完后回到这个付款分组')}
+          </div>
+          <div style={{ fontSize: 14 }}>
+            {repairReturnMode === 'review'
+              ? repairReturnResolved
+                ? t(lang, 'The attachment is available again, so the selected claim can continue through approval below.', '附件已恢复可用，所以下方这条报销单可以继续走审批。')
+                : t(lang, 'Use the links below for history or attachment cleanup, then return directly to the same selected claim instead of searching for it again.', '你可以先去附件异常或历史视图处理，再直接回到同一条报销单，不用重新搜索。')
+              : repairReturnResolved
+                ? t(lang, 'The selected payout group no longer shows missing attachments, so finance can focus on payment details again.', '当前付款分组已经没有附件缺失，财务可以重新聚焦付款登记。')
+                : t(lang, 'Use the links below for attachment cleanup or history, then return directly to the same payout group instead of rebuilding the queue context.', '你可以先去附件异常或历史视图处理，再直接回到同一个付款分组，不用重新找上下文。')}
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {repairReturnMode === 'review' && reviewRepairReturnHref ? (
+              <a href={reviewRepairReturnHref}>{t(lang, 'Back to selected claim', '返回当前报销单')}</a>
+            ) : null}
+            {repairReturnMode === 'finance' && financeRepairReturnHref ? (
+              <a href={financeRepairReturnHref}>{t(lang, 'Back to selected payout group', '返回当前付款分组')}</a>
+            ) : null}
+            <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
+          </div>
+        </div>
+      ) : null}
 
       <details style={{ ...workbenchFilterPanelStyle, padding: 16 }} open={canEditApprovalConfig}>
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>

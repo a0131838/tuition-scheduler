@@ -193,6 +193,10 @@ function describeReceiptActionResult(
   if (normalized === "Partner finance rejected") return `${t(lang, "Partner finance rejected", "合作方财务已驳回")} · ${withMove}`;
   if (normalized === "Receipt reopened for redo") return `${t(lang, "Receipt reopened", "收据已重新打开")} · ${withMove}`;
   if (normalized === "Partner receipt reopened for redo") return `${t(lang, "Partner receipt reopened", "合作方收据已重新打开")} · ${withMove}`;
+  if (normalized === "Payment record uploaded") return `${t(lang, "Payment record uploaded", "缴费记录已上传")} · ${withMove}`;
+  if (normalized === "Payment record replaced") return `${t(lang, "Payment record replaced", "缴费记录已替换")} · ${withMove}`;
+  if (normalized === "Payment record deleted") return `${t(lang, "Payment record deleted", "缴费记录已删除")} · ${withMove}`;
+  if (normalized === "Receipt created") return `${t(lang, "Receipt created", "收据已创建")} · ${withMove}`;
   return normalized;
 }
 
@@ -1149,6 +1153,16 @@ export default async function ReceiptsApprovalsPage({
   const rejectAndNextLabel = nextQueueRow
     ? t(lang, "Reject & next", "驳回并下一条")
     : t(lang, "Reject", "驳回");
+  const isRepairWorkspaceResult =
+    msg === "Payment record uploaded" ||
+    msg === "Payment record replaced" ||
+    msg === "Payment record deleted" ||
+    msg === "Receipt created";
+  const selectedRepairReady =
+    Boolean(selectedRow) &&
+    Boolean(selectedRow.paymentRecord) &&
+    !selectedRow.paymentFileMissing &&
+    selectedRiskMessages.length === 0;
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1381,6 +1395,31 @@ export default async function ReceiptsApprovalsPage({
             {t(lang, "After updating the proof or receipt setup, return here to continue the same review item.", "修复缴费凭证或收据设置后，可回到这里继续处理同一张收据。")}
           </span>
           <a href={selectedReviewHref}>{t(lang, "Back to selected receipt", "返回当前收据")}</a>
+        </div>
+      ) : null}
+      {packageIdFilter && selectedType && selectedId && isRepairWorkspaceResult && selectedRow ? (
+        <div
+          style={{
+            marginBottom: 12,
+            display: "grid",
+            gap: 6,
+            border: `1px solid ${selectedRepairReady ? "#86efac" : "#fcd34d"}`,
+            background: selectedRepairReady ? "#f0fdf4" : "#fffbeb",
+            borderRadius: 10,
+            padding: "10px 12px",
+            color: selectedRepairReady ? "#166534" : "#92400e",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {selectedRepairReady
+              ? t(lang, "Repair complete. Continue review now.", "修复已完成，现在可以继续审核。")
+              : t(lang, "Repair step saved. One more check is still needed.", "修复步骤已保存，但还需要再检查一次。")}
+          </div>
+          <div style={{ fontSize: 13 }}>
+            {selectedRepairReady
+              ? t(lang, "The proof is now linked and no receipt-level risk is blocking this item, so the approval controls below are the main next step.", "当前凭证已可用，且这条收据没有剩余风险项；下方审批操作现在就是主步骤。")
+              : t(lang, "You are back on the same receipt, but proof linking, file health, or amount checks still show a blocker below.", "你已经回到同一张收据，但下方仍有凭证、文件或金额核对项没有通过。")}
+          </div>
         </div>
       ) : null}
       {packageWorkspaceMode && selectedPackage ? (
