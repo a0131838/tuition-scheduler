@@ -1876,3 +1876,21 @@ This file is the single source of truth for what changed in production.
   - fresh local logged-in QA on `http://127.0.0.1:3319` confirmed `/admin/students` restores the remembered queue plus `q / sourceChannelId / studentTypeId / pageSize` when opened without explicit URL params
   - the resumed-desk banner appears only on the plain reopen path and stays suppressed when explicit `view` or `q` params are present
 - Rollback point: previous production commit before `2026-04-02-r16`.
+
+## 2026-04-02-r17
+
+- Release ID: `2026-04-02-r17`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add remembered todo-desk context plus first-screen next-step shortcuts to the admin Todo Center.
+- Key files:
+  - `app/admin/todos/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-todos-desk-memory-and-shortcuts.md`
+- Risk impact (if any): Low. This is a todo-workbench context and presentation change only; attendance task calculation, reminder confirmation, conflict audit, deduction repair, and renewal-alert business logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3320` confirmed `/admin/todos` reopens with the remembered desk context and shows the resumed-desk banner plus next-step shortcut bar when no explicit URL params are present
+  - explicit `warnDays` / `pastDays` URL params still suppress the resumed-desk banner so one-off deep links keep priority over remembered state
+- Rollback point: previous production commit before `2026-04-02-r17`.

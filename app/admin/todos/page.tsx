@@ -1,10 +1,12 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminTodosRemindersClient from "./AdminTodosRemindersClient";
 import AdminTodosOpsClient from "./AdminTodosOpsClient";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import {
   autoResolveTeacherConflicts,
   getLatestAutoFixResult,
@@ -17,11 +19,13 @@ import { LEDGER_INTEGRITY_ALERT_KEY, parseLedgerIntegrityAlertState } from "@/li
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
   workbenchHeroStyle,
+  workbenchInfoBarStyle,
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
 
+const TODO_DESK_COOKIE = "adminTodosDesk";
 const FORECAST_WINDOW_DAYS = 30;
 const DEFAULT_WARN_DAYS = 3;
 const DEFAULT_WARN_MINUTES = 240;
@@ -41,6 +45,47 @@ function fmtMinutes(m?: number | null) {
 function toInt(v: string | undefined, def: number) {
   const n = Number(v ?? "");
   return Number.isFinite(n) ? n : def;
+}
+
+function normalizeWarnDays(value: string | undefined, fallback = DEFAULT_WARN_DAYS) {
+  return Math.max(1, toInt(value, fallback));
+}
+
+function normalizeWarnMinutes(value: string | undefined, fallback = DEFAULT_WARN_MINUTES) {
+  return Math.max(1, toInt(value, fallback));
+}
+
+function normalizePastDays(value: string | undefined, fallback = 30) {
+  return Math.min(365, Math.max(7, toInt(value, fallback)));
+}
+
+function parseRememberedTodoDesk(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const warnDays = normalizeWarnDays(params.get("warnDays") ?? undefined);
+  const warnMinutes = normalizeWarnMinutes(params.get("warnMinutes") ?? undefined);
+  const pastDays = normalizePastDays(params.get("pastDays") ?? undefined);
+  const showConfirmed = params.get("showConfirmed") === "1";
+  const includeConflicts = params.get("includeConflicts") === "1";
+  const normalized = new URLSearchParams();
+  if (warnDays !== DEFAULT_WARN_DAYS) normalized.set("warnDays", String(warnDays));
+  if (warnMinutes !== DEFAULT_WARN_MINUTES) normalized.set("warnMinutes", String(warnMinutes));
+  if (pastDays !== 30) normalized.set("pastDays", String(pastDays));
+  if (showConfirmed) normalized.set("showConfirmed", "1");
+  if (includeConflicts) normalized.set("includeConflicts", "1");
+  return {
+    warnDays,
+    warnMinutes,
+    pastDays,
+    showConfirmed,
+    includeConflicts,
+    value: normalized.toString(),
+  };
 }
 
 function fmtDateRange(startAt: Date, endAt: Date) {
@@ -194,13 +239,40 @@ export default async function AdminTodosPage({
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
-  const warnDays = Math.max(1, toInt(sp?.warnDays, DEFAULT_WARN_DAYS));
-  const warnMinutes = Math.max(1, toInt(sp?.warnMinutes, DEFAULT_WARN_MINUTES));
-  const pastDays = Math.min(365, Math.max(7, toInt(sp?.pastDays, 30)));
+  const hasExplicitDeskContext = Boolean(
+    sp?.warnDays || sp?.warnMinutes || sp?.pastDays || sp?.showConfirmed === "1" || sp?.includeConflicts === "1"
+  );
+  const cookieStore = await cookies();
+  const rememberedDesk = hasExplicitDeskContext
+    ? {
+        warnDays: DEFAULT_WARN_DAYS,
+        warnMinutes: DEFAULT_WARN_MINUTES,
+        pastDays: 30,
+        showConfirmed: false,
+        includeConflicts: false,
+        value: "",
+      }
+    : parseRememberedTodoDesk(cookieStore.get(TODO_DESK_COOKIE)?.value ?? "");
+  const warnDays = normalizeWarnDays(sp?.warnDays, hasExplicitDeskContext ? DEFAULT_WARN_DAYS : rememberedDesk.warnDays);
+  const warnMinutes = normalizeWarnMinutes(
+    sp?.warnMinutes,
+    hasExplicitDeskContext ? DEFAULT_WARN_MINUTES : rememberedDesk.warnMinutes
+  );
+  const pastDays = normalizePastDays(sp?.pastDays, hasExplicitDeskContext ? 30 : rememberedDesk.pastDays);
   const pastPage = Math.max(1, toInt(sp?.pastPage, 1));
   const pastPageSize = 50;
-  const showConfirmed = sp?.showConfirmed === "1";
-  const includeConflicts = sp?.includeConflicts === "1";
+  const showConfirmed = hasExplicitDeskContext ? sp?.showConfirmed === "1" : rememberedDesk.showConfirmed;
+  const includeConflicts = hasExplicitDeskContext ? sp?.includeConflicts === "1" : rememberedDesk.includeConflicts;
+  const resumedRememberedDesk = !hasExplicitDeskContext && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (warnDays !== DEFAULT_WARN_DAYS) params.set("warnDays", String(warnDays));
+    if (warnMinutes !== DEFAULT_WARN_MINUTES) params.set("warnMinutes", String(warnMinutes));
+    if (pastDays !== 30) params.set("pastDays", String(pastDays));
+    if (showConfirmed) params.set("showConfirmed", "1");
+    if (includeConflicts) params.set("includeConflicts", "1");
+    return params.toString();
+  })();
 
   const now = new Date();
   const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -833,9 +905,56 @@ export default async function AdminTodosPage({
     (ledgerAlert?.totalIssueCount ?? 0) +
     dailyConflictAudit.totalIssues +
     undeductedCompletedCount;
+  const quickJumpItems = [
+    sessionsToday.length > 0
+      ? {
+          href: "#todo-today-focus",
+          label: t(lang, "Open today's attendance queue", "打开今日点名队列"),
+          detail: t(lang, `${sessionsToday.length} sessions need marking`, `还有${sessionsToday.length}节课待点名`),
+        }
+      : null,
+    overdueUnmarkedSessionCount > 0
+      ? {
+          href: "#todo-overdue-follow-up",
+          label: t(lang, "Open overdue follow-up", "打开超时跟进"),
+          detail: t(
+            lang,
+            `${overdueUnmarkedSessionCount} sessions need escalation`,
+            `还有${overdueUnmarkedSessionCount}节课需要催办`
+          ),
+        }
+      : null,
+    systemRiskCount > 0
+      ? {
+          href: "#todo-system-checks",
+          label: t(lang, "Open system checks", "打开系统巡检"),
+          detail: t(lang, `${systemRiskCount} risks need review`, `还有${systemRiskCount}项系统风险待看`),
+        }
+      : null,
+    reminderPendingCount > 0
+      ? {
+          href: "#todo-reminder-desk",
+          label: t(lang, "Open reminder desk", "打开提醒台"),
+          detail: t(lang, `${reminderPendingCount} reminders are still pending`, `还有${reminderPendingCount}项提醒待确认`),
+        }
+      : null,
+  ].filter(
+    (
+      item
+    ): item is {
+      href: string;
+      label: string;
+      detail: string;
+    } => Boolean(item)
+  );
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RememberedWorkbenchQueryClient
+        cookieKey={TODO_DESK_COOKIE}
+        storageKey="adminTodosDesk"
+        value={rememberedDeskValue}
+      />
       <div
         style={{
           ...workbenchHeroStyle("amber"),
@@ -885,7 +1004,70 @@ export default async function AdminTodosPage({
         </div>
       </div>
 
+      {resumedRememberedDesk ? (
+        <div
+          style={{
+            ...workbenchInfoBarStyle,
+            marginBottom: 0,
+            borderColor: "#fdba74",
+            background: "#fffbeb",
+            color: "#92400e",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last todo desk", "已恢复你上次使用的待办工作台")}</div>
+            <div style={{ fontSize: 13 }}>
+              {t(
+                lang,
+                "This page reopened with your last reminder thresholds and desk toggles because you came back without explicit filters.",
+                "你这次没有显式指定筛选，所以系统自动恢复了你上次使用的提醒阈值和工作台开关。"
+              )}
+            </div>
+          </div>
+          <a href="/admin/todos" style={{ fontWeight: 700 }}>
+            {t(lang, "Back to default desk", "回到默认工作台")}
+          </a>
+        </div>
+      ) : null}
+
+      {quickJumpItems.length > 0 ? (
+        <div style={{ ...workbenchInfoBarStyle, marginBottom: 0, alignItems: "flex-start" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 700, color: "#0f172a" }}>{t(lang, "Next step shortcuts", "下一步快捷入口")}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              {t(
+                lang,
+                "Jump straight back to the section that most likely needs your next click.",
+                "直接跳回最可能需要你下一步处理的区块。"
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {quickJumpItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: "grid",
+                  gap: 2,
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: "1px solid #dbeafe",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  textDecoration: "none",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>{item.label}</span>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{item.detail}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <details
+        id="todo-system-checks"
         open={Boolean((ledgerAlert?.totalIssueCount ?? 0) > 0 || dailyConflictAudit.totalIssues > 0)}
         style={{ ...sectionStyle, marginBottom: 0, background: "#fcfcfd" }}
       >
@@ -1026,7 +1208,7 @@ export default async function AdminTodosPage({
         </div>
       </details>
 
-      <div style={heroStyle}>
+      <div id="todo-today-focus" style={heroStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>{t(lang, "Today Focus", "今日重点")}</div>
@@ -1091,7 +1273,10 @@ export default async function AdminTodosPage({
         )}
       </div>
 
-      <div style={{ ...sectionStyle, borderColor: "#fdba74", background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)" }}>
+      <div
+        id="todo-overdue-follow-up"
+        style={{ ...sectionStyle, borderColor: "#fdba74", background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)" }}
+      >
         <div style={sectionHeaderStyle}>
           <h3 style={{ margin: 0 }}>{t(lang, "Overdue Unmarked Follow-up", "超时未点名催办")}</h3>
           <span style={{ color: "#9a3412", fontSize: 12 }}>
@@ -1129,7 +1314,7 @@ export default async function AdminTodosPage({
         )}
       </div>
 
-      <details style={{ ...sectionStyle, marginBottom: 0 }}>
+      <details id="todo-reminder-desk" style={{ ...sectionStyle, marginBottom: 0 }}>
         <summary style={{ cursor: "pointer", fontWeight: 800 }}>
           {t(lang, "Reminder Desk & Supporting Views", "提醒台与辅助视图")}
         </summary>
@@ -1660,9 +1845,6 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
-
-
 
 
 

@@ -978,3 +978,14 @@
   - no student creation, deletion, filtering semantics, pagination semantics, or student profile/business rules changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r17 Deployed
+
+- Scope: remember the last admin todo desk context and add direct next-step shortcuts.
+- Business impact:
+  - `/admin/todos` now restores the last warning thresholds and desk toggles when the page is reopened without explicit URL params, so operators do not need to rebuild the same working context each time
+  - the page now shows a resumed-desk hint plus direct jump links back to today's attendance queue, overdue follow-up, system checks, and reminder desk when those areas are active
+  - explicit URL params still win, so one-off todo deep links keep their intended behavior without remembered-state override
+  - no attendance task calculation, reminder confirmation logic, conflict-audit logic, deduction repair logic, or renewal-alert logic changed
+- Validation:
+  - `npm run build`
