@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r09` (feedback desk context-return follow-up).
+- Current release line on this branch: `2026-04-02-r10` (packages workbench context-return follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-02-r10 Deployed
+
+- Scope: packages workbench context-return follow-up for package edit, top-up, and delete actions.
+- Business impact:
+  - editing a package now returns the operator to the same packages queue with the handled package highlighted and direct shortcuts to billing or ledger
+  - saving a top-up now returns the operator to the same package row with an explicit balance-focused shortcut plus direct billing/ledger links
+  - deleting a package now refreshes the queue with an explicit shortcut to the next visible package instead of leaving the operator to re-scan the whole list
+  - no package CRUD rules, top-up math, billing behavior, ledger behavior, or filter business logic changed
+- Validation:
+  - `npm run build`
+  - fresh local logged-in QA on `http://127.0.0.1:3314` confirmed edit/top-up/delete return cards and row anchors render as expected
+  - source verification confirmed package rows now carry stable `package-row-*` anchors and focused-row styling when return params are present
 
 ## 2026-04-02-r09 Deployed
 

@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r10
+
+- Release ID: `2026-04-02-r10`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Extend the same context-return pattern to the admin packages workbench so package edit, top-up, and delete actions keep operators oriented.
+- Key files:
+  - `app/admin/packages/page.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-packages-context-return.md`
+- Risk impact (if any): Low. This ship only changes post-action navigation, highlight anchors, and next-step shortcuts on the admin packages page; no package edit rules, top-up math, delete behavior, billing logic, or ledger logic changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3314` confirmed:
+    - `edited` flow shows `Package changes saved.` plus `Jump to this package / Open billing / Open ledger`
+    - `topup` flow shows `Top-up saved.` plus `Jump to updated balance / Open billing / Open ledger`
+    - `deleted` flow shows `Package deleted.` plus `Open next visible package`
+  - source verification confirmed package rows now render stable `package-row-*` anchors and focus styling when return params are present
+- Rollback point: previous production commit before `2026-04-02-r10`.
+
 ## 2026-04-02-r09
 
 - Release ID: `2026-04-02-r09`

@@ -49,6 +49,22 @@ function fmtDateInput(d: Date | null) {
   return formatBusinessDateOnly(d);
 }
 
+function buildPackagesHref(
+  filters: { q?: string; courseId?: string; paid?: string; warn?: string },
+  extras?: Record<string, string | null | undefined>
+) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.courseId) params.set("courseId", filters.courseId);
+  if (filters.paid) params.set("paid", filters.paid);
+  if (filters.warn) params.set("warn", filters.warn);
+  for (const [key, value] of Object.entries(extras ?? {})) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/admin/packages?${query}` : "/admin/packages";
+}
+
 function isSchemaNotReadyError(err: unknown) {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
   return err.code === "P2021" || err.code === "P2022";
@@ -57,7 +73,16 @@ function isSchemaNotReadyError(err: unknown) {
 export default async function AdminPackagesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; q?: string; courseId?: string; paid?: string; warn?: string }>;
+  searchParams?: Promise<{
+    msg?: string;
+    err?: string;
+    q?: string;
+    courseId?: string;
+    paid?: string;
+    warn?: string;
+    focusPackageId?: string;
+    packageFlow?: string;
+  }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
@@ -67,6 +92,8 @@ export default async function AdminPackagesPage({
   const filterCourseId = sp?.courseId ?? "";
   const filterPaid = sp?.paid ?? "";
   const filterWarn = sp?.warn ?? "";
+  const focusPackageId = String(sp?.focusPackageId ?? "").trim();
+  const packageFlow = String(sp?.packageFlow ?? "").trim();
 
   const wherePackages: any = {};
   if (q) wherePackages.student = { name: { contains: q, mode: "insensitive" } };
@@ -246,6 +273,77 @@ export default async function AdminPackagesPage({
   const activeCount = filteredPackages.filter((p) => p.status === "ACTIVE").length;
   const activeFilterCount = [q, filterCourseId, filterPaid, filterWarn].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0;
+  const buildPageHref = (extras?: Record<string, string | null | undefined>) =>
+    buildPackagesHref(
+      { q, courseId: filterCourseId, paid: filterPaid, warn: filterWarn },
+      extras
+    );
+  const focusedPackage = filteredPackages.find((p) => p.id === focusPackageId) ?? null;
+  const nextVisiblePackage = filteredPackages.find((p) => p.id !== focusPackageId) ?? filteredPackages[0] ?? null;
+  const focusedPackageAnchor = focusedPackage ? `#package-row-${focusedPackage.id}` : "";
+  const focusedPackageBillingHref = focusPackageId ? `/admin/packages/${focusPackageId}/billing` : "";
+  const focusedPackageLedgerHref = focusPackageId ? `/admin/packages/${focusPackageId}/ledger` : "";
+  const nextVisiblePackageAnchor = nextVisiblePackage ? `#package-row-${nextVisiblePackage.id}` : "#packages-list";
+  const flowCard =
+    packageFlow === "edited"
+      ? {
+          tone: "green" as const,
+          title: t(lang, "Package changes saved.", "课包修改已保存。"),
+          detail: focusedPackage
+            ? t(lang, "The same package stays highlighted below so you can continue with billing or ledger work without searching again.", "下面会继续高亮同一个课包，方便你直接继续处理账单或流水，不用重新找。")
+            : t(lang, "The package was saved. Use billing or ledger if you want to continue follow-up outside the current filtered list.", "课包已保存；如果它当前不在这个筛选列表里，可以直接继续打开账单或流水。"),
+          links: [
+            focusedPackageAnchor
+              ? { href: focusedPackageAnchor, label: t(lang, "Jump to this package", "跳到当前课包") }
+              : null,
+            focusedPackageBillingHref
+              ? { href: focusedPackageBillingHref, label: t(lang, "Open billing", "打开账单") }
+              : null,
+            focusedPackageLedgerHref
+              ? { href: focusedPackageLedgerHref, label: t(lang, "Open ledger", "打开流水") }
+              : null,
+          ].filter((item): item is { href: string; label: string } => Boolean(item)),
+        }
+      : packageFlow === "topup"
+        ? {
+            tone: "blue" as const,
+            title: t(lang, "Top-up saved.", "课包增购已保存。"),
+            detail: focusedPackage
+              ? t(lang, "Confirm the highlighted package balance below, then move straight to billing or ledger for the same package.", "先确认下面高亮课包的余额，再直接进入同一课包的账单或流水。")
+              : t(lang, "The top-up was saved. Continue on billing or ledger if you need to confirm the same package outside this filtered view.", "增购已保存；如果当前筛选里没显示它，也可以直接继续打开同一课包的账单或流水。"),
+            links: [
+              focusedPackageAnchor
+                ? { href: focusedPackageAnchor, label: t(lang, "Jump to updated balance", "跳到更新后的余额") }
+                : null,
+              focusedPackageBillingHref
+                ? { href: focusedPackageBillingHref, label: t(lang, "Open billing", "打开账单") }
+                : null,
+              focusedPackageLedgerHref
+                ? { href: focusedPackageLedgerHref, label: t(lang, "Open ledger", "打开流水") }
+                : null,
+            ].filter((item): item is { href: string; label: string } => Boolean(item)),
+          }
+        : packageFlow === "deleted"
+          ? {
+              tone: "amber" as const,
+              title: t(lang, "Package deleted.", "课包已删除。"),
+              detail: nextVisiblePackage
+                ? t(lang, "The list has been refreshed. Move to the next visible package below so you can keep working without rebuilding your filters.", "列表已经刷新；你可以直接跳到下面下一条可见课包，继续处理，不用重设筛选。")
+                : t(lang, "The package was removed and the current list is now empty under these filters.", "该课包已经删除，当前筛选下的列表暂时为空。"),
+              links: nextVisiblePackage
+                ? [
+                    { href: nextVisiblePackageAnchor, label: t(lang, "Open next visible package", "打开下一条可见课包") },
+                    { href: `/admin/packages/${nextVisiblePackage.id}/billing`, label: t(lang, "Open next billing", "打开下一条账单") },
+                  ]
+                : [{ href: buildPageHref(), label: t(lang, "Return to package list", "返回课包列表") }],
+            }
+          : null;
+  const flowCardStyle =
+    flowCard?.tone === "green"
+      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
+      : flowCard?.tone === "blue"
+        ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
+        : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
 
   return (
     <div>
@@ -300,6 +398,28 @@ export default async function AdminPackagesPage({
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      {flowCard ? (
+        <div
+          style={{
+            ...flowCardStyle,
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
+          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {flowCard.links.map((link) => (
+              <a key={link.href + link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {loadFailed ? (
         <NoticeBanner
           type="error"
@@ -417,7 +537,7 @@ export default async function AdminPackagesPage({
         </form>
       </details>
 
-      <div style={workbenchInfoBarStyle}>
+      <div id="packages-list" style={workbenchInfoBarStyle}>
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontWeight: 800 }}>{t(lang, "Packages list", "课包列表")}</div>
           <div style={{ color: "#64748b", fontSize: 12 }}>
@@ -450,7 +570,15 @@ export default async function AdminPackagesPage({
             </thead>
             <tbody>
               {filteredPackages.map((p) => (
-                <tr key={p.id} style={{ borderTop: "1px solid #eee" }}>
+                <tr
+                  key={p.id}
+                  id={`package-row-${p.id}`}
+                  style={{
+                    borderTop: "1px solid #eee",
+                    background: focusPackageId === p.id ? "#eff6ff" : "#fff",
+                    boxShadow: focusPackageId === p.id ? "inset 0 0 0 2px rgba(37,99,235,0.28)" : "none",
+                  }}
+                >
                 {(() => {
                   const remaining = p.remainingMinutes ?? 0;
                   const risk = packageRiskMap.get(p.id);

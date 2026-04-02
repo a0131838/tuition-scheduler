@@ -199,14 +199,19 @@ export default function PackageEditModal({
     .map((course) => course.name)
     .join(", ");
 
-  const preserveRefresh = (okMsg?: string) => {
-    if (okMsg) {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.delete("err");
-      params.set("msg", okMsg);
-      const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(target, { scroll: false });
+  const preserveRefresh = (
+    okMsg?: string,
+    extras?: { focusPackageId?: string | null; packageFlow?: string | null }
+  ) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("err");
+    if (okMsg) params.set("msg", okMsg);
+    for (const [key, value] of Object.entries(extras ?? {})) {
+      if (value) params.set(key, value);
+      else params.delete(key);
     }
+    const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(target, { scroll: false });
     const y = window.scrollY;
     router.refresh();
     requestAnimationFrame(() => window.scrollTo(0, y));
@@ -375,7 +380,10 @@ export default function PackageEditModal({
               }
 
               dialogRef.current?.close();
-              preserveRefresh("Saved");
+              preserveRefresh("Saved", {
+                focusPackageId: id,
+                packageFlow: "edited",
+              });
             } finally {
               setBusy(false);
             }
@@ -562,7 +570,10 @@ export default function PackageEditModal({
               }
 
               dialogRef.current?.close();
-              preserveRefresh("Saved");
+              preserveRefresh("Saved", {
+                focusPackageId: id,
+                packageFlow: "topup",
+              });
             } finally {
               setBusy(false);
             }
@@ -699,7 +710,10 @@ export default function PackageEditModal({
                     return;
                   }
                   dialogRef.current?.close();
-                  preserveRefresh("Deleted");
+                  preserveRefresh("Deleted", {
+                    focusPackageId: pkg.id,
+                    packageFlow: "deleted",
+                  });
                 } finally {
                   setBusy(false);
                 }
