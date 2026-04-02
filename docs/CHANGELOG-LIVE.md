@@ -1949,3 +1949,22 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - fresh local logged-in QA on `http://127.0.0.1:3323` confirmed `/teacher/availability` renders `Common templates`, `Quick Copy by Date`, `Copy +1d`, and `Copy +7d`
 - Rollback point: previous production commit before `2026-04-02-r20`.
+
+## 2026-04-02-r21
+
+- Release ID: `2026-04-02-r21`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add clearer completion-state guidance to the teacher session-detail page so attendance completion flows into feedback and saved feedback feels finished.
+- Key files:
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `app/teacher/sessions/[id]/TeacherAttendanceClient.tsx`
+  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-teacher-session-completion-guidance.md`
+- Risk impact (if any): Low. This is a teacher-side session guidance and presentation pass only; attendance save logic, feedback submit logic, routing, and permissions remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3324` confirmed `/teacher/sessions/ee0a433a-3b5c-4ab3-94fc-38e0a95faf7a` renders `Completion state`, preserves the existing status summary cards, and shows the new attendance/feedback completion guidance copy
+- Rollback point: previous production commit before `2026-04-02-r21`.

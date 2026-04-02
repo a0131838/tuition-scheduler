@@ -131,6 +131,36 @@ export default async function TeacherSessionDetailPage({
             "Move to the feedback section now and record class performance, homework, and any follow-up points.",
             "现在可以进入反馈区，补充课堂表现、作业和后续跟进点。"
           );
+  const sessionCompletionTitle =
+    pendingAttendanceCount > 0
+      ? t(lang, "Session still in progress", "本节课仍在处理中")
+      : feedback
+        ? t(lang, "Session admin is complete", "本节课记录已完成")
+        : t(lang, "Attendance complete, feedback still pending", "点名已完成，反馈待提交");
+  const sessionCompletionDetail =
+    pendingAttendanceCount > 0
+      ? t(
+          lang,
+          "Keep this page focused on attendance first. Once every student has a status, the rest of the workflow becomes much easier.",
+          "先把注意力放在点名上。所有学生状态补齐后，后续反馈流程会简单很多。"
+        )
+      : feedback
+        ? t(
+            lang,
+            "Attendance and after-class feedback are both saved. Reopen the feedback form only if you need to revise details.",
+            "点名和课后反馈都已经保存完成。只有在需要修改内容时，才继续打开下方反馈表单。"
+          )
+        : t(
+            lang,
+            "The class roster is already settled, so you can move straight into after-class feedback without more attendance work.",
+            "本节课的点名已经确认完成，现在可以直接进入课后反馈，不需要再处理点名。"
+          );
+  const sessionCompletionHref = pendingAttendanceCount > 0 ? "#attendance" : feedback ? "/teacher/sessions" : "#feedback";
+  const sessionCompletionAction = pendingAttendanceCount > 0
+    ? t(lang, "Go finish attendance", "去完成点名")
+    : feedback
+      ? t(lang, "Back to my sessions", "返回我的课次")
+      : t(lang, "Go submit feedback", "去提交反馈");
 
   const msg = decode(sp?.msg);
   const err = decode(sp?.err);
@@ -159,6 +189,26 @@ export default async function TeacherSessionDetailPage({
           {t(lang, "Last attendance save", "最近点名保存")}: {formatBusinessDateTime(lastAttendanceSavedAt)}
         </div>
       ) : null}
+      <div
+        style={{
+          marginBottom: 14,
+          padding: 12,
+          borderRadius: 12,
+          border: pendingAttendanceCount > 0 ? "1px solid #fdba74" : feedback ? "1px solid #86efac" : "1px solid #93c5fd",
+          background: pendingAttendanceCount > 0 ? "#fff7ed" : feedback ? "#f0fdf4" : "#eff6ff",
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 800, color: pendingAttendanceCount > 0 ? "#c2410c" : feedback ? "#166534" : "#1d4ed8", letterSpacing: 0.2 }}>
+          {t(lang, "Completion state", "完成状态")}
+        </div>
+        <div style={{ fontWeight: 700 }}>{sessionCompletionTitle}</div>
+        <div style={{ fontSize: 13, color: "#0f172a" }}>{sessionCompletionDetail}</div>
+        <div>
+          <a href={sessionCompletionHref}>{sessionCompletionAction}</a>
+        </div>
+      </div>
 
       <div style={{ marginBottom: 12 }}>
         <b>
@@ -323,6 +373,16 @@ export default async function TeacherSessionDetailPage({
       <TeacherAttendanceClient
         sessionId={session.id}
         initialRows={attendanceRows}
+        completionGuide={{
+          title: t(lang, "Attendance saved. Move to after-class feedback next.", "点名已保存，下一步去完成课后反馈。"),
+          detail: t(
+            lang,
+            "The roster is recorded now, so you can use the feedback section below without rescanning the whole page.",
+            "点名已经记录完成，现在可以直接进入下方反馈区，不用重新扫整页。"
+          ),
+          href: "#feedback",
+          actionLabel: t(lang, "Jump to feedback", "跳到反馈区"),
+        }}
         labels={{
           save: t(lang, "Save Attendance", "保存点名"),
           saved: t(lang, "Saved", "已保存"),
@@ -376,6 +436,16 @@ export default async function TeacherSessionDetailPage({
           homework: feedback?.homework ?? "",
           previousHomeworkDone:
             feedback?.previousHomeworkDone === true ? "yes" : feedback?.previousHomeworkDone === false ? "no" : "",
+        }}
+        completionGuide={{
+          title: t(lang, "Feedback saved. This session record is up to date.", "反馈已保存，这节课的记录已更新。"),
+          detail: t(
+            lang,
+            "You can return to My Sessions now, or stay here only if you still want to refine what you submitted.",
+            "现在可以返回我的课次；只有在还要补充或修改内容时，才继续停留在这里。"
+          ),
+          href: "/teacher/sessions",
+          actionLabel: t(lang, "Back to my sessions", "返回我的课次"),
         }}
         labels={{
           submit: t(lang, "Submit Feedback", "提交反馈"),

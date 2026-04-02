@@ -13,6 +13,7 @@ export default function TeacherAttendanceClient({
   sessionId,
   initialRows,
   labels,
+  completionGuide,
 }: {
   sessionId: string;
   initialRows: Row[];
@@ -23,6 +24,12 @@ export default function TeacherAttendanceClient({
     colStudent: string;
     colStatus: string;
     colNote: string;
+  };
+  completionGuide?: {
+    title: string;
+    detail: string;
+    href: string;
+    actionLabel: string;
   };
 }) {
   const [rows, setRows] = useState<Row[]>(initialRows);
@@ -70,7 +77,29 @@ export default function TeacherAttendanceClient({
   return (
     <form onSubmit={onSave}>
       {err ? <div style={{ color: "#b00", marginBottom: 10 }}>{labels.errorPrefix}: {err}</div> : null}
-      {msg ? <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div> : null}
+      {msg ? (
+        <div
+          style={{
+            color: "#166534",
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            borderRadius: 8,
+            padding: 10,
+            marginBottom: 10,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div>{msg}</div>
+          {completionGuide ? (
+            <>
+              <div style={{ fontWeight: 700 }}>{completionGuide.title}</div>
+              <div style={{ fontSize: 13 }}>{completionGuide.detail}</div>
+              <a href={completionGuide.href}>{completionGuide.actionLabel}</a>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 12 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>

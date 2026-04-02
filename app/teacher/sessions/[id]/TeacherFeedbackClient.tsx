@@ -7,6 +7,7 @@ export default function TeacherFeedbackClient({
   sessionId,
   initial,
   labels,
+  completionGuide,
 }: {
   sessionId: string;
   initial: {
@@ -35,6 +36,12 @@ export default function TeacherFeedbackClient({
     notSet: string;
     yes: string;
     no: string;
+  };
+  completionGuide?: {
+    title: string;
+    detail: string;
+    href: string;
+    actionLabel: string;
   };
 }) {
   const [saving, setSaving] = useState(false);
@@ -90,7 +97,29 @@ export default function TeacherFeedbackClient({
   return (
     <form onSubmit={onSubmit}>
       {err ? <div style={{ color: "#b00", marginBottom: 10 }}>{labels.errorPrefix}: {err}</div> : null}
-      {msg ? <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div> : null}
+      {msg ? (
+        <div
+          style={{
+            color: "#166534",
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            borderRadius: 8,
+            padding: 10,
+            marginBottom: 10,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div>{msg}</div>
+          {completionGuide ? (
+            <>
+              <div style={{ fontWeight: 700 }}>{completionGuide.title}</div>
+              <div style={{ fontSize: 13 }}>{completionGuide.detail}</div>
+              <a href={completionGuide.href}>{completionGuide.actionLabel}</a>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       <div style={{ display: "grid", gap: 10, maxWidth: 760 }}>
         <label>
           {labels.focusStudent}

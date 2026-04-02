@@ -1020,3 +1020,14 @@
   - no availability overlap rules, clear-day behavior, undo behavior, or slot save/delete APIs changed
 - Validation:
   - `npm run build`
+
+## 2026-04-02-r21 Deployed
+
+- Scope: add completion-state guidance to teacher session detail so the page more clearly moves from attendance into feedback and then into a finished state.
+- Business impact:
+  - `/teacher/sessions/[id]` now shows a `Completion state` banner that explains whether the teacher still needs to finish attendance, submit feedback, or can safely return to `My Sessions`
+  - attendance save success now points the teacher directly toward the feedback section instead of leaving them on a generic saved message
+  - feedback save success now explains that the session record is up to date while still leaving the form editable for revisions
+  - no attendance save rules, feedback validation rules, routing rules, or session permissions changed
+- Validation:
+  - `npm run build`
