@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
+import { cookies } from "next/headers";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
@@ -14,6 +16,34 @@ import {
 } from "../_components/workbenchStyles";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
+const FEEDBACK_QUEUE_COOKIE = "adminFeedbacksPreferredQueue";
+const FEEDBACK_QUEUE_OPTIONS = ["missing", "proxy", "pending", "forwarded", "all"] as const;
+
+function normalizeFeedbackQueueStatus(value: string) {
+  return FEEDBACK_QUEUE_OPTIONS.includes(value as (typeof FEEDBACK_QUEUE_OPTIONS)[number])
+    ? (value as (typeof FEEDBACK_QUEUE_OPTIONS)[number])
+    : "missing";
+}
+
+function parseRememberedFeedbackQueue(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const status = normalizeFeedbackQueueStatus(String(params.get("status") ?? "").trim());
+  const studentId = String(params.get("studentId") ?? "").trim();
+  const normalized = new URLSearchParams();
+  if (status !== "missing") normalized.set("status", status);
+  if (studentId) normalized.set("studentId", studentId);
+  return {
+    status,
+    studentId,
+    value: normalized.toString(),
+  };
+}
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
@@ -92,13 +122,38 @@ export default async function AdminFeedbacksPage({
   await requireAdmin();
 
   const sp = await searchParams;
-  const status = sp?.status ?? "missing";
+  const statusParam = typeof sp?.status === "string" ? sp.status : "";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const studentId = String(sp?.studentId ?? "").trim();
+  const studentIdParam = typeof sp?.studentId === "string" ? String(sp.studentId ?? "").trim() : "";
   const focusFeedbackId = String(sp?.focusFeedbackId ?? "").trim();
   const focusSessionId = String(sp?.focusSessionId ?? "").trim();
   const feedbackFlow = String(sp?.feedbackFlow ?? "").trim();
+  const canResumeRememberedQueue =
+    !statusParam &&
+    !studentIdParam &&
+    !msg &&
+    !err &&
+    !focusFeedbackId &&
+    !focusSessionId &&
+    !feedbackFlow;
+  const cookieStore = await cookies();
+  const rememberedQueue = canResumeRememberedQueue
+    ? parseRememberedFeedbackQueue(cookieStore.get(FEEDBACK_QUEUE_COOKIE)?.value ?? "")
+    : {
+        status: "missing" as const,
+        studentId: "",
+        value: "",
+      };
+  const status = statusParam ? normalizeFeedbackQueueStatus(statusParam) : rememberedQueue.status;
+  const studentId = studentIdParam || rememberedQueue.studentId;
+  const resumedRememberedQueue = canResumeRememberedQueue && Boolean(rememberedQueue.value);
+  const rememberedQueueValue = (() => {
+    const params = new URLSearchParams();
+    if (status !== "missing") params.set("status", status);
+    if (studentId) params.set("studentId", studentId);
+    return params.toString();
+  })();
 
   const now = new Date();
   const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
@@ -281,6 +336,11 @@ export default async function AdminFeedbacksPage({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <RememberedWorkbenchQueryClient
+        cookieKey={FEEDBACK_QUEUE_COOKIE}
+        storageKey="adminFeedbacksPreferredQueue"
+        value={rememberedQueueValue}
+      />
       <div style={workbenchHeroStyle("indigo")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
@@ -307,6 +367,31 @@ export default async function AdminFeedbacksPage({
           </span>
         </div>
       </div>
+      {resumedRememberedQueue ? (
+        <div
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {t(
+              lang,
+              "Resumed your last feedback queue. Use the shortcut on the right if you want to return to the default desk.",
+              "已恢复你上次的反馈队列；如果要回到默认工作台，可直接使用右侧快捷入口。"
+            )}
+          </div>
+          <a href="/admin/feedbacks?status=missing">{t(lang, "Back to default desk", "回到默认工作台")}</a>
+        </div>
+      ) : null}
       {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
       {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
       {flowCard ? (

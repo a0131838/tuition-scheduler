@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r13
+
+- Release ID: `2026-04-02-r13`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Remember the last admin feedback queue and student scope so operators can reopen the same feedback desk context without rebuilding it.
+- Key files:
+  - `app/admin/feedbacks/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-feedbacks-queue-memory.md`
+- Risk impact (if any): Low. This ship only remembers and restores the admin feedback desk queue/student scope on first open when no explicit URL params are provided; no feedback write rules, forward-mark rules, proxy-draft behavior, teacher workflows, or focus-return logic changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3316` confirmed:
+    - `/admin/feedbacks` restores `status=pending` from cookie when the page is opened without URL params
+    - `/admin/feedbacks` restores `status=pending&studentId=b54eae8f-461f-4aae-9a22-8ec7a1033c8a` from cookie when the page is opened without URL params
+    - the resumed queue banner renders only on the plain queue-open path and does not appear on `feedbackFlow=forwarded` return pages
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production `/admin/feedbacks` restores the remembered queue/student scope when opened without explicit URL params and still suppresses the resume banner on feedback-flow return pages
+- Rollback point: previous production commit before `2026-04-02-r13`.
+
 ## 2026-04-02-r12
 
 - Release ID: `2026-04-02-r12`
