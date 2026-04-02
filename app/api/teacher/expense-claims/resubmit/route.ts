@@ -1,19 +1,14 @@
 import { requireTeacher } from '@/lib/auth';
 import { getExpenseTypeOption, requiresExpenseLocation, resubmitExpenseClaim } from '@/lib/expense-claims';
 import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
+import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile } from '@/lib/business-file-storage';
 import { parseDateOnlyToUTCNoon } from '@/lib/date-only';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { redirect } from 'next/navigation';
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const n = Number(String(value ?? '').trim());
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);
-}
-
-function toStoredFileAbsolutePath(relativePath: string) {
-  return path.join(process.cwd(), 'public', relativePath.replace(/^\//, '').replace(/\//g, path.sep));
 }
 
 export async function POST(req: Request) {
@@ -74,7 +69,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     if (storedReplacement) {
-      await unlink(toStoredFileAbsolutePath(storedReplacement.relativePath)).catch(() => {});
+      await deleteStoredBusinessFile(storedReplacement.relativePath, BUSINESS_UPLOAD_PREFIX.expenseClaims);
     }
     const message = error instanceof Error ? error.message : 'Resubmit claim failed';
     redirect(`/teacher/expense-claims?err=${encodeURIComponent(message)}`);

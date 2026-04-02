@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
+import { BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from '@/lib/business-file-storage';
 import { getSharedDocStorageDriver, uploadSharedDocToS3 } from '@/lib/shared-doc-storage';
 
 export const SHARED_DOC_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
@@ -39,30 +39,30 @@ export function validateSharedDocFile(file: File | null | undefined) {
 
 export async function storeSharedDocFile(file: File) {
   validateSharedDocFile(file);
-  const ext = path.extname(file.name || '').slice(0, 12) || '.bin';
-  const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : '.bin';
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-  const storeName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${safeExt}`;
   const buf = Buffer.from(await file.arrayBuffer());
-  const objectKey = path.posix.join('shared-docs', month, storeName);
+  const storageDriver = getSharedDocStorageDriver();
   const mimeType = String(file.type || '').trim() || null;
 
   let filePath: string;
-  if (getSharedDocStorageDriver() === 's3') {
+  if (storageDriver === 's3') {
+    const ext = path.extname(file.name || '').slice(0, 12) || '.bin';
+    const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : '.bin';
+    const storeName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${safeExt}`;
     filePath = await uploadSharedDocToS3({
-      objectKey,
+      objectKey: path.posix.join('shared-docs', month, storeName),
       content: buf,
       contentType: mimeType,
     });
   } else {
-    const relDir = path.join('uploads', 'shared-docs', month);
-    const absDir = path.join(process.cwd(), 'public', relDir);
-    await mkdir(absDir, { recursive: true });
-    const absPath = path.join(absDir, storeName);
-    await writeFile(absPath, buf);
-    filePath = `/${path.posix.join('uploads', 'shared-docs', month, storeName)}`;
+    const localStored = await storeBusinessUpload(file, {
+      allowedPrefix: BUSINESS_UPLOAD_PREFIX.sharedDocs,
+      subdirSegments: [month],
+      maxBytes: SHARED_DOC_UPLOAD_MAX_BYTES,
+      fallbackOriginalName: 'document',
+    });
+    filePath = localStored.relativePath;
   }
 
   return {

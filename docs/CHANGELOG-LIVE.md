@@ -15,6 +15,54 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r04
+
+- Release ID: `2026-04-02-r04`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Add targeted admin/teacher UX follow-ups plus a shared local business-file-storage layer for expense claims, payment proofs, shared docs local fallback, and ticket attachments.
+- Key files:
+  - `lib/business-file-storage.ts`
+  - `lib/expense-claim-files.ts`
+  - `lib/shared-doc-files.ts`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `app/admin/students/AdminStudentsClient.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/archived/page.tsx`
+  - `app/api/admin/expense-claims/route.ts`
+  - `app/api/admin/parent-payment-records/[id]/file/route.ts`
+  - `app/api/expense-claims/[id]/receipt/route.ts`
+  - `app/api/shared-docs/[id]/file/route.ts`
+  - `app/api/teacher/expense-claims/route.ts`
+  - `app/api/teacher/expense-claims/resubmit/route.ts`
+  - `app/api/tickets/upload/[token]/route.ts`
+  - `app/api/tickets/files/[filename]/route.ts`
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `app/teacher/tickets/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-storage-helper-and-ux-followups.md`
+- Risk impact (if any): Medium-low. This ship touches multiple file-open/upload paths, but keeps the same routes, DB fields, approval rules, ticket flows, and expense-claim business logic; live attachment smoke checks were completed before release closeout.
+- Verification:
+  - `npm run build` passed
+  - `npm run audit:upload-integrity` was run locally; high missing counts were confirmed as local-environment file-disk mismatch, not a regression in the new helper
+  - helper smoke check passed for `expense_claim / payment_proof / partner_payment_proof / shared_docs_local / tickets` store-read-delete cycle
+  - logged-in live QA confirmed:
+    - `/api/expense-claims/[id]/receipt` returns `200`
+    - `/api/admin/parent-payment-records/[id]/file` returns `200`
+    - `/uploads/partner-payment-proofs/*` sample links return `200`
+    - `/api/shared-docs/[id]/file` triggers the expected file download flow
+    - `/api/tickets/files/[filename]` returns `200`
+  - targeted UI checks confirmed:
+    - admin expense claims and receipt approvals expose attachment-issue triage more clearly
+    - admin students page can recover from empty `today` queues and remembers the last queue when no explicit `view` is set
+    - teacher session detail now guides teachers to attendance first, feedback second without changing submission rules
+- Rollback point: previous production commit before `2026-04-02-r04`.
+
 ## 2026-04-02-r03
 
 - Release ID: `2026-04-02-r03`

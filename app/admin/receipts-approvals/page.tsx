@@ -2,9 +2,12 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
-import path from "path";
-import { access, mkdir, unlink, writeFile } from "fs/promises";
-import crypto from "crypto";
+import {
+  BUSINESS_UPLOAD_PREFIX,
+  deleteStoredBusinessFile,
+  storeBusinessUpload,
+  storedBusinessFileExists,
+} from "@/lib/business-file-storage";
 import {
   addParentPaymentRecord,
   buildParentReceiptNoForInvoice,
@@ -393,16 +396,12 @@ async function uploadPaymentRecordAction(formData: FormData) {
     redirect(withQuery("/admin/receipts-approvals?err=File+too+large+(max+10MB)", packageId));
   }
 
-  const ext = path.extname(file.name || "").slice(0, 10) || ".bin";
-  const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : ".bin";
-  const storeName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${safeExt}`;
-  const relDir = path.join("uploads", "payment-proofs", packageId);
-  const absDir = path.join(process.cwd(), "public", relDir);
-  await mkdir(absDir, { recursive: true });
-  const absPath = path.join(absDir, storeName);
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(absPath, buf);
-  const relPath = `/${path.posix.join("uploads", "payment-proofs", packageId, storeName)}`;
+  const stored = await storeBusinessUpload(file, {
+    allowedPrefix: BUSINESS_UPLOAD_PREFIX.paymentProofs,
+    subdirSegments: [packageId],
+    maxBytes: 10 * 1024 * 1024,
+    fallbackOriginalName: "payment-proof",
+  });
   const paymentDate = String(formData.get("paymentDate") ?? "").trim() || null;
   const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
   const referenceNo = String(formData.get("referenceNo") ?? "").trim() || null;
@@ -418,23 +417,16 @@ async function uploadPaymentRecordAction(formData: FormData) {
         paymentMethod,
         referenceNo,
         originalFileName: file.name || "payment-proof",
-        storedFileName: storeName,
-        relativePath: relPath,
+        storedFileName: stored.storedFileName,
+        relativePath: stored.relativePath,
         note: paymentNote,
         uploadedBy: admin.email,
       });
-      if (oldItem.relativePath?.startsWith("/")) {
-        const oldAbsPath = path.join(
-          process.cwd(),
-          "public",
-          oldItem.relativePath.replace(/^\//, "").replace(/\//g, path.sep),
-        );
-        await unlink(oldAbsPath).catch(() => {});
-      }
+      await deleteStoredBusinessFile(oldItem.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
       redirect(withQuery("/admin/receipts-approvals?msg=Payment+record+replaced", packageId));
     } catch (e) {
       if (isNextRedirectError(e)) throw e;
-      await unlink(absPath).catch(() => {});
+      await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
       const msg = e instanceof Error ? e.message : "Replace payment record failed";
       redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
     }
@@ -447,8 +439,8 @@ async function uploadPaymentRecordAction(formData: FormData) {
     paymentMethod,
     referenceNo,
     originalFileName: file.name || "payment-proof",
-    storedFileName: storeName,
-    relativePath: relPath,
+    storedFileName: stored.storedFileName,
+    relativePath: stored.relativePath,
     note: paymentNote,
     uploadedBy: admin.email,
   });
@@ -469,10 +461,7 @@ async function deletePaymentRecordAction(formData: FormData) {
   }
   try {
     const row = await deleteParentPaymentRecord({ recordId, actorEmail: admin.email });
-    if (row.relativePath?.startsWith("/")) {
-      const absPath = path.join(process.cwd(), "public", row.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
-      await unlink(absPath).catch(() => {});
-    }
+    await deleteStoredBusinessFile(row.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete payment record failed";
     redirect(withQuery(`/admin/receipts-approvals?err=${encodeURIComponent(msg)}`, packageId));
@@ -762,9 +751,9 @@ export default async function ReceiptsApprovalsPage({
     : "upload";
   const queueFilterRaw = String(sp?.queueFilter ?? "ALL").trim().toUpperCase();
   const queueFilter = (
-    ["ALL", "PENDING", "REJECTED", "COMPLETED", "NO_PAYMENT_RECORD", "TODAY_MINE"] as const
+    ["ALL", "PENDING", "REJECTED", "COMPLETED", "NO_PAYMENT_RECORD", "FILE_ISSUE", "TODAY_MINE"] as const
   ).includes(queueFilterRaw as any)
-    ? (queueFilterRaw as "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "TODAY_MINE")
+    ? (queueFilterRaw as "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE")
     : "ALL";
   const queueBucketRaw = String(sp?.queueBucket ?? "ALL").trim().toUpperCase();
   const queueBucket = (["ALL", "MINE", "OPEN", "HISTORY"] as const).includes(queueBucketRaw as any)
@@ -863,14 +852,10 @@ export default async function ReceiptsApprovalsPage({
     selectedBilling
       ? await Promise.all(
           selectedBilling.paymentRecords.map(async (record) => {
-            if (!record.relativePath?.startsWith("/")) return [record.id, false] as const;
-            const absPath = path.join(process.cwd(), "public", record.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
-            try {
-              await access(absPath);
-              return [record.id, true] as const;
-            } catch {
-              return [record.id, false] as const;
-            }
+            return [
+              record.id,
+              await storedBusinessFileExists(record.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs),
+            ] as const;
           })
         )
       : []
@@ -945,7 +930,7 @@ export default async function ReceiptsApprovalsPage({
     return `/admin/receipts-approvals?${q.toString()}`;
   };
   const queueFilterHref = (
-    filter: "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "TODAY_MINE"
+    filter: "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE"
   ) => {
     const q = new URLSearchParams(baseQuery.toString());
     if (filter === "ALL") q.delete("queueFilter");
@@ -1055,6 +1040,7 @@ export default async function ReceiptsApprovalsPage({
   if (queueFilter === "REJECTED") unifiedQueue = unifiedQueue.filter((x) => x.status === "REJECTED");
   if (queueFilter === "COMPLETED") unifiedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
   if (queueFilter === "NO_PAYMENT_RECORD") unifiedQueue = unifiedQueue.filter((x) => !x.paymentRecord);
+  if (queueFilter === "FILE_ISSUE") unifiedQueue = unifiedQueue.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing));
   if (queueFilter === "TODAY_MINE") {
     const todayPrefix = `${today} `;
     unifiedQueue = unifiedQueue.filter((x: any) => {
@@ -1184,6 +1170,9 @@ export default async function ReceiptsApprovalsPage({
   const queueBlockerCount = actionableQueue.filter(
     (x) => !x.paymentRecord || Boolean(x.paymentFileMissing) || (x.riskCount ?? 0) > 0
   ).length;
+  const queueMissingProofCount = actionableQueue.filter((x) => !x.paymentRecord).length;
+  const queueMissingFileCount = actionableQueue.filter((x) => Boolean(x.paymentFileMissing)).length;
+  const queueFileIssueCount = actionableQueue.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing)).length;
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
@@ -1271,6 +1260,41 @@ export default async function ReceiptsApprovalsPage({
         <span style={{ ...tagStyle(packageWorkspaceMode ? "ok" : "muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
           {packageWorkspaceMode ? t(lang, "Package workspace active", "当前课包工作区已启用") : t(lang, "Working from global queue", "当前从全局队列工作")}
         </span>
+        <span style={{ ...tagStyle(queueFileIssueCount > 0 ? "err" : "muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
+          {t(lang, "Proof / file issues", "凭证 / 文件异常")}: {queueFileIssueCount}
+        </span>
+      </div>
+
+      <div
+        style={{
+          marginBottom: 12,
+          padding: "10px 12px",
+          borderRadius: 12,
+          border: `1px solid ${queueFileIssueCount > 0 ? "#fecaca" : "#e2e8f0"}`,
+          background: queueFileIssueCount > 0 ? "#fff7f7" : "#f8fafc",
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 700, color: queueFileIssueCount > 0 ? "#b91c1c" : "#334155" }}>
+            {t(lang, "Attachment triage", "附件异常分诊")}
+          </div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {t(
+              lang,
+              `Missing payment record: ${queueMissingProofCount}. Missing file on linked proof: ${queueMissingFileCount}.`,
+              `缺少付款记录：${queueMissingProofCount}。已关联凭证但文件缺失：${queueMissingFileCount}。`
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+          {queueFilter !== "ALL" ? <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a> : null}
+        </div>
       </div>
 
       <details open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
@@ -1907,6 +1931,7 @@ export default async function ReceiptsApprovalsPage({
                 ["REJECTED", t(lang, "Rejected", "已驳回")],
                 ["COMPLETED", t(lang, "Completed", "已完成")],
                 ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
+                ["FILE_ISSUE", t(lang, "Proof / File Issues", "凭证 / 文件异常")],
                 ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
               ] as const).map(([filter, label]) => (
                 <a

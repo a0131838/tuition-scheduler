@@ -81,6 +81,17 @@ export default async function TeacherSessionDetailPage({
   const feedback = session.feedbacks[0] ?? null;
   const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
   const feedbackOverdue = new Date() > deadline;
+  const attendanceRows = visibleAttendanceEnrollments.map((e) => {
+    const attendance = attMap.get(e.studentId);
+    return {
+      studentId: e.studentId,
+      studentName: e.student.name,
+      status: attendance?.status ?? "UNMARKED",
+      note: attendance?.note ?? "",
+    };
+  });
+  const pendingAttendanceCount = attendanceRows.filter((row) => row.status === "UNMARKED").length;
+  const attendanceDoneCount = attendanceRows.length - pendingAttendanceCount;
   const lastAttendanceSavedAt =
     session.attendances.length > 0
       ? new Date(Math.max(...session.attendances.map((a) => new Date(a.updatedAt).getTime())))
@@ -138,18 +149,70 @@ export default async function TeacherSessionDetailPage({
         </div>
       </div>
 
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          marginBottom: 16,
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid #bae6fd",
+            background: "#f0f9ff",
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#0369a1", letterSpacing: 0.2 }}>
+            {t(lang, "Step 1", "步骤 1")}
+          </div>
+          <div style={{ fontWeight: 700 }}>{t(lang, "Finish attendance first", "先完成点名")}</div>
+          <div style={{ color: "#0f172a", fontSize: 13 }}>
+            {pendingAttendanceCount > 0
+              ? t(
+                  lang,
+                  `${pendingAttendanceCount} students still need a status before you move on to feedback.`,
+                  `还有 ${pendingAttendanceCount} 位学生未点名，建议先补齐状态再继续填写反馈。`
+                )
+              : t(
+                  lang,
+                  `Attendance is complete for ${attendanceDoneCount} students. You can move on to feedback now.`,
+                  `已完成 ${attendanceDoneCount} 位学生的点名，现在可以继续填写反馈。`
+                )}
+          </div>
+        </div>
+        <div
+          style={{
+            border: "1px solid #ddd6fe",
+            background: "#f5f3ff",
+            borderRadius: 12,
+            padding: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9", letterSpacing: 0.2 }}>
+            {t(lang, "Step 2", "步骤 2")}
+          </div>
+          <div style={{ fontWeight: 700 }}>{t(lang, "Then submit after-class feedback", "然后提交课后反馈")}</div>
+          <div style={{ color: "#0f172a", fontSize: 13 }}>
+            {t(
+              lang,
+              "Once attendance is settled, record what was covered, how the student performed, and the homework assigned.",
+              "点名确认后，再补充本节课内容、学生表现和课后作业。"
+            )}
+          </div>
+        </div>
+      </div>
+
       <h3>{t(lang, "Attendance", "点名")}</h3>
       <TeacherAttendanceClient
         sessionId={session.id}
-        initialRows={visibleAttendanceEnrollments.map((e) => {
-          const a = attMap.get(e.studentId);
-          return {
-            studentId: e.studentId,
-            studentName: e.student.name,
-            status: a?.status ?? "UNMARKED",
-            note: a?.note ?? "",
-          };
-        })}
+        initialRows={attendanceRows}
         labels={{
           save: t(lang, "Save Attendance", "保存点名"),
           saved: t(lang, "Saved", "已保存"),
@@ -161,6 +224,24 @@ export default async function TeacherSessionDetailPage({
       />
 
       <h3 style={{ marginTop: 20 }}>{t(lang, "After-class Feedback", "课后反馈")}</h3>
+      {pendingAttendanceCount > 0 ? (
+        <div
+          style={{
+            color: "#92400e",
+            background: "#fff7ed",
+            border: "1px solid #fdba74",
+            padding: 8,
+            borderRadius: 6,
+            marginBottom: 8,
+          }}
+        >
+          {t(
+            lang,
+            `${pendingAttendanceCount} students are still unmarked. You can continue writing feedback, but it is safer to finish attendance first.`,
+            `还有 ${pendingAttendanceCount} 位学生未点名。你仍可继续填写反馈，但更建议先完成点名。`
+          )}
+        </div>
+      ) : null}
       <div style={{ color: feedbackOverdue ? "#b00" : "#666", marginBottom: 6 }}>
         {feedbackOverdue
           ? t(

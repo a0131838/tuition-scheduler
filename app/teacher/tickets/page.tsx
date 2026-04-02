@@ -11,7 +11,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { existsSync } from "fs";
-import path from "path";
+import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
@@ -47,7 +47,8 @@ function extractTicketProofFilename(item: string) {
 function isTicketProofMissing(item: string) {
   const filename = extractTicketProofFilename(item);
   if (!filename) return false;
-  const abs = path.join(process.cwd(), "public", "uploads", "tickets", filename);
+  const abs = resolveStoredBusinessFilePath(`${BUSINESS_UPLOAD_PREFIX.tickets}${filename}`, BUSINESS_UPLOAD_PREFIX.tickets);
+  if (!abs) return true;
   return !existsSync(abs);
 }
 

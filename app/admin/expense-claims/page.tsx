@@ -28,6 +28,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
 import path from 'path';
+import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -110,6 +111,7 @@ export default async function AdminExpenseClaimsPage({
   const selectedFinanceGroupKeyParam = typeof params.financeGroup === 'string' ? params.financeGroup : '';
   const approvedUnpaidOnly = typeof params.approvedUnpaidOnly === 'string' ? params.approvedUnpaidOnly === '1' : false;
   const archivedOnly = typeof params.archived === 'string' ? params.archived === '1' : false;
+  const attachmentIssueOnly = typeof params.attachmentIssueOnly === 'string' ? params.attachmentIssueOnly === '1' : false;
   const canApprove = await canApproveExpense(user);
   const canFinance = canFinanceOperateExpense(user);
   const isManager = await isManagerUser(user);
@@ -124,6 +126,7 @@ export default async function AdminExpenseClaimsPage({
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
     archived: archivedOnly ? '1' : '',
+    attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   });
   const currentMonth = formatMonthKey(new Date());
   const previousMonth = shiftMonth(new Date(), -1);
@@ -136,6 +139,7 @@ export default async function AdminExpenseClaimsPage({
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
     archived: archivedOnly ? '1' : '',
+    attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   })}`;
   const quickExpenseLastMonthHref = `/admin/expense-claims?${buildFilterQuery({
     status: statusFilter !== 'ALL' ? statusFilter : '',
@@ -146,6 +150,7 @@ export default async function AdminExpenseClaimsPage({
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
     archived: archivedOnly ? '1' : '',
+    attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   })}`;
   const quickApprovedUnpaidHref = `/admin/expense-claims?${buildFilterQuery({
     status: '',
@@ -156,6 +161,7 @@ export default async function AdminExpenseClaimsPage({
     q: '',
     approvedUnpaidOnly: '1',
     archived: '',
+    attachmentIssueOnly: '',
   })}`;
   const quickSubmittedHref = `/admin/expense-claims?${buildFilterQuery({
     status: ExpenseClaimStatus.SUBMITTED,
@@ -166,6 +172,18 @@ export default async function AdminExpenseClaimsPage({
     q: '',
     approvedUnpaidOnly: '',
     archived: '',
+    attachmentIssueOnly: '',
+  })}`;
+  const quickAttachmentIssueHref = `/admin/expense-claims?${buildFilterQuery({
+    status: '',
+    month: '',
+    paymentBatchMonth: '',
+    expenseType: '',
+    currency: '',
+    q: '',
+    approvedUnpaidOnly: '',
+    archived: '',
+    attachmentIssueOnly: '1',
   })}`;
   const quickClearHref = '/admin/expense-claims';
   const hasAdvancedFilters =
@@ -176,7 +194,8 @@ export default async function AdminExpenseClaimsPage({
     Boolean(currencyFilter) ||
     Boolean(submitterQuery) ||
     approvedUnpaidOnly ||
-    archivedOnly;
+    archivedOnly ||
+    attachmentIssueOnly;
 
   async function approveAction(formData: FormData) {
     'use server';
@@ -304,14 +323,23 @@ export default async function AdminExpenseClaimsPage({
     approvedUnpaidOnly,
     archived: archivedOnly,
   });
-  const summary = summarizeExpenseClaims(claims);
+  const claimsWithAttachmentState = await Promise.all(
+    claims.map(async (claim) => ({
+      ...claim,
+      attachmentExists: await storedBusinessFileExists(claim.receiptPath, BUSINESS_UPLOAD_PREFIX.expenseClaims),
+    })),
+  );
+  const visibleClaims = attachmentIssueOnly
+    ? claimsWithAttachmentState.filter((claim) => !claim.attachmentExists)
+    : claimsWithAttachmentState;
+  const summary = summarizeExpenseClaims(visibleClaims);
   const reminders = await getExpenseClaimReminderQueues();
   const exportHref = `/api/exports/expense-claims${filterQuery ? `?${filterQuery}` : ''}`;
-  const reviewQueue = claims.filter((claim) => claim.status === ExpenseClaimStatus.SUBMITTED);
+  const reviewQueue = visibleClaims.filter((claim) => claim.status === ExpenseClaimStatus.SUBMITTED);
   const selectedReviewClaim = reviewQueue.find((claim) => claim.id === selectedClaimIdParam) ?? reviewQueue[0] ?? null;
   const selectedReviewIndex = selectedReviewClaim ? reviewQueue.findIndex((claim) => claim.id === selectedReviewClaim.id) : -1;
   const nextReviewClaimId = selectedReviewIndex >= 0 && selectedReviewIndex + 1 < reviewQueue.length ? reviewQueue[selectedReviewIndex + 1]?.id ?? '' : '';
-  const financeQueue = claims.filter((claim) => claim.status === ExpenseClaimStatus.APPROVED);
+  const financeQueue = visibleClaims.filter((claim) => claim.status === ExpenseClaimStatus.APPROVED);
   const financeGroups = Array.from(
     financeQueue.reduce((map, claim) => {
       const key = buildFinanceGroupKey(claim.submitterUserId, claim.currencyCode);
@@ -357,10 +385,16 @@ export default async function AdminExpenseClaimsPage({
     Boolean(submitterQuery),
     approvedUnpaidOnly,
     archivedOnly,
+    attachmentIssueOnly,
   ].filter(Boolean).length;
   const reminderCount = reminders.staleSubmitted.length + reminders.staleApprovedUnpaid.length;
+  const attachmentIssueCount = visibleClaims.filter((claim) => !claim.attachmentExists).length;
+  const reviewAttachmentIssueCount = reviewQueue.filter((claim) => !claim.attachmentExists).length;
+  const financeAttachmentIssueCount = financeQueue.filter((claim) => !claim.attachmentExists).length;
   const currentDatasetLabel = approvedUnpaidOnly
     ? t(lang, 'Approved but unpaid only', '仅看已批未付')
+    : attachmentIssueOnly
+      ? t(lang, 'Attachment issues only', '仅看附件异常')
     : archivedOnly
       ? t(lang, 'Archived claims only', '仅看已归档报销单')
       : statusFilter !== 'ALL'
@@ -392,6 +426,9 @@ export default async function AdminExpenseClaimsPage({
           </span>
           <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #e5e7eb', color: '#334155', fontSize: 12 }}>
             {t(lang, 'Follow-up reminders', '跟进提醒')}: <b>{reminderCount}</b>
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #e5e7eb', color: '#334155', fontSize: 12 }}>
+            {t(lang, 'Attachment issues', '附件异常')}: <b>{attachmentIssueCount}</b>
           </span>
         </div>
       </section>
@@ -448,6 +485,10 @@ export default async function AdminExpenseClaimsPage({
           <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Rejected', '已驳回')}</div>
           <div style={workbenchMetricValueStyle('slate')}>{summary.rejectedCount}</div>
         </div>
+        <div style={{ ...workbenchMetricCardStyle('rose'), background: '#fff7f7' }}>
+          <div style={workbenchMetricLabelStyle('rose')}>{t(lang, 'Attachment issues', '附件异常')}</div>
+          <div style={workbenchMetricValueStyle('rose')}>{attachmentIssueCount}</div>
+        </div>
       </div>
 
       <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
@@ -475,6 +516,7 @@ export default async function AdminExpenseClaimsPage({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href={quickSubmittedHref}>{t(lang, 'Submitted review queue', '待审批队列')}</a>
           <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
+          <a href={quickAttachmentIssueHref}>{t(lang, 'Attachment issues', '附件异常')}</a>
           <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
           <a href={quickExpenseLastMonthHref}>{t(lang, 'Last month expenses', '上月消费')}</a>
           <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
@@ -560,6 +602,7 @@ export default async function AdminExpenseClaimsPage({
               {selectedReviewClaim ? (
                 <div style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 13 }}>
                   {t(lang, 'Queue position', '队列位置')} {selectedReviewIndex + 1} / {reviewQueue.length}
+                  {reviewAttachmentIssueCount ? ` · ${t(lang, 'Attachment issues', '附件异常')}: ${reviewAttachmentIssueCount}` : ''}
                 </div>
               ) : null}
             </div>
@@ -589,6 +632,20 @@ export default async function AdminExpenseClaimsPage({
                     </div>
                   ) : null}
                   <div style={{ color: '#64748b', fontSize: 12, wordBreak: 'break-all' }}>{selectedReviewClaim.receiptOriginalName}</div>
+                  <div
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      border: `1px solid ${selectedReviewClaim.attachmentExists ? '#bbf7d0' : '#fecaca'}`,
+                      background: selectedReviewClaim.attachmentExists ? '#f0fdf4' : '#fff7f7',
+                      color: selectedReviewClaim.attachmentExists ? '#166534' : '#b91c1c',
+                      fontSize: 13,
+                    }}
+                  >
+                    {selectedReviewClaim.attachmentExists
+                      ? t(lang, 'Attachment health: file is available for review.', '附件状态：文件可正常查看。')
+                      : t(lang, 'Attachment health: file is missing on the server. Reject or request replacement before approving.', '附件状态：服务器上缺少文件。请先驳回或要求补传，再继续审批。')}
+                  </div>
                   {isPreviewableImage(selectedReviewClaim.receiptOriginalName) ? (
                     <a href={`/api/expense-claims/${encodeURIComponent(selectedReviewClaim.id)}/receipt`} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -730,11 +787,12 @@ export default async function AdminExpenseClaimsPage({
                       : t(lang, 'Pick one approved unpaid group from the finance queue to record payment here.', '从左侧财务队列选择一组已批未付报销单，在这里登记付款。')}
                   </div>
                 </div>
-                {selectedFinanceGroup ? (
-                  <div style={{ color: '#a16207', fontWeight: 700, fontSize: 13 }}>
+              {selectedFinanceGroup ? (
+                <div style={{ color: '#a16207', fontWeight: 700, fontSize: 13 }}>
                     {t(lang, 'Queue position', '队列位置')} {selectedFinanceGroupIndex + 1} / {financeGroups.length}
-                  </div>
-                ) : null}
+                    {financeAttachmentIssueCount ? ` · ${t(lang, 'Attachment issues', '附件异常')}: ${financeAttachmentIssueCount}` : ''}
+                </div>
+              ) : null}
               </div>
 
               {selectedFinanceGroup ? (
@@ -755,6 +813,11 @@ export default async function AdminExpenseClaimsPage({
                     <input type="hidden" name="financeGroup" value={selectedFinanceGroup.key} />
                     <div style={{ display: 'grid', gap: 8 }}>
                       <div style={{ fontWeight: 700 }}>{t(lang, 'Group claims', '组内报销单')}</div>
+                      {selectedFinanceGroup.claims.some((claim) => !claim.attachmentExists) ? (
+                        <div style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff7f7', color: '#b91c1c', fontSize: 13 }}>
+                          {t(lang, 'One or more claims in this payout group have missing attachments. Repair the files before marking the batch paid.', '这一付款分组里有报销单附件缺失。请先修复文件，再批量标记付款。')}
+                        </div>
+                      ) : null}
                       {selectedFinanceGroup.claims.map((claim) => (
                         <label
                           key={claim.id}
@@ -778,6 +841,9 @@ export default async function AdminExpenseClaimsPage({
                                 {formatUTCDateOnly(claim.expenseDate)} · {getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}
                               </span>
                               <span style={{ color: '#334155', fontSize: 13, whiteSpace: 'pre-wrap' }}>{claim.description}</span>
+                              <span style={{ color: claim.attachmentExists ? '#166534' : '#b91c1c', fontSize: 12 }}>
+                                {claim.attachmentExists ? t(lang, 'Attachment OK', '附件正常') : t(lang, 'Attachment missing', '附件缺失')}
+                              </span>
                               <span style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 13 }}>
                                 <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt`} target="_blank" rel="noreferrer">{t(lang, 'View attachment', '查看附件')}</a>
                                 <a href={`/api/expense-claims/${encodeURIComponent(claim.id)}/receipt?download=1`} target="_blank" rel="noreferrer">{t(lang, 'Download attachment', '下载附件')}</a>
@@ -949,6 +1015,10 @@ export default async function AdminExpenseClaimsPage({
               <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
                 <input type="checkbox" name="approvedUnpaidOnly" value="1" defaultChecked={approvedUnpaidOnly} />
                 <span>{t(lang, 'Approved but unpaid only', '仅看已批未付')}</span>
+              </label>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
+                <input type="checkbox" name="attachmentIssueOnly" value="1" defaultChecked={attachmentIssueOnly} />
+                <span>{t(lang, 'Only attachment issues', '仅看附件异常')}</span>
               </label>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
                 <input type="checkbox" name="archived" value="1" defaultChecked={archivedOnly} />

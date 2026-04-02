@@ -1,9 +1,9 @@
 import { requireTeacher } from '@/lib/auth';
 import { getLang, t } from '@/lib/i18n';
 import { EXPENSE_CURRENCY_CODES, EXPENSE_TYPE_OPTIONS, formatExpenseMoney, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
+import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import ExpenseClaimSubmitButton from '@/app/_components/ExpenseClaimSubmitButton';
-import { access } from 'fs/promises';
 import path from 'path';
 import { ExpenseClaimStatus } from '@prisma/client';
 import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-only';
@@ -25,20 +25,6 @@ function buildFilterQuery(input: Record<string, string | null | undefined>) {
     if (normalized) params.set(key, normalized);
   }
   return params.toString();
-}
-
-function toStoredFileAbsolutePath(relativePath: string) {
-  return path.join(process.cwd(), 'public', relativePath.replace(/^\//, '').replace(/\//g, path.sep));
-}
-
-async function fileExists(relativePath: string | null | undefined) {
-  if (!relativePath) return false;
-  try {
-    await access(toStoredFileAbsolutePath(relativePath));
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function formatExpenseClaimStatusLabel(lang: 'BILINGUAL' | 'ZH' | 'EN', status: ExpenseClaimStatus) {
@@ -124,7 +110,7 @@ export default async function TeacherExpenseClaimsPage({
       .filter((claim) => statusFilter !== 'ALL' || claim.status !== ExpenseClaimStatus.WITHDRAWN)
       .map(async (claim) => ({
       ...claim,
-      attachmentExists: await fileExists(claim.receiptPath),
+      attachmentExists: await storedBusinessFileExists(claim.receiptPath, BUSINESS_UPLOAD_PREFIX.expenseClaims),
       })),
   );
   const activeCount = claimsWithAttachmentState.length;

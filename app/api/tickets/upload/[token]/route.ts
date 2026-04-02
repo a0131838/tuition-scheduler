@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from "@/lib/business-file-storage";
 import { TICKET_UPLOAD_ACCEPT, TICKET_UPLOAD_MAX_BYTES } from "@/lib/tickets";
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 
 export const runtime = "nodejs";
 
@@ -34,9 +32,6 @@ export async function POST(
   if (files.length === 0) return bad("No file uploaded");
   if (files.length > 10) return bad("Too many files (max 10)");
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "tickets");
-  await mkdir(uploadDir, { recursive: true });
-
   const urls: string[] = [];
   for (const file of files) {
     if (file.size > TICKET_UPLOAD_MAX_BYTES) {
@@ -46,13 +41,12 @@ export async function POST(
       return bad(`Unsupported file type: ${file.name}`);
     }
 
-    const ext = path.extname(file.name).slice(0, 10).toLowerCase();
-    const safeExt = /^[a-z0-9.]+$/.test(ext) ? ext : "";
-    const filename = `${Date.now()}-${randomUUID()}${safeExt}`;
-    const absPath = path.join(uploadDir, filename);
-    const buf = Buffer.from(await file.arrayBuffer());
-    await writeFile(absPath, buf);
-    urls.push(`/api/tickets/files/${filename}`);
+    const stored = await storeBusinessUpload(file, {
+      allowedPrefix: BUSINESS_UPLOAD_PREFIX.tickets,
+      maxBytes: TICKET_UPLOAD_MAX_BYTES,
+      fallbackOriginalName: "ticket-file",
+    });
+    urls.push(`/api/tickets/files/${stored.storedFileName}`);
   }
 
   return Response.json({ ok: true, urls });

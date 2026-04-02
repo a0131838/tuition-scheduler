@@ -2,9 +2,7 @@
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import path from "path";
-import { mkdir, unlink, writeFile } from "fs/promises";
-import crypto from "crypto";
+import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile, storeBusinessUpload } from "@/lib/business-file-storage";
 import {
   addPartnerPaymentRecord,
   buildPartnerReceiptNoForInvoice,
@@ -227,16 +225,13 @@ async function uploadPaymentRecordAction(formData: FormData) {
   if (!(file instanceof File) || !file.size) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-file", mode, month));
   if (file.size > 10 * 1024 * 1024) redirect(withQuery("/admin/reports/partner-settlement/billing?err=file-too-large", mode, month));
 
-  const ext = path.extname(file.name || "").slice(0, 10) || ".bin";
-  const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : ".bin";
-  const storeName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${safeExt}`;
   const dirKey = mode === "OFFLINE_MONTHLY" ? `${mode}_${month}` : mode;
-  const relDir = path.join("uploads", "partner-payment-proofs", dirKey);
-  const absDir = path.join(process.cwd(), "public", relDir);
-  await mkdir(absDir, { recursive: true });
-  const absPath = path.join(absDir, storeName);
-  await writeFile(absPath, Buffer.from(await file.arrayBuffer()));
-  const relPath = `/${path.posix.join("uploads", "partner-payment-proofs", dirKey, storeName)}`;
+  const stored = await storeBusinessUpload(file, {
+    allowedPrefix: BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs,
+    subdirSegments: [dirKey],
+    maxBytes: 10 * 1024 * 1024,
+    fallbackOriginalName: "payment-proof",
+  });
 
   const paymentDate = String(formData.get("paymentDate") ?? "").trim() || null;
   const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
@@ -248,16 +243,13 @@ async function uploadPaymentRecordAction(formData: FormData) {
     try {
       const { oldItem } = await replacePartnerPaymentRecord({
         recordId: replaceRecordId, mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
-        originalFileName: file.name || "payment-proof", storedFileName: storeName, relativePath: relPath, note: paymentNote, uploadedBy: admin.email,
+        originalFileName: file.name || "payment-proof", storedFileName: stored.storedFileName, relativePath: stored.relativePath, note: paymentNote, uploadedBy: admin.email,
       });
-      if (oldItem.relativePath?.startsWith("/")) {
-        const oldAbsPath = path.join(process.cwd(), "public", oldItem.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
-        await unlink(oldAbsPath).catch(() => {});
-      }
+      await deleteStoredBusinessFile(oldItem.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
       redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-replaced", mode, month));
     } catch (e) {
       if (isNextRedirectError(e)) throw e;
-      await unlink(absPath).catch(() => {});
+      await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
       const msg = e instanceof Error ? e.message : "Replace payment record failed";
       redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
     }
@@ -265,7 +257,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
 
   await addPartnerPaymentRecord({
     mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
-    originalFileName: file.name || "payment-proof", storedFileName: storeName, relativePath: relPath, note: paymentNote, uploadedBy: admin.email,
+    originalFileName: file.name || "payment-proof", storedFileName: stored.storedFileName, relativePath: stored.relativePath, note: paymentNote, uploadedBy: admin.email,
   });
   redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-uploaded", mode, month));
 }
@@ -360,10 +352,7 @@ async function deletePaymentRecordAction(formData: FormData) {
   if (!recordId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-payment-record", mode, month));
   try {
     const row = await deletePartnerPaymentRecord({ recordId, actorEmail: admin.email });
-    if (row.relativePath?.startsWith("/")) {
-      const absPath = path.join(process.cwd(), "public", row.relativePath.replace(/^\//, "").replace(/\//g, path.sep));
-      await unlink(absPath).catch(() => {});
-    }
+    await deleteStoredBusinessFile(row.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete payment record failed";
     redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));

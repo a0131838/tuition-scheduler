@@ -1,38 +1,9 @@
-import { readFile, stat } from 'fs/promises';
-import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { canFinanceOperateExpense, canApproveExpense } from '@/lib/expense-claims';
 import { getCurrentUser, isManagerUser } from '@/lib/auth';
+import { buildStoredBusinessFileResponse, BUSINESS_UPLOAD_PREFIX } from '@/lib/business-file-storage';
 
 export const runtime = 'nodejs';
-
-const MIME_BY_EXT: Record<string, string> = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.webp': 'image/webp',
-  '.gif': 'image/gif',
-  '.pdf': 'application/pdf',
-  '.doc': 'application/msword',
-  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.xls': 'application/vnd.ms-excel',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  '.txt': 'text/plain; charset=utf-8',
-};
-
-function toAsciiFilename(name: string) {
-  const ext = path.extname(name);
-  const base = path.basename(name, ext).replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-  return `${base || 'receipt'}${ext}`;
-}
-
-function buildExpenseClaimFilePath(receiptPath: string) {
-  const normalized = String(receiptPath || '').trim();
-  if (!normalized.startsWith('/uploads/expense-claims/')) return null;
-  const rel = normalized.replace(/^\//, '');
-  if (rel.includes('..')) return null;
-  return path.join(process.cwd(), 'public', ...rel.split('/'));
-}
 
 export async function GET(
   req: Request,
@@ -64,40 +35,10 @@ export async function GET(
     return new Response('Forbidden', { status: 403 });
   }
 
-  const absPath = buildExpenseClaimFilePath(claim.receiptPath);
-  if (!absPath) return new Response('Not Found', { status: 404 });
-
-  try {
-    const st = await stat(absPath);
-    if (!st.isFile()) return new Response('Not Found', { status: 404 });
-  } catch {
-    return new Response('Not Found', { status: 404 });
-  }
-
-  const safeName = path.basename(claim.receiptOriginalName || 'receipt');
-  const ext = path.extname(safeName).toLowerCase();
-  const contentType = MIME_BY_EXT[ext] ?? 'application/octet-stream';
-  const body = await readFile(absPath);
-  const url = new URL(req.url);
-  const download = url.searchParams.get('download') === '1';
-  const asciiName = toAsciiFilename(safeName);
-  const encodedName = encodeURIComponent(safeName);
-
-  const headers = new Headers({
-    'content-type': contentType,
-    'cache-control': 'private, max-age=3600',
-    'content-length': String(body.byteLength),
-  });
-
-  if (download) {
-    headers.set(
-      'content-disposition',
-      `attachment; filename="${asciiName.replace(/"/g, '')}"; filename*=UTF-8''${encodedName}`
-    );
-  }
-
-  return new Response(body, {
-    status: 200,
-    headers,
+  return buildStoredBusinessFileResponse(req, {
+    allowedPrefix: BUSINESS_UPLOAD_PREFIX.expenseClaims,
+    relativePath: claim.receiptPath,
+    originalFileName: claim.receiptOriginalName,
+    fallbackFileName: 'receipt',
   });
 }

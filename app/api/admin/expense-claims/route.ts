@@ -1,19 +1,14 @@
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { createExpenseClaim, DuplicateExpenseClaimError, getExpenseTypeOption, requiresExpenseLocation } from '@/lib/expense-claims';
 import { storeExpenseClaimFile } from '@/lib/expense-claim-files';
+import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile } from '@/lib/business-file-storage';
 import { parseDateOnlyToUTCNoon } from '@/lib/date-only';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { redirect } from 'next/navigation';
 
 function parseMoneyToCents(value: FormDataEntryValue | null) {
   const n = Number(String(value ?? '').trim());
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);
-}
-
-function toStoredFileAbsolutePath(relativePath: string) {
-  return path.join(process.cwd(), 'public', relativePath.replace(/^\//, '').replace(/\//g, path.sep));
 }
 
 export async function POST(req: Request) {
@@ -66,7 +61,7 @@ export async function POST(req: Request) {
         actor,
       });
     } catch (error) {
-      await unlink(toStoredFileAbsolutePath(stored.relativePath)).catch(() => {});
+      await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.expenseClaims);
       if (error instanceof DuplicateExpenseClaimError) {
         redirect('/admin/expense-claims?msg=Expense+claim+already+submitted');
       }

@@ -71,6 +71,7 @@ export default async function StudentsPage({
   const studentTypeId = first(sp?.studentTypeId);
   const q = first(sp?.q).trim();
   const requestedView = first(sp?.view).trim();
+  const hasExplicitView = requestedView.length > 0;
   const view = requestedView === "all" || requestedView === "today_partner" ? requestedView : "today";
   const requestedPage = Math.max(1, Number.parseInt(first(sp?.page) || "1", 10) || 1);
   const pageSizeRaw = Number.parseInt(first(sp?.pageSize) || "20", 10);
@@ -168,6 +169,19 @@ export default async function StudentsPage({
         : t(lang, "No students added today.", "今天暂无新增学生");
   const activeFilterCount = [q, sourceChannelId, studentTypeId].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0 || view !== "today";
+  const showEmptyQueueCta = filteredCount === 0 && !q && !sourceChannelId && !studentTypeId && view !== "all";
+  const emptyQueueMessage =
+    view === "today_partner"
+      ? t(
+          lang,
+          "No partner intake is waiting today. Jump to the full student list if you want to continue older follow-up work.",
+          "今天没有待处理的合作方新增学生；如果你要继续处理旧跟进，可直接切到全部学生。"
+        )
+      : t(
+          lang,
+          "No new students were added today. Jump to the full student list if you want to continue older follow-up work.",
+          "今天没有新增学生；如果你要继续处理旧跟进，可直接切到全部学生。"
+        );
 
   return (
     <div>
@@ -324,6 +338,27 @@ export default async function StudentsPage({
         </div>
       </div>
 
+      {showEmptyQueueCta ? (
+        <div
+          style={{
+            ...workbenchInfoBarStyle,
+            marginTop: 10,
+            marginBottom: 10,
+            borderColor: "#bfdbfe",
+            background: "#eff6ff",
+            color: "#1e3a8a",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 700 }}>{t(lang, "This queue is empty today", "这个队列今天为空")}</div>
+            <div style={{ fontSize: 13 }}>{emptyQueueMessage}</div>
+          </div>
+          <a href={buildPageHref(1, "all")} style={{ fontWeight: 700 }}>
+            {t(lang, "Open all students", "查看全部学生")}
+          </a>
+        </div>
+      ) : null}
+
       <AdminStudentsClient
         initialStudents={students.map((s) => ({
           id: s.id,
@@ -343,6 +378,8 @@ export default async function StudentsPage({
         sources={sources.map((s) => ({ id: s.id, name: s.name }))}
         types={types.map((x) => ({ id: x.id, name: x.name }))}
         gradeOptions={GRADE_OPTIONS}
+        currentView={view}
+        hasExplicitView={hasExplicitView}
         labels={{
           add: t(lang, "Add", "新增"),
           addStudent: t(lang, "Add Student", "新增学生"),
@@ -374,6 +411,11 @@ export default async function StudentsPage({
             lang,
             "Open one student profile at a time, then return here only when you need to switch queues.",
             "一次只打开一个学生档案；只有在需要切换处理对象时再回到这里。"
+          ),
+          rememberedViewHint: t(
+            lang,
+            "This desk remembers your last queue when you return without an explicit view filter.",
+            "当你未显式指定视图时，这里会记住你上次使用的队列。"
           ),
         }}
       />

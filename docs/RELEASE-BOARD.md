@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r03` (admin workbench UI rollout).
+- Current release line on this branch: `2026-04-02-r04` (storage helper and targeted UX follow-ups).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -58,6 +58,26 @@
   - `npm run build`
   - `bash ops/server/scripts/new_chat_startup_check.sh`
   - manual logged-in QA confirmed current production still shows the older dense admin information architecture, which matches the intended value of this rollout
+
+## 2026-04-02-r04 Ready For Deploy
+
+- Scope: targeted admin/teacher UX follow-ups plus shared local business-file-storage abstraction for expense claims, payment proofs, partner payment proofs, shared docs local fallback, and ticket attachments.
+- Business impact:
+  - finance/admin screens surface attachment issues earlier without changing approval order, payment rules, or queue data
+  - students page remembers the last queue when re-opened without an explicit view and gives a direct escape hatch when `today` queues are empty
+  - teacher session detail now nudges `attendance first -> feedback second` without blocking feedback submission
+  - expense claims, parent payment proof, partner payment proof, shared-doc local fallback, and ticket attachment paths now go through one shared local storage helper instead of each route/page rebuilding disk paths separately
+  - no DB schema, file URL shape, upload destination, route path, permission rule, or business workflow changed
+- Validation:
+  - `npm run build`
+  - `npm run audit:upload-integrity` on local workspace only highlighted missing production uploads on the local machine; this was confirmed as environment mismatch, not a helper regression
+  - local helper smoke cycle passed for store/read/delete across all currently wired prefixes
+  - logged-in live QA confirmed real attachment endpoints still return `200` or trigger the expected file-download flow for:
+    - expense claim receipt route
+    - parent payment proof route
+    - partner payment proof static upload path
+    - shared-doc download route
+    - ticket attachment route
 
 ## 2026-03-31-r3 Ready For Deploy
 
