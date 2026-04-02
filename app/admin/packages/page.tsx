@@ -1,6 +1,8 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import PackageEditModal from "../_components/PackageEditModal";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
 import PackageCreateFormClient from "./PackageCreateFormClient";
@@ -23,6 +25,7 @@ const LOW_MINUTES = 120;
 const LOW_COUNTS = 3;
 const FORECAST_WINDOW_DAYS = 30;
 const LOW_DAYS = 7;
+const PACKAGES_FILTER_COOKIE = "adminPackagesPreferredFilters";
 
 function parseDateStart(s: string) {
   const [Y, M, D] = s.split("-").map(Number);
@@ -65,6 +68,35 @@ function buildPackagesHref(
   return query ? `/admin/packages?${query}` : "/admin/packages";
 }
 
+function normalizePackagesPaidFilter(value: string) {
+  return value === "paid" || value === "unpaid" ? value : "";
+}
+
+function normalizePackagesWarnFilter(value: string) {
+  return value === "alert" ? value : "";
+}
+
+function parseRememberedPackagesFilters(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const q = String(params.get("q") ?? "").trim();
+  const courseId = String(params.get("courseId") ?? "").trim();
+  const paid = normalizePackagesPaidFilter(String(params.get("paid") ?? "").trim());
+  const warn = normalizePackagesWarnFilter(String(params.get("warn") ?? "").trim());
+  return {
+    q,
+    courseId,
+    paid,
+    warn,
+    value: buildPackagesHref({ q, courseId, paid, warn }).replace(/^\/admin\/packages\??/, ""),
+  };
+}
+
 function isSchemaNotReadyError(err: unknown) {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
   return err.code === "P2021" || err.code === "P2022";
@@ -88,12 +120,34 @@ export default async function AdminPackagesPage({
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const q = (sp?.q ?? "").trim();
-  const filterCourseId = sp?.courseId ?? "";
-  const filterPaid = sp?.paid ?? "";
-  const filterWarn = sp?.warn ?? "";
+  const qParam = typeof sp?.q === "string" ? sp.q.trim() : "";
+  const courseIdParam = typeof sp?.courseId === "string" ? sp.courseId : "";
+  const paidParam = typeof sp?.paid === "string" ? sp.paid : "";
+  const warnParam = typeof sp?.warn === "string" ? sp.warn : "";
   const focusPackageId = String(sp?.focusPackageId ?? "").trim();
   const packageFlow = String(sp?.packageFlow ?? "").trim();
+  const canResumeRememberedFilters =
+    !qParam &&
+    !courseIdParam &&
+    !paidParam &&
+    !warnParam &&
+    !focusPackageId &&
+    !packageFlow &&
+    !msg &&
+    !err;
+  const cookieStore = await cookies();
+  const rememberedFilters = canResumeRememberedFilters
+    ? parseRememberedPackagesFilters(cookieStore.get(PACKAGES_FILTER_COOKIE)?.value ?? "")
+    : { q: "", courseId: "", paid: "", warn: "", value: "" };
+  const q = qParam || rememberedFilters.q;
+  const filterCourseId = courseIdParam || rememberedFilters.courseId;
+  const filterPaid = paidParam ? normalizePackagesPaidFilter(paidParam) : rememberedFilters.paid;
+  const filterWarn = warnParam ? normalizePackagesWarnFilter(warnParam) : rememberedFilters.warn;
+  const resumedRememberedFilters = canResumeRememberedFilters && Boolean(rememberedFilters.value);
+  const rememberedFiltersValue = buildPackagesHref({ q, courseId: filterCourseId, paid: filterPaid, warn: filterWarn }).replace(
+    /^\/admin\/packages\??/,
+    ""
+  );
 
   const wherePackages: any = {};
   if (q) wherePackages.student = { name: { contains: q, mode: "insensitive" } };
@@ -347,6 +401,11 @@ export default async function AdminPackagesPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={PACKAGES_FILTER_COOKIE}
+        storageKey="adminPackagesPreferredFilters"
+        value={rememberedFiltersValue}
+      />
       <div style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
@@ -395,6 +454,32 @@ export default async function AdminPackagesPage({
           </span>
         </div>
       </div>
+      {resumedRememberedFilters ? (
+        <div
+          style={{
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            alignItems: "center",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {t(
+              lang,
+              "Resumed your last package filter set. Use the shortcut on the right if you want to return to the default workbench.",
+              "已恢复你上次的课包筛选；如果要回到默认工作台，可直接使用右侧快捷入口。"
+            )}
+          </div>
+          <a href="/admin/packages">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
+        </div>
+      ) : null}
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}

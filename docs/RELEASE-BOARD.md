@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r14` (partner-settlement view-memory follow-up).
+- Current release line on this branch: `2026-04-02-r15` (packages filter-memory follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-02-r15 Deployed
+
+- Scope: remember the last working filter set on the admin packages workbench.
+- Business impact:
+  - packages can now reopen the operator's last remembered filter set when they come back without explicit URL params
+  - student-name search, payment-status filter, and alert-only filter can all be resumed without rebuilding the workbench by hand
+  - package-flow return pages such as `edited`, `topup`, or `deleted` still keep their own flow-card guidance and do not get overwritten by the remembered-filter banner
+  - no package edit rules, top-up math, billing logic, ledger logic, or focus-return behavior changed
+- Validation:
+  - `npm run build`
+  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed `/admin/packages` restores `q=赵&paid=unpaid&warn=alert` when opened without URL params
+  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed the resume banner appears on the plain workbench-open path
+  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed the resume banner is suppressed on `packageFlow=deleted` return pages while the delete flow card still renders
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production `/admin/packages` restores the remembered filter set and still suppresses the resume banner on package-flow return pages
 
 ## 2026-04-02-r14 Deployed
 

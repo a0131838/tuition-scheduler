@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-02-r15
+
+- Release ID: `2026-04-02-r15`
+- Date/Time (Asia/Shanghai): `2026-04-02`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Remember the last admin packages filter set so operators can reopen the same package workbench context without rebuilding it.
+- Key files:
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260402-packages-filter-memory.md`
+- Risk impact (if any): Low. This ship only remembers and restores the package workbench filters on first open when no explicit URL params are provided; no package edit rules, top-up math, billing logic, ledger logic, or focus-return behavior changed.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3318` confirmed:
+    - `/admin/packages` restores `q=赵&paid=unpaid&warn=alert` from cookie when the page is opened without URL params
+    - the resumed-filter banner renders on the plain workbench-open path
+    - the resumed-filter banner does not appear on `packageFlow=deleted` return pages, while the delete flow card still renders
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production `/admin/packages` restores the remembered filter set and still suppresses the resume banner on package-flow return pages
+- Rollback point: previous production commit before `2026-04-02-r15`.
+
 ## 2026-04-02-r14
 
 - Release ID: `2026-04-02-r14`
