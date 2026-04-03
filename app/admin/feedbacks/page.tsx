@@ -19,6 +19,24 @@ const FEEDBACK_LOOKBACK_DAYS = 90;
 const FEEDBACK_QUEUE_COOKIE = "adminFeedbacksPreferredQueue";
 const FEEDBACK_QUEUE_OPTIONS = ["missing", "proxy", "pending", "forwarded", "all"] as const;
 
+const primaryButtonStyle = {
+  background: "#2563eb",
+  color: "#fff",
+  border: "1px solid #1d4ed8",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
+const secondaryButtonStyle = {
+  background: "#fff",
+  color: "#1d4ed8",
+  border: "1px solid #bfdbfe",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
 function normalizeFeedbackQueueStatus(value: string) {
   return FEEDBACK_QUEUE_OPTIONS.includes(value as (typeof FEEDBACK_QUEUE_OPTIONS)[number])
     ? (value as (typeof FEEDBACK_QUEUE_OPTIONS)[number])
@@ -333,6 +351,73 @@ export default async function AdminFeedbacksPage({
     flowCard?.tone === "green"
       ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
       : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
+  const defaultDeskHref = "/admin/feedbacks?status=missing";
+  const clearStudentFilterHref = tabHref(status);
+  const emptyFeedbackState =
+    status === "pending"
+      ? {
+          title: t(lang, "No feedbacks are waiting to be forwarded", "当前没有待转发反馈"),
+          detail: t(
+            lang,
+            "This queue is empty under the current student scope. Switch back to overdue work or open final history if you only need to confirm what already moved out.",
+            "当前学生范围下，这个队列已经清空。你可以回到超时队列继续处理，或打开正式历史做确认。"
+          ),
+          links: [
+            { href: defaultDeskHref, label: t(lang, "Open overdue desk", "打开超时工作台") },
+            { href: tabHref("all"), label: t(lang, "Open final history", "打开正式历史") },
+          ],
+        }
+      : status === "forwarded"
+        ? {
+            title: t(lang, "No forwarded feedbacks match this scope", "当前范围下没有已转发反馈"),
+            detail: t(
+              lang,
+              "Use this view only for confirmation and lookup. If you are trying to work the queue, go back to pending or overdue items instead.",
+              "这个视图主要用于确认和查询；如果你是来处理工作，请回到待转发或超时队列。"
+            ),
+            links: [
+              { href: tabHref("pending"), label: t(lang, "Open pending queue", "打开待转发队列") },
+              { href: defaultDeskHref, label: t(lang, "Open overdue desk", "打开超时工作台") },
+            ],
+          }
+        : {
+            title: t(lang, "No final feedback records match this scope", "当前范围下没有正式反馈记录"),
+            detail: t(
+              lang,
+              "Try clearing the student filter or return to the default desk if you want to continue with live queue work.",
+              "你可以先清空学生筛选，或回到默认工作台继续处理当前队列。"
+            ),
+            links: [
+              { href: clearStudentFilterHref, label: t(lang, "Clear student filter", "清空学生筛选") },
+              { href: defaultDeskHref, label: t(lang, "Back to default desk", "回到默认工作台") },
+            ],
+          };
+  const emptyOverdueState =
+    status === "proxy"
+      ? {
+          title: t(lang, "No proxy-draft follow-ups are waiting", "当前没有待补全的代填草稿"),
+          detail: t(
+            lang,
+            "The proxy queue is clear under the current student scope. Return to missing feedbacks or open pending-forward items if you want the next actionable desk.",
+            "当前学生范围下，代填草稿队列已经清空。你可以回到缺失反馈，或打开待转发队列继续处理。"
+          ),
+          links: [
+            { href: defaultDeskHref, label: t(lang, "Open missing queue", "打开缺失队列") },
+            { href: tabHref("pending"), label: t(lang, "Open pending-forward queue", "打开待转发队列") },
+          ],
+        }
+      : {
+          title: t(lang, "No overdue feedbacks need action", "当前没有超时反馈需要处理"),
+          detail: t(
+            lang,
+            "This desk is clear under the current student scope. Move to pending-forward work or broaden the student scope if you expected more rows.",
+            "当前学生范围下，这个工作台已经清空。若你以为还会有更多记录，可以切到待转发，或扩大学生范围。"
+          ),
+          links: [
+            { href: tabHref("pending"), label: t(lang, "Open pending-forward queue", "打开待转发队列") },
+            { href: clearStudentFilterHref, label: t(lang, "Clear student filter", "清空学生筛选") },
+          ],
+        };
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -433,8 +518,8 @@ export default async function AdminFeedbacksPage({
               </option>
             ))}
           </select>
-          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-          <a href={tabHref(status)}>{t(lang, "Clear", "清除")}</a>
+          <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
+          <a href={tabHref(status)} style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>{t(lang, "Clear", "清除")}</a>
           {selectedStudentName ? (
             <span style={{ color: "#334155", fontSize: 13 }}>
               {t(lang, "Current student", "当前学生")}: {selectedStudentName}
@@ -544,7 +629,27 @@ export default async function AdminFeedbacksPage({
 
       {isOverdueTab ? (
         shownOverdueRows.length === 0 ? (
-          <div style={{ color: "#999" }}>{t(lang, "No overdue feedbacks.", "暂无超时反馈。")}</div>
+          <div
+            style={{
+              color: "#64748b",
+              display: "grid",
+              gap: 8,
+              padding: 12,
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              background: "#f8fafc",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#334155" }}>{emptyOverdueState.title}</div>
+            <div>{emptyOverdueState.detail}</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {emptyOverdueState.links.map((link) => (
+                <a key={link.href + link.label} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             <BulkMarkOverdueForwardedClient
@@ -648,7 +753,27 @@ export default async function AdminFeedbacksPage({
           </div>
         )
       ) : rows.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No feedback records.", "暂无反馈记录。")}</div>
+        <div
+          style={{
+            color: "#64748b",
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#334155" }}>{emptyFeedbackState.title}</div>
+          <div>{emptyFeedbackState.detail}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {emptyFeedbackState.links.map((link) => (
+              <a key={link.href + link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
       ) : (
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
           {rows.map((r) => {

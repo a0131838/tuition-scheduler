@@ -27,6 +27,24 @@ const FORECAST_WINDOW_DAYS = 30;
 const LOW_DAYS = 7;
 const PACKAGES_FILTER_COOKIE = "adminPackagesPreferredFilters";
 
+const primaryButtonStyle = {
+  background: "#2563eb",
+  color: "#fff",
+  border: "1px solid #1d4ed8",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
+const secondaryButtonStyle = {
+  background: "#fff",
+  color: "#1d4ed8",
+  border: "1px solid #bfdbfe",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
 function parseDateStart(s: string) {
   const [Y, M, D] = s.split("-").map(Number);
   return new Date(Y, M - 1, D, 0, 0, 0, 0);
@@ -398,6 +416,32 @@ export default async function AdminPackagesPage({
       : flowCard?.tone === "blue"
         ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
         : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
+  const emptyPackagesState =
+    activeFilterCount > 0
+      ? {
+          title: t(lang, "No packages match the current filters", "当前筛选下没有课包"),
+          detail: t(
+            lang,
+            "Try clearing the search, payment, course, or alert filters. If you expected a specific package, broaden the workbench first and then jump into billing or ledger.",
+            "可以先清空搜索、付款、课程或预警筛选。如果你原本在找某个课包，先把工作台放宽，再进入账单或流水。"
+          ),
+          links: [
+            { href: "/admin/packages", label: t(lang, "Back to default workbench", "回到默认工作台") },
+            { href: "/admin/students", label: t(lang, "Open students desk", "打开学生工作台") },
+          ],
+        }
+      : {
+          title: t(lang, "No packages have been created yet", "目前还没有创建课包"),
+          detail: t(
+            lang,
+            "Use the create-package action above after confirming the student, course, package mode, and paid state.",
+            "先确认学生、课程、课包模式和付款状态，再使用上方“创建课包”动作。"
+          ),
+          links: [
+            { href: "/admin/students", label: t(lang, "Open students desk", "打开学生工作台") },
+            { href: "/admin/enrollments", label: t(lang, "Open enrollments", "打开报名工作台") },
+          ],
+        };
 
   return (
     <div>
@@ -612,8 +656,8 @@ export default async function AdminPackagesPage({
             <option value="">{t(lang, "All Alerts", "全部预警")}</option>
             <option value="alert">{t(lang, "Alert Only", "仅预警")}</option>
           </select>
-          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-          <a href="/admin/packages" style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}>
+          <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
+          <a href="/admin/packages" style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>
             {t(lang, "Clear", "清除")}
           </a>
           <span style={{ color: "#666" }}>
@@ -635,7 +679,27 @@ export default async function AdminPackagesPage({
       </div>
 
       {filteredPackages.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No packages yet.", "暂无课包")}</div>
+        <div
+          style={{
+            color: "#64748b",
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#334155" }}>{emptyPackagesState.title}</div>
+          <div>{emptyPackagesState.detail}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {emptyPackagesState.links.map((link) => (
+              <a key={link.href + link.label} href={link.href}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
       ) : (
         <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1180 }}>

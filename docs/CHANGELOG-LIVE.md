@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r08
+
+- Release ID: `2026-04-03-r08`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Run the next UI clarity pass on admin feedbacks, packages, and partner settlement so button hierarchy is easier to scan and empty states explain the next logical action.
+- Key files:
+  - `app/admin/feedbacks/page.tsx`
+  - `app/admin/packages/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-admin-button-hierarchy-and-empty-states-pass-2.md`
+- Risk impact (if any): Low. This ship only changes button emphasis and empty-state guidance on three existing admin workbench pages; no feedback forwarding logic, proxy-draft behavior, package CRUD/top-up logic, settlement calculations, settlement creation rules, invoice history logic, or revert semantics changed.
+- Verification:
+  - `npm run build` passed
+  - logged-in local QA on `http://127.0.0.1:3336` confirmed:
+    - `/admin/feedbacks?status=pending&studentId=missing-student` renders the new empty-state guidance and the stronger filter apply/clear hierarchy
+    - `/admin/packages?q=__nomatch__` renders the new filtered-empty-state guidance plus the stronger filter apply/clear hierarchy
+    - `/admin/reports/partner-settlement?month=1999-01` renders the new empty-state guidance, and `/admin/reports/partner-settlement` still renders the stronger primary/danger action hierarchy
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production shows the same new empty-state guidance and button hierarchy on the same three pages
+- Rollback point: previous production commit before `2026-04-03-r08`.
+
 ## 2026-04-03-r07
 
 - Release ID: `2026-04-03-r07`

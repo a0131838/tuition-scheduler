@@ -839,8 +839,9 @@ export default async function PartnerSettlementPage({
     0,
   );
   const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
-  const primaryBtn = { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1e3a8a", borderRadius: 8, padding: "4px 10px", fontWeight: 700 };
-  const dangerBtn = { border: "1px solid #fecdd3", background: "#fff1f2", color: "#9f1239", borderRadius: 8, padding: "4px 10px", fontWeight: 700 };
+  const primaryBtn = { border: "1px solid #1d4ed8", background: "#2563eb", color: "#fff", borderRadius: 10, padding: "10px 14px", fontWeight: 700 } as const;
+  const secondaryBtn = { border: "1px solid #bfdbfe", background: "#fff", color: "#1d4ed8", borderRadius: 10, padding: "10px 14px", fontWeight: 700 } as const;
+  const dangerBtn = { border: "1px solid #991b1b", background: "#b91c1c", color: "#fff", borderRadius: 10, padding: "10px 14px", fontWeight: 700 } as const;
   const thCell = { position: "sticky", top: 0, background: "#f5f5f5", zIndex: 1 } as const;
   const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
   const donePill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
@@ -964,6 +965,19 @@ export default async function PartnerSettlementPage({
       : flowCard?.tone === "blue"
       ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
       : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
+  const emptySelectedState = {
+    title: t(lang, "No pending item is selected yet", "当前还没有选中待处理项"),
+    detail: t(
+      lang,
+      "Pick one row from online, offline, warning, or billing-record queues below. If the queues are empty, switch to history or settlement setup instead of guessing where to go next.",
+      "请先从线上、线下、预警或待开票队列里选一条。如果这些队列为空，就直接去历史记录或结算配置，不用自己猜下一步。"
+    ),
+    links: [
+      { href: "#action-queue-online", label: t(lang, "Open online queue", "打开线上队列") },
+      { href: "#action-queue-records", label: t(lang, "Open billing records", "打开待开票记录") },
+      { href: `${buildPageHref({ panel: "history" })}#billing-history`, label: t(lang, "Open history", "打开历史") },
+    ],
+  };
 
   const selectedItem = (() => {
     if (focusType === "record" && focusId) {
@@ -1170,7 +1184,7 @@ export default async function PartnerSettlementPage({
           <button type="submit" data-apply-submit="1" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
           <a
             href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}
-            style={{ marginLeft: 8, fontWeight: 700 }}
+            style={{ ...secondaryBtn, marginLeft: 8, textDecoration: "none", display: "inline-block" }}
           >
             {t(lang, "Open Billing Workspace", "打开账单工作区")}
           </a>
@@ -1345,8 +1359,26 @@ export default async function PartnerSettlementPage({
               </div>
             </>
           ) : (
-            <div style={{ color: "#6b7280" }}>
-              {t(lang, "No pending item is selected yet. Choose one row from the queues below.", "当前还没有选中待处理项，请从下方队列里选择一条。")}
+            <div
+              style={{
+                color: "#64748b",
+                display: "grid",
+                gap: 8,
+                padding: 12,
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 700, color: "#334155" }}>{emptySelectedState.title}</div>
+              <div>{emptySelectedState.detail}</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {emptySelectedState.links.map((link) => (
+                  <a key={link.href + link.label} href={link.href}>
+                    {link.label}
+                  </a>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1368,7 +1400,27 @@ export default async function PartnerSettlementPage({
           </button>
         </form> : null}
         {recentPendingSettlements.length === 0 ? (
-          <div style={{ color: "#999" }}>{t(lang, "No pending billing records.", "暂无待开票结算记录。")}</div>
+          <div
+            style={{
+              color: "#64748b",
+              display: "grid",
+              gap: 8,
+              padding: 12,
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              background: "#f8fafc",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No pending billing records", "当前没有待开票记录")}</div>
+            <div>
+              {t(lang, "This queue is clear for the selected month. Go back to online or offline settlement candidates if you need to create the next record, or open history to confirm what was already invoiced.", "当前月份的待开票队列已经清空。若你还要继续工作，请回到线上或线下候选队列创建下一条记录，或打开历史做确认。")}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="#action-queue-online">{t(lang, "Open online queue", "打开线上队列")}</a>
+              <a href="#action-queue-offline">{t(lang, "Open offline queue", "打开线下队列")}</a>
+              <a href={`${buildPageHref({ panel: "history" })}#billing-history`}>{t(lang, "Open history", "打开历史")}</a>
+            </div>
+          </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
@@ -1439,7 +1491,27 @@ export default async function PartnerSettlementPage({
         )}
       </div>
       {onlinePending.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No online pending items.", "暂无线上待结算项。")}</div>
+        <div
+          style={{
+            color: "#64748b",
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            background: "#f8fafc",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No online pending items", "当前没有线上待结算项")}</div>
+          <div>
+            {t(lang, "All completed online packages for this month are already clear. Move to offline monthly settlements or open billing history if you need confirmation.", "当前月份的线上完结课包已经处理完。你可以转去线下月度结算，或打开开票历史做确认。")}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="#action-queue-offline">{t(lang, "Open offline queue", "打开线下队列")}</a>
+            <a href={`${buildPageHref({ panel: "history" })}#billing-history`}>{t(lang, "Open history", "打开历史")}</a>
+          </div>
+        </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
@@ -1570,7 +1642,27 @@ export default async function PartnerSettlementPage({
         </div>
       ) : null}
       {offlinePending.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 12 }}>{t(lang, "No offline pending items.", "暂无线下待结算项。")}</div>
+        <div
+          style={{
+            color: "#64748b",
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            background: "#f8fafc",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No offline pending items", "当前没有线下待结算项")}</div>
+          <div>
+            {t(lang, "This monthly attendance queue is clear. Check settlement warnings if you expected missing rows, or return to online work if that is the next live queue.", "当前月度点名结算队列已经清空。如果你以为还会有记录，请先查看结算预警；否则可以回到线上队列继续处理。")}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="#action-queue-online">{t(lang, "Open online queue", "打开线上队列")}</a>
+            <a href="#action-queue-records">{t(lang, "Open billing records", "打开待开票记录")}</a>
+          </div>
+        </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18, minWidth: 980 }}>
@@ -1652,7 +1744,26 @@ export default async function PartnerSettlementPage({
           </a>
         </div>
         {filteredInvoiceStats.length === 0 ? (
-          <div style={{ color: "#999" }}>{t(lang, "No invoiced records yet.", "暂无已开票记录。")}</div>
+          <div
+            style={{
+              color: "#64748b",
+              display: "grid",
+              gap: 8,
+              padding: 12,
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              background: "#fff",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No invoiced records yet", "当前还没有已开票记录")}</div>
+            <div>
+              {t(lang, "History is empty for the current month filter. Return to the live queues if you still need to create settlement records or invoices.", "当前月份筛选下还没有开票历史。如果你还要继续工作，请回到实时队列生成结算记录或开票。")}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="#action-queue-records">{t(lang, "Open pending billing records", "打开待开票记录")}</a>
+              <a href="#action-queue-online">{t(lang, "Open online queue", "打开线上队列")}</a>
+            </div>
+          </div>
         ) : (
           <>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced records (grouped by invoice number)", "已开票记录（按发票号聚合）")}</div>

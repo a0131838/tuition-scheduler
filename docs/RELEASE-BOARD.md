@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r07` (button hierarchy and empty-state guidance pass).
+- Current release line on this branch: `2026-04-03-r08` (admin button hierarchy and empty-state pass 2).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r08 Deployed
+
+- Scope: continue button hierarchy and empty-state guidance cleanup on admin feedbacks, packages, and partner settlement.
+- Business impact:
+  - feedbacks now explains whether operators should go back to overdue work, pending-forward work, or final history when the current queue is empty, and its filter actions now read more clearly as main vs. secondary actions
+  - packages now explains whether the filtered list is empty because of active filters or because no package exists yet, and points operators back to the right desk instead of leaving a dead-end blank state
+  - partner settlement now uses a stronger primary/danger action split and replaces several flat “no items” states with guidance that tells operators whether to open live queues, billing records, or history next
+  - no feedback behavior, package CRUD/top-up logic, settlement calculations, settlement creation rules, or revert semantics changed
+- Validation:
+  - `npm run build`
+  - logged-in local QA on `http://127.0.0.1:3336` confirmed the new empty-state cards and button hierarchy on `/admin/feedbacks`, `/admin/packages`, and `/admin/reports/partner-settlement`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the same guidance and button hierarchy on the same three production pages
 
 ## 2026-04-03-r07 Deployed
 
