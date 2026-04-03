@@ -1293,3 +1293,4 @@
   - `npm run build`
   - post-deploy startup check
   - production read-only QA on `/teacher/final-reports` and `/admin/reports/final`
+  - release task record synced in a follow-up docs pass so the task file reflects the deployed state

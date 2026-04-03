@@ -2404,4 +2404,5 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - production read-only QA confirmed the new teacher and admin final-report pages render and the navigation entries are visible
+  - release task record was synced in a follow-up docs pass so handoff docs stay aligned with the deployed state
 - Rollback point: previous production commit before `2026-04-03-r20`.
