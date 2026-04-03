@@ -19,11 +19,70 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 export default async function TeacherMidtermReportsPage() {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
   if (!teacher) {
-    return <div style={{ color: "#b91c1c" }}>{t(lang, "Teacher profile not linked.", "老师账号未绑定档案。")}</div>;
+    return (
+      <div style={{ display: "grid", gap: 14 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "Midterm Reports", "中期报告")}
+          subtitle={t(lang, "Open pending report tasks and submit them one student at a time.", "一次查看一位学生的报告任务并完成提交。")}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+            {t(lang, "Your teacher profile is not linked yet", "老师账号暂时还未绑定档案")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Midterm report tasks stay unavailable until the current account is linked to a teacher profile.",
+              "在当前账号和老师档案完成绑定前，这里的中期报告任务还不能使用。"
+            )}
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const rows = await prisma.midtermReport.findMany({
@@ -80,7 +139,22 @@ export default async function TeacherMidtermReportsPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No midterm report tasks yet.", "暂无中期报告任务。")}</div>
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+            {t(lang, "No midterm report tasks yet", "暂时还没有中期报告任务")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "You do not need to do anything here right now. Come back when operations assigns a new report task, or return to sessions to continue daily teaching work.",
+              "你现在不需要在这里操作。等教务分配新的报告任务后再回来，或者先返回课次页面继续日常教学。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher/sessions" style={primaryButtonStyle}>{t(lang, "Open sessions", "打开课次")}</a>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -125,7 +199,7 @@ export default async function TeacherMidtermReportsPage() {
                   )}
                 </td>
                 <td style={{ padding: 6 }}>
-                  <a href={`/teacher/midterm-reports/${encodeURIComponent(r.id)}`}>
+                  <a href={`/teacher/midterm-reports/${encodeURIComponent(r.id)}`} style={r.status === "SUBMITTED" ? secondaryButtonStyle : primaryButtonStyle}>
                     {r.status === "SUBMITTED" ? t(lang, "View", "查看") : t(lang, "Fill", "填写")}
                   </a>
                 </td>

@@ -18,6 +18,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 function asScore(v: string) {
   const text = v.trim();
   if (!text) return null;
@@ -95,7 +132,19 @@ export default async function TeacherMidtermReportDetailPage({
   const { teacher } = await requireTeacherProfile();
   const { id } = await params;
   if (!teacher) {
-    return <div style={{ color: "#b91c1c" }}>{t(lang, "Teacher profile not linked.", "老师账号未绑定档案。")}</div>;
+    return (
+      <section style={emptyStateCardStyle}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+          {t(lang, "Your teacher profile is not linked yet", "老师账号暂时还未绑定档案")}
+        </div>
+        <div style={{ color: "#475569", lineHeight: 1.6 }}>
+          {t(lang, "This report cannot be opened until the current account is linked to a teacher profile.", "在当前账号和老师档案绑定之前，无法打开这份报告。")}
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/teacher/midterm-reports" style={secondaryButtonStyle}>{t(lang, "Back to report list", "返回报告列表")}</a>
+        </div>
+      </section>
+    );
   }
 
   const report = await prisma.midtermReport.findUnique({
@@ -108,7 +157,19 @@ export default async function TeacherMidtermReportDetailPage({
     },
   });
   if (!report || report.teacherId !== teacher.id) {
-    return <div style={{ color: "#b91c1c" }}>{t(lang, "Report not found.", "报告不存在或无权限访问。")}</div>;
+    return (
+      <section style={emptyStateCardStyle}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+          {t(lang, "Report not found", "未找到这份报告")}
+        </div>
+        <div style={{ color: "#475569", lineHeight: 1.6 }}>
+          {t(lang, "This report either no longer exists or is not assigned to your teacher account.", "这份报告可能已不存在，或并不属于当前老师账号。")}
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/teacher/midterm-reports" style={secondaryButtonStyle}>{t(lang, "Back to report list", "返回报告列表")}</a>
+        </div>
+      </section>
+    );
   }
 
   const reportId = report.id;
@@ -371,10 +432,10 @@ export default async function TeacherMidtermReportDetailPage({
         </fieldset>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button type="submit" name="intent" value="save" disabled={isLocked}>
+          <button type="submit" name="intent" value="save" disabled={isLocked} style={secondaryButtonStyle}>
             {t(lang, "Save Draft", "保存草稿")}
           </button>
-          <button type="submit" name="intent" value="submit" disabled={isLocked}>
+          <button type="submit" name="intent" value="submit" disabled={isLocked} style={primaryButtonStyle}>
             {t(lang, "Submit Report", "提交报告")}
           </button>
           {report.status === "SUBMITTED" ? <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span> : null}

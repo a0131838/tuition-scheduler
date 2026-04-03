@@ -33,12 +33,30 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
 });
 
 const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   background: "#2563eb",
   color: "#fff",
   border: "1px solid #1d4ed8",
   borderRadius: 10,
   padding: "10px 14px",
   fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
 } as const;
 
 function pendingReasonLabel(lang: Awaited<ReturnType<typeof getLang>>, reason: string | null) {
@@ -245,7 +263,17 @@ export default async function TeacherPayrollSelfPage({
   const { teacher } = await requireTeacherProfile();
 
   if (!teacher) {
-    return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
+    return (
+      <section style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
+        <div style={{ fontWeight: 700, color: "#b91c1c" }}>{t(lang, "Your teacher profile is not linked yet", "老师资料暂时还未关联")}</div>
+        <div style={{ color: "#475569", fontSize: 14 }}>
+          {t(lang, "Payroll cannot be shown until the current account is linked to a teacher profile.", "在当前账号和老师资料完成关联前，这里还不能显示工资单。")}
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+        </div>
+      </section>
+    );
   }
 
   const sp = await searchParams;
@@ -256,10 +284,14 @@ export default async function TeacherPayrollSelfPage({
 
   if (!parseMonth(month)) {
     return (
-      <div>
-        <h2>{t(lang, "My Payroll", "我的工资单")}</h2>
-        <div style={{ color: "#b00" }}>{t(lang, "Invalid month format. Use YYYY-MM.", "月份格式错误，请使用 YYYY-MM。")}</div>
-      </div>
+      <section style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
+        <div style={{ fontWeight: 700, color: "#b91c1c" }}>{t(lang, "Invalid payroll month", "工资月份格式无效")}</div>
+        <div style={{ color: "#475569", fontSize: 14 }}>{t(lang, "Use YYYY-MM, then reopen the payroll desk.", "请使用 YYYY-MM 格式后重新打开工资工作台。")}</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/teacher/payroll" style={primaryButtonStyle}>{t(lang, "Open current payroll", "打开当前工资单")}</a>
+          <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+        </div>
+      </section>
     );
   }
 
@@ -297,6 +329,7 @@ export default async function TeacherPayrollSelfPage({
           </select>
         </label>
         <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
+        <a href="/teacher/payroll" style={secondaryButtonStyle}>{t(lang, "Clear", "清空")}</a>
       </form>
 
       {!publish ? (
@@ -306,8 +339,8 @@ export default async function TeacherPayrollSelfPage({
             {t(lang, "Admin has not sent this payroll yet. You do not need to confirm anything right now.", "管理端尚未发送这张工资单，你这边现在不需要确认操作。")}
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a href="/teacher">{t(lang, "Back to dashboard", "返回工作台")}</a>
-            <a href="/teacher/expense-claims">{t(lang, "Open expense claims", "打开报销")}</a>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+            <a href="/teacher/expense-claims" style={secondaryButtonStyle}>{t(lang, "Open expense claims", "打开报销")}</a>
           </div>
         </div>
       ) : (

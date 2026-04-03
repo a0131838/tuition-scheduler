@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r11
+
+- Release ID: `2026-04-03-r11`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: continue the teacher-side UI clarity pass on the teacher card, midterm reports, and payroll desk so not-linked/empty states and primary actions read consistently across the portal.
+- Key files:
+  - `app/teacher/card/page.tsx`
+  - `app/teacher/midterm-reports/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-teacher-card-midterm-payroll-clarity-pass.md`
+- Risk impact (if any): Low. This ship only changes empty-state presentation, action emphasis, and next-step guidance on four existing teacher pages; no teacher intro save logic, card export logic, report save/submit behavior, report locking rules, payroll calculations, payroll confirmation rules, or payout workflow changed.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production shows the new teacher-card guidance, midterm empty-state/action hierarchy, and payroll clear/error-state improvements on the same routes
+- Rollback point: previous production commit before `2026-04-03-r11`.
+
 ## 2026-04-03-r10
 
 - Release ID: `2026-04-03-r10`

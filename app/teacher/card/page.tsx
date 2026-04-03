@@ -23,6 +23,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 // Intro editing is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherCardSelfPage({
@@ -37,7 +74,32 @@ export default async function TeacherCardSelfPage({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
 
   if (!teacher) {
-    return <div style={{ color: "#b00" }}>{t(lang, "Teacher profile not linked.", "老师资料未关联。")}</div>;
+    return (
+      <div style={{ maxWidth: 920, margin: "24px auto 0", padding: "0 12px", display: "grid", gap: 14 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "My Teacher Card", "我的教师名片")}
+          subtitle={t(lang, "Keep your public profile clear and ready for sharing.", "在这里维护你的公开教师名片，确保对外展示信息清楚可用。")}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+            {t(lang, "Your teacher profile is not linked yet", "老师资料暂时还未关联")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Your teacher card cannot be shown until the current account is linked to a teacher profile.",
+              "在当前账号和老师资料完成关联前，这里还不能显示你的教师名片。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const teacherFull = await prisma.teacher.findUnique({
@@ -48,7 +110,32 @@ export default async function TeacherCardSelfPage({
     },
   });
   if (!teacherFull) {
-    return <div style={{ color: "#b00" }}>{t(lang, "Teacher not found.", "老师不存在。")}</div>;
+    return (
+      <div style={{ maxWidth: 920, margin: "24px auto 0", padding: "0 12px", display: "grid", gap: 14 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "My Teacher Card", "我的教师名片")}
+          subtitle={t(lang, "Keep your public profile clear and ready for sharing.", "在这里维护你的公开教师名片，确保对外展示信息清楚可用。")}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+            {t(lang, "Teacher profile not found", "未找到老师资料")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "The linked teacher record could not be loaded right now. Please go back to the dashboard and try again later.",
+              "当前无法加载这条老师资料。请先返回工作台，稍后再试。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const subjectLabels = teacherFull.subjects.length
@@ -104,7 +191,26 @@ export default async function TeacherCardSelfPage({
         {err ? <div style={{ color: "#b00", marginBottom: 8 }}>{err}</div> : null}
         {msg ? <div style={{ color: "#087", marginBottom: 8 }}>{msg}</div> : null}
 
-        <div style={{ marginTop: 12, border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
+        {!hasIntro ? (
+          <section style={emptyStateCardStyle}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+              {t(lang, "Your intro still needs one short pass", "你的自我介绍还差最后一步")}
+            </div>
+            <div style={{ color: "#475569", lineHeight: 1.6 }}>
+              {t(
+                lang,
+                "Add a short teaching introduction below so operations and families can understand your profile without opening extra records.",
+                "在下方补上一段简短教学介绍，这样教务和家长就不用再打开其他资料才能理解你的背景。"
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="#teacher-intro-editor" style={primaryButtonStyle}>{t(lang, "Write intro now", "现在填写介绍")}</a>
+              <a href="/teacher/card/export/pdf" style={secondaryButtonStyle}>{t(lang, "Preview current PDF", "预览当前 PDF")}</a>
+            </div>
+          </section>
+        ) : null}
+
+        <div id="teacher-intro-editor" style={{ marginTop: 12, border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Edit Self Intro", "编辑自我介绍")}</div>
           <TeacherIntroClient
             initialIntro={teacherFull.intro ?? ""}
