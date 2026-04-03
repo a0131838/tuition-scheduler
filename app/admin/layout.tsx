@@ -52,6 +52,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
+  if (matchesPath(pathname, "/admin/finance/student-package-balances")) return t(lang, "Package Balance Reports", "课时包余额报表");
   if (matchesPath(pathname, "/admin/recovery/uploads")) return t(lang, "Attachment Health Desk", "附件异常工作台");
   return t(lang, "Admin Workspace", "管理工作台");
 }
@@ -112,6 +113,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin" ||
     pathname === "/admin/finance/workbench" ||
     pathname === "/admin/finance/student-package-invoices" ||
+    pathname === "/admin/finance/student-package-balances" ||
     pathname === "/admin/reports/teacher-payroll" ||
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
@@ -251,6 +253,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Invoice work and finance-only reference pages.", "发票处理和财务参考页。"),
       items: [
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
+        { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
       ],
     },

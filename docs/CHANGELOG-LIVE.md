@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r17
+
+- Release ID: `2026-04-03-r17`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: move the student package month-end balance report off the invoice workbench into its own finance page so reporting and invoice issuance stay separate.
+- Key files:
+  - `app/admin/finance/student-package-balances/page.tsx`
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-student-package-balance-report-separate-page.md`
+- Risk impact (if any): Low. This ship only moves the existing read-only month-end balance report UI into its own finance route and adds navigation links; report math, CSV export behavior, package ledger basis logic, invoice issuance, receipts, approvals, and finance permissions remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm `/admin/finance/student-package-balances` renders the report and `/admin/finance/student-package-invoices` now shows only the jump card
+- Rollback point: previous production commit before `2026-04-03-r17`.
+
 ## 2026-04-03-r16
 
 - Release ID: `2026-04-03-r16`

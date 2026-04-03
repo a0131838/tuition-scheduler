@@ -5,12 +5,6 @@ import { redirect } from "next/navigation";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
-import {
-  listStudentPackageMonthEndBalances,
-  minutesToHours,
-  monthEndDateOnlyFromMonth,
-  parseMonthInput,
-} from "@/lib/student-package-month-end-balance";
 import PackageSelectAutoSubmit from "./_components/PackageSelectAutoSubmit";
 
 function parseNum(v: string | null | undefined, fallback = 0) {
@@ -21,53 +15,6 @@ function parseNum(v: string | null | undefined, fallback = 0) {
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-}
-
-function currentMonthKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatAmountBasisSource(source: string, lang: Awaited<ReturnType<typeof getLang>>) {
-  if (source === "PURCHASE_TXNS") {
-    return t(lang, "Purchase ledger amounts", "购买流水金额");
-  }
-  if (source === "RECEIPTS") {
-    return t(lang, "Receipt totals", "收据金额");
-  }
-  if (source === "PACKAGE_PAID_AMOUNT") {
-    return t(lang, "Package paid amount", "课包付款金额");
-  }
-  return t(lang, "No amount basis", "无金额基数");
-}
-
-function amountBasisBadgeStyle(source: string) {
-  if (source === "PURCHASE_TXNS") {
-    return {
-      border: "1px solid #bfdbfe",
-      background: "#dbeafe",
-      color: "#1d4ed8",
-    };
-  }
-  if (source === "RECEIPTS") {
-    return {
-      border: "1px solid #bbf7d0",
-      background: "#dcfce7",
-      color: "#15803d",
-    };
-  }
-  if (source === "PACKAGE_PAID_AMOUNT") {
-    return {
-      border: "1px solid #fde68a",
-      background: "#fef3c7",
-      color: "#b45309",
-    };
-  }
-  return {
-    border: "1px solid #cbd5e1",
-    background: "#f8fafc",
-    color: "#475569",
-  };
 }
 
 async function issueInvoiceAction(formData: FormData) {
@@ -141,7 +88,6 @@ export default async function FinanceStudentPackageInvoicePage({
     note?: string;
     courseStartDate?: string;
     courseEndDate?: string;
-    balanceMonth?: string;
     msg?: string;
     err?: string;
   }>;
@@ -152,22 +98,6 @@ export default async function FinanceStudentPackageInvoicePage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const selectedPackageId = String(sp?.packageId ?? "").trim();
-  const balanceMonth = parseMonthInput(String(sp?.balanceMonth ?? "").trim())
-    ? String(sp?.balanceMonth ?? "").trim()
-    : currentMonthKey();
-  const balanceMonthEnd = monthEndDateOnlyFromMonth(balanceMonth) ?? "";
-  const balanceExportHref = `/api/exports/student-package-month-end-balance?month=${encodeURIComponent(balanceMonth)}`;
-  const balanceRows = await listStudentPackageMonthEndBalances(balanceMonth);
-  const balancePreviewRows = balanceRows.slice(0, 12);
-  const balanceSummary = balanceRows.reduce(
-    (acc, row) => {
-      acc.packageCount += 1;
-      acc.remainingHours += minutesToHours(row.remainingMinutes);
-      acc.remainingAmount += row.remainingAmount;
-      return acc;
-    },
-    { packageCount: 0, remainingHours: 0, remainingAmount: 0 },
-  );
   const today = formatDateOnly(new Date());
 
   const packages = await prisma.coursePackage.findMany({
@@ -234,139 +164,23 @@ export default async function FinanceStudentPackageInvoicePage({
 
       <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
         <div style={{ fontWeight: 700 }}>
-          {t(lang, "Month-end balance report", "月末余额报表")}
+          {t(lang, "Package balance reports", "课时包余额报表")}
         </div>
         <div style={{ color: "#475569", fontSize: 12 }}>
           {t(
             lang,
-            "Export remaining course balance in hours and estimated amount as of the selected month end. Version 1 covers HOURS packages only and does not change deduction or billing logic.",
-            "导出所选月末的剩余课时和估算剩余金额。第一版仅覆盖按分钟课包，不会改动扣课或账单逻辑。",
-          )}
-        </div>
-        <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
-          {selectedPackageId ? <input type="hidden" name="packageId" value={selectedPackageId} /> : null}
-          <label>
-            {t(lang, "Report month", "报表月份")}
-            <input name="balanceMonth" type="month" defaultValue={balanceMonth} style={{ display: "block" }} />
-          </label>
-          <button type="submit">{t(lang, "Load month-end report", "加载月末报表")}</button>
-          <a href={balanceExportHref}>{t(lang, "Export CSV", "导出 CSV")}</a>
-        </form>
-        <div style={{ color: "#475569", fontSize: 12 }}>
-          {t(
-            lang,
-            `Month-end cutoff: ${balanceMonthEnd}. Remaining amount uses receipt totals up to month end when available, otherwise package paid amount as a fallback.`,
-            `月末截止日：${balanceMonthEnd}。剩余金额优先按月末前收据金额计算；若没有收据，再退回课包付款金额口径。`,
+            "Month-end balance reporting now lives on its own finance page so invoice work and reporting stay separate.",
+            "月末余额报表已经拆到独立财务页面，避免和发票操作混在一起。",
           )}
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Packages in report", "报表课包数")}</b>: {balanceSummary.packageCount}
-          </div>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Total remaining hours", "剩余总课时")}</b>: {balanceSummary.remainingHours.toFixed(2)}
-          </div>
-          <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
-            <b>{t(lang, "Estimated remaining amount", "估算剩余金额")}</b>: SGD {money(balanceSummary.remainingAmount)}
-          </div>
+          <a href="/admin/finance/student-package-balances">
+            {t(lang, "Open student package balance report", "打开学生课时包余额报表")}
+          </a>
+          <a href="/admin/finance/workbench">
+            {t(lang, "Back to finance workbench", "返回财务工作台")}
+          </a>
         </div>
-        <div style={{ color: "#64748b", fontSize: 12 }}>
-          {t(
-            lang,
-            "The report now prefers purchase ledger amounts when all purchase records already carry amount history. Older packages safely fall back to receipts or package paid amount.",
-            "如果该课包的购买流水已经完整记录金额，报表会优先按购买流水金额计算；旧课包则安全回退到收据金额或课包付款金额。",
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {[
-            "PURCHASE_TXNS",
-            "RECEIPTS",
-            "PACKAGE_PAID_AMOUNT",
-            "NONE",
-          ].map((source) => (
-            <div
-              key={source}
-              style={{
-                ...amountBasisBadgeStyle(source),
-                borderRadius: 999,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {formatAmountBasisSource(source, lang)}
-            </div>
-          ))}
-        </div>
-        {balanceRows.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(
-              lang,
-              "No hour-based packages were active by the selected month end.",
-              "所选月末之前没有可纳入报表的按分钟课包。",
-            )}
-          </div>
-        ) : (
-          <div style={{ border: "1px solid #dbeafe", borderRadius: 8, background: "#fff", overflowX: "auto" }}>
-            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
-              <thead>
-                <tr style={{ background: "#eff6ff" }}>
-                  <th align="left">{t(lang, "Student", "学生")}</th>
-                  <th align="left">{t(lang, "Course", "课程")}</th>
-                  <th align="left">{t(lang, "Package", "课包")}</th>
-                  <th align="left">{t(lang, "Purchased Hours", "累计购入课时")}</th>
-                  <th align="left">{t(lang, "Used Hours", "累计已用课时")}</th>
-                  <th align="left">{t(lang, "Remaining Hours", "剩余课时")}</th>
-                  <th align="left">{t(lang, "Amount Basis", "金额基数")}</th>
-                  <th align="left">{t(lang, "Basis Source", "基数来源")}</th>
-                  <th align="left">{t(lang, "Estimated Remaining Amount", "估算剩余金额")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {balancePreviewRows.map((row) => (
-                  <tr key={row.packageId} style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <td>{row.studentName}</td>
-                    <td>{row.courseName}</td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>{row.packageId.slice(0, 8)}</div>
-                      <div style={{ color: "#64748b", fontSize: 12 }}>{row.packageStatus}</div>
-                    </td>
-                    <td>{minutesToHours(row.totalPurchasedMinutes).toFixed(2)}</td>
-                    <td>{minutesToHours(row.usedMinutes).toFixed(2)}</td>
-                    <td>{minutesToHours(row.remainingMinutes).toFixed(2)}</td>
-                    <td>SGD {money(row.paidAmountBasis)}</td>
-                    <td>
-                      <span
-                        style={{
-                          ...amountBasisBadgeStyle(row.paidAmountBasisSource),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          borderRadius: 999,
-                          padding: "4px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatAmountBasisSource(row.paidAmountBasisSource, lang)}
-                      </span>
-                    </td>
-                    <td>SGD {money(row.remainingAmount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {balanceRows.length > balancePreviewRows.length ? (
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(
-              lang,
-              `Showing ${balancePreviewRows.length} of ${balanceRows.length} rows on page. Use Export CSV for the full month-end report.`,
-              `页面内先显示 ${balancePreviewRows.length} / ${balanceRows.length} 行；完整月末报表请导出 CSV。`,
-            )}
-          </div>
-        ) : null}
       </div>
 
       {err ? <div style={{ color: "#b91c1c" }}>{err}</div> : null}

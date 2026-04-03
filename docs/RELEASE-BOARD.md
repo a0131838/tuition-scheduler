@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r16` (student billing month-end balance basis badges).
+- Current release line on this branch: `2026-04-03-r17` (student package balance report moved to a standalone finance page).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r17 Deployed
+
+- Scope: move the student package month-end balance report off the invoice workbench into its own finance page.
+- Business impact:
+  - finance now opens the month-end balance report from a dedicated route: `/admin/finance/student-package-balances`
+  - the invoice workbench no longer mixes invoice issuance with balance-report preview content
+  - finance sidebar and finance home now link to the standalone report page
+  - no report math, CSV output, amount-basis logic, invoice behavior, receipt behavior, or approval behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm the new report route renders and the invoice workbench now shows only the navigation card
 
 ## 2026-04-03-r16 Deployed
 

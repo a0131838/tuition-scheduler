@@ -78,6 +78,7 @@ export default async function AdminHome() {
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <a href="/admin/finance/student-package-invoices">{t(lang, "Student Package Invoices", "学生课时包发票")}</a>
+            <a href="/admin/finance/student-package-balances">{t(lang, "Student Package Balances", "学生课时包余额报表")}</a>
             <a href="/admin/expense-claims">{t(lang, "Expense Claims", "报销审批")}</a>
             <a href="/admin/reports/audit-logs">{t(lang, "Audit Logs", "审计日志")}</a>
           </div>
