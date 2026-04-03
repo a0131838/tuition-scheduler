@@ -30,6 +30,14 @@ function recommendationLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
   }
 }
 
+function readForwardMeta(raw: unknown): { forwardedByName: string | null } {
+  if (!raw || typeof raw !== "object") return { forwardedByName: null };
+  const meta = (raw as any)?._meta;
+  if (!meta || typeof meta !== "object") return { forwardedByName: null };
+  const forwardedByName = typeof meta.forwardedByName === "string" && meta.forwardedByName.trim() ? meta.forwardedByName.trim() : null;
+  return { forwardedByName };
+}
+
 async function assignFinalReport(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -91,21 +99,32 @@ async function assignFinalReport(formData: FormData) {
 
 async function markFinalReportForwarded(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const user = await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
   if (!reportId) redirect("/admin/reports/final?err=missing");
 
   const row = await prisma.finalReport.findUnique({
     where: { id: reportId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, reportJson: true },
   });
   if (!row || row.status !== "SUBMITTED") redirect("/admin/reports/final?err=status");
+
+  const prev = row.reportJson && typeof row.reportJson === "object" ? (row.reportJson as Record<string, unknown>) : {};
+  const prevMeta = prev._meta && typeof prev._meta === "object" ? (prev._meta as Record<string, unknown>) : {};
 
   await prisma.finalReport.update({
     where: { id: row.id },
     data: {
       status: "FORWARDED",
       forwardedAt: new Date(),
+      reportJson: {
+        ...prev,
+        _meta: {
+          ...prevMeta,
+          forwardedByUserId: user.id,
+          forwardedByName: user.name,
+        },
+      } as any,
     },
   });
 
@@ -155,7 +174,7 @@ export default async function AdminFinalReportCenterPage({
         </div>
       ) : ok === "forwarded" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
-          {t(lang, "Marked as forwarded.", "已标记为已转发。")}
+          {t(lang, "Marked as forwarded to parent follow-up.", "已标记为已转发给家长跟进。")}
         </div>
       ) : null}
 
@@ -250,6 +269,7 @@ export default async function AdminFinalReportCenterPage({
             <tbody>
               {reports.map((report) => {
                 const draft = parseFinalReportDraft(report.reportJson);
+                const forwardMeta = readForwardMeta(report.reportJson);
                 return (
                   <tr key={report.id} style={{ borderTop: "1px solid #dbeafe" }}>
                     <td style={{ padding: 6, fontWeight: 700 }}>{report.student.name}</td>
@@ -267,6 +287,7 @@ export default async function AdminFinalReportCenterPage({
                       {report.forwardedAt ? (
                         <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
                           {formatBusinessDateTime(new Date(report.forwardedAt))}
+                          {forwardMeta.forwardedByName ? ` (${forwardMeta.forwardedByName})` : ""}
                         </div>
                       ) : null}
                     </td>
@@ -285,10 +306,11 @@ export default async function AdminFinalReportCenterPage({
                     </td>
                     <td style={{ padding: 6 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
                         {report.status === "SUBMITTED" ? (
                           <form action={markFinalReportForwarded}>
                             <input type="hidden" name="reportId" value={report.id} />
-                            <button type="submit">{t(lang, "Mark forwarded", "标记已转发")}</button>
+                            <button type="submit">{t(lang, "Mark forwarded to parent", "标记已转发给家长")}</button>
                           </form>
                         ) : null}
                       </div>

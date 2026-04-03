@@ -1293,5 +1293,19 @@
   - `npm run build`
   - post-deploy startup check
   - production read-only QA on `/teacher/final-reports` and `/admin/reports/final`
+
+## 2026-04-03-r21 Deployed
+
+- Scope: finish the first final-report workflow with admin PDF export and a clearer forwarded-to-parent action.
+- Business impact:
+  - admins can now download a printable PDF for each final report directly from `/admin/reports/final`
+  - the forwarded action now reads as `Mark forwarded to parent`, which makes the operational intent clearer
+  - forwarded reports now also display who marked them as forwarded, when that metadata is available
+  - no final-report assignment rules, teacher submission logic, schema, attendance logic, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/admin/reports/final`
+  - production read-only QA on `/api/admin/final-reports/[id]/pdf`
   - release task record synced in a follow-up docs pass so the task file reflects the deployed state
   - final docs sync pass bundled changelog / release board / task in one commit for the release gate

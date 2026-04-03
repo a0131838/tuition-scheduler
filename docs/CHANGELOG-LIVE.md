@@ -2407,3 +2407,23 @@ This file is the single source of truth for what changed in production.
   - release task record was synced in a follow-up docs pass so handoff docs stay aligned with the deployed state
   - final docs sync pass bundled changelog / release board / task in one commit for the release gate
 - Rollback point: previous production commit before `2026-04-03-r20`.
+
+## 2026-04-03-r21
+
+- Release ID: `2026-04-03-r21`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: complete the first final-report workflow with admin PDF export and a clearer forwarded-to-parent action.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-reports-pdf-and-forwarded-flow.md`
+- Risk impact (if any): Low. This release improves final-report export and admin UI wording only; no assignment rules, teacher submission rules, schema, attendance logic, or finance logic changed.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed `/admin/reports/final` shows `Download PDF` and the forwarded action text now reads as a parent-facing handoff
+  - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
+- Rollback point: previous production commit before `2026-04-03-r21`.
