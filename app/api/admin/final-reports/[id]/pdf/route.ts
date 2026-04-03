@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { parseFinalReportDraft } from "@/lib/final-report";
+import { parseFinalReportDraft, parseFinalReportMeta } from "@/lib/final-report";
 import { getLang } from "@/lib/i18n";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
@@ -98,6 +98,44 @@ function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
   return `${en} / ${zh}`;
 }
 
+function deliveryChannelLabel(value: string | null | undefined, lang: "BILINGUAL" | "ZH" | "EN") {
+  const zh =
+    value === "WECHAT"
+      ? "微信"
+      : value === "EMAIL"
+        ? "邮件"
+        : value === "WHATSAPP"
+          ? "WhatsApp"
+          : value === "PRINTED"
+            ? "纸质版"
+            : value === "OTHER"
+              ? "其他"
+              : "-";
+  const en =
+    value === "WECHAT"
+      ? "WeChat"
+      : value === "EMAIL"
+        ? "Email"
+        : value === "WHATSAPP"
+          ? "WhatsApp"
+          : value === "PRINTED"
+            ? "Printed copy"
+            : value === "OTHER"
+              ? "Other"
+              : "-";
+  if (lang === "ZH") return zh;
+  if (lang === "EN") return en;
+  return `${en} / ${zh}`;
+}
+
+function statusLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
+  const zh = value === "FORWARDED" ? "已转发" : value === "SUBMITTED" ? "已提交" : "待填写";
+  const en = value === "FORWARDED" ? "Forwarded" : value === "SUBMITTED" ? "Submitted" : "Assigned";
+  if (lang === "ZH") return zh;
+  if (lang === "EN") return en;
+  return `${en} / ${zh}`;
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const lang = await getLang();
@@ -105,7 +143,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const report = await prisma.finalReport.findUnique({
     where: { id },
-    include: { student: true, teacher: true, course: true, subject: true, package: true },
+    include: { student: true, teacher: true, course: true, subject: true, package: true, deliveredByUser: { select: { name: true } } },
   });
   if (!report) return new Response("Report not found", { status: 404 });
 
@@ -113,6 +151,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
+  const meta = parseFinalReportMeta(report.reportJson);
 
   const doc = new PDFDocument({
     size: "A4",
@@ -161,6 +200,23 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   field(doc, left + 10 + (colW + colGap) * 2, y + 28, colW, lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议", recommendationLabel(report.recommendation || draft.recommendedNextStep, lang));
   y += 84 + gap;
 
+  panel(doc, left, y, contentW, 84, lang === "ZH" ? "交付记录" : lang === "EN" ? "Delivery Record" : "Delivery Record / 交付记录", {
+    bg: "#FFF7ED",
+    border: "#FDBA74",
+    title: "#9A3412",
+  });
+  field(doc, left + 10, y + 28, colW, lang === "ZH" ? "报告状态" : lang === "EN" ? "Report status" : "Report status / 报告状态", statusLabel(report.status, lang));
+  field(doc, left + 10 + colW + colGap, y + 28, colW, lang === "ZH" ? "交付方式" : lang === "EN" ? "Delivery channel" : "Delivery channel / 交付方式", deliveryChannelLabel(report.deliveryChannel, lang));
+  field(
+    doc,
+    left + 10 + (colW + colGap) * 2,
+    y + 28,
+    colW,
+    lang === "ZH" ? "交付时间" : lang === "EN" ? "Delivered at" : "Delivered at / 交付时间",
+    report.deliveredAt ? formatBusinessDateOnly(new Date(report.deliveredAt)) : "-"
+  );
+  y += 84 + gap;
+
   y += sectionText(doc, left, y, contentW, lang === "ZH" ? "开始目标" : lang === "EN" ? "Initial goals" : "Initial goals / 开始目标", draft.initialGoals, 64) + gap;
   y += sectionText(doc, left, y, contentW, lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结", draft.finalSummary, 88) + gap;
 
@@ -174,6 +230,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   y += Math.max(attendanceH, homeworkH) + gap;
 
   y += sectionText(doc, left, y, contentW, lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话", draft.parentNote, 88) + gap;
+  y += sectionText(doc, left, y, contentW, lang === "ZH" ? "家长交付备注" : lang === "EN" ? "Parent delivery note" : "Parent delivery note / 家长交付备注", meta.deliveryNote, 64) + gap;
   sectionText(doc, left, y, contentW, lang === "ZH" ? "教师内部备注" : lang === "EN" ? "Teacher internal note" : "Teacher internal note / 教师内部备注", draft.teacherComment, 64);
 
   const stream = streamPdf(doc);

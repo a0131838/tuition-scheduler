@@ -462,6 +462,12 @@ model FinalReport {
   assignedAt        DateTime          @default(now())
   submittedAt       DateTime?
   forwardedAt       DateTime?
+  deliveredAt       DateTime?
+  deliveredByUserId String?
+  deliveryChannel   String?
+  shareToken        String?           @unique
+  shareEnabledAt    DateTime?
+  shareRevokedAt    DateTime?
   reportPeriodLabel String?
   finalLevel        String?
   overallScore      Decimal?          @db.Decimal(5, 2)
@@ -476,12 +482,14 @@ model FinalReport {
   subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   package        CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   assignedByUser User?         @relation("FinalReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  deliveredByUser User?        @relation("FinalReportDeliveredBy", fields: [deliveredByUserId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
   @@index([courseId, createdAt])
   @@index([status, createdAt])
   @@index([packageId, createdAt])
+  @@index([deliveredAt, createdAt])
 }
 
 model SessionTeacherChange {
@@ -599,6 +607,7 @@ model User {
   sessions AuthSession[]
   midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
   finalReportsAssigned   FinalReport[]   @relation("FinalReportAssignedBy")
+  finalReportsDelivered  FinalReport[]   @relation("FinalReportDeliveredBy")
   ticketsCompleted       Ticket[]        @relation("TicketCompletedBy")
   ticketHandovers        TicketHandover[]
   ticketIntakeTokens     TicketIntakeToken[]

@@ -2427,3 +2427,29 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed `/admin/reports/final` shows `Download PDF` and the forwarded action text now reads as a parent-facing handoff
   - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
 - Rollback point: previous production commit before `2026-04-03-r21`.
+
+## 2026-04-03-r22
+
+- Release ID: `2026-04-03-r22`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add final-report parent-delivery records, admin share-link controls, and a public read-only final-report page, while upgrading the printable PDF into a more formal delivery version.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403223000_add_final_report_delivery_and_share/migration.sql`
+  - `lib/final-report.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `app/final-report/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-reports-phase-3a-and-3b.md`
+- Risk impact (if any): Medium. This release adds new `FinalReport` metadata columns plus a public token-gated share page, but it does not change midterm-report logic, teacher fill rules, assignment rules, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed `/admin/reports/final` shows delivery actions and parent share-link controls
+  - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
+  - production read-only QA confirmed a tokenized `/final-report/[id]?token=...` page renders as a parent-safe read-only report
+- Rollback point: previous production commit before `2026-04-03-r22`.

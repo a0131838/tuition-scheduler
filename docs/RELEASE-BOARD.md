@@ -1309,3 +1309,20 @@
   - production read-only QA on `/api/admin/final-reports/[id]/pdf`
   - release task record synced in a follow-up docs pass so the task file reflects the deployed state
   - final docs sync pass bundled changelog / release board / task in one commit for the release gate
+
+## 2026-04-03-r22 Deployed
+
+- Scope: add final-report delivery records, parent read-only share links, and a more formal PDF handoff version.
+- Business impact:
+  - `/admin/reports/final` now supports a real parent-delivery step with delivery channel, delivery note, delivery timestamp, and delivery actor tracking
+  - admins can now generate, refresh, and disable tokenized parent share links directly from the final-report center
+  - parents or operations can open `/final-report/[id]?token=...` as a read-only final-report page without needing an admin or teacher login
+  - the admin PDF export now includes a clearer delivery-record section so it is easier to send as a parent-facing handoff document
+  - no final-report assignment rules, teacher submit rules, midterm-report logic, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/admin/reports/final`
+  - production read-only QA on `/api/admin/final-reports/[id]/pdf`
+  - production read-only QA on a tokenized `/final-report/[id]?token=...` share page

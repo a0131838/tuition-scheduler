@@ -8,7 +8,16 @@ export const FINAL_REPORT_RECOMMENDATIONS = [
   "COURSE_COMPLETED",
 ] as const;
 
+export const FINAL_REPORT_DELIVERY_CHANNELS = [
+  "WECHAT",
+  "EMAIL",
+  "WHATSAPP",
+  "PRINTED",
+  "OTHER",
+] as const;
+
 export type FinalReportRecommendation = (typeof FINAL_REPORT_RECOMMENDATIONS)[number] | "";
+export type FinalReportDeliveryChannel = (typeof FINAL_REPORT_DELIVERY_CHANNELS)[number] | "";
 
 export type FinalReportDraft = {
   initialGoals: string;
@@ -34,6 +43,18 @@ export const EMPTY_FINAL_REPORT_DRAFT: FinalReportDraft = {
   homeworkComment: "",
 };
 
+export type FinalReportMeta = {
+  forwardedByName: string;
+  forwardedByUserId: string;
+  deliveryNote: string;
+};
+
+export const EMPTY_FINAL_REPORT_META: FinalReportMeta = {
+  forwardedByName: "",
+  forwardedByUserId: "",
+  deliveryNote: "",
+};
+
 function asString(value: unknown) {
   return String(value ?? "").trim();
 }
@@ -42,6 +63,14 @@ function asRecommendation(value: unknown): FinalReportRecommendation {
   const text = asString(value).toUpperCase();
   if (FINAL_REPORT_RECOMMENDATIONS.includes(text as (typeof FINAL_REPORT_RECOMMENDATIONS)[number])) {
     return text as FinalReportRecommendation;
+  }
+  return "";
+}
+
+function asDeliveryChannel(value: unknown): FinalReportDeliveryChannel {
+  const text = asString(value).toUpperCase();
+  if (FINAL_REPORT_DELIVERY_CHANNELS.includes(text as (typeof FINAL_REPORT_DELIVERY_CHANNELS)[number])) {
+    return text as FinalReportDeliveryChannel;
   }
   return "";
 }
@@ -75,6 +104,21 @@ export function parseFinalDraftFromFormData(formData: FormData): FinalReportDraf
     attendanceComment: read("attendanceComment"),
     homeworkComment: read("homeworkComment"),
   });
+}
+
+export function parseFinalReportMeta(raw: unknown): FinalReportMeta {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_FINAL_REPORT_META };
+  const row = raw as Record<string, unknown>;
+  const meta = row._meta && typeof row._meta === "object" ? (row._meta as Record<string, unknown>) : row;
+  return {
+    forwardedByName: asString(meta.forwardedByName),
+    forwardedByUserId: asString(meta.forwardedByUserId),
+    deliveryNote: asString(meta.deliveryNote),
+  };
+}
+
+export function parseDeliveryChannel(value: unknown): FinalReportDeliveryChannel {
+  return asDeliveryChannel(value);
 }
 
 function safePositiveInt(v: number | null | undefined) {
