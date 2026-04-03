@@ -1278,3 +1278,18 @@
   - production read-only QA on the affected pages
   - post-deploy startup check confirmed `local / origin / server = bd33bef`
   - release docs synced again in a follow-up docs-only pass to satisfy the release gate
+
+## 2026-04-03-r20 Deployed
+
+- Scope: add a separate final-report workflow for completed hour packages, with teacher-side fill pages and an admin-side assign / submitted / forwarded center.
+- Business impact:
+  - the system now has a dedicated `Final Reports / 结课报告` flow instead of overloading midterm reports for end-of-package summaries
+  - teachers can open `/teacher/final-reports`, save drafts, and submit final reports assigned to their completed `HOURS` packages
+  - admins can open `/admin/reports/final`, review completed-package candidates, manually assign a report to the relevant teacher, and mark submitted reports as forwarded
+  - teacher and admin navigation now include final-report entries so the workflow is visible without relying on hidden links
+  - no midterm-report logic, attendance/deduction logic, package balance logic, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/teacher/final-reports` and `/admin/reports/final`

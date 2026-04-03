@@ -2379,3 +2379,29 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed `local / origin / server = bd33bef`
   - release docs were synced in a follow-up docs-only commit so the release gate stays aligned with production
 - Rollback point: previous production commit before `2026-04-03-r19`.
+
+## 2026-04-03-r20
+
+- Release ID: `2026-04-03-r20`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add a dedicated `Final Reports / 结课报告` workflow with a new DB model, teacher-side fill flow, and admin-side assign/forward center for completed `HOURS` packages.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403202000_add_final_reports/migration.sql`
+  - `lib/final-report.ts`
+  - `app/teacher/final-reports/page.tsx`
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/admin/reports/final/page.tsx`
+  - `app/admin/layout.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-reports-phase-1-and-2.md`
+- Risk impact (if any): Medium. This release adds a new Prisma enum/table and new teacher/admin routes, but it does not change midterm-report logic, attendance/deduction logic, package balances, or finance logic.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed the new teacher and admin final-report pages render and the navigation entries are visible
+- Rollback point: previous production commit before `2026-04-03-r20`.

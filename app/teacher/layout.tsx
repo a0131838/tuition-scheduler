@@ -28,6 +28,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
       items: [
         { href: "/teacher/availability", label: t(lang, "My Availability", "我的可上课时间") },
         { href: "/teacher/midterm-reports", label: t(lang, "Midterm Reports", "中期报告") },
+        { href: "/teacher/final-reports", label: t(lang, "Final Reports", "结课报告") },
       ],
     },
     {
