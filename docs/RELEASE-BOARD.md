@@ -1276,3 +1276,4 @@
 - Validation:
   - `npm run build`
   - production read-only QA on the affected pages
+  - post-deploy startup check confirmed `local / origin / server = bd33bef`
