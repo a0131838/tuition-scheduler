@@ -2207,3 +2207,26 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - targeted copy audit confirmed the updated wording for receipt file-issue links, partner-settlement invoice grouping/status labels, and the student search placeholder
 - Rollback point: previous production commit before `2026-04-03-r03`.
+
+## 2026-04-03-r12
+
+- Release ID: `2026-04-03-r12`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: tighten shared mobile layout containment and remove the remaining narrow-screen overflow on teacher payroll / expense workbenches and the admin receipt-approval workflow.
+- Key files:
+  - `app/layout.tsx`
+  - `app/responsive-layout.css`
+  - `app/teacher/_components/TeacherWorkspaceHero.tsx`
+  - `app/teacher/payroll/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-mobile-shell-and-form-overflow-pass.md`
+- Risk impact (if any): Low. This is a responsive UI containment pass only; payroll logic, receipt approval logic, payment-record handling, receipt creation logic, and remembered queue behavior remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - local mobile-width QA on `http://127.0.0.1:3330/teacher/payroll` confirmed stacked hero actions, stacked payroll filters, and `scrollWidth === clientWidth`
+  - local mobile-width QA on `http://127.0.0.1:3330/teacher/expense-claims` confirmed no horizontal overflow on the shared teacher workbench shell
+  - local mobile-width QA on `http://127.0.0.1:3330/admin/receipts-approvals` confirmed the quick package selector and receipt finance forms no longer overflow, and `scrollWidth === clientWidth`
+- Rollback point: previous production commit before `2026-04-03-r12`.

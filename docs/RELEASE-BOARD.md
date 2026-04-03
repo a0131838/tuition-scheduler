@@ -1170,3 +1170,16 @@
   - no receipt queue behavior, partner-settlement logic, invoicing logic, or student-search behavior changed
 - Validation:
   - `npm run build`
+
+## 2026-04-03-r12 Deployed
+
+- Scope: mobile shell and form-overflow cleanup for teacher finance workbenches and admin receipt approvals.
+- Business impact:
+  - the shared admin/teacher app shell now keeps mobile-width content inside the viewport instead of letting `width: 100%` controls drift past the screen edge
+  - teacher workbench hero actions now stack more cleanly on phone widths, which improves first-screen readability on payroll and expense pages without changing routes or actions
+  - `/teacher/payroll` now uses the existing stacked filter-bar pattern on mobile, so the month/scope controls and `Apply / Clear` actions read as one clear block
+  - `/admin/receipts-approvals` no longer lets the quick package selector or the receipt-creation/payment-proof forms overflow on mobile, because the old fixed 2/3/4-column grids now collapse responsively
+  - no payroll calculations, receipt approval rules, payment-record logic, receipt creation logic, or remembered queue behavior changed
+- Validation:
+  - `npm run build`
+  - local mobile-width QA confirmed `scrollWidth === clientWidth` on `/teacher/payroll`, `/teacher/expense-claims`, and `/admin/receipts-approvals`

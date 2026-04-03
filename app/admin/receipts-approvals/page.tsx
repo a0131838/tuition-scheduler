@@ -1670,19 +1670,14 @@ export default async function ReceiptsApprovalsPage({
           </summary>
           <form
             method="get"
-            style={{
-              marginTop: 10,
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
+            className="ts-filter-bar"
+            style={{ marginTop: 10 }}
           >
             {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
             {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
-            <label>
+            <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
               {t(lang, "Quick Select Package", "快捷选择课包")}
-              <select name="packageId" defaultValue="" style={{ marginLeft: 6, minWidth: 420 }}>
+              <select name="packageId" defaultValue="" style={{ width: "100%", minWidth: 0, maxWidth: 420 }}>
                 <option value="" disabled>
                   {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
                 </option>
@@ -1739,7 +1734,7 @@ export default async function ReceiptsApprovalsPage({
                 "该区域已拆分为3个模块：上传缴费凭证、查看已上传记录、创建收据。"
               )}
             </div>
-            <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: 8 }}>
+            <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, background: "#f8fafc", padding: 8 }}>
                 <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Paid amount", "已缴费金额")}</div>
                 <div style={{ fontWeight: 700 }}>{money(paidAmount)}</div>
@@ -1783,7 +1778,7 @@ export default async function ReceiptsApprovalsPage({
               >
                 <input type="hidden" name="packageId" value={packageIdFilter} />
                 <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
                   <label>Payment Proof
                     <input
                       name="paymentProof"
@@ -1937,7 +1932,7 @@ export default async function ReceiptsApprovalsPage({
                 {selectedType ? <input type="hidden" name="selectedType" value={selectedType} /> : null}
                 {selectedId ? <input type="hidden" name="selectedId" value={selectedId} /> : null}
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{t(lang, "Smart fill source", "智能带入来源")}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(200px, 1fr))", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
                   <label>{t(lang, "Invoice", "发票")}
                     <select name="invoiceId" defaultValue={selectedCreateInvoice?.id ?? ""} style={{ width: "100%" }}>
                       <option value="">{t(lang, "(auto first available)", "（默认首个可用）")}</option>
@@ -1962,7 +1957,7 @@ export default async function ReceiptsApprovalsPage({
               <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginTop: 8 }}>
               <input type="hidden" name="packageId" value={packageIdFilter} />
               <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
                 <label>{t(lang, "Source Invoice", "来源发票")}
                   <select name="invoiceId" defaultValue={selectedCreateInvoice?.id ?? ""} required style={{ width: "100%" }}>
                     <option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No available invoice)", "（无可用发票）") : t(lang, "Select an invoice", "请选择发票")}</option>
@@ -2006,7 +2001,7 @@ export default async function ReceiptsApprovalsPage({
                     ))}
                   </select>
                 </label>
-                <label style={{ gridColumn: "span 4" }}>{t(lang, "Description", "描述")}
+                <label style={{ gridColumn: "1 / -1" }}>{t(lang, "Description", "描述")}
                   <input
                     value={selectedCreateInvoice ? `${t(lang, "For Invoice no.", "对应发票号")} ${selectedCreateInvoice.invoiceNo}` : t(lang, "Auto generated from linked invoice number", "由关联发票号自动生成")}
                     readOnly
@@ -2014,7 +2009,7 @@ export default async function ReceiptsApprovalsPage({
                   />
                 </label>
                 {selectedCreatePaymentRecord ? (
-                  <label style={{ gridColumn: "span 4" }}>
+                  <label style={{ gridColumn: "1 / -1" }}>
                     {t(lang, "Selected payment record", "已选择付款记录")}
                     <input
                       value={`${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"}`}
@@ -2023,7 +2018,7 @@ export default async function ReceiptsApprovalsPage({
                     />
                   </label>
                 ) : null}
-                <label style={{ gridColumn: "span 4" }}>{t(lang, "Note", "备注")}
+                <label style={{ gridColumn: "1 / -1" }}>{t(lang, "Note", "备注")}
                   <input name="note" style={{ width: "100%" }} />
                 </label>
               </div>

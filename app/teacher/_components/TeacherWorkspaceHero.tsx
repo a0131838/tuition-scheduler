@@ -13,6 +13,7 @@ export default function TeacherWorkspaceHero({
 }) {
   return (
     <section
+      className="teacher-workspace-hero"
       style={{
         display: "grid",
         gap: 10,
@@ -23,8 +24,8 @@ export default function TeacherWorkspaceHero({
         boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06)",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <div>
+      <div className="teacher-workspace-hero__header">
+        <div className="teacher-workspace-hero__content">
           <h1 style={{ margin: 0, fontSize: 30, lineHeight: 1.1, color: "#0f172a" }}>{title}</h1>
           {collapseGuide ? (
             <details style={{ marginTop: 8, maxWidth: 720 }}>
@@ -38,7 +39,7 @@ export default function TeacherWorkspaceHero({
           )}
         </div>
         {actions.length ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="teacher-workspace-hero__actions">
             {actions.map((action) => (
               <a
                 key={action.href}

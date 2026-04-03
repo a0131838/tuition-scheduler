@@ -316,14 +316,14 @@ export default async function TeacherPayrollSelfPage({
       {err === "not-sent" ? <div style={{ marginBottom: 10, color: "#b00" }}>{t(lang, "This payroll has not been sent by admin yet.", "该工资单尚未由管理端发送。")}</div> : null}
       {err === "month" ? <div style={{ marginBottom: 10, color: "#b00" }}>{t(lang, "Invalid month format.", "月份格式错误。")}</div> : null}
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-        <label>
+      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
+        <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
           {t(lang, "Payroll Month", "工资月份")}:
-          <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
+          <input name="month" type="month" defaultValue={month} style={{ width: "100%" }} />
         </label>
-        <label>
+        <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
           {t(lang, "Scope", "统计口径")}:
-          <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
+          <select name="scope" defaultValue={scope} style={{ width: "100%" }}>
             <option value="all">{t(lang, "All Scheduled Sessions", "全部排课课次")}</option>
             <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
           </select>

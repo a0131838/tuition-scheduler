@@ -51,6 +51,7 @@ export default function RootLayout({
             font-size: 12px;
             box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06);
             transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+            box-sizing: border-box;
           }
           a:hover {
             background: var(--btn-bg-hover);
@@ -76,6 +77,7 @@ export default function RootLayout({
             box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06);
             transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
             cursor: pointer;
+            box-sizing: border-box;
           }
           button:hover {
             background: var(--btn-bg-hover);
@@ -95,6 +97,7 @@ export default function RootLayout({
           select,
           textarea {
             min-height: 40px;
+            box-sizing: border-box;
           }
         `}</style>
         <Suspense fallback={null}>
