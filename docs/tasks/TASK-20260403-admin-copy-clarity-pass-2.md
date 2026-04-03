@@ -45,4 +45,4 @@ Run the second admin/teacher copy-clarity pass on high-traffic workbench pages s
 ## Release
 
 - Release target: `2026-04-03-r04`
-- Status: `READY`
+- Status: `LIVE`

@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-03-r04`
 - Date/Time (Asia/Shanghai): `2026-04-03`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: Run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing so high-traffic labels read more naturally without changing any workflow logic.
 - Key files:
   - `app/teacher/tickets/page.tsx`
@@ -30,9 +30,16 @@ This file is the single source of truth for what changed in production.
   - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-2.md`
 - Risk impact (if any): Low. This ship only rewrites UI copy on three existing workbench pages; no ticket write rules, payroll math or approval behavior, partner billing flows, invoice/receipt actions, or storage logic changed.
 - Verification:
-  - `npm run build` pending
-  - logged-in local QA pending
-  - post-deploy production QA pending
+  - `npm run build` passed
+  - logged-in local QA on `http://127.0.0.1:3332` confirmed:
+    - `/teacher/tickets` renders the new ticket search, status-filter, proof-file, and completion-note copy
+    - `/admin/reports/teacher-payroll` renders the new scope labels, jump links, queue wording, and summary-card copy
+    - `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=2026-03&tab=payments` renders the new payment/receipt/billing wording
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `313f3ba` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production:
+    - `/teacher/tickets` shows `Search ticket no., student, or teacher` and `All statuses`
+    - `/admin/reports/teacher-payroll` shows the new payroll-period, queue, and jump-link copy
+    - `/admin/reports/partner-settlement/billing` shows the new payment-record, receipt, and export wording
 - Rollback point: previous production commit before `2026-04-03-r04`.
 
 ## 2026-04-02-r15

@@ -46,7 +46,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-03-r04 Ready
+## 2026-04-03-r04 Deployed
 
 - Scope: run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing.
 - Business impact:
@@ -55,10 +55,10 @@
   - partner billing tabs, payment/receipt form labels, and export headings are easier to scan
   - no ticket workflow rules, payroll math or approval behavior, partner billing flows, or storage logic changed
 - Validation:
-  - `npm run build` pending
-  - fresh local logged-in QA pending
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` pending
-  - logged-in live QA pending
+  - `npm run build`
+  - fresh local logged-in QA on `http://127.0.0.1:3332` confirmed the new wording on teacher tickets, admin payroll, and partner billing
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on `313f3ba` and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the new copy is visible on the same three production pages
 
 ## 2026-04-02-r15 Deployed
 
