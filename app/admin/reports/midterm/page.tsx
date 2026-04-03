@@ -1,6 +1,11 @@
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import { formatMinutesToHours, loadMidtermCandidates } from "@/lib/midterm-report";
+import {
+  formatMinutesToHours,
+  loadMidtermCandidates,
+  MIDTERM_REPORT_EXEMPT_REASONS,
+  parseMidtermExemptReason,
+} from "@/lib/midterm-report";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -14,6 +19,32 @@ function readForwardMeta(raw: unknown): { forwardedAt: string | null; forwardedB
   const forwardedByName = typeof meta.forwardedByName === "string" && meta.forwardedByName.trim() ? meta.forwardedByName.trim() : null;
   const locked = Boolean(meta.lockedAfterForwarded);
   return { forwardedAt, forwardedByName, locked };
+}
+
+function statusLabel(lang: "BILINGUAL" | "ZH" | "EN", status: string, locked: boolean) {
+  if (status === "EXEMPT") return t(lang, "Exempt", "无需报告");
+  if (locked) return t(lang, "Forwarded & Locked", "已转发并锁定");
+  if (status === "SUBMITTED") return t(lang, "Submitted", "已提交");
+  return t(lang, "Assigned", "待老师填写");
+}
+
+function exemptReasonLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
+  switch (value) {
+    case "TRIAL_ONLY":
+      return t(lang, "Trial only", "仅试课");
+    case "ASSESSMENT_ONLY":
+      return t(lang, "Assessment only", "仅评估课");
+    case "EARLY_WITHDRAWAL":
+      return t(lang, "Early withdrawal", "中途停课");
+    case "OPS_NOT_REQUIRED":
+      return t(lang, "Not required by operations", "教务确认无需报告");
+    case "DUPLICATE_ASSIGNMENT":
+      return t(lang, "Duplicate assignment", "重复推送");
+    case "OTHER":
+      return t(lang, "Other", "其他");
+    default:
+      return "-";
+  }
 }
 
 async function assignMidtermReport(formData: FormData) {
@@ -50,6 +81,10 @@ async function assignMidtermReport(formData: FormData) {
     redirect("/admin/reports/midterm?ok=exists");
   }
 
+  if (latestForTeacher?.status === "EXEMPT") {
+    redirect("/admin/reports/midterm?ok=exempt");
+  }
+
   if (latestForTeacher?.status === "ASSIGNED") {
     await prisma.midtermReport.update({
       where: { id: latestForTeacher.id },
@@ -83,6 +118,100 @@ async function assignMidtermReport(formData: FormData) {
   revalidatePath("/admin/reports/midterm");
   revalidatePath("/teacher/midterm-reports");
   redirect("/admin/reports/midterm?ok=assigned");
+}
+
+async function exemptMidtermReport(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const exemptReason = parseMidtermExemptReason(formData.get("exemptReason"));
+  if (!exemptReason) redirect("/admin/reports/midterm?err=missing");
+
+  const now = new Date();
+
+  if (reportId) {
+    const row = await prisma.midtermReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, reportJson: true },
+    });
+    if (!row || readForwardMeta(row.reportJson).locked) redirect("/admin/reports/midterm?err=status");
+
+    await prisma.midtermReport.update({
+      where: { id: row.id },
+      data: {
+        status: "EXEMPT",
+        exemptReason,
+        exemptedAt: now,
+        exemptedByUserId: user.id,
+        submittedAt: null,
+      },
+    });
+  } else {
+    if (!packageId || !teacherId) redirect("/admin/reports/midterm?err=missing");
+
+    const pkg = await prisma.coursePackage.findUnique({
+      where: { id: packageId },
+      include: { txns: { where: { kind: "DEDUCT" }, select: { id: true } } },
+    });
+    if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/midterm?err=pkg");
+
+    const total = Math.max(0, Number(pkg.totalMinutes ?? 0));
+    const remaining = Math.max(0, Number(pkg.remainingMinutes ?? 0));
+    const consumed = Math.max(0, total - remaining);
+    const progress = total > 0 ? Math.round((consumed / total) * 100) : 0;
+
+    const latestAttendance = await prisma.attendance.findFirst({
+      where: { packageId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+      orderBy: { session: { startAt: "desc" } },
+      include: { session: { include: { class: { select: { subjectId: true } } } } },
+    });
+    const subjectId = latestAttendance?.session.class.subjectId ?? null;
+
+    const latestForTeacher = await prisma.midtermReport.findFirst({
+      where: { packageId, teacherId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, reportJson: true },
+    });
+
+    if (latestForTeacher?.id) {
+      if (readForwardMeta(latestForTeacher.reportJson).locked) redirect("/admin/reports/midterm?err=status");
+      await prisma.midtermReport.update({
+        where: { id: latestForTeacher.id },
+        data: {
+          status: "EXEMPT",
+          exemptReason,
+          exemptedAt: now,
+          exemptedByUserId: user.id,
+          submittedAt: null,
+        },
+      });
+    } else {
+      await prisma.midtermReport.create({
+        data: {
+          status: "EXEMPT",
+          studentId: pkg.studentId,
+          teacherId,
+          courseId: pkg.courseId,
+          subjectId,
+          packageId: pkg.id,
+          assignedByUserId: user.id,
+          progressPercent: progress,
+          consumedMinutes: consumed,
+          totalMinutes: total,
+          reportPeriodLabel: `${pkg.txns.length} sessions completed`,
+          exemptReason,
+          exemptedAt: now,
+          exemptedByUserId: user.id,
+        },
+      });
+    }
+  }
+
+  revalidatePath("/admin/reports/midterm");
+  revalidatePath("/teacher/midterm-reports");
+  redirect("/admin/reports/midterm?ok=exempt");
 }
 
 async function markForwardedAndLock(formData: FormData) {
@@ -132,15 +261,19 @@ export default async function AdminMidtermReportCenterPage({
   const sp = await searchParams;
   const ok = String(sp.ok ?? "");
   const err = String(sp.err ?? "");
+  const view = String(sp.view ?? "").trim().toLowerCase() === "exempt" ? "exempt" : "all";
 
   const [candidates, reports] = await Promise.all([
     loadMidtermCandidates(),
     prisma.midtermReport.findMany({
-      include: { student: true, teacher: true, course: true, subject: true },
+      include: { student: true, teacher: true, course: true, subject: true, exemptedByUser: { select: { name: true } } },
       orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
       take: 300,
     }),
   ]);
+
+  const filteredReports = reports.filter((r) => (view === "exempt" ? r.status === "EXEMPT" : true));
+  const exemptCount = reports.filter((r) => r.status === "EXEMPT").length;
 
   return (
     <div>
@@ -164,6 +297,10 @@ export default async function AdminMidtermReportCenterPage({
       ) : ok === "forwarded" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Marked as forwarded and locked.", "已标记为已转发并锁定。")}
+        </div>
+      ) : ok === "exempt" ? (
+        <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Marked as exempt from midterm-report follow-up.", "已标记为无需中期报告。")}
         </div>
       ) : null}
 
@@ -212,7 +349,13 @@ export default async function AdminMidtermReportCenterPage({
                           <option key={opt.id} value={opt.id}>
                             {opt.name}
                             {opt.subjectName ? ` (${opt.subjectName})` : ""}
-                            {opt.latestReportStatus === "ASSIGNED" ? " - Assigned" : opt.latestReportStatus === "SUBMITTED" ? " - Submitted" : ""}
+                            {opt.latestReportStatus === "ASSIGNED"
+                              ? " - Assigned"
+                              : opt.latestReportStatus === "SUBMITTED"
+                                ? " - Submitted"
+                                : opt.latestReportStatus === "EXEMPT"
+                                  ? " - Exempt"
+                                  : ""}
                           </option>
                         ))}
                       </select>
@@ -220,12 +363,37 @@ export default async function AdminMidtermReportCenterPage({
                     </form>
                   </td>
                   <td style={{ padding: 6 }}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {row.teacherOptions.map((opt) => (
-                        <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
-                          {opt.name}: {opt.latestReportStatus === "ASSIGNED" ? t(lang, "Assigned", "已推送") : opt.latestReportStatus === "SUBMITTED" ? t(lang, "Submitted", "已提交") : t(lang, "Not pushed", "未推送")}
-                        </span>
-                      ))}
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <form action={exemptMidtermReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <input type="hidden" name="packageId" value={row.packageId} />
+                        <select name="teacherId" defaultValue={row.defaultTeacherId}>
+                          {row.teacherOptions.map((opt) => (
+                            <option key={`${row.packageId}-${opt.id}-exempt`} value={opt.id}>
+                              {opt.name}
+                              {opt.subjectName ? ` (${opt.subjectName})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <select name="exemptReason" defaultValue="ASSESSMENT_ONLY">
+                          {MIDTERM_REPORT_EXEMPT_REASONS.map((reason) => (
+                            <option key={reason} value={reason}>{exemptReasonLabel(lang, reason)}</option>
+                          ))}
+                        </select>
+                        <button type="submit">{t(lang, "Mark exempt", "标记无需报告")}</button>
+                      </form>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {row.teacherOptions.map((opt) => (
+                          <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
+                            {opt.name}: {opt.latestReportStatus === "ASSIGNED"
+                              ? t(lang, "Assigned", "已推送")
+                              : opt.latestReportStatus === "SUBMITTED"
+                                ? t(lang, "Submitted", "已提交")
+                                : opt.latestReportStatus === "EXEMPT"
+                                  ? t(lang, "Exempt", "无需报告")
+                                  : t(lang, "Not pushed", "未推送")}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -235,10 +403,53 @@ export default async function AdminMidtermReportCenterPage({
         )}
       </div>
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <a
+          href="/admin/reports/midterm"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            minHeight: 36,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: view === "all" ? "1px solid #2563eb" : "1px solid #cbd5e1",
+            background: view === "all" ? "#eff6ff" : "#ffffff",
+            color: view === "all" ? "#1d4ed8" : "#0f172a",
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          {t(lang, "All reports", "全部报告")}
+          <span style={{ fontSize: 12, color: view === "all" ? "#1d4ed8" : "#64748b" }}>{reports.length}</span>
+        </a>
+        <a
+          href="/admin/reports/midterm?view=exempt"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            minHeight: 36,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: view === "exempt" ? "1px solid #2563eb" : "1px solid #cbd5e1",
+            background: view === "exempt" ? "#eff6ff" : "#ffffff",
+            color: view === "exempt" ? "#1d4ed8" : "#0f172a",
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          {t(lang, "Exempt", "无需报告")}
+          <span style={{ fontSize: 12, color: view === "exempt" ? "#1d4ed8" : "#64748b" }}>{exemptCount}</span>
+        </a>
+      </div>
+
       <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
-        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Assigned & Submitted Reports", "已推送与已提交报告")}</div>
-        {reports.length === 0 ? (
-          <div style={{ color: "#999" }}>{t(lang, "No report records.", "暂无报告记录。")}</div>
+        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Midterm Report Records", "中期报告记录")}</div>
+        {filteredReports.length === 0 ? (
+          <div style={{ color: "#999" }}>
+            {view === "exempt" ? t(lang, "No exempt midterm reports yet.", "暂时还没有无需中期报告的记录。") : t(lang, "No report records.", "暂无报告记录。")}
+          </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -252,7 +463,7 @@ export default async function AdminMidtermReportCenterPage({
               </tr>
             </thead>
             <tbody>
-              {reports.map((r) => {
+              {filteredReports.map((r) => {
                 const forwardMeta = readForwardMeta(r.reportJson);
                 return (
                   <tr key={r.id} style={{ borderTop: "1px solid #dbeafe" }}>
@@ -261,17 +472,20 @@ export default async function AdminMidtermReportCenterPage({
                     <td style={{ padding: 6 }}>{r.course.name}{r.subject ? ` / ${r.subject.name}` : ""}</td>
                     <td style={{ padding: 6 }}>{r.progressPercent}% ({formatMinutesToHours(r.consumedMinutes)}h / {formatMinutesToHours(r.totalMinutes)}h)</td>
                     <td style={{ padding: 6 }}>
-                      {forwardMeta.locked ? (
-                        <span style={{ color: "#1d4ed8", fontWeight: 700 }}>{t(lang, "Forwarded & Locked", "已转发并锁定")}</span>
-                      ) : r.status === "SUBMITTED" ? (
-                        <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Submitted", "已提交")}</span>
-                      ) : (
-                        <span style={{ color: "#92400e", fontWeight: 700 }}>{t(lang, "Assigned", "待老师填写")}</span>
-                      )}
+                      <span style={{ color: r.status === "EXEMPT" ? "#475569" : forwardMeta.locked ? "#1d4ed8" : r.status === "SUBMITTED" ? "#166534" : "#92400e", fontWeight: 700 }}>
+                        {statusLabel(lang, r.status, forwardMeta.locked)}
+                      </span>
+                      {r.status === "EXEMPT" ? (
+                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Exempted", "已豁免")}: {r.exemptedAt ? formatBusinessDateTime(new Date(r.exemptedAt)) : "-"}
+                          {r.exemptedByUser?.name ? ` (${r.exemptedByUser.name})` : ""}
+                          {r.exemptReason ? ` · ${exemptReasonLabel(lang, r.exemptReason)}` : ""}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: 6 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
+                        {r.status !== "EXEMPT" ? <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a> : null}
                         {forwardMeta.locked ? (
                           <span style={{ color: "#1d4ed8", fontSize: 12 }}>
                             {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? formatBusinessDateTime(new Date(forwardMeta.forwardedAt)) : "-"} ({forwardMeta.forwardedByName || "-"})
@@ -280,6 +494,17 @@ export default async function AdminMidtermReportCenterPage({
                           <form action={markForwardedAndLock}>
                             <input type="hidden" name="reportId" value={r.id} />
                             <button type="submit">{t(lang, "Mark Forwarded + Lock", "标记已转发并锁定")}</button>
+                          </form>
+                        ) : null}
+                        {!forwardMeta.locked && r.status !== "EXEMPT" ? (
+                          <form action={exemptMidtermReport} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <select name="exemptReason" defaultValue="OPS_NOT_REQUIRED">
+                              {MIDTERM_REPORT_EXEMPT_REASONS.map((reason) => (
+                                <option key={reason} value={reason}>{exemptReasonLabel(lang, reason)}</option>
+                              ))}
+                            </select>
+                            <button type="submit">{t(lang, "Mark exempt", "标记无需报告")}</button>
                           </form>
                         ) : null}
                       </div>

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r25` (final report exempt path).
+- Current release line on this branch: `2026-04-03-r26` (midterm report exempt path).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -60,6 +60,21 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - production read-only QA must confirm `/admin/reports/final` shows `Exempt`, candidate rows expose `Mark exempt`, and exempted tasks disappear from `/teacher/final-reports`
+
+## 2026-04-03-r26 Deployed
+
+- Scope: add a `Midterm Report Exempt / 中期报告无需跟进` path so operations can mark no-report midpoint tasks out of the midterm-report queue without assigning teachers first.
+- Business impact:
+  - admin `Midterm Report Center` now supports `Mark exempt / 标记无需报告` from both midpoint candidate rows and existing report records
+  - exempted midterm reports now record who exempted them, when, and why
+  - teacher `Midterm Reports` hides `EXEMPT` items so no-report midpoint tasks stop appearing as teacher work
+  - the candidate loader now drops teacher/package pairs already exempted, so those tasks do not keep resurfacing in the assign queue
+  - no final-report behavior, package progress math, attendance, finance, PDF generation, or existing forwarded-lock behavior changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm `/admin/reports/midterm` shows `Exempt`, candidate rows expose `Mark exempt`, and teacher `/teacher/midterm-reports` excludes exempt tasks
 
 ## 2026-04-03-r18 Deployed
 

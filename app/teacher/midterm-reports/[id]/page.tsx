@@ -156,7 +156,7 @@ export default async function TeacherMidtermReportDetailPage({
       subject: true,
     },
   });
-  if (!report || report.teacherId !== teacher.id) {
+  if (!report || report.teacherId !== teacher.id || report.status === "EXEMPT") {
     return (
       <section style={emptyStateCardStyle}>
         <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
@@ -189,7 +189,7 @@ export default async function TeacherMidtermReportDetailPage({
       where: { id: reportId },
       select: { reportJson: true, status: true, submittedAt: true },
     });
-    if (!latest || readLockedAfterForward(latest.reportJson)) {
+    if (!latest || latest.status === "EXEMPT" || readLockedAfterForward(latest.reportJson)) {
       redirect(`/teacher/midterm-reports/${encodeURIComponent(reportId)}?err=locked`);
     }
 

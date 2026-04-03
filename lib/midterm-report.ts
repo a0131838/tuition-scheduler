@@ -2,6 +2,17 @@ import { prisma } from "@/lib/prisma";
 
 export type MidtermLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "";
 
+export const MIDTERM_REPORT_EXEMPT_REASONS = [
+  "TRIAL_ONLY",
+  "ASSESSMENT_ONLY",
+  "EARLY_WITHDRAWAL",
+  "OPS_NOT_REQUIRED",
+  "DUPLICATE_ASSIGNMENT",
+  "OTHER",
+] as const;
+
+export type MidtermReportExemptReason = (typeof MIDTERM_REPORT_EXEMPT_REASONS)[number] | "";
+
 export type MidtermReportDraft = {
   assessmentTool: string;
   warningNote: string;
@@ -127,6 +138,18 @@ function asLevel(v: unknown): MidtermLevel {
   const text = asString(v).toUpperCase();
   if (text === "A1" || text === "A2" || text === "B1" || text === "B2" || text === "C1") return text;
   return "";
+}
+
+function asExemptReason(v: unknown): MidtermReportExemptReason {
+  const text = asString(v).toUpperCase();
+  if (MIDTERM_REPORT_EXEMPT_REASONS.includes(text as (typeof MIDTERM_REPORT_EXEMPT_REASONS)[number])) {
+    return text as MidtermReportExemptReason;
+  }
+  return "";
+}
+
+export function parseMidtermExemptReason(v: unknown): MidtermReportExemptReason {
+  return asExemptReason(v);
 }
 
 export function parseReportDraft(raw: unknown): MidtermReportDraft {
@@ -321,15 +344,15 @@ export async function loadMidtermCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | null;
       }
     >();
 
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED">();
+    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "EXEMPT">();
     for (const report of pkg.midtermReports) {
       if (!report.teacherId) continue;
       if (latestReportByTeacher.has(report.teacherId)) continue;
-      if (report.status === "ASSIGNED" || report.status === "SUBMITTED") {
+      if (report.status === "ASSIGNED" || report.status === "SUBMITTED" || report.status === "EXEMPT") {
         latestReportByTeacher.set(report.teacherId, report.status);
       }
     }
@@ -352,7 +375,9 @@ export async function loadMidtermCandidates() {
       }
     }
 
-    const teacherOptions = Array.from(teacherMap.values()).sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
+    const teacherOptions = Array.from(teacherMap.values())
+      .filter((opt) => opt.latestReportStatus !== "EXEMPT")
+      .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
     const topTeacher = teacherOptions[0] ?? null;
     if (!topTeacher) return null;
 
@@ -382,14 +407,14 @@ export async function loadMidtermCandidates() {
     consumedMinutes: number;
     progressPercent: number;
     consumedSessions: number;
-    teacherOptions: Array<{
-      id: string;
-      name: string;
-      subjectId: string | null;
-      subjectName: string | null;
-      latestStartAt: Date;
-      latestReportStatus: "ASSIGNED" | "SUBMITTED" | null;
-    }>;
+      teacherOptions: Array<{
+        id: string;
+        name: string;
+        subjectId: string | null;
+        subjectName: string | null;
+        latestStartAt: Date;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | null;
+      }>;
     defaultTeacherId: string;
     defaultSubjectId: string | null;
   }> = [];
@@ -401,11 +426,12 @@ export async function loadMidtermCandidates() {
       teacherOptions: row.teacherOptions.map((opt) => ({
         ...opt,
         latestReportStatus:
-          opt.latestReportStatus === "ASSIGNED" || opt.latestReportStatus === "SUBMITTED" ? opt.latestReportStatus : null,
+          opt.latestReportStatus === "ASSIGNED" || opt.latestReportStatus === "SUBMITTED" || opt.latestReportStatus === "EXEMPT"
+            ? opt.latestReportStatus
+            : null,
       })),
     });
   }
   result.sort((a, b) => b.progressPercent - a.progressPercent);
   return result;
 }
-

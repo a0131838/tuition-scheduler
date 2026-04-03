@@ -78,6 +78,7 @@ enum PartnerSettlementStatus {
 enum MidtermReportStatus {
   ASSIGNED
   SUBMITTED
+  EXEMPT
 }
 
 enum FinalReportStatus {
@@ -427,6 +428,9 @@ model MidtermReport {
   assignedByUserId  String?
   assignedAt        DateTime            @default(now())
   submittedAt       DateTime?
+  exemptReason      String?
+  exemptedAt        DateTime?
+  exemptedByUserId  String?
   progressPercent   Int
   consumedMinutes   Int
   totalMinutes      Int
@@ -443,12 +447,14 @@ model MidtermReport {
   subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   package        CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
   assignedByUser User?         @relation("MidtermReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  exemptedByUser User?         @relation("MidtermReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
   @@index([courseId, createdAt])
   @@index([status, createdAt])
   @@index([packageId, createdAt])
+  @@index([exemptedAt, createdAt])
 }
 
 model FinalReport {
@@ -616,6 +622,7 @@ model User {
   teacher  Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   sessions AuthSession[]
   midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
+  midtermReportsExempted MidtermReport[] @relation("MidtermReportExemptedBy")
   finalReportsAssigned   FinalReport[]   @relation("FinalReportAssignedBy")
   finalReportsDelivered  FinalReport[]   @relation("FinalReportDeliveredBy")
   finalReportsExempted   FinalReport[]   @relation("FinalReportExemptedBy")

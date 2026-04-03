@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r26
+
+- Release ID: `2026-04-03-r26`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add an `EXEMPT / 无需报告` path to Midterm Reports so operations can remove no-report midpoint tasks from both the admin and teacher queues without assigning or keeping teacher work open.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260404000500_add_midterm_report_exempt_status/migration.sql`
+  - `lib/midterm-report.ts`
+  - `app/admin/reports/midterm/page.tsx`
+  - `app/teacher/midterm-reports/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-midterm-report-exempt-phase-1.md`
+- Risk impact (if any): Medium-low. This ship adds a Prisma enum/schema migration and new admin-only status transitions on Midterm Reports, but it does not change final reports, package progress math, attendance, finance flows, teacher submission rules for non-exempt reports, or existing forwarded-lock behavior.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm admins can see `Exempt` in `/admin/reports/midterm`, candidate rows expose `Mark exempt`, and teacher `/teacher/midterm-reports` excludes exempt items
+- Rollback point: previous production commit before `2026-04-03-r26`.
+
 ## 2026-04-03-r25
 
 - Release ID: `2026-04-03-r25`
