@@ -150,23 +150,23 @@ export default async function FinanceStudentPackageInvoicePage({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Package Invoice Desk", "学生课时包发票台")}</h2>
+      <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Package Invoice Workbench", "学生课时包发票工作台")}</h2>
       <div style={{ color: "#64748b", fontSize: 12 }}>
         {t(
           lang,
-          "Step 1 preview (read-only), Step 2 confirm issue. No deduction/receipt/approval logic is changed here.",
-          "先预览（只读），再确认开票。此页面不会改动扣课、收据、审批逻辑。",
+          "Preview the invoice draft first, then confirm issuance. This page does not change package deduction, receipt, or approval logic.",
+          "先预览发票草稿，再确认开票。此页面不会改动扣课、收据或审批逻辑。",
         )}
       </div>
       <div style={{ fontSize: 12 }}>
-        <a href="/admin/finance/workbench">{t(lang, "Back to Finance Workbench", "返回财务工作台")}</a>
+        <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
       </div>
 
       {err ? <div style={{ color: "#b91c1c" }}>{err}</div> : null}
       {msg ? <div style={{ color: "#166534" }}>{msg}</div> : null}
       <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
         <div style={{ fontWeight: 700 }}>
-          {t(lang, "Payment & Invoice Summary", "缴费与开票摘要")}
+          {t(lang, "Payment and invoice summary", "缴费与开票摘要")}
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
@@ -181,7 +181,7 @@ export default async function FinanceStudentPackageInvoicePage({
         </div>
         {!selectedPackage ? (
           <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(lang, "Select a package to load actual amounts.", "请选择课时包以加载实际金额。")}
+            {t(lang, "Select a package to load the actual paid and invoiced totals.", "请选择课时包，以加载实际已缴费和已开票金额。")}
           </div>
         ) : null}
       </div>
@@ -196,33 +196,33 @@ export default async function FinanceStudentPackageInvoicePage({
           />
         </label>
         <div style={{ fontSize: 12, color: "#475569" }}>
-          {t(lang, "Selecting a package auto-loads paid/invoiced amounts.", "选择课时包后会自动加载已缴费/已开票金额。")}
+          {t(lang, "Selecting a package auto-loads the paid and invoiced totals.", "选择课时包后会自动加载已缴费和已开票金额。")}
           <button type="submit" style={{ marginLeft: 8 }}>
-            {t(lang, "Load Summary", "加载金额")}
+            {t(lang, "Load package summary", "加载课包摘要")}
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
-          <label>Issue Date<input name="issueDate" type="date" defaultValue={issueDate} style={{ width: "100%" }} /></label>
-          <label>Due Date<input name="dueDate" type="date" defaultValue={dueDate} style={{ width: "100%" }} /></label>
-          <label>Quantity<input name="quantity" type="number" min={1} defaultValue={quantity} style={{ width: "100%" }} /></label>
-          <label>Payment Terms<input name="paymentTerms" defaultValue={paymentTerms} style={{ width: "100%" }} /></label>
-          <label>Amount<input name="amount" type="number" step="0.01" defaultValue={amount} style={{ width: "100%" }} /></label>
-          <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={gstAmount} style={{ width: "100%" }} /></label>
-          <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={totalAmount} style={{ width: "100%" }} /></label>
-          <label>Bill To<input name="billTo" defaultValue={billTo} style={{ width: "100%" }} /></label>
-          <label>Course Start<input name="courseStartDate" type="date" defaultValue={courseStartDate ?? ""} style={{ width: "100%" }} /></label>
-          <label>Course End<input name="courseEndDate" type="date" defaultValue={courseEndDate ?? ""} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 2" }}>Description<input name="description" defaultValue={description} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 2" }}>Note<input name="note" defaultValue={note} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Issue date", "开票日期")}<input name="issueDate" type="date" defaultValue={issueDate} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Due date", "到期日期")}<input name="dueDate" type="date" defaultValue={dueDate} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Quantity", "数量")}<input name="quantity" type="number" min={1} defaultValue={quantity} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Payment terms", "付款条件")}<input name="paymentTerms" defaultValue={paymentTerms} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Amount before GST", "税前金额")}<input name="amount" type="number" step="0.01" defaultValue={amount} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "GST amount", "消费税金额")}<input name="gstAmount" type="number" step="0.01" defaultValue={gstAmount} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Total amount", "合计金额")}<input name="totalAmount" type="number" step="0.01" defaultValue={totalAmount} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Bill to", "收件对象")}<input name="billTo" defaultValue={billTo} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Course start", "课程开始")}<input name="courseStartDate" type="date" defaultValue={courseStartDate ?? ""} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Course end", "课程结束")}<input name="courseEndDate" type="date" defaultValue={courseEndDate ?? ""} style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 2" }}>{t(lang, "Description", "描述")}<input name="description" defaultValue={description} style={{ width: "100%" }} /></label>
+          <label style={{ gridColumn: "span 2" }}>{t(lang, "Internal note", "内部备注")}<input name="note" defaultValue={note} style={{ width: "100%" }} /></label>
         </div>
         <div>
-          <button type="submit">{t(lang, "Preview Draft", "预览草稿")}</button>
+          <button type="submit">{t(lang, "Preview invoice draft", "预览发票草稿")}</button>
         </div>
       </form>
 
       {selectedPackage ? (
         <div style={{ border: "1px solid #dbeafe", borderRadius: 8, padding: 12, background: "#eff6ff", display: "grid", gap: 8 }}>
-          <div style={{ fontWeight: 700 }}>{t(lang, "Preview", "预览")}</div>
+          <div style={{ fontWeight: 700 }}>{t(lang, "Invoice preview", "发票预览")}</div>
           <div style={{ fontSize: 12 }}>
             {t(lang, "Invoice No. (suggested)", "建议发票号")}: <b>{previewInvoiceNo}</b>
           </div>
@@ -251,9 +251,9 @@ export default async function FinanceStudentPackageInvoicePage({
               <input name="invoiceNo" defaultValue={previewInvoiceNo} style={{ minWidth: 260 }} />
             </label>
             <div>
-              <button type="submit">{t(lang, "Confirm & Issue Invoice", "确认并开票")}</button>
+              <button type="submit">{t(lang, "Confirm and issue invoice", "确认并开票")}</button>
               <a href={`/admin/packages/${encodeURIComponent(selectedPackage.id)}/billing`} style={{ marginLeft: 10 }}>
-                {t(lang, "Open package billing page", "打开课包账单原页面")}
+                {t(lang, "Open full package billing", "打开完整课包账单页")}
               </a>
             </div>
           </form>
@@ -266,16 +266,16 @@ export default async function FinanceStudentPackageInvoicePage({
             {t(lang, "Latest invoices for selected package", "该课包最近发票")}
           </div>
           {selectedBilling.invoices.length === 0 ? (
-            <div style={{ color: "#64748b" }}>{t(lang, "No invoices yet.", "暂无发票。")}</div>
+            <div style={{ color: "#64748b" }}>{t(lang, "No invoices have been issued for this package yet.", "这个课包还没有已开出的发票。")}</div>
           ) : (
             <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
-                  <th align="left">Invoice No.</th>
-                  <th align="left">Issue</th>
-                  <th align="left">Due</th>
-                  <th align="left">Total</th>
-                  <th align="left">PDF</th>
+                  <th align="left">{t(lang, "Invoice number", "发票号")}</th>
+                  <th align="left">{t(lang, "Issue date", "开票日期")}</th>
+                  <th align="left">{t(lang, "Due date", "到期日期")}</th>
+                  <th align="left">{t(lang, "Total amount", "合计金额")}</th>
+                  <th align="left">{t(lang, "PDF", "PDF")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,7 +285,7 @@ export default async function FinanceStudentPackageInvoicePage({
                     <td>{normalizeDateOnly(inv.issueDate) ?? "-"}</td>
                     <td>{normalizeDateOnly(inv.dueDate) ?? "-"}</td>
                     <td>SGD {money(inv.totalAmount)}</td>
-                    <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(inv.id)}`}>Export PDF</a></td>
+                    <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(inv.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a></td>
                   </tr>
                 ))}
               </tbody>

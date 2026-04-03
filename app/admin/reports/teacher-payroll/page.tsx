@@ -478,13 +478,13 @@ export default async function TeacherPayrollPage({
       queueLabel = t(lang, "Waiting for teacher confirmation", "等待老师确认");
     } else if (!managerAllConfirmed) {
       queueKey = "manager";
-      queueLabel = t(lang, "Waiting manager approval", "待管理审批");
+      queueLabel = t(lang, "Waiting for manager approval", "等待管理审批");
     } else if (!publish.financeConfirmedAt) {
       queueKey = "financeConfirm";
-      queueLabel = t(lang, "Waiting finance confirm", "待财务确认");
+      queueLabel = t(lang, "Waiting for finance confirmation", "等待财务确认");
     } else if (!publish.financePaidAt) {
       queueKey = "financePaid";
-      queueLabel = t(lang, "Ready for payout", "可继续发薪");
+      queueLabel = t(lang, "Ready for finance payout", "可继续发薪");
     }
     return {
       row,
@@ -686,7 +686,7 @@ export default async function TeacherPayrollPage({
             {!isFinanceOnlyUser ? <a href="#approval-config">{t(lang, "Jump to approval roles", "跳到审批角色")}</a> : null}
           </div>
           <details>
-            <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "How payroll works", "工资规则说明")}</summary>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "How this payroll cycle works", "本次工资周期说明")}</summary>
             <div style={{ marginTop: 6, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
               <div>{t(lang, "Payroll period rule: from last month 15th to this month 14th.", "计薪周期规则：上月15日到当月14日。")}</div>
               <div>
@@ -733,9 +733,9 @@ export default async function TeacherPayrollPage({
       {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
       {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
       {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
-      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll can only be resent by zhao hongwei.", "已发薪工资单仅 zhao hongwei 可重新发送。")}</div> : null}
+      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can resend a payroll that has already been paid.", "只有赵宏伟可以重新发送已经发薪的工资单。")}</div> : null}
       {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
-      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Paid payroll can only be revoked by zhao hongwei.", "已发薪工资单仅 zhao hongwei 可撤销。")}</div> : null}
+      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can revoke a payroll that has already been paid.", "只有赵宏伟可以撤销已经发薪的工资单。")}</div> : null}
       {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
       {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
       {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
@@ -744,7 +744,7 @@ export default async function TeacherPayrollPage({
       {sp?.error === "fin-batch-empty" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please select at least one teacher for batch payout.", "请至少选择一位老师进行批量发薪。")}</div> : null}
       {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
       {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
-      {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only zhao hongwei can edit approval role config.", "只有 zhao hongwei 可以修改审批角色配置。")}</div> : null}
+      {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can edit the approval role settings.", "只有赵宏伟可以修改审批角色配置。")}</div> : null}
       {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
 
       <div
@@ -805,7 +805,7 @@ export default async function TeacherPayrollPage({
                 <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                   {financeCurrencyGroups.map((group) => (
                     <div key={group.currencyCode} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#f8fafc" }}>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Finance-ready currency group", "可发薪币种组")}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Payout-ready currency group", "可发薪币种组")}</div>
                       <div style={{ fontWeight: 700 }}>{group.currencyCode}</div>
                       <div style={{ fontSize: 13, color: "#334155" }}>
                         {group.teacherCount} {t(lang, "teachers", "位老师")} · {formatMoneyCents(group.amountCents, group.currencyCode)}

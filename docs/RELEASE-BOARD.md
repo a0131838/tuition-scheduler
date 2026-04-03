@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r05` (admin copy-clarity pass 3).
+- Current release line on this branch: `2026-04-03-r06` (admin copy-clarity pass 4).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r06 Deployed
+
+- Scope: run the fourth admin copy-clarity pass on the teacher payroll desk, the student package invoice workbench, and the attachment health desk.
+- Business impact:
+  - the admin payroll desk now uses clearer queue-state, cycle-explainer, and payout-group wording, so finance operators can understand the next step faster
+  - the student package invoice page now reads more like a guided workbench, with clearer preview, form, and recent-invoice wording
+  - the attachment health desk now uses more consistent bilingual workbench copy across hero text, shortcuts, source guides, restore flow, and the missing-file table
+  - no payroll calculations, payout permissions, invoice creation rules, attachment recovery logic, or storage routing changed
+- Validation:
+  - `npm run build`
+  - logged-in local QA on `http://127.0.0.1:3334` confirmed the new copy on `/admin/reports/teacher-payroll`, `/admin/finance/student-package-invoices`, and `/admin/recovery/uploads`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the new wording is visible on the same three production pages
 
 ## 2026-04-03-r05 Deployed
 

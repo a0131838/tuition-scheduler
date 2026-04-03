@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r06
+
+- Release ID: `2026-04-03-r06`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Run a fourth admin copy-clarity pass on the teacher payroll desk, the student package invoice workbench, and the attachment health desk so finance-facing labels and guidance read more naturally without changing any workflow logic.
+- Key files:
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `app/admin/recovery/uploads/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-4.md`
+- Risk impact (if any): Low. This ship only rewrites visible copy on three existing admin workbench pages; no payroll calculations, payout permissions, invoice creation rules, attachment recovery behavior, or file-routing logic changed.
+- Verification:
+  - `npm run build` passed
+  - logged-in local QA on `http://127.0.0.1:3334` confirmed:
+    - `/admin/reports/teacher-payroll` renders the new workflow-state, explainer, and payout-group wording
+    - `/admin/finance/student-package-invoices` renders the new workbench title, preview explanation, form labels, and invoice-table headings
+    - `/admin/recovery/uploads` renders the new attachment-health hero, shortcut, restore, and table copy
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production shows the same new copy on the same three pages
+- Rollback point: previous production commit before `2026-04-03-r06`.
+
 ## 2026-04-03-r05
 
 - Release ID: `2026-04-03-r05`
