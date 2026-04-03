@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r09` (teacher feedback/ticket clarity pass).
+- Current release line on this branch: `2026-04-03-r10` (teacher expense/alerts clarity pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r10 Deployed
+
+- Scope: continue the teacher-side UI clarity pass on expense claims and sign-in alerts.
+- Business impact:
+  - teacher expense claims now makes `Apply / Clear filters` read more clearly as primary vs. secondary actions, and the history area now explains what to do when the current filter set returns no claims or when no claims exist yet
+  - teacher sign-in alerts now uses fuller “not linked yet” and “no alerts” guidance cards, and the main “open session / fill feedback” entry is visually clearer as the primary next action
+  - no expense submit/resubmit/withdraw rules, attachment logic, alert sync behavior, quick-mark behavior, attendance handling, or feedback-overdue detection changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the same new guidance and action hierarchy on `/teacher/expense-claims`, `/teacher/expense-claims?status=PAID&month=1999-01`, `/teacher/alerts`, and `/teacher/alerts?showResolved=1`
 
 ## 2026-04-03-r09 Deployed
 

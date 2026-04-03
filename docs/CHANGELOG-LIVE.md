@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r10
+
+- Release ID: `2026-04-03-r10`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: continue the teacher-side UI clarity pass on expense claims and sign-in alerts so empty states explain the next step and the main action is easier to spot.
+- Key files:
+  - `app/teacher/expense-claims/page.tsx`
+  - `app/teacher/alerts/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-teacher-expense-and-alerts-clarity-pass.md`
+- Risk impact (if any): Low. This ship only changes button emphasis, empty-state guidance, and next-step navigation on two existing teacher workbench pages; no expense submit/resubmit/withdraw rules, attachment logic, alert sync, quick-mark behavior, attendance handling, or feedback-overdue detection changed.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production shows the new expense empty-state/filter hierarchy and the new alerts empty-state/action hierarchy on the same routes
+- Rollback point: previous production commit before `2026-04-03-r10`.
+
 ## 2026-04-03-r09
 
 - Release ID: `2026-04-03-r09`

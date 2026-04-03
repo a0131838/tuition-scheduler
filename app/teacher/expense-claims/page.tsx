@@ -79,6 +79,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 38,
+  padding: '0 14px',
+  borderRadius: 10,
+  border: '1px solid #2563eb',
+  background: '#2563eb',
+  color: '#ffffff',
+  fontWeight: 700,
+  textDecoration: 'none',
+} as const;
+
+const secondaryButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 38,
+  padding: '0 14px',
+  borderRadius: 10,
+  border: '1px solid #cbd5e1',
+  background: '#ffffff',
+  color: '#0f172a',
+  fontWeight: 700,
+  textDecoration: 'none',
+} as const;
+
+const emptyStateCardStyle = {
+  border: '1px solid #dbeafe',
+  background: '#f8fbff',
+  borderRadius: 16,
+  padding: 18,
+  display: 'grid',
+  gap: 10,
+} as const;
+
 export default async function TeacherExpenseClaimsPage({
   searchParams,
 }: {
@@ -261,7 +298,10 @@ export default async function TeacherExpenseClaimsPage({
               </div>
             </div>
             <div>
-              <button type="submit">{t(lang, 'Apply', '应用')}</button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button type="submit" style={primaryButtonStyle}>{t(lang, 'Apply', '应用')}</button>
+                <a href={quickClearHref} style={secondaryButtonStyle}>{t(lang, 'Clear filters', '清空筛选')}</a>
+              </div>
             </div>
           </form>
         </section>
@@ -514,7 +554,33 @@ export default async function TeacherExpenseClaimsPage({
             </table>
           </div>
         ) : (
-          <div style={{ color: '#64748b' }}>{t(lang, 'No expense claims yet.', '暂无报销单。')}</div>
+          <section style={emptyStateCardStyle}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1d4ed8' }}>
+              {hasFocusedFilters
+                ? t(lang, 'No claims match these filters', '当前筛选下没有报销单')
+                : t(lang, 'No expense claims yet', '暂时还没有报销单')}
+            </div>
+            <div style={{ color: '#475569', lineHeight: 1.6 }}>
+              {hasFocusedFilters
+                ? t(
+                    lang,
+                    'Try clearing the status or month filters, or go back to your full expense desk before creating a new claim.',
+                    '可以先清空状态或月份筛选，或先回到完整报销工作台，再决定是否创建新的报销单。'
+                  )
+                : t(
+                    lang,
+                    'When you are ready, submit a new claim above. If you only wanted to check payroll timing, you can also return to payroll first.',
+                    '准备好后可以直接在上方提交新的报销单；如果你只是想先确认付款进度，也可以先回到工资单页面。'
+                  )}
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <a href="#new-expense-claim" style={primaryButtonStyle}>{t(lang, 'Create a new claim', '创建新的报销单')}</a>
+              <a href={quickClearHref} style={secondaryButtonStyle}>
+                {hasFocusedFilters ? t(lang, 'Open full expense desk', '打开完整报销工作台') : t(lang, 'Back to dashboard', '返回工作台')}
+              </a>
+              {!hasFocusedFilters ? <a href="/teacher/payroll" style={secondaryButtonStyle}>{t(lang, 'Open payroll', '打开工资单')}</a> : null}
+            </div>
+          </section>
         )}
           </div>
         </details>

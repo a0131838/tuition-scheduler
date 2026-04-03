@@ -98,6 +98,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 // Quick mark is handled via client fetch to avoid page jump/flash.
 
 export default async function TeacherAlertsPage({
@@ -109,7 +146,37 @@ export default async function TeacherAlertsPage({
   const { teacher } = await requireTeacherProfile();
   const user = await getCurrentUser();
   if (!teacher || !user) {
-    return <div style={{ color: "#999" }}>{t(lang, "Teacher profile is not linked.", "老师资料未绑定。")}</div>;
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "Sign-in Alerts", "签到告警")}
+          subtitle={t(
+            lang,
+            "Review attendance gaps and feedback overdue items by session.",
+            "按课次查看点名缺口和反馈超时项。"
+          )}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+            { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开课次") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+            {t(lang, "Your teacher profile is not linked yet", "老师资料暂时还未绑定")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Alert handling stays unavailable until the current account is linked to a teacher profile.",
+              "在当前账号和老师资料绑定之前，这里的告警处理功能还不能使用。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const sp = await searchParams;
@@ -268,11 +335,34 @@ export default async function TeacherAlertsPage({
       ) : null}
 
       {visibleRows.length === 0 ? (
-        <div style={{ color: "#999" }}>
-          {showResolved
-            ? t(lang, "No alerts in the selected range.", "当前范围内没有告警。")
-            : t(lang, "No pending alerts.", "暂无待处理告警。")}
-        </div>
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+            {showResolved
+              ? t(lang, "No alerts in this view", "当前视图下没有告警")
+              : t(lang, "No pending alerts right now", "当前没有待处理告警")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {showResolved
+              ? t(
+                  lang,
+                  "Try switching back to pending-only alerts or return to sessions if you want to check the live teaching queue.",
+                  "可以切回只看待处理告警，或者回到课次页面查看当前的教学队列。"
+                )
+              : t(
+                  lang,
+                  "Your alert queue is clear for now. You can return to sessions, or open the resolved list if you want to review recent handling records.",
+                  "当前告警队列已经清空。你可以返回课次页面，或者打开已处理列表回看最近处理记录。"
+                )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href={showResolved ? "/teacher/alerts" : "/teacher/sessions"} style={primaryButtonStyle}>
+              {showResolved ? t(lang, "Show pending only", "只看待处理") : t(lang, "Open sessions", "打开课次")}
+            </a>
+            <a href={showResolved ? "/teacher" : "/teacher/alerts?showResolved=1"} style={secondaryButtonStyle}>
+              {showResolved ? t(lang, "Back to dashboard", "返回工作台") : t(lang, "Show resolved too", "显示已处理")}
+            </a>
+          </div>
+        </section>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {(showResolved ? visibleRows : pendingRows).map((r) => {
@@ -338,14 +428,7 @@ export default async function TeacherAlertsPage({
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <a
                     href={sessionUrl}
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #d1d5db",
-                      background: "#fff",
-                      fontWeight: 700,
-                    }}
+                    style={primaryButtonStyle}
                   >
                     {primaryLabel}
                   </a>
