@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r09
+
+- Release ID: `2026-04-03-r09`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Run the next teacher-side clarity pass on the student feedback desk and ticket board so empty states explain the next step and primary actions stand out more clearly.
+- Key files:
+  - `app/teacher/student-feedbacks/page.tsx`
+  - `app/teacher/tickets/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-teacher-feedbacks-and-tickets-clarity-pass.md`
+- Risk impact (if any): Low. This ship only changes empty-state presentation, filter/button emphasis, and next-step guidance on two existing teacher workbench pages; no feedback timeline logic, unread-marking behavior, handoff-risk filters, ticket proof-file behavior, ticket completion rules, or ticket status transitions changed.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+- Rollback point: previous production commit before `2026-04-03-r09`.
+
 ## 2026-04-03-r08
 
 - Release ID: `2026-04-03-r08`

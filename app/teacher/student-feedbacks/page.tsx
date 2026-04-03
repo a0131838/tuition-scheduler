@@ -82,6 +82,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 async function markFeedbackReadAction(formData: FormData) {
   "use server";
   const { user, teacher } = await requireTeacherProfile();
@@ -155,11 +192,35 @@ export default async function TeacherStudentFeedbacksPage({
 
   if (taughtStudentIds.length === 0) {
     return (
-      <div>
-        <h2>{t(lang, "Student Feedbacks", "学生课后反馈")}</h2>
-        <div style={{ color: "#64748b" }}>
-          {t(lang, "No students linked to your sessions yet.", "你当前还没有授课关系学生，暂无可查看反馈。")}
-        </div>
+      <div style={{ display: "grid", gap: 14 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "Student Feedbacks", "学生课后反馈")}
+          subtitle={t(
+            lang,
+            "Review recent handoffs and student teaching context before class.",
+            "上课前集中查看最近交接反馈和学生教学上下文。"
+          )}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+            { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开课次") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+            {t(lang, "No linked students yet", "暂时还没有关联学生")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "You will see feedback timelines here after sessions are assigned to you and students are linked through attendance records.",
+              "当课次分配给你、学生通过出勤记录关联后，这里就会出现对应的反馈时间线。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher/sessions" style={primaryButtonStyle}>{t(lang, "Open sessions", "打开课次")}</a>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
       </div>
     );
   }
@@ -377,6 +438,32 @@ export default async function TeacherStudentFeedbacksPage({
           min-height: 34px;
           padding: 6px 10px;
         }
+        .primary-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 38px;
+          padding: 0 14px;
+          border-radius: 10px;
+          border: 1px solid #2563eb;
+          background: #2563eb;
+          color: #ffffff;
+          font-weight: 700;
+          text-decoration: none;
+        }
+        .secondary-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 38px;
+          padding: 0 14px;
+          border-radius: 10px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #0f172a;
+          font-weight: 700;
+          text-decoration: none;
+        }
         .timeline-overlay {
           position: fixed;
           inset: 0;
@@ -538,7 +625,8 @@ export default async function TeacherStudentFeedbacksPage({
           <input type="checkbox" name="handoffRisk" value="1" defaultChecked={handoffRisk} />
           {t(lang, "Only handoff risks (7d unread)", "仅看交接风险（7天未读）")}
         </label>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1" className="primary-btn">{t(lang, "Apply", "应用")}</button>
+        <a href="/teacher/student-feedbacks" className="secondary-btn">{t(lang, "Clear", "清空")}</a>
       </form>
       <div style={{ color: "#334155", fontSize: 13 }}>
         {t(lang, "Use filters to focus on cross-teacher handoffs, unread updates, or a specific student before class.", "用这些筛选快速聚焦跨老师交接、未读更新，或某位学生的上课前信息。")}
@@ -550,7 +638,22 @@ export default async function TeacherStudentFeedbacksPage({
       </div>
 
       {totalStudents === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No matching feedbacks.", "没有匹配的反馈记录。")}</div>
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+            {t(lang, "No feedbacks match these filters", "当前筛选下没有反馈")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Try widening the date range, clearing the handoff filters, or open the full student feedback desk again.",
+              "可以放宽日期范围、清空交接筛选，或重新回到完整的学生反馈工作台。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher/student-feedbacks" style={primaryButtonStyle}>{t(lang, "Open full feedback desk", "打开完整反馈工作台")}</a>
+            <a href="/teacher/sessions" style={secondaryButtonStyle}>{t(lang, "Open sessions", "打开课次")}</a>
+          </div>
+        </section>
       ) : (
         <>
           <div className="desktop-only table-scroll">
@@ -699,7 +802,31 @@ export default async function TeacherStudentFeedbacksPage({
           </div>
 
           {selectedTimeline.length === 0 ? (
-            <div style={{ color: "#999", marginTop: 8 }}>{t(lang, "No feedback timeline.", "暂无反馈时间线。")}</div>
+            <section style={{ ...emptyStateCardStyle, marginTop: 10 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#1d4ed8" }}>
+                {t(lang, "No timeline items in this view", "当前视图下没有时间线记录")}
+              </div>
+              <div style={{ color: "#475569", lineHeight: 1.6 }}>
+                {t(
+                  lang,
+                  "This usually means the selected student has no entries inside the current filters, or all unread cross-teacher items were already cleared.",
+                  "这通常表示当前学生在本次筛选范围内没有记录，或相关未读交接项已经处理完成。"
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a
+                  href={`/teacher/student-feedbacks?studentId=${encodeURIComponent(selectedStudentId)}&from=${encodeURIComponent(
+                    formatDateOnly(from)
+                  )}&to=${encodeURIComponent(formatDateOnly(to))}&page=${safePage}`}
+                  style={primaryButtonStyle}
+                >
+                  {t(lang, "Open full timeline for this student", "查看该学生完整时间线")}
+                </a>
+                <a href={`/teacher/student-feedbacks?${queryBase}&page=${safePage}`} style={secondaryButtonStyle}>
+                  {t(lang, "Back to student list", "回到学生列表")}
+                </a>
+              </div>
+            </section>
           ) : (
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
               {selectedTimelineHead.map((item) => {

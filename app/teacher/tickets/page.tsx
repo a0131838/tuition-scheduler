@@ -61,6 +61,43 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+const primaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const secondaryButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 38,
+  padding: "0 14px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+  textDecoration: "none",
+} as const;
+
+const emptyStateCardStyle = {
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 16,
+  padding: 18,
+  display: "grid",
+  gap: 10,
+} as const;
+
 async function markDoneTeacherAction(formData: FormData) {
   "use server";
   const { user, teacher } = await requireTeacherProfile();
@@ -115,11 +152,34 @@ export default async function TeacherTicketsPage({
   const err = String(sp?.err ?? "").trim();
   if (!teacher) {
     return (
-      <div>
-        <h2>{t(lang, "Ticket Board", "工单看板")}</h2>
-        <div style={{ color: "#b91c1c" }}>
-          老师资料未关联，暂时无法查看工单。/ Teacher profile is not linked yet.
-        </div>
+      <div style={{ display: "grid", gap: 14 }}>
+        <TeacherWorkspaceHero
+          title={t(lang, "Ticket Board", "工单看板")}
+          subtitle={t(
+            lang,
+            "Track your support work, missing proofs, and completion notes in one place.",
+            "把自己的支持工单、缺失证据和完成说明集中在一个页面里查看。"
+          )}
+          actions={[
+            { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
+            { href: "/teacher/card", label: t(lang, "Open teacher card", "打开老师名片") },
+          ]}
+        />
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
+            {t(lang, "Your teacher profile is not linked yet", "老师资料暂时还未关联")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Ticket actions stay unavailable until your teacher profile is linked to the current account.",
+              "在当前账号与老师资料完成关联前，工单列表和工单操作都还不能使用。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
       </div>
     );
   }
@@ -217,12 +277,38 @@ export default async function TeacherTicketsPage({
             </option>
           ))}
         </select>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
+        <a href="/teacher/tickets" style={secondaryButtonStyle}>{t(lang, "Clear", "清空")}</a>
       </form>
       <div style={{ fontSize: 13, color: "#475569" }}>
         {t(lang, "Tip: filter to one status first, then work through completion notes from top to bottom.", "建议先按状态收窄范围，再从上到下处理完成说明，会比整张看板来回扫更稳。")}
       </div>
       </section>
+
+      {rows.length === 0 ? (
+        <section style={emptyStateCardStyle}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+            {status || q ? t(lang, "No tickets match these filters", "当前筛选下没有工单") : t(lang, "No active tickets right now", "当前没有活动工单")}
+          </div>
+          <div style={{ color: "#475569", lineHeight: 1.6 }}>
+            {status || q
+              ? t(
+                  lang,
+                  "Try clearing the filters or switching back to your full ticket board.",
+                  "可以清空筛选，或回到完整工单看板继续查看。"
+                )
+              : t(
+                  lang,
+                  "Your open ticket board is clear for now. Come back here when a new task is assigned or if you need to review completed work.",
+                  "当前你的待处理工单已经清空。等有新任务分配，或需要回看已完成工作时，再来这里查看即可。"
+                )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher/tickets" style={primaryButtonStyle}>{t(lang, "Open full ticket board", "打开完整工单看板")}</a>
+            <a href="/teacher" style={secondaryButtonStyle}>{t(lang, "Back to dashboard", "返回工作台")}</a>
+          </div>
+        </section>
+      ) : null}
 
       <div className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1020 }}>
@@ -289,7 +375,7 @@ export default async function TeacherTicketsPage({
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={backHref} />
                       <input name="completionNote" placeholder={t(lang, "Completion note", "完成说明")} />
-                      <button type="submit">{t(lang, "Mark Completed", "标记已完成")}</button>
+                      <button type="submit" style={primaryButtonStyle}>{t(lang, "Mark Completed", "标记已完成")}</button>
                     </form>
                   ) : (
                     <span style={{ color: "#166534", fontWeight: 700 }}>{t(lang, "Done", "已完成")}</span>

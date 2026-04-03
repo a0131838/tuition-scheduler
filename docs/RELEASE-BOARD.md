@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r08` (admin button hierarchy and empty-state pass 2).
+- Current release line on this branch: `2026-04-03-r09` (teacher feedback/ticket clarity pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r09 Deployed
+
+- Scope: run the next teacher-side clarity pass on the student feedback desk and ticket board.
+- Business impact:
+  - student feedbacks now explains why the desk is empty when no linked students or no matching feedbacks exist, and it points teachers back to sessions or the full desk instead of stopping at a flat gray message
+  - student feedback timeline drawers now explain why a selected student has no visible items in the current filtered view and offer a direct way back to the full timeline or list
+  - teacher tickets now uses clearer “not linked yet” and empty-board states, plus stronger apply/clear and completion-action emphasis
+  - no feedback read-marking behavior, handoff-risk logic, ticket proof-file handling, completion-note requirements, or ticket status transitions changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-03-r08 Deployed
 
