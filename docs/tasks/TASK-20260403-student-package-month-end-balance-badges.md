@@ -73,5 +73,5 @@
 ## 8) Release Record
 
 - Release ID: `2026-04-03-r16`
-- Deploy time: pending deploy
+- Deploy time: pending deploy retry after release-doc sync
 - Rollback command/point: previous production commit before `2026-04-03-r16`

@@ -25,6 +25,7 @@ This file is the single source of truth for what changed in production.
   - `app/admin/finance/student-package-invoices/page.tsx`
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-student-package-month-end-balance-badges.md`
 - Risk impact (if any): Low. This is a student-billing presentation-only pass; the report calculation, export route, package ledger writes, billing flow, and finance approval behavior remain unchanged.
 - Verification:
   - `npm run build` passed

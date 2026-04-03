@@ -56,6 +56,8 @@
 - Validation:
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+- Release doc sync:
+  - `docs/tasks/TASK-20260403-student-package-month-end-balance-badges.md`
 
 ## 2026-04-03-r15 Deployed
 
