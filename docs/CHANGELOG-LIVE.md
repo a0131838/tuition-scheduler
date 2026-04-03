@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r18
+
+- Release ID: `2026-04-03-r18`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: fix the admin packages workbench so explicitly clearing payment/course/search filters no longer gets overridden by remembered filters, and the `Clear` action truly resets the desk.
+- Key files:
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-packages-filter-clear-fix.md`
+- Risk impact (if any): Low. This ship only fixes filter-state parsing on the packages workbench; package creation, editing, top-up, billing, ledger, remembered-flow cards, and package business logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm `paid=unpaid -> all` can return to `All Payment Status` and `clearFilters=1` no longer shows resumed remembered filters
+- Rollback point: previous production commit before `2026-04-03-r18`.
+
 ## 2026-04-03-r17
 
 - Release ID: `2026-04-03-r17`

@@ -130,12 +130,18 @@ export default async function AdminPackagesPage({
     courseId?: string;
     paid?: string;
     warn?: string;
+    clearFilters?: string;
     focusPackageId?: string;
     packageFlow?: string;
   }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
+  const hasQParam = Object.prototype.hasOwnProperty.call(sp ?? {}, "q");
+  const hasCourseIdParam = Object.prototype.hasOwnProperty.call(sp ?? {}, "courseId");
+  const hasPaidParam = Object.prototype.hasOwnProperty.call(sp ?? {}, "paid");
+  const hasWarnParam = Object.prototype.hasOwnProperty.call(sp ?? {}, "warn");
+  const clearFilters = String(sp?.clearFilters ?? "").trim() === "1";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const qParam = typeof sp?.q === "string" ? sp.q.trim() : "";
@@ -145,6 +151,7 @@ export default async function AdminPackagesPage({
   const focusPackageId = String(sp?.focusPackageId ?? "").trim();
   const packageFlow = String(sp?.packageFlow ?? "").trim();
   const canResumeRememberedFilters =
+    !clearFilters &&
     !qParam &&
     !courseIdParam &&
     !paidParam &&
@@ -157,10 +164,10 @@ export default async function AdminPackagesPage({
   const rememberedFilters = canResumeRememberedFilters
     ? parseRememberedPackagesFilters(cookieStore.get(PACKAGES_FILTER_COOKIE)?.value ?? "")
     : { q: "", courseId: "", paid: "", warn: "", value: "" };
-  const q = qParam || rememberedFilters.q;
-  const filterCourseId = courseIdParam || rememberedFilters.courseId;
-  const filterPaid = paidParam ? normalizePackagesPaidFilter(paidParam) : rememberedFilters.paid;
-  const filterWarn = warnParam ? normalizePackagesWarnFilter(warnParam) : rememberedFilters.warn;
+  const q = hasQParam ? qParam : rememberedFilters.q;
+  const filterCourseId = hasCourseIdParam ? courseIdParam : rememberedFilters.courseId;
+  const filterPaid = hasPaidParam ? normalizePackagesPaidFilter(paidParam) : rememberedFilters.paid;
+  const filterWarn = hasWarnParam ? normalizePackagesWarnFilter(warnParam) : rememberedFilters.warn;
   const resumedRememberedFilters = canResumeRememberedFilters && Boolean(rememberedFilters.value);
   const rememberedFiltersValue = buildPackagesHref({ q, courseId: filterCourseId, paid: filterPaid, warn: filterWarn }).replace(
     /^\/admin\/packages\??/,
@@ -657,7 +664,7 @@ export default async function AdminPackagesPage({
             <option value="alert">{t(lang, "Alert Only", "仅预警")}</option>
           </select>
           <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
-          <a href="/admin/packages" style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>
+          <a href="/admin/packages?clearFilters=1" style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>
             {t(lang, "Clear", "清除")}
           </a>
           <span style={{ color: "#666" }}>
