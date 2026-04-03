@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
+import { monthEndDateOnlyFromMonth, parseMonthInput } from "@/lib/student-package-month-end-balance";
 import PackageSelectAutoSubmit from "./_components/PackageSelectAutoSubmit";
 
 function parseNum(v: string | null | undefined, fallback = 0) {
@@ -15,6 +16,11 @@ function parseNum(v: string | null | undefined, fallback = 0) {
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 async function issueInvoiceAction(formData: FormData) {
@@ -88,6 +94,7 @@ export default async function FinanceStudentPackageInvoicePage({
     note?: string;
     courseStartDate?: string;
     courseEndDate?: string;
+    balanceMonth?: string;
     msg?: string;
     err?: string;
   }>;
@@ -98,6 +105,11 @@ export default async function FinanceStudentPackageInvoicePage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const selectedPackageId = String(sp?.packageId ?? "").trim();
+  const balanceMonth = parseMonthInput(String(sp?.balanceMonth ?? "").trim())
+    ? String(sp?.balanceMonth ?? "").trim()
+    : currentMonthKey();
+  const balanceMonthEnd = monthEndDateOnlyFromMonth(balanceMonth) ?? "";
+  const balanceExportHref = `/api/exports/student-package-month-end-balance?month=${encodeURIComponent(balanceMonth)}`;
   const today = formatDateOnly(new Date());
 
   const packages = await prisma.coursePackage.findMany({
@@ -160,6 +172,35 @@ export default async function FinanceStudentPackageInvoicePage({
       </div>
       <div style={{ fontSize: 12 }}>
         <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
+      </div>
+
+      <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
+        <div style={{ fontWeight: 700 }}>
+          {t(lang, "Month-end balance report", "月末余额报表")}
+        </div>
+        <div style={{ color: "#475569", fontSize: 12 }}>
+          {t(
+            lang,
+            "Export remaining course balance in hours and estimated amount as of the selected month end. Version 1 covers HOURS packages only and does not change deduction or billing logic.",
+            "导出所选月末的剩余课时和估算剩余金额。第一版仅覆盖按分钟课包，不会改动扣课或账单逻辑。",
+          )}
+        </div>
+        <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+          {selectedPackageId ? <input type="hidden" name="packageId" value={selectedPackageId} /> : null}
+          <label>
+            {t(lang, "Report month", "报表月份")}
+            <input name="balanceMonth" type="month" defaultValue={balanceMonth} style={{ display: "block" }} />
+          </label>
+          <button type="submit">{t(lang, "Load month-end report", "加载月末报表")}</button>
+          <a href={balanceExportHref}>{t(lang, "Export CSV", "导出 CSV")}</a>
+        </form>
+        <div style={{ color: "#475569", fontSize: 12 }}>
+          {t(
+            lang,
+            `Month-end cutoff: ${balanceMonthEnd}. Remaining amount uses receipt totals up to month end when available, otherwise package paid amount as a fallback.`,
+            `月末截止日：${balanceMonthEnd}。剩余金额优先按月末前收据金额计算；若没有收据，再退回课包付款金额口径。`,
+          )}
+        </div>
       </div>
 
       {err ? <div style={{ color: "#b91c1c" }}>{err}</div> : null}

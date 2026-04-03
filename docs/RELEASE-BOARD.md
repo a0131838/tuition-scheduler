@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r11` (teacher card/midterm/payroll clarity pass).
+- Current release line on this branch: `2026-04-03-r13` (student billing month-end balance report).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r13 Deployed
+
+- Scope: add a read-only month-end balance export under student billing.
+- Business impact:
+  - `Student Package Invoice Workbench` now includes a `Month-end balance report / 月末余额报表` block with month picker and CSV export
+  - finance can export `HOURS` package remaining balance as of a selected month end without touching package deduction, invoice, receipt, or approval flows
+  - the export reports remaining hours from `PackageTxn` history and an estimated remaining amount using receipt totals up to month end when available, otherwise falling back to package `paidAmount`
+  - no package write logic, billing logic, receipt approval logic, or finance workbench behavior changed
+- Validation:
+  - `npm run build`
+  - local logged-in QA on `http://127.0.0.1:3322/admin/finance/student-package-invoices?balanceMonth=2026-03` confirmed the new report block appears
+  - local export QA on `http://127.0.0.1:3322/api/exports/student-package-month-end-balance?month=2026-03` returned `200` and a populated CSV
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-03-r11 Deployed
 

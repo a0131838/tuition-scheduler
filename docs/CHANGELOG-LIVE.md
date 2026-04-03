@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r13
+
+- Release ID: `2026-04-03-r13`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add a read-only month-end balance export under student billing so finance can export remaining package balance in hours and estimated amount as of a selected month end.
+- Key files:
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `app/api/exports/student-package-month-end-balance/route.ts`
+  - `lib/student-package-month-end-balance.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-student-package-month-end-balance-report.md`
+- Risk impact (if any): Low to medium. This ship is read-only and does not change any package, billing, receipt, or approval logic, but version 1 amount is a management estimate based on receipt totals up to month end or fallback package paid amount, not an audit-grade historical price ledger.
+- Verification:
+  - `npm run build` passed
+  - local logged-in QA on `http://127.0.0.1:3322/admin/finance/student-package-invoices?balanceMonth=2026-03` confirmed the new month-end report block renders in student billing
+  - local export QA on `http://127.0.0.1:3322/api/exports/student-package-month-end-balance?month=2026-03` returned `200` and generated CSV headers plus package rows
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+- Rollback point: previous production commit before `2026-04-03-r13`.
+
 ## 2026-04-03-r11
 
 - Release ID: `2026-04-03-r11`
