@@ -1986,3 +1986,21 @@ This file is the single source of truth for what changed in production.
   - fresh local logged-in QA on `http://127.0.0.1:3325/teacher/payroll` confirmed the page still loads correctly for the current empty-state teacher account
   - current local and production teacher account state is `Admin has not sent this month's payroll yet`, so this release was verified against the empty-state shell plus build output rather than a live sent-payroll record
 - Rollback point: previous production commit before `2026-04-03-r01`.
+
+## 2026-04-03-r02
+
+- Release ID: `2026-04-03-r02`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: hotfix duplicated bilingual labels on teacher payroll where some strings were manually written as bilingual text before passing through the bilingual helper.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-teacher-payroll-bilingual-duplication-hotfix.md`
+- Risk impact (if any): Low. This is a teacher-side payroll copy hotfix only; payroll calculation, confirmation, approval, payout, and finance-return logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - local source audit confirmed duplicated labels such as `What happens next`, `Current owner`, `Timeline`, stage pills, and owner labels now use normal `t(lang, en, zh)` strings instead of pre-built bilingual text
+  - the current local and production teacher account still lands on the payroll empty state for this month, so this release was verified through source-path cleanup plus build output rather than a live sent-payroll record
+- Rollback point: previous production commit before `2026-04-03-r02`.

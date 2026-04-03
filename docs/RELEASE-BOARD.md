@@ -1042,3 +1042,13 @@
   - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-03-r02 Deployed
+
+- Scope: hotfix duplicated bilingual labels on teacher payroll.
+- Business impact:
+  - teacher payroll status labels such as `What happens next`, `Current owner`, `Timeline`, stage pills, and owner names no longer render as repeated `EN / ZH / ZH / EN` text in bilingual mode
+  - the page wording now reads once per label while keeping the same payroll workflow states and actions
+  - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
+- Validation:
+  - `npm run build`

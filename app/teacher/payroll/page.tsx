@@ -66,12 +66,12 @@ function teacherPayrollStageLabel(
   lang: Awaited<ReturnType<typeof getLang>>,
   stage: "teacher" | "manager" | "financeConfirm" | "financePaid" | "done" | "financeRejected"
 ) {
-  if (stage === "teacher") return t(lang, "Waiting for your confirmation / 等待你确认", "等待你确认 / Waiting for your confirmation");
-  if (stage === "manager") return t(lang, "Waiting manager approval / 等待管理审批", "等待管理审批 / Waiting manager approval");
-  if (stage === "financeConfirm") return t(lang, "Waiting finance confirmation / 等待财务确认", "等待财务确认 / Waiting finance confirmation");
-  if (stage === "financePaid") return t(lang, "Waiting payout / 等待发薪", "等待发薪 / Waiting payout");
-  if (stage === "financeRejected") return t(lang, "Finance sent it back / 财务已退回", "财务已退回 / Finance sent it back");
-  return t(lang, "Paid / 已发薪", "已发薪 / Paid");
+  if (stage === "teacher") return t(lang, "Waiting for your confirmation", "等待你确认");
+  if (stage === "manager") return t(lang, "Waiting manager approval", "等待管理审批");
+  if (stage === "financeConfirm") return t(lang, "Waiting finance confirmation", "等待财务确认");
+  if (stage === "financePaid") return t(lang, "Waiting payout", "等待发薪");
+  if (stage === "financeRejected") return t(lang, "Finance sent it back", "财务已退回");
+  return t(lang, "Paid", "已发薪");
 }
 
 function approverSummary(emails: string[] | null | undefined) {
@@ -87,13 +87,13 @@ function teacherPayrollOwnerLabel(
 ) {
   if (stage === "teacher") {
     return {
-      owner: t(lang, "You / 你", "你 / You"),
+      owner: t(lang, "You", "你"),
       hint: t(lang, "Please review this payroll and confirm it on this page.", "请在本页核对并确认这张工资单。"),
     };
   }
   if (stage === "manager") {
     return {
-      owner: t(lang, "Management approver / 管理审批人", "管理审批人 / Management approver"),
+      owner: t(lang, "Management approver", "管理审批人"),
       hint: t(
         lang,
         `Next step owner: management (${approverSummary(managerApproverEmails)}).`,
@@ -103,7 +103,7 @@ function teacherPayrollOwnerLabel(
   }
   if (stage === "financeConfirm") {
     return {
-      owner: t(lang, "Finance approver / 财务审批人", "财务审批人 / Finance approver"),
+      owner: t(lang, "Finance approver", "财务审批人"),
       hint: t(
         lang,
         `Next step owner: finance (${approverSummary(financeApproverEmails)}).`,
@@ -113,7 +113,7 @@ function teacherPayrollOwnerLabel(
   }
   if (stage === "financePaid") {
     return {
-      owner: t(lang, "Finance payout / 财务发薪", "财务发薪 / Finance payout"),
+      owner: t(lang, "Finance payout", "财务发薪"),
       hint: t(
         lang,
         `Next step owner: finance payout (${approverSummary(financeApproverEmails)}).`,
@@ -123,7 +123,7 @@ function teacherPayrollOwnerLabel(
   }
   if (stage === "financeRejected") {
     return {
-      owner: t(lang, "Admin / Finance follow-up / 管理与财务跟进", "管理与财务跟进 / Admin and finance follow-up"),
+      owner: t(lang, "Admin / Finance follow-up", "管理与财务跟进"),
       hint: t(
         lang,
         "Please check the finance note below and contact admin if a resend or correction is needed.",
@@ -132,7 +132,7 @@ function teacherPayrollOwnerLabel(
     };
   }
   return {
-    owner: t(lang, "Done / 已完成", "已完成 / Done"),
+    owner: t(lang, "Done", "已完成"),
     hint: t(lang, "No further action is needed on your side.", "你这边暂时不需要再操作。"),
   };
 }
@@ -146,7 +146,7 @@ function teacherPayrollActionPrompt(
       tone: "#92400e",
       bg: "#fffbeb",
       border: "#fde68a",
-      title: t(lang, "Action needed now / 现在需要你操作", "现在需要你操作 / Action needed now"),
+      title: t(lang, "Action needed now", "现在需要你操作"),
       body: t(lang, "Please review this payroll and click Confirm Payroll below.", "请核对这张工资单，然后点击下方“确认工资单”。"),
     };
   }
@@ -155,7 +155,7 @@ function teacherPayrollActionPrompt(
       tone: "#1d4ed8",
       bg: "#eff6ff",
       border: "#bfdbfe",
-      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      title: t(lang, "No action needed from you", "你这边暂时不用操作"),
       body: t(lang, "Your payroll is waiting for management approval.", "你的工资单正在等待管理审批。"),
     };
   }
@@ -164,7 +164,7 @@ function teacherPayrollActionPrompt(
       tone: "#1d4ed8",
       bg: "#eff6ff",
       border: "#bfdbfe",
-      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      title: t(lang, "No action needed from you", "你这边暂时不用操作"),
       body: t(lang, "Your payroll has passed management approval and is waiting for finance confirmation.", "你的工资单已通过管理审批，正在等待财务确认。"),
     };
   }
@@ -173,7 +173,7 @@ function teacherPayrollActionPrompt(
       tone: "#1d4ed8",
       bg: "#eff6ff",
       border: "#bfdbfe",
-      title: t(lang, "No action needed from you / 你这边暂时不用操作", "你这边暂时不用操作 / No action needed from you"),
+      title: t(lang, "No action needed from you", "你这边暂时不用操作"),
       body: t(lang, "Finance has confirmed the payroll and payout is the next step.", "财务已经确认工资单，下一步是发薪。"),
     };
   }
@@ -182,7 +182,7 @@ function teacherPayrollActionPrompt(
       tone: "#991b1b",
       bg: "#fef2f2",
       border: "#fecaca",
-      title: t(lang, "Follow-up needed / 需要跟进", "需要跟进 / Follow-up needed"),
+      title: t(lang, "Follow-up needed", "需要跟进"),
       body: t(lang, "Finance has returned this payroll. Please review the finance note and contact admin if a resend or correction is needed.", "财务已退回这张工资单。请查看财务备注，如需重发或修正，请联系管理端。"),
     };
   }
@@ -190,7 +190,7 @@ function teacherPayrollActionPrompt(
     tone: "#166534",
     bg: "#ecfdf5",
     border: "#bbf7d0",
-    title: t(lang, "Done / 已完成", "已完成 / Done"),
+    title: t(lang, "Done", "已完成"),
     body: t(lang, "This payroll has been paid. No further action is needed.", "这张工资单已发薪，你这边无需继续操作。"),
   };
 }
@@ -361,11 +361,11 @@ async function TeacherPayrollBody({
   const stageOwner = teacherPayrollOwnerLabel(lang, stage, managerApproverEmails, financeApproverEmails);
   const actionPrompt = teacherPayrollActionPrompt(lang, stage);
   const timelineSteps = [
-    { key: "sent", label: t(lang, "Sent / 已发送", "已发送 / Sent"), at: sentAt, done: true },
-    { key: "teacher", label: t(lang, "Teacher confirmed / 老师确认", "老师确认 / Teacher confirmed"), at: confirmedAt, done: Boolean(confirmedAt) },
-    { key: "manager", label: t(lang, "Manager approved / 管理审批", "管理审批 / Manager approved"), at: managerApprovedAt, done: Boolean(managerApprovedAt) },
-    { key: "financeConfirm", label: t(lang, "Finance confirmed / 财务确认", "财务确认 / Finance confirmed"), at: financeConfirmedAt, done: Boolean(financeConfirmedAt) },
-    { key: "paid", label: t(lang, "Paid / 已发薪", "已发薪 / Paid"), at: financePaidAt, done: Boolean(financePaidAt) },
+    { key: "sent", label: t(lang, "Sent", "已发送"), at: sentAt, done: true },
+    { key: "teacher", label: t(lang, "Teacher confirmed", "老师确认"), at: confirmedAt, done: Boolean(confirmedAt) },
+    { key: "manager", label: t(lang, "Manager approved", "管理审批"), at: managerApprovedAt, done: Boolean(managerApprovedAt) },
+    { key: "financeConfirm", label: t(lang, "Finance confirmed", "财务确认"), at: financeConfirmedAt, done: Boolean(financeConfirmedAt) },
+    { key: "paid", label: t(lang, "Paid", "已发薪"), at: financePaidAt, done: Boolean(financePaidAt) },
   ];
 
   const periodText = `${DATE_FMT.format(data.range.start)} - ${DATE_FMT.format(new Date(data.range.end.getTime() - 1000))}`;
@@ -401,7 +401,7 @@ async function TeacherPayrollBody({
       <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8 }}>
         <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
           <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
-            {t(lang, "What happens next / 接下来做什么", "接下来做什么 / What happens next")}
+            {t(lang, "What happens next", "接下来做什么")}
           </div>
           <div
             style={{
@@ -432,13 +432,13 @@ async function TeacherPayrollBody({
         </div>
         <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e2e8f0", display: "grid", gap: 4 }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>
-            {t(lang, "Current owner / 当前处理方", "当前处理方 / Current owner")}
+            {t(lang, "Current owner", "当前处理方")}
           </div>
           <div style={{ fontWeight: 700, color: "#0f172a" }}>{stageOwner.owner}</div>
           <div style={{ fontSize: 13, color: "#475569" }}>{stageOwner.hint}</div>
         </div>
         <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Timeline / 时间线", "时间线 / Timeline")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Timeline", "时间线")}</div>
           <div style={{ display: "grid", gap: 6 }}>
             {timelineSteps.map((step) => (
               <div
@@ -472,7 +472,7 @@ async function TeacherPayrollBody({
         </div>
         {financeRejectReason ? (
           <div style={{ fontSize: 13, color: "#991b1b" }}>
-            {t(lang, "Finance note / 财务备注", "财务备注 / Finance note")}: {financeRejectReason}
+            {t(lang, "Finance note", "财务备注")}: {financeRejectReason}
           </div>
         ) : null}
         {!confirmedAt ? (
