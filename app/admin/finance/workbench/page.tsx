@@ -637,7 +637,7 @@ export default async function FinanceWorkbenchPage({
             <input
               name="q"
               defaultValue={q}
-              placeholder={t(lang, "Invoice / Receipt / Party", "发票号/收据号/对象")}
+              placeholder={t(lang, "Search invoice, receipt, or party", "搜索发票号、收据号或对象")}
               style={{ marginLeft: 4 }}
             />
           </label>
@@ -660,8 +660,8 @@ export default async function FinanceWorkbenchPage({
               {t(lang, "Exceptions", "异常")}{" "}
               <select name="exceptionOnly" defaultValue={exceptionOnly} style={{ marginLeft: 4 }}>
                 <option value="">{t(lang, "All", "全部")}</option>
-                <option value="1">{t(lang, "Only exceptions", "仅异常")}</option>
-                <option value="0">{t(lang, "Non-exception only", "仅正常")}</option>
+                <option value="1">{t(lang, "Exception items only", "仅看异常项")}</option>
+                <option value="0">{t(lang, "Normal items only", "仅看正常项")}</option>
               </select>
             </label>
             <label>
@@ -756,8 +756,8 @@ export default async function FinanceWorkbenchPage({
         <div style={{ color: "#1e3a8a", fontSize: 12, marginBottom: 8 }}>
           {t(
             lang,
-            "Template preview only. No message is sent from this page.",
-            "此处仅预览模板，不会在本页面发送任何消息。",
+            "Template preview only. This page does not send any messages.",
+            "这里只做模板预览，不会从此页发送任何消息。",
           )}
         </div>
         <div style={{ marginBottom: 8 }}>
@@ -825,11 +825,11 @@ export default async function FinanceWorkbenchPage({
                   <td>{x.nextAction}</td>
                   <td>
                     <details>
-                      <summary style={{ cursor: "pointer" }}>{t(lang, "Expand", "展开")}</summary>
+                      <summary style={{ cursor: "pointer" }}>{t(lang, "Show reminder details", "展开提醒详情")}</summary>
                       <div style={{ marginTop: 6, fontSize: 12, color: "#475569", display: "grid", gap: 4 }}>
                         <div>{t(lang, "Issue Date", "开票日")}: {x.issueDate}</div>
                         <div>{t(lang, "Receipt", "收据")}: {x.receiptNo ?? "-"}</div>
-                        <div>{t(lang, "Approval", "审批进度")}: {x.approvalText}</div>
+                        <div>{t(lang, "Approval progress", "审批进度")}: {x.approvalText}</div>
                         <div>
                           {t(lang, "Exception Reasons", "异常原因")}:{" "}
                           {x.exceptionReasons.length

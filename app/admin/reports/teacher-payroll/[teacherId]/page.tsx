@@ -100,7 +100,7 @@ export default async function TeacherPayrollDetailPage({
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
-        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back to Payroll", "返回工资总览")}</a>
+        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back to payroll desk", "返回工资工作台")}</a>
       </div>
 
       <h2>
@@ -115,8 +115,8 @@ export default async function TeacherPayrollDetailPage({
         <label>
           {t(lang, "Scope", "统计口径")}:
           <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
-            <option value="all">{t(lang, "All Scheduled Sessions (exclude fully cancelled)", "全部排课课次（排除整节取消）")}</option>
-            <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
+            <option value="all">{t(lang, "All scheduled sessions (except fully cancelled)", "全部排课课次（不含整节取消）")}</option>
+            <option value="completed">{t(lang, "Completed only (attendance marked + feedback submitted)", "仅已完成（已点名且已提交反馈）")}</option>
           </select>
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
@@ -125,22 +125,22 @@ export default async function TeacherPayrollDetailPage({
         <input type="hidden" name="month" value={month} />
         <input type="hidden" name="scope" value={scope} />
         <label>
-          <input type="checkbox" name="pendingOnly" value="1" defaultChecked={pendingOnly} /> {t(lang, "Only pending", "只看未完成")}
+          <input type="checkbox" name="pendingOnly" value="1" defaultChecked={pendingOnly} /> {t(lang, "Pending sessions only", "只看未完成课次")}
         </label>
         <label>
-          <input type="checkbox" name="fallbackOnly" value="1" defaultChecked={fallbackOnly} /> {t(lang, "Only fallback rate", "只看费率回退")}
+          <input type="checkbox" name="fallbackOnly" value="1" defaultChecked={fallbackOnly} /> {t(lang, "Fallback-rate rows only", "只看费率回退条目")}
         </label>
         <label>
-          <input type="checkbox" name="chargedOnly" value="1" defaultChecked={chargedOnly} /> {t(lang, "Only cancelled+charged", "只看取消但扣课时")}
+          <input type="checkbox" name="chargedOnly" value="1" defaultChecked={chargedOnly} /> {t(lang, "Cancelled-but-charged rows only", "只看取消但计薪条目")}
         </label>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply anomaly filters", "应用异常筛选")}</button>
+        <button type="submit" data-apply-submit="1">{t(lang, "Apply detail filters", "应用明细筛选")}</button>
         <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(p.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
           {t(lang, "Clear", "清除")}
         </a>
       </form>
 
       <div style={{ marginBottom: 12 }}>
-        <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
+        <b>{t(lang, "Current payroll period", "当前工资周期")}</b>: {periodText}
       </div>
       <div
         style={{
@@ -236,7 +236,6 @@ export default async function TeacherPayrollDetailPage({
               <th align="left">{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
               <th align="left">{t(lang, "Hours", "课时")}</th>
               <th align="left">{t(lang, "Hourly Rate", "课时费")}</th>
-              <th align="left">{t(lang, "Status", "状态")}</th>
               <th align="left">{t(lang, "Amount", "金额")}</th>
             </tr>
           </thead>

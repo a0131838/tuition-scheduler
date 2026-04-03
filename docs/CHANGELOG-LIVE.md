@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r05
+
+- Release ID: `2026-04-03-r05`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Run the third admin copy-clarity pass on the admin ticket center, finance workbench, and teacher payroll detail page so high-traffic bilingual labels read more naturally without changing any workflow logic.
+- Key files:
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/reports/teacher-payroll/[teacherId]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-3.md`
+- Risk impact (if any): Low. This ship only rewrites UI copy and a redundant table header on three existing admin pages; no ticket workflow rules, finance workbench routing or reminder behavior, payroll math, completion rules, or approval logic changed.
+- Verification:
+  - `npm run build` passed
+  - logged-in local QA on `http://127.0.0.1:3333` confirmed:
+    - `/admin/tickets` renders the new management-focus, intake-link, queue, and completion-note wording
+    - `/admin/finance/workbench` renders the new search/filter, reminder-preview, and reminder-detail wording
+    - `/admin/reports/teacher-payroll/[teacherId]` renders the new back-link, scope, anomaly-filter, and payroll-period wording
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production:
+    - `/admin/tickets` shows the new ticket-center wording on banners, intake links, and action fields
+    - `/admin/finance/workbench` shows the new finance search/filter labels and reminder-detail wording
+    - `/admin/reports/teacher-payroll/[teacherId]` shows the new payroll-detail scope/filter copy and the corrected combo-summary header row
+- Rollback point: previous production commit before `2026-04-03-r05`.
+
 ## 2026-04-03-r04
 
 - Release ID: `2026-04-03-r04`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r04` (admin/teacher copy-clarity pass 2).
+- Current release line on this branch: `2026-04-03-r05` (admin copy-clarity pass 3).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r05 Deployed
+
+- Scope: run the third admin copy-clarity pass on the ticket center, finance workbench, and teacher payroll detail page.
+- Business impact:
+  - the admin ticket center now uses clearer error, intake-link, queue, and action-field wording, so operators can scan ticket actions faster
+  - the finance workbench now uses plainer search, exception-filter, and reminder-preview wording, so invoice follow-up states are easier to understand
+  - the teacher payroll detail page now uses clearer scope/filter wording and no longer shows an unused combo-summary status header
+  - no ticket workflow rules, finance reminder behavior, payroll math, completion rules, or approval logic changed
+- Validation:
+  - `npm run build`
+  - logged-in local QA on `http://127.0.0.1:3333` confirmed the new wording on `/admin/tickets`, `/admin/finance/workbench`, and `/admin/reports/teacher-payroll/[teacherId]`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the new copy is visible on the same three production pages
 
 ## 2026-04-03-r04 Deployed
 
