@@ -21,6 +21,13 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
+function parseOptionalAmount(value: unknown) {
+  if (value === "" || value == null) return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return Number.NaN;
+  return Math.round(amount);
+}
+
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
   const admin = await requireAdmin();
   const actor = admin.email.trim().toLowerCase();
@@ -39,15 +46,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   }
 
   const deltaMinutes = Number(body?.deltaMinutes);
+  const hasDeltaAmount = Object.prototype.hasOwnProperty.call(body ?? {}, "deltaAmount");
+  const deltaAmount = hasDeltaAmount ? parseOptionalAmount(body?.deltaAmount) : undefined;
   const note = String(body?.note ?? "").trim();
   const reasonCategory = String(body?.reasonCategory ?? "").trim();
   const approver = String(body?.approver ?? "").trim();
   const evidenceNote = String(body?.evidenceNote ?? "").trim();
   if (!Number.isFinite(deltaMinutes)) return bad("Invalid deltaMinutes", 409);
+  if (Number.isNaN(deltaAmount)) return bad("Invalid deltaAmount", 409);
 
   const txn = await prisma.packageTxn.findFirst({
     where: { id: txnId, packageId },
-    select: { id: true, kind: true, deltaMinutes: true, packageId: true },
+    select: { id: true, kind: true, deltaMinutes: true, deltaAmount: true, packageId: true },
   });
   if (!txn) return bad("Ledger record not found", 404);
 
@@ -111,6 +121,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
       where: { id: txn.id },
       data: {
         deltaMinutes: Math.round(deltaMinutes),
+        ...(isPurchase && hasDeltaAmount ? { deltaAmount } : {}),
         note: abnormalMeta ? buildAbnormalLedgerNote(abnormalMeta) : note || null,
       },
     });
@@ -129,6 +140,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     meta: {
       packageId,
       deltaMinutes: Math.round(deltaMinutes),
+      deltaAmount: isPurchase && hasDeltaAmount ? deltaAmount : txn.deltaAmount,
       note: abnormalMeta ? buildAbnormalLedgerNote(abnormalMeta) : note || null,
       diff,
       totalChanged: isPurchase,
@@ -152,7 +164,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
 
   const txn = await prisma.packageTxn.findFirst({
     where: { id: txnId, packageId },
-    select: { id: true, kind: true, deltaMinutes: true, sessionId: true, note: true, createdAt: true },
+    select: { id: true, kind: true, deltaMinutes: true, deltaAmount: true, sessionId: true, note: true, createdAt: true },
   });
   if (!txn) return bad("Ledger record not found", 404);
 
@@ -226,6 +238,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
       id: txn.id,
       kind: txn.kind,
       deltaMinutes: txn.deltaMinutes,
+      deltaAmount: txn.deltaAmount,
       sessionId: txn.sessionId,
       note: txn.note ?? "",
       createdAt: txn.createdAt.toISOString(),
@@ -254,11 +267,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
   const txnId = String(body?.id ?? "").trim();
   const note = String(body?.note ?? "").trim();
   const deltaMinutes = Number(body?.deltaMinutes);
+  const deltaAmount = parseOptionalAmount(body?.deltaAmount);
   const sessionId = body?.sessionId ? String(body.sessionId) : null;
   const createdAt = String(body?.createdAt ?? "").trim();
   if (!kind) return bad("Invalid kind", 409);
   if (!txnId) return bad("Invalid id", 409);
   if (!Number.isFinite(deltaMinutes)) return bad("Invalid deltaMinutes", 409);
+  if (Number.isNaN(deltaAmount)) return bad("Invalid deltaAmount", 409);
   const createdAtDate = new Date(createdAt);
   if (Number.isNaN(createdAtDate.getTime())) return bad("Invalid createdAt", 409);
 
@@ -282,6 +297,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
         packageId,
         kind,
         deltaMinutes: Math.round(deltaMinutes),
+        deltaAmount: kind === "PURCHASE" ? deltaAmount : null,
         sessionId,
         note: note || null,
         createdAt: createdAtDate,
@@ -299,7 +315,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
     action: "TXN_RESTORE",
     entityType: "PackageTxn",
     entityId: txnId,
-    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), kind },
+    meta: { packageId, deltaMinutes: Math.round(deltaMinutes), deltaAmount: kind === "PURCHASE" ? deltaAmount : null, kind },
   });
 
   return Response.json({ ok: true, remainingMinutes: nextRemaining });

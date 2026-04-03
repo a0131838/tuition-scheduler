@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r15
+
+- Release ID: `2026-04-03-r15`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: upgrade the student-billing month-end balance report to use purchase-ledger amount history when available, while keeping safe fallbacks for older packages without amount deltas.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403173000_add_package_txn_delta_amount/migration.sql`
+  - `app/api/admin/packages/route.ts`
+  - `app/api/admin/packages/[id]/top-up/route.ts`
+  - `app/api/admin/packages/[id]/route.ts`
+  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `app/admin/packages/[id]/ledger/PackageLedgerEditTxnClient.tsx`
+  - `lib/student-package-month-end-balance.ts`
+  - `app/api/exports/student-package-month-end-balance/route.ts`
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-student-package-month-end-balance-ledger-basis.md`
+- Risk impact (if any): Medium. This ship includes a Prisma schema migration plus `PURCHASE` write-path updates for packages and top-ups, but it does not change deduction behavior, package remaining-minute math, billing approvals, or finance workflow rules. Old packages still fall back safely when purchase amount history is incomplete.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+- Rollback point: previous production commit before `2026-04-03-r15`.
+
 ## 2026-04-03-r14
 
 - Release ID: `2026-04-03-r14`

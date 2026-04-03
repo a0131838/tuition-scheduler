@@ -18,7 +18,7 @@ export type StudentPackageMonthEndBalanceRow = {
   usedMinutes: number;
   remainingMinutes: number;
   paidAmountBasis: number;
-  paidAmountBasisSource: "RECEIPTS" | "PACKAGE_PAID_AMOUNT" | "NONE";
+  paidAmountBasisSource: "PURCHASE_TXNS" | "RECEIPTS" | "PACKAGE_PAID_AMOUNT" | "NONE";
   remainingAmount: number;
 };
 
@@ -94,19 +94,41 @@ export async function listStudentPackageMonthEndBalances(month: string) {
     let totalPurchasedMinutes = 0;
     let usedMinutes = 0;
     let remainingMinutes = 0;
+    let purchaseTxnAmountBasis = 0;
+    let purchaseTxnAmountComplete = true;
+    let purchaseTxnCount = 0;
 
     for (const txn of pkg.txns) {
       const delta = Number(txn.deltaMinutes ?? 0);
       if (delta > 0) totalPurchasedMinutes += delta;
       if (delta < 0) usedMinutes += Math.abs(delta);
       remainingMinutes += delta;
+      if (txn.kind === "PURCHASE" && delta > 0) {
+        purchaseTxnCount += 1;
+        if (txn.deltaAmount == null || !Number.isFinite(Number(txn.deltaAmount))) {
+          purchaseTxnAmountComplete = false;
+        } else {
+          purchaseTxnAmountBasis += normalizeAmount(txn.deltaAmount);
+        }
+      }
     }
 
     const receiptBasis = normalizeAmount(receiptBasisByPackage.get(pkg.id));
     const packagePaidBasis = normalizeAmount(pkg.paidAmount);
-    const paidAmountBasis = receiptBasis > 0 ? receiptBasis : packagePaidBasis;
+    const usePurchaseTxnBasis = purchaseTxnCount > 0 && purchaseTxnAmountComplete;
+    const paidAmountBasis = usePurchaseTxnBasis
+      ? purchaseTxnAmountBasis
+      : receiptBasis > 0
+        ? receiptBasis
+        : packagePaidBasis;
     const paidAmountBasisSource =
-      receiptBasis > 0 ? "RECEIPTS" : packagePaidBasis > 0 ? "PACKAGE_PAID_AMOUNT" : "NONE";
+      usePurchaseTxnBasis
+        ? "PURCHASE_TXNS"
+        : receiptBasis > 0
+          ? "RECEIPTS"
+          : packagePaidBasis > 0
+            ? "PACKAGE_PAID_AMOUNT"
+            : "NONE";
 
     const remainingAmount =
       totalPurchasedMinutes > 0

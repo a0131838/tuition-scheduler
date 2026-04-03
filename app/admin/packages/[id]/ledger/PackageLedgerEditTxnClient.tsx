@@ -8,12 +8,14 @@ type Props = {
   txnId: string;
   txnKind: string;
   defaultDelta: number;
+  defaultAmount?: number | null;
   defaultNote: string;
   defaultReasonCategory?: string;
   defaultApprover?: string;
   defaultEvidenceNote?: string;
   labels: {
     delta: string;
+    amount: string;
     note: string;
     save: string;
     saving: string;
@@ -29,6 +31,7 @@ type Props = {
 
 export default function PackageLedgerEditTxnClient(props: Props) {
   const [delta, setDelta] = useState(String(props.defaultDelta));
+  const [amount, setAmount] = useState(props.defaultAmount == null ? "" : String(props.defaultAmount));
   const [note, setNote] = useState(props.defaultNote);
   const [reasonCategory, setReasonCategory] = useState(props.defaultReasonCategory ?? "");
   const [approver, setApprover] = useState(props.defaultApprover ?? "");
@@ -38,6 +41,7 @@ export default function PackageLedgerEditTxnClient(props: Props) {
     id: string;
     kind: string;
     deltaMinutes: number;
+    deltaAmount: number | null;
     sessionId: string | null;
     note: string;
     createdAt: string;
@@ -53,7 +57,14 @@ export default function PackageLedgerEditTxnClient(props: Props) {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deltaMinutes: deltaNum, note, reasonCategory, approver, evidenceNote }),
+          body: JSON.stringify({
+            deltaMinutes: deltaNum,
+            deltaAmount: props.txnKind === "PURCHASE" ? (amount.trim() === "" ? null : Number(amount)) : undefined,
+            note,
+            reasonCategory,
+            approver,
+            evidenceNote,
+          }),
         }
       );
       const data = await res.json().catch(() => ({}));
@@ -90,6 +101,10 @@ export default function PackageLedgerEditTxnClient(props: Props) {
           id: String(data.deleted.id ?? ""),
           kind: String(data.deleted.kind ?? ""),
           deltaMinutes: Number(data.deleted.deltaMinutes ?? 0),
+          deltaAmount:
+            data.deleted.deltaAmount == null || data.deleted.deltaAmount === ""
+              ? null
+              : Number(data.deleted.deltaAmount),
           sessionId: data.deleted.sessionId ? String(data.deleted.sessionId) : null,
           note: String(data.deleted.note ?? ""),
           createdAt: String(data.deleted.createdAt ?? ""),
@@ -167,6 +182,17 @@ export default function PackageLedgerEditTxnClient(props: Props) {
               disabled={saving || !!deletedPayload}
             />
           </>
+        ) : null}
+        {props.txnKind === "PURCHASE" ? (
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            style={{ width: 110 }}
+            title={props.labels.amount}
+            placeholder={props.labels.amount}
+            disabled={saving || !!deletedPayload}
+          />
         ) : null}
         <input
           type="number"

@@ -159,6 +159,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         packageId: id,
         kind: "PURCHASE",
         deltaMinutes: addMinutes,
+        deltaAmount: paidAmount,
         note: note ? `Top-up: ${note}` : "Top-up purchase",
       },
     });

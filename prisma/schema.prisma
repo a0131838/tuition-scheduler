@@ -905,6 +905,7 @@ model PackageTxn {
   packageId    String
   kind         String // PURCHASE / DEDUCT / ROLLBACK / ADJUST
   deltaMinutes Int
+  deltaAmount  Int? // purchase/top-up amount basis for historical balance reports
   sessionId    String?
   note         String?
   createdAt    DateTime @default(now())

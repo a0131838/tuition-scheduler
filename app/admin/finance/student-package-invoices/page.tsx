@@ -28,6 +28,19 @@ function currentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function formatAmountBasisSource(source: string, lang: Awaited<ReturnType<typeof getLang>>) {
+  if (source === "PURCHASE_TXNS") {
+    return t(lang, "Purchase ledger amounts", "购买流水金额");
+  }
+  if (source === "RECEIPTS") {
+    return t(lang, "Receipt totals", "收据金额");
+  }
+  if (source === "PACKAGE_PAID_AMOUNT") {
+    return t(lang, "Package paid amount", "课包付款金额");
+  }
+  return t(lang, "No amount basis", "无金额基数");
+}
+
 async function issueInvoiceAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -228,6 +241,13 @@ export default async function FinanceStudentPackageInvoicePage({
             <b>{t(lang, "Estimated remaining amount", "估算剩余金额")}</b>: SGD {money(balanceSummary.remainingAmount)}
           </div>
         </div>
+        <div style={{ color: "#64748b", fontSize: 12 }}>
+          {t(
+            lang,
+            "The report now prefers purchase ledger amounts when all purchase records already carry amount history. Older packages safely fall back to receipts or package paid amount.",
+            "如果该课包的购买流水已经完整记录金额，报表会优先按购买流水金额计算；旧课包则安全回退到收据金额或课包付款金额。",
+          )}
+        </div>
         {balanceRows.length === 0 ? (
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {t(
@@ -265,7 +285,7 @@ export default async function FinanceStudentPackageInvoicePage({
                     <td>{minutesToHours(row.usedMinutes).toFixed(2)}</td>
                     <td>{minutesToHours(row.remainingMinutes).toFixed(2)}</td>
                     <td>SGD {money(row.paidAmountBasis)}</td>
-                    <td>{row.paidAmountBasisSource}</td>
+                    <td>{formatAmountBasisSource(row.paidAmountBasisSource, lang)}</td>
                     <td>SGD {money(row.remainingAmount)}</td>
                   </tr>
                 ))}

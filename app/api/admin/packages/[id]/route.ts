@@ -137,31 +137,49 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (overlap) return bad("Overlapping ACTIVE package exists for same mode", 409);
   }
 
-  await prisma.coursePackage.update({
-    where: { id },
-    data: {
-      status: (status as any) || undefined,
-      settlementMode: settlementMode as any,
-      validFrom,
-      validTo,
-      paid,
-      paidAt: paid ? paidAt : null,
-      paidAmount: paid ? paidAmount : null,
-      paidNote: paid ? paidNote || null : null,
-      note: note || null,
-      sharedStudents: {
-        deleteMany: {},
-        ...(sharedStudentIds.length
-          ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
-          : {}),
+  await prisma.$transaction(async (tx) => {
+    await tx.coursePackage.update({
+      where: { id },
+      data: {
+        status: (status as any) || undefined,
+        settlementMode: settlementMode as any,
+        validFrom,
+        validTo,
+        paid,
+        paidAt: paid ? paidAt : null,
+        paidAmount: paid ? paidAmount : null,
+        paidNote: paid ? paidNote || null : null,
+        note: note || null,
+        sharedStudents: {
+          deleteMany: {},
+          ...(sharedStudentIds.length
+            ? { createMany: { data: sharedStudentIds.map((studentId) => ({ studentId })) } }
+            : {}),
+        },
+        sharedCourses: {
+          deleteMany: {},
+          ...(sharedCourseIds.length
+            ? { createMany: { data: sharedCourseIds.map((courseId) => ({ courseId })) } }
+            : {}),
+        },
       },
-      sharedCourses: {
-        deleteMany: {},
-        ...(sharedCourseIds.length
-          ? { createMany: { data: sharedCourseIds.map((courseId) => ({ courseId })) } }
-          : {}),
-      },
-    },
+    });
+
+    // If this package still has a single purchase record, keep its financial basis aligned
+    // with the edited paid amount so future month-end reports can use ledger-based history.
+    if (pkg.type === "HOURS" && paid && paidAmount != null) {
+      const purchaseTxns = await tx.packageTxn.findMany({
+        where: { packageId: id, kind: "PURCHASE" },
+        select: { id: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      if (purchaseTxns.length === 1) {
+        await tx.packageTxn.update({
+          where: { id: purchaseTxns[0].id },
+          data: { deltaAmount: paidAmount },
+        });
+      }
+    }
   });
 
   return Response.json({ ok: true });

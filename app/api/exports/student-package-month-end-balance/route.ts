@@ -17,6 +17,19 @@ function choose(lang: Lang, en: string, zh: string) {
   return `${en} / ${zh}`;
 }
 
+function formatAmountBasisSource(lang: Lang, source: string) {
+  if (source === "PURCHASE_TXNS") {
+    return choose(lang, "Purchase ledger amounts", "购买流水金额");
+  }
+  if (source === "RECEIPTS") {
+    return choose(lang, "Receipt totals", "收据金额");
+  }
+  if (source === "PACKAGE_PAID_AMOUNT") {
+    return choose(lang, "Package paid amount", "课包付款金额");
+  }
+  return choose(lang, "No amount basis", "无金额基数");
+}
+
 export async function GET(req: Request) {
   await requireAdmin();
   const lang = await getLang();
@@ -57,7 +70,7 @@ export async function GET(req: Request) {
         minutesToHours(row.usedMinutes).toFixed(2),
         minutesToHours(row.remainingMinutes).toFixed(2),
         row.paidAmountBasis.toFixed(2),
-        row.paidAmountBasisSource,
+        formatAmountBasisSource(lang, row.paidAmountBasisSource),
         row.remainingAmount.toFixed(2),
       ]
         .map(csvEscape)

@@ -170,7 +170,12 @@ export async function POST(req: Request) {
           ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
           : undefined,
         txns: {
-          create: { kind: "PURCHASE", deltaMinutes: totalMinutes, note: packageNote || null },
+          create: {
+            kind: "PURCHASE",
+            deltaMinutes: totalMinutes,
+            deltaAmount: paidAmount,
+            note: packageNote || null,
+          },
         },
       },
       select: { id: true },
@@ -201,7 +206,12 @@ export async function POST(req: Request) {
         ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
         : undefined,
       txns: {
-        create: { kind: "PURCHASE", deltaMinutes: 0, note: packageNote || null },
+        create: {
+          kind: "PURCHASE",
+          deltaMinutes: 0,
+          deltaAmount: paidAmount,
+          note: packageNote || null,
+        },
       },
     },
     select: { id: true },

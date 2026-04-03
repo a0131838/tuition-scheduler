@@ -23,6 +23,11 @@ function fmtCount(v: number) {
   return `${v} cls`;
 }
 
+function fmtAmount(v: number | null | undefined) {
+  if (v == null || !Number.isFinite(Number(v))) return "-";
+  return `SGD ${Number(v).toFixed(2)}`;
+}
+
 export default async function PackageLedgerPage({
   params,
   searchParams,
@@ -128,6 +133,7 @@ export default async function PackageLedgerPage({
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Time", "时间")}</th>
               <th align="left">{t(lang, "Type", "类型")}</th>
+              <th align="left">{t(lang, "Amount", "金额")}</th>
               <th align="left">{t(lang, "Delta", "变动")}</th>
               <th align="left">{t(lang, "Balance", "余额")}</th>
               <th align="left">{t(lang, "Session", "课次")}</th>
@@ -140,6 +146,7 @@ export default async function PackageLedgerPage({
               <tr key={r.txn.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{formatBusinessDateTime(new Date(r.txn.createdAt))}</td>
                 <td>{r.txn.kind}</td>
+                <td>{r.txn.kind === "PURCHASE" ? fmtAmount(r.txn.deltaAmount) : "-"}</td>
                 <td style={{ color: r.txn.deltaMinutes < 0 ? "#b00" : "#0a0" }}>{fmtUnit(r.txn.deltaMinutes)}</td>
                 <td>{fmtUnit(r.running)}</td>
                 <td>
@@ -165,12 +172,14 @@ export default async function PackageLedgerPage({
                       txnId={r.txn.id}
                       txnKind={r.txn.kind}
                       defaultDelta={r.txn.deltaMinutes}
+                      defaultAmount={r.txn.deltaAmount}
                       defaultNote={abnormal.detailNote}
                       defaultReasonCategory={abnormal.reasonCategory}
                       defaultApprover={abnormal.approver}
                       defaultEvidenceNote={abnormal.evidenceNote}
                       labels={{
                         delta: t(lang, "Delta", "变动"),
+                        amount: t(lang, "Amount", "金额"),
                         note: t(lang, "Note", "备注"),
                         save: t(lang, "Save", "保存"),
                         saving: t(lang, "Saving...", "保存中..."),
