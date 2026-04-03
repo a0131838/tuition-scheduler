@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r06` (admin copy-clarity pass 4).
+- Current release line on this branch: `2026-04-03-r07` (button hierarchy and empty-state guidance pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r07 Deployed
+
+- Scope: improve button hierarchy and empty-state guidance on teacher payroll, expense claims, and receipt approvals.
+- Business impact:
+  - teacher payroll now uses a clearer no-data card that explicitly says no confirmation is needed yet and links directly back to dashboard or expense claims
+  - expense claims now distinguishes approve/pay actions from reject actions more clearly and explains what to do when review or payout queues are empty
+  - receipt approvals now distinguishes approve vs. reject vs. revoke actions more clearly and explains what to do when queue filters return nothing or no receipt is selected
+  - no payroll math, payroll confirmation rules, expense approval logic, receipt approval order, payout behavior, or attachment rules changed
+- Validation:
+  - `npm run build`
+  - logged-in local QA on `http://127.0.0.1:3335` confirmed the new empty-state cards and button hierarchy on `/teacher/payroll`, `/admin/expense-claims`, and `/admin/receipts-approvals`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed the same guidance and button hierarchy on the same three production pages
 
 ## 2026-04-03-r06 Deployed
 

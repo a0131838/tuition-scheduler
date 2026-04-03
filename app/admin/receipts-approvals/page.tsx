@@ -62,6 +62,33 @@ const RECEIPT_REJECT_REASON_OPTIONS = [
   "Incomplete details / 信息不完整",
 ] as const;
 
+const primaryButtonStyle = {
+  background: "#2563eb",
+  color: "#fff",
+  border: "1px solid #1d4ed8",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
+const secondaryButtonStyle = {
+  background: "#fff",
+  color: "#1d4ed8",
+  border: "1px solid #bfdbfe",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
+const dangerButtonStyle = {
+  background: "#b91c1c",
+  color: "#fff",
+  border: "1px solid #991b1b",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
 function canFinanceOperate(email: string, role: string) {
   const e = String(email ?? "").trim().toLowerCase();
   return role === "FINANCE" || e === SUPER_ADMIN_EMAIL;
@@ -2144,7 +2171,14 @@ export default async function ReceiptsApprovalsPage({
           </div>
         </details>
         {unifiedQueue.length === 0 ? (
-          <div style={{ color: "#666" }}>{t(lang, "No receipts found.", "暂无收据")}</div>
+          <div style={{ color: "#64748b", display: "grid", gap: 8, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No receipts match the current queue filters", "当前队列筛选下没有收据")}</div>
+            <div>{t(lang, "Try switching the queue bucket, clearing the queue filter, or opening a package workspace to create or repair receipts.", "可以切换队列分组、清空筛选，或进入课包工作区创建/修复收据。")}</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a>
+              <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
+            </div>
+          </div>
         ) : (
           <div className="receipt-queue-pane">
             <div style={{ color: "#64748b", fontSize: 12 }}>
@@ -2189,7 +2223,14 @@ export default async function ReceiptsApprovalsPage({
       <div className="receipt-actions" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>
         {!selectedRow ? (
-          <div style={{ color: "#666" }}>{t(lang, "Please select one row from the queue above.", "请从上方队列选择一条记录。")}</div>
+          <div style={{ color: "#64748b", display: "grid", gap: 8, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No receipt is selected yet", "当前还没有选中收据")}</div>
+            <div>{t(lang, "Choose one item from the queue above to review it here. If the queue is empty, switch filters or open the repair workspace.", "请先从上方队列选择一条；如果队列为空，可切换筛选或打开修复工作区。")}</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a>
+              <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
+            </div>
+          </div>
         ) : (
           <>
             <div style={{ marginBottom: 10, color: "#475569", fontSize: 13 }}>
@@ -2328,14 +2369,14 @@ export default async function ReceiptsApprovalsPage({
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{approveAndNextLabel}</button>
+                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
                   </form>
                   <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `parent-manager-${selectedRow.id}`)}
-                    <button type="submit">{rejectAndNextLabel}</button>
+                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -2346,14 +2387,14 @@ export default async function ReceiptsApprovalsPage({
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{approveAndNextLabel}</button>
+                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
                   </form>
                   <form action={financeRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="packageId" value={selectedRow.packageId} />
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `parent-finance-${selectedRow.id}`)}
-                    <button type="submit">{rejectAndNextLabel}</button>
+                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -2363,13 +2404,13 @@ export default async function ReceiptsApprovalsPage({
                   <form action={managerApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{approveAndNextLabel}</button>
+                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
                   </form>
                   <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `partner-manager-${selectedRow.id}`)}
-                    <button type="submit">{rejectAndNextLabel}</button>
+                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -2379,13 +2420,13 @@ export default async function ReceiptsApprovalsPage({
                   <form action={financeApprovePartnerReceiptAction}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit">{approveAndNextLabel}</button>
+                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
                   </form>
                   <form action={financeRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `partner-finance-${selectedRow.id}`)}
-                    <button type="submit">{rejectAndNextLabel}</button>
+                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
                   </form>
                 </div>
               ) : null}
@@ -2420,7 +2461,7 @@ export default async function ReceiptsApprovalsPage({
                       <input type="hidden" name="receiptId" value={selectedRow.id} />
                       <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                       <input name="reasonDetail" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
-                      <button type="submit">{t(lang, "Revoke to redo", "撤回重做")}</button>
+                      <button type="submit" style={secondaryButtonStyle}>{t(lang, "Revoke to redo", "撤回重做")}</button>
                     </form>
                   ) : null}
                   {canSuperRevoke && selectedRow.type === "PARTNER" ? (
@@ -2428,7 +2469,7 @@ export default async function ReceiptsApprovalsPage({
                       <input type="hidden" name="receiptId" value={selectedRow.id} />
                       <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                       <input name="reasonDetail" placeholder={t(lang, "Revoke reason (optional)", "撤回原因（可选）")} />
-                      <button type="submit">{t(lang, "Revoke to redo", "撤回重做")}</button>
+                      <button type="submit" style={secondaryButtonStyle}>{t(lang, "Revoke to redo", "撤回重做")}</button>
                     </form>
                   ) : null}
                 </div>

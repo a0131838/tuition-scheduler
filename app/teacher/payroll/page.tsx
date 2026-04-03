@@ -32,6 +32,15 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
   hour12: false,
 });
 
+const primaryButtonStyle = {
+  background: "#2563eb",
+  color: "#fff",
+  border: "1px solid #1d4ed8",
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 700,
+} as const;
+
 function pendingReasonLabel(lang: Awaited<ReturnType<typeof getLang>>, reason: string | null) {
   if (!reason) return "-";
   if (reason === "ATTENDANCE_MISSING") return t(lang, "No attendance record", "未点名");
@@ -287,11 +296,20 @@ export default async function TeacherPayrollSelfPage({
             <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
           </select>
         </label>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+        <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
       </form>
 
       {!publish ? (
-        <div style={{ color: "#666" }}>{t(lang, "Admin has not sent this month's payroll yet.", "管理端尚未发送该月工资单。")}</div>
+        <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 12, padding: 14, display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "This month's payroll is not available yet", "本月工资单暂未开放")}</div>
+          <div style={{ color: "#475569", fontSize: 14 }}>
+            {t(lang, "Admin has not sent this payroll yet. You do not need to confirm anything right now.", "管理端尚未发送这张工资单，你这边现在不需要确认操作。")}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/teacher">{t(lang, "Back to dashboard", "返回工作台")}</a>
+            <a href="/teacher/expense-claims">{t(lang, "Open expense claims", "打开报销")}</a>
+          </div>
+        </div>
       ) : (
         <TeacherPayrollBody
           teacherId={teacher.id}
@@ -479,7 +497,7 @@ async function TeacherPayrollBody({
           <form action={confirmPayrollAction} style={{ marginTop: 12 }}>
             <input type="hidden" name="month" value={month} />
             <input type="hidden" name="scope" value={scope} />
-            <button type="submit">{t(lang, "Confirm Payroll", "确认工资单")}</button>
+            <button type="submit" style={primaryButtonStyle}>{t(lang, "Confirm Payroll", "确认工资单")}</button>
           </form>
         ) : null}
       </div>
@@ -518,7 +536,10 @@ async function TeacherPayrollBody({
 
       <h3>{t(lang, "Combo Summary", "课程组合汇总")}</h3>
       {data.comboRows.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No data in this period.", "当前周期无数据。")}</div>
+        <div style={{ color: "#64748b", marginBottom: 16, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+          <div style={{ fontWeight: 700, color: "#334155", marginBottom: 4 }}>{t(lang, "No payroll combos in this period", "当前周期没有工资组合数据")}</div>
+          <div>{t(lang, "This usually means there are no counted teaching sessions in the selected month and scope.", "这通常表示在当前选择的月份和统计口径下，没有纳入计薪的教学课次。")}</div>
+        </div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
           <thead>
@@ -553,7 +574,10 @@ async function TeacherPayrollBody({
 
       <h3>{t(lang, "Session Details", "逐课次明细")}</h3>
       {data.sessionRows.length === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No session rows.", "暂无课次明细。")}</div>
+        <div style={{ color: "#64748b", padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+          <div style={{ fontWeight: 700, color: "#334155", marginBottom: 4 }}>{t(lang, "No session detail rows", "暂无课次明细")}</div>
+          <div>{t(lang, "The selected month and scope do not have session-level payroll rows to audit.", "当前选择的月份和统计口径下，没有可供核对的课次级工资明细。")}</div>
+        </div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>

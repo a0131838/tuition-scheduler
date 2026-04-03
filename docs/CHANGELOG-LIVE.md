@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r07
+
+- Release ID: `2026-04-03-r07`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: Improve button hierarchy and empty-state guidance on teacher payroll, expense claims, and receipt approvals so users can tell the next safe action faster without changing any workflow logic.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-button-hierarchy-and-empty-states.md`
+- Risk impact (if any): Low. This ship only changes button emphasis and empty-state guidance on three existing workbench pages; no payroll calculations, payroll confirmation rules, expense approval logic, receipt approval order, payout behavior, or attachment business rules changed.
+- Verification:
+  - `npm run build` passed
+  - logged-in local QA on `http://127.0.0.1:3335` confirmed:
+    - `/teacher/payroll?month=2099-01&scope=all` renders the new payroll-not-available empty state with direct dashboard and expense-claims links
+    - `/admin/expense-claims?status=SUBMITTED&month=1999-01` renders the new empty-queue guidance and `/admin/expense-claims` still renders the updated primary/danger action hierarchy
+    - `/admin/receipts-approvals?month=1999-01` renders the new empty-queue and no-selection guidance, and `/admin/receipts-approvals` still renders the updated primary/secondary/danger action hierarchy
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+  - logged-in live QA confirmed production shows the same new empty-state guidance and button hierarchy on the same three pages
+- Rollback point: previous production commit before `2026-04-03-r07`.
+
 ## 2026-04-03-r06
 
 - Release ID: `2026-04-03-r06`

@@ -41,6 +41,33 @@ import {
 
 const EXPENSE_FILTER_COOKIE = 'adminExpenseClaimsPreferredFilters';
 
+const primaryButtonStyle = {
+  background: '#2563eb',
+  color: '#fff',
+  border: '1px solid #1d4ed8',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontWeight: 700,
+} as const;
+
+const secondaryButtonStyle = {
+  background: '#fff',
+  color: '#1d4ed8',
+  border: '1px solid #bfdbfe',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontWeight: 700,
+} as const;
+
+const dangerButtonStyle = {
+  background: '#b91c1c',
+  color: '#fff',
+  border: '1px solid #991b1b',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontWeight: 700,
+} as const;
+
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
@@ -783,7 +810,7 @@ export default async function AdminExpenseClaimsPage({
               {t(lang, 'If left empty, the system falls back to the manager approver list.', '如果留空，系统将回退到通用经理审批人列表。')}
             </div>
             <div>
-              <button type="submit">{t(lang, 'Save approval config', '保存审批配置')}</button>
+              <button type="submit" style={secondaryButtonStyle}>{t(lang, 'Save approval config', '保存审批配置')}</button>
             </div>
           </form>
         ) : (
@@ -909,8 +936,13 @@ export default async function AdminExpenseClaimsPage({
                 })}
               </div>
             ) : (
-              <div style={{ padding: 16, color: '#64748b' }}>
-                {t(lang, 'No submitted claims match the current filters.', '当前筛选下没有待审批报销单。')}
+              <div style={{ padding: 16, color: '#64748b', display: 'grid', gap: 8 }}>
+                <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No submitted claims match the current filters', '当前筛选下没有待审批报销单')}</div>
+                <div>{t(lang, 'Try clearing the filters, checking another expense month, or opening the history list instead.', '可以尝试清空筛选、切换其他消费月份，或改看历史列表。')}</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+                  <a href={buildExpenseClaimsHref({ archived: '1' })}>{t(lang, 'Open history view', '打开历史视图')}</a>
+                </div>
               </div>
             )}
           </section>
@@ -1009,7 +1041,7 @@ export default async function AdminExpenseClaimsPage({
                         <input type="hidden" name="claimId" value={selectedReviewClaim.id} />
                         <input type="hidden" name="nextClaimId" value={nextReviewClaimId} />
                         <input type="hidden" name="reason" value="Missing attachment / 缺少附件" />
-                        <button type="submit" style={{ background: '#b91c1c' }}>
+                        <button type="submit" style={dangerButtonStyle}>
                           {nextReviewClaimId ? t(lang, 'Reject missing attachment & next', '按缺少附件驳回并下一条') : t(lang, 'Reject as missing attachment', '按缺少附件驳回')}
                         </button>
                       </form>
@@ -1029,7 +1061,7 @@ export default async function AdminExpenseClaimsPage({
                       <form action={approveAction}>
                         <input type="hidden" name="claimId" value={selectedReviewClaim.id} />
                         <input type="hidden" name="nextClaimId" value={nextReviewClaimId} />
-                        <button type="submit" style={{ width: '100%' }}>
+                        <button type="submit" style={{ ...primaryButtonStyle, width: '100%' }}>
                           {nextReviewClaimId ? t(lang, 'Approve & next', '批准并下一条') : t(lang, 'Approve', '批准')}
                         </button>
                       </form>
@@ -1042,7 +1074,7 @@ export default async function AdminExpenseClaimsPage({
                             <option key={option.value} value={`${option.value} / ${option.zh}`}>{option.value} / {option.zh}</option>
                           ))}
                         </select>
-                        <button type="submit">
+                        <button type="submit" style={dangerButtonStyle}>
                           {nextReviewClaimId ? t(lang, 'Reject & next', '驳回并下一条') : t(lang, 'Reject', '驳回')}
                         </button>
                       </form>
@@ -1053,8 +1085,13 @@ export default async function AdminExpenseClaimsPage({
                 )}
               </>
             ) : (
-              <div style={{ padding: '12px 0', color: '#64748b' }}>
-                {t(lang, 'No submitted claim is selected. Adjust filters or choose a submitted item from the queue.', '当前没有选中的待审批报销单。你可以调整筛选，或从左侧队列选择一条。')}
+              <div style={{ padding: '12px 0', color: '#64748b', display: 'grid', gap: 8 }}>
+                <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No submitted claim is selected', '当前没有选中的待审批报销单')}</div>
+                <div>{t(lang, 'Choose one item from the left review queue. If the queue is empty, clear filters or move to history.', '请先从左侧待审批队列选择一条；如果队列为空，可清空筛选或切换到历史列表。')}</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+                  <a href={buildExpenseClaimsHref({ archived: '1' })}>{t(lang, 'Open history view', '打开历史视图')}</a>
+                </div>
               </div>
             )}
           </section>
@@ -1126,8 +1163,13 @@ export default async function AdminExpenseClaimsPage({
                   })}
                 </div>
               ) : (
-                <div style={{ padding: 16, color: '#64748b' }}>
-                  {t(lang, 'No approved unpaid claims match the current filters.', '当前筛选下没有已批未付报销单。')}
+                <div style={{ padding: 16, color: '#64748b', display: 'grid', gap: 8 }}>
+                  <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No approved unpaid groups match the current filters', '当前筛选下没有已批未付分组')}</div>
+                  <div>{t(lang, 'Try clearing filters, opening another batch month, or switching back to the submitted review queue.', '可以尝试清空筛选、切换其他付款批次月份，或回到待审批队列。')}</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+                    <a href={quickSubmittedHref}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</a>
+                  </div>
                 </div>
               )}
             </section>
@@ -1244,13 +1286,18 @@ export default async function AdminExpenseClaimsPage({
                           <input name="financeRemarks" placeholder={t(lang, 'Optional note for this payout batch', '这批付款的可选备注')} />
                         </label>
                       </div>
-                      <button type="submit">{t(lang, 'Mark selected paid', '标记选中已付款')}</button>
+                      <button type="submit" style={primaryButtonStyle}>{t(lang, 'Mark selected paid', '标记选中已付款')}</button>
                     </div>
                   </form>
                 </>
               ) : (
-                <div style={{ padding: '12px 0', color: '#64748b' }}>
-                  {t(lang, 'No approved unpaid group is selected. Adjust filters or choose a finance group from the queue.', '当前没有选中的已批未付分组。你可以调整筛选，或从左侧财务队列选择一组。')}
+                <div style={{ padding: '12px 0', color: '#64748b', display: 'grid', gap: 8 }}>
+                  <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No payout group is selected', '当前没有选中的付款分组')}</div>
+                  <div>{t(lang, 'Choose one finance group from the left queue. If nothing is waiting, clear filters or switch back to submitted review work.', '请先从左侧财务队列选择一组；如果当前没有待处理项，可清空筛选或回到待审批工作流。')}</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+                    <a href={quickSubmittedHref}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</a>
+                  </div>
                 </div>
               )}
             </section>
@@ -1391,7 +1438,7 @@ export default async function AdminExpenseClaimsPage({
           </div>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button type="submit">{t(lang, 'Apply', '应用')}</button>
+            <button type="submit" style={primaryButtonStyle}>{t(lang, 'Apply', '应用')}</button>
             <a href={exportHref}>{t(lang, 'Export CSV', '导出 CSV')}</a>
           </div>
         </form>
