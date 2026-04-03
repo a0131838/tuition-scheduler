@@ -234,16 +234,20 @@ async function runAutoFixNow(formData: FormData) {
 export default async function AdminTodosPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string }>;
+  searchParams?: Promise<{ clearDesk?: string; warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
-  const hasExplicitDeskContext = Boolean(
-    sp?.warnDays || sp?.warnMinutes || sp?.pastDays || sp?.showConfirmed === "1" || sp?.includeConflicts === "1"
-  );
+  const clearDesk = String(sp?.clearDesk ?? "").trim() === "1";
+  const hasWarnDaysParam = typeof sp?.warnDays === "string";
+  const hasWarnMinutesParam = typeof sp?.warnMinutes === "string";
+  const hasPastDaysParam = typeof sp?.pastDays === "string";
+  const hasShowConfirmedParam = typeof sp?.showConfirmed === "string";
+  const hasIncludeConflictsParam = typeof sp?.includeConflicts === "string";
+  const hasExplicitDeskContext = !clearDesk && (hasWarnDaysParam || hasWarnMinutesParam || hasPastDaysParam || hasShowConfirmedParam || hasIncludeConflictsParam);
   const cookieStore = await cookies();
-  const rememberedDesk = hasExplicitDeskContext
+  const rememberedDesk = hasExplicitDeskContext || clearDesk
     ? {
         warnDays: DEFAULT_WARN_DAYS,
         warnMinutes: DEFAULT_WARN_MINUTES,
@@ -253,17 +257,17 @@ export default async function AdminTodosPage({
         value: "",
       }
     : parseRememberedTodoDesk(cookieStore.get(TODO_DESK_COOKIE)?.value ?? "");
-  const warnDays = normalizeWarnDays(sp?.warnDays, hasExplicitDeskContext ? DEFAULT_WARN_DAYS : rememberedDesk.warnDays);
+  const warnDays = normalizeWarnDays(hasWarnDaysParam ? sp?.warnDays : undefined, hasExplicitDeskContext || clearDesk ? DEFAULT_WARN_DAYS : rememberedDesk.warnDays);
   const warnMinutes = normalizeWarnMinutes(
-    sp?.warnMinutes,
-    hasExplicitDeskContext ? DEFAULT_WARN_MINUTES : rememberedDesk.warnMinutes
+    hasWarnMinutesParam ? sp?.warnMinutes : undefined,
+    hasExplicitDeskContext || clearDesk ? DEFAULT_WARN_MINUTES : rememberedDesk.warnMinutes
   );
-  const pastDays = normalizePastDays(sp?.pastDays, hasExplicitDeskContext ? 30 : rememberedDesk.pastDays);
+  const pastDays = normalizePastDays(hasPastDaysParam ? sp?.pastDays : undefined, hasExplicitDeskContext || clearDesk ? 30 : rememberedDesk.pastDays);
   const pastPage = Math.max(1, toInt(sp?.pastPage, 1));
   const pastPageSize = 50;
-  const showConfirmed = hasExplicitDeskContext ? sp?.showConfirmed === "1" : rememberedDesk.showConfirmed;
-  const includeConflicts = hasExplicitDeskContext ? sp?.includeConflicts === "1" : rememberedDesk.includeConflicts;
-  const resumedRememberedDesk = !hasExplicitDeskContext && Boolean(rememberedDesk.value);
+  const showConfirmed = hasShowConfirmedParam ? sp?.showConfirmed === "1" : rememberedDesk.showConfirmed;
+  const includeConflicts = hasIncludeConflictsParam ? sp?.includeConflicts === "1" : rememberedDesk.includeConflicts;
+  const resumedRememberedDesk = !clearDesk && !hasExplicitDeskContext && Boolean(rememberedDesk.value);
   const rememberedDeskValue = (() => {
     const params = new URLSearchParams();
     if (warnDays !== DEFAULT_WARN_DAYS) params.set("warnDays", String(warnDays));
@@ -1024,7 +1028,7 @@ export default async function AdminTodosPage({
               )}
             </div>
           </div>
-          <a href="/admin/todos" style={{ fontWeight: 700 }}>
+          <a href="/admin/todos?clearDesk=1" style={{ fontWeight: 700 }}>
             {t(lang, "Back to default desk", "回到默认工作台")}
           </a>
         </div>
@@ -1845,7 +1849,5 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
-
 
 

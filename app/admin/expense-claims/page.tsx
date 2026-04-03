@@ -200,12 +200,22 @@ export default async function AdminExpenseClaimsPage({
   const params = (await searchParams) ?? {};
   const msg = typeof params.msg === 'string' ? params.msg : '';
   const err = typeof params.err === 'string' ? params.err : '';
-  const statusParam = typeof params.status === 'string' ? params.status : '';
-  const monthParam = typeof params.month === 'string' ? params.month : '';
-  const paymentBatchMonthParam = typeof params.paymentBatchMonth === 'string' ? params.paymentBatchMonth : '';
-  const expenseTypeParam = typeof params.expenseType === 'string' ? params.expenseType : '';
-  const currencyParam = typeof params.currency === 'string' ? params.currency : '';
-  const submitterQueryParam = typeof params.q === 'string' ? params.q : '';
+  const clearFilters = typeof params.clearFilters === 'string' ? params.clearFilters === '1' : false;
+  const hasStatusParam = typeof params.status === 'string';
+  const hasMonthParam = typeof params.month === 'string';
+  const hasPaymentBatchMonthParam = typeof params.paymentBatchMonth === 'string';
+  const hasExpenseTypeParam = typeof params.expenseType === 'string';
+  const hasCurrencyParam = typeof params.currency === 'string';
+  const hasSubmitterQueryParam = typeof params.q === 'string';
+  const hasApprovedUnpaidOnlyParam = typeof params.approvedUnpaidOnly === 'string';
+  const hasArchivedOnlyParam = typeof params.archived === 'string';
+  const hasAttachmentIssueOnlyParam = typeof params.attachmentIssueOnly === 'string';
+  const statusParam = hasStatusParam ? String(params.status ?? '') : '';
+  const monthParam = hasMonthParam ? String(params.month ?? '') : '';
+  const paymentBatchMonthParam = hasPaymentBatchMonthParam ? String(params.paymentBatchMonth ?? '') : '';
+  const expenseTypeParam = hasExpenseTypeParam ? String(params.expenseType ?? '') : '';
+  const currencyParam = hasCurrencyParam ? String(params.currency ?? '') : '';
+  const submitterQueryParam = hasSubmitterQueryParam ? String(params.q ?? '') : '';
   const selectedClaimIdParam = typeof params.claimId === 'string' ? params.claimId : '';
   const selectedFinanceGroupKeyParam = typeof params.financeGroup === 'string' ? params.financeGroup : '';
   const repairReturnMode =
@@ -215,19 +225,20 @@ export default async function AdminExpenseClaimsPage({
   const repairReturnClaimId = typeof params.repairReturnClaimId === 'string' ? params.repairReturnClaimId : '';
   const repairReturnFinanceGroup = typeof params.repairReturnFinanceGroup === 'string' ? params.repairReturnFinanceGroup : '';
   const repairReturnConfirmed = typeof params.repairReturn === 'string' ? params.repairReturn === '1' : false;
-  const approvedUnpaidOnlyParam = typeof params.approvedUnpaidOnly === 'string' ? params.approvedUnpaidOnly === '1' : false;
-  const archivedOnlyParam = typeof params.archived === 'string' ? params.archived === '1' : false;
-  const attachmentIssueOnlyParam = typeof params.attachmentIssueOnly === 'string' ? params.attachmentIssueOnly === '1' : false;
+  const approvedUnpaidOnlyParam = hasApprovedUnpaidOnlyParam ? params.approvedUnpaidOnly === '1' : false;
+  const archivedOnlyParam = hasArchivedOnlyParam ? params.archived === '1' : false;
+  const attachmentIssueOnlyParam = hasAttachmentIssueOnlyParam ? params.attachmentIssueOnly === '1' : false;
   const canResumeRememberedFilters =
-    !statusParam &&
-    !monthParam &&
-    !paymentBatchMonthParam &&
-    !expenseTypeParam &&
-    !currencyParam &&
-    !submitterQueryParam &&
-    !approvedUnpaidOnlyParam &&
-    !archivedOnlyParam &&
-    !attachmentIssueOnlyParam &&
+    !clearFilters &&
+    !hasStatusParam &&
+    !hasMonthParam &&
+    !hasPaymentBatchMonthParam &&
+    !hasExpenseTypeParam &&
+    !hasCurrencyParam &&
+    !hasSubmitterQueryParam &&
+    !hasApprovedUnpaidOnlyParam &&
+    !hasArchivedOnlyParam &&
+    !hasAttachmentIssueOnlyParam &&
     !selectedClaimIdParam &&
     !selectedFinanceGroupKeyParam &&
     !repairReturnMode &&
@@ -250,15 +261,15 @@ export default async function AdminExpenseClaimsPage({
         attachmentIssueOnly: false,
         value: '',
       };
-  const statusFilter = statusParam ? normalizeExpenseStatus(statusParam) : rememberedFilters.status;
-  const monthFilter = monthParam || rememberedFilters.month;
-  const paymentBatchMonthFilter = paymentBatchMonthParam || rememberedFilters.paymentBatchMonth;
-  const expenseTypeFilter = expenseTypeParam || rememberedFilters.expenseType;
-  const currencyFilter = currencyParam || rememberedFilters.currency;
-  const submitterQuery = submitterQueryParam || rememberedFilters.q;
-  const approvedUnpaidOnly = approvedUnpaidOnlyParam || rememberedFilters.approvedUnpaidOnly;
-  const archivedOnly = archivedOnlyParam || rememberedFilters.archived;
-  const attachmentIssueOnly = attachmentIssueOnlyParam || rememberedFilters.attachmentIssueOnly;
+  const statusFilter = hasStatusParam ? normalizeExpenseStatus(statusParam) : rememberedFilters.status;
+  const monthFilter = hasMonthParam ? monthParam : rememberedFilters.month;
+  const paymentBatchMonthFilter = hasPaymentBatchMonthParam ? paymentBatchMonthParam : rememberedFilters.paymentBatchMonth;
+  const expenseTypeFilter = hasExpenseTypeParam ? expenseTypeParam : rememberedFilters.expenseType;
+  const currencyFilter = hasCurrencyParam ? currencyParam : rememberedFilters.currency;
+  const submitterQuery = hasSubmitterQueryParam ? submitterQueryParam : rememberedFilters.q;
+  const approvedUnpaidOnly = hasApprovedUnpaidOnlyParam ? approvedUnpaidOnlyParam : rememberedFilters.approvedUnpaidOnly;
+  const archivedOnly = hasArchivedOnlyParam ? archivedOnlyParam : rememberedFilters.archived;
+  const attachmentIssueOnly = hasAttachmentIssueOnlyParam ? attachmentIssueOnlyParam : rememberedFilters.attachmentIssueOnly;
   const resumedRememberedFilters =
     canResumeRememberedFilters && Boolean(rememberedFilters.value);
   const canApprove = await canApproveExpense(user);
@@ -335,7 +346,7 @@ export default async function AdminExpenseClaimsPage({
     attachmentIssueOnly: '1',
   })}`;
   const attachmentHealthDeskHref = "/admin/recovery/uploads?source=expense";
-  const quickClearHref = '/admin/expense-claims';
+  const quickClearHref = '/admin/expense-claims?clearFilters=1';
   const hasAdvancedFilters =
     statusFilter !== 'ALL' ||
     Boolean(monthFilter) ||

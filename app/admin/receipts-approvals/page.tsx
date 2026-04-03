@@ -808,6 +808,7 @@ export default async function ReceiptsApprovalsPage({
   searchParams?: Promise<{
     msg?: string;
     err?: string;
+    clearQueue?: string;
     packageId?: string;
     month?: string;
     view?: string;
@@ -826,10 +827,15 @@ export default async function ReceiptsApprovalsPage({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
-  const monthParamRaw = sp?.month ? String(sp.month).trim() : "";
-  const viewParamRaw = sp?.view ? String(sp.view).trim() : "";
-  const queueFilterParamRaw = sp?.queueFilter ? String(sp.queueFilter).trim() : "";
-  const queueBucketParamRaw = sp?.queueBucket ? String(sp.queueBucket).trim() : "";
+  const clearQueue = String(sp?.clearQueue ?? "").trim() === "1";
+  const hasMonthParam = typeof sp?.month === "string";
+  const hasViewParam = typeof sp?.view === "string";
+  const hasQueueFilterParam = typeof sp?.queueFilter === "string";
+  const hasQueueBucketParam = typeof sp?.queueBucket === "string";
+  const monthParamRaw = hasMonthParam ? String(sp.month).trim() : "";
+  const viewParamRaw = hasViewParam ? String(sp.view).trim() : "";
+  const queueFilterParamRaw = hasQueueFilterParam ? String(sp.queueFilter).trim() : "";
+  const queueBucketParamRaw = hasQueueBucketParam ? String(sp.queueBucket).trim() : "";
   const stepRaw = String(sp?.step ?? "upload").trim().toLowerCase();
   const workflowStep = (["upload", "records", "create", "review"] as const).includes(stepRaw as any)
     ? (stepRaw as "upload" | "records" | "create" | "review")
@@ -840,11 +846,12 @@ export default async function ReceiptsApprovalsPage({
   const preferredPaymentRecordId = String(sp?.paymentRecordId ?? "").trim();
   const preferredInvoiceId = String(sp?.invoiceId ?? "").trim();
   const canResumeRememberedQueue =
+    !clearQueue &&
     !packageIdFilter &&
-    !monthParamRaw &&
-    !viewParamRaw &&
-    !queueFilterParamRaw &&
-    !queueBucketParamRaw &&
+    !hasMonthParam &&
+    !hasViewParam &&
+    !hasQueueFilterParam &&
+    !hasQueueBucketParam &&
     !String(sp?.step ?? "").trim() &&
     !selectedType &&
     !selectedId &&
@@ -854,16 +861,16 @@ export default async function ReceiptsApprovalsPage({
   const rememberedQueue = canResumeRememberedQueue
     ? parseRememberedReceiptsQueue(cookieStore.get(RECEIPTS_QUEUE_COOKIE)?.value ?? "")
     : { month: "", view: "ALL" as const, queueFilter: "ALL" as const, queueBucket: "ALL" as const, value: "" };
-  const monthFilter = monthParamRaw
+  const monthFilter = hasMonthParam
     ? (/^\d{4}-\d{2}$/.test(monthParamRaw) ? monthParamRaw : "")
     : rememberedQueue.month;
-  const viewMode = viewParamRaw
+  const viewMode = hasViewParam
     ? normalizeReceiptView(viewParamRaw.trim().toUpperCase())
     : rememberedQueue.view;
-  const queueFilter = queueFilterParamRaw
+  const queueFilter = hasQueueFilterParam
     ? normalizeReceiptQueueFilter(queueFilterParamRaw.trim().toUpperCase())
     : rememberedQueue.queueFilter;
-  const queueBucket = queueBucketParamRaw
+  const queueBucket = hasQueueBucketParam
     ? normalizeReceiptQueueBucket(queueBucketParamRaw.trim().toUpperCase())
     : rememberedQueue.queueBucket;
   const resumedRememberedQueue =
@@ -1409,7 +1416,7 @@ export default async function ReceiptsApprovalsPage({
               "已恢复你上次的收据队列；如果要回到默认队列，可直接用下方标签切回。"
             )}
           </div>
-          <a href="/admin/receipts-approvals">{t(lang, "Back to default queue", "回到默认队列")}</a>
+          <a href="/admin/receipts-approvals?clearQueue=1">{t(lang, "Back to default queue", "回到默认队列")}</a>
         </div>
       ) : null}
 
@@ -1498,7 +1505,7 @@ export default async function ReceiptsApprovalsPage({
               </select>
             </label>
             <button type="submit">{t(lang, "Filter", "筛选")}</button>
-            <a href="/admin/receipts-approvals">{t(lang, "Reset", "重置")}</a>
+            <a href="/admin/receipts-approvals?clearQueue=1">{t(lang, "Reset", "重置")}</a>
           </form>
           {packageIdFilter ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

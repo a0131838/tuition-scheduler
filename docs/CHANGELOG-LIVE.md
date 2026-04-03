@@ -2354,3 +2354,26 @@ This file is the single source of truth for what changed in production.
   - local mobile-width QA on `http://127.0.0.1:3330/teacher/expense-claims` confirmed no horizontal overflow on the shared teacher workbench shell
   - local mobile-width QA on `http://127.0.0.1:3330/admin/receipts-approvals` confirmed the quick package selector and receipt finance forms no longer overflow, and `scrollWidth === clientWidth`
 - Rollback point: previous production commit before `2026-04-03-r12`.
+
+## 2026-04-03-r19
+
+- Release ID: `2026-04-03-r19`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: audit and fix the remaining remembered-workbench pages so explicit blank filter submissions and reset links no longer revive stale remembered queue state.
+- Key files:
+  - `app/admin/students/page.tsx`
+  - `app/admin/feedbacks/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-remembered-filter-blank-param-audit.md`
+- Risk impact (if any): Low. This only changes remembered-filter resume rules and default reset links on workbench pages; no package, receipt, expense, settlement, todo, or student business logic changes.
+- Verification:
+  - `npm run build` passed
+  - production read-only QA confirmed explicit reset routes now bypass remembered state on `packages`, `students`, `expense-claims`, `receipts-approvals`, `partner-settlement`, and `todos`
+  - production read-only QA confirmed explicit blank query submissions such as `paid=` on packages and `q=` on packages no longer resurrect the previous remembered value
+- Rollback point: previous production commit before `2026-04-03-r19`.

@@ -108,6 +108,7 @@ export default async function StudentsPage({
   searchParams,
 }: {
   searchParams?: Promise<{
+    clearDesk?: string | string[];
     sourceChannelId?: string | string[];
     studentTypeId?: string | string[];
     q?: string | string[];
@@ -118,6 +119,11 @@ export default async function StudentsPage({
 }) {
   const lang = await getLang();
   const sp = await searchParams;
+  const clearDesk = first(sp?.clearDesk).trim() === "1";
+  const hasSourceChannelParam = typeof sp?.sourceChannelId !== "undefined";
+  const hasStudentTypeParam = typeof sp?.studentTypeId !== "undefined";
+  const hasQParam = typeof sp?.q !== "undefined";
+  const hasPageSizeParam = typeof sp?.pageSize !== "undefined";
   const sourceChannelId = first(sp?.sourceChannelId);
   const studentTypeId = first(sp?.studentTypeId);
   const qParam = first(sp?.q).trim();
@@ -126,7 +132,7 @@ export default async function StudentsPage({
   const requestedPageSize = first(sp?.pageSize).trim();
   const cookieStore = await cookies();
   const canResumeRememberedDesk =
-    !hasExplicitView && !sourceChannelId && !studentTypeId && !qParam && !requestedPageSize;
+    !clearDesk && !hasExplicitView && !hasSourceChannelParam && !hasStudentTypeParam && !hasQParam && !hasPageSizeParam;
   const rememberedDesk = canResumeRememberedDesk
     ? parseRememberedStudentDesk(cookieStore.get(STUDENT_VIEW_COOKIE)?.value ?? "")
     : {
@@ -137,9 +143,9 @@ export default async function StudentsPage({
         pageSize: "20",
         value: "",
       };
-  const q = qParam || rememberedDesk.q;
-  const resolvedSourceChannelId = sourceChannelId || rememberedDesk.sourceChannelId;
-  const resolvedStudentTypeId = studentTypeId || rememberedDesk.studentTypeId;
+  const q = hasQParam ? qParam : rememberedDesk.q;
+  const resolvedSourceChannelId = hasSourceChannelParam ? sourceChannelId : rememberedDesk.sourceChannelId;
+  const resolvedStudentTypeId = hasStudentTypeParam ? studentTypeId : rememberedDesk.studentTypeId;
   const view = hasExplicitView ? normalizeStudentView(requestedView) : rememberedDesk.view;
   const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
   const rememberedDeskValue = (() => {
@@ -148,14 +154,13 @@ export default async function StudentsPage({
     if (resolvedSourceChannelId) params.set("sourceChannelId", resolvedSourceChannelId);
     if (resolvedStudentTypeId) params.set("studentTypeId", resolvedStudentTypeId);
     if (q) params.set("q", q);
-    const normalizedPageSize = normalizeStudentPageSize(requestedPageSize || rememberedDesk.pageSize);
+    const normalizedPageSize = normalizeStudentPageSize(hasPageSizeParam ? requestedPageSize : rememberedDesk.pageSize);
     if (normalizedPageSize !== "20") params.set("pageSize", normalizedPageSize);
     return params.toString();
   })();
-  const hasExplicitContext =
-    hasExplicitView || Boolean(sourceChannelId || studentTypeId || qParam || requestedPageSize);
+  const hasExplicitContext = hasExplicitView || hasSourceChannelParam || hasStudentTypeParam || hasQParam || hasPageSizeParam;
   const requestedPage = Math.max(1, Number.parseInt(first(sp?.page) || "1", 10) || 1);
-  const pageSizeRaw = Number.parseInt(requestedPageSize || rememberedDesk.pageSize || "20", 10);
+  const pageSizeRaw = Number.parseInt(hasPageSizeParam ? requestedPageSize : rememberedDesk.pageSize || "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
   const { start: todayStart, end: todayEnd } = getSingaporeDayBounds();
 
@@ -401,7 +406,7 @@ export default async function StudentsPage({
             <option value="100">100 / {t(lang, "page", "页")}</option>
           </select>
           <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-          <a href="/admin/students">{t(lang, "Clear", "清除")}</a>
+          <a href="/admin/students?clearDesk=1">{t(lang, "Clear", "清除")}</a>
         </form>
       </details>
 
@@ -451,7 +456,7 @@ export default async function StudentsPage({
               )}
             </div>
           </div>
-          <a href="/admin/students" style={{ fontWeight: 700 }}>
+          <a href="/admin/students?clearDesk=1" style={{ fontWeight: 700 }}>
             {t(lang, "Back to default desk", "回到默认工作台")}
           </a>
         </div>

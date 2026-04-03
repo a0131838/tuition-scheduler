@@ -1262,3 +1262,17 @@
 - Validation:
   - `npm run build`
   - local mobile-width QA confirmed `scrollWidth === clientWidth` on `/teacher/payroll`, `/teacher/expense-claims`, and `/admin/receipts-approvals`
+
+## 2026-04-03-r19 Deployed
+
+- Scope: remember-filter blank-param audit and reset-link fix across the remaining high-frequency admin workbenches.
+- Business impact:
+  - `/admin/students` now treats `clearDesk=1` as an intentional reset, so `Clear` and `Back to default desk` no longer reopen the last remembered queue/filter state
+  - `/admin/expense-claims` now respects explicit blank submissions for status/month/type/currency/query/boolean queue toggles, and `Clear filters` now truly resets the workbench
+  - `/admin/receipts-approvals` now treats blank month/view/queue params as intentional input and uses `clearQueue=1` for reset links, so finance can get back to the default queue without remembered-state bounce-back
+  - `/admin/reports/partner-settlement` and `/admin/todos` now use explicit clear flags on their “back to default” shortcuts, so remembered month/panel/todo thresholds do not immediately resume after reset
+  - `/admin/feedbacks` now respects an explicit student-filter clear path instead of silently reviving the last remembered student scope
+  - no student filtering semantics, receipt approval logic, expense approval logic, settlement calculations, todo calculations, or remembered-state behavior on untouched pages changed
+- Validation:
+  - `npm run build`
+  - production read-only QA on the affected pages

@@ -443,6 +443,7 @@ export default async function PartnerSettlementPage({
   searchParams,
 }: {
   searchParams?: Promise<{
+    clearView?: string;
     month?: string;
     msg?: string;
     err?: string;
@@ -458,18 +459,23 @@ export default async function PartnerSettlementPage({
   const lang = await getLang();
   const sp = await searchParams;
   const defaultMonth = monthKey(new Date());
-  const monthParam = typeof sp?.month === "string" ? sp.month : "";
+  const clearView = String(sp?.clearView ?? "").trim() === "1";
+  const hasMonthParam = typeof sp?.month === "string";
+  const hasHistoryParam = typeof sp?.history === "string";
+  const hasPanelParam = typeof sp?.panel === "string";
+  const monthParam = hasMonthParam ? String(sp.month ?? "") : "";
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
   const focusType = sp?.focusType ?? "";
   const focusId = sp?.focusId ?? "";
-  const historyParam = typeof sp?.history === "string" ? sp.history : "";
-  const panelParam = typeof sp?.panel === "string" ? sp.panel : "";
+  const historyParam = hasHistoryParam ? String(sp.history ?? "") : "";
+  const panelParam = hasPanelParam ? String(sp.panel ?? "") : "";
   const settlementFlow = sp?.settlementFlow ?? "";
   const canResumeRememberedView =
-    !monthParam &&
-    !historyParam &&
-    !panelParam &&
+    !clearView &&
+    !hasMonthParam &&
+    !hasHistoryParam &&
+    !hasPanelParam &&
     !focusType &&
     !focusId &&
     !settlementFlow &&
@@ -484,9 +490,9 @@ export default async function PartnerSettlementPage({
         panel: "",
         value: "",
       };
-  const month = monthParam || rememberedView.month;
-  const historyFilter = historyParam ? normalizeSettlementHistory(historyParam) : rememberedView.history;
-  const openPanel = panelParam ? normalizeSettlementPanel(panelParam) : rememberedView.panel;
+  const month = hasMonthParam ? (parseMonth(monthParam) ? monthParam : defaultMonth) : rememberedView.month;
+  const historyFilter = hasHistoryParam ? normalizeSettlementHistory(historyParam) : rememberedView.history;
+  const openPanel = hasPanelParam ? normalizeSettlementPanel(panelParam) : rememberedView.panel;
   const resumedRememberedView = canResumeRememberedView && Boolean(rememberedView.value);
   const rememberedViewValue = (() => {
     const params = new URLSearchParams();
@@ -1122,7 +1128,7 @@ export default async function PartnerSettlementPage({
               "已恢复你上次的结算工作视图；如果要回到默认工作台，可直接使用右侧快捷入口。"
             )}
           </div>
-          <a href="/admin/reports/partner-settlement">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
+          <a href="/admin/reports/partner-settlement?clearView=1">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
         </div>
       ) : null}
       {schemaNotReady || err === "schema-not-ready" ? (

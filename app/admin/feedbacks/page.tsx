@@ -134,22 +134,26 @@ function isFinalTeacherFeedback(feedback: { isProxyDraft?: boolean | null; statu
 export default async function AdminFeedbacksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string; msg?: string; err?: string; studentId?: string; focusFeedbackId?: string; focusSessionId?: string; feedbackFlow?: string }>;
+  searchParams?: Promise<{ status?: string; msg?: string; err?: string; studentId?: string; focusFeedbackId?: string; focusSessionId?: string; feedbackFlow?: string; clearStudentFilter?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
 
   const sp = await searchParams;
-  const statusParam = typeof sp?.status === "string" ? sp.status : "";
+  const hasStatusParam = typeof sp?.status === "string";
+  const hasStudentIdParam = typeof sp?.studentId === "string";
+  const clearStudentFilter = String(sp?.clearStudentFilter ?? "").trim() === "1";
+  const statusParam = hasStatusParam ? String(sp.status ?? "") : "";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const studentIdParam = typeof sp?.studentId === "string" ? String(sp.studentId ?? "").trim() : "";
+  const studentIdParam = hasStudentIdParam ? String(sp.studentId ?? "").trim() : "";
   const focusFeedbackId = String(sp?.focusFeedbackId ?? "").trim();
   const focusSessionId = String(sp?.focusSessionId ?? "").trim();
   const feedbackFlow = String(sp?.feedbackFlow ?? "").trim();
   const canResumeRememberedQueue =
-    !statusParam &&
-    !studentIdParam &&
+    !clearStudentFilter &&
+    !hasStatusParam &&
+    !hasStudentIdParam &&
     !msg &&
     !err &&
     !focusFeedbackId &&
@@ -163,8 +167,8 @@ export default async function AdminFeedbacksPage({
         studentId: "",
         value: "",
       };
-  const status = statusParam ? normalizeFeedbackQueueStatus(statusParam) : rememberedQueue.status;
-  const studentId = studentIdParam || rememberedQueue.studentId;
+  const status = hasStatusParam ? normalizeFeedbackQueueStatus(statusParam) : rememberedQueue.status;
+  const studentId = hasStudentIdParam ? studentIdParam : rememberedQueue.studentId;
   const resumedRememberedQueue = canResumeRememberedQueue && Boolean(rememberedQueue.value);
   const rememberedQueueValue = (() => {
     const params = new URLSearchParams();
@@ -352,7 +356,7 @@ export default async function AdminFeedbacksPage({
       ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
       : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
   const defaultDeskHref = "/admin/feedbacks?status=missing";
-  const clearStudentFilterHref = tabHref(status);
+  const clearStudentFilterHref = `/admin/feedbacks?status=${encodeURIComponent(status)}&studentId=&clearStudentFilter=1`;
   const emptyFeedbackState =
     status === "pending"
       ? {
