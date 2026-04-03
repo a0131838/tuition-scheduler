@@ -129,7 +129,7 @@ export default async function TeacherFinalReportDetailPage({
     },
   });
 
-  if (!report || report.teacherId !== teacher.id || report.status === "EXEMPT") {
+  if (!report || report.teacherId !== teacher.id || report.status === "EXEMPT" || report.archivedAt) {
     return (
       <section style={emptyStateCardStyle}>
         <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
@@ -158,9 +158,9 @@ export default async function TeacherFinalReportDetailPage({
 
     const latest = await prisma.finalReport.findUnique({
       where: { id: reportId },
-      select: { status: true, submittedAt: true },
+      select: { status: true, submittedAt: true, archivedAt: true },
     });
-    if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT") {
+    if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT" || latest.archivedAt) {
       redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=locked`);
     }
 

@@ -97,6 +97,7 @@ export default async function TeacherFinalReportsPage() {
     where: {
       teacherId: teacher.id,
       status: { not: "EXEMPT" },
+      archivedAt: null,
     },
     include: {
       student: true,

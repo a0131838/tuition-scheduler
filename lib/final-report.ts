@@ -197,6 +197,7 @@ export async function loadFinalReportCandidates() {
         select: {
           teacherId: true,
           status: true,
+          archivedAt: true,
           createdAt: true,
         },
       },
@@ -218,14 +219,18 @@ export async function loadFinalReportCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED" | null;
       }
     >();
 
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT">();
+    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED">();
     for (const report of pkg.finalReports) {
       if (!report.teacherId) continue;
       if (latestReportByTeacher.has(report.teacherId)) continue;
+      if (report.archivedAt) {
+        latestReportByTeacher.set(report.teacherId, "ARCHIVED");
+        continue;
+      }
       if (
         report.status === "ASSIGNED" ||
         report.status === "SUBMITTED" ||
@@ -255,7 +260,7 @@ export async function loadFinalReportCandidates() {
     }
 
     const teacherOptions = Array.from(teacherMap.values())
-      .filter((opt) => opt.latestReportStatus !== "EXEMPT")
+      .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
       .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
     const topTeacher = teacherOptions[0] ?? null;
     if (!topTeacher) return null;
@@ -290,7 +295,7 @@ export async function loadFinalReportCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED" | null;
       }>;
     defaultTeacherId: string;
     defaultSubjectId: string | null;
@@ -306,7 +311,8 @@ export async function loadFinalReportCandidates() {
           opt.latestReportStatus === "ASSIGNED" ||
           opt.latestReportStatus === "SUBMITTED" ||
           opt.latestReportStatus === "FORWARDED" ||
-          opt.latestReportStatus === "EXEMPT"
+          opt.latestReportStatus === "EXEMPT" ||
+          opt.latestReportStatus === "ARCHIVED"
             ? opt.latestReportStatus
             : null,
       })),

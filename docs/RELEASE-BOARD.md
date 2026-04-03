@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r26` (midterm report exempt path).
+- Current release line on this branch: `2026-04-03-r27` (report archive path).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -75,6 +75,22 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - production read-only QA must confirm `/admin/reports/midterm` shows `Exempt`, candidate rows expose `Mark exempt`, and teacher `/teacher/midterm-reports` excludes exempt tasks
+
+## 2026-04-03-r27 Deployed
+
+- Scope: add an `Archive / 归档` layer to midterm and final reports so completed or exempt records can leave the active desks while staying recoverable.
+- Business impact:
+  - admin `Final Report Center` now supports `Archive / Restore` for delivered or exempt reports, and archiving revokes any active parent share link
+  - admin `Midterm Report Center` now supports `Archive / Restore` for forwarded/locked or exempt reports
+  - both report centers now expose an `Archived` filter so historical items can be reviewed without occupying the main workbench
+  - teacher `Final Reports` and `Midterm Reports` hide archived items by default, and archived detail pages can no longer be opened from teacher routes
+  - candidate loaders now keep archived teacher/package pairs out of assignment options so already-finished history does not keep resurfacing
+  - no report content, delivery workflow, finance logic, attendance, or package progress math changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm `/admin/reports/final` and `/admin/reports/midterm` show `Archived`, and teacher report lists still load without archived items in their active queues
 
 ## 2026-04-03-r18 Deployed
 

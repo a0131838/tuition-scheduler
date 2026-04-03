@@ -89,6 +89,7 @@ export default async function TeacherMidtermReportsPage() {
     where: {
       teacherId: teacher.id,
       status: { not: "EXEMPT" },
+      archivedAt: null,
     },
     include: {
       student: true,

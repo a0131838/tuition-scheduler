@@ -85,9 +85,10 @@ function normalizeView(raw: string) {
   if (value === "pending-delivery") return value;
   if (value === "delivered") return value;
   if (value === "exempt") return value;
+  if (value === "archived") return value;
   if (value === "shared") return value;
   if (value === "expired-shares") return value;
-  return "all";
+  return "active";
 }
 
 function shareDurationLabel(lang: "BILINGUAL" | "ZH" | "EN", days: number) {
@@ -444,6 +445,53 @@ async function disableFinalReportShare(formData: FormData) {
   redirect("/admin/reports/final?ok=share-disabled");
 }
 
+async function archiveFinalReport(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/final?err=missing");
+
+  const row = await prisma.finalReport.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true, deliveredAt: true, archivedAt: true, shareEnabledAt: true, shareRevokedAt: true },
+  });
+  if (!row || row.archivedAt || (row.status !== "EXEMPT" && !row.deliveredAt)) {
+    redirect("/admin/reports/final?err=status");
+  }
+
+  await prisma.finalReport.update({
+    where: { id: row.id },
+    data: {
+      archivedAt: new Date(),
+      archivedByUserId: user.id,
+      shareRevokedAt: row.shareEnabledAt && !row.shareRevokedAt ? new Date() : row.shareRevokedAt,
+    },
+  });
+
+  revalidatePath("/admin/reports/final");
+  revalidatePath("/teacher/final-reports");
+  redirect("/admin/reports/final?ok=archived");
+}
+
+async function restoreFinalReport(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/final?err=missing");
+
+  await prisma.finalReport.update({
+    where: { id: reportId },
+    data: {
+      archivedAt: null,
+      archivedByUserId: null,
+    },
+  });
+
+  revalidatePath("/admin/reports/final");
+  revalidatePath("/teacher/final-reports");
+  redirect("/admin/reports/final?ok=restored");
+}
+
 export default async function AdminFinalReportCenterPage({
   searchParams,
 }: {
@@ -468,6 +516,7 @@ export default async function AdminFinalReportCenterPage({
         package: true,
         deliveredByUser: { select: { name: true } },
         exemptedByUser: { select: { name: true } },
+        archivedByUser: { select: { name: true } },
       },
       orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
       take: 300,
@@ -477,6 +526,8 @@ export default async function AdminFinalReportCenterPage({
   const filteredReports = reports.filter((report) => {
     const hasActiveShare = isShareActive(report);
     const hasExpiredShare = isShareExpired(report);
+    if (view === "archived") return Boolean(report.archivedAt);
+    if (report.archivedAt) return false;
     if (view === "submitted") return report.status === "SUBMITTED";
     if (view === "pending-delivery") return !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED");
     if (view === "delivered") return Boolean(report.deliveredAt);
@@ -487,23 +538,25 @@ export default async function AdminFinalReportCenterPage({
   });
 
   const stats = {
-    total: reports.length,
-    submitted: reports.filter((report) => report.status === "SUBMITTED").length,
-    pendingDelivery: reports.filter((report) => !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED")).length,
-    delivered: reports.filter((report) => Boolean(report.deliveredAt)).length,
-    exempt: reports.filter((report) => report.status === "EXEMPT").length,
-    shared: reports.filter((report) => isShareActive(report)).length,
-    expiredShares: reports.filter((report) => isShareExpired(report)).length,
+    active: reports.filter((report) => !report.archivedAt).length,
+    submitted: reports.filter((report) => !report.archivedAt && report.status === "SUBMITTED").length,
+    pendingDelivery: reports.filter((report) => !report.archivedAt && !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED")).length,
+    delivered: reports.filter((report) => !report.archivedAt && Boolean(report.deliveredAt)).length,
+    exempt: reports.filter((report) => !report.archivedAt && report.status === "EXEMPT").length,
+    shared: reports.filter((report) => !report.archivedAt && isShareActive(report)).length,
+    expiredShares: reports.filter((report) => !report.archivedAt && isShareExpired(report)).length,
+    archived: reports.filter((report) => Boolean(report.archivedAt)).length,
   };
 
   const filterLinks = [
-    { key: "all", label: t(lang, "All reports", "全部报告"), count: stats.total },
+    { key: "active", label: t(lang, "Active reports", "当前报告"), count: stats.active },
     { key: "submitted", label: t(lang, "Submitted", "已提交"), count: stats.submitted },
     { key: "pending-delivery", label: t(lang, "Submitted not delivered", "已提交未交付"), count: stats.pendingDelivery },
     { key: "delivered", label: t(lang, "Delivered", "已交付"), count: stats.delivered },
     { key: "exempt", label: t(lang, "Exempt", "无需报告"), count: stats.exempt },
     { key: "shared", label: t(lang, "Share links active", "分享链接生效中"), count: stats.shared },
     { key: "expired-shares", label: t(lang, "Expired links", "已过期链接"), count: stats.expiredShares },
+    { key: "archived", label: t(lang, "Archived", "已归档"), count: stats.archived },
   ] as const;
 
   return (
@@ -545,6 +598,14 @@ export default async function AdminFinalReportCenterPage({
         <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Share link has been disabled.", "只读分享链接已停用。")}
         </div>
+      ) : ok === "archived" ? (
+        <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Report archived.", "报告已归档。")}
+        </div>
+      ) : ok === "restored" ? (
+        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Report restored to the active desk.", "报告已恢复到当前工作台。")}
+        </div>
       ) : null}
 
       {err ? (
@@ -565,12 +626,13 @@ export default async function AdminFinalReportCenterPage({
           gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
         }}
       >
-        <div><b>{t(lang, "Total reports", "全部报告")}</b><div style={{ fontSize: 24, fontWeight: 800 }}>{stats.total}</div></div>
+        <div><b>{t(lang, "Active reports", "当前报告")}</b><div style={{ fontSize: 24, fontWeight: 800 }}>{stats.active}</div></div>
         <div><b>{t(lang, "Submitted not delivered", "已提交未交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.pendingDelivery}</div></div>
         <div><b>{t(lang, "Delivered", "已交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#166534" }}>{stats.delivered}</div></div>
         <div><b>{t(lang, "Exempt", "无需报告")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#475569" }}>{stats.exempt}</div></div>
         <div><b>{t(lang, "Share links active", "分享链接生效中")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{stats.shared}</div></div>
         <div><b>{t(lang, "Expired links", "已过期链接")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.expiredShares}</div></div>
+        <div><b>{t(lang, "Archived", "已归档")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#475569" }}>{stats.archived}</div></div>
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -579,7 +641,7 @@ export default async function AdminFinalReportCenterPage({
           return (
             <a
               key={link.key}
-              href={link.key === "all" ? "/admin/reports/final" : `/admin/reports/final?view=${encodeURIComponent(link.key)}`}
+              href={link.key === "active" ? "/admin/reports/final" : `/admin/reports/final?view=${encodeURIComponent(link.key)}`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -702,8 +764,10 @@ export default async function AdminFinalReportCenterPage({
                   ? t(lang, "No exempt final reports yet.", "暂时还没有无需报告的结课报告记录。")
                 : view === "shared"
                   ? t(lang, "No active share links yet.", "当前还没有生效中的分享链接。")
-                  : view === "expired-shares"
-                    ? t(lang, "No expired share links right now.", "当前还没有已过期的分享链接。")
+                : view === "expired-shares"
+                  ? t(lang, "No expired share links right now.", "当前还没有已过期的分享链接。")
+                  : view === "archived"
+                    ? t(lang, "No archived final reports yet.", "暂时还没有已归档的结课报告。")
                   : t(lang, "No report records yet.", "暂无结课报告记录。")}
           </div>
         ) : (
@@ -765,6 +829,12 @@ export default async function AdminFinalReportCenterPage({
                           {report.exemptReason ? ` · ${exemptReasonLabel(lang, report.exemptReason)}` : ""}
                         </div>
                       ) : null}
+                      {report.archivedAt ? (
+                        <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Archived", "已归档")}: {formatBusinessDateTime(new Date(report.archivedAt))}
+                          {report.archivedByUser?.name ? ` (${report.archivedByUser.name})` : ""}
+                        </div>
+                      ) : null}
                       {report.shareEnabledAt ? (
                         <div style={{ color: hasActiveShare ? "#1d4ed8" : hasExpiredShare ? "#b45309" : "#64748b", fontSize: 12, marginTop: 4 }}>
                           {hasActiveShare
@@ -811,6 +881,12 @@ export default async function AdminFinalReportCenterPage({
                           {report.status !== "EXEMPT" ? (
                             <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
                           ) : null}
+                          {report.archivedAt ? (
+                            <form action={restoreFinalReport}>
+                              <input type="hidden" name="reportId" value={report.id} />
+                              <button type="submit">{t(lang, "Restore", "恢复")}</button>
+                            </form>
+                          ) : null}
                           {report.status === "SUBMITTED" ? (
                             <form action={markFinalReportForwarded}>
                               <input type="hidden" name="reportId" value={report.id} />
@@ -819,7 +895,7 @@ export default async function AdminFinalReportCenterPage({
                           ) : null}
                         </div>
 
-                        {!report.deliveredAt && report.status !== "EXEMPT" ? (
+                        {!report.archivedAt && !report.deliveredAt && report.status !== "EXEMPT" ? (
                           <form action={exemptFinalReport} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <input type="hidden" name="reportId" value={report.id} />
                             <select name="exemptReason" defaultValue="OPS_NOT_REQUIRED">
@@ -831,7 +907,7 @@ export default async function AdminFinalReportCenterPage({
                           </form>
                         ) : null}
 
-                        {(report.status === "SUBMITTED" || report.status === "FORWARDED") ? (
+                        {!report.archivedAt && (report.status === "SUBMITTED" || report.status === "FORWARDED") ? (
                           <form action={markFinalReportDelivered} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <input type="hidden" name="reportId" value={report.id} />
                             <select name="deliveryChannel" defaultValue={report.deliveryChannel ?? "WECHAT"}>
@@ -852,9 +928,19 @@ export default async function AdminFinalReportCenterPage({
                         ) : null}
 
                         <div style={{ display: "grid", gap: 6 }}>
+                          {!report.archivedAt && (report.status === "EXEMPT" || Boolean(report.deliveredAt)) ? (
+                            <form action={archiveFinalReport}>
+                              <input type="hidden" name="reportId" value={report.id} />
+                              <button type="submit">{t(lang, "Archive", "归档")}</button>
+                            </form>
+                          ) : null}
                           {report.status === "EXEMPT" ? (
                             <div style={{ fontSize: 12, color: "#64748b" }}>
                               {t(lang, "Exempt reports stay out of teacher and parent follow-up queues.", "已豁免的报告不会再进入老师或家长跟进流程。")}
+                            </div>
+                          ) : report.archivedAt ? (
+                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                              {t(lang, "Archived reports stay out of the active desk until restored.", "已归档的报告会从当前工作台隐藏，直到被恢复。")}
                             </div>
                           ) : hasActiveShare ? (
                             <>

@@ -251,6 +251,53 @@ async function markForwardedAndLock(formData: FormData) {
   redirect("/admin/reports/midterm?ok=forwarded");
 }
 
+async function archiveMidtermReport(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/midterm?err=missing");
+
+  const row = await prisma.midtermReport.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true, reportJson: true, archivedAt: true },
+  });
+  if (!row || row.archivedAt) redirect("/admin/reports/midterm?err=status");
+
+  const locked = readForwardMeta(row.reportJson).locked;
+  if (!(locked || row.status === "EXEMPT")) redirect("/admin/reports/midterm?err=status");
+
+  await prisma.midtermReport.update({
+    where: { id: row.id },
+    data: {
+      archivedAt: new Date(),
+      archivedByUserId: user.id,
+    },
+  });
+
+  revalidatePath("/admin/reports/midterm");
+  revalidatePath("/teacher/midterm-reports");
+  redirect("/admin/reports/midterm?ok=archived");
+}
+
+async function restoreMidtermReport(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  if (!reportId) redirect("/admin/reports/midterm?err=missing");
+
+  await prisma.midtermReport.update({
+    where: { id: reportId },
+    data: {
+      archivedAt: null,
+      archivedByUserId: null,
+    },
+  });
+
+  revalidatePath("/admin/reports/midterm");
+  revalidatePath("/teacher/midterm-reports");
+  redirect("/admin/reports/midterm?ok=restored");
+}
+
 export default async function AdminMidtermReportCenterPage({
   searchParams,
 }: {
@@ -261,19 +308,34 @@ export default async function AdminMidtermReportCenterPage({
   const sp = await searchParams;
   const ok = String(sp.ok ?? "");
   const err = String(sp.err ?? "");
-  const view = String(sp.view ?? "").trim().toLowerCase() === "exempt" ? "exempt" : "all";
+  const rawView = String(sp.view ?? "").trim().toLowerCase();
+  const view = rawView === "exempt" ? "exempt" : rawView === "archived" ? "archived" : "active";
 
   const [candidates, reports] = await Promise.all([
     loadMidtermCandidates(),
     prisma.midtermReport.findMany({
-      include: { student: true, teacher: true, course: true, subject: true, exemptedByUser: { select: { name: true } } },
+      include: {
+        student: true,
+        teacher: true,
+        course: true,
+        subject: true,
+        exemptedByUser: { select: { name: true } },
+        archivedByUser: { select: { name: true } },
+      },
       orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
       take: 300,
     }),
   ]);
 
-  const filteredReports = reports.filter((r) => (view === "exempt" ? r.status === "EXEMPT" : true));
-  const exemptCount = reports.filter((r) => r.status === "EXEMPT").length;
+  const filteredReports = reports.filter((r) => {
+    if (view === "archived") return Boolean(r.archivedAt);
+    if (r.archivedAt) return false;
+    if (view === "exempt") return r.status === "EXEMPT";
+    return true;
+  });
+  const activeCount = reports.filter((r) => !r.archivedAt).length;
+  const exemptCount = reports.filter((r) => !r.archivedAt && r.status === "EXEMPT").length;
+  const archivedCount = reports.filter((r) => Boolean(r.archivedAt)).length;
 
   return (
     <div>
@@ -301,6 +363,14 @@ export default async function AdminMidtermReportCenterPage({
       ) : ok === "exempt" ? (
         <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Marked as exempt from midterm-report follow-up.", "已标记为无需中期报告。")}
+        </div>
+      ) : ok === "archived" ? (
+        <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Report archived.", "报告已归档。")}
+        </div>
+      ) : ok === "restored" ? (
+        <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Report restored to the active desk.", "报告已恢复到当前工作台。")}
         </div>
       ) : null}
 
@@ -413,15 +483,15 @@ export default async function AdminMidtermReportCenterPage({
             minHeight: 36,
             padding: "0 12px",
             borderRadius: 999,
-            border: view === "all" ? "1px solid #2563eb" : "1px solid #cbd5e1",
-            background: view === "all" ? "#eff6ff" : "#ffffff",
-            color: view === "all" ? "#1d4ed8" : "#0f172a",
+            border: view === "active" ? "1px solid #2563eb" : "1px solid #cbd5e1",
+            background: view === "active" ? "#eff6ff" : "#ffffff",
+            color: view === "active" ? "#1d4ed8" : "#0f172a",
             fontWeight: 700,
             textDecoration: "none",
           }}
         >
-          {t(lang, "All reports", "全部报告")}
-          <span style={{ fontSize: 12, color: view === "all" ? "#1d4ed8" : "#64748b" }}>{reports.length}</span>
+          {t(lang, "Active reports", "当前报告")}
+          <span style={{ fontSize: 12, color: view === "active" ? "#1d4ed8" : "#64748b" }}>{activeCount}</span>
         </a>
         <a
           href="/admin/reports/midterm?view=exempt"
@@ -442,13 +512,36 @@ export default async function AdminMidtermReportCenterPage({
           {t(lang, "Exempt", "无需报告")}
           <span style={{ fontSize: 12, color: view === "exempt" ? "#1d4ed8" : "#64748b" }}>{exemptCount}</span>
         </a>
+        <a
+          href="/admin/reports/midterm?view=archived"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            minHeight: 36,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: view === "archived" ? "1px solid #2563eb" : "1px solid #cbd5e1",
+            background: view === "archived" ? "#eff6ff" : "#ffffff",
+            color: view === "archived" ? "#1d4ed8" : "#0f172a",
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          {t(lang, "Archived", "已归档")}
+          <span style={{ fontSize: 12, color: view === "archived" ? "#1d4ed8" : "#64748b" }}>{archivedCount}</span>
+        </a>
       </div>
 
       <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
         <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Midterm Report Records", "中期报告记录")}</div>
         {filteredReports.length === 0 ? (
           <div style={{ color: "#999" }}>
-            {view === "exempt" ? t(lang, "No exempt midterm reports yet.", "暂时还没有无需中期报告的记录。") : t(lang, "No report records.", "暂无报告记录。")}
+            {view === "exempt"
+              ? t(lang, "No exempt midterm reports yet.", "暂时还没有无需中期报告的记录。")
+              : view === "archived"
+                ? t(lang, "No archived midterm reports yet.", "暂时还没有已归档的中期报告。")
+                : t(lang, "No report records.", "暂无报告记录。")}
           </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -482,10 +575,22 @@ export default async function AdminMidtermReportCenterPage({
                           {r.exemptReason ? ` · ${exemptReasonLabel(lang, r.exemptReason)}` : ""}
                         </div>
                       ) : null}
+                      {r.archivedAt ? (
+                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Archived", "已归档")}: {formatBusinessDateTime(new Date(r.archivedAt))}
+                          {r.archivedByUser?.name ? ` (${r.archivedByUser.name})` : ""}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: 6 }}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                         {r.status !== "EXEMPT" ? <a href={`/api/admin/midterm-reports/${encodeURIComponent(r.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a> : null}
+                        {r.archivedAt ? (
+                          <form action={restoreMidtermReport}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <button type="submit">{t(lang, "Restore", "恢复")}</button>
+                          </form>
+                        ) : null}
                         {forwardMeta.locked ? (
                           <span style={{ color: "#1d4ed8", fontSize: 12 }}>
                             {t(lang, "Forwarded", "已转发")}: {forwardMeta.forwardedAt ? formatBusinessDateTime(new Date(forwardMeta.forwardedAt)) : "-"} ({forwardMeta.forwardedByName || "-"})
@@ -496,7 +601,7 @@ export default async function AdminMidtermReportCenterPage({
                             <button type="submit">{t(lang, "Mark Forwarded + Lock", "标记已转发并锁定")}</button>
                           </form>
                         ) : null}
-                        {!forwardMeta.locked && r.status !== "EXEMPT" ? (
+                        {!r.archivedAt && !forwardMeta.locked && r.status !== "EXEMPT" ? (
                           <form action={exemptMidtermReport} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <input type="hidden" name="reportId" value={r.id} />
                             <select name="exemptReason" defaultValue="OPS_NOT_REQUIRED">
@@ -505,6 +610,12 @@ export default async function AdminMidtermReportCenterPage({
                               ))}
                             </select>
                             <button type="submit">{t(lang, "Mark exempt", "标记无需报告")}</button>
+                          </form>
+                        ) : null}
+                        {!r.archivedAt && (forwardMeta.locked || r.status === "EXEMPT") ? (
+                          <form action={archiveMidtermReport}>
+                            <input type="hidden" name="reportId" value={r.id} />
+                            <button type="submit">{t(lang, "Archive", "归档")}</button>
                           </form>
                         ) : null}
                       </div>

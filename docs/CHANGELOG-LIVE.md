@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r27
+
+- Release ID: `2026-04-03-r27`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add an `Archive / 归档` layer to Midterm Reports and Final Reports so completed or exempt report records can leave the active desks without losing audit history.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260404004000_add_report_archive_metadata/migration.sql`
+  - `lib/final-report.ts`
+  - `lib/midterm-report.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `app/admin/reports/midterm/page.tsx`
+  - `app/teacher/final-reports/page.tsx`
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `app/teacher/midterm-reports/page.tsx`
+  - `app/teacher/midterm-reports/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-report-archive-phase-1.md`
+- Risk impact (if any): Medium-low. This ship adds report archive metadata and new admin-only archive/restore transitions, but it does not change report submission content, parent delivery/share logic, finance flows, attendance/package math, or existing exempt semantics.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm admin `Final Report Center` and `Midterm Report Center` show `Archived`, and teacher report lists continue hiding archived items
+- Rollback point: previous production commit before `2026-04-03-r27`.
+
 ## 2026-04-03-r26
 
 - Release ID: `2026-04-03-r26`

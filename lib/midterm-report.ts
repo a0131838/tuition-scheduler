@@ -320,6 +320,7 @@ export async function loadMidtermCandidates() {
         select: {
           teacherId: true,
           status: true,
+          archivedAt: true,
           createdAt: true,
         },
       },
@@ -344,14 +345,18 @@ export async function loadMidtermCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED" | null;
       }
     >();
 
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "EXEMPT">();
+    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED">();
     for (const report of pkg.midtermReports) {
       if (!report.teacherId) continue;
       if (latestReportByTeacher.has(report.teacherId)) continue;
+      if (report.archivedAt) {
+        latestReportByTeacher.set(report.teacherId, "ARCHIVED");
+        continue;
+      }
       if (report.status === "ASSIGNED" || report.status === "SUBMITTED" || report.status === "EXEMPT") {
         latestReportByTeacher.set(report.teacherId, report.status);
       }
@@ -376,7 +381,7 @@ export async function loadMidtermCandidates() {
     }
 
     const teacherOptions = Array.from(teacherMap.values())
-      .filter((opt) => opt.latestReportStatus !== "EXEMPT")
+      .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
       .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
     const topTeacher = teacherOptions[0] ?? null;
     if (!topTeacher) return null;
@@ -413,7 +418,7 @@ export async function loadMidtermCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED" | null;
       }>;
     defaultTeacherId: string;
     defaultSubjectId: string | null;
@@ -426,7 +431,10 @@ export async function loadMidtermCandidates() {
       teacherOptions: row.teacherOptions.map((opt) => ({
         ...opt,
         latestReportStatus:
-          opt.latestReportStatus === "ASSIGNED" || opt.latestReportStatus === "SUBMITTED" || opt.latestReportStatus === "EXEMPT"
+          opt.latestReportStatus === "ASSIGNED" ||
+          opt.latestReportStatus === "SUBMITTED" ||
+          opt.latestReportStatus === "EXEMPT" ||
+          opt.latestReportStatus === "ARCHIVED"
             ? opt.latestReportStatus
             : null,
       })),
