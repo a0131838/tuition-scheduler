@@ -75,6 +75,7 @@
   - `npm run build`
 - Runtime:
   - production read-only QA on the affected pages
+  - post-deploy startup check confirmed `local / origin / server = 90df145` after the release-doc sync pass
 - Key manual checks:
   - default reset links no longer resume remembered state immediately
   - explicit blank submissions no longer restore old remembered values

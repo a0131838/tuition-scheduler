@@ -1277,3 +1277,4 @@
   - `npm run build`
   - production read-only QA on the affected pages
   - post-deploy startup check confirmed `local / origin / server = bd33bef`
+  - release docs synced again in a follow-up docs-only pass to satisfy the release gate

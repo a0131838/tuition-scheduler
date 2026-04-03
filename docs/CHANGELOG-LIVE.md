@@ -2377,4 +2377,5 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed explicit reset routes now bypass remembered state on `packages`, `students`, `expense-claims`, `receipts-approvals`, `partner-settlement`, and `todos`
   - production read-only QA confirmed explicit blank query submissions such as `paid=` on packages and `q=` on packages no longer resurrect the previous remembered value
   - post-deploy startup check confirmed `local / origin / server = bd33bef`
+  - release docs were synced in a follow-up docs-only commit so the release gate stays aligned with production
 - Rollback point: previous production commit before `2026-04-03-r19`.
