@@ -1108,6 +1108,7 @@ export default async function StudentDetailPage({
   const monthParam = sp?.month ?? "";
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
+  const calendarOpen = sp?.calendarOpen === "1";
   const focus = sp?.focus ?? "";
   const attendanceOpen = focus === "attendance";
 
@@ -1764,7 +1765,7 @@ export default async function StudentDetailPage({
           </div>
         </div>
 
-        <details id="calendar-tools" open={Boolean(quickOpen)} style={{ marginBottom: 14 }}>
+        <details id="calendar-tools" open={Boolean(quickOpen || calendarOpen)} style={{ marginBottom: 14 }}>
             <summary style={{ fontWeight: 700 }}>{t(lang, "Planning tools & calendar", "排课工具与日历")}</summary>
             <div
               style={{
@@ -1796,11 +1797,25 @@ export default async function StudentDetailPage({
               </form>
             </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-        <a href={buildStudentDetailHref(studentId, new URLSearchParams({ month: monthLabel(prevMonth) }), "#calendar-tools", "#calendar-tools")}>
+        <a
+          href={buildStudentDetailHref(
+            studentId,
+            new URLSearchParams({ month: monthLabel(prevMonth), calendarOpen: "1" }),
+            "#calendar-tools",
+            "#calendar-tools"
+          )}
+        >
           &lt;&lt; {tl(lang, "Prev Month")}
         </a>
         <b>{monthLabel(monthDate)}</b>
-        <a href={buildStudentDetailHref(studentId, new URLSearchParams({ month: monthLabel(nextMonth) }), "#calendar-tools", "#calendar-tools")}>
+        <a
+          href={buildStudentDetailHref(
+            studentId,
+            new URLSearchParams({ month: monthLabel(nextMonth), calendarOpen: "1" }),
+            "#calendar-tools",
+            "#calendar-tools"
+          )}
+        >
           {tl(lang, "Next Month")} &gt;&gt;
         </a>
       </div>

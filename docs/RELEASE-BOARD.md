@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r01` (student detail section-return fix).
+- Current release line on this branch: `2026-04-04-r02` (student detail calendar open hotfix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -107,6 +107,18 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
+
+## 2026-04-04-r02 Ready
+
+- Scope: keep `Planning tools & calendar / 排课工具与日历` expanded when admins click `Prev Month / Next Month` inside student detail.
+- Business impact:
+  - student-detail month navigation now preserves both the `#calendar-tools` hash and the expanded `<details>` state
+  - admins can keep moving month-by-month in the calendar without reopening the planning section every time
+  - no quick scheduling, attendance, deduction, package, or billing behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm `Prev Month / Next Month` keeps the calendar section expanded
 
 ## 2026-04-03-r18 Deployed
 
