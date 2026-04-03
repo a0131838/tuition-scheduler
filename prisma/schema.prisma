@@ -467,6 +467,7 @@ model FinalReport {
   deliveryChannel   String?
   shareToken        String?           @unique
   shareEnabledAt    DateTime?
+  shareExpiresAt    DateTime?
   shareRevokedAt    DateTime?
   reportPeriodLabel String?
   finalLevel        String?

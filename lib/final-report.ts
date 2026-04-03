@@ -16,8 +16,11 @@ export const FINAL_REPORT_DELIVERY_CHANNELS = [
   "OTHER",
 ] as const;
 
+export const FINAL_REPORT_SHARE_DURATION_DAYS = [7, 30, 90] as const;
+
 export type FinalReportRecommendation = (typeof FINAL_REPORT_RECOMMENDATIONS)[number] | "";
 export type FinalReportDeliveryChannel = (typeof FINAL_REPORT_DELIVERY_CHANNELS)[number] | "";
+export type FinalReportShareDurationDays = (typeof FINAL_REPORT_SHARE_DURATION_DAYS)[number];
 
 export type FinalReportDraft = {
   initialGoals: string;
@@ -119,6 +122,14 @@ export function parseFinalReportMeta(raw: unknown): FinalReportMeta {
 
 export function parseDeliveryChannel(value: unknown): FinalReportDeliveryChannel {
   return asDeliveryChannel(value);
+}
+
+export function parseShareDurationDays(value: unknown): FinalReportShareDurationDays {
+  const n = Number(String(value ?? "").trim());
+  if (FINAL_REPORT_SHARE_DURATION_DAYS.includes(n as FinalReportShareDurationDays)) {
+    return n as FinalReportShareDurationDays;
+  }
+  return 30;
 }
 
 function safePositiveInt(v: number | null | undefined) {

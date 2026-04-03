@@ -1326,3 +1326,18 @@
   - production read-only QA on `/admin/reports/final`
   - production read-only QA on `/api/admin/final-reports/[id]/pdf`
   - production read-only QA on a tokenized `/final-report/[id]?token=...` share page
+
+## 2026-04-03-r23 Deployed
+
+- Scope: add expiry windows to final-report parent share links.
+- Business impact:
+  - `/admin/reports/final` now lets operations choose a 7 / 30 / 90 day validity window when creating or refreshing a parent share link
+  - active share links now display when they expire, and expired links are surfaced separately from active ones
+  - `/final-report/[id]?token=...` now blocks expired links the same way it blocks missing or revoked links
+  - no teacher final-report content, delivery-record semantics, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/admin/reports/final`
+  - production read-only QA on `/final-report/[id]?token=invalid`

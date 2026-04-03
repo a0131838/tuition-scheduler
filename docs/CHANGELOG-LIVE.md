@@ -2453,3 +2453,27 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed `/api/admin/final-reports/[id]/pdf` returns `200` with `application/pdf`
   - production read-only QA confirmed a tokenized `/final-report/[id]?token=...` page renders as a parent-safe read-only report
 - Rollback point: previous production commit before `2026-04-03-r22`.
+
+## 2026-04-03-r23
+
+- Release ID: `2026-04-03-r23`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add expiry windows to final-report parent share links so operations can issue links with controlled validity and the public page can reject expired tokens cleanly.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403225500_add_final_report_share_expiry/migration.sql`
+  - `lib/final-report.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `app/final-report/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-report-share-expiry.md`
+- Risk impact (if any): Low. This release only refines share-link validity windows and the public read-only guard page; it does not change teacher report content, delivery records, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed `/admin/reports/final` shows share-duration choices and expiry labels
+  - production read-only QA confirmed `/final-report/[id]?token=invalid` still rejects invalid or expired links with the unavailable message
+- Rollback point: previous production commit before `2026-04-03-r23`.

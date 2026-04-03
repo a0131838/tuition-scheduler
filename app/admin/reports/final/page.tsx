@@ -3,10 +3,12 @@ import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
   FINAL_REPORT_DELIVERY_CHANNELS,
+  FINAL_REPORT_SHARE_DURATION_DAYS,
   loadFinalReportCandidates,
   parseDeliveryChannel,
   parseFinalReportDraft,
   parseFinalReportMeta,
+  parseShareDurationDays,
 } from "@/lib/final-report";
 import { getLang, t } from "@/lib/i18n";
 import { formatMinutesToHours } from "@/lib/midterm-report";
@@ -61,7 +63,35 @@ function normalizeView(raw: string) {
   if (value === "pending-delivery") return value;
   if (value === "delivered") return value;
   if (value === "shared") return value;
+  if (value === "expired-shares") return value;
   return "all";
+}
+
+function shareDurationLabel(lang: "BILINGUAL" | "ZH" | "EN", days: number) {
+  if (lang === "ZH") return `${days}天有效`;
+  if (lang === "EN") return `${days}-day expiry`;
+  return `${days}-day expiry / ${days}天有效`;
+}
+
+function isShareActive(report: {
+  shareToken: string | null;
+  shareEnabledAt: Date | null;
+  shareExpiresAt: Date | null;
+  shareRevokedAt: Date | null;
+}) {
+  if (!report.shareToken || !report.shareEnabledAt || report.shareRevokedAt) return false;
+  if (!report.shareExpiresAt) return true;
+  return report.shareExpiresAt.getTime() > Date.now();
+}
+
+function isShareExpired(report: {
+  shareToken: string | null;
+  shareEnabledAt: Date | null;
+  shareExpiresAt: Date | null;
+  shareRevokedAt: Date | null;
+}) {
+  if (!report.shareToken || !report.shareEnabledAt || report.shareRevokedAt || !report.shareExpiresAt) return false;
+  return report.shareExpiresAt.getTime() <= Date.now();
 }
 
 async function resolveOriginFromHeaders() {
@@ -217,6 +247,7 @@ async function enableFinalReportShare(formData: FormData) {
   "use server";
   await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
+  const shareDurationDays = parseShareDurationDays(formData.get("shareDurationDays"));
   if (!reportId) redirect("/admin/reports/final?err=missing");
 
   const row = await prisma.finalReport.findUnique({
@@ -225,11 +256,15 @@ async function enableFinalReportShare(formData: FormData) {
   });
   if (!row || row.status === "ASSIGNED") redirect("/admin/reports/final?err=status");
 
+  const now = new Date();
+  const shareExpiresAt = new Date(now.getTime() + shareDurationDays * 24 * 60 * 60 * 1000);
+
   await prisma.finalReport.update({
     where: { id: reportId },
     data: {
       shareToken: crypto.randomBytes(24).toString("hex"),
-      shareEnabledAt: new Date(),
+      shareEnabledAt: now,
+      shareExpiresAt,
       shareRevokedAt: null,
     },
   });
@@ -285,11 +320,13 @@ export default async function AdminFinalReportCenterPage({
   ]);
 
   const filteredReports = reports.filter((report) => {
-    const hasActiveShare = Boolean(report.shareToken && report.shareEnabledAt && !report.shareRevokedAt);
+    const hasActiveShare = isShareActive(report);
+    const hasExpiredShare = isShareExpired(report);
     if (view === "submitted") return report.status === "SUBMITTED";
     if (view === "pending-delivery") return !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED");
     if (view === "delivered") return Boolean(report.deliveredAt);
     if (view === "shared") return hasActiveShare;
+    if (view === "expired-shares") return hasExpiredShare;
     return true;
   });
 
@@ -298,7 +335,8 @@ export default async function AdminFinalReportCenterPage({
     submitted: reports.filter((report) => report.status === "SUBMITTED").length,
     pendingDelivery: reports.filter((report) => !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED")).length,
     delivered: reports.filter((report) => Boolean(report.deliveredAt)).length,
-    shared: reports.filter((report) => report.shareToken && report.shareEnabledAt && !report.shareRevokedAt).length,
+    shared: reports.filter((report) => isShareActive(report)).length,
+    expiredShares: reports.filter((report) => isShareExpired(report)).length,
   };
 
   const filterLinks = [
@@ -307,6 +345,7 @@ export default async function AdminFinalReportCenterPage({
     { key: "pending-delivery", label: t(lang, "Submitted not delivered", "已提交未交付"), count: stats.pendingDelivery },
     { key: "delivered", label: t(lang, "Delivered", "已交付"), count: stats.delivered },
     { key: "shared", label: t(lang, "Share links active", "分享链接生效中"), count: stats.shared },
+    { key: "expired-shares", label: t(lang, "Expired links", "已过期链接"), count: stats.expiredShares },
   ] as const;
 
   return (
@@ -368,6 +407,7 @@ export default async function AdminFinalReportCenterPage({
         <div><b>{t(lang, "Submitted not delivered", "已提交未交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.pendingDelivery}</div></div>
         <div><b>{t(lang, "Delivered", "已交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#166534" }}>{stats.delivered}</div></div>
         <div><b>{t(lang, "Share links active", "分享链接生效中")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{stats.shared}</div></div>
+        <div><b>{t(lang, "Expired links", "已过期链接")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.expiredShares}</div></div>
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -474,6 +514,8 @@ export default async function AdminFinalReportCenterPage({
                 ? t(lang, "No delivered final reports yet.", "暂时还没有已交付的结课报告。")
                 : view === "shared"
                   ? t(lang, "No active share links yet.", "当前还没有生效中的分享链接。")
+                  : view === "expired-shares"
+                    ? t(lang, "No expired share links right now.", "当前还没有已过期的分享链接。")
                   : t(lang, "No report records yet.", "暂无结课报告记录。")}
           </div>
         ) : (
@@ -495,7 +537,8 @@ export default async function AdminFinalReportCenterPage({
                   recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
                 });
                 const meta = parseFinalReportMeta(report.reportJson);
-                const hasActiveShare = Boolean(report.shareToken && report.shareEnabledAt && !report.shareRevokedAt);
+                const hasActiveShare = isShareActive(report);
+                const hasExpiredShare = isShareExpired(report);
                 const canShare = report.status === "SUBMITTED" || report.status === "FORWARDED";
                 const shareHref = hasActiveShare
                   ? `${origin}/final-report/${encodeURIComponent(report.id)}?token=${encodeURIComponent(report.shareToken!)}`
@@ -525,6 +568,17 @@ export default async function AdminFinalReportCenterPage({
                           {t(lang, "Delivered", "已交付")}: {formatBusinessDateTime(new Date(report.deliveredAt))}
                           {report.deliveredByUser?.name ? ` (${report.deliveredByUser.name})` : ""}
                           {report.deliveryChannel ? ` · ${deliveryChannelLabel(lang, report.deliveryChannel)}` : ""}
+                        </div>
+                      ) : null}
+                      {report.shareEnabledAt ? (
+                        <div style={{ color: hasActiveShare ? "#1d4ed8" : hasExpiredShare ? "#b45309" : "#64748b", fontSize: 12, marginTop: 4 }}>
+                          {hasActiveShare
+                            ? t(lang, "Share active until", "分享链接有效至")
+                            : hasExpiredShare
+                              ? t(lang, "Share expired at", "分享链接已于以下时间过期")
+                              : t(lang, "Share disabled at", "分享链接已停用")}
+                          {": "}
+                          {formatBusinessDateTime(new Date((report.shareExpiresAt ?? report.shareRevokedAt ?? report.shareEnabledAt)!))}
                         </div>
                       ) : null}
                     </td>
@@ -585,10 +639,20 @@ export default async function AdminFinalReportCenterPage({
                                 {t(lang, "Parent read-only link", "家长只读链接")}:{" "}
                                 <a href={shareHref} target="_blank" rel="noreferrer">{t(lang, "Open share page", "打开分享页")}</a>
                               </div>
+                              {report.shareExpiresAt ? (
+                                <div style={{ fontSize: 12, color: "#1d4ed8" }}>
+                                  {t(lang, "Link expires", "链接过期时间")}: {formatBusinessDateTime(new Date(report.shareExpiresAt))}
+                                </div>
+                              ) : null}
                               <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>{shareHref}</div>
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                                 <form action={enableFinalReportShare}>
                                   <input type="hidden" name="reportId" value={report.id} />
+                                  <select name="shareDurationDays" defaultValue="30">
+                                    {FINAL_REPORT_SHARE_DURATION_DAYS.map((days) => (
+                                      <option key={days} value={String(days)}>{shareDurationLabel(lang, days)}</option>
+                                    ))}
+                                  </select>
                                   <button type="submit">{t(lang, "Refresh share link", "刷新分享链接")}</button>
                                 </form>
                                 <form action={disableFinalReportShare}>
@@ -600,6 +664,11 @@ export default async function AdminFinalReportCenterPage({
                           ) : canShare ? (
                             <form action={enableFinalReportShare}>
                               <input type="hidden" name="reportId" value={report.id} />
+                              <select name="shareDurationDays" defaultValue="30">
+                                {FINAL_REPORT_SHARE_DURATION_DAYS.map((days) => (
+                                  <option key={days} value={String(days)}>{shareDurationLabel(lang, days)}</option>
+                                ))}
+                              </select>
                               <button type="submit">{t(lang, "Create parent share link", "生成家长分享链接")}</button>
                             </form>
                           ) : (

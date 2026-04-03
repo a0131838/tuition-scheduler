@@ -104,7 +104,8 @@ export default async function FinalReportSharePage({
     Boolean(token) &&
     report!.shareToken === token &&
     Boolean(report!.shareEnabledAt) &&
-    !report!.shareRevokedAt;
+    !report!.shareRevokedAt &&
+    (!report!.shareExpiresAt || report!.shareExpiresAt.getTime() > Date.now());
 
   if (!shareIsValid || !report) {
     return (
@@ -145,6 +146,7 @@ export default async function FinalReportSharePage({
         </div>
         <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.7 }}>
           {t(lang, "Shared on", "分享时间")} {formatBusinessDateTime(new Date(report.shareEnabledAt!))}
+          {report.shareExpiresAt ? ` · ${t(lang, "Valid until", "有效至")} ${formatBusinessDateTime(new Date(report.shareExpiresAt))}` : ""}
           {report.deliveredAt ? ` · ${t(lang, "Delivered", "已交付")} ${formatBusinessDateOnly(new Date(report.deliveredAt))}` : ""}
           {report.deliveryChannel ? ` · ${deliveryChannelLabel(lang, report.deliveryChannel)}` : ""}
         </div>
