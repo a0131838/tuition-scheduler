@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r14
+
+- Release ID: `2026-04-03-r14`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add an inline preview table and summary cards to the new student-billing month-end balance report so finance can inspect the report before exporting CSV.
+- Key files:
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-student-package-month-end-balance-preview.md`
+- Risk impact (if any): Low. This ship only adds a read-only preview on the same month-end balance basis already used by the export; package deductions, receipts, invoices, approvals, and the CSV calculation path remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - page-level verification confirmed the month-end report block now renders summary cards plus the first 12 rows inline while keeping the same export link
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returned `200`
+- Rollback point: previous production commit before `2026-04-03-r14`.
+
 ## 2026-04-03-r13
 
 - Release ID: `2026-04-03-r13`
