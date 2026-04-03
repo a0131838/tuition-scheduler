@@ -1052,3 +1052,14 @@
   - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
 - Validation:
   - `npm run build`
+
+## 2026-04-03-r03 Deployed
+
+- Scope: first admin-side copy-clarity pass on high-frequency workbench pages.
+- Business impact:
+  - receipt approval now uses clearer `proof or file issues` wording instead of the slash-heavy label that looked like two competing filters
+  - partner settlement now uses more natural invoice wording such as `Grouped by invoice number`, `Invoice line count`, and `Invoice created`
+  - the admin students workbench search box now reads more naturally as `Search name, school, notes, or ID`
+  - no receipt queue behavior, partner-settlement logic, invoicing logic, or student-search behavior changed
+- Validation:
+  - `npm run build`

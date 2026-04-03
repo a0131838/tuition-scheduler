@@ -1400,7 +1400,7 @@ export default async function ReceiptsApprovalsPage({
           {packageWorkspaceMode ? t(lang, "Package workspace active", "当前课包工作区已启用") : t(lang, "Working from global queue", "当前从全局队列工作")}
         </span>
         <span style={{ ...tagStyle(queueFileIssueCount > 0 ? "err" : "muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
-          {t(lang, "Proof / file issues", "凭证 / 文件异常")}: {queueFileIssueCount}
+          {t(lang, "Proof or file issues", "凭证或文件异常")}: {queueFileIssueCount}
         </span>
       </div>
 
@@ -1431,7 +1431,7 @@ export default async function ReceiptsApprovalsPage({
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+          <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof or file issues", "查看凭证或文件异常")}</a>
           <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
           {queueFilter !== "ALL" ? <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a> : null}
         </div>
@@ -2120,7 +2120,7 @@ export default async function ReceiptsApprovalsPage({
                 ["REJECTED", t(lang, "Rejected", "已驳回")],
                 ["COMPLETED", t(lang, "Completed", "已完成")],
                 ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
-                ["FILE_ISSUE", t(lang, "Proof / File Issues", "凭证 / 文件异常")],
+                ["FILE_ISSUE", t(lang, "Proof or file issues", "凭证或文件异常")],
                 ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
               ] as const).map(([filter, label]) => (
                 <a
@@ -2231,7 +2231,7 @@ export default async function ReceiptsApprovalsPage({
                     : t(lang, "This receipt has no usable payment proof yet. Open the fix tools to upload or relink a proof before continuing review.", "当前收据还没有可用的缴费凭证。请先打开修复工具上传或重新关联凭证，再继续审核。")}
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof / file issues", "查看凭证 / 文件异常")}</a>
+                  <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open proof or file issues", "查看凭证或文件异常")}</a>
                   <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
                   {selectedRow.type === "PARENT" ? (
                     <>

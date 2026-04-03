@@ -371,7 +371,7 @@ export default async function StudentsPage({
             type="text"
             name="q"
             defaultValue={q}
-            placeholder={t(lang, "Search name/school/notes/ID", "搜索姓名/学校/备注/ID")}
+            placeholder={t(lang, "Search name, school, notes, or ID", "搜索姓名、学校、备注或ID")}
             style={{ minWidth: 240 }}
           />
           <select name="view" defaultValue={view}>

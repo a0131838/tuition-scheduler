@@ -1134,7 +1134,7 @@ export default async function PartnerSettlementPage({
       {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
       {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
       {err === "invalid-settlement" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement record not found.", "未找到结算记录。")}</div> : null}
-      {err === "settlement-invoiced" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Cannot revert: this settlement is already linked to an invoice.", "不能撤回：该结算记录已关联Invoice。")}</div> : null}
+      {err === "settlement-invoiced" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Cannot revert: this settlement is already linked to an invoice.", "不能撤回：该结算记录已关联发票。")}</div> : null}
       {err === "manager-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter manager reject reason.", "请填写管理驳回原因。")}</div> : null}
       {err === "finance-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
       {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
@@ -1207,7 +1207,7 @@ export default async function PartnerSettlementPage({
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
             <div style={{ color: "#6b7280", fontSize: 12 }}>{t(lang, "Invoiced Records", "已开票记录")}</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>{recentInvoiceStats.length}</div>
-            <div style={{ color: "#334155" }}>{t(lang, "Grouped by invoice", "按Invoice聚合")}</div>
+            <div style={{ color: "#334155" }}>{t(lang, "Grouped by invoice number", "按发票号聚合")}</div>
             <div style={{ marginTop: 8 }}>
               <a href={`${buildPageHref({ panel: "history" })}#billing-history`} style={{ fontWeight: 700 }}>
                 {t(lang, "Open history", "打开历史")}
@@ -1655,7 +1655,7 @@ export default async function PartnerSettlementPage({
           <div style={{ color: "#999" }}>{t(lang, "No invoiced records yet.", "暂无已开票记录。")}</div>
         ) : (
           <>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced records (grouped by Invoice No.)", "已开票记录（按Invoice聚合）")}</div>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Invoiced records (grouped by invoice number)", "已开票记录（按发票号聚合）")}</div>
             <div style={{ overflowX: "auto" }}>
               <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
                 <thead>
@@ -1666,7 +1666,7 @@ export default async function PartnerSettlementPage({
                     <th align="left">{t(lang, "Month", "月份")}</th>
                     <th align="left">{t(lang, "Students", "学生列表")}</th>
                     <th align="left">{t(lang, "Settlement Items", "结算项")}</th>
-                    <th align="left">{t(lang, "Invoice Lines", "Invoice条目")}</th>
+                    <th align="left">{t(lang, "Invoice line count", "发票条目数")}</th>
                     <th align="left">{t(lang, "Hours", "课时")}</th>
                     <th align="left">{t(lang, "Amount", "金额")}</th>
                     <th align="left">{t(lang, "Status", "状态")}</th>
@@ -1690,7 +1690,7 @@ export default async function PartnerSettlementPage({
                       <td>{r.itemCount}</td>
                       <td>{r.totalHours}</td>
                       <td>{r.totalAmount}</td>
-                      <td><span style={r.receiptNo ? donePill : pendingPill}>{r.receiptNo ? t(lang, "Receipt Created", "已创建收据") : t(lang, "Invoiced", "已开Invoice")}</span></td>
+                      <td><span style={r.receiptNo ? donePill : pendingPill}>{r.receiptNo ? t(lang, "Receipt created", "已创建收据") : t(lang, "Invoice created", "已开发票")}</span></td>
                     </tr>
                   ))}
                 </tbody>

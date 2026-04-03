@@ -2004,3 +2004,22 @@ This file is the single source of truth for what changed in production.
   - local source audit confirmed duplicated labels such as `What happens next`, `Current owner`, `Timeline`, stage pills, and owner labels now use normal `t(lang, en, zh)` strings instead of pre-built bilingual text
   - the current local and production teacher account still lands on the payroll empty state for this month, so this release was verified through source-path cleanup plus build output rather than a live sent-payroll record
 - Rollback point: previous production commit before `2026-04-03-r02`.
+
+## 2026-04-03-r03
+
+- Release ID: `2026-04-03-r03`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make a first admin-side copy-clarity pass on high-frequency workbench pages to reduce slash-heavy or mixed-language labels.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-1.md`
+- Risk impact (if any): Low. This is an admin-side copy cleanup only; receipt queue behavior, settlement/invoice behavior, and student-search behavior remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - targeted copy audit confirmed the updated wording for receipt file-issue links, partner-settlement invoice grouping/status labels, and the student search placeholder
+- Rollback point: previous production commit before `2026-04-03-r03`.
