@@ -92,7 +92,7 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - production read-only QA must confirm `/admin/reports/final` and `/admin/reports/midterm` show `Archived`, and teacher report lists still load without archived items in their active queues
 
-## 2026-04-04-r01 Ready
+## 2026-04-04-r01 Deployed
 
 - Scope: keep admin student-detail actions inside the section the operator was already working in instead of returning to the top of the page after refreshes or same-page redirects.
 - Business impact:
@@ -104,8 +104,9 @@
   - no student data rules, scheduling logic, attendance logic, deduction logic, package logic, or billing behavior changed
 - Validation:
   - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm student-detail refresh actions land back in the working section instead of page top
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
+  - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
+  - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
 
 ## 2026-04-03-r18 Deployed
 

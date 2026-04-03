@@ -49,4 +49,4 @@ Fix the admin student detail page so section-level actions return the user to th
 ## Release
 
 - Release line: `2026-04-04-r01`
-- Status: `READY`
+- Status: `LIVE`
