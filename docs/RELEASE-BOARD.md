@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-02`
+- Last checked: `2026-04-03`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-02-r15` (packages filter-memory follow-up).
+- Current release line on this branch: `2026-04-03-r04` (admin/teacher copy-clarity pass 2).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r04 Ready
+
+- Scope: run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing.
+- Business impact:
+  - teacher ticket filters, proof-file labels, and action-error banners read more naturally
+  - admin payroll queue labels, scope notes, and jump shortcuts are clearer for operators
+  - partner billing tabs, payment/receipt form labels, and export headings are easier to scan
+  - no ticket workflow rules, payroll math or approval behavior, partner billing flows, or storage logic changed
+- Validation:
+  - `npm run build` pending
+  - fresh local logged-in QA pending
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` pending
+  - logged-in live QA pending
 
 ## 2026-04-02-r15 Deployed
 

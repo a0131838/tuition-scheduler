@@ -475,7 +475,7 @@ export default async function TeacherPayrollPage({
       queueLabel = t(lang, "Ready to send", "可发送");
     } else if (!publish.confirmedAt) {
       queueKey = "teacherConfirm";
-      queueLabel = t(lang, "Waiting teacher confirm", "待老师确认");
+      queueLabel = t(lang, "Waiting for teacher confirmation", "等待老师确认");
     } else if (!managerAllConfirmed) {
       queueKey = "manager";
       queueLabel = t(lang, "Waiting manager approval", "待管理审批");
@@ -484,7 +484,7 @@ export default async function TeacherPayrollPage({
       queueLabel = t(lang, "Waiting finance confirm", "待财务确认");
     } else if (!publish.financePaidAt) {
       queueKey = "financePaid";
-      queueLabel = t(lang, "Ready to mark paid", "可标记发薪");
+      queueLabel = t(lang, "Ready for payout", "可继续发薪");
     }
     return {
       row,
@@ -553,7 +553,7 @@ export default async function TeacherPayrollPage({
       <div style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
-            {t(lang, "Open detail", "打开详情")}
+            {t(lang, "Open teacher detail", "打开老师详情")}
           </a>
           {queueKey === "send" && !isFinanceOnlyUser ? (
             <form action={sendPayrollAction}>
@@ -584,7 +584,7 @@ export default async function TeacherPayrollPage({
               <input type="hidden" name="month" value={month} />
               <input type="hidden" name="scope" value={scope} />
               <input type="hidden" name="teacherId" value={row.teacherId} />
-              <button type="submit">{t(lang, "Mark paid", "标记发薪")}</button>
+              <button type="submit">{t(lang, "Record payout", "记录发薪")}</button>
             </form>
           ) : null}
         </div>
@@ -671,22 +671,22 @@ export default async function TeacherPayrollPage({
             <label>
               {t(lang, "Scope", "统计口径")}:
               <select name="scope" defaultValue={scope} style={{ marginLeft: 6 }}>
-                <option value="all">{t(lang, "All Scheduled Sessions (exclude fully cancelled)", "全部排课课次（排除整节取消）")}</option>
-                <option value="completed">{t(lang, "Completed Only (Marked + Feedback)", "仅已完成(已点名+已反馈)")}</option>
+                <option value="all">{t(lang, "All scheduled sessions (except fully cancelled)", "全部排课课次（不含整节取消）")}</option>
+                <option value="completed">{t(lang, "Completed only (attendance marked + feedback submitted)", "仅已完成（已点名且已提交反馈）")}</option>
               </select>
             </label>
             <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
           </div>
           <div style={{ fontSize: 13, color: "#334155" }}>
-            <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
+            <b>{t(lang, "Current payroll period", "当前计薪周期")}</b>: {periodText}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <a href="#salary-slips">{t(lang, "Go to Salary Slips", "跳到工资单")}</a>
-            {!isFinanceOnlyUser ? <a href="#rate-config">{t(lang, "Go to Rate Config", "跳到费率配置")}</a> : null}
-            {!isFinanceOnlyUser ? <a href="#approval-config">{t(lang, "Go to Approval Config", "跳到审批配置")}</a> : null}
+            <a href="#salary-slips">{t(lang, "Jump to payroll queue", "跳到工资单队列")}</a>
+            {!isFinanceOnlyUser ? <a href="#rate-config">{t(lang, "Jump to rate table", "跳到费率表")}</a> : null}
+            {!isFinanceOnlyUser ? <a href="#approval-config">{t(lang, "Jump to approval roles", "跳到审批角色")}</a> : null}
           </div>
           <details>
-            <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "Rule Notes", "规则说明")}</summary>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>{t(lang, "How payroll works", "工资规则说明")}</summary>
             <div style={{ marginTop: 6, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
               <div>{t(lang, "Payroll period rule: from last month 15th to this month 14th.", "计薪周期规则：上月15日到当月14日。")}</div>
               <div>
@@ -724,8 +724,8 @@ export default async function TeacherPayrollPage({
       {finPaidDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance payout recorded.", "财务发薪已记录。")}</div> : null}
       {Number.isFinite(batchPaidCount) && batchPaidCount > 0 ? (
         <div style={{ marginBottom: 12, color: "#166534" }}>
-          {t(lang, "Batch payout recorded for", "批量发薪已记录")} {batchPaidCount} {t(lang, "teachers.", "位老师。")}
-          {Number.isFinite(batchFailedCount) && batchFailedCount > 0 ? ` ${t(lang, "Failed", "失败")} ${batchFailedCount}.` : ""}
+          {t(lang, "Batch payout recorded for", "已记录批量发薪")} {batchPaidCount} {t(lang, "teachers.", "位老师。")}
+          {Number.isFinite(batchFailedCount) && batchFailedCount > 0 ? ` ${t(lang, "Failed items", "失败条目")} ${batchFailedCount}.` : ""}
         </div>
       ) : null}
       {finRejectedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance rejection recorded.", "财务驳回已记录。")}</div> : null}
@@ -756,7 +756,7 @@ export default async function TeacherPayrollPage({
         }}
       >
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
-          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Teachers", "教师数")}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Teachers in scope", "当前范围老师数")}</div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{payrollRows.length}</div>
         </div>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>

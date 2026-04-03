@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r04
+
+- Release ID: `2026-04-03-r04`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `READY`
+- Scope: Run the second bilingual copy-clarity pass on teacher tickets, admin teacher payroll, and partner settlement billing so high-traffic labels read more naturally without changing any workflow logic.
+- Key files:
+  - `app/teacher/tickets/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-admin-copy-clarity-pass-2.md`
+- Risk impact (if any): Low. This ship only rewrites UI copy on three existing workbench pages; no ticket write rules, payroll math or approval behavior, partner billing flows, invoice/receipt actions, or storage logic changed.
+- Verification:
+  - `npm run build` pending
+  - logged-in local QA pending
+  - post-deploy production QA pending
+- Rollback point: previous production commit before `2026-04-03-r04`.
+
 ## 2026-04-02-r15
 
 - Release ID: `2026-04-02-r15`

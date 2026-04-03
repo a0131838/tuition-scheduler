@@ -186,34 +186,34 @@ export default async function TeacherTicketsPage({
       </section>
       {err === "status-flow" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          状态流转不允许 / Invalid status transition
+          {t(lang, "This ticket cannot be marked completed from its current status.", "当前状态下不能直接标记这张工单为已完成。")}
         </div>
       ) : null}
       {err === "need-note" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          完成时必须填写完成说明 / Completion note is required when marking completed
+          {t(lang, "Add a completion note before marking this ticket completed.", "请先填写完成说明，再标记这张工单为已完成。")}
         </div>
       ) : null}
       {err === "forbidden" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          仅可操作与自己相关的工单 / You can only operate your own tickets
+          {t(lang, "You can only update tickets assigned to you.", "你只能操作分配给自己的工单。")}
         </div>
       ) : null}
       {err === "not-linked" ? (
         <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          老师档案未关联，无法执行工单操作 / Teacher profile is not linked
+          {t(lang, "Your teacher profile is not linked yet, so ticket actions are unavailable.", "老师档案尚未关联，暂时无法执行工单操作。")}
         </div>
       ) : null}
 
       <section style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, background: "#ffffff", display: "grid", gap: 12 }}>
       <div style={{ fontWeight: 700 }}>{t(lang, "Ticket filters", "工单筛选")}</div>
       <form method="GET" className="ts-filter-bar" style={{ marginBottom: 0 }}>
-        <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
+        <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket no., student, or teacher", "搜索工单号、学生或老师")} />
         <select name="status" defaultValue={status}>
-          <option value="">{t(lang, "All Status", "全部状态")}</option>
+          <option value="">{t(lang, "All statuses", "全部状态")}</option>
           {TICKET_STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.zh} / {o.en}
+              {t(lang, o.en, o.zh)}
             </option>
           ))}
         </select>
@@ -273,9 +273,9 @@ export default async function TeacherTicketsPage({
                           return (
                             <div key={`${r.id}-proof-${idx}`} style={{ display: "grid", gap: 2 }}>
                               <a href={href} target="_blank" rel="noreferrer" style={{ color: missing ? "#b91c1c" : undefined }}>
-                                {`Proof ${idx + 1}`}
+                                {t(lang, `Proof file ${idx + 1}`, `凭证文件 ${idx + 1}`)}
                               </a>
-                              {missing ? <span style={{ color: "#b91c1c", fontSize: 12 }}>文件缺失，请补传 / Missing file, re-upload required</span> : null}
+                              {missing ? <span style={{ color: "#b91c1c", fontSize: 12 }}>{t(lang, "File missing. Please re-upload it.", "文件缺失，请重新上传。")}</span> : null}
                             </div>
                           );
                         })}
@@ -288,7 +288,7 @@ export default async function TeacherTicketsPage({
                     <form action={markDoneTeacherAction} style={{ display: "grid", gap: 6 }}>
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={backHref} />
-                      <input name="completionNote" placeholder="完成说明 / Completion note" />
+                      <input name="completionNote" placeholder={t(lang, "Completion note", "完成说明")} />
                       <button type="submit">{t(lang, "Mark Completed", "标记已完成")}</button>
                     </form>
                   ) : (
