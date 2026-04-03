@@ -90,5 +90,5 @@
 ## 8) Release Record
 
 - Release ID: `2026-04-03-r19`
-- Deploy time: pending deploy
+- Deploy time: completed on `2026-04-03` (Asia/Shanghai)
 - Rollback command/point: previous production commit before `2026-04-03-r19`
