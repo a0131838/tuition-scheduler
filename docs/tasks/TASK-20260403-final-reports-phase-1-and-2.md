@@ -96,6 +96,7 @@
   - add parent-facing delivery if needed later
   - refine candidate rules if academic wants “manual ready” flags instead of only completed packages
   - release docs were synced again in a final docs pass so all handoff files point at the deployed commit
+  - final docs sync commit bundled changelog / release board / task together to satisfy the release gate
 
 ## 8) Release Record
 

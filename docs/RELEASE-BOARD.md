@@ -1294,3 +1294,4 @@
   - post-deploy startup check
   - production read-only QA on `/teacher/final-reports` and `/admin/reports/final`
   - release task record synced in a follow-up docs pass so the task file reflects the deployed state
+  - final docs sync pass bundled changelog / release board / task in one commit for the release gate
