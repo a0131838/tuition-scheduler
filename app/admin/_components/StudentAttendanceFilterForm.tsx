@@ -15,6 +15,7 @@ export default function StudentAttendanceFilterForm({
   teachers,
   initial,
   labels,
+  returnHash,
 }: {
   studentId: string;
   courses: CourseOption[];
@@ -46,6 +47,7 @@ export default function StudentAttendanceFilterForm({
     apply: string;
     clear: string;
   };
+  returnHash?: string;
 }) {
   const [courseId, setCourseId] = useState(initial.courseId);
   const [subjectId, setSubjectId] = useState(initial.subjectId);
@@ -73,8 +75,14 @@ export default function StudentAttendanceFilterForm({
     }
   }, [levelId, levelOptions]);
 
+  const targetHash = returnHash && returnHash.startsWith("#") ? returnHash : "#attendance";
+
   return (
-    <form method="GET" style={{ display: "grid", gap: 8, maxWidth: 820, marginBottom: 12 }}>
+    <form
+      method="GET"
+      action={`/admin/students/${studentId}${targetHash}`}
+      style={{ display: "grid", gap: 8, maxWidth: 820, marginBottom: 12 }}
+    >
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <label>
           {labels.course}:
@@ -158,7 +166,7 @@ export default function StudentAttendanceFilterForm({
           <input name="limit" type="number" min={1} max={500} defaultValue={initial.limit} style={{ marginLeft: 6, width: 120 }} />
         </label>
         <button type="submit" data-apply-submit="1">{labels.apply}</button>
-        <a href={`/admin/students/${studentId}`}>{labels.clear}</a>
+        <a href={`/admin/students/${studentId}${targetHash}`}>{labels.clear}</a>
       </div>
     </form>
   );

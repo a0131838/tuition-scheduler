@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
 
 async function jsonOrNull(res: Response) {
   try {
@@ -64,9 +65,10 @@ export default function SessionCancelRestoreClient(props: {
     charge: string;
     note: string;
   };
+  returnHash?: string;
 }) {
   const router = useRouter();
-  const { studentId, sessionId, initialCancelled, initialCharge, variant, labels } = props;
+  const { studentId, sessionId, initialCancelled, initialCharge, variant, labels, returnHash } = props;
   const [cancelled, setCancelled] = useState(initialCancelled);
   const [charge, setCharge] = useState(Boolean(initialCharge));
   const [note, setNote] = useState("");
@@ -90,6 +92,7 @@ export default function SessionCancelRestoreClient(props: {
       setCancelled(true);
       applySessionVisualState(sessionId, true);
       setDoneMsg("OK");
+      restoreStudentDetailHashAfterRefresh(returnHash);
       router.refresh();
     } catch (e: any) {
       setError(String(e?.message ?? "Cancel failed"));
@@ -115,6 +118,7 @@ export default function SessionCancelRestoreClient(props: {
       setCancelled(false);
       applySessionVisualState(sessionId, false);
       setDoneMsg("OK");
+      restoreStudentDetailHashAfterRefresh(returnHash);
       router.refresh();
     } catch (e: any) {
       setError(String(e?.message ?? "Restore failed"));
@@ -136,6 +140,7 @@ export default function SessionCancelRestoreClient(props: {
       const data = await jsonOrNull(res);
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Delete failed"));
       setDoneMsg("OK");
+      restoreStudentDetailHashAfterRefresh(returnHash);
       router.refresh();
     } catch (e: any) {
       setError(String(e?.message ?? "Delete failed"));

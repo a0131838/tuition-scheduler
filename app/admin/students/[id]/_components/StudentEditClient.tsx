@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
+import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
 
 type SourceOption = { id: string; name: string };
 type TypeOption = { id: string; name: string };
@@ -14,6 +15,7 @@ export default function StudentEditClient({
   types,
   gradeOptions,
   labels,
+  returnHash,
 }: {
   studentId: string;
   initial: {
@@ -43,6 +45,7 @@ export default function StudentEditClient({
     ok: string;
     error: string;
   };
+  returnHash?: string;
 }) {
   const router = useRouter();
   const [form, setForm] = useState(initial);
@@ -65,6 +68,7 @@ export default function StudentEditClient({
       return;
     }
     setMsg("OK");
+    restoreStudentDetailHashAfterRefresh(returnHash);
     router.refresh();
   }
 
@@ -157,4 +161,3 @@ export default function StudentEditClient({
     </details>
   );
 }
-

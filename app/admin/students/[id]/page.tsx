@@ -369,6 +369,18 @@ function monthLabel(d: Date) {
   return `${y}-${m}`;
 }
 
+function normalizeStudentDetailHash(hash?: string | null, fallback = "#student-workbench-bar") {
+  const raw = String(hash ?? "").trim();
+  if (!raw) return fallback;
+  if (raw.startsWith("#") && raw.length > 1) return raw;
+  return `#${raw.replace(/^#+/, "")}`;
+}
+
+function buildStudentDetailHref(studentId: string, params?: URLSearchParams | null, hash?: string | null, fallbackHash = "#student-workbench-bar") {
+  const query = params?.toString() ?? "";
+  return `/admin/students/${studentId}${query ? `?${query}` : ""}${normalizeStudentDetailHash(hash, fallbackHash)}`;
+}
+
 function startOfCalendar(d: Date) {
   const first = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
   const weekday = (first.getDay() + 6) % 7;
@@ -454,9 +466,11 @@ async function updateStudent(studentId: string, formData: FormData) {
   const birthDateStr = String(formData.get("birthDate") ?? "").trim();
   const sourceChannelId = String(formData.get("sourceChannelId") ?? "").trim() || null;
   const studentTypeId = String(formData.get("studentTypeId") ?? "").trim() || null;
+  const returnHash = String(formData.get("returnHash") ?? "").trim();
 
   if (!name) {
-    redirect(`/admin/students/${studentId}?err=Name+is+required`);
+    const params = new URLSearchParams({ err: "Name is required" });
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#edit-student"));
   }
 
   let birthDate: Date | null = null;
@@ -480,7 +494,8 @@ async function updateStudent(studentId: string, formData: FormData) {
     },
   });
 
-  redirect(`/admin/students/${studentId}?msg=Saved`);
+  const params = new URLSearchParams({ msg: "Saved" });
+  redirect(buildStudentDetailHref(studentId, params, returnHash, "#edit-student"));
 }
 
 async function deleteStudent(studentId: string) {
@@ -513,6 +528,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
   const month = String(formData.get("month") ?? "").trim();
+  const returnHash = String(formData.get("returnHash") ?? "").trim();
   const bypassAvailabilityCheck = isStrictSuperAdmin(await getCurrentUser());
 
   const backWithQuickParams = (extra: Record<string, string>) => {
@@ -528,7 +544,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
     for (const [k, v] of Object.entries(extra)) {
       params.set(k, v);
     }
-    return `/admin/students/${studentId}?${params.toString()}`;
+    return buildStudentDetailHref(studentId, params, returnHash, "#quick-schedule");
   };
 
   try {
@@ -724,7 +740,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       msg: "Scheduled",
     });
     if (month) params.set("month", month);
-    redirect(`/admin/students/${studentId}?${params.toString()}`);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#quick-schedule"));
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     console.error("Quick schedule failed", {
@@ -849,9 +865,12 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
   const month = String(formData.get("month") ?? "").trim();
   const charge = String(formData.get("charge") ?? "") === "on";
   const note = String(formData.get("note") ?? "").trim();
+  const returnHash = String(formData.get("returnHash") ?? "").trim();
 
   if (!sessionId) {
-    redirect(`/admin/students/${studentId}?err=Missing+sessionId`);
+    const params = new URLSearchParams({ err: "Missing sessionId" });
+    if (month) params.set("month", month);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
   }
 
   const session = await prisma.session.findUnique({
@@ -859,7 +878,9 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     select: { id: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
   });
   if (!session) {
-    redirect(`/admin/students/${studentId}?err=Session+not+found`);
+    const params = new URLSearchParams({ err: "Session not found" });
+    if (month) params.set("month", month);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
   }
 
   const durationMin = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
@@ -895,7 +916,9 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     }
 
     if (!packageId) {
-      redirect(`/admin/students/${studentId}?err=No+active+HOURS+package`);
+      const params = new URLSearchParams({ err: "No active HOURS package" });
+      if (month) params.set("month", month);
+      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
     }
 
     const pkg = await prisma.coursePackage.findFirst({
@@ -913,18 +936,26 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
     });
 
     if (!pkg) {
-      redirect(`/admin/students/${studentId}?err=Package+not+found`);
+      const params = new URLSearchParams({ err: "Package not found" });
+      if (month) params.set("month", month);
+      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
     }
     if (pkg.type !== "HOURS") {
-      redirect(`/admin/students/${studentId}?err=Package+not+HOURS`);
+      const params = new URLSearchParams({ err: "Package not HOURS" });
+      if (month) params.set("month", month);
+      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
     }
     if (pkg.remainingMinutes == null) {
-      redirect(`/admin/students/${studentId}?err=Package+remaining+minutes+is+null`);
+      const params = new URLSearchParams({ err: "Package remaining minutes is null" });
+      if (month) params.set("month", month);
+      redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
     }
 
     if (delta > 0) {
       if (pkg.remainingMinutes < delta) {
-        redirect(`/admin/students/${studentId}?err=Not+enough+remaining+minutes`);
+        const params = new URLSearchParams({ err: "Not enough remaining minutes" });
+        if (month) params.set("month", month);
+        redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
       }
       await prisma.coursePackage.update({
         where: { id: packageId },
@@ -980,16 +1011,19 @@ async function cancelStudentSession(studentId: string, formData: FormData) {
 
   const params = new URLSearchParams({ msg: "Session cancelled" });
   if (month) params.set("month", month);
-  redirect(`/admin/students/${studentId}?${params.toString()}`);
+  redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
 }
 
 async function restoreStudentSession(studentId: string, formData: FormData) {
   "use server";
   const sessionId = String(formData.get("sessionId") ?? "");
   const month = String(formData.get("month") ?? "").trim();
+  const returnHash = String(formData.get("returnHash") ?? "").trim();
 
   if (!sessionId) {
-    redirect(`/admin/students/${studentId}?err=Missing+sessionId`);
+    const params = new URLSearchParams({ err: "Missing sessionId" });
+    if (month) params.set("month", month);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
   }
 
   const session = await prisma.session.findUnique({
@@ -997,7 +1031,9 @@ async function restoreStudentSession(studentId: string, formData: FormData) {
     select: { id: true, startAt: true, endAt: true, classId: true, class: { select: { courseId: true } } },
   });
   if (!session) {
-    redirect(`/admin/students/${studentId}?err=Session+not+found`);
+    const params = new URLSearchParams({ err: "Session not found" });
+    if (month) params.set("month", month);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
   }
 
   const existing = await prisma.attendance.findUnique({
@@ -1008,7 +1044,7 @@ async function restoreStudentSession(studentId: string, formData: FormData) {
   if (!existing || existing.status !== "EXCUSED") {
     const params = new URLSearchParams({ msg: "Session restored" });
     if (month) params.set("month", month);
-    redirect(`/admin/students/${studentId}?${params.toString()}`);
+    redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
   }
 
   const refundMinutes = existing.deductedMinutes ?? 0;
@@ -1042,7 +1078,7 @@ async function restoreStudentSession(studentId: string, formData: FormData) {
 
   const params = new URLSearchParams({ msg: "Session restored" });
   if (month) params.set("month", month);
-  redirect(`/admin/students/${studentId}?${params.toString()}`);
+  redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
 }
 export default async function StudentDetailPage({
   params,
@@ -1315,7 +1351,12 @@ export default async function StudentDetailPage({
 
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const returnTo = `/admin/students/${studentId}?month=${monthLabel(monthDate)}`;
+  const returnTo = buildStudentDetailHref(
+    studentId,
+    new URLSearchParams({ month: monthLabel(monthDate) }),
+    "#upcoming-sessions",
+    "#upcoming-sessions"
+  );
 
   const quickCandidates: {
     id: string;
@@ -1755,11 +1796,11 @@ export default async function StudentDetailPage({
               </form>
             </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-        <a href={`/admin/students/${studentId}?month=${monthLabel(prevMonth)}`}>
+        <a href={buildStudentDetailHref(studentId, new URLSearchParams({ month: monthLabel(prevMonth) }), "#calendar-tools", "#calendar-tools")}>
           &lt;&lt; {tl(lang, "Prev Month")}
         </a>
         <b>{monthLabel(monthDate)}</b>
-        <a href={`/admin/students/${studentId}?month=${monthLabel(nextMonth)}`}>
+        <a href={buildStudentDetailHref(studentId, new URLSearchParams({ month: monthLabel(nextMonth) }), "#calendar-tools", "#calendar-tools")}>
           {tl(lang, "Next Month")} &gt;&gt;
         </a>
       </div>
@@ -1784,7 +1825,7 @@ export default async function StudentDetailPage({
                 params.set("month", monthLabel(monthDate));
                 params.set("quickStartAt", `${key}T16:00`);
                 params.set("quickOpen", "1");
-                const link = `/admin/students/${studentId}?${params.toString()}`;
+                const link = buildStudentDetailHref(studentId, params, "#quick-schedule", "#quick-schedule");
                 return (
                   <td
                     key={key}
@@ -1910,6 +1951,7 @@ export default async function StudentDetailPage({
                                 charge: tl(lang, "Charge"),
                                 note: tl(lang, "Note"),
                               }}
+                              returnHash="#calendar-tools"
                             />
                           </div>
                         </div>
@@ -2135,6 +2177,7 @@ export default async function StudentDetailPage({
           days: days ? String(days) : "",
           limit: String(limit),
         }}
+        returnHash="#attendance"
         labels={{
           course: tl(lang, "Course"),
           subject: tl(lang, "Subject"),
@@ -2312,15 +2355,24 @@ export default async function StudentDetailPage({
                         ok: tl(lang, "OK"),
                         error: tl(lang, "Error"),
                       }}
+                      returnHash="#upcoming-sessions"
                     />
                   <a
-                    href={`/admin/students/${studentId}?month=${monthLabel(monthDate)}&quickOpen=1&quickStartAt=${encodeURIComponent(
-                      fmtDatetimeLocal(new Date(s.startAt))
-                    )}&quickDurationMin=${Math.max(15, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000))}&quickCampusId=${encodeURIComponent(
-                      s.class.campusId
-                    )}&quickRoomId=${encodeURIComponent(s.class.roomId ?? "")}&quickSubjectId=${encodeURIComponent(
-                      s.class.subjectId ?? ""
-                    )}&quickLevelId=${encodeURIComponent(s.class.levelId ?? "")}`}
+                    href={buildStudentDetailHref(
+                      studentId,
+                      new URLSearchParams({
+                        month: monthLabel(monthDate),
+                        quickOpen: "1",
+                        quickStartAt: fmtDatetimeLocal(new Date(s.startAt)),
+                        quickDurationMin: String(Math.max(15, Math.round((s.endAt.getTime() - s.startAt.getTime()) / 60000))),
+                        quickCampusId: s.class.campusId,
+                        quickRoomId: s.class.roomId ?? "",
+                        quickSubjectId: s.class.subjectId ?? "",
+                        quickLevelId: s.class.levelId ?? "",
+                      }),
+                      "#quick-schedule",
+                      "#quick-schedule"
+                    )}
                   >
                     {tl(lang, "Change Course")}
                   </a>
@@ -2341,6 +2393,7 @@ export default async function StudentDetailPage({
                       charge: tl(lang, "Charge"),
                       note: tl(lang, "Note"),
                     }}
+                    returnHash="#upcoming-sessions"
                   />
                 </div>
               </div>
@@ -2387,6 +2440,7 @@ export default async function StudentDetailPage({
           candidates={quickCandidates}
           sessionOptions={quickRescheduleSessionOptions}
           scheduleUrl={`/api/admin/students/${encodeURIComponent(studentId)}/quick-appointment`}
+          returnHash="#quick-schedule"
           warning={quickPackageWarn}
           labels={{
             title: tl(lang, "Quick Schedule"),
@@ -2465,6 +2519,7 @@ export default async function StudentDetailPage({
             ok: tl(lang, "OK"),
             error: tl(lang, "Error"),
           }}
+          returnHash="#edit-student"
         />
       </div>
       </div>

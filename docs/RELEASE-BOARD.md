@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-03`
+- Last checked: `2026-04-04`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r27` (report archive path).
+- Current release line on this branch: `2026-04-04-r01` (student detail section-return fix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -91,6 +91,21 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - production read-only QA must confirm `/admin/reports/final` and `/admin/reports/midterm` show `Archived`, and teacher report lists still load without archived items in their active queues
+
+## 2026-04-04-r01 Ready
+
+- Scope: keep admin student-detail actions inside the section the operator was already working in instead of returning to the top of the page after refreshes or same-page redirects.
+- Business impact:
+  - calendar month switches now stay in `Planning tools & calendar`
+  - quick-schedule opens and refreshes back into `Quick Schedule`
+  - upcoming-session actions such as `Change Teacher`, `Change Course`, `Cancel`, and `Restore` now return to `Upcoming Sessions`
+  - attendance filter apply / clear now stays in `Attendance`
+  - student profile saves now return to `Edit Student`
+  - no student data rules, scheduling logic, attendance logic, deduction logic, package logic, or billing behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm student-detail refresh actions land back in the working section instead of page top
 
 ## 2026-04-03-r18 Deployed
 

@@ -7,6 +7,7 @@ import StudentPackageBalanceCard from "@/app/admin/_components/StudentPackageBal
 import { campusRequiresRoom } from "@/lib/campus";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { normalizeStudentDetailHash, restoreStudentDetailHashAfterRefresh } from "../students/[id]/_components/studentDetailHash";
 
 type CourseOption = { id: string; name: string };
 
@@ -103,6 +104,7 @@ export default function QuickScheduleModal({
   labels,
   openOnLoad,
   warning,
+  returnHash,
 }: {
   studentId: string;
   month: string;
@@ -122,6 +124,7 @@ export default function QuickScheduleModal({
   labels: Labels;
   openOnLoad: boolean;
   warning?: string;
+  returnHash?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -132,6 +135,7 @@ export default function QuickScheduleModal({
   const [scheduleErr, setScheduleErr] = useState("");
   const [scheduleMsg, setScheduleMsg] = useState("");
   const [formWarn, setFormWarn] = useState("");
+  const sectionHash = useMemo(() => normalizeStudentDetailHash(returnHash, "#quick-schedule"), [returnHash]);
   const courses = useMemo<CourseOption[]>(() => {
     const map = new Map<string, string>();
     for (const s of subjects) map.set(s.courseId, s.courseName);
@@ -154,8 +158,8 @@ export default function QuickScheduleModal({
     const params = new URLSearchParams();
     if (month) params.set("month", month);
     const q = params.toString();
-    return q ? `/admin/students/${studentId}?${q}` : `/admin/students/${studentId}`;
-  }, [studentId, month]);
+    return `${q ? `/admin/students/${studentId}?${q}` : `/admin/students/${studentId}`}${sectionHash}`;
+  }, [studentId, month, sectionHash]);
   const resetFormState = () => {
     const firstCourseId = courses[0]?.id ?? "";
     const firstSubjectId = subjects.find((s) => !firstCourseId || s.courseId === firstCourseId)?.id ?? "";
@@ -236,9 +240,9 @@ export default function QuickScheduleModal({
         params.delete("quickStartAt");
         params.delete("quickDurationMin");
         params.set("msg", "Scheduled");
-        const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        const target = `${params.toString() ? `${pathname}?${params.toString()}` : pathname}${sectionHash}`;
         router.replace(target, { scroll: false });
-        // Refresh the student page so the newly scheduled session appears.
+        restoreStudentDetailHashAfterRefresh(sectionHash);
         router.refresh();
       } catch {
         setScheduleErr("Schedule failed: network or server error");
@@ -314,8 +318,9 @@ export default function QuickScheduleModal({
       dialogRef.current?.close();
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set("msg", "Rescheduled");
-      const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      const target = `${params.toString() ? `${pathname}?${params.toString()}` : pathname}${sectionHash}`;
       router.replace(target, { scroll: false });
+      restoreStudentDetailHashAfterRefresh(sectionHash);
       router.refresh();
     } catch {
       setScheduleErr("Reschedule failed: network or server error");

@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r01
+
+- Release ID: `2026-04-04-r01`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `READY`
+- Scope: keep the admin student detail page anchored to the current section after same-page actions and refreshes so operations do not get dropped back at the top of the workbench.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/_components/studentDetailHash.ts`
+  - `app/admin/students/[id]/_components/SessionCancelRestoreClient.tsx`
+  - `app/admin/students/[id]/_components/SessionReplaceTeacherClient.tsx`
+  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `app/admin/_components/StudentAttendanceFilterForm.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-student-detail-section-return-fix.md`
+- Risk impact (if any): Low. This release only changes student-detail navigation and same-page section return behavior; it does not change student data, scheduling, attendance, deduction, package, or billing business logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm student-detail actions return to `#calendar-tools`, `#quick-schedule`, `#upcoming-sessions`, `#attendance`, or `#edit-student` instead of jumping to page top
+- Rollback point: previous production commit before `2026-04-04-r01`.
+
 ## 2026-04-03-r27
 
 - Release ID: `2026-04-03-r27`

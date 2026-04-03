@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
+import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
 
 type TeacherOption = { id: string; name: string };
 
@@ -11,6 +12,7 @@ export default function SessionReplaceTeacherClient({
   sessionId,
   teachers,
   labels,
+  returnHash,
 }: {
   studentId: string;
   sessionId: string;
@@ -23,6 +25,7 @@ export default function SessionReplaceTeacherClient({
     ok: string;
     error: string;
   };
+  returnHash?: string;
 }) {
   const router = useRouter();
   const [newTeacherId, setNewTeacherId] = useState("");
@@ -48,6 +51,7 @@ export default function SessionReplaceTeacherClient({
     setMsg("OK");
     setNewTeacherId("");
     setReason("");
+    restoreStudentDetailHashAfterRefresh(returnHash);
     router.refresh();
   }
 
@@ -75,4 +79,3 @@ export default function SessionReplaceTeacherClient({
     </details>
   );
 }
-
