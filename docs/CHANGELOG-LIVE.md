@@ -2477,3 +2477,26 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed `/admin/reports/final` shows share-duration choices and expiry labels
   - production read-only QA confirmed `/final-report/[id]?token=invalid` still rejects invalid or expired links with the unavailable message
 - Rollback point: previous production commit before `2026-04-03-r23`.
+
+## 2026-04-03-r24
+
+- Release ID: `2026-04-03-r24`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add basic share-link access audit for final reports so operations can see whether a parent read-only link has been opened and when it was last viewed.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403232000_add_final_report_share_audit/migration.sql`
+  - `app/final-report/[id]/page.tsx`
+  - `app/admin/reports/final/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-report-share-audit.md`
+- Risk impact (if any): Low. This release only records read-only share-page access metadata and surfaces that metadata on the admin workbench; it does not change report content, delivery rules, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed `/admin/reports/final` shows share audit text when a link exists
+  - production read-only QA confirmed the public share page still renders and now increments share-view metadata
+- Rollback point: previous production commit before `2026-04-03-r24`.

@@ -129,6 +129,16 @@ export default async function FinalReportSharePage({
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
 
+  const viewedAt = new Date();
+  await prisma.finalReport.update({
+    where: { id: report.id },
+    data: {
+      shareFirstViewedAt: report.shareFirstViewedAt ?? viewedAt,
+      shareLastViewedAt: viewedAt,
+      shareViewCount: { increment: 1 },
+    },
+  });
+
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "28px 16px 40px", display: "grid", gap: 18 }}>
       <section style={cardStyle("#bfdbfe", "#f8fbff")}>

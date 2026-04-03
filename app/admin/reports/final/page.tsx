@@ -94,6 +94,29 @@ function isShareExpired(report: {
   return report.shareExpiresAt.getTime() <= Date.now();
 }
 
+function shareAuditSummary(
+  report: {
+    shareViewCount: number;
+    shareFirstViewedAt: Date | null;
+    shareLastViewedAt: Date | null;
+  },
+  lang: "BILINGUAL" | "ZH" | "EN"
+) {
+  if (!report.shareViewCount) {
+    return t(lang, "Not opened yet", "尚未被打开");
+  }
+  const countLabel =
+    lang === "ZH"
+      ? `已打开 ${report.shareViewCount} 次`
+      : lang === "EN"
+        ? `Opened ${report.shareViewCount} times`
+        : `Opened ${report.shareViewCount} times / 已打开 ${report.shareViewCount} 次`;
+  const lastLabel = report.shareLastViewedAt
+    ? `${t(lang, "Last viewed", "最近打开")}: ${formatBusinessDateTime(new Date(report.shareLastViewedAt))}`
+    : "";
+  return [countLabel, lastLabel].filter(Boolean).join(" · ");
+}
+
 async function resolveOriginFromHeaders() {
   const h = await headers();
   const host = h.get("x-forwarded-host") || h.get("host") || "";
@@ -579,6 +602,11 @@ export default async function AdminFinalReportCenterPage({
                               : t(lang, "Share disabled at", "分享链接已停用")}
                           {": "}
                           {formatBusinessDateTime(new Date((report.shareExpiresAt ?? report.shareRevokedAt ?? report.shareEnabledAt)!))}
+                        </div>
+                      ) : null}
+                      {report.shareEnabledAt ? (
+                        <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                          {shareAuditSummary(report, lang)}
                         </div>
                       ) : null}
                     </td>

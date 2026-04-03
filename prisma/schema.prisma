@@ -469,6 +469,9 @@ model FinalReport {
   shareEnabledAt    DateTime?
   shareExpiresAt    DateTime?
   shareRevokedAt    DateTime?
+  shareFirstViewedAt DateTime?
+  shareLastViewedAt  DateTime?
+  shareViewCount     Int               @default(0)
   reportPeriodLabel String?
   finalLevel        String?
   overallScore      Decimal?          @db.Decimal(5, 2)

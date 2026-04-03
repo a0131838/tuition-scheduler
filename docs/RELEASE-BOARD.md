@@ -1341,3 +1341,17 @@
   - post-deploy startup check
   - production read-only QA on `/admin/reports/final`
   - production read-only QA on `/final-report/[id]?token=invalid`
+
+## 2026-04-03-r24 Deployed
+
+- Scope: add share-link access audit to final-report parent read-only pages.
+- Business impact:
+  - `/final-report/[id]?token=...` now records first-view time, last-view time, and total view count
+  - `/admin/reports/final` now surfaces whether a parent share link has ever been opened and when it was last viewed
+  - no final-report content, delivery flow, expiry rules, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/admin/reports/final`
+  - production read-only QA on `/final-report/[id]?token=...`
