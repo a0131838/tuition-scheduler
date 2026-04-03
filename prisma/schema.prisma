@@ -84,6 +84,7 @@ enum FinalReportStatus {
   ASSIGNED
   SUBMITTED
   FORWARDED
+  EXEMPT
 }
 
 enum ExpenseClaimStatus {
@@ -465,6 +466,9 @@ model FinalReport {
   deliveredAt       DateTime?
   deliveredByUserId String?
   deliveryChannel   String?
+  exemptReason      String?
+  exemptedAt        DateTime?
+  exemptedByUserId  String?
   shareToken        String?           @unique
   shareEnabledAt    DateTime?
   shareExpiresAt    DateTime?
@@ -487,6 +491,7 @@ model FinalReport {
   package        CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   assignedByUser User?         @relation("FinalReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
   deliveredByUser User?        @relation("FinalReportDeliveredBy", fields: [deliveredByUserId], references: [id], onDelete: SetNull)
+  exemptedByUser User?         @relation("FinalReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
@@ -494,6 +499,7 @@ model FinalReport {
   @@index([status, createdAt])
   @@index([packageId, createdAt])
   @@index([deliveredAt, createdAt])
+  @@index([exemptedAt, createdAt])
 }
 
 model SessionTeacherChange {
@@ -612,6 +618,7 @@ model User {
   midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
   finalReportsAssigned   FinalReport[]   @relation("FinalReportAssignedBy")
   finalReportsDelivered  FinalReport[]   @relation("FinalReportDeliveredBy")
+  finalReportsExempted   FinalReport[]   @relation("FinalReportExemptedBy")
   ticketsCompleted       Ticket[]        @relation("TicketCompletedBy")
   ticketHandovers        TicketHandover[]
   ticketIntakeTokens     TicketIntakeToken[]

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-03-r18` (packages filter clear/resume bug fix).
+- Current release line on this branch: `2026-04-03-r25` (final report exempt path).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-03-r25 Deployed
+
+- Scope: add a `Final Report Exempt / 结课报告无需跟进` path so operations can mark no-report packages out of the final-report queue without assigning teachers first.
+- Business impact:
+  - admin `Final Report Center` now supports `Mark exempt / 标记无需报告` from both completed-package candidates and existing report records
+  - exempted final reports now record who exempted them, when, and why
+  - teacher `Final Reports` hides `EXEMPT` items so no-report packages stop appearing as pending teacher work
+  - the candidate loader now drops teacher options already exempted for that package, so those packages do not keep resurfacing in the assign queue
+  - no midterm-report behavior, package completion math, attendance, finance, share-link, or PDF delivery logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA must confirm `/admin/reports/final` shows `Exempt`, candidate rows expose `Mark exempt`, and exempted tasks disappear from `/teacher/final-reports`
 
 ## 2026-04-03-r18 Deployed
 

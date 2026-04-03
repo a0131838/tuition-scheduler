@@ -129,7 +129,7 @@ export default async function TeacherFinalReportDetailPage({
     },
   });
 
-  if (!report || report.teacherId !== teacher.id) {
+  if (!report || report.teacherId !== teacher.id || report.status === "EXEMPT") {
     return (
       <section style={emptyStateCardStyle}>
         <div style={{ fontSize: 18, fontWeight: 800, color: "#b91c1c" }}>
@@ -160,7 +160,7 @@ export default async function TeacherFinalReportDetailPage({
       where: { id: reportId },
       select: { status: true, submittedAt: true },
     });
-    if (!latest || latest.status === "FORWARDED") {
+    if (!latest || latest.status === "FORWARDED" || latest.status === "EXEMPT") {
       redirect(`/teacher/final-reports/${encodeURIComponent(reportId)}?err=locked`);
     }
 

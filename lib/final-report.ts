@@ -16,10 +16,20 @@ export const FINAL_REPORT_DELIVERY_CHANNELS = [
   "OTHER",
 ] as const;
 
+export const FINAL_REPORT_EXEMPT_REASONS = [
+  "TRIAL_ONLY",
+  "ASSESSMENT_ONLY",
+  "EARLY_WITHDRAWAL",
+  "OPS_NOT_REQUIRED",
+  "DUPLICATE_ASSIGNMENT",
+  "OTHER",
+] as const;
+
 export const FINAL_REPORT_SHARE_DURATION_DAYS = [7, 30, 90] as const;
 
 export type FinalReportRecommendation = (typeof FINAL_REPORT_RECOMMENDATIONS)[number] | "";
 export type FinalReportDeliveryChannel = (typeof FINAL_REPORT_DELIVERY_CHANNELS)[number] | "";
+export type FinalReportExemptReason = (typeof FINAL_REPORT_EXEMPT_REASONS)[number] | "";
 export type FinalReportShareDurationDays = (typeof FINAL_REPORT_SHARE_DURATION_DAYS)[number];
 
 export type FinalReportDraft = {
@@ -78,6 +88,14 @@ function asDeliveryChannel(value: unknown): FinalReportDeliveryChannel {
   return "";
 }
 
+function asExemptReason(value: unknown): FinalReportExemptReason {
+  const text = asString(value).toUpperCase();
+  if (FINAL_REPORT_EXEMPT_REASONS.includes(text as (typeof FINAL_REPORT_EXEMPT_REASONS)[number])) {
+    return text as FinalReportExemptReason;
+  }
+  return "";
+}
+
 export function parseFinalReportDraft(raw: unknown): FinalReportDraft {
   if (!raw || typeof raw !== "object") return { ...EMPTY_FINAL_REPORT_DRAFT };
   const row = raw as Record<string, unknown>;
@@ -122,6 +140,10 @@ export function parseFinalReportMeta(raw: unknown): FinalReportMeta {
 
 export function parseDeliveryChannel(value: unknown): FinalReportDeliveryChannel {
   return asDeliveryChannel(value);
+}
+
+export function parseExemptReason(value: unknown): FinalReportExemptReason {
+  return asExemptReason(value);
 }
 
 export function parseShareDurationDays(value: unknown): FinalReportShareDurationDays {
@@ -196,15 +218,20 @@ export async function loadFinalReportCandidates() {
         subjectId: string | null;
         subjectName: string | null;
         latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | null;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | null;
       }
     >();
 
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED">();
+    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT">();
     for (const report of pkg.finalReports) {
       if (!report.teacherId) continue;
       if (latestReportByTeacher.has(report.teacherId)) continue;
-      if (report.status === "ASSIGNED" || report.status === "SUBMITTED" || report.status === "FORWARDED") {
+      if (
+        report.status === "ASSIGNED" ||
+        report.status === "SUBMITTED" ||
+        report.status === "FORWARDED" ||
+        report.status === "EXEMPT"
+      ) {
         latestReportByTeacher.set(report.teacherId, report.status);
       }
     }
@@ -227,7 +254,9 @@ export async function loadFinalReportCandidates() {
       }
     }
 
-    const teacherOptions = Array.from(teacherMap.values()).sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
+    const teacherOptions = Array.from(teacherMap.values())
+      .filter((opt) => opt.latestReportStatus !== "EXEMPT")
+      .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
     const topTeacher = teacherOptions[0] ?? null;
     if (!topTeacher) return null;
 
@@ -255,14 +284,14 @@ export async function loadFinalReportCandidates() {
     totalMinutes: number;
     remainingMinutes: number;
     usedMinutes: number;
-    teacherOptions: Array<{
-      id: string;
-      name: string;
-      subjectId: string | null;
-      subjectName: string | null;
-      latestStartAt: Date;
-      latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | null;
-    }>;
+      teacherOptions: Array<{
+        id: string;
+        name: string;
+        subjectId: string | null;
+        subjectName: string | null;
+        latestStartAt: Date;
+        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | null;
+      }>;
     defaultTeacherId: string;
     defaultSubjectId: string | null;
   }> = [];
@@ -274,7 +303,10 @@ export async function loadFinalReportCandidates() {
       teacherOptions: row.teacherOptions.map((opt) => ({
         ...opt,
         latestReportStatus:
-          opt.latestReportStatus === "ASSIGNED" || opt.latestReportStatus === "SUBMITTED" || opt.latestReportStatus === "FORWARDED"
+          opt.latestReportStatus === "ASSIGNED" ||
+          opt.latestReportStatus === "SUBMITTED" ||
+          opt.latestReportStatus === "FORWARDED" ||
+          opt.latestReportStatus === "EXEMPT"
             ? opt.latestReportStatus
             : null,
       })),

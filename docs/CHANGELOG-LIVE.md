@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r25
+
+- Release ID: `2026-04-03-r25`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add an `EXEMPT / 无需报告` path to Final Reports so operations can remove no-report packages from the final-report queue without pushing work to teachers first.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260403235500_add_final_report_exempt_status/migration.sql`
+  - `lib/final-report.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `app/teacher/final-reports/page.tsx`
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-final-report-exempt-phase-1.md`
+- Risk impact (if any): Medium-low. This ship adds a Prisma enum/schema migration and new admin-only status transitions on Final Reports, but it does not change midterm reports, package completion math, attendance, finance flows, or teacher submission rules for non-exempt reports.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - deploy-time `npx prisma migrate deploy` is expected through the existing server deploy flow
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - production read-only QA must confirm admins can see `Exempt` in `/admin/reports/final`, candidate rows expose `Mark exempt`, and exempted reports disappear from `/teacher/final-reports`
+- Rollback point: previous production commit before `2026-04-03-r25`.
+
 ## 2026-04-03-r18
 
 - Release ID: `2026-04-03-r18`

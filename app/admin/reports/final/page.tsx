@@ -3,9 +3,11 @@ import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import {
   FINAL_REPORT_DELIVERY_CHANNELS,
+  FINAL_REPORT_EXEMPT_REASONS,
   FINAL_REPORT_SHARE_DURATION_DAYS,
   loadFinalReportCandidates,
   parseDeliveryChannel,
+  parseExemptReason,
   parseFinalReportDraft,
   parseFinalReportMeta,
   parseShareDurationDays,
@@ -18,9 +20,29 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 function statusLabel(lang: "BILINGUAL" | "ZH" | "EN", status: string) {
+  if (status === "EXEMPT") return t(lang, "Exempt", "无需报告");
   if (status === "FORWARDED") return t(lang, "Forwarded", "已转发");
   if (status === "SUBMITTED") return t(lang, "Submitted", "已提交");
   return t(lang, "Assigned", "待老师填写");
+}
+
+function exemptReasonLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
+  switch (value) {
+    case "TRIAL_ONLY":
+      return t(lang, "Trial only", "仅试课");
+    case "ASSESSMENT_ONLY":
+      return t(lang, "Assessment only", "仅评估课");
+    case "EARLY_WITHDRAWAL":
+      return t(lang, "Early withdrawal", "中途停课");
+    case "OPS_NOT_REQUIRED":
+      return t(lang, "Not required by operations", "教务确认无需报告");
+    case "DUPLICATE_ASSIGNMENT":
+      return t(lang, "Duplicate assignment", "重复推送");
+    case "OTHER":
+      return t(lang, "Other", "其他");
+    default:
+      return "-";
+  }
 }
 
 function recommendationLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
@@ -62,6 +84,7 @@ function normalizeView(raw: string) {
   if (value === "submitted") return value;
   if (value === "pending-delivery") return value;
   if (value === "delivered") return value;
+  if (value === "exempt") return value;
   if (value === "shared") return value;
   if (value === "expired-shares") return value;
   return "all";
@@ -153,6 +176,10 @@ async function assignFinalReport(formData: FormData) {
     redirect("/admin/reports/final?ok=exists");
   }
 
+  if (latestForTeacher?.status === "EXEMPT") {
+    redirect("/admin/reports/final?ok=exempt");
+  }
+
   if (latestForTeacher?.status === "ASSIGNED") {
     await prisma.finalReport.update({
       where: { id: latestForTeacher.id },
@@ -218,6 +245,110 @@ async function markFinalReportForwarded(formData: FormData) {
   revalidatePath("/admin/reports/final");
   revalidatePath("/teacher/final-reports");
   redirect("/admin/reports/final?ok=forwarded");
+}
+
+async function exemptFinalReport(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "").trim();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const exemptReason = parseExemptReason(formData.get("exemptReason"));
+  if (!exemptReason) redirect("/admin/reports/final?err=missing");
+
+  const now = new Date();
+
+  if (reportId) {
+    const row = await prisma.finalReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, deliveredAt: true },
+    });
+    if (!row || row.deliveredAt) redirect("/admin/reports/final?err=status");
+
+    await prisma.finalReport.update({
+      where: { id: row.id },
+      data: {
+        status: "EXEMPT",
+        exemptReason,
+        exemptedAt: now,
+        exemptedByUserId: user.id,
+        forwardedAt: null,
+        deliveredAt: null,
+        deliveredByUserId: null,
+        deliveryChannel: null,
+        shareToken: null,
+        shareEnabledAt: null,
+        shareExpiresAt: null,
+        shareRevokedAt: null,
+        shareFirstViewedAt: null,
+        shareLastViewedAt: null,
+        shareViewCount: 0,
+      },
+    });
+  } else {
+    if (!packageId || !teacherId) redirect("/admin/reports/final?err=missing");
+    const pkg = await prisma.coursePackage.findUnique({
+      where: { id: packageId },
+    });
+    if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/final?err=pkg");
+
+    const latestAttendance = await prisma.attendance.findFirst({
+      where: { packageId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+      orderBy: { session: { startAt: "desc" } },
+      include: { session: { include: { class: { select: { subjectId: true } } } } },
+    });
+    const subjectId = latestAttendance?.session.class.subjectId ?? null;
+
+    const latestForTeacher = await prisma.finalReport.findFirst({
+      where: { packageId, teacherId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, deliveredAt: true },
+    });
+
+    if (latestForTeacher?.id) {
+      if (latestForTeacher.deliveredAt) redirect("/admin/reports/final?err=status");
+      await prisma.finalReport.update({
+        where: { id: latestForTeacher.id },
+        data: {
+          status: "EXEMPT",
+          exemptReason,
+          exemptedAt: now,
+          exemptedByUserId: user.id,
+          forwardedAt: null,
+          deliveredAt: null,
+          deliveredByUserId: null,
+          deliveryChannel: null,
+          shareToken: null,
+          shareEnabledAt: null,
+          shareExpiresAt: null,
+          shareRevokedAt: null,
+          shareFirstViewedAt: null,
+          shareLastViewedAt: null,
+          shareViewCount: 0,
+        },
+      });
+    } else {
+      await prisma.finalReport.create({
+        data: {
+          status: "EXEMPT",
+          studentId: pkg.studentId,
+          teacherId,
+          courseId: pkg.courseId,
+          subjectId,
+          packageId: pkg.id,
+          assignedByUserId: user.id,
+          reportPeriodLabel: `${formatMinutesToHours(Math.max(0, Number(pkg.totalMinutes ?? 0)))}h package completed`,
+          exemptReason,
+          exemptedAt: now,
+          exemptedByUserId: user.id,
+        },
+      });
+    }
+  }
+
+  revalidatePath("/admin/reports/final");
+  revalidatePath("/teacher/final-reports");
+  redirect("/admin/reports/final?ok=exempt");
 }
 
 async function markFinalReportDelivered(formData: FormData) {
@@ -336,6 +467,7 @@ export default async function AdminFinalReportCenterPage({
         subject: true,
         package: true,
         deliveredByUser: { select: { name: true } },
+        exemptedByUser: { select: { name: true } },
       },
       orderBy: [{ status: "asc" }, { assignedAt: "desc" }],
       take: 300,
@@ -348,6 +480,7 @@ export default async function AdminFinalReportCenterPage({
     if (view === "submitted") return report.status === "SUBMITTED";
     if (view === "pending-delivery") return !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED");
     if (view === "delivered") return Boolean(report.deliveredAt);
+    if (view === "exempt") return report.status === "EXEMPT";
     if (view === "shared") return hasActiveShare;
     if (view === "expired-shares") return hasExpiredShare;
     return true;
@@ -358,6 +491,7 @@ export default async function AdminFinalReportCenterPage({
     submitted: reports.filter((report) => report.status === "SUBMITTED").length,
     pendingDelivery: reports.filter((report) => !report.deliveredAt && (report.status === "SUBMITTED" || report.status === "FORWARDED")).length,
     delivered: reports.filter((report) => Boolean(report.deliveredAt)).length,
+    exempt: reports.filter((report) => report.status === "EXEMPT").length,
     shared: reports.filter((report) => isShareActive(report)).length,
     expiredShares: reports.filter((report) => isShareExpired(report)).length,
   };
@@ -367,6 +501,7 @@ export default async function AdminFinalReportCenterPage({
     { key: "submitted", label: t(lang, "Submitted", "已提交"), count: stats.submitted },
     { key: "pending-delivery", label: t(lang, "Submitted not delivered", "已提交未交付"), count: stats.pendingDelivery },
     { key: "delivered", label: t(lang, "Delivered", "已交付"), count: stats.delivered },
+    { key: "exempt", label: t(lang, "Exempt", "无需报告"), count: stats.exempt },
     { key: "shared", label: t(lang, "Share links active", "分享链接生效中"), count: stats.shared },
     { key: "expired-shares", label: t(lang, "Expired links", "已过期链接"), count: stats.expiredShares },
   ] as const;
@@ -397,6 +532,10 @@ export default async function AdminFinalReportCenterPage({
       ) : ok === "delivered" ? (
         <div style={{ background: "#ecfdf3", border: "1px solid #34d399", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
           {t(lang, "Delivery record saved.", "家长交付记录已保存。")}
+        </div>
+      ) : ok === "exempt" ? (
+        <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
+          {t(lang, "Marked as exempt from final report follow-up.", "已标记为无需结课报告。")}
         </div>
       ) : ok === "share-enabled" ? (
         <div style={{ background: "#eff6ff", border: "1px solid #60a5fa", borderRadius: 8, padding: "6px 8px", marginBottom: 10 }}>
@@ -429,6 +568,7 @@ export default async function AdminFinalReportCenterPage({
         <div><b>{t(lang, "Total reports", "全部报告")}</b><div style={{ fontSize: 24, fontWeight: 800 }}>{stats.total}</div></div>
         <div><b>{t(lang, "Submitted not delivered", "已提交未交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.pendingDelivery}</div></div>
         <div><b>{t(lang, "Delivered", "已交付")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#166534" }}>{stats.delivered}</div></div>
+        <div><b>{t(lang, "Exempt", "无需报告")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#475569" }}>{stats.exempt}</div></div>
         <div><b>{t(lang, "Share links active", "分享链接生效中")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{stats.shared}</div></div>
         <div><b>{t(lang, "Expired links", "已过期链接")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#b45309" }}>{stats.expiredShares}</div></div>
       </div>
@@ -498,6 +638,8 @@ export default async function AdminFinalReportCenterPage({
                                 ? " - Submitted"
                                 : opt.latestReportStatus === "FORWARDED"
                                   ? " - Forwarded"
+                                  : opt.latestReportStatus === "EXEMPT"
+                                    ? " - Exempt"
                                   : ""}
                           </option>
                         ))}
@@ -506,18 +648,39 @@ export default async function AdminFinalReportCenterPage({
                     </form>
                   </td>
                   <td style={{ padding: 6 }}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {row.teacherOptions.map((opt) => (
-                        <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
-                          {opt.name}: {opt.latestReportStatus === "ASSIGNED"
-                            ? t(lang, "Assigned", "已推送")
-                            : opt.latestReportStatus === "SUBMITTED"
-                              ? t(lang, "Submitted", "已提交")
-                              : opt.latestReportStatus === "FORWARDED"
-                                ? t(lang, "Forwarded", "已转发")
-                                : t(lang, "Not pushed", "未推送")}
-                        </span>
-                      ))}
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <form action={exemptFinalReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <input type="hidden" name="packageId" value={row.packageId} />
+                        <select name="teacherId" defaultValue={row.defaultTeacherId}>
+                          {row.teacherOptions.map((opt) => (
+                            <option key={`${row.packageId}-${opt.id}-exempt`} value={opt.id}>
+                              {opt.name}
+                              {opt.subjectName ? ` (${opt.subjectName})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <select name="exemptReason" defaultValue="ASSESSMENT_ONLY">
+                          {FINAL_REPORT_EXEMPT_REASONS.map((reason) => (
+                            <option key={reason} value={reason}>{exemptReasonLabel(lang, reason)}</option>
+                          ))}
+                        </select>
+                        <button type="submit">{t(lang, "Mark exempt", "标记无需报告")}</button>
+                      </form>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {row.teacherOptions.map((opt) => (
+                          <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
+                            {opt.name}: {opt.latestReportStatus === "ASSIGNED"
+                              ? t(lang, "Assigned", "已推送")
+                              : opt.latestReportStatus === "SUBMITTED"
+                                ? t(lang, "Submitted", "已提交")
+                                : opt.latestReportStatus === "FORWARDED"
+                                  ? t(lang, "Forwarded", "已转发")
+                                  : opt.latestReportStatus === "EXEMPT"
+                                    ? t(lang, "Exempt", "无需报告")
+                                    : t(lang, "Not pushed", "未推送")}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -528,13 +691,15 @@ export default async function AdminFinalReportCenterPage({
       </div>
 
       <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
-        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Assigned, Submitted, and Forwarded Reports", "已推送、已提交与已转发报告")}</div>
+        <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Final Report Records", "结课报告记录")}</div>
         {filteredReports.length === 0 ? (
           <div style={{ color: "#999" }}>
             {view === "pending-delivery"
               ? t(lang, "No submitted reports are waiting for parent delivery.", "当前没有待交付给家长的已提交报告。")
               : view === "delivered"
                 ? t(lang, "No delivered final reports yet.", "暂时还没有已交付的结课报告。")
+                : view === "exempt"
+                  ? t(lang, "No exempt final reports yet.", "暂时还没有无需报告的结课报告记录。")
                 : view === "shared"
                   ? t(lang, "No active share links yet.", "当前还没有生效中的分享链接。")
                   : view === "expired-shares"
@@ -593,6 +758,13 @@ export default async function AdminFinalReportCenterPage({
                           {report.deliveryChannel ? ` · ${deliveryChannelLabel(lang, report.deliveryChannel)}` : ""}
                         </div>
                       ) : null}
+                      {report.status === "EXEMPT" ? (
+                        <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Exempted", "已豁免")}: {report.exemptedAt ? formatBusinessDateTime(new Date(report.exemptedAt)) : "-"}
+                          {report.exemptedByUser?.name ? ` (${report.exemptedByUser.name})` : ""}
+                          {report.exemptReason ? ` · ${exemptReasonLabel(lang, report.exemptReason)}` : ""}
+                        </div>
+                      ) : null}
                       {report.shareEnabledAt ? (
                         <div style={{ color: hasActiveShare ? "#1d4ed8" : hasExpiredShare ? "#b45309" : "#64748b", fontSize: 12, marginTop: 4 }}>
                           {hasActiveShare
@@ -622,6 +794,11 @@ export default async function AdminFinalReportCenterPage({
                           {t(lang, "Next step", "下一步建议")}: {recommendationLabel(lang, draft.recommendedNextStep)}
                         </div>
                       ) : null}
+                      {report.exemptReason ? (
+                        <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                          {t(lang, "Exempt reason", "豁免原因")}: {exemptReasonLabel(lang, report.exemptReason)}
+                        </div>
+                      ) : null}
                       {meta.deliveryNote ? (
                         <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
                           {t(lang, "Delivery note", "交付备注")}: {meta.deliveryNote}
@@ -631,7 +808,9 @@ export default async function AdminFinalReportCenterPage({
                     <td style={{ padding: 6, minWidth: 360 }}>
                       <div style={{ display: "grid", gap: 8 }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                          <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
+                          {report.status !== "EXEMPT" ? (
+                            <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
+                          ) : null}
                           {report.status === "SUBMITTED" ? (
                             <form action={markFinalReportForwarded}>
                               <input type="hidden" name="reportId" value={report.id} />
@@ -639,6 +818,18 @@ export default async function AdminFinalReportCenterPage({
                             </form>
                           ) : null}
                         </div>
+
+                        {!report.deliveredAt && report.status !== "EXEMPT" ? (
+                          <form action={exemptFinalReport} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <input type="hidden" name="reportId" value={report.id} />
+                            <select name="exemptReason" defaultValue="OPS_NOT_REQUIRED">
+                              {FINAL_REPORT_EXEMPT_REASONS.map((reason) => (
+                                <option key={reason} value={reason}>{exemptReasonLabel(lang, reason)}</option>
+                              ))}
+                            </select>
+                            <button type="submit">{t(lang, "Mark exempt", "标记无需报告")}</button>
+                          </form>
+                        ) : null}
 
                         {(report.status === "SUBMITTED" || report.status === "FORWARDED") ? (
                           <form action={markFinalReportDelivered} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -661,7 +852,11 @@ export default async function AdminFinalReportCenterPage({
                         ) : null}
 
                         <div style={{ display: "grid", gap: 6 }}>
-                          {hasActiveShare ? (
+                          {report.status === "EXEMPT" ? (
+                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                              {t(lang, "Exempt reports stay out of teacher and parent follow-up queues.", "已豁免的报告不会再进入老师或家长跟进流程。")}
+                            </div>
+                          ) : hasActiveShare ? (
                             <>
                               <div style={{ fontSize: 12, color: "#334155" }}>
                                 {t(lang, "Parent read-only link", "家长只读链接")}:{" "}

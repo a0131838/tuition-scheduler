@@ -94,7 +94,10 @@ export default async function TeacherFinalReportsPage() {
   }
 
   const rows = await prisma.finalReport.findMany({
-    where: { teacherId: teacher.id },
+    where: {
+      teacherId: teacher.id,
+      status: { not: "EXEMPT" },
+    },
     include: {
       student: true,
       course: true,
