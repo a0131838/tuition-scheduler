@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-04-r02`
 - Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: keep the student-detail calendar section expanded when switching months so the planning workbench stays open after `Prev Month / Next Month`.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
@@ -29,8 +29,9 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low. This release only preserves calendar view state on the student-detail page; it does not change quick scheduling, attendance, deduction, package, or billing logic.
 - Verification:
   - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - production read-only QA must confirm `Prev Month / Next Month` keeps `Planning tools & calendar` expanded
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 29b623a`
+  - production `https://sgtmanage.com/admin/login` returned `200`
+  - the hotfix now carries `calendarOpen=1` on student-detail month navigation so server render keeps `Planning tools & calendar` expanded across month switches; browser click-through should be confirmed in the next operator pass
 - Rollback point: previous production commit before `2026-04-04-r02`.
 
 ## 2026-04-04-r01

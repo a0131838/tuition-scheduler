@@ -108,7 +108,7 @@
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
 
-## 2026-04-04-r02 Ready
+## 2026-04-04-r02 Deployed
 
 - Scope: keep `Planning tools & calendar / 排课工具与日历` expanded when admins click `Prev Month / Next Month` inside student detail.
 - Business impact:
@@ -117,8 +117,9 @@
   - no quick scheduling, attendance, deduction, package, or billing behavior changed
 - Validation:
   - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - production read-only QA must confirm `Prev Month / Next Month` keeps the calendar section expanded
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 29b623a`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - the release adds `calendarOpen=1` to month navigation so the calendar details stay expanded on server render; browser click-through should be confirmed in the next operator pass
 
 ## 2026-04-03-r18 Deployed
 

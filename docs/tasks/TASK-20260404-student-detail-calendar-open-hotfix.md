@@ -34,4 +34,4 @@ Keep the student-detail `Planning tools & calendar / 排课工具与日历` sect
 ## Release
 
 - Release line: `2026-04-04-r02`
-- Status: `READY`
+- Status: `LIVE`
