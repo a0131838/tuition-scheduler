@@ -377,11 +377,6 @@ async function TeacherPayrollBody({
   return (
     <>
       <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
-        <div style={statCard("#eff6ff", "#bfdbfe")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Current stage", "当前阶段")}</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{teacherPayrollStageLabel(lang, stage)}</div>
-          <div style={{ color: "#1e40af", marginTop: 4 }}>{stageOwner.owner}</div>
-        </div>
         <div style={statCard("#f0fdf4", "#bbf7d0")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Total salary", "总工资")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 8 }}>{totalAmountLabel}</div>
@@ -392,6 +387,11 @@ async function TeacherPayrollBody({
           <div style={{ fontSize: 28, fontWeight: 800, color: "#92400e", marginTop: 8 }}>{data.totalSessions}</div>
           <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "All sessions included in this payroll range.", "当前工资统计周期内纳入的全部课次。")}</div>
         </div>
+        <div style={statCard("#eff6ff", "#bfdbfe")}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Total hours", "总课时")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{data.totalHours}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Counted teaching hours in this payroll cycle.", "本次工资周期内纳入统计的教学课时。")}</div>
+        </div>
         <div style={statCard("#f8fafc", "#e2e8f0")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>{t(lang, "Cycle window", "统计周期")}</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#334155", marginTop: 8 }}>{periodText}</div>
@@ -399,11 +399,23 @@ async function TeacherPayrollBody({
         </div>
       </section>
       <div style={{ marginBottom: 12, padding: "10px 12px", border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 8 }}>
-        <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 6 }}>
-          {t(lang, "Current payroll status / 当前工资状态", "当前工资状态 / Current payroll status")}
-        </div>
-        <div style={{ color: "#334155", marginBottom: 8 }}>
-          {teacherPayrollStageLabel(lang, stage)}
+        <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
+            {t(lang, "What happens next / 接下来做什么", "接下来做什么 / What happens next")}
+          </div>
+          <div
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1d4ed8",
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            {teacherPayrollStageLabel(lang, stage)}
+          </div>
         </div>
         <div
           style={{
@@ -418,12 +430,12 @@ async function TeacherPayrollBody({
           <div style={{ fontWeight: 700 }}>{actionPrompt.title}</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>{actionPrompt.body}</div>
         </div>
-        <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e2e8f0" }}>
+        <div style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8, background: "#ffffff", border: "1px solid #e2e8f0", display: "grid", gap: 4 }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>
             {t(lang, "Current owner / 当前处理方", "当前处理方 / Current owner")}
           </div>
-          <div style={{ fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{stageOwner.owner}</div>
-          <div style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>{stageOwner.hint}</div>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>{stageOwner.owner}</div>
+          <div style={{ fontSize: 13, color: "#475569" }}>{stageOwner.hint}</div>
         </div>
         <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Timeline / 时间线", "时间线 / Timeline")}</div>
@@ -496,26 +508,13 @@ async function TeacherPayrollBody({
           {t(lang, "Open payroll calculations", "展开工资计算明细")}
         </summary>
         <div style={{ padding: "0 14px 14px" }}>
-      <div style={{ marginBottom: 12 }}>
-        <b>{t(lang, "Current Period", "当前周期")}</b>: {periodText}
-      </div>
-
-      <div style={{ marginBottom: 16, padding: 10, border: "1px solid #eee", borderRadius: 8, background: "#fafafa" }}>
-        <div>
-          <b>{t(lang, "Sessions", "课次数")}</b>: {data.totalSessions}
-        </div>
-        <div>
-          <b>{t(lang, "Total Hours", "总课时")}</b>: {data.totalHours}
-        </div>
-        <div>
-          <b>{t(lang, "Total Salary", "总工资")}</b>:{" "}
-          {data.totalCurrencyTotals.length === 0
-            ? formatMoneyCents(0)
-            : data.totalCurrencyTotals.map((item) => (
-                <div key={item.currencyCode}>{formatMoneyCents(item.amountCents, item.currencyCode)}</div>
-              ))}
-        </div>
-      </div>
+          <div style={{ marginBottom: 16, padding: 10, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc", color: "#475569" }}>
+            {t(
+              lang,
+              "Open the sections below only when you need to audit the combo breakdown, pending rows, or detailed session records.",
+              "只有在需要核对课程组合、待处理课次或详细课次记录时，再展开下方明细。"
+            )}
+          </div>
 
       <h3>{t(lang, "Combo Summary", "课程组合汇总")}</h3>
       {data.comboRows.length === 0 ? (

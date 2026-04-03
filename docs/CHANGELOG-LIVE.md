@@ -1968,3 +1968,21 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - fresh local logged-in QA on `http://127.0.0.1:3324` confirmed `/teacher/sessions/ee0a433a-3b5c-4ab3-94fc-38e0a95faf7a` renders `Completion state`, preserves the existing status summary cards, and shows the new attendance/feedback completion guidance copy
 - Rollback point: previous production commit before `2026-04-02-r21`.
+
+## 2026-04-03-r01
+
+- Release ID: `2026-04-03-r01`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: trim repeated first-screen copy on teacher payroll so the page says the workflow once instead of repeating the same status in multiple summary blocks.
+- Key files:
+  - `app/teacher/payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260403-teacher-payroll-density-trim.md`
+- Risk impact (if any): Low. This is a teacher-side payroll presentation pass only; payroll calculation, confirmation, approval, payout, and finance-return logic remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - fresh local logged-in QA on `http://127.0.0.1:3325/teacher/payroll` confirmed the page still loads correctly for the current empty-state teacher account
+  - current local and production teacher account state is `Admin has not sent this month's payroll yet`, so this release was verified against the empty-state shell plus build output rather than a live sent-payroll record
+- Rollback point: previous production commit before `2026-04-03-r01`.

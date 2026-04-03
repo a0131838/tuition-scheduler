@@ -1031,3 +1031,14 @@
   - no attendance save rules, feedback validation rules, routing rules, or session permissions changed
 - Validation:
   - `npm run build`
+
+## 2026-04-03-r01 Deployed
+
+- Scope: trim repeated teacher-payroll copy on the first screen so the workflow reads once and the detailed calculations stay behind the disclosure.
+- Business impact:
+  - `/teacher/payroll` no longer repeats the same payroll stage as both a large summary card and a second status block
+  - the first screen now focuses on total salary, sessions, total hours, cycle window, and one `What happens next` workflow card
+  - the detailed calculation disclosure no longer repeats the same top-level payroll recap before the combo and session tables
+  - no payroll calculation, teacher confirmation, approval-stage, payout, or finance-return logic changed
+- Validation:
+  - `npm run build`
