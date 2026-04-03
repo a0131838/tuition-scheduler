@@ -15,6 +15,22 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-03-r16
+
+- Release ID: `2026-04-03-r16`
+- Date/Time (Asia/Shanghai): `2026-04-03`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make the month-end balance report’s amount-basis source easier to scan by turning the source labels into color-coded badges and adding a small on-page legend.
+- Key files:
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a student-billing presentation-only pass; the report calculation, export route, package ledger writes, billing flow, and finance approval behavior remain unchanged.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+- Rollback point: previous production commit before `2026-04-03-r16`.
+
 ## 2026-04-03-r15
 
 - Release ID: `2026-04-03-r15`

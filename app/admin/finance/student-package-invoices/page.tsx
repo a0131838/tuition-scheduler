@@ -41,6 +41,35 @@ function formatAmountBasisSource(source: string, lang: Awaited<ReturnType<typeof
   return t(lang, "No amount basis", "无金额基数");
 }
 
+function amountBasisBadgeStyle(source: string) {
+  if (source === "PURCHASE_TXNS") {
+    return {
+      border: "1px solid #bfdbfe",
+      background: "#dbeafe",
+      color: "#1d4ed8",
+    };
+  }
+  if (source === "RECEIPTS") {
+    return {
+      border: "1px solid #bbf7d0",
+      background: "#dcfce7",
+      color: "#15803d",
+    };
+  }
+  if (source === "PACKAGE_PAID_AMOUNT") {
+    return {
+      border: "1px solid #fde68a",
+      background: "#fef3c7",
+      color: "#b45309",
+    };
+  }
+  return {
+    border: "1px solid #cbd5e1",
+    background: "#f8fafc",
+    color: "#475569",
+  };
+}
+
 async function issueInvoiceAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -248,6 +277,27 @@ export default async function FinanceStudentPackageInvoicePage({
             "如果该课包的购买流水已经完整记录金额，报表会优先按购买流水金额计算；旧课包则安全回退到收据金额或课包付款金额。",
           )}
         </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {[
+            "PURCHASE_TXNS",
+            "RECEIPTS",
+            "PACKAGE_PAID_AMOUNT",
+            "NONE",
+          ].map((source) => (
+            <div
+              key={source}
+              style={{
+                ...amountBasisBadgeStyle(source),
+                borderRadius: 999,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              {formatAmountBasisSource(source, lang)}
+            </div>
+          ))}
+        </div>
         {balanceRows.length === 0 ? (
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {t(
@@ -285,7 +335,22 @@ export default async function FinanceStudentPackageInvoicePage({
                     <td>{minutesToHours(row.usedMinutes).toFixed(2)}</td>
                     <td>{minutesToHours(row.remainingMinutes).toFixed(2)}</td>
                     <td>SGD {money(row.paidAmountBasis)}</td>
-                    <td>{formatAmountBasisSource(row.paidAmountBasisSource, lang)}</td>
+                    <td>
+                      <span
+                        style={{
+                          ...amountBasisBadgeStyle(row.paidAmountBasisSource),
+                          display: "inline-flex",
+                          alignItems: "center",
+                          borderRadius: 999,
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {formatAmountBasisSource(row.paidAmountBasisSource, lang)}
+                      </span>
+                    </td>
                     <td>SGD {money(row.remainingAmount)}</td>
                   </tr>
                 ))}
