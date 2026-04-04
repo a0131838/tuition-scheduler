@@ -15,11 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r07
+
+- Release ID: `2026-04-04-r07`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `READY`
+- Scope: fix the packages workbench "Back to default workbench" shortcuts so they actually clear remembered filters instead of reloading the same remembered package state.
+- Key files:
+  - `app/admin/packages/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-packages-default-workbench-clearfix.md`
+- Risk impact (if any): Low. This release only changes package workbench reset links to use the explicit remembered-filter clear path; it does not change package filtering rules, billing, ledger, top-up, or package edit/delete logic.
+- Verification:
+  - `npm run build` passed
+  - targeted QA reproduced the bug on production: `/admin/packages` resumed remembered `paid=unpaid`, and the banner shortcut still pointed to bare `/admin/packages`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - post-deploy QA should confirm `Back to default workbench` now lands on `?clearFilters=1` behavior and clears remembered package filters
+- Rollback point: previous production commit before `2026-04-04-r07`.
+
 ## 2026-04-04-r06
 
 - Release ID: `2026-04-04-r06`
 - Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: hotfix the remaining student-detail `edit-student` id collision so explicit edit focus returns target the real edit details block.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
@@ -29,8 +48,9 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low. This release only removes an id collision in the student-detail edit section; it does not change student save/delete behavior or any scheduling, attendance, package, billing, or reporting logic.
 - Verification:
   - `npm run build` passed
-  - targeted QA should confirm `focus=edit-student#edit-student` hits the real edit details block and leaves it open
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 5967863`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - targeted live QA confirmed `focus=edit-student#edit-student` now hits a single `DETAILS` target and leaves it open (`editCount = 1`, `editOpen = true`)
 - Rollback point: previous production commit before `2026-04-04-r06`.
 
 ## 2026-04-04-r05

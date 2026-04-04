@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r06` (student detail edit id-collision hotfix).
+- Current release line on this branch: `2026-04-04-r07` (packages default-workbench clear-filter hotfix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -108,7 +108,7 @@
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
 
-## 2026-04-04-r06 Ready
+## 2026-04-04-r06 Deployed
 
 - Scope: remove the remaining student-detail `edit-student` id collision so explicit edit returns target the real edit details block.
 - Business impact:
@@ -117,7 +117,20 @@
   - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
 - Validation:
   - `npm run build`
-  - targeted QA should confirm `focus=edit-student#edit-student` leaves the edit block open
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 5967863` and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA confirmed `focus=edit-student#edit-student` now lands on a single `DETAILS` target and leaves the edit block open
+
+## 2026-04-04-r07 Ready
+
+- Scope: fix package-workbench reset shortcuts so "Back to default workbench" clears remembered filters instead of reloading the same remembered package state.
+- Business impact:
+  - the resumed-filters banner now routes `Back to default workbench` through the explicit `clearFilters=1` path
+  - the empty-state shortcut uses the same clear path, so operators can really escape remembered package filters
+  - package filtering rules, billing, ledger, top-up, edit, and delete logic remain unchanged
+- Validation:
+  - `npm run build`
+  - production read-only QA reproduced the bug before the fix: `/admin/packages` resumed remembered `paid=unpaid`, and the "Back to default workbench" shortcut still pointed to bare `/admin/packages`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-04-r05 Deployed

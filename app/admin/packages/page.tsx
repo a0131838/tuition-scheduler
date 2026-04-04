@@ -357,6 +357,7 @@ export default async function AdminPackagesPage({
       { q, courseId: filterCourseId, paid: filterPaid, warn: filterWarn },
       extras
     );
+  const defaultWorkbenchHref = "/admin/packages?clearFilters=1";
   const focusedPackage = filteredPackages.find((p) => p.id === focusPackageId) ?? null;
   const nextVisiblePackage = filteredPackages.find((p) => p.id !== focusPackageId) ?? filteredPackages[0] ?? null;
   const focusedPackageAnchor = focusedPackage ? `#package-row-${focusedPackage.id}` : "";
@@ -433,7 +434,7 @@ export default async function AdminPackagesPage({
             "可以先清空搜索、付款、课程或预警筛选。如果你原本在找某个课包，先把工作台放宽，再进入账单或流水。"
           ),
           links: [
-            { href: "/admin/packages", label: t(lang, "Back to default workbench", "回到默认工作台") },
+            { href: defaultWorkbenchHref, label: t(lang, "Back to default workbench", "回到默认工作台") },
             { href: "/admin/students", label: t(lang, "Open students desk", "打开学生工作台") },
           ],
         }
@@ -528,7 +529,7 @@ export default async function AdminPackagesPage({
               "已恢复你上次的课包筛选；如果要回到默认工作台，可直接使用右侧快捷入口。"
             )}
           </div>
-          <a href="/admin/packages">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
+          <a href={defaultWorkbenchHref}>{t(lang, "Back to default workbench", "回到默认工作台")}</a>
         </div>
       ) : null}
 
