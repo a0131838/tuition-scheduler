@@ -35,4 +35,4 @@ Teach student-detail sections to honor explicit `focus` state on first render so
 ## Release
 
 - Release line: `2026-04-04-r04`
-- Status: `READY`
+- Status: `LIVE`
