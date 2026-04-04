@@ -35,4 +35,4 @@ Fix package-workbench "Back to default workbench" shortcuts so they clear rememb
 ## Release
 
 - Release line: `2026-04-04-r07`
-- Status: `READY`
+- Status: `LIVE`

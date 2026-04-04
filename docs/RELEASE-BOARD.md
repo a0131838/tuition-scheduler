@@ -120,7 +120,7 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 5967863` and `https://sgtmanage.com/admin/login` returned `200`
   - production read-only QA confirmed `focus=edit-student#edit-student` now lands on a single `DETAILS` target and leaves the edit block open
 
-## 2026-04-04-r07 Ready
+## 2026-04-04-r07 Deployed
 
 - Scope: fix package-workbench reset shortcuts so "Back to default workbench" clears remembered filters instead of reloading the same remembered package state.
 - Business impact:
@@ -130,7 +130,8 @@
 - Validation:
   - `npm run build`
   - production read-only QA reproduced the bug before the fix: `/admin/packages` resumed remembered `paid=unpaid`, and the "Back to default workbench" shortcut still pointed to bare `/admin/packages`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = a4568df` and `https://sgtmanage.com/admin/login` returned `200`
+  - production read-only QA confirmed the shortcut now routes to `/admin/packages?clearFilters=1`, clears remembered package filters, hides the resumed-filters banner, and resets payment state back to `All / 全部`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-04-r05 Deployed
