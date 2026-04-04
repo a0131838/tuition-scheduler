@@ -35,4 +35,4 @@ Make student-detail section anchors and refresh-driven returns reopen the releva
 ## Release
 
 - Release line: `2026-04-04-r03`
-- Status: `READY`
+- Status: `LIVE`

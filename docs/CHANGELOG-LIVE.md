@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-04-r03`
 - Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: reopen the correct student-detail workbench section from hash-driven returns so packages, attendance, and edit flows stay usable after refreshes and same-page redirects.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
@@ -32,8 +32,9 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low. This release only improves student-detail section reopening and hash return behavior; it does not change scheduling, attendance, package, billing, or student data rules.
 - Verification:
   - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-  - operator click-through should confirm `Packages / Attendance / Edit Student` reopen correctly after hash-based refresh returns
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = b3ce26b`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - the shared student-detail hash restore layer now reopens matching `<details>` blocks for hash-driven returns; targeted operator click-through should confirm `Packages / Attendance / Edit Student` stay reopened in live use
 - Rollback point: previous production commit before `2026-04-04-r03`.
 
 ## 2026-04-04-r02

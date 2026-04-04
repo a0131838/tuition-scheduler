@@ -108,7 +108,7 @@
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
 
-## 2026-04-04-r03 Ready
+## 2026-04-04-r03 Deployed
 
 - Scope: keep student-detail workbench sections open when operators return by hash after refreshes or same-page redirects.
 - Business impact:
@@ -118,8 +118,9 @@
   - no scheduling, attendance, deduction, package, billing, or student data rules changed
 - Validation:
   - `npm run build`
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
-  - operator click-through should confirm closed student-detail sections reopen after hash-based refresh returns
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = b3ce26b`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - the shared student-detail hash restore layer now reopens matching `<details>` blocks for hash-driven returns; targeted operator click-through should confirm closed student-detail sections reopen after refresh returns
 
 ## 2026-04-04-r02 Deployed
 
