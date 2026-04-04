@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r07` (packages default-workbench clear-filter hotfix).
+- Current release line on this branch: `2026-04-04-r08` (admin nav monthly-schedule regrouping).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-04-r08 Deployed
+
+- Scope: move `Monthly Schedule / 月课表总览` from the admin `Reports` group into `Today / 今天`.
+- Business impact:
+  - admin operators now see the month schedule inside the day-first task cluster instead of the lower-priority reports cluster
+  - `Reports / 报表` keeps its audit/archive/reporting links while `Today / 今天` now includes both live schedule and month schedule navigation
+  - no schedule data, reporting logic, permissions, finance flows, or teacher workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator QA should confirm the sidebar now shows `Monthly Schedule / 月课表总览` under `Today / 今天`
 
 ## 2026-04-03-r25 Deployed
 

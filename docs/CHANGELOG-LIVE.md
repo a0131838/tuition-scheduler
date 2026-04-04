@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r08
+
+- Release ID: `2026-04-04-r08`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `LIVE` after deploy completion
+- Scope: move `Monthly Schedule / 月课表总览` from the admin `Reports` sidebar group into `Today / 今天` so operators can reach the month schedule from the day-first workspace cluster.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-admin-nav-monthly-schedule-to-today.md`
+- Risk impact (if any): Low. This release only changes admin sidebar grouping and link placement; it does not change schedule data, report logic, permissions, or any finance/teaching workflows.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin sidebar should show `Monthly Schedule / 月课表总览` under `Today / 今天`, no longer under `Reports / 报表`
+- Rollback point: previous production commit before `2026-04-04-r08`.
+
 ## 2026-04-04-r07
 
 - Release ID: `2026-04-04-r07`

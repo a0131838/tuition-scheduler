@@ -156,6 +156,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Open the live schedule and move quickly.", "打开当前课表并快速处理变更。"),
           tone: "neutral" as const,
         },
+        {
+          href: "/admin/reports/monthly-schedule",
+          label: t(lang, "Monthly Schedule", "月课表总览"),
+          description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),
+          tone: "neutral" as const,
+        },
       ],
     },
     {
@@ -210,7 +216,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Audit, archive, and context pages.", "审计、归档和辅助查看页。"),
       items: [
         { href: "/admin/reports/monthly-hours", label: t(lang, "Monthly Hours", "月度课时明细"), tone: "neutral" as const },
-        { href: "/admin/reports/monthly-schedule", label: t(lang, "Monthly Schedule", "月课表总览"), tone: "neutral" as const },
         { href: "/admin/reports/cancelled-sessions", label: t(lang, "Cancelled Sessions", "已取消课次"), tone: "neutral" as const },
         { href: "/admin/reports/package-sharing-audit", label: t(lang, "Package Sharing Audit", "共享课包审计"), tone: "neutral" as const },
         { href: "/admin/reports/midterm", label: t(lang, "Midterm Reports", "中期报告"), tone: "neutral" as const },
