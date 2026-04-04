@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r04
+
+- Release ID: `2026-04-04-r04`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `READY`
+- Scope: refine student-detail first-render section state so explicit focus returns open packages, enrollments, quick schedule, and edit flows in the right work area without waiting for client-side recovery.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-student-detail-focus-open-pass.md`
+- Risk impact (if any): Low. This release only improves student-detail first-render section state and return targeting; it does not change scheduling, attendance, package, billing, or student data rules.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+  - operator click-through should confirm explicit `focus` returns open `Packages / Enrollments / Quick Schedule / Edit Student` on first render
+- Rollback point: previous production commit before `2026-04-04-r04`.
+
 ## 2026-04-04-r03
 
 - Release ID: `2026-04-04-r03`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r03` (student detail section open-state pass).
+- Current release line on this branch: `2026-04-04-r04` (student detail focus open pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -107,6 +107,19 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
+
+## 2026-04-04-r04 Ready
+
+- Scope: keep student-detail first-render focus aligned with the operator's current section when the URL already carries explicit section intent.
+- Business impact:
+  - `focus=packages`, `focus=enrollments`, `focus=quick-schedule`, and `focus=edit-student` now open those student-detail sections on the initial server render
+  - `focus=calendar-tools` now also keeps the planning calendar expanded on the initial server render
+  - attendance clear/reset continues to keep the operator inside attendance
+  - no scheduling, attendance, deduction, package, billing, or student data rules changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator click-through should confirm explicit focus returns open the intended student-detail section on first render
 
 ## 2026-04-04-r03 Deployed
 

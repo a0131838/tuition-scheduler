@@ -1109,9 +1109,12 @@ export default async function StudentDetailPage({
   const monthParam = sp?.month ?? "";
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
-  const calendarOpen = sp?.calendarOpen === "1";
   const focus = sp?.focus ?? "";
+  const calendarOpen = sp?.calendarOpen === "1" || focus === "calendar-tools";
   const attendanceOpen = focus === "attendance";
+  const enrollmentsOpen = focus === "enrollments";
+  const packagesOpen = focus === "packages";
+  const editStudentOpen = focus === "edit-student";
 
   const now = new Date();
   const bypassAvailabilityCheck = isStrictSuperAdmin(await getCurrentUser());
@@ -1986,7 +1989,7 @@ export default async function StudentDetailPage({
       </table>
             </details>
 
-      <details id="enrollments" style={{ marginBottom: 14 }}>
+      <details id="enrollments" open={enrollmentsOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Enrollments")} ({enrollments.length})</summary>
       {sectionReturnBar(lang, {
         hint: t(lang, "Use enrollments to confirm the current teaching container before changing packages or future sessions.", "先在这里确认当前报名归属，再决定是否去改课包或未来课次。"),
@@ -2037,7 +2040,7 @@ export default async function StudentDetailPage({
       )}
       </details>
 
-      <details id="packages" style={{ marginBottom: 14 }}>
+      <details id="packages" open={packagesOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>
       {sectionReturnBar(lang, {
         hint: t(lang, "Package balance and payment status usually decide whether the next step should be billing follow-up or schedule work.", "课包余额和付款状态通常决定下一步该先走账务跟进还是排课处理。"),
@@ -2438,7 +2441,7 @@ export default async function StudentDetailPage({
           quickDurationMin={quickDurationMin}
           quickCampusId={quickCampusId}
           quickRoomId={quickRoomId}
-          openOnLoad={quickOpen}
+          openOnLoad={quickOpen || focus === "quick-schedule"}
           subjects={quickSubjects.map((s) => ({
             id: s.id,
             name: s.name,
@@ -2521,6 +2524,7 @@ export default async function StudentDetailPage({
           sources={sources.map((s) => ({ id: s.id, name: s.name }))}
           types={types.map((t) => ({ id: t.id, name: t.name }))}
           gradeOptions={GRADE_OPTIONS}
+          initialOpen={editStudentOpen}
           labels={{
             title: tl(lang, "Edit Student"),
             name: tl(lang, "Name"),

@@ -16,6 +16,7 @@ export default function StudentEditClient({
   gradeOptions,
   labels,
   returnHash,
+  initialOpen,
 }: {
   studentId: string;
   initial: {
@@ -46,6 +47,7 @@ export default function StudentEditClient({
     error: string;
   };
   returnHash?: string;
+  initialOpen?: boolean;
 }) {
   const router = useRouter();
   const [form, setForm] = useState(initial);
@@ -86,7 +88,7 @@ export default function StudentEditClient({
   }
 
   return (
-    <details id="edit-student" style={{ marginBottom: 14 }}>
+    <details id="edit-student" open={initialOpen} style={{ marginBottom: 14 }}>
       <summary style={{ fontWeight: 700 }}>{labels.title}</summary>
 
       {err ? <NoticeBanner type="error" title={labels.error} message={err} /> : null}
