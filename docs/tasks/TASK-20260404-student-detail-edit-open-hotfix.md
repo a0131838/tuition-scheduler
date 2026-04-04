@@ -34,4 +34,4 @@ Keep `Edit Student / 编辑学生` open when student-detail returns with explici
 ## Release
 
 - Release line: `2026-04-04-r05`
-- Status: `READY`
+- Status: `LIVE`

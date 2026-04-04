@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r05` (student detail edit-open hotfix).
+- Current release line on this branch: `2026-04-04-r06` (student detail edit id-collision hotfix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -108,7 +108,19 @@
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
 
-## 2026-04-04-r05 Ready
+## 2026-04-04-r06 Ready
+
+- Scope: remove the remaining student-detail `edit-student` id collision so explicit edit returns target the real edit details block.
+- Business impact:
+  - the outer student-detail edit wrapper no longer shadows `#edit-student`
+  - `focus=edit-student#edit-student` can now target the actual edit `<details>` block instead of a wrapper div
+  - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
+- Validation:
+  - `npm run build`
+  - targeted QA should confirm `focus=edit-student#edit-student` leaves the edit block open
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+
+## 2026-04-04-r05 Deployed
 
 - Scope: hotfix the remaining student-detail explicit-focus gap so `Edit Student / 编辑学生` stays open when operators return to that section.
 - Business impact:
@@ -117,8 +129,9 @@
   - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
 - Validation:
   - `npm run build`
-  - targeted QA should confirm `focus=edit-student#edit-student` leaves the edit block open
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 9c86c41`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - follow-up QA found a remaining DOM id collision on `edit-student`, so `r05` should be treated as a partial hotfix only
 
 ## 2026-04-04-r04 Deployed
 

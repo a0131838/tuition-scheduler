@@ -2502,7 +2502,7 @@ export default async function StudentDetailPage({
         />
       </details>
 
-      <div id="edit-student" style={{ display: "grid", gap: 8 }}>
+      <div id="edit-student-section" style={{ display: "grid", gap: 8 }}>
         {sectionReturnBar(lang, {
           hint: t(lang, "Use student editing after you finish queue work, then jump back to packages or attendance if needed.", "建议在队列型工作处理完后再编辑学生资料，改完可直接回课包或点名。"),
           links: [

@@ -15,11 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r06
+
+- Release ID: `2026-04-04-r06`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `READY`
+- Scope: hotfix the remaining student-detail `edit-student` id collision so explicit edit focus returns target the real edit details block.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-student-detail-edit-id-collision-hotfix.md`
+- Risk impact (if any): Low. This release only removes an id collision in the student-detail edit section; it does not change student save/delete behavior or any scheduling, attendance, package, billing, or reporting logic.
+- Verification:
+  - `npm run build` passed
+  - targeted QA should confirm `focus=edit-student#edit-student` hits the real edit details block and leaves it open
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
+- Rollback point: previous production commit before `2026-04-04-r06`.
+
 ## 2026-04-04-r05
 
 - Release ID: `2026-04-04-r05`
 - Date/Time (Asia/Shanghai): `2026-04-04`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: hotfix the remaining student-detail explicit-focus gap so `Edit Student / 编辑学生` stays open when operators return with `focus=edit-student`.
 - Key files:
   - `app/admin/students/[id]/_components/StudentEditClient.tsx`
@@ -29,9 +47,11 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low. This release only stabilizes the client-side open state for the edit-student details block; it does not change student save/delete behavior or any scheduling, attendance, package, billing, or reporting logic.
 - Verification:
   - `npm run build` passed
-  - targeted QA should confirm `focus=edit-student#edit-student` keeps the edit block open
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned on the deployed release commit and `https://sgtmanage.com/admin/login` returns `200`
-- Rollback point: previous production commit before `2026-04-04-r05`.
+  - `npm run build` passed
+  - post-deploy startup check confirmed `local / origin / server = 9c86c41`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - follow-up QA found a remaining DOM id collision on `edit-student`, so `r05` should be treated as a partial hotfix only
+- Rollback point: previous production commit before `2026-04-04-r05` (`ea9779d`).
 
 ## 2026-04-04-r04
 
