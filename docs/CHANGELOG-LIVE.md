@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-04-r09
+
+- Release ID: `2026-04-04-r09`
+- Date/Time (Asia/Shanghai): `2026-04-04`
+- Deployment status: `LIVE` after deploy completion
+- Scope: regroup `SOP One Pager / SOP一页纸` into `Core Workflows / 核心流程`, move `Undeducted Completed / 已完成未减扣` into `Reports / 报表`, and strengthen admin sidebar group hierarchy so each section is easier to scan.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260404-admin-sidebar-regroup-and-visual-pass.md`
+- Risk impact (if any): Low. This release only changes admin sidebar grouping and visual emphasis; it does not change permissions, routes, queue logic, reporting calculations, or any business workflow.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin sidebar should show `SOP One Pager / SOP一页纸` under `Core Workflows / 核心流程`
+  - admin sidebar should show `Undeducted Completed / 已完成未减扣` under `Reports / 报表`
+- Rollback point: previous production commit before `2026-04-04-r09`.
+
 ## 2026-04-04-r08
 
 - Release ID: `2026-04-04-r08`

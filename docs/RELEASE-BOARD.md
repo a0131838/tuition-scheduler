@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r08` (admin nav monthly-schedule regrouping).
+- Current release line on this branch: `2026-04-04-r09` (admin sidebar regrouping and visual hierarchy pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-04-r09 Deployed
+
+- Scope: regroup key admin sidebar links and strengthen sidebar group hierarchy so operators can tell sections apart faster.
+- Business impact:
+  - `SOP One Pager / SOP一页纸` now lives under `Core Workflows / 核心流程`
+  - `Undeducted Completed / 已完成未减扣` now lives under `Reports / 报表`
+  - admin sidebar groups now use stronger per-section accent styling, clearer uppercase titles, and a more obvious active-group indicator
+  - active links now show a stronger left accent bar so operators can see both the current item and the current section at a glance
+  - no permissions, routes, finance logic, reporting logic, or schedule/student/package workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator QA should confirm the sidebar now shows the regrouped links in the expected sections and the visual grouping is easier to scan
 
 ## 2026-04-04-r08 Deployed
 

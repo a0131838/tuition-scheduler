@@ -177,6 +177,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/feedbacks", label: t(lang, "Teacher Feedbacks", "老师课后反馈"), tone: "accent" as const },
         { href: "/admin/tickets", label: t(lang, "Ticket Center", "工单中心"), tone: "warning" as const },
         { href: "/admin/tickets/handover", label: t(lang, "Daily Handover", "每日交接"), tone: "warning" as const },
+        { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP一页纸"), tone: "neutral" as const },
       ],
     },
     {
@@ -188,7 +189,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals", label: t(lang, "Receipt Approvals", "收据审批"), tone: "warning" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
-        { href: "/admin/reports/undeducted-completed", label: t(lang, "Undeducted Completed", "已完成未减扣"), tone: "danger" as const },
       ],
     },
     {
@@ -220,7 +220,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/reports/package-sharing-audit", label: t(lang, "Package Sharing Audit", "共享课包审计"), tone: "neutral" as const },
         { href: "/admin/reports/midterm", label: t(lang, "Midterm Reports", "中期报告"), tone: "neutral" as const },
         { href: "/admin/reports/final", label: t(lang, "Final Reports", "结课报告"), tone: "neutral" as const },
-        { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP一页纸"), tone: "neutral" as const },
+        { href: "/admin/reports/undeducted-completed", label: t(lang, "Undeducted Completed", "已完成未减扣"), tone: "danger" as const },
       ],
     },
   ];

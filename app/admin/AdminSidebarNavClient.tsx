@@ -18,6 +18,32 @@ type NavGroup = {
   items: NavItem[];
 };
 
+function groupStyles(title: string, isActiveGroup: boolean) {
+  if (title.includes("Today") || title.includes("今天")) {
+    return isActiveGroup
+      ? { background: "#eff6ff", borderColor: "#93c5fd", accent: "#1d4ed8", summary: "#475569" }
+      : { background: "#f8fbff", borderColor: "#dbeafe", accent: "#2563eb", summary: "#64748b" };
+  }
+  if (title.includes("Core") || title.includes("核心")) {
+    return isActiveGroup
+      ? { background: "#ffffff", borderColor: "#cbd5e1", accent: "#0f172a", summary: "#475569" }
+      : { background: "#f8fafc", borderColor: "#e2e8f0", accent: "#334155", summary: "#64748b" };
+  }
+  if (title.includes("Finance") || title.includes("财务")) {
+    return isActiveGroup
+      ? { background: "#fffaf2", borderColor: "#fdba74", accent: "#9a3412", summary: "#7c2d12" }
+      : { background: "#fffdf8", borderColor: "#fed7aa", accent: "#c2410c", summary: "#9a3412" };
+  }
+  if (title.includes("Reports") || title.includes("报表")) {
+    return isActiveGroup
+      ? { background: "#f8fafc", borderColor: "#cbd5e1", accent: "#475569", summary: "#64748b" }
+      : { background: "#fbfdff", borderColor: "#e2e8f0", accent: "#64748b", summary: "#94a3b8" };
+  }
+  return isActiveGroup
+    ? { background: "#ffffff", borderColor: "#bfdbfe", accent: "#1d4ed8", summary: "#475569" }
+    : { background: "#f8fafc", borderColor: "#e2e8f0", accent: "#334155", summary: "#64748b" };
+}
+
 function toneStyles(tone: NavTone, isActive: boolean) {
   if (tone === "danger") {
     return isActive
@@ -55,38 +81,67 @@ export default function AdminSidebarNavClient({
     <nav style={{ display: "grid", gap: 12 }}>
       {groups.map((group) => {
         const isActiveGroup = group.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+        const groupTone = groupStyles(group.title, isActiveGroup);
         return (
           <details
             key={group.title}
             open={isActiveGroup}
             style={{
               padding: 12,
-              borderRadius: 16,
-              background: isActiveGroup ? "#ffffff" : "#f8fafc",
-              border: `1px solid ${isActiveGroup ? "#bfdbfe" : "#e2e8f0"}`,
-              boxShadow: isActiveGroup ? "0 8px 20px rgba(37, 99, 235, 0.08)" : "none",
+              borderRadius: 18,
+              background: groupTone.background,
+              border: `1px solid ${groupTone.borderColor}`,
+              boxShadow: isActiveGroup ? "0 10px 24px rgba(15, 23, 42, 0.08)" : "0 2px 8px rgba(15, 23, 42, 0.03)",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 4,
+                background: isActiveGroup ? groupTone.accent : "transparent",
+              }}
+            />
             <summary
               style={{
                 cursor: "pointer",
                 listStyle: "none",
                 display: "grid",
-                gap: 4,
+                gap: 5,
               }}
             >
               <span
                 style={{
-                  fontSize: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 12.5,
                   fontWeight: 800,
-                  color: isActiveGroup ? "#1d4ed8" : "#334155",
-                  letterSpacing: 0.2,
+                  color: groupTone.accent,
+                  letterSpacing: 0.25,
+                  textTransform: "uppercase",
                 }}
               >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: groupTone.accent,
+                    boxShadow: isActiveGroup ? `0 0 0 4px ${groupTone.borderColor}` : "none",
+                    flexShrink: 0,
+                  }}
+                />
                 {group.title}
               </span>
               {group.summary ? (
-                <span style={{ fontSize: 11, color: "#64748b", lineHeight: 1.35 }}>{group.summary}</span>
+                <span style={{ fontSize: 10.5, color: groupTone.summary, lineHeight: 1.35 }}>{group.summary}</span>
               ) : null}
             </summary>
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
@@ -107,9 +162,25 @@ export default function AdminSidebarNavClient({
                       border: `1px solid ${tone.borderColor}`,
                       background: tone.background,
                       color: tone.color,
-                      boxShadow: isActive ? "0 4px 12px rgba(15, 23, 42, 0.08)" : "none",
+                      boxShadow: isActive ? "0 6px 14px rgba(15, 23, 42, 0.08)" : "none",
+                      position: "relative",
+                      paddingLeft: isActive ? 16 : 12,
                     }}
                   >
+                    {isActive ? (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 8,
+                          bottom: 8,
+                          width: 4,
+                          borderRadius: 999,
+                          background: tone.color,
+                        }}
+                      />
+                    ) : null}
                     <span style={{ fontWeight: 700, lineHeight: 1.25 }}>{item.label}</span>
                     {item.description ? (
                       <span style={{ fontSize: 11, lineHeight: 1.35, color: isActive ? tone.color : "#64748b" }}>
