@@ -166,7 +166,7 @@ export default function StudentAttendanceFilterForm({
           <input name="limit" type="number" min={1} max={500} defaultValue={initial.limit} style={{ marginLeft: 6, width: 120 }} />
         </label>
         <button type="submit" data-apply-submit="1">{labels.apply}</button>
-        <a href={`/admin/students/${studentId}${targetHash}`}>{labels.clear}</a>
+        <a href={`/admin/students/${studentId}?focus=attendance${targetHash}`}>{labels.clear}</a>
       </div>
     </form>
   );

@@ -14,6 +14,7 @@ import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
+import StudentDetailHashStateClient from "./_components/StudentDetailHashStateClient";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
@@ -1531,6 +1532,7 @@ export default async function StudentDetailPage({
   const nextUpcomingCancelled = nextUpcomingAttendance?.status === "EXCUSED";
   return (
     <div>
+      <StudentDetailHashStateClient />
       <div style={{ ...workbenchHeroStyle("indigo"), gap: 14, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "grid", gap: 8 }}>
