@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r04` (student detail focus open pass).
+- Current release line on this branch: `2026-04-04-r05` (student detail edit-open hotfix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -107,6 +107,18 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = 14d5980` and `https://sgtmanage.com/admin/login` returned `200`
   - post-deploy `curl -I https://sgtmanage.com/admin/login` returned `200`
   - targeted student-detail verification covered calendar links, quick-schedule links, attendance filter routing, and refresh-driven section return helpers
+
+## 2026-04-04-r05 Ready
+
+- Scope: hotfix the remaining student-detail explicit-focus gap so `Edit Student / 编辑学生` stays open when operators return to that section.
+- Business impact:
+  - `focus=edit-student#edit-student` now forces the edit-student details block open even in the client-side path that QA found still closed
+  - the broader student-detail focus-open behavior from `r04` remains unchanged for packages, enrollments, quick schedule, attendance, and calendar tools
+  - no student save/delete behavior, scheduling rules, attendance rules, package logic, billing logic, or reporting logic changed
+- Validation:
+  - `npm run build`
+  - targeted QA should confirm `focus=edit-student#edit-student` leaves the edit block open
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
 
 ## 2026-04-04-r04 Deployed
 

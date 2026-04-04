@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
 import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
@@ -50,11 +50,18 @@ export default function StudentEditClient({
   initialOpen?: boolean;
 }) {
   const router = useRouter();
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const [form, setForm] = useState(initial);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
 
   const canSave = useMemo(() => form.name.trim().length > 0, [form.name]);
+
+  useEffect(() => {
+    if (initialOpen && detailsRef.current) {
+      detailsRef.current.open = true;
+    }
+  }, [initialOpen]);
 
   async function save() {
     setErr("");
@@ -88,7 +95,7 @@ export default function StudentEditClient({
   }
 
   return (
-    <details id="edit-student" open={initialOpen} style={{ marginBottom: 14 }}>
+    <details ref={detailsRef} id="edit-student" open={initialOpen} style={{ marginBottom: 14 }}>
       <summary style={{ fontWeight: 700 }}>{labels.title}</summary>
 
       {err ? <NoticeBanner type="error" title={labels.error} message={err} /> : null}
