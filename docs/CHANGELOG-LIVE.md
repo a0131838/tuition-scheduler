@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-06-r11
+
+- Release ID: `2026-04-06-r11`
+- Date/Time (Asia/Shanghai): `2026-04-06`
+- Deployment status: `LIVE` after deploy completion
+- Scope: simplify the `Core Workflows / 核心流程` sidebar pass by removing the extra item-level copy while keeping the stronger group color distinction and simpler section summary.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260406-admin-core-workflows-simplify-followup.md`
+- Risk impact (if any): Low. This release only trims sidebar copy and emphasis styling; it does not change routes, permissions, queue logic, or any student/finance/teaching workflow.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin sidebar should keep the stronger group colors while `Core Workflows / 核心流程` returns to a simpler label-first list
+- Rollback point: previous production commit before `2026-04-06-r11`.
+
 ## 2026-04-06-r10
 
 - Release ID: `2026-04-06-r10`

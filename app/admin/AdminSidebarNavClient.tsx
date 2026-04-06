@@ -145,11 +145,9 @@ export default function AdminSidebarNavClient({
               ) : null}
             </summary>
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-              {group.items.map((item, index) => {
+              {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const tone = toneStyles(item.tone ?? "neutral", isActive);
-                const isCoreGroup = group.title.includes("Core") || group.title.includes("核心");
-                const isPrimaryCoreItem = isCoreGroup && index < 4;
                 return (
                   <Link
                     key={item.href}
@@ -158,7 +156,7 @@ export default function AdminSidebarNavClient({
                     style={{
                       display: "grid",
                       gap: item.description ? 4 : 0,
-                      padding: isPrimaryCoreItem ? "12px 12px" : "11px 12px",
+                      padding: "11px 12px",
                       borderRadius: 12,
                       textDecoration: "none",
                       border: `1px solid ${tone.borderColor}`,
@@ -167,7 +165,6 @@ export default function AdminSidebarNavClient({
                       boxShadow: isActive ? "0 6px 14px rgba(15, 23, 42, 0.08)" : "none",
                       position: "relative",
                       paddingLeft: isActive ? 16 : 12,
-                      outline: isPrimaryCoreItem && !isActive ? "1px solid rgba(59, 130, 246, 0.10)" : "none",
                     }}
                   >
                     {isActive ? (
@@ -184,7 +181,7 @@ export default function AdminSidebarNavClient({
                         }}
                       />
                     ) : null}
-                    <span style={{ fontWeight: isPrimaryCoreItem ? 800 : 700, lineHeight: 1.25 }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, lineHeight: 1.25 }}>{item.label}</span>
                     {item.description ? (
                       <span style={{ fontSize: 11, lineHeight: 1.35, color: isActive ? tone.color : "#64748b" }}>
                         {item.description}

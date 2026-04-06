@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-06-r10` (admin core-workflows clarity pass).
+- Current release line on this branch: `2026-04-06-r11` (admin core-workflows simplify follow-up).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-06-r11 Deployed
+
+- Scope: simplify the `Core Workflows / 核心流程` sidebar refinement so the section stays easy to scan without extra text density.
+- Business impact:
+  - `Core Workflows` keeps the stronger group color treatment from the previous pass
+  - the section summary is shorter and item-level explanatory copy is removed again, so the sidebar is closer to the original simple style
+  - no routes, permissions, queue logic, finance logic, or scheduling/student/package workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator QA should confirm the sidebar feels simpler while the core-workflows group is still easier to distinguish by color
 
 ## 2026-04-06-r10 Deployed
 
