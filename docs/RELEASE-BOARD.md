@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-06-r11` (admin core-workflows simplify follow-up).
+- Current release line on this branch: `2026-04-06-r12` (admin sidebar color tuning pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-06-r12 Deployed
+
+- Scope: tune the admin sidebar colors only, keeping the layout simple while separating groups more clearly by color.
+- Business impact:
+  - `Today` stays blue, `Core Workflows` now reads as a distinct green-teal block, `Finance & Review` stays warm, `Setup & Control` stays purple, and `Reports` stays neutral
+  - the sidebar remains a short label-first list; no extra copy was added back
+  - no routes, permissions, queue logic, finance logic, or student/teaching workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator QA should confirm the groups are easier to distinguish by color while the sidebar stays simple
 
 ## 2026-04-06-r11 Deployed
 

@@ -21,23 +21,28 @@ type NavGroup = {
 function groupStyles(title: string, isActiveGroup: boolean) {
   if (title.includes("Today") || title.includes("今天")) {
     return isActiveGroup
-      ? { background: "#eff6ff", borderColor: "#93c5fd", accent: "#1d4ed8", summary: "#475569" }
-      : { background: "#f8fbff", borderColor: "#dbeafe", accent: "#2563eb", summary: "#64748b" };
+      ? { background: "#eef5ff", borderColor: "#7fb3ff", accent: "#1d4ed8", summary: "#475569" }
+      : { background: "#f7fbff", borderColor: "#cfe3ff", accent: "#2563eb", summary: "#64748b" };
   }
   if (title.includes("Core") || title.includes("核心")) {
     return isActiveGroup
-      ? { background: "#f6faff", borderColor: "#93c5fd", accent: "#0f172a", summary: "#334155" }
-      : { background: "#fbfdff", borderColor: "#dbeafe", accent: "#1e3a8a", summary: "#64748b" };
+      ? { background: "#effcf7", borderColor: "#6ee7b7", accent: "#0f766e", summary: "#0f766e" }
+      : { background: "#f6fffb", borderColor: "#b7f3dd", accent: "#0f766e", summary: "#64748b" };
   }
   if (title.includes("Finance") || title.includes("财务")) {
     return isActiveGroup
-      ? { background: "#fffaf2", borderColor: "#fdba74", accent: "#9a3412", summary: "#7c2d12" }
-      : { background: "#fffdf8", borderColor: "#fed7aa", accent: "#c2410c", summary: "#9a3412" };
+      ? { background: "#fff7ed", borderColor: "#f7b267", accent: "#9a3412", summary: "#7c2d12" }
+      : { background: "#fffaf4", borderColor: "#ffd6a3", accent: "#b45309", summary: "#9a3412" };
+  }
+  if (title.includes("Setup") || title.includes("配置")) {
+    return isActiveGroup
+      ? { background: "#faf5ff", borderColor: "#b8a2ff", accent: "#7c3aed", summary: "#6d28d9" }
+      : { background: "#fdfbff", borderColor: "#ddd6fe", accent: "#8b5cf6", summary: "#6b7280" };
   }
   if (title.includes("Reports") || title.includes("报表")) {
     return isActiveGroup
-      ? { background: "#f8fafc", borderColor: "#cbd5e1", accent: "#475569", summary: "#64748b" }
-      : { background: "#fbfdff", borderColor: "#e2e8f0", accent: "#64748b", summary: "#94a3b8" };
+      ? { background: "#f6f8fb", borderColor: "#c5cedb", accent: "#475569", summary: "#64748b" }
+      : { background: "#fbfcfe", borderColor: "#dde5ef", accent: "#64748b", summary: "#94a3b8" };
   }
   return isActiveGroup
     ? { background: "#ffffff", borderColor: "#bfdbfe", accent: "#1d4ed8", summary: "#475569" }

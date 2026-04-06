@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-06-r12
+
+- Release ID: `2026-04-06-r12`
+- Date/Time (Asia/Shanghai): `2026-04-06`
+- Deployment status: `LIVE` after deploy completion
+- Scope: tune only the admin sidebar group colors so `Today / Core Workflows / Finance & Review / Setup & Control / Reports` are easier to distinguish while keeping the sidebar simple.
+- Key files:
+  - `app/admin/AdminSidebarNavClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260406-admin-sidebar-color-tuning-pass.md`
+- Risk impact (if any): Low. This release only adjusts sidebar color tokens; it does not change routes, permissions, queue logic, or any business workflow.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin sidebar groups should remain simple while `Core Workflows` reads more clearly via color separation alone
+- Rollback point: previous production commit before `2026-04-06-r12`.
+
 ## 2026-04-06-r11
 
 - Release ID: `2026-04-06-r11`
