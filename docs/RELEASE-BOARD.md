@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-04-r09` (admin sidebar regrouping and visual hierarchy pass).
+- Current release line on this branch: `2026-04-06-r10` (admin core-workflows clarity pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-06-r10 Deployed
+
+- Scope: strengthen `Core Workflows / 核心流程` so the admin sidebar reads more clearly as the main operations zone.
+- Business impact:
+  - `Students / Enrollments / Packages / Ticket Center` now carry task-oriented descriptions and stronger visual weight
+  - the `Core Workflows` group summary now explicitly frames the section as the main student/teaching workflow area
+  - the core-workflows group styling is more distinct, making it easier to separate from `Today`, `Finance & Review`, and `Reports`
+  - no routes, permissions, queue logic, finance logic, or scheduling/student/package workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - operator QA should confirm `Core Workflows` now reads more clearly and the first four items stand out as the main workflow entrances
 
 ## 2026-04-04-r09 Deployed
 
