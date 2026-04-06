@@ -404,6 +404,13 @@ export default async function TeacherPayrollPage({
   const shownCurrencyTotals = Array.from(shownCurrencyMap.entries())
     .map(([currencyCode, amountCents]) => ({ currencyCode, amountCents }))
     .sort((a, b) => String(a.currencyCode).localeCompare(String(b.currencyCode)));
+  const exportParams = new URLSearchParams();
+  exportParams.set("month", month);
+  exportParams.set("scope", scope);
+  if (q) exportParams.set("q", q);
+  if (pendingOnly) exportParams.set("pendingOnly", "1");
+  if (unsentOnly) exportParams.set("unsentOnly", "1");
+  const exportCsvHref = `/admin/reports/teacher-payroll/export?${exportParams.toString()}`;
   const missingRateTeacherSet = new Set(
     data.rateEditorRows.filter((r) => r.hourlyRateCents <= 0).map((r) => r.teacherId)
   );
@@ -973,6 +980,7 @@ export default async function TeacherPayrollPage({
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
         <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Clear", "清除")}</a>
+        <a href={exportCsvHref}>{t(lang, "Export CSV", "导出 CSV")}</a>
       </form>
       {payrollRows.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No sessions in this payroll period.", "当前计薪周期没有课次。")}</div>
