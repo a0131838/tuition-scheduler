@@ -1560,3 +1560,17 @@
   - post-deploy startup check
   - production read-only QA on `/admin/reports/final`
   - production read-only QA on `/final-report/[id]?token=...`
+
+## 2026-04-06-r01 Deployed
+
+- Scope: add a teacher-payroll batch CSV export for finance.
+- Business impact:
+  - `/admin/reports/teacher-payroll` now exposes `Export CSV / 导出 CSV` next to the existing workbench filters
+  - finance and admins can export the current payroll month, scope, teacher search, pending-only, and unsent-only view in one CSV file
+  - the CSV includes salary totals and workflow milestones for every visible teacher row
+  - no payroll math, teacher confirmation rules, approval flow, or payout behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA on `/admin/reports/teacher-payroll`
+  - production read-only QA on `/admin/reports/teacher-payroll/export`

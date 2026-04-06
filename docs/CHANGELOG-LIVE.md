@@ -2823,3 +2823,23 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed `/admin/reports/final` shows share audit text when a link exists
   - production read-only QA confirmed the public share page still renders and now increments share-view metadata
 - Rollback point: previous production commit before `2026-04-03-r24`.
+
+## 2026-04-06-r01
+
+- Release ID: `2026-04-06-r01`
+- Date/Time (Asia/Shanghai): `2026-04-06`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add a batch CSV export for the teacher payroll workbench so finance can export all teacher salary slips for the current payroll month and current table filters in one file.
+- Key files:
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260406-teacher-payroll-csv-export.md`
+- Risk impact (if any): Low. This release only adds a read-only CSV export and a workbench link; it does not change payroll calculation, payroll workflow states, teacher confirmations, approvals, or payout logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA confirmed `/admin/reports/teacher-payroll` shows `Export CSV`
+  - production read-only QA confirmed `/admin/reports/teacher-payroll/export?...` returns `200` with `text/csv`
+- Rollback point: previous production commit before `2026-04-06-r01`.
