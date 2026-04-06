@@ -23,3 +23,17 @@ export async function ensureDefaultDocumentCategories() {
     skipDuplicates: true,
   });
 }
+
+export function toSharedDocCategoryFolderName(name: string | null | undefined) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return 'uncategorized';
+  const ascii = raw
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (ascii) return ascii.slice(0, 40);
+  const compact = raw.replace(/\s+/g, '');
+  return compact.slice(0, 20) || 'uncategorized';
+}

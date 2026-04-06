@@ -1,11 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { getLang, t } from '@/lib/i18n';
-import { canAccessSharedDocs, ensureDefaultDocumentCategories } from '@/lib/shared-docs';
+import { canAccessSharedDocs, ensureDefaultDocumentCategories, toSharedDocCategoryFolderName } from '@/lib/shared-docs';
 import { requireAdmin } from '@/lib/auth';
 import { storeSharedDocFile } from '@/lib/shared-doc-files';
+import { deleteSharedDocFromS3, parseSharedDocS3Path } from '@/lib/shared-doc-storage';
 import { formatBusinessDateTime } from '@/lib/date-only';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile } from '@/lib/business-file-storage';
 
 function text(v: FormDataEntryValue | null | undefined) {
   return String(v ?? '').trim();
@@ -64,7 +66,7 @@ async function uploadDocumentAction(formData: FormData) {
   };
 
   try {
-    stored = await storeSharedDocFile(file);
+    stored = await storeSharedDocFile(file, { categoryName: category.name });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Upload failed';
     redirect(`/admin/shared-docs?err=${enc(message)}`);
@@ -138,6 +140,49 @@ async function updateDocumentStatusAction(formData: FormData) {
   redirect(`/admin/shared-docs?msg=${nextStatus === 'ARCHIVED' ? 'archived' : 'unarchived'}`);
 }
 
+async function deleteDocumentAction(formData: FormData) {
+  'use server';
+  const user = await requireSharedDocsOperator();
+
+  const id = text(formData.get('id'));
+  if (!id) redirect('/admin/shared-docs?err=invalid-operation');
+
+  const row = await prisma.sharedDocument.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      filePath: true,
+    },
+  });
+  if (!row) redirect('/admin/shared-docs?err=not-found');
+
+  try {
+    if (parseSharedDocS3Path(row.filePath)) {
+      await deleteSharedDocFromS3(row.filePath);
+    } else {
+      await deleteStoredBusinessFile(row.filePath, BUSINESS_UPLOAD_PREFIX.sharedDocs);
+    }
+  } catch {
+    redirect('/admin/shared-docs?err=delete-file-failed');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.sharedDocumentAudit.create({
+      data: {
+        documentId: row.id,
+        actorUserId: user.id,
+        action: 'DELETE',
+        note: row.title,
+      },
+    });
+    await tx.sharedDocument.delete({ where: { id: row.id } });
+  });
+
+  revalidatePath('/admin/shared-docs');
+  redirect('/admin/shared-docs?msg=deleted');
+}
+
 export default async function SharedDocsPage({
   searchParams,
 }: {
@@ -186,6 +231,12 @@ export default async function SharedDocsPage({
       take: 200,
     }),
   ]);
+  const groupedDocs = categories
+    .map((category) => ({
+      category,
+      docs: docs.filter((doc) => doc.categoryId === category.id),
+    }))
+    .filter((group) => group.docs.length > 0);
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -204,6 +255,23 @@ export default async function SharedDocsPage({
 
       <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Upload a shared document', '上传共享文档')}</div>
+        <div
+          style={{
+            padding: 10,
+            borderRadius: 10,
+            border: '1px solid #bfdbfe',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            fontSize: 13,
+            lineHeight: 1.5,
+          }}
+        >
+          {t(
+            lang,
+            'Each category is stored in its own folder. Example: shared-docs/finance/2026-04/...',
+            '每个分类都会进入自己的文件夹。例如：shared-docs/finance/2026-04/...'
+          )}
+        </div>
         <form action={uploadDocumentAction} encType="multipart/form-data" style={{ display: 'grid', gap: 8 }}>
           <input name="title" placeholder={t(lang, 'Title (optional, defaults to file name)', '标题（可选，默认文件名）')} />
           <select name="categoryId" required defaultValue="">
@@ -261,56 +329,89 @@ export default async function SharedDocsPage({
 
       <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>
-          {t(lang, 'Document list', '文档列表')} ({docs.length})
+          {t(lang, 'Document folders', '文档文件夹')} ({docs.length})
         </div>
         {docs.length === 0 ? (
           <div style={{ color: '#64748b' }}>{t(lang, 'No documents found.', '暂无文档。')}</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                  <th>{t(lang, 'Title', '标题')}</th>
-                  <th>{t(lang, 'Category', '分类')}</th>
-                  <th>{t(lang, 'Status', '状态')}</th>
-                  <th>{t(lang, 'Uploader', '上传人')}</th>
-                  <th>{t(lang, 'Uploaded at', '上传时间')}</th>
-                  <th>{t(lang, 'File', '文件')}</th>
-                  <th>{t(lang, 'Action', '操作')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {docs.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px 4px' }}>
-                      <div style={{ fontWeight: 700 }}>{row.title}</div>
-                      {row.remarks ? <div style={{ color: '#64748b' }}>{row.remarks}</div> : null}
-                    </td>
-                    <td style={{ padding: '8px 4px' }}>{row.category.name}</td>
-                    <td style={{ padding: '8px 4px' }}>{row.status === 'ACTIVE' ? t(lang, 'Active', '在用') : t(lang, 'Archived', '归档')}</td>
-                    <td style={{ padding: '8px 4px' }}>
-                      <div>{row.uploader.name}</div>
-                      <div style={{ color: '#64748b' }}>{row.uploader.email}</div>
-                    </td>
-                    <td style={{ padding: '8px 4px' }}>{formatBusinessDateTime(new Date(row.createdAt))}</td>
-                    <td style={{ padding: '8px 4px' }}>
-                      <a href={`/api/shared-docs/${row.id}/file`} target="_blank" rel="noreferrer">
-                        {t(lang, 'Open', '打开')}
-                      </a>{' '}
-                      |{' '}
-                      <a href={`/api/shared-docs/${row.id}/file?download=1`}>{t(lang, 'Download', '下载')}</a>
-                    </td>
-                    <td style={{ padding: '8px 4px' }}>
-                      <form action={updateDocumentStatusAction}>
-                        <input type="hidden" name="id" value={row.id} />
-                        <input type="hidden" name="nextStatus" value={row.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE'} />
-                        <button type="submit">{row.status === 'ACTIVE' ? t(lang, 'Archive', '归档') : t(lang, 'Restore', '恢复')}</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {groupedDocs.map(({ category, docs: categoryDocs }) => {
+              const folderName = toSharedDocCategoryFolderName(category.name);
+              return (
+                <section key={category.id} style={{ border: '1px solid #dbeafe', borderRadius: 12, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      background: '#eff6ff',
+                      borderBottom: '1px solid #dbeafe',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700 }}>
+                        {category.name} ({categoryDocs.length})
+                      </div>
+                      <div style={{ color: '#1d4ed8', fontSize: 12 }}>
+                        {t(lang, 'Folder', '文件夹')}: shared-docs/{folderName}/
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                          <th>{t(lang, 'Title', '标题')}</th>
+                          <th>{t(lang, 'Status', '状态')}</th>
+                          <th>{t(lang, 'Uploader', '上传人')}</th>
+                          <th>{t(lang, 'Uploaded at', '上传时间')}</th>
+                          <th>{t(lang, 'File', '文件')}</th>
+                          <th>{t(lang, 'Action', '操作')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categoryDocs.map((row) => (
+                          <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px 4px' }}>
+                              <div style={{ fontWeight: 700 }}>{row.title}</div>
+                              {row.remarks ? <div style={{ color: '#64748b' }}>{row.remarks}</div> : null}
+                            </td>
+                            <td style={{ padding: '8px 4px' }}>{row.status === 'ACTIVE' ? t(lang, 'Active', '在用') : t(lang, 'Archived', '归档')}</td>
+                            <td style={{ padding: '8px 4px' }}>
+                              <div>{row.uploader.name}</div>
+                              <div style={{ color: '#64748b' }}>{row.uploader.email}</div>
+                            </td>
+                            <td style={{ padding: '8px 4px' }}>{formatBusinessDateTime(new Date(row.createdAt))}</td>
+                            <td style={{ padding: '8px 4px' }}>
+                              <a href={`/api/shared-docs/${row.id}/file`} target="_blank" rel="noreferrer">
+                                {t(lang, 'Open', '打开')}
+                              </a>{' '}
+                              |{' '}
+                              <a href={`/api/shared-docs/${row.id}/file?download=1`}>{t(lang, 'Download', '下载')}</a>
+                            </td>
+                            <td style={{ padding: '8px 4px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <form action={updateDocumentStatusAction}>
+                                <input type="hidden" name="id" value={row.id} />
+                                <input type="hidden" name="nextStatus" value={row.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE'} />
+                                <button type="submit">{row.status === 'ACTIVE' ? t(lang, 'Archive', '归档') : t(lang, 'Restore', '恢复')}</button>
+                              </form>
+                              <form action={deleteDocumentAction}>
+                                <input type="hidden" name="id" value={row.id} />
+                                <button type="submit" style={{ color: '#b91c1c', borderColor: '#fecaca' }}>
+                                  {t(lang, 'Delete', '删除')}
+                                </button>
+                              </form>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )}
       </section>

@@ -1574,3 +1574,18 @@
   - post-deploy startup check
   - production read-only QA on `/admin/reports/teacher-payroll`
   - production read-only QA on `/admin/reports/teacher-payroll/export`
+
+## 2026-04-06-r02 Deployed
+
+- Scope: add permanent delete support to shared documents and present shared-doc categories as clearer folder groups.
+- Business impact:
+  - `/admin/shared-docs` now groups visible files under category sections so operations can understand which logical folder each document belongs to
+  - new shared-doc uploads now store into category-based paths such as `shared-docs/<category>/<yyyy-mm>/...`
+  - admins can now permanently delete a shared document, which removes the database row and deletes the backing object from S3 or the local uploads directory
+  - archive / restore behavior remains available and unchanged for documents that should stay in the library
+  - no shared-doc permission rules, finance logic, payroll logic, attendance logic, or report logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - production UI check on `/admin/shared-docs`
+  - production UI check confirmed `Delete / 删除` appears alongside `Archive / 归档`

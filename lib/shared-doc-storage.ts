@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export type SharedDocStorageDriver = 'local' | 's3';
@@ -118,6 +118,24 @@ export async function uploadSharedDocToS3(input: {
   );
 
   return toSharedDocS3Path(cfg.bucket, input.objectKey);
+}
+
+export async function deleteSharedDocFromS3(filePath: string) {
+  const parsed = parseSharedDocS3Path(filePath);
+  if (!parsed) return false;
+
+  const cfg = getSharedDocS3Config();
+  if (!cfg) return false;
+
+  const client = createSharedDocS3Client(cfg);
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: parsed.bucket,
+      Key: parsed.key,
+    })
+  );
+
+  return true;
 }
 
 export async function signSharedDocS3DownloadUrl(input: {

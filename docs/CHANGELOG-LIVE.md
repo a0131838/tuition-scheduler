@@ -2843,3 +2843,25 @@ This file is the single source of truth for what changed in production.
   - production read-only QA confirmed `/admin/reports/teacher-payroll` shows `Export CSV`
   - production read-only QA confirmed `/admin/reports/teacher-payroll/export?...` returns `200` with `text/csv`
 - Rollback point: previous production commit before `2026-04-06-r01`.
+
+## 2026-04-06-r02
+
+- Release ID: `2026-04-06-r02`
+- Date/Time (Asia/Shanghai): `2026-04-06`
+- Deployment status: `LIVE` after deploy completion
+- Scope: let admins permanently delete shared documents and make shared-document categories show up as clearer folder groupings.
+- Key files:
+  - `app/admin/shared-docs/page.tsx`
+  - `lib/shared-doc-files.ts`
+  - `lib/shared-doc-storage.ts`
+  - `lib/shared-docs.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260406-shared-doc-delete-and-folder-groups.md`
+- Risk impact (if any): Medium-low. This release adds a real delete path for shared documents and changes new upload paths to include category folders; it does not change shared-doc permissions, teacher/admin workflows outside the shared-doc page, or any finance, attendance, payroll, or reporting logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production UI check confirmed `/admin/shared-docs` now shows grouped category sections with folder hints
+  - production UI check confirmed each shared-document row now exposes `Delete / 删除`
+- Rollback point: previous production commit before `2026-04-06-r02`.

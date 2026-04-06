@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { BUSINESS_UPLOAD_PREFIX, storeBusinessUpload } from '@/lib/business-file-storage';
 import { getSharedDocStorageDriver, uploadSharedDocToS3 } from '@/lib/shared-doc-storage';
+import { toSharedDocCategoryFolderName } from '@/lib/shared-docs';
 
 export const SHARED_DOC_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -37,10 +38,11 @@ export function validateSharedDocFile(file: File | null | undefined) {
   }
 }
 
-export async function storeSharedDocFile(file: File) {
+export async function storeSharedDocFile(file: File, options?: { categoryName?: string | null }) {
   validateSharedDocFile(file);
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const categoryFolder = toSharedDocCategoryFolderName(options?.categoryName);
   const buf = Buffer.from(await file.arrayBuffer());
   const storageDriver = getSharedDocStorageDriver();
   const mimeType = String(file.type || '').trim() || null;
@@ -51,14 +53,14 @@ export async function storeSharedDocFile(file: File) {
     const safeExt = /^[.a-zA-Z0-9]+$/.test(ext) ? ext : '.bin';
     const storeName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${safeExt}`;
     filePath = await uploadSharedDocToS3({
-      objectKey: path.posix.join('shared-docs', month, storeName),
+      objectKey: path.posix.join('shared-docs', categoryFolder, month, storeName),
       content: buf,
       contentType: mimeType,
     });
   } else {
     const localStored = await storeBusinessUpload(file, {
       allowedPrefix: BUSINESS_UPLOAD_PREFIX.sharedDocs,
-      subdirSegments: [month],
+      subdirSegments: [categoryFolder, month],
       maxBytes: SHARED_DOC_UPLOAD_MAX_BYTES,
       fallbackOriginalName: 'document',
     });
