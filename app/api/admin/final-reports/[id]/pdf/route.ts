@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { parseFinalReportDraft, parseFinalReportMeta } from "@/lib/final-report";
+import { parseFinalReportDraft } from "@/lib/final-report";
 import { getLang } from "@/lib/i18n";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +28,11 @@ function safeName(s: string) {
 function normalizeText(input: string | null | undefined) {
   const raw = String(input || "").replace(/\r/g, "").trim();
   return raw || "-";
+}
+
+function hasMeaningfulText(input: string | null | undefined) {
+  const raw = String(input || "").replace(/\r/g, "").trim();
+  return raw.length > 0 && raw !== "-";
 }
 
 function paintPageBackground(doc: PDFDoc) {
@@ -125,42 +130,77 @@ function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
   return `${en} / ${zh}`;
 }
 
-function deliveryChannelLabel(value: string | null | undefined, lang: "BILINGUAL" | "ZH" | "EN") {
-  const zh =
-    value === "WECHAT"
-      ? "微信"
-      : value === "EMAIL"
-        ? "邮件"
-        : value === "WHATSAPP"
-          ? "WhatsApp"
-          : value === "PRINTED"
-            ? "纸质版"
-            : value === "OTHER"
-              ? "其他"
-              : "-";
-  const en =
-    value === "WECHAT"
-      ? "WeChat"
-      : value === "EMAIL"
-        ? "Email"
-        : value === "WHATSAPP"
-          ? "WhatsApp"
-          : value === "PRINTED"
-            ? "Printed copy"
-            : value === "OTHER"
-              ? "Other"
-              : "-";
-  if (lang === "ZH") return zh;
-  if (lang === "EN") return en;
-  return `${en} / ${zh}`;
+function compactFieldRow(doc: PDFDoc, x: number, y: number, w: number, items: Array<{ label: string; value: string }>) {
+  const gap = 10;
+  const itemW = (w - gap * (items.length - 1)) / items.length;
+  items.forEach((item, index) => {
+    field(doc, x + index * (itemW + gap), y, itemW, item.label, item.value, 24);
+  });
 }
 
-function statusLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
-  const zh = value === "FORWARDED" ? "已转发" : value === "SUBMITTED" ? "已提交" : "待填写";
-  const en = value === "FORWARDED" ? "Forwarded" : value === "SUBMITTED" ? "Submitted" : "Assigned";
-  if (lang === "ZH") return zh;
-  if (lang === "EN") return en;
-  return `${en} / ${zh}`;
+function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof parseFinalReportDraft>, report: {
+  reportPeriodLabel: string | null;
+  finalLevel: string | null;
+  recommendation: string | null;
+}) {
+  const sections: Array<{ title: string; value: string; tone?: { bg: string; border: string; title: string } }> = [];
+
+  if (hasMeaningfulText(draft.finalSummary)) {
+    sections.push({
+      title: lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结",
+      value: draft.finalSummary,
+      tone: { bg: "#FFFFFF", border: "#BBF7D0", title: "#166534" },
+    });
+  }
+  if (hasMeaningfulText(draft.strengths)) {
+    sections.push({
+      title: lang === "ZH" ? "学生进步与优势" : lang === "EN" ? "Progress and strengths" : "Progress and strengths / 学生进步与优势",
+      value: draft.strengths,
+      tone: { bg: "#FFFFFF", border: "#FDE68A", title: "#92400E" },
+    });
+  }
+  if (hasMeaningfulText(draft.areasToContinue)) {
+    sections.push({
+      title: lang === "ZH" ? "后续提升建议" : lang === "EN" ? "Areas to continue" : "Areas to continue / 后续提升建议",
+      value: draft.areasToContinue,
+      tone: { bg: "#FFFFFF", border: "#DDD6FE", title: "#6D28D9" },
+    });
+  }
+
+  const nextStepValue = recommendationLabel(report.recommendation || draft.recommendedNextStep, lang);
+  if (hasMeaningfulText(nextStepValue)) {
+    sections.push({
+      title: lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议",
+      value: nextStepValue,
+      tone: { bg: "#EFF6FF", border: "#BFDBFE", title: "#1D4ED8" },
+    });
+  }
+  if (hasMeaningfulText(draft.parentNote)) {
+    sections.push({
+      title: lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话",
+      value: draft.parentNote,
+      tone: { bg: "#FFF7ED", border: "#FDBA74", title: "#9A3412" },
+    });
+  }
+
+  const learningHabits = [draft.attendanceComment, draft.homeworkComment].filter(hasMeaningfulText).join("\n\n");
+  if (hasMeaningfulText(learningHabits)) {
+    sections.push({
+      title: lang === "ZH" ? "学习习惯观察" : lang === "EN" ? "Learning habits" : "Learning habits / 学习习惯观察",
+      value: learningHabits,
+      tone: { bg: "#F8FAFC", border: "#CBD5E1", title: "#334155" },
+    });
+  }
+
+  if (hasMeaningfulText(draft.initialGoals)) {
+    sections.push({
+      title: lang === "ZH" ? "阶段目标回顾" : lang === "EN" ? "Goals reviewed" : "Goals reviewed / 阶段目标回顾",
+      value: draft.initialGoals,
+      tone: { bg: "#F8FAFC", border: "#CBD5E1", title: "#334155" },
+    });
+  }
+
+  return sections;
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -178,7 +218,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
     recommendedNextStep: report.recommendation ?? (report.reportJson as any)?.recommendedNextStep,
   });
-  const meta = parseFinalReportMeta(report.reportJson);
+  const sections = buildSections(lang, draft, report);
 
   const doc = new PDFDocument({
     size: "A4",
@@ -215,97 +255,44 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   );
   y += 34;
 
-  const summaryH = 58;
-  panel(doc, left, y, contentW, summaryH, lang === "ZH" ? "报告总览" : lang === "EN" ? "Report Overview" : "Report Overview / 报告总览", {
+  const summaryH = 56;
+  panel(doc, left, y, contentW, summaryH, lang === "ZH" ? "课程信息" : lang === "EN" ? "Course Overview" : "Course Overview / 课程信息", {
     bg: "#EFF6FF",
     border: "#BFDBFE",
     title: "#1D4ED8",
   });
-  const colGap = 10;
-  const summaryColW = (contentW - colGap * 3 - 20) / 4;
-  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", report.student.name, 28);
-  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}`, 28);
-  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", report.teacher.name, 28);
-  field(doc, left + 10 + (summaryColW + colGap) * 3, y + 24, summaryColW, lang === "ZH" ? "状态" : lang === "EN" ? "Status" : "Status / 状态", statusLabel(report.status, lang), 28);
+  compactFieldRow(doc, left + 10, y + 24, contentW - 20, [
+    { label: lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", value: report.student.name },
+    { label: lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", value: `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}` },
+    { label: lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", value: report.teacher.name },
+    { label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段", value: report.reportPeriodLabel || (lang === "ZH" ? "本课包结课" : lang === "EN" ? "End of package" : "End of package / 本课包结课") },
+  ]);
   y += summaryH + gap;
 
-  const snapshotH = 56;
-  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "结课结论" : lang === "EN" ? "Outcome Snapshot" : "Outcome Snapshot / 结课结论", {
+  const snapshotH = 54;
+  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "结课结论" : lang === "EN" ? "Final Snapshot" : "Final Snapshot / 结课结论", {
     bg: "#ECFDF5",
     border: "#BBF7D0",
     title: "#166534",
   });
-  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "报告阶段" : lang === "EN" ? "Report period" : "Report period / 报告阶段", report.reportPeriodLabel || "", 24);
-  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", report.finalLevel || "", 24);
-  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议", recommendationLabel(report.recommendation || draft.recommendedNextStep, lang), 24);
-  field(doc, left + 10 + (summaryColW + colGap) * 3, y + 24, summaryColW, lang === "ZH" ? "交付方式" : lang === "EN" ? "Delivery channel" : "Delivery channel / 交付方式", deliveryChannelLabel(report.deliveryChannel, lang), 24);
+  compactFieldRow(doc, left + 10, y + 22, contentW - 20, [
+    { label: lang === "ZH" ? "课包完成情况" : lang === "EN" ? "Package progress" : "Package progress / 课包完成情况", value: `${Math.round(Number(report.package.totalMinutes ?? 0) / 60)}h package completed` },
+    { label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", value: hasMeaningfulText(report.finalLevel) ? String(report.finalLevel) : (lang === "ZH" ? "由老师填写" : lang === "EN" ? "Added by teacher" : "Added by teacher / 由老师填写") },
+    { label: lang === "ZH" ? "下一步方向" : lang === "EN" ? "Next step" : "Next step / 下一步方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
+  ]);
   y += snapshotH + gap;
 
-  const deliveryH = 56;
-  panel(doc, left, y, contentW, deliveryH, lang === "ZH" ? "交付记录" : lang === "EN" ? "Delivery Record" : "Delivery Record / 交付记录", {
-    bg: "#FFF7ED",
-    border: "#FDBA74",
-    title: "#9A3412",
-  });
-  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "交付时间" : lang === "EN" ? "Delivered at" : "Delivered at / 交付时间", report.deliveredAt ? formatBusinessDateOnly(new Date(report.deliveredAt)) : "-", 24);
-  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "交付人" : lang === "EN" ? "Delivered by" : "Delivered by / 交付人", report.deliveredByUser?.name || "-", 24);
-  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "老师内部备注" : lang === "EN" ? "Teacher note status" : "Teacher note status / 教师备注", draft.teacherComment ? (lang === "ZH" ? "已填写" : lang === "EN" ? "Included" : "Included / 已填写") : "-", 24);
-  field(
-    doc,
-    left + 10 + (summaryColW + colGap) * 3,
-    y + 24,
-    summaryColW,
-    lang === "ZH" ? "内部转发" : lang === "EN" ? "Forwarded by" : "Forwarded by / 内部转发",
-    meta.forwardedByName || "-"
-  );
-  y += deliveryH + gap;
-
   const remainingH = top + contentH - y;
-  const bodyRows = 3;
+  const bodyRows = sections.length <= 3 ? 1 : sections.length <= 6 ? 2 : 3;
   const rowGap = gap;
   const colW = (contentW - gap * 2) / 3;
   const rowH = Math.floor((remainingH - rowGap * (bodyRows - 1)) / bodyRows);
-
-  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "开始目标" : lang === "EN" ? "Initial goals" : "Initial goals / 开始目标", draft.initialGoals, {
-    bg: "#FFFFFF",
-    border: "#DBEAFE",
-    title: "#1D4ED8",
-  });
-  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结", draft.finalSummary, {
-    bg: "#FFFFFF",
-    border: "#BBF7D0",
-    title: "#166534",
-  });
-  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "学生优势" : lang === "EN" ? "Strengths" : "Strengths / 学生优势", draft.strengths, {
-    bg: "#FFFFFF",
-    border: "#FDE68A",
-    title: "#92400E",
-  });
-  y += rowH + rowGap;
-
-  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "后续提升建议" : lang === "EN" ? "Areas to continue" : "Areas to continue / 后续提升建议", draft.areasToContinue, {
-    bg: "#FFFFFF",
-    border: "#DDD6FE",
-    title: "#6D28D9",
-  });
-  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "出勤表现" : lang === "EN" ? "Attendance comment" : "Attendance comment / 出勤表现", draft.attendanceComment);
-  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "作业表现" : lang === "EN" ? "Homework comment" : "Homework comment / 作业表现", draft.homeworkComment);
-  y += rowH + rowGap;
-
-  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话", draft.parentNote, {
-    bg: "#FFF7ED",
-    border: "#FDBA74",
-    title: "#9A3412",
-  });
-  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "家长交付备注" : lang === "EN" ? "Parent delivery note" : "Parent delivery note / 家长交付备注", meta.deliveryNote || "-", {
-    bg: "#F8FAFC",
-    border: "#CBD5E1",
-    title: "#334155",
-  });
-  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "教师内部备注" : lang === "EN" ? "Teacher internal note" : "Teacher internal note / 教师内部备注", draft.teacherComment || "-", {
-    bg: "#F8FAFC",
-    border: "#CBD5E1",
-    title: "#334155",
+  sections.forEach((section, index) => {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const sectionY = y + row * (rowH + rowGap);
+    const sectionX = left + col * (colW + gap);
+    compactSectionText(doc, sectionX, sectionY, colW, rowH, section.title, section.value, section.tone);
   });
 
   const stream = streamPdf(doc);
