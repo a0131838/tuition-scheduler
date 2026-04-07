@@ -139,7 +139,7 @@ function packageCompletionLabel(totalMinutes: number | null | undefined, lang: "
   return `${en} / ${zh}`;
 }
 
-function continuationPrompt(
+function nextFocusSummary(
   recommendation: string,
   lang: "BILINGUAL" | "ZH" | "EN",
   areasToContinue: string,
@@ -149,33 +149,33 @@ function continuationPrompt(
   const levelHint = hasMeaningfulText(finalLevel) ? normalizeText(finalLevel) : "";
   const zhBase =
     recommendation === "CONTINUE_CURRENT"
-      ? "建议尽快续读当前课程，保持这阶段已经建立起来的学习节奏。"
+      ? "从老师的观察来看，孩子已经建立起稳定的学习节奏，下一阶段更适合继续巩固当前课程里的核心能力。"
       : recommendation === "MOVE_TO_NEXT_LEVEL"
-        ? "建议续读下一阶段课程，把这阶段打下的基础自然衔接到更高一级的学习目标。"
+        ? "从老师的观察来看，孩子已经具备进入下一阶段的基础，接下来可以在更高一级的要求下继续提升。"
         : recommendation === "CHANGE_FOCUS"
-          ? "建议续读并调整学习重点，让下一阶段的课程更贴合孩子目前最需要加强的方向。"
+          ? "从老师的观察来看，孩子已经有一定基础，下一阶段更适合根据目前最需要加强的方向做针对性调整。"
           : recommendation === "PAUSE_AFTER_COMPLETION"
-            ? "当前阶段已经完成，可以先短暂停顿，再根据孩子兴趣和节奏安排下一轮学习。"
+            ? "当前阶段已经完成，老师建议先按孩子的节奏整理吸收，再决定下一步安排。"
             : recommendation === "COURSE_COMPLETED"
-              ? "当前课程目标已经完成，如家长希望继续延伸学习，可以安排下一阶段或相关主题课程。"
-              : "建议结合孩子目前的学习状态，安排下一阶段最合适的学习计划。";
-  const zhExtra = [levelHint ? `目前老师评估的阶段水平为：${levelHint}。` : "", focus ? `下一阶段可重点关注：${focus}` : ""]
+              ? "当前课程目标已经基本完成，后续更适合根据孩子的兴趣和学习目标决定延伸方向。"
+              : "从老师的观察来看，孩子已经有阶段性进步，后续可以继续围绕当前最关键的学习点慢慢推进。";
+  const zhExtra = [levelHint ? `目前老师评估的阶段水平为：${levelHint}。` : "", focus ? `接下来更值得关注的是：${focus}` : ""]
     .filter(Boolean)
     .join("");
 
   const enBase =
     recommendation === "CONTINUE_CURRENT"
-      ? "We recommend continuing the current course soon so the student can keep the momentum built during this stage."
+      ? "From the teacher's perspective, the student has built a steady learning rhythm, and the next stage is best used to keep strengthening the core skills from the current course."
       : recommendation === "MOVE_TO_NEXT_LEVEL"
-        ? "We recommend renewing into the next level so this stage's progress can flow naturally into the next challenge."
+        ? "From the teacher's perspective, the student is ready for the next level, where this stage's foundation can be developed under a higher level of challenge."
         : recommendation === "CHANGE_FOCUS"
-          ? "We recommend renewing with an adjusted learning focus so the next stage matches the student's current needs more closely."
+          ? "From the teacher's perspective, the student has a solid base, and the next stage would benefit from a more targeted adjustment in learning focus."
           : recommendation === "PAUSE_AFTER_COMPLETION"
-            ? "This stage is complete, so it is reasonable to pause briefly and plan the next round around the student's pace and interest."
+            ? "This stage is complete, and the teacher suggests giving the student a little time to consolidate before deciding on the next step."
             : recommendation === "COURSE_COMPLETED"
-              ? "The current course goals are complete, and the family can consider a next-stage or related course if the student is ready to continue."
-              : "We recommend planning the next study step based on the student's current progress and readiness.";
-  const enExtra = [levelHint ? `Current teacher-evaluated level: ${levelHint}.` : "", focus ? `Suggested focus for the next stage: ${focus}` : ""]
+              ? "The current course goals are broadly complete, and the next direction can be chosen based on the student's interests and longer-term learning goals."
+              : "From the teacher's perspective, the student has made meaningful progress, and the next stage can keep building around the most important remaining learning points.";
+  const enExtra = [levelHint ? `Current teacher-evaluated level: ${levelHint}.` : "", focus ? `The next area worth focusing on is: ${focus}` : ""]
     .filter(Boolean)
     .join(" ");
 
@@ -222,10 +222,10 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
   }
 
   const recommendation = report.recommendation || draft.recommendedNextStep;
-  const nextStepValue = continuationPrompt(recommendation, lang, draft.areasToContinue, report.finalLevel);
+  const nextStepValue = nextFocusSummary(recommendation, lang, draft.areasToContinue, report.finalLevel);
   if (hasMeaningfulText(nextStepValue)) {
     sections.push({
-      title: lang === "ZH" ? "续课建议" : lang === "EN" ? "Recommended continuation" : "Recommended continuation / 续课建议",
+      title: lang === "ZH" ? "下一阶段关注重点" : lang === "EN" ? "Next learning focus" : "Next learning focus / 下一阶段关注重点",
       value: nextStepValue,
       tone: { bg: "#EFF6FF", border: "#BFDBFE", title: "#1D4ED8" },
     });
@@ -325,7 +325,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   y += summaryH + gap;
 
   const snapshotH = 54;
-  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "阶段成果与续课方向" : lang === "EN" ? "Progress and continuation" : "Progress and continuation / 阶段成果与续课方向", {
+  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "学习成长概览" : lang === "EN" ? "Learning snapshot" : "Learning snapshot / 学习成长概览", {
     bg: "#ECFDF5",
     border: "#BBF7D0",
     title: "#166534",
@@ -333,7 +333,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   compactFieldRow(doc, left + 10, y + 22, contentW - 20, [
     { label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况", value: packageCompletionLabel(report.package.totalMinutes, lang) },
     { label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", value: hasMeaningfulText(report.finalLevel) ? String(report.finalLevel) : (lang === "ZH" ? "由老师填写" : lang === "EN" ? "Added by teacher" : "Added by teacher / 由老师填写") },
-    { label: lang === "ZH" ? "续课方向" : lang === "EN" ? "Continuation path" : "Continuation path / 续课方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
+    { label: lang === "ZH" ? "老师观察方向" : lang === "EN" ? "Teacher direction" : "Teacher direction / 老师观察方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
   ]);
   y += snapshotH + gap;
 
