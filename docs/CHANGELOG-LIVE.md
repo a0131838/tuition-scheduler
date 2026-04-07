@@ -2886,3 +2886,21 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - production read-only QA should confirm `/admin/reports/midterm` and `/admin/reports/final` now show separate candidate rows for shared-package students when they each have qualifying attendance under the same package
 - Rollback point: previous production commit before `2026-04-07-r01`.
+
+## 2026-04-07-r02
+
+- Release ID: `2026-04-07-r02`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: re-layout the final-report PDF into a compact single-page landscape handoff so normal-length reports fit on one page instead of spilling into multi-page output.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-final-report-pdf-single-page-layout.md`
+- Risk impact (if any): Low. This release only changes PDF presentation density and page layout; it does not change final-report content, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - admin PDF download route should continue returning `200 application/pdf` with the updated single-page landscape layout
+- Rollback point: previous production commit before `2026-04-07-r02`.

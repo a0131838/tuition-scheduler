@@ -57,15 +57,42 @@ function field(doc: PDFDoc, x: number, y: number, w: number, label: string, valu
   });
 }
 
-function sectionText(doc: PDFDoc, x: number, y: number, w: number, label: string, value: string, minHeight = 78) {
-  const h = Math.max(minHeight, doc.heightOfString(normalizeText(value), { width: w, lineGap: 1.5 }) + 18);
-  panel(doc, x, y, w, h, label, { bg: "#FFFFFF", border: "#E2E8F0", title: "#0F172A" });
+function fitBodyFontSize(doc: PDFDoc, value: string, width: number, height: number, max = 9.2, min = 6.6) {
+  const text = normalizeText(value);
+  for (let size = max; size >= min; size -= 0.2) {
+    const measured = doc.heightOfString(text, { width, lineGap: 1.15, align: "left" });
+    if (measured <= height) return Number(size.toFixed(1));
+    doc.fontSize(size);
+  }
+  return min;
+}
+
+function compactSectionText(
+  doc: PDFDoc,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  value: string,
+  tone: { bg: string; border: string; title: string } = { bg: "#FFFFFF", border: "#E2E8F0", title: "#0F172A" }
+) {
+  panel(doc, x, y, w, h, label, tone);
+  const bodyX = x + 9;
+  const bodyY = y + 26;
+  const bodyW = w - 18;
+  const bodyH = h - 34;
+  const fontSize = fitBodyFontSize(doc, value, bodyW, bodyH);
+
+  doc.save();
+  doc.rect(bodyX, bodyY, bodyW, bodyH).clip();
   setPdfFont(doc);
-  doc.fillColor("#1F2937").fontSize(10.5).text(normalizeText(value), x + 10, y + 28, {
-    width: w - 20,
-    lineGap: 1.5,
+  doc.fillColor("#1F2937").fontSize(fontSize).text(normalizeText(value), bodyX, bodyY, {
+    width: bodyW,
+    height: bodyH,
+    lineGap: 1.15,
   });
-  return h;
+  doc.restore();
 }
 
 function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
@@ -155,8 +182,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const doc = new PDFDocument({
     size: "A4",
-    layout: "portrait",
-    margin: mm(12),
+    layout: "landscape",
+    margin: mm(8),
   });
   setPdfFont(doc);
   paintPageBackground(doc);
@@ -169,69 +196,117 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const top = doc.page.margins.top;
   const right = doc.page.margins.right;
   const contentW = doc.page.width - left - right;
-  const gap = 10;
+  const contentH = doc.page.height - top - doc.page.margins.bottom;
+  const gap = 8;
   let y = top;
 
   setPdfBoldFont(doc);
-  doc.fillColor("#111827").fontSize(18).text(lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告", left, y, {
-    width: contentW,
-  });
-  y += 28;
+  doc.fillColor("#111827").fontSize(18).text(lang === "ZH" ? "结课报告" : lang === "EN" ? "Final Report" : "Final Report / 结课报告", left, y, { width: contentW });
+  setPdfFont(doc);
+  doc.fillColor("#64748B").fontSize(9.2).text(
+    lang === "ZH"
+      ? `${report.student.name} · ${report.course.name}`
+      : lang === "EN"
+        ? `${report.student.name} · ${report.course.name}`
+        : `${report.student.name} · ${report.course.name}`,
+    left,
+    y + 18,
+    { width: contentW }
+  );
+  y += 34;
 
-  panel(doc, left, y, contentW, 84, lang === "ZH" ? "基本信息" : lang === "EN" ? "Report Overview" : "Report Overview / 基本信息", {
+  const summaryH = 58;
+  panel(doc, left, y, contentW, summaryH, lang === "ZH" ? "报告总览" : lang === "EN" ? "Report Overview" : "Report Overview / 报告总览", {
     bg: "#EFF6FF",
     border: "#BFDBFE",
     title: "#1D4ED8",
   });
-  const colGap = 12;
-  const colW = (contentW - colGap * 2) / 3;
-  field(doc, left + 10, y + 28, colW, lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", report.student.name);
-  field(doc, left + 10 + colW + colGap, y + 28, colW, lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}`);
-  field(doc, left + 10 + (colW + colGap) * 2, y + 28, colW, lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", report.teacher.name);
-  y += 84 + gap;
+  const colGap = 10;
+  const summaryColW = (contentW - colGap * 3 - 20) / 4;
+  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", report.student.name, 28);
+  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}`, 28);
+  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", report.teacher.name, 28);
+  field(doc, left + 10 + (summaryColW + colGap) * 3, y + 24, summaryColW, lang === "ZH" ? "状态" : lang === "EN" ? "Status" : "Status / 状态", statusLabel(report.status, lang), 28);
+  y += summaryH + gap;
 
-  panel(doc, left, y, contentW, 84, lang === "ZH" ? "结课结论" : lang === "EN" ? "Outcome Snapshot" : "Outcome Snapshot / 结课结论", {
+  const snapshotH = 56;
+  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "结课结论" : lang === "EN" ? "Outcome Snapshot" : "Outcome Snapshot / 结课结论", {
     bg: "#ECFDF5",
     border: "#BBF7D0",
     title: "#166534",
   });
-  field(doc, left + 10, y + 28, colW, lang === "ZH" ? "报告阶段" : lang === "EN" ? "Report period" : "Report period / 报告阶段", report.reportPeriodLabel || "");
-  field(doc, left + 10 + colW + colGap, y + 28, colW, lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", report.finalLevel || "");
-  field(doc, left + 10 + (colW + colGap) * 2, y + 28, colW, lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议", recommendationLabel(report.recommendation || draft.recommendedNextStep, lang));
-  y += 84 + gap;
+  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "报告阶段" : lang === "EN" ? "Report period" : "Report period / 报告阶段", report.reportPeriodLabel || "", 24);
+  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", report.finalLevel || "", 24);
+  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议", recommendationLabel(report.recommendation || draft.recommendedNextStep, lang), 24);
+  field(doc, left + 10 + (summaryColW + colGap) * 3, y + 24, summaryColW, lang === "ZH" ? "交付方式" : lang === "EN" ? "Delivery channel" : "Delivery channel / 交付方式", deliveryChannelLabel(report.deliveryChannel, lang), 24);
+  y += snapshotH + gap;
 
-  panel(doc, left, y, contentW, 84, lang === "ZH" ? "交付记录" : lang === "EN" ? "Delivery Record" : "Delivery Record / 交付记录", {
+  const deliveryH = 56;
+  panel(doc, left, y, contentW, deliveryH, lang === "ZH" ? "交付记录" : lang === "EN" ? "Delivery Record" : "Delivery Record / 交付记录", {
     bg: "#FFF7ED",
     border: "#FDBA74",
     title: "#9A3412",
   });
-  field(doc, left + 10, y + 28, colW, lang === "ZH" ? "报告状态" : lang === "EN" ? "Report status" : "Report status / 报告状态", statusLabel(report.status, lang));
-  field(doc, left + 10 + colW + colGap, y + 28, colW, lang === "ZH" ? "交付方式" : lang === "EN" ? "Delivery channel" : "Delivery channel / 交付方式", deliveryChannelLabel(report.deliveryChannel, lang));
+  field(doc, left + 10, y + 24, summaryColW, lang === "ZH" ? "交付时间" : lang === "EN" ? "Delivered at" : "Delivered at / 交付时间", report.deliveredAt ? formatBusinessDateOnly(new Date(report.deliveredAt)) : "-", 24);
+  field(doc, left + 10 + (summaryColW + colGap), y + 24, summaryColW, lang === "ZH" ? "交付人" : lang === "EN" ? "Delivered by" : "Delivered by / 交付人", report.deliveredByUser?.name || "-", 24);
+  field(doc, left + 10 + (summaryColW + colGap) * 2, y + 24, summaryColW, lang === "ZH" ? "老师内部备注" : lang === "EN" ? "Teacher note status" : "Teacher note status / 教师备注", draft.teacherComment ? (lang === "ZH" ? "已填写" : lang === "EN" ? "Included" : "Included / 已填写") : "-", 24);
   field(
     doc,
-    left + 10 + (colW + colGap) * 2,
-    y + 28,
-    colW,
-    lang === "ZH" ? "交付时间" : lang === "EN" ? "Delivered at" : "Delivered at / 交付时间",
-    report.deliveredAt ? formatBusinessDateOnly(new Date(report.deliveredAt)) : "-"
+    left + 10 + (summaryColW + colGap) * 3,
+    y + 24,
+    summaryColW,
+    lang === "ZH" ? "内部转发" : lang === "EN" ? "Forwarded by" : "Forwarded by / 内部转发",
+    meta.forwardedByName || "-"
   );
-  y += 84 + gap;
+  y += deliveryH + gap;
 
-  y += sectionText(doc, left, y, contentW, lang === "ZH" ? "开始目标" : lang === "EN" ? "Initial goals" : "Initial goals / 开始目标", draft.initialGoals, 64) + gap;
-  y += sectionText(doc, left, y, contentW, lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结", draft.finalSummary, 88) + gap;
+  const remainingH = top + contentH - y;
+  const bodyRows = 3;
+  const rowGap = gap;
+  const colW = (contentW - gap * 2) / 3;
+  const rowH = Math.floor((remainingH - rowGap * (bodyRows - 1)) / bodyRows);
 
-  const halfW = (contentW - gap) / 2;
-  const strengthsH = sectionText(doc, left, y, halfW, lang === "ZH" ? "学生优势" : lang === "EN" ? "Strengths" : "Strengths / 学生优势", draft.strengths, 82);
-  const continueH = sectionText(doc, left + halfW + gap, y, halfW, lang === "ZH" ? "后续提升建议" : lang === "EN" ? "Areas to continue" : "Areas to continue / 后续提升建议", draft.areasToContinue, 82);
-  y += Math.max(strengthsH, continueH) + gap;
+  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "开始目标" : lang === "EN" ? "Initial goals" : "Initial goals / 开始目标", draft.initialGoals, {
+    bg: "#FFFFFF",
+    border: "#DBEAFE",
+    title: "#1D4ED8",
+  });
+  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结", draft.finalSummary, {
+    bg: "#FFFFFF",
+    border: "#BBF7D0",
+    title: "#166534",
+  });
+  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "学生优势" : lang === "EN" ? "Strengths" : "Strengths / 学生优势", draft.strengths, {
+    bg: "#FFFFFF",
+    border: "#FDE68A",
+    title: "#92400E",
+  });
+  y += rowH + rowGap;
 
-  const attendanceH = sectionText(doc, left, y, halfW, lang === "ZH" ? "出勤表现" : lang === "EN" ? "Attendance comment" : "Attendance comment / 出勤表现", draft.attendanceComment, 64);
-  const homeworkH = sectionText(doc, left + halfW + gap, y, halfW, lang === "ZH" ? "作业表现" : lang === "EN" ? "Homework comment" : "Homework comment / 作业表现", draft.homeworkComment, 64);
-  y += Math.max(attendanceH, homeworkH) + gap;
+  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "后续提升建议" : lang === "EN" ? "Areas to continue" : "Areas to continue / 后续提升建议", draft.areasToContinue, {
+    bg: "#FFFFFF",
+    border: "#DDD6FE",
+    title: "#6D28D9",
+  });
+  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "出勤表现" : lang === "EN" ? "Attendance comment" : "Attendance comment / 出勤表现", draft.attendanceComment);
+  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "作业表现" : lang === "EN" ? "Homework comment" : "Homework comment / 作业表现", draft.homeworkComment);
+  y += rowH + rowGap;
 
-  y += sectionText(doc, left, y, contentW, lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话", draft.parentNote, 88) + gap;
-  y += sectionText(doc, left, y, contentW, lang === "ZH" ? "家长交付备注" : lang === "EN" ? "Parent delivery note" : "Parent delivery note / 家长交付备注", meta.deliveryNote, 64) + gap;
-  sectionText(doc, left, y, contentW, lang === "ZH" ? "教师内部备注" : lang === "EN" ? "Teacher internal note" : "Teacher internal note / 教师内部备注", draft.teacherComment, 64);
+  compactSectionText(doc, left, y, colW, rowH, lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话", draft.parentNote, {
+    bg: "#FFF7ED",
+    border: "#FDBA74",
+    title: "#9A3412",
+  });
+  compactSectionText(doc, left + colW + gap, y, colW, rowH, lang === "ZH" ? "家长交付备注" : lang === "EN" ? "Parent delivery note" : "Parent delivery note / 家长交付备注", meta.deliveryNote || "-", {
+    bg: "#F8FAFC",
+    border: "#CBD5E1",
+    title: "#334155",
+  });
+  compactSectionText(doc, left + (colW + gap) * 2, y, colW, rowH, lang === "ZH" ? "教师内部备注" : lang === "EN" ? "Teacher internal note" : "Teacher internal note / 教师内部备注", draft.teacherComment || "-", {
+    bg: "#F8FAFC",
+    border: "#CBD5E1",
+    title: "#334155",
+  });
 
   const stream = streamPdf(doc);
   const filename = `final-report-${safeName(report.student.name)}-${safeName(report.course.name)}.pdf`;

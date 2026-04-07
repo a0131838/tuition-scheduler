@@ -1603,3 +1603,16 @@
   - `npm run build`
   - post-deploy startup check
   - production read-only QA should confirm separate shared-package candidate rows on `/admin/reports/midterm` and `/admin/reports/final`
+
+## 2026-04-07-r02 Deployed
+
+- Scope: compress the final-report PDF into a single-page landscape layout.
+- Business impact:
+  - `/api/admin/final-reports/[id]/pdf` now generates a denser one-page handoff layout instead of the previous taller portrait layout
+  - the overview, outcome, and delivery sections are more compact, and the narrative sections now render in a fixed multi-column grid
+  - normal-length final reports should fit on one page without changing any underlying report content or workflow state
+  - no final-report assignment logic, delivery/share behavior, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - admin final-report PDF route should continue returning `200` with `application/pdf`
