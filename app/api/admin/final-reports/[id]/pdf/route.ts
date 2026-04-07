@@ -184,6 +184,41 @@ function nextFocusSummary(
   return [[enBase, enExtra].filter(Boolean).join(" "), [zhBase, zhExtra].filter(Boolean).join("")].filter(Boolean).join(" / ");
 }
 
+function focusLabel(
+  recommendation: string,
+  lang: "BILINGUAL" | "ZH" | "EN",
+  areasToContinue: string
+) {
+  if (hasMeaningfulText(areasToContinue)) return normalizeText(areasToContinue);
+  const zh =
+    recommendation === "CONTINUE_CURRENT"
+      ? "继续巩固当前核心能力"
+      : recommendation === "MOVE_TO_NEXT_LEVEL"
+        ? "逐步进入下一阶段要求"
+        : recommendation === "CHANGE_FOCUS"
+          ? "针对薄弱点调整重点"
+          : recommendation === "PAUSE_AFTER_COMPLETION"
+            ? "先整理吸收本阶段内容"
+            : recommendation === "COURSE_COMPLETED"
+              ? "根据兴趣规划下一方向"
+              : "继续围绕核心能力推进";
+  const en =
+    recommendation === "CONTINUE_CURRENT"
+      ? "Continue strengthening current core skills"
+      : recommendation === "MOVE_TO_NEXT_LEVEL"
+        ? "Gradually move into the next level"
+        : recommendation === "CHANGE_FOCUS"
+          ? "Adjust focus toward weaker areas"
+          : recommendation === "PAUSE_AFTER_COMPLETION"
+            ? "Consolidate this stage first"
+            : recommendation === "COURSE_COMPLETED"
+              ? "Plan the next direction from interest"
+              : "Keep building the core skills";
+  if (lang === "ZH") return zh;
+  if (lang === "EN") return en;
+  return `${en} / ${zh}`;
+}
+
 function compactFieldRow(doc: PDFDoc, x: number, y: number, w: number, items: Array<{ label: string; value: string }>) {
   const gap = 10;
   const itemW = (w - gap * (items.length - 1)) / items.length;
@@ -201,21 +236,21 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
 
   if (hasMeaningfulText(draft.finalSummary)) {
     sections.push({
-      title: lang === "ZH" ? "最终结果总结" : lang === "EN" ? "Final outcome summary" : "Final outcome summary / 最终结果总结",
+      title: lang === "ZH" ? "本阶段学习总结" : lang === "EN" ? "This stage in summary" : "This stage in summary / 本阶段学习总结",
       value: draft.finalSummary,
       tone: { bg: "#FFFFFF", border: "#BBF7D0", title: "#166534" },
     });
   }
   if (hasMeaningfulText(draft.strengths)) {
     sections.push({
-      title: lang === "ZH" ? "学生进步与优势" : lang === "EN" ? "Progress and strengths" : "Progress and strengths / 学生进步与优势",
+      title: lang === "ZH" ? "这阶段看到的进步" : lang === "EN" ? "Progress we observed" : "Progress we observed / 这阶段看到的进步",
       value: draft.strengths,
       tone: { bg: "#FFFFFF", border: "#FDE68A", title: "#92400E" },
     });
   }
   if (hasMeaningfulText(draft.areasToContinue)) {
     sections.push({
-      title: lang === "ZH" ? "后续提升建议" : lang === "EN" ? "Areas to continue" : "Areas to continue / 后续提升建议",
+      title: lang === "ZH" ? "接下来可以继续加强的地方" : lang === "EN" ? "Areas to keep strengthening" : "Areas to keep strengthening / 接下来可以继续加强的地方",
       value: draft.areasToContinue,
       tone: { bg: "#FFFFFF", border: "#DDD6FE", title: "#6D28D9" },
     });
@@ -232,7 +267,7 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
   }
   if (hasMeaningfulText(draft.parentNote)) {
     sections.push({
-      title: lang === "ZH" ? "给家长的话" : lang === "EN" ? "Parent note" : "Parent note / 给家长的话",
+      title: lang === "ZH" ? "老师想对家长说的话" : lang === "EN" ? "Teacher note to family" : "Teacher note to family / 老师想对家长说的话",
       value: draft.parentNote,
       tone: { bg: "#FFF7ED", border: "#FDBA74", title: "#9A3412" },
     });
@@ -241,7 +276,7 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
   const learningHabits = [draft.attendanceComment, draft.homeworkComment].filter(hasMeaningfulText).join("\n\n");
   if (hasMeaningfulText(learningHabits)) {
     sections.push({
-      title: lang === "ZH" ? "学习习惯观察" : lang === "EN" ? "Learning habits" : "Learning habits / 学习习惯观察",
+      title: lang === "ZH" ? "学习习惯观察" : lang === "EN" ? "Learning habits we noticed" : "Learning habits we noticed / 学习习惯观察",
       value: learningHabits,
       tone: { bg: "#F8FAFC", border: "#CBD5E1", title: "#334155" },
     });
@@ -249,7 +284,7 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
 
   if (hasMeaningfulText(draft.initialGoals)) {
     sections.push({
-      title: lang === "ZH" ? "阶段目标回顾" : lang === "EN" ? "Goals reviewed" : "Goals reviewed / 阶段目标回顾",
+      title: lang === "ZH" ? "回看开始时的小目标" : lang === "EN" ? "Looking back at the starting goals" : "Looking back at the starting goals / 回看开始时的小目标",
       value: draft.initialGoals,
       tone: { bg: "#F8FAFC", border: "#CBD5E1", title: "#334155" },
     });
@@ -333,7 +368,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   compactFieldRow(doc, left + 10, y + 22, contentW - 20, [
     { label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况", value: packageCompletionLabel(report.package.totalMinutes, lang) },
     { label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", value: hasMeaningfulText(report.finalLevel) ? String(report.finalLevel) : (lang === "ZH" ? "由老师填写" : lang === "EN" ? "Added by teacher" : "Added by teacher / 由老师填写") },
-    { label: lang === "ZH" ? "老师观察方向" : lang === "EN" ? "Teacher direction" : "Teacher direction / 老师观察方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
+    { label: lang === "ZH" ? "当前成长重点" : lang === "EN" ? "Current growth focus" : "Current growth focus / 当前成长重点", value: focusLabel(report.recommendation || draft.recommendedNextStep, lang, draft.areasToContinue) },
   ]);
   y += snapshotH + gap;
 

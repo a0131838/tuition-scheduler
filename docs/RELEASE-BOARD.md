@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-07-r05` (final-report PDF gentle parent-feedback pass).
+- Current release line on this branch: `2026-04-07-r06` (final-report PDF teacher-letter tone pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -1649,6 +1649,18 @@
 - Business impact:
   - `/api/admin/final-reports/[id]/pdf` now uses `Learning snapshot / 学习成长概览` and `Next learning focus / 下一阶段关注重点` wording instead of explicit renewal-oriented language
   - the recommendation narrative is now framed as a teacher observation about progress, remaining gaps, and the next area worth focusing on
+  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - admin final-report PDF route should continue returning `200` with `application/pdf`
+
+## 2026-04-07-r06 Deployed
+
+- Scope: further soften the parent-facing final-report PDF so the section titles and summary row read more like a teacher reflection to the family.
+- Business impact:
+  - `/api/admin/final-reports/[id]/pdf` now uses softer family-facing labels such as `This stage in summary`, `Progress we observed`, and `Teacher note to family`
+  - the top summary row now uses `Current growth focus / 当前成长重点` instead of a recommendation-style label
   - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
 - Validation:
   - `npm run build`
