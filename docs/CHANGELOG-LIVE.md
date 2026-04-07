@@ -2976,3 +2976,21 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - admin PDF download route should continue returning `200 application/pdf` with the softer teacher-to-family tone
 - Rollback point: previous production commit before `2026-04-07-r06`.
+
+## 2026-04-07-r07
+
+- Release ID: `2026-04-07-r07`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: remove large empty blocks from the parent-facing final-report PDF by making the lower content cards reflow based on how many filled sections are actually present.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-final-report-pdf-auto-grid-pass.md`
+- Risk impact (if any): Low. This release only changes printable card layout density; it does not change final-report data, wording intent, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - admin PDF download route should continue returning `200 application/pdf` with the adaptive lower-card layout
+- Rollback point: previous production commit before `2026-04-07-r07`.

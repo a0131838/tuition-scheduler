@@ -227,6 +227,19 @@ function compactFieldRow(doc: PDFDoc, x: number, y: number, w: number, items: Ar
   });
 }
 
+function sectionRowDistribution(count: number) {
+  if (count <= 0) return [];
+  if (count === 1) return [1];
+  if (count === 2) return [2];
+  if (count === 3) return [3];
+  if (count === 4) return [2, 2];
+  if (count === 5) return [2, 3];
+  if (count === 6) return [3, 3];
+  if (count === 7) return [2, 2, 3];
+  if (count === 8) return [3, 2, 3];
+  return [3, 3, 3];
+}
+
 function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof parseFinalReportDraft>, report: {
   reportPeriodLabel: string | null;
   finalLevel: string | null;
@@ -373,16 +386,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   y += snapshotH + gap;
 
   const remainingH = top + contentH - y;
-  const bodyRows = sections.length <= 3 ? 1 : sections.length <= 6 ? 2 : 3;
   const rowGap = gap;
-  const colW = (contentW - gap * 2) / 3;
-  const rowH = Math.floor((remainingH - rowGap * (bodyRows - 1)) / bodyRows);
-  sections.forEach((section, index) => {
-    const row = Math.floor(index / 3);
-    const col = index % 3;
+  const rowDistribution = sectionRowDistribution(sections.length);
+  const rowCount = rowDistribution.length || 1;
+  const rowH = Math.floor((remainingH - rowGap * Math.max(0, rowCount - 1)) / rowCount);
+  let sectionIndex = 0;
+
+  rowDistribution.forEach((itemsInRow, row) => {
     const sectionY = y + row * (rowH + rowGap);
-    const sectionX = left + col * (colW + gap);
-    compactSectionText(doc, sectionX, sectionY, colW, rowH, section.title, section.value, section.tone);
+    const colGap = gap;
+    const colW = (contentW - colGap * Math.max(0, itemsInRow - 1)) / itemsInRow;
+
+    for (let col = 0; col < itemsInRow; col += 1) {
+      const section = sections[sectionIndex];
+      if (!section) break;
+      const sectionX = left + col * (colW + colGap);
+      compactSectionText(doc, sectionX, sectionY, colW, rowH, section.title, section.value, section.tone);
+      sectionIndex += 1;
+    }
   });
 
   const stream = streamPdf(doc);
