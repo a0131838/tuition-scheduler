@@ -2994,3 +2994,21 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - admin PDF download route should continue returning `200 application/pdf` with the adaptive lower-card layout
 - Rollback point: previous production commit before `2026-04-07-r07`.
+
+## 2026-04-07-r08
+
+- Release ID: `2026-04-07-r08`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: remove the remaining duplicate feel in the parent-facing final-report PDF by hiding the extra `Next learning focus` body card whenever the teacher already wrote `Areas to keep strengthening`.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-final-report-pdf-body-dedup-pass.md`
+- Risk impact (if any): Low. This release only changes printable section visibility; it does not change final-report data, summary wording, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - admin PDF download route should continue returning `200 application/pdf` with fewer repeated body sections
+- Rollback point: previous production commit before `2026-04-07-r08`.

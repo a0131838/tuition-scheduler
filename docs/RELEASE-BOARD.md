@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-07-r07` (final-report PDF auto-grid pass).
+- Current release line on this branch: `2026-04-07-r08` (final-report PDF body de-dup pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -1674,6 +1674,18 @@
   - `/api/admin/final-reports/[id]/pdf` no longer keeps a fixed 3-column lower grid when only one or two sections are filled
   - filled sections can now expand wider across the page, so sparse reports read more naturally and do not leave a large empty corner
   - no final-report data, wording intent, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - admin final-report PDF route should continue returning `200` with `application/pdf`
+
+## 2026-04-07-r08 Deployed
+
+- Scope: remove the remaining duplicate feel in the parent-facing final-report PDF by not showing an extra `Next learning focus` body card when the teacher already wrote `Areas to keep strengthening`.
+- Business impact:
+  - `/api/admin/final-reports/[id]/pdf` still keeps the top summary-row growth focus, but no longer repeats a second body card with the same meaning when the teacher already filled the strengthening section
+  - sparse reports stay cleaner and read more like one coherent family note rather than a form with repeated prompts
+  - no final-report data, summary wording, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
 - Validation:
   - `npm run build`
   - post-deploy startup check

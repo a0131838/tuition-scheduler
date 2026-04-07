@@ -271,7 +271,8 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
 
   const recommendation = report.recommendation || draft.recommendedNextStep;
   const nextStepValue = nextFocusSummary(recommendation, lang, draft.areasToContinue, report.finalLevel);
-  if (hasMeaningfulText(nextStepValue)) {
+  const shouldShowNextFocusCard = !hasMeaningfulText(draft.areasToContinue) && hasMeaningfulText(nextStepValue);
+  if (shouldShowNextFocusCard) {
     sections.push({
       title: lang === "ZH" ? "下一阶段关注重点" : lang === "EN" ? "Next learning focus" : "Next learning focus / 下一阶段关注重点",
       value: nextStepValue,
