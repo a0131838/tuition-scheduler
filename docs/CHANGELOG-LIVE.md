@@ -2865,3 +2865,24 @@ This file is the single source of truth for what changed in production.
   - production UI check confirmed `/admin/shared-docs` now shows grouped category sections with folder hints
   - production UI check confirmed each shared-document row now exposes `Delete / 删除`
 - Rollback point: previous production commit before `2026-04-06-r02`.
+
+## 2026-04-07-r01
+
+- Release ID: `2026-04-07-r01`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: fix shared-package midterm/final report assignment so each student on a shared `HOURS` package gets an independent report candidate, assignment, and exempt path instead of being collapsed into the primary package owner.
+- Key files:
+  - `lib/midterm-report.ts`
+  - `lib/final-report.ts`
+  - `app/admin/reports/midterm/page.tsx`
+  - `app/admin/reports/final/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-shared-package-report-candidate-fix.md`
+- Risk impact (if any): Medium-low. This release changes report-candidate generation and assign/exempt targeting for shared `HOURS` packages, but it does not change report content fields, attendance deduction logic, package balance logic, payroll logic, finance workflows, or report PDF/share behavior.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - production read-only QA should confirm `/admin/reports/midterm` and `/admin/reports/final` now show separate candidate rows for shared-package students when they each have qualifying attendance under the same package
+- Rollback point: previous production commit before `2026-04-07-r01`.

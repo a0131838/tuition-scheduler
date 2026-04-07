@@ -176,6 +176,7 @@ export async function loadFinalReportCandidates() {
           status: "PRESENT",
         },
         include: {
+          student: true,
           session: {
             include: {
               teacher: true,
@@ -195,6 +196,7 @@ export async function loadFinalReportCandidates() {
         orderBy: { createdAt: "desc" },
         take: 200,
         select: {
+          studentId: true,
           teacherId: true,
           status: true,
           archivedAt: true,
@@ -206,29 +208,18 @@ export async function loadFinalReportCandidates() {
     take: 500,
   });
 
-  const rows = packages.map((pkg) => {
+  const rows = packages.flatMap((pkg) => {
     const total = safePositiveInt(pkg.totalMinutes);
     const remaining = Math.max(0, Number(pkg.remainingMinutes ?? 0));
-    if (total <= 0) return null;
+    if (total <= 0) return [];
 
-    const teacherMap = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        subjectId: string | null;
-        subjectName: string | null;
-        latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED" | null;
-      }
-    >();
-
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED">();
+    const latestReportByTeacherAndStudent = new Map<string, "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED">();
     for (const report of pkg.finalReports) {
-      if (!report.teacherId) continue;
-      if (latestReportByTeacher.has(report.teacherId)) continue;
+      if (!report.teacherId || !report.studentId) continue;
+      const reportKey = `${report.studentId}:${report.teacherId}`;
+      if (latestReportByTeacherAndStudent.has(reportKey)) continue;
       if (report.archivedAt) {
-        latestReportByTeacher.set(report.teacherId, "ARCHIVED");
+        latestReportByTeacherAndStudent.set(reportKey, "ARCHIVED");
         continue;
       }
       if (
@@ -237,50 +228,85 @@ export async function loadFinalReportCandidates() {
         report.status === "FORWARDED" ||
         report.status === "EXEMPT"
       ) {
-        latestReportByTeacher.set(report.teacherId, report.status);
+        latestReportByTeacherAndStudent.set(reportKey, report.status);
       }
     }
 
+    const studentTeacherMap = new Map<
+      string,
+      {
+        studentId: string;
+        studentName: string;
+        teacherMap: Map<
+          string,
+          {
+            id: string;
+            name: string;
+            subjectId: string | null;
+            subjectName: string | null;
+            latestStartAt: Date;
+            latestReportStatus: "ASSIGNED" | "SUBMITTED" | "FORWARDED" | "EXEMPT" | "ARCHIVED" | null;
+          }
+        >;
+      }
+    >();
+
     for (const attendance of pkg.attendances) {
+      if (!attendance.studentId || !attendance.student?.name) continue;
       const teacher = attendance.session.teacher ?? attendance.session.class.teacher;
       if (!teacher?.id) continue;
       const subjectId = attendance.session.class.subject?.id ?? null;
       const subjectName = attendance.session.class.subject?.name ?? null;
-      const prev = teacherMap.get(teacher.id);
+      const studentEntry =
+        studentTeacherMap.get(attendance.studentId) ??
+        {
+          studentId: attendance.studentId,
+          studentName: attendance.student.name,
+          teacherMap: new Map(),
+        };
+      const reportKey = `${attendance.studentId}:${teacher.id}`;
+      const prev = studentEntry.teacherMap.get(teacher.id);
       if (!prev || prev.latestStartAt < attendance.session.startAt) {
-        teacherMap.set(teacher.id, {
+        studentEntry.teacherMap.set(teacher.id, {
           id: teacher.id,
           name: teacher.name,
           subjectId,
           subjectName,
           latestStartAt: attendance.session.startAt,
-          latestReportStatus: latestReportByTeacher.get(teacher.id) ?? null,
+          latestReportStatus: latestReportByTeacherAndStudent.get(reportKey) ?? null,
         });
       }
+      studentTeacherMap.set(attendance.studentId, studentEntry);
     }
 
-    const teacherOptions = Array.from(teacherMap.values())
-      .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
-      .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
-    const topTeacher = teacherOptions[0] ?? null;
-    if (!topTeacher) return null;
+    return Array.from(studentTeacherMap.values())
+      .map((entry) => {
+        const teacherOptions = Array.from(entry.teacherMap.values())
+          .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
+          .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
+        const topTeacher = teacherOptions[0] ?? null;
+        if (!topTeacher) return null;
 
-    return {
-      packageId: pkg.id,
-      studentId: pkg.studentId,
-      studentName: pkg.student.name,
-      courseId: pkg.courseId,
-      courseName: pkg.course.name,
-      totalMinutes: total,
-      remainingMinutes: remaining,
-      usedMinutes: Math.max(0, total - remaining),
-      teacherOptions,
-      defaultTeacherId: topTeacher.id,
-      defaultSubjectId: topTeacher.subjectId,
-    };
+        return {
+          candidateKey: `${pkg.id}:${entry.studentId}`,
+          packageId: pkg.id,
+          studentId: entry.studentId,
+          studentName: entry.studentName,
+          courseId: pkg.courseId,
+          courseName: pkg.course.name,
+          totalMinutes: total,
+          remainingMinutes: remaining,
+          usedMinutes: Math.max(0, total - remaining),
+          teacherOptions,
+          defaultTeacherId: topTeacher.id,
+          defaultSubjectId: topTeacher.subjectId,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
   });
 
   const result: Array<{
+    candidateKey: string;
     packageId: string;
     studentId: string;
     studentName: string;
@@ -302,7 +328,6 @@ export async function loadFinalReportCandidates() {
   }> = [];
 
   for (const row of rows) {
-    if (!row) continue;
     result.push({
       ...row,
       teacherOptions: row.teacherOptions.map((opt) => ({

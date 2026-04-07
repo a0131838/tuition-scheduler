@@ -1589,3 +1589,17 @@
   - post-deploy startup check
   - production UI check on `/admin/shared-docs`
   - production UI check confirmed `Delete / 删除` appears alongside `Archive / 归档`
+
+## 2026-04-07-r01 Deployed
+
+- Scope: fix shared-package midterm/final report routing so report candidates are generated per student instead of only per package owner.
+- Business impact:
+  - `/admin/reports/midterm` now creates and tracks candidate rows separately for each student who used the same shared `HOURS` package
+  - `/admin/reports/final` now does the same for completed shared packages, so operations can push a final report to the correct student even when two students share one package
+  - assign / exempt actions now validate the selected student against package ownership plus shared-student membership before creating or updating a report
+  - existing report lookups now key off `package + student + teacher`, so pushing a report for one shared student no longer hides the other student's candidate
+  - no report content fields, attendance deduction rules, package balances, payroll logic, or finance workflows changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - production read-only QA should confirm separate shared-package candidate rows on `/admin/reports/midterm` and `/admin/reports/final`

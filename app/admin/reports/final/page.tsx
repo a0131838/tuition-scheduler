@@ -153,23 +153,27 @@ async function assignFinalReport(formData: FormData) {
   "use server";
   const user = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
+  const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
-  if (!packageId || !teacherId) redirect("/admin/reports/final?err=missing");
+  if (!packageId || !studentId || !teacherId) redirect("/admin/reports/final?err=missing");
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
+    include: { sharedStudents: { select: { studentId: true } } },
   });
   if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/final?err=pkg");
+  const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
+  if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/final?err=student");
 
   const latestAttendance = await prisma.attendance.findFirst({
-    where: { packageId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+    where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
     orderBy: { session: { startAt: "desc" } },
     include: { session: { include: { class: { select: { subjectId: true } } } } },
   });
   const subjectId = latestAttendance?.session.class.subjectId ?? null;
 
   const latestForTeacher = await prisma.finalReport.findFirst({
-    where: { packageId, teacherId },
+    where: { packageId, teacherId, studentId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -196,7 +200,7 @@ async function assignFinalReport(formData: FormData) {
     await prisma.finalReport.create({
       data: {
         status: "ASSIGNED",
-        studentId: pkg.studentId,
+        studentId,
         teacherId,
         courseId: pkg.courseId,
         subjectId,
@@ -253,6 +257,7 @@ async function exemptFinalReport(formData: FormData) {
   const user = await requireAdmin();
   const reportId = String(formData.get("reportId") ?? "").trim();
   const packageId = String(formData.get("packageId") ?? "").trim();
+  const studentId = String(formData.get("studentId") ?? "").trim();
   const teacherId = String(formData.get("teacherId") ?? "").trim();
   const exemptReason = parseExemptReason(formData.get("exemptReason"));
   if (!exemptReason) redirect("/admin/reports/final?err=missing");
@@ -287,21 +292,24 @@ async function exemptFinalReport(formData: FormData) {
       },
     });
   } else {
-    if (!packageId || !teacherId) redirect("/admin/reports/final?err=missing");
+    if (!packageId || !studentId || !teacherId) redirect("/admin/reports/final?err=missing");
     const pkg = await prisma.coursePackage.findUnique({
       where: { id: packageId },
+      include: { sharedStudents: { select: { studentId: true } } },
     });
     if (!pkg || pkg.type !== "HOURS") redirect("/admin/reports/final?err=pkg");
+    const accessibleStudentIds = new Set([pkg.studentId, ...pkg.sharedStudents.map((row) => row.studentId)]);
+    if (!accessibleStudentIds.has(studentId)) redirect("/admin/reports/final?err=student");
 
     const latestAttendance = await prisma.attendance.findFirst({
-      where: { packageId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
+      where: { packageId, studentId, session: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } },
       orderBy: { session: { startAt: "desc" } },
       include: { session: { include: { class: { select: { subjectId: true } } } } },
     });
     const subjectId = latestAttendance?.session.class.subjectId ?? null;
 
     const latestForTeacher = await prisma.finalReport.findFirst({
-      where: { packageId, teacherId },
+      where: { packageId, teacherId, studentId },
       orderBy: { createdAt: "desc" },
       select: { id: true, deliveredAt: true },
     });
@@ -332,7 +340,7 @@ async function exemptFinalReport(formData: FormData) {
       await prisma.finalReport.create({
         data: {
           status: "EXEMPT",
-          studentId: pkg.studentId,
+          studentId,
           teacherId,
           courseId: pkg.courseId,
           subjectId,
@@ -680,7 +688,7 @@ export default async function AdminFinalReportCenterPage({
             </thead>
             <tbody>
               {candidates.map((row) => (
-                <tr key={row.packageId} style={{ borderTop: "1px solid #fde68a" }}>
+                <tr key={row.candidateKey} style={{ borderTop: "1px solid #fde68a" }}>
                   <td style={{ padding: 6, fontWeight: 700 }}>{row.studentName}</td>
                   <td style={{ padding: 6 }}>{row.courseName}</td>
                   <td style={{ padding: 6 }}>
@@ -689,6 +697,7 @@ export default async function AdminFinalReportCenterPage({
                   <td style={{ padding: 6 }}>
                     <form action={assignFinalReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <input type="hidden" name="packageId" value={row.packageId} />
+                      <input type="hidden" name="studentId" value={row.studentId} />
                       <select name="teacherId" defaultValue={row.defaultTeacherId}>
                         {row.teacherOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
@@ -713,9 +722,10 @@ export default async function AdminFinalReportCenterPage({
                     <div style={{ display: "grid", gap: 8 }}>
                       <form action={exemptFinalReport} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                         <input type="hidden" name="packageId" value={row.packageId} />
+                        <input type="hidden" name="studentId" value={row.studentId} />
                         <select name="teacherId" defaultValue={row.defaultTeacherId}>
                           {row.teacherOptions.map((opt) => (
-                            <option key={`${row.packageId}-${opt.id}-exempt`} value={opt.id}>
+                            <option key={`${row.candidateKey}-${opt.id}-exempt`} value={opt.id}>
                               {opt.name}
                               {opt.subjectName ? ` (${opt.subjectName})` : ""}
                             </option>
@@ -730,7 +740,7 @@ export default async function AdminFinalReportCenterPage({
                       </form>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {row.teacherOptions.map((opt) => (
-                          <span key={`${row.packageId}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
+                          <span key={`${row.candidateKey}-${opt.id}`} style={{ fontSize: 12, color: "#334155" }}>
                             {opt.name}: {opt.latestReportStatus === "ASSIGNED"
                               ? t(lang, "Assigned", "已推送")
                               : opt.latestReportStatus === "SUBMITTED"

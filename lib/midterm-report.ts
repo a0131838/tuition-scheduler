@@ -299,6 +299,7 @@ export async function loadMidtermCandidates() {
       attendances: {
         where: { deductedMinutes: { gt: 0 } },
         include: {
+          student: true,
           session: {
             include: {
               teacher: true,
@@ -318,6 +319,7 @@ export async function loadMidtermCandidates() {
         orderBy: { createdAt: "desc" },
         take: 200,
         select: {
+          studentId: true,
           teacherId: true,
           status: true,
           archivedAt: true,
@@ -329,80 +331,105 @@ export async function loadMidtermCandidates() {
     take: 500,
   });
 
-  const rows = packages.map((pkg) => {
+  const rows = packages.flatMap((pkg) => {
     const total = safePositiveInt(pkg.totalMinutes);
     const remaining = safePositiveInt(pkg.remainingMinutes);
     const used = Math.max(0, total - remaining);
-    if (total <= 0 || used <= 0) return null;
+    if (total <= 0 || used <= 0) return [];
     const progress = Math.round((used / total) * 100);
-    if (progress < 45 || progress > 70) return null;
+    if (progress < 45 || progress > 70) return [];
 
-    const teacherMap = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        subjectId: string | null;
-        subjectName: string | null;
-        latestStartAt: Date;
-        latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED" | null;
-      }
-    >();
-
-    const latestReportByTeacher = new Map<string, "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED">();
+    const latestReportByTeacherAndStudent = new Map<string, "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED">();
     for (const report of pkg.midtermReports) {
-      if (!report.teacherId) continue;
-      if (latestReportByTeacher.has(report.teacherId)) continue;
+      if (!report.teacherId || !report.studentId) continue;
+      const reportKey = `${report.studentId}:${report.teacherId}`;
+      if (latestReportByTeacherAndStudent.has(reportKey)) continue;
       if (report.archivedAt) {
-        latestReportByTeacher.set(report.teacherId, "ARCHIVED");
+        latestReportByTeacherAndStudent.set(reportKey, "ARCHIVED");
         continue;
       }
       if (report.status === "ASSIGNED" || report.status === "SUBMITTED" || report.status === "EXEMPT") {
-        latestReportByTeacher.set(report.teacherId, report.status);
+        latestReportByTeacherAndStudent.set(reportKey, report.status);
       }
     }
 
+    const studentTeacherMap = new Map<
+      string,
+      {
+        studentId: string;
+        studentName: string;
+        teacherMap: Map<
+          string,
+          {
+            id: string;
+            name: string;
+            subjectId: string | null;
+            subjectName: string | null;
+            latestStartAt: Date;
+            latestReportStatus: "ASSIGNED" | "SUBMITTED" | "EXEMPT" | "ARCHIVED" | null;
+          }
+        >;
+      }
+    >();
+
     for (const a of pkg.attendances) {
+      if (!a.studentId || !a.student?.name) continue;
       const teacher = a.session.teacher ?? a.session.class.teacher;
       if (!teacher?.id) continue;
       const subjectId = a.session.class.subject?.id ?? null;
       const subjectName = a.session.class.subject?.name ?? null;
-      const prev = teacherMap.get(teacher.id);
+      const studentKey = a.studentId;
+      const studentEntry =
+        studentTeacherMap.get(studentKey) ??
+        {
+          studentId: a.studentId,
+          studentName: a.student.name,
+          teacherMap: new Map(),
+        };
+      const reportKey = `${a.studentId}:${teacher.id}`;
+      const prev = studentEntry.teacherMap.get(teacher.id);
       if (!prev || prev.latestStartAt < a.session.startAt) {
-        teacherMap.set(teacher.id, {
+        studentEntry.teacherMap.set(teacher.id, {
           id: teacher.id,
           name: teacher.name,
           subjectId,
           subjectName,
           latestStartAt: a.session.startAt,
-          latestReportStatus: latestReportByTeacher.get(teacher.id) ?? null,
+          latestReportStatus: latestReportByTeacherAndStudent.get(reportKey) ?? null,
         });
       }
+      studentTeacherMap.set(studentKey, studentEntry);
     }
 
-    const teacherOptions = Array.from(teacherMap.values())
-      .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
-      .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
-    const topTeacher = teacherOptions[0] ?? null;
-    if (!topTeacher) return null;
+    return Array.from(studentTeacherMap.values())
+      .map((entry) => {
+        const teacherOptions = Array.from(entry.teacherMap.values())
+          .filter((opt) => opt.latestReportStatus !== "EXEMPT" && opt.latestReportStatus !== "ARCHIVED")
+          .sort((a, b) => b.latestStartAt.getTime() - a.latestStartAt.getTime());
+        const topTeacher = teacherOptions[0] ?? null;
+        if (!topTeacher) return null;
 
-    return {
-      packageId: pkg.id,
-      studentId: pkg.studentId,
-      studentName: pkg.student.name,
-      courseId: pkg.courseId,
-      courseName: pkg.course.name,
-      totalMinutes: total,
-      consumedMinutes: used,
-      progressPercent: progress,
-      consumedSessions: pkg.txns.length,
-      teacherOptions,
-      defaultTeacherId: topTeacher.id,
-      defaultSubjectId: topTeacher.subjectId,
-    };
+        return {
+          candidateKey: `${pkg.id}:${entry.studentId}`,
+          packageId: pkg.id,
+          studentId: entry.studentId,
+          studentName: entry.studentName,
+          courseId: pkg.courseId,
+          courseName: pkg.course.name,
+          totalMinutes: total,
+          consumedMinutes: used,
+          progressPercent: progress,
+          consumedSessions: pkg.txns.length,
+          teacherOptions,
+          defaultTeacherId: topTeacher.id,
+          defaultSubjectId: topTeacher.subjectId,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
   });
 
   const result: Array<{
+    candidateKey: string;
     packageId: string;
     studentId: string;
     studentName: string;
@@ -425,7 +452,6 @@ export async function loadMidtermCandidates() {
   }> = [];
 
   for (const row of rows) {
-    if (!row) continue;
     result.push({
       ...row,
       teacherOptions: row.teacherOptions.map((opt) => ({
