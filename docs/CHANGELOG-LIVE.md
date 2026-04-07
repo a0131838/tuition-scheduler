@@ -2922,3 +2922,21 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - admin PDF download route should continue returning `200 application/pdf` with the simplified parent-facing layout
 - Rollback point: previous production commit before `2026-04-07-r03`.
+
+## 2026-04-07-r04
+
+- Release ID: `2026-04-07-r04`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: reshape the final-report PDF into a more renewal-oriented family handoff so the top summary frames the student's progress and recommended continuation path more clearly.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-final-report-pdf-renewal-guidance-pass.md`
+- Risk impact (if any): Low. This release only changes parent-facing PDF wording and section emphasis; it does not change final-report data, assignment rules, delivery/share logic, attendance logic, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - admin PDF download route should continue returning `200 application/pdf` with the updated continuation-focused layout
+- Rollback point: previous production commit before `2026-04-07-r04`.

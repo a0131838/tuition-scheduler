@@ -130,6 +130,60 @@ function recommendationLabel(value: string, lang: "BILINGUAL" | "ZH" | "EN") {
   return `${en} / ${zh}`;
 }
 
+function packageCompletionLabel(totalMinutes: number | null | undefined, lang: "BILINGUAL" | "ZH" | "EN") {
+  const totalHours = Math.max(0, Math.round(Number(totalMinutes ?? 0) / 60));
+  const zh = totalHours > 0 ? `已完成 ${totalHours} 小时课包学习` : "已完成本阶段学习";
+  const en = totalHours > 0 ? `Completed ${totalHours} hours of study in this package` : "Completed this learning stage";
+  if (lang === "ZH") return zh;
+  if (lang === "EN") return en;
+  return `${en} / ${zh}`;
+}
+
+function continuationPrompt(
+  recommendation: string,
+  lang: "BILINGUAL" | "ZH" | "EN",
+  areasToContinue: string,
+  finalLevel: string | null
+) {
+  const focus = hasMeaningfulText(areasToContinue) ? normalizeText(areasToContinue) : "";
+  const levelHint = hasMeaningfulText(finalLevel) ? normalizeText(finalLevel) : "";
+  const zhBase =
+    recommendation === "CONTINUE_CURRENT"
+      ? "建议尽快续读当前课程，保持这阶段已经建立起来的学习节奏。"
+      : recommendation === "MOVE_TO_NEXT_LEVEL"
+        ? "建议续读下一阶段课程，把这阶段打下的基础自然衔接到更高一级的学习目标。"
+        : recommendation === "CHANGE_FOCUS"
+          ? "建议续读并调整学习重点，让下一阶段的课程更贴合孩子目前最需要加强的方向。"
+          : recommendation === "PAUSE_AFTER_COMPLETION"
+            ? "当前阶段已经完成，可以先短暂停顿，再根据孩子兴趣和节奏安排下一轮学习。"
+            : recommendation === "COURSE_COMPLETED"
+              ? "当前课程目标已经完成，如家长希望继续延伸学习，可以安排下一阶段或相关主题课程。"
+              : "建议结合孩子目前的学习状态，安排下一阶段最合适的学习计划。";
+  const zhExtra = [levelHint ? `目前老师评估的阶段水平为：${levelHint}。` : "", focus ? `下一阶段可重点关注：${focus}` : ""]
+    .filter(Boolean)
+    .join("");
+
+  const enBase =
+    recommendation === "CONTINUE_CURRENT"
+      ? "We recommend continuing the current course soon so the student can keep the momentum built during this stage."
+      : recommendation === "MOVE_TO_NEXT_LEVEL"
+        ? "We recommend renewing into the next level so this stage's progress can flow naturally into the next challenge."
+        : recommendation === "CHANGE_FOCUS"
+          ? "We recommend renewing with an adjusted learning focus so the next stage matches the student's current needs more closely."
+          : recommendation === "PAUSE_AFTER_COMPLETION"
+            ? "This stage is complete, so it is reasonable to pause briefly and plan the next round around the student's pace and interest."
+            : recommendation === "COURSE_COMPLETED"
+              ? "The current course goals are complete, and the family can consider a next-stage or related course if the student is ready to continue."
+              : "We recommend planning the next study step based on the student's current progress and readiness.";
+  const enExtra = [levelHint ? `Current teacher-evaluated level: ${levelHint}.` : "", focus ? `Suggested focus for the next stage: ${focus}` : ""]
+    .filter(Boolean)
+    .join(" ");
+
+  if (lang === "ZH") return [zhBase, zhExtra].filter(Boolean).join("");
+  if (lang === "EN") return [enBase, enExtra].filter(Boolean).join(" ");
+  return [[enBase, enExtra].filter(Boolean).join(" "), [zhBase, zhExtra].filter(Boolean).join("")].filter(Boolean).join(" / ");
+}
+
 function compactFieldRow(doc: PDFDoc, x: number, y: number, w: number, items: Array<{ label: string; value: string }>) {
   const gap = 10;
   const itemW = (w - gap * (items.length - 1)) / items.length;
@@ -167,10 +221,11 @@ function buildSections(lang: "BILINGUAL" | "ZH" | "EN", draft: ReturnType<typeof
     });
   }
 
-  const nextStepValue = recommendationLabel(report.recommendation || draft.recommendedNextStep, lang);
+  const recommendation = report.recommendation || draft.recommendedNextStep;
+  const nextStepValue = continuationPrompt(recommendation, lang, draft.areasToContinue, report.finalLevel);
   if (hasMeaningfulText(nextStepValue)) {
     sections.push({
-      title: lang === "ZH" ? "下一步建议" : lang === "EN" ? "Recommended next step" : "Recommended next step / 下一步建议",
+      title: lang === "ZH" ? "续课建议" : lang === "EN" ? "Recommended continuation" : "Recommended continuation / 续课建议",
       value: nextStepValue,
       tone: { bg: "#EFF6FF", border: "#BFDBFE", title: "#1D4ED8" },
     });
@@ -265,20 +320,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     { label: lang === "ZH" ? "学生" : lang === "EN" ? "Student" : "Student / 学生", value: report.student.name },
     { label: lang === "ZH" ? "课程" : lang === "EN" ? "Course" : "Course / 课程", value: `${report.course.name}${report.subject ? ` / ${report.subject.name}` : ""}` },
     { label: lang === "ZH" ? "老师" : lang === "EN" ? "Teacher" : "Teacher / 老师", value: report.teacher.name },
-    { label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段", value: report.reportPeriodLabel || (lang === "ZH" ? "本课包结课" : lang === "EN" ? "End of package" : "End of package / 本课包结课") },
+    { label: lang === "ZH" ? "学习阶段" : lang === "EN" ? "Learning period" : "Learning period / 学习阶段", value: report.reportPeriodLabel || (lang === "ZH" ? "本课包结课总结" : lang === "EN" ? "End-of-package summary" : "End-of-package summary / 本课包结课总结") },
   ]);
   y += summaryH + gap;
 
   const snapshotH = 54;
-  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "结课结论" : lang === "EN" ? "Final Snapshot" : "Final Snapshot / 结课结论", {
+  panel(doc, left, y, contentW, snapshotH, lang === "ZH" ? "阶段成果与续课方向" : lang === "EN" ? "Progress and continuation" : "Progress and continuation / 阶段成果与续课方向", {
     bg: "#ECFDF5",
     border: "#BBF7D0",
     title: "#166534",
   });
   compactFieldRow(doc, left + 10, y + 22, contentW - 20, [
-    { label: lang === "ZH" ? "课包完成情况" : lang === "EN" ? "Package progress" : "Package progress / 课包完成情况", value: `${Math.round(Number(report.package.totalMinutes ?? 0) / 60)}h package completed` },
+    { label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况", value: packageCompletionLabel(report.package.totalMinutes, lang) },
     { label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", value: hasMeaningfulText(report.finalLevel) ? String(report.finalLevel) : (lang === "ZH" ? "由老师填写" : lang === "EN" ? "Added by teacher" : "Added by teacher / 由老师填写") },
-    { label: lang === "ZH" ? "下一步方向" : lang === "EN" ? "Next step" : "Next step / 下一步方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
+    { label: lang === "ZH" ? "续课方向" : lang === "EN" ? "Continuation path" : "Continuation path / 续课方向", value: recommendationLabel(report.recommendation || draft.recommendedNextStep, lang) },
   ]);
   y += snapshotH + gap;
 

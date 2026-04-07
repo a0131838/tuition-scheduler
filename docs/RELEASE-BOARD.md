@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-04`
+- Last checked: `2026-04-07`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-06-r12` (admin sidebar color tuning pass).
+- Current release line on this branch: `2026-04-07-r04` (final-report PDF renewal guidance pass).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -1624,6 +1624,19 @@
   - `/api/admin/final-reports/[id]/pdf` now focuses the printable layout on student progress, end-of-course outcome, and the recommended next step
   - empty report sections no longer show `-` placeholders, so the page reads more like a finished handoff instead of a system export
   - delivery/admin-only details are still kept in the admin workbench, but they are no longer shown in the parent-facing PDF
+  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - admin final-report PDF route should continue returning `200` with `application/pdf`
+
+## 2026-04-07-r04 Deployed
+
+- Scope: make the final-report PDF read more like a parent-facing continuation handoff by emphasizing the student's progress and the recommended renewal path.
+- Business impact:
+  - `/api/admin/final-reports/[id]/pdf` now frames the top summary as `Progress and continuation / 阶段成果与续课方向`
+  - the package-completion line now reads like a completed learning-stage summary instead of a raw internal package metric
+  - the previous short `Recommended next step` card is replaced with a fuller `Recommended continuation / 续课建议` narrative built from the teacher's recommendation, current level, and next-focus guidance
   - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
 - Validation:
   - `npm run build`
