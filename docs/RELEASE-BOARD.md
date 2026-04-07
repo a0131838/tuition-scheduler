@@ -1616,3 +1616,16 @@
   - `npm run build`
   - post-deploy startup check
   - admin final-report PDF route should continue returning `200` with `application/pdf`
+
+## 2026-04-07-r03 Deployed
+
+- Scope: make the final-report PDF more parent-facing by removing internal delivery/admin metadata and hiding empty sections.
+- Business impact:
+  - `/api/admin/final-reports/[id]/pdf` now focuses the printable layout on student progress, end-of-course outcome, and the recommended next step
+  - empty report sections no longer show `-` placeholders, so the page reads more like a finished handoff instead of a system export
+  - delivery/admin-only details are still kept in the admin workbench, but they are no longer shown in the parent-facing PDF
+  - no final-report data, assignment logic, delivery/share actions, attendance logic, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - admin final-report PDF route should continue returning `200` with `application/pdf`
