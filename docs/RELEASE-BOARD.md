@@ -1760,3 +1760,17 @@
   - `npm run build`
   - post-deploy startup check
   - admin final-report PDF route should continue returning `200` with `application/pdf`
+
+## 2026-04-08-r08 Ready
+
+- Scope: let ops record HOURS package sales and top-ups as split purchase batches so partner settlement can later split batches like `6h + 30h` without manual production repair.
+- Business impact:
+  - `/api/admin/packages` now accepts `purchaseBatches` and writes multiple ordered `PURCHASE` txns instead of one merged txn when requested
+  - `/api/admin/packages/[id]/top-up` supports the same split-batch input for future partner top-ups
+  - the admin package create form and top-up modal now expose a batch-entry block for 新东方 students, including a one-click `6h + 30h` preset
+  - total paid amount is proportionally allocated across the split purchase txns, while package totals and remaining balance behavior stay unchanged
+  - no attendance deduction logic, student billing, parent billing, or offline monthly settlement logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - package create/top-up flows preserve tranche order for later partner settlement FIFO

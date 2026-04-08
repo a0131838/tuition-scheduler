@@ -3165,3 +3165,26 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - admin PDF download route should continue returning `200 application/pdf` with fewer repeated body sections
 - Rollback point: previous production commit before `2026-04-07-r08`.
+
+## 2026-04-08-r08
+
+- Release ID: `2026-04-08-r08`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add split purchase-batch entry for partner package create/top-up flows so 新东方 package sales can be recorded as separate `PURCHASE` tranches like `6h + 30h` instead of one merged balance.
+- Key files:
+  - `app/api/admin/packages/route.ts`
+  - `app/api/admin/packages/[id]/top-up/route.ts`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/_components/PurchaseBatchEditor.tsx`
+  - `lib/package-purchase-batches.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-partner-package-split-batch-entry.md`
+- Risk impact (if any): Medium-low. This release changes how new HOURS package purchases/top-ups can be recorded into multiple `PURCHASE` txns, but it does not change deduction math, package balance totals, student billing, parent billing, or offline monthly settlement logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - package create and top-up APIs now accept split purchase batches and preserve tranche order for later partner settlement FIFO
+- Rollback point: previous production commit before `2026-04-08-r08`.
