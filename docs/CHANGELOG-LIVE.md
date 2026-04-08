@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r01
+
+- Release ID: `2026-04-08-r01`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: align the teacher-side final-report writing form with the parent-facing PDF so teachers write in the same narrative order and wording families will later read.
+- Key files:
+  - `app/teacher/final-reports/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-final-report-teacher-form-parent-pdf-alignment-pass.md`
+- Risk impact (if any): Low. This release only changes teacher-side field labels, order, and explanatory copy; it does not change report storage, submission rules, PDF data sources, delivery/share logic, or any finance/attendance/package behavior.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - teacher `/teacher/final-reports/[id]` should show the parent-facing note and the softer family-facing section titles
+- Rollback point: previous production commit before `2026-04-08-r01`.
+
 ## 2026-04-07-r09
 
 - Release ID: `2026-04-07-r09`

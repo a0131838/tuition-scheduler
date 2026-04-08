@@ -84,6 +84,25 @@ function recommendationLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string) {
   }
 }
 
+function growthFocusLabel(lang: "BILINGUAL" | "ZH" | "EN", value: string, areasToContinue: string) {
+  const trimmedAreas = areasToContinue.trim();
+  if (trimmedAreas) return trimmedAreas;
+  switch (value) {
+    case "CONTINUE_CURRENT":
+      return t(lang, "Keep building the current core skills", "继续围绕当前核心能力推进");
+    case "MOVE_TO_NEXT_LEVEL":
+      return t(lang, "Get ready for the next level", "为下一阶段做好准备");
+    case "CHANGE_FOCUS":
+      return t(lang, "Adjust toward the most needed focus area", "调整到当前最需要加强的方向");
+    case "PAUSE_AFTER_COMPLETION":
+      return t(lang, "Consolidate this stage first", "先整理吸收本阶段内容");
+    case "COURSE_COMPLETED":
+      return t(lang, "Plan the next learning direction", "规划下一阶段学习方向");
+    default:
+      return "-";
+  }
+}
+
 function safeMinutes(value: number | null | undefined) {
   return Math.max(0, Number(value ?? 0));
 }
@@ -224,9 +243,9 @@ export default async function TeacherFinalReportDetailPage({
           </div>
         </div>
         <div style={statCard("#f5f3ff", "#ddd6fe")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9" }}>{t(lang, "Next step", "下一步")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#6d28d9" }}>{t(lang, "Current growth focus", "当前成长重点")}</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#6d28d9", marginTop: 10 }}>
-            {recommendationLabel(lang, report.recommendation ?? draft.recommendedNextStep)}
+            {growthFocusLabel(lang, report.recommendation ?? draft.recommendedNextStep, draft.areasToContinue)}
           </div>
         </div>
       </section>
@@ -244,11 +263,22 @@ export default async function TeacherFinalReportDetailPage({
 
       <form action={saveReport} style={{ display: "grid", gap: 10 }}>
         <fieldset disabled={isLocked} style={{ border: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
+          <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#f8fbff", padding: 12, color: "#334155", lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "What parents will read in the PDF", "家长版 PDF 里会重点看到这些内容")}</div>
+            <div>
+              {t(
+                lang,
+                "Your written sections are the main body of the final report. Empty sections stay hidden in the parent-facing PDF, while internal notes stay inside the system.",
+                "你填写的正文内容会成为结课报告 PDF 的主体。没有填写的板块不会出现在家长版 PDF 里，内部备注也不会给家长看到。"
+              )}
+            </div>
+          </div>
+
           <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#eff6ff", padding: 10 }}>
-            <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "Package summary", "课包总结信息")}</div>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>{t(lang, "PDF summary fields", "PDF 摘要信息")}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
               <label>
-                {t(lang, "Report period", "报告阶段")}
+                {t(lang, "Learning period", "学习阶段")}
                 <input name="reportPeriodLabel" defaultValue={report.reportPeriodLabel ?? ""} style={{ width: "100%" }} />
               </label>
               <label>
@@ -260,7 +290,7 @@ export default async function TeacherFinalReportDetailPage({
                 <input name="overallScore" defaultValue={report.overallScore?.toString() ?? ""} placeholder="4.5" style={{ width: "100%" }} />
               </label>
               <label>
-                {t(lang, "Recommended next step", "下一步建议")}
+                {t(lang, "Recommendation for internal summary", "系统摘要参考建议")}
                 <select name="recommendedNextStep" defaultValue={draft.recommendedNextStep} style={{ width: "100%" }}>
                   <option value="">{t(lang, "Select recommendation", "请选择建议")}</option>
                   {FINAL_REPORT_RECOMMENDATIONS.map((value) => (
@@ -272,40 +302,40 @@ export default async function TeacherFinalReportDetailPage({
           </div>
 
           <label style={{ display: "block" }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Initial goals", "开始目标")}</div>
-            <textarea name="initialGoals" defaultValue={draft.initialGoals} rows={3} style={{ width: "100%" }} />
-          </label>
-
-          <label style={{ display: "block" }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Final outcome summary", "最终结果总结")}</div>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "This stage in summary", "本阶段学习总结")}</div>
             <textarea name="finalSummary" defaultValue={draft.finalSummary} rows={4} style={{ width: "100%" }} />
           </label>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             <label style={{ display: "block" }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Strengths", "学生优势")}</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Progress we observed", "这阶段看到的进步")}</div>
               <textarea name="strengths" defaultValue={draft.strengths} rows={4} style={{ width: "100%" }} />
             </label>
             <label style={{ display: "block" }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Areas to continue", "后续提升建议")}</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Areas to keep strengthening", "接下来可以继续加强的地方")}</div>
               <textarea name="areasToContinue" defaultValue={draft.areasToContinue} rows={4} style={{ width: "100%" }} />
             </label>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             <label style={{ display: "block" }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Attendance comment", "出勤表现")}</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Learning habits we noticed: attendance", "学习习惯观察：出勤")}</div>
               <textarea name="attendanceComment" defaultValue={draft.attendanceComment} rows={3} style={{ width: "100%" }} />
             </label>
             <label style={{ display: "block" }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Homework comment", "作业表现")}</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Learning habits we noticed: homework", "学习习惯观察：作业")}</div>
               <textarea name="homeworkComment" defaultValue={draft.homeworkComment} rows={3} style={{ width: "100%" }} />
             </label>
           </div>
 
           <label style={{ display: "block" }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Parent note", "给家长的话")}</div>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Teacher note to family", "老师想对家长说的话")}</div>
             <textarea name="parentNote" defaultValue={draft.parentNote} rows={4} style={{ width: "100%" }} />
+          </label>
+
+          <label style={{ display: "block" }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>{t(lang, "Looking back at the starting goals", "回看开始时的小目标")}</div>
+            <textarea name="initialGoals" defaultValue={draft.initialGoals} rows={3} style={{ width: "100%" }} />
           </label>
 
           <label style={{ display: "block" }}>
