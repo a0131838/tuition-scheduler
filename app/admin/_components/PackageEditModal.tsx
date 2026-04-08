@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SearchableMultiSelect from "./SearchableMultiSelect";
+import PurchaseBatchEditor, { sumPurchaseBatchDraftMinutes } from "./PurchaseBatchEditor";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 
@@ -100,6 +101,11 @@ export default function PackageEditModal({
   const [topUpMinutesValue, setTopUpMinutesValue] = useState(
     () => (((pkg.sourceChannelName ?? "").includes("新东方") ? "270" : "600"))
   );
+  const [useTopUpBatches, setUseTopUpBatches] = useState(false);
+  const [topUpBatchRows, setTopUpBatchRows] = useState([
+    { minutes: "360", note: "6h tranche / 6小时批次" },
+    { minutes: "1800", note: "30h tranche / 30小时批次" },
+  ]);
   const [topUpNoteValue, setTopUpNoteValue] = useState("");
   const [topUpPaidValue, setTopUpPaidValue] = useState(false);
   const [topUpPaidAmountValue, setTopUpPaidAmountValue] = useState("");
@@ -120,7 +126,8 @@ export default function PackageEditModal({
   const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_TOP_UP_PRESETS;
   const currentRemaining = pkg.remainingMinutes ?? 0;
   const currentTotal = pkg.totalMinutes ?? null;
-  const topUpMinutesNumber = Number(topUpMinutesValue || 0);
+  const topUpBatchTotalMinutes = useMemo(() => sumPurchaseBatchDraftMinutes(topUpBatchRows), [topUpBatchRows]);
+  const topUpMinutesNumber = useTopUpBatches ? topUpBatchTotalMinutes : Number(topUpMinutesValue || 0);
   const nextRemaining = topUpMinutesNumber > 0 ? currentRemaining + topUpMinutesNumber : currentRemaining;
   const nextTotal =
     currentTotal != null && topUpMinutesNumber > 0 ? currentTotal + topUpMinutesNumber : currentTotal;
@@ -253,6 +260,11 @@ export default function PackageEditModal({
           setEditPaidValue(pkg.paid);
           setShowEditAdvanced(false);
           setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
+          setUseTopUpBatches(false);
+          setTopUpBatchRows([
+            { minutes: "360", note: "6h tranche / 6小时批次" },
+            { minutes: "1800", note: "30h tranche / 30小时批次" },
+          ]);
           setTopUpNoteValue("");
           setTopUpPaidValue(false);
           setTopUpPaidAmountValue("");
@@ -550,13 +562,22 @@ export default function PackageEditModal({
               const fd = new FormData(e.currentTarget);
               const id = String(fd.get("id") ?? "");
               const payload = {
-                addMinutes: Number(fd.get("addMinutes") ?? 0),
+                addMinutes: useTopUpBatches ? topUpBatchTotalMinutes : Number(fd.get("addMinutes") ?? 0),
                 note: String(fd.get("note") ?? ""),
                 paid: String(fd.get("paid") ?? "") === "on",
                 paidAt: String(fd.get("paidAt") ?? ""),
                 paidAmount: String(fd.get("paidAmount") ?? ""),
                 paidNote: String(fd.get("paidNote") ?? ""),
+                purchaseBatches: useTopUpBatches
+                  ? topUpBatchRows
+                      .map((row) => ({ minutes: Number(row.minutes ?? 0), note: row.note }))
+                      .filter((row) => Number.isFinite(row.minutes) && row.minutes > 0)
+                  : [],
               };
+              if (useTopUpBatches && payload.purchaseBatches.length === 0) {
+                setErr("Please add at least one valid top-up batch. / 请至少填写一个有效增购批次。");
+                return;
+              }
 
               const res = await fetch(`/api/admin/packages/${encodeURIComponent(id)}/top-up`, {
                 method: "POST",
@@ -608,8 +629,9 @@ export default function PackageEditModal({
               type="number"
               min={1}
               step={1}
-              value={topUpMinutesValue}
+              value={useTopUpBatches ? String(topUpBatchTotalMinutes) : topUpMinutesValue}
               onChange={(e) => setTopUpMinutesValue(e.target.value)}
+              readOnly={useTopUpBatches}
               style={{ marginLeft: 8 }}
             />
           </label>
@@ -618,6 +640,7 @@ export default function PackageEditModal({
               <button
                 key={preset.minutes}
                 type="button"
+                disabled={useTopUpBatches}
                 onClick={() => setTopUpMinutesValue(String(preset.minutes))}
                 style={{
                   minHeight: 34,
@@ -625,6 +648,7 @@ export default function PackageEditModal({
                   borderRadius: 999,
                   border: topUpMinutesValue === String(preset.minutes) ? "2px solid #2563eb" : "1px solid #cbd5e1",
                   background: topUpMinutesValue === String(preset.minutes) ? "#dbeafe" : "#fff",
+                  opacity: useTopUpBatches ? 0.55 : 1,
                 }}
               >
                 {preset.label}
@@ -636,6 +660,30 @@ export default function PackageEditModal({
               ? "New Oriental partner packages usually follow 45-minute lesson bundles. / 新东方合作方课包通常按 45 分钟课时打包。"
               : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。"}
           </div>
+          {isXdfPartner ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={useTopUpBatches}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setUseTopUpBatches(next);
+                    if (!next) setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
+                  }}
+                />
+                Record this top-up as separate purchase batches / 把这次增购按独立购买批次记录
+              </label>
+              {useTopUpBatches ? (
+                <PurchaseBatchEditor
+                  rows={topUpBatchRows}
+                  onChange={setTopUpBatchRows}
+                  isXdfPartner={isXdfPartner}
+                  title="Top-up batches / 增购批次"
+                />
+              ) : null}
+            </div>
+          ) : null}
           <label>
             {labels.topUpNote}:
             <input

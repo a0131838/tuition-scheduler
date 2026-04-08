@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { buildTopUpMinutesUpdate } from "@/lib/package-top-up";
+import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
@@ -40,6 +41,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const paidNote = String(body?.paidNote ?? "");
 
   if (!Number.isFinite(addMinutes) || addMinutes <= 0) return bad("Invalid addMinutes", 409);
+  let purchaseBatches;
+  try {
+    purchaseBatches = normalizePurchaseBatches({
+      batchesRaw: body?.purchaseBatches,
+      fallbackMinutes: addMinutes,
+      fallbackNote: note || null,
+    });
+  } catch (error) {
+    return bad(error instanceof Error ? error.message : "Invalid purchase batches", 409);
+  }
+  const effectiveAddMinutes = sumPurchaseBatchMinutes(purchaseBatches);
 
   const paidAt = paidAtStr ? new Date(paidAtStr) : paid ? new Date() : null;
   if (paidAtStr && (Number.isNaN(paidAt!.getTime()) || !paidAt)) return bad("Invalid paidAt", 409);
@@ -141,7 +153,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             remainingMinutes: pkgNow.remainingMinutes,
             totalMinutes: pkgNow.totalMinutes,
           },
-          addMinutes
+          effectiveAddMinutes
         ),
         ...(paid
           ? {
@@ -154,15 +166,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       },
     });
 
-    await tx.packageTxn.create({
-      data: {
-        packageId: id,
-        kind: "PURCHASE",
-        deltaMinutes: addMinutes,
-        deltaAmount: paidAmount,
-        note: note ? `Top-up: ${note}` : "Top-up purchase",
-      },
+    const topUpTxns = buildPurchaseTxnCreates({
+      batches: purchaseBatches,
+      totalAmount: paidAmount,
+      defaultNote: note || null,
+      prefix: "Top-up",
     });
+    for (const txn of topUpTxns) {
+      await tx.packageTxn.create({
+        data: {
+          packageId: id,
+          kind: txn.kind,
+          deltaMinutes: txn.deltaMinutes,
+          deltaAmount: txn.deltaAmount,
+          note: txn.note,
+          createdAt: txn.createdAt,
+        },
+      });
+    }
   });
 
   return Response.json({ ok: true });

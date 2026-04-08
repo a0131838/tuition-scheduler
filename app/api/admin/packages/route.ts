@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG } from "@/lib/package-mode";
 import { parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
+import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -146,6 +147,17 @@ export async function POST(req: Request) {
 
   if (type === "HOURS") {
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return bad("HOURS package needs totalMinutes", 409);
+    let purchaseBatches;
+    try {
+      purchaseBatches = normalizePurchaseBatches({
+        batchesRaw: body?.purchaseBatches,
+        fallbackMinutes: totalMinutes,
+        fallbackNote: packageNote || null,
+      });
+    } catch (error) {
+      return bad(error instanceof Error ? error.message : "Invalid purchase batches", 409);
+    }
+    const effectiveTotalMinutes = sumPurchaseBatchMinutes(purchaseBatches);
 
     const created = await prisma.coursePackage.create({
       data: {
@@ -154,8 +166,8 @@ export async function POST(req: Request) {
         type: "HOURS",
         status: (status as any) || "PAUSED",
         settlementMode: settlementMode as any,
-        totalMinutes,
-        remainingMinutes: totalMinutes,
+        totalMinutes: effectiveTotalMinutes,
+        remainingMinutes: effectiveTotalMinutes,
         validFrom,
         validTo,
         paid,
@@ -170,12 +182,12 @@ export async function POST(req: Request) {
           ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
           : undefined,
         txns: {
-          create: {
-            kind: "PURCHASE",
-            deltaMinutes: totalMinutes,
-            deltaAmount: paidAmount,
-            note: packageNote || null,
-          },
+          create: buildPurchaseTxnCreates({
+            batches: purchaseBatches,
+            totalAmount: paidAmount,
+            defaultNote: packageNote || null,
+            prefix: "Initial purchase",
+          }),
         },
       },
       select: { id: true },

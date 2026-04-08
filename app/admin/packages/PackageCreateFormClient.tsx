@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ConfirmSubmitButton from "../_components/ConfirmSubmitButton";
 import SearchableMultiSelect from "../_components/SearchableMultiSelect";
 import StudentSearchSelect from "../_components/StudentSearchSelect";
+import PurchaseBatchEditor, { sumPurchaseBatchDraftMinutes } from "../_components/PurchaseBatchEditor";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 
 type StudentOpt = {
@@ -131,6 +132,11 @@ export default function PackageCreateFormClient({
   const [paidAmountValue, setPaidAmountValue] = useState("");
   const [noteValue, setNoteValue] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [usePurchaseBatches, setUsePurchaseBatches] = useState(false);
+  const [purchaseBatchRows, setPurchaseBatchRows] = useState([
+    { minutes: "360", note: "6h tranche / 6小时批次" },
+    { minutes: "1800", note: "30h tranche / 30小时批次" },
+  ]);
   const [sharedStudentIds, setSharedStudentIds] = useState<string[]>([]);
   const [sharedCourseIds, setSharedCourseIds] = useState<string[]>([]);
   const settlementModeLabel = labels.settlementMode ?? "Settlement Mode";
@@ -150,12 +156,26 @@ export default function PackageCreateFormClient({
   const suggestedMinutes =
     defaultMinutesByCourseId[selectedCourseId] ??
     (isXdfPartnerStudent ? 450 : 600);
+  const purchaseBatchTotalMinutes = useMemo(
+    () => sumPurchaseBatchDraftMinutes(purchaseBatchRows),
+    [purchaseBatchRows]
+  );
 
   useEffect(() => {
-    if (isMonthly) return;
+    if (!isXdfPartnerStudent && usePurchaseBatches) setUsePurchaseBatches(false);
+  }, [isXdfPartnerStudent, usePurchaseBatches]);
+
+  useEffect(() => {
+    if (isMonthly || usePurchaseBatches) return;
     if (minutesTouched) return;
     setTotalMinutesValue(String(suggestedMinutes));
-  }, [isMonthly, minutesTouched, suggestedMinutes, selectedCourseId, typeValue]);
+  }, [isMonthly, minutesTouched, suggestedMinutes, selectedCourseId, typeValue, usePurchaseBatches]);
+
+  useEffect(() => {
+    if (!usePurchaseBatches || isMonthly) return;
+    setMinutesTouched(true);
+    setTotalMinutesValue(String(purchaseBatchTotalMinutes));
+  }, [isMonthly, purchaseBatchTotalMinutes, usePurchaseBatches]);
 
   const summaryRows = useMemo(
     () => [
@@ -305,7 +325,10 @@ export default function PackageCreateFormClient({
             type: String(fd.get("type") ?? "HOURS"),
             status: String(fd.get("status") ?? "ACTIVE"),
             settlementMode: String(fd.get("settlementMode") ?? ""),
-            totalMinutes: Number(fd.get("totalMinutes") ?? 0),
+            totalMinutes:
+              usePurchaseBatches && typeValue !== "MONTHLY"
+                ? purchaseBatchTotalMinutes
+                : Number(fd.get("totalMinutes") ?? 0),
             validFrom: String(fd.get("validFrom") ?? ""),
             validTo: String(fd.get("validTo") ?? ""),
             paid: String(fd.get("paid") ?? "") === "on",
@@ -315,9 +338,19 @@ export default function PackageCreateFormClient({
             sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
             sharedCourseIds: fd.getAll("sharedCourseIds").map((v) => String(v)),
             note: String(fd.get("note") ?? ""),
+            purchaseBatches:
+              usePurchaseBatches && typeValue !== "MONTHLY"
+                ? purchaseBatchRows
+                    .map((row) => ({ minutes: Number(row.minutes ?? 0), note: row.note }))
+                    .filter((row) => Number.isFinite(row.minutes) && row.minutes > 0)
+                : [],
           };
           if (!payload.studentId) {
             setErr("Please select a student explicitly.");
+            return;
+          }
+          if (usePurchaseBatches && typeValue !== "MONTHLY" && payload.purchaseBatches.length === 0) {
+            setErr("Please add at least one valid purchase batch. / 请至少填写一个有效购买批次。");
             return;
           }
 
@@ -483,6 +516,7 @@ export default function PackageCreateFormClient({
                         setMinutesTouched(true);
                         setTotalMinutesValue(e.target.value);
                       }}
+                      readOnly={usePurchaseBatches}
                       style={{ width: 220, minHeight: 40 }}
                     />
                     <span style={{ color: "#666", fontSize: 13 }}>{labels.totalMinutesHint}</span>
@@ -503,6 +537,7 @@ export default function PackageCreateFormClient({
                         <button
                           key={preset.minutes}
                           type="button"
+                          disabled={usePurchaseBatches}
                           onClick={() => {
                             setMinutesTouched(true);
                             setTotalMinutesValue(String(preset.minutes));
@@ -517,12 +552,41 @@ export default function PackageCreateFormClient({
                                 : "1px solid #cbd5e1",
                             background:
                               totalMinutesValue === String(preset.minutes) ? "#dbeafe" : "#fff",
+                            opacity: usePurchaseBatches ? 0.55 : 1,
                           }}
                         >
                           {preset.label}
                         </button>
                       ))}
                     </div>
+                    {isXdfPartnerStudent ? (
+                      <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                          <input
+                            type="checkbox"
+                            checked={usePurchaseBatches}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setUsePurchaseBatches(next);
+                              if (!next) setTotalMinutesValue(String(suggestedMinutes));
+                            }}
+                          />
+                          Record this package as separate purchase batches / 把这笔课包按独立购买批次记录
+                        </label>
+                        {usePurchaseBatches ? (
+                          <PurchaseBatchEditor
+                            rows={purchaseBatchRows}
+                            onChange={setPurchaseBatchRows}
+                            isXdfPartner={isXdfPartnerStudent}
+                          />
+                        ) : (
+                          <div style={{ fontSize: 13, color: "#92400e" }}>
+                            If the package was sold as multiple logical batches like 6h + 30h, turn this on so partner settlement can settle each batch separately. /
+                            如果这笔课包实际是按 6小时 + 30小时 这类多批次卖出的，请开启这里，合作方结算才能逐笔拆开。
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </label>
                 ) : (
                   <>
