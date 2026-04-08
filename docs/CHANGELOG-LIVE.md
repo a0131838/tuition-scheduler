@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r03
+
+- Release ID: `2026-04-08-r03`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make the new `Teacher Lead / 老师主管` page more visual by turning the all-teachers daily schedule into a calendar-like hourly day board while keeping the detailed table as a secondary expandable section.
+- Key files:
+  - `app/teacher/lead/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-teacher-lead-visual-day-board.md`
+- Risk impact (if any): Low. This release only changes teacher-lead page presentation; it does not change ACL rules, filters, schedule data, finance logic, or any admin permissions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - teacher `/teacher/lead` should show `Visual day board / 日历板视图` with hourly schedule cards and an expandable detailed table below
+- Rollback point: previous production commit before `2026-04-08-r03`.
+
 ## 2026-04-08-r02
 
 - Release ID: `2026-04-08-r02`

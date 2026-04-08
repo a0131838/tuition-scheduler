@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-08-r02` (teacher-lead v1).
+- Current release line on this branch: `2026-04-08-r03` (teacher-lead visual day board).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -60,6 +60,19 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - owner-manager QA should confirm teacher-lead ACL rows can be added/removed in `/admin/manager/users?mode=edit`
   - a teacher-lead account should see `Lead Desk / 主管工作台` in the teacher sidebar and load `/teacher/lead`
+
+## 2026-04-08-r03 Deployed
+
+- Scope: make the teacher-lead schedule page more visual by replacing the plain table-first view with a calendar-like hourly day board.
+- Business impact:
+  - `/teacher/lead` now opens with `Visual day board / 日历板视图` as the primary all-teachers schedule view
+  - leads can scan the day hour by hour and see session cards grouped by start hour, with teacher, course, campus, and students visible on each card
+  - the original detailed table is still available inside `Detailed schedule table / 详细排班表`
+  - no ACL, filter, finance, or admin permission behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - teacher-lead QA should confirm `/teacher/lead` shows the new hourly board and still preserves the detailed table below
 
 ## 2026-04-06-r12 Deployed
 
