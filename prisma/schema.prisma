@@ -73,6 +73,7 @@ enum PartnerSettlementStatus {
   PENDING
   INVOICED
   CANCELLED
+  REVERTED
 }
 
 enum MidtermReportStatus {
@@ -572,23 +573,30 @@ model PartnerSettlement {
   id         String                  @id @default(uuid())
   studentId  String
   packageId  String?
+  packageTxnId String?
   monthKey   String?
   onlineSnapshotTotalMinutes Int?
   mode       PartnerSettlementMode
   status     PartnerSettlementStatus @default(PENDING)
   hours      Decimal                 @default(0) @db.Decimal(10, 2)
   amount     Int                     @default(0)
+  settlementStartAt DateTime?
+  settlementEndAt   DateTime?
   note       String?
+  revertedAt DateTime?
+  revertedBy String?
   createdAt  DateTime                @default(now())
   updatedAt  DateTime                @updatedAt
 
   student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   package CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  packageTxn PackageTxn? @relation(fields: [packageTxnId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, monthKey, mode])
-  @@unique([packageId, mode, onlineSnapshotTotalMinutes])
+  @@unique([packageTxnId, mode])
   @@index([mode, status, createdAt])
   @@index([studentId, createdAt])
+  @@index([packageTxnId, createdAt])
 }
 
 model StudentSourceChannel {
@@ -1003,6 +1011,7 @@ model PackageTxn {
   createdAt    DateTime @default(now())
 
   package CoursePackage @relation(fields: [packageId], references: [id])
+  partnerSettlements PartnerSettlement[]
 
   @@index([packageId, createdAt])
   @@index([kind, createdAt])

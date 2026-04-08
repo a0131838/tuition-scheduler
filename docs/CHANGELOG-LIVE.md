@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r07
+
+- Release ID: `2026-04-08-r07`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: change online partner settlement from package-snapshot batching to purchase-batch settlement so each `PURCHASE` tranche can be billed independently, reverted back into queue, and exported with clear start/end dates.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `lib/partner-settlement.ts`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260408170000_partner_settlement_purchase_batches/migration.sql`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-partner-settlement-online-purchase-batch-pass.md`
+- Risk impact (if any): Medium. This release changes online partner-settlement data shape and billing workflow, but only for `ONLINE_PACKAGE_END`; offline monthly settlement remains unchanged.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin `/admin/reports/partner-settlement` should show online rows by purchase batch, each with purchase date, start date, and end date
+  - admin `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END...` should invoice only the selected settlement items instead of bundling all pending online rows
+  - reverting an online settlement should return that tranche to the queue instead of deleting it
+  - partner invoice export should show `Course Start / Course End` when the selected online settlement items provide a date window
+- Rollback point: previous production commit before `2026-04-08-r07`.
+
 ## 2026-04-08-r06
 
 - Release ID: `2026-04-08-r06`

@@ -115,6 +115,14 @@ async function createPartnerInvoiceAction(formData: FormData) {
   const admin = await requireAdmin();
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const selectedSettlementIds = Array.from(
+    new Set(
+      formData
+        .getAll("selectedSettlementIds")
+        .map((value) => String(value ?? "").trim())
+        .filter(Boolean)
+    )
+  );
 
   const source = await prisma.studentSourceChannel.findFirst({ where: { name: PARTNER_SOURCE_NAME }, select: { id: true } });
   if (!source) redirect(withQuery("/admin/reports/partner-settlement/billing?err=source-not-found", mode, month));
@@ -133,9 +141,16 @@ async function createPartnerInvoiceAction(formData: FormData) {
     }),
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
-  const candidatesAmount = candidates.reduce((a, b) => a + Number(b.amount || 0), 0);
+  const selectedCandidates =
+    mode === "ONLINE_PACKAGE_END"
+      ? candidates.filter((x) => selectedSettlementIds.includes(x.id))
+      : candidates;
+  const candidatesAmount = selectedCandidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const manualItems = parseManualItems(String(formData.get("manualItems") ?? ""));
-  if (candidates.length === 0 && manualItems.length === 0) {
+  if (mode === "ONLINE_PACKAGE_END" && selectedCandidates.length === 0 && manualItems.length === 0) {
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-settlement-items", mode, month));
+  }
+  if (mode === "OFFLINE_MONTHLY" && candidates.length === 0 && manualItems.length === 0) {
     redirect(withQuery("/admin/reports/partner-settlement/billing?err=no-settlement-items", mode, month));
   }
 
@@ -149,7 +164,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
     redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
   }
 
-  const settlementLines = candidates.map((r) => {
+  const settlementLines = selectedCandidates.map((r) => {
     const hours = Number(r.hours ?? 0);
     const normalizedHours = Number.isFinite(hours) && hours > 0 ? Number(hours.toFixed(2)) : 1;
     const totalAmount = Number(r.amount || 0);
@@ -157,12 +172,16 @@ async function createPartnerInvoiceAction(formData: FormData) {
     const normalizedQtyBy45 = Number.isFinite(qtyBy45) && qtyBy45 > 0 ? qtyBy45 : 1;
     const hourlyUnitPrice = normalizedHours > 0 ? Number((totalAmount / normalizedHours).toFixed(2)) : totalAmount;
     const per45UnitPrice = normalizedQtyBy45 > 0 ? Number((totalAmount / normalizedQtyBy45).toFixed(2)) : totalAmount;
+    const periodText =
+      r.settlementStartAt && r.settlementEndAt
+        ? ` (${formatBusinessDateOnly(r.settlementStartAt)} -> ${formatBusinessDateOnly(r.settlementEndAt)})`
+        : "";
     return {
     type: "SETTLEMENT" as const,
     settlementId: r.id,
     description:
       mode === "ONLINE_PACKAGE_END"
-        ? `Package settlement - ${r.student?.name ?? "-"} - ${r.package?.course?.name ?? "-"} (${String(r.packageId).slice(0, 8)})`
+        ? `Package settlement - ${r.student?.name ?? "-"} - ${r.package?.course?.name ?? "-"}${periodText}`
         : `${r.student?.name ?? "-"}`,
     quantity: mode === "ONLINE_PACKAGE_END" ? normalizedQtyBy45 : normalizedHours,
     amount: mode === "ONLINE_PACKAGE_END" ? per45UnitPrice : hourlyUnitPrice,
@@ -186,18 +205,34 @@ async function createPartnerInvoiceAction(formData: FormData) {
     mode === "OFFLINE_MONTHLY"
       ? [offlineSummaryLine, ...manualLines]
       : [...settlementLines, ...manualLines];
+  const onlineCourseStartDate =
+    mode === "ONLINE_PACKAGE_END"
+      ? selectedCandidates
+          .map((row) => row.settlementStartAt)
+          .filter((value): value is Date => value instanceof Date)
+          .sort((a, b) => a.getTime() - b.getTime())[0] ?? null
+      : null;
+  const onlineCourseEndDate =
+    mode === "ONLINE_PACKAGE_END"
+      ? selectedCandidates
+          .map((row) => row.settlementEndAt)
+          .filter((value): value is Date => value instanceof Date)
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null
+      : null;
 
   try {
     const invoice = await createPartnerInvoice({
       partnerName: PARTNER_SOURCE_NAME,
       mode,
       monthKey: mode === "OFFLINE_MONTHLY" ? month : null,
-      settlementIds: candidates.map((x) => x.id),
+      settlementIds: selectedCandidates.map((x) => x.id),
       invoiceNo,
       issueDate,
       dueDate: normalizeDateOnly(String(formData.get("dueDate") ?? "").trim(), new Date()) ?? issueDate,
       billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_CUSTOMER_NAME,
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim() || "Immediate",
+      courseStartDate: onlineCourseStartDate ? formatBusinessDateOnly(onlineCourseStartDate) : null,
+      courseEndDate: onlineCourseEndDate ? formatBusinessDateOnly(onlineCourseEndDate) : null,
       description: String(formData.get("description") ?? "").trim() || (mode === "OFFLINE_MONTHLY" ? offlineSummaryDesc : `Partner settlement Online batch`),
       lines: linesToCreate,
       note: String(formData.get("note") ?? "").trim() || null,
@@ -363,7 +398,7 @@ async function deletePaymentRecordAction(formData: FormData) {
 export default async function PartnerBillingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ mode?: string; month?: string; tab?: string; msg?: string; err?: string }>;
+  searchParams?: Promise<{ mode?: string; month?: string; tab?: string; msg?: string; err?: string; settlementIds?: string }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -374,6 +409,14 @@ export default async function PartnerBillingPage({
   const requestedTab = parseBillingTab(sp?.tab ?? null);
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
+  const selectedSettlementIdsFromQuery = Array.from(
+    new Set(
+      String(sp?.settlementIds ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
   const today = formatDateOnly(new Date());
 
   const source = await prisma.studentSourceChannel.findFirst({ where: { name: PARTNER_SOURCE_NAME }, select: { id: true, name: true } });
@@ -396,7 +439,20 @@ export default async function PartnerBillingPage({
     listPartnerBillingByMode(mode, mode === "OFFLINE_MONTHLY" ? month : null),
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
+  const selectedSettlementIds =
+    mode === "ONLINE_PACKAGE_END"
+      ? (selectedSettlementIdsFromQuery.length
+          ? selectedSettlementIdsFromQuery.filter((id) => candidates.some((row) => row.id === id))
+          : candidates.length === 1
+          ? [candidates[0].id]
+          : [])
+      : candidates.map((row) => row.id);
+  const selectedCandidates =
+    mode === "ONLINE_PACKAGE_END"
+      ? candidates.filter((row) => selectedSettlementIds.includes(row.id))
+      : candidates;
   const candidatesAmount = candidates.reduce((a, b) => a + Number(b.amount || 0), 0);
+  const selectedCandidatesAmount = selectedCandidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const usedInvoiceIds = new Set(billing.receipts.map((x) => x.invoiceId));
   const availableInvoices = billing.invoices.filter((x) => !usedInvoiceIds.has(x.id));
@@ -425,7 +481,13 @@ export default async function PartnerBillingPage({
     <div>
       <h2>{t(lang, "Partner Settlement Billing", "合作方结算账单中心")}</h2>
       <div style={{ marginBottom: 10 }}><a href="/admin/reports/partner-settlement">{t(lang, "Back to Settlement Center", "返回合作方结算中心")}</a></div>
-      {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
+      {err ? (
+        <div style={{ marginBottom: 12, color: "#b00" }}>
+          {err === "choose-settlement-items"
+            ? t(lang, "Choose at least one online settlement item before creating the invoice.", "创建线上发票前，请至少选择一条结算项。")
+            : err}
+        </div>
+      ) : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
       <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
@@ -446,7 +508,10 @@ export default async function PartnerBillingPage({
 
       <div style={{ ...cardStyle, background: "#f8fafc" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Pending Settlement Items", "待结算项目")} ({mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : `${t(lang, "Offline", "线下")} ${month}`})</h3>
-        <div style={{ color: "#374151" }}>{t(lang, "Items", "项目数")}: {candidates.length} | {t(lang, "Total", "合计")}: SGD {money(candidatesAmount)}</div>
+        <div style={{ color: "#374151" }}>
+          {t(lang, "Items", "项目数")}: {candidates.length} | {t(lang, "Total", "合计")}: {money(candidatesAmount)}
+          {mode === "ONLINE_PACKAGE_END" ? ` | ${t(lang, "Selected", "已选")}: ${selectedCandidates.length} | ${t(lang, "Selected total", "已选合计")}: ${money(selectedCandidatesAmount)}` : ""}
+        </div>
       </div>
 
       {activeTab === "invoice" ? (
@@ -454,6 +519,53 @@ export default async function PartnerBillingPage({
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create partner invoice batch", "创建合作方批量发票")}</h3>
       <form action={createPartnerInvoiceAction}>
         <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
+        {mode === "ONLINE_PACKAGE_END" ? (
+          <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#f8fbff", padding: 12, marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Selected online settlement items", "已选线上结算项")}</div>
+            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
+              {t(lang, "Choose the exact purchase batches to invoice. Online invoices no longer bundle every pending package together.", "请选择本次要开票的购买批次。线上发票不再自动把全部待结算课包打包在一起。")}
+            </div>
+            {candidates.length === 0 ? (
+              <div style={{ color: "#64748b" }}>{t(lang, "No online settlement items are waiting for billing.", "当前没有等待开票的线上结算项。")}</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
+                  <thead>
+                    <tr style={{ background: "#eff6ff" }}>
+                      <th align="left">{t(lang, "Select", "选择")}</th>
+                      <th align="left">{t(lang, "Student", "学生")}</th>
+                      <th align="left">{t(lang, "Course", "课程")}</th>
+                      <th align="left">{t(lang, "Start", "开始时间")}</th>
+                      <th align="left">{t(lang, "End", "结束时间")}</th>
+                      <th align="left">{t(lang, "Hours", "课时")}</th>
+                      <th align="left">{t(lang, "Amount", "金额")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidates.map((row) => (
+                      <tr key={row.id} style={{ borderTop: "1px solid #dbeafe" }}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            name="selectedSettlementIds"
+                            value={row.id}
+                            defaultChecked={selectedSettlementIds.includes(row.id)}
+                          />
+                        </td>
+                        <td>{row.student?.name ?? "-"}</td>
+                        <td>{row.package?.course?.name ?? "-"}</td>
+                        <td>{row.settlementStartAt ? formatBusinessDateOnly(row.settlementStartAt) : "-"}</td>
+                        <td>{row.settlementEndAt ? formatBusinessDateOnly(row.settlementEndAt) : "-"}</td>
+                        <td>{Number(row.hours ?? 0).toFixed(2)}</td>
+                        <td>{money(row.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
           <label>{t(lang, "Invoice No.", "发票号")}<input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} /></label>
           <label>{t(lang, "Issue Date", "开票日期")}<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>

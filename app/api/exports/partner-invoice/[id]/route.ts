@@ -93,6 +93,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ["Mode", invoice.mode === "ONLINE_PACKAGE_END" ? "Online" : "Offline"],
     ["Month", invoice.monthKey ?? "-"],
   ];
+  if (invoice.courseStartDate) rightRows.push(["Course Start", fmtDate(invoice.courseStartDate)]);
+  if (invoice.courseEndDate) rightRows.push(["Course End", fmtDate(invoice.courseEndDate)]);
   rightRows.forEach((r, i) => {
     const yy = rightY + i * 21;
     text(doc, r[0], rightLabelX, yy, 10, true, "#111827", rightLabelW, "right");
