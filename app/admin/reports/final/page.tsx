@@ -888,7 +888,7 @@ export default async function AdminFinalReportCenterPage({
                     <td style={{ padding: 6, minWidth: 360 }}>
                       <div style={{ display: "grid", gap: 8 }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                          {report.status !== "EXEMPT" ? (
+                          {report.status === "SUBMITTED" || report.status === "FORWARDED" ? (
                             <a href={`/api/admin/final-reports/${encodeURIComponent(report.id)}/pdf`}>{t(lang, "Download PDF", "下载PDF")}</a>
                           ) : null}
                           {report.archivedAt ? (

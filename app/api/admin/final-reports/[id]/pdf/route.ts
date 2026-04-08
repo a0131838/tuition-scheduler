@@ -30,6 +30,11 @@ function normalizeText(input: string | null | undefined) {
   return raw || "-";
 }
 
+function normalizeOptionalText(input: string | null | undefined) {
+  const raw = String(input || "").replace(/\r/g, "").trim();
+  return raw || "";
+}
+
 function hasMeaningfulText(input: string | null | undefined) {
   const raw = String(input || "").replace(/\r/g, "").trim();
   return raw.length > 0 && raw !== "-";
@@ -317,6 +322,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     include: { student: true, teacher: true, course: true, subject: true, package: true, deliveredByUser: { select: { name: true } } },
   });
   if (!report) return new Response("Report not found", { status: 404 });
+  if (report.status !== "SUBMITTED" && report.status !== "FORWARDED") {
+    return new Response("Parent-facing PDF is available after the report is submitted.", { status: 409 });
+  }
 
   const draft = parseFinalReportDraft({
     ...(report.reportJson && typeof report.reportJson === "object" ? report.reportJson : {}),
@@ -379,11 +387,18 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     border: "#BBF7D0",
     title: "#166534",
   });
-  compactFieldRow(doc, left + 10, y + 22, contentW - 20, [
+  const snapshotItems = [
     { label: lang === "ZH" ? "阶段完成情况" : lang === "EN" ? "Stage progress" : "Stage progress / 阶段完成情况", value: packageCompletionLabel(report.package.totalMinutes, lang) },
-    { label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平", value: hasMeaningfulText(report.finalLevel) ? String(report.finalLevel) : (lang === "ZH" ? "由老师填写" : lang === "EN" ? "Added by teacher" : "Added by teacher / 由老师填写") },
     { label: lang === "ZH" ? "当前成长重点" : lang === "EN" ? "Current growth focus" : "Current growth focus / 当前成长重点", value: focusLabel(report.recommendation || draft.recommendedNextStep, lang, draft.areasToContinue) },
-  ]);
+  ];
+  const finalLevelValue = normalizeOptionalText(report.finalLevel);
+  if (finalLevelValue) {
+    snapshotItems.splice(1, 0, {
+      label: lang === "ZH" ? "最终水平" : lang === "EN" ? "Final level" : "Final level / 最终水平",
+      value: finalLevelValue,
+    });
+  }
+  compactFieldRow(doc, left + 10, y + 22, contentW - 20, snapshotItems);
   y += snapshotH + gap;
 
   const remainingH = top + contentH - y;

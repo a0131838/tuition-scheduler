@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-07-r09
+
+- Release ID: `2026-04-07-r09`
+- Date/Time (Asia/Shanghai): `2026-04-07`
+- Deployment status: `LIVE` after deploy completion
+- Scope: tighten the parent-facing `Final Report` PDF rules so draft reports no longer appear as formal family handoffs and empty final-level placeholders no longer print into the PDF.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `app/admin/reports/final/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260407-final-report-pdf-submission-gate-and-empty-level-pass.md`
+- Risk impact (if any): Low. This release only changes PDF availability and empty-state rendering for final reports; it does not change teacher drafting, report data storage, delivery/share flows, or any finance/attendance/package logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin final-report rows should show `Download PDF` only for `SUBMITTED` or `FORWARDED` reports
+  - reports without `Final level / 最终水平` should no longer print the `Added by teacher / 由老师填写` placeholder in the PDF
+- Rollback point: previous production commit before `2026-04-07-r09`.
+
 ## 2026-04-06-r12
 
 - Release ID: `2026-04-06-r12`
