@@ -1774,3 +1774,16 @@
   - `npm run build`
   - post-deploy startup check
   - package create/top-up flows preserve tranche order for later partner settlement FIFO
+
+## 2026-04-08-r09 Deployed
+
+- Scope: change 新东方 split purchase-batch entry from minute/hour language to lesson-based entry so ops can record batch sales in the same `6 / 8 / 10 / 20 / 40 lessons` vocabulary they already use elsewhere.
+- Business impact:
+  - `app/admin/_components/PurchaseBatchEditor.tsx` now shows lesson counts for 新东方 rows, converts them to `45 minutes = 1 lesson` behind the scenes, and offers quick-add chips for `6 / 8 / 10 / 20 / 40 lessons`
+  - enabling split purchase batches no longer jumps straight to a hard-coded `2160` minute template; create/top-up now start from the currently selected package total and let ops split it from there
+  - the hint copy now uses lesson-bundle wording such as `8 lessons + 40 lessons`, keeping the entry UI aligned with how 新东方 packages are actually sold
+  - no settlement FIFO logic, package balances, deduction logic, or invoice rules changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - 新东方 split batch rows now read/write in lessons while still storing minute totals under the hood

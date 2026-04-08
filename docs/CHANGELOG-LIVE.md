@@ -3188,3 +3188,23 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - package create and top-up APIs now accept split purchase batches and preserve tranche order for later partner settlement FIFO
 - Rollback point: previous production commit before `2026-04-08-r08`.
+
+## 2026-04-08-r09
+
+- Release ID: `2026-04-08-r09`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: switch 新东方 purchase-batch entry from raw minute/hour wording to lesson-based entry so ops can record split sales in `6 / 8 / 10 / 20 / 40 lessons` terms while the backend still stores 45-minute tranches.
+- Key files:
+  - `app/admin/_components/PurchaseBatchEditor.tsx`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-xdf-purchase-batch-lessons-ui.md`
+- Risk impact (if any): Low. This release only changes the admin create/top-up entry UI for 新东方 split purchase batches; it does not change the stored FIFO settlement logic, package balances, deduction math, or invoice rules.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - 新东方 split-batch entry now shows lessons-based rows and quick-add chips while still saving 45-minute batch totals underneath
+- Rollback point: previous production commit before `2026-04-08-r09`.

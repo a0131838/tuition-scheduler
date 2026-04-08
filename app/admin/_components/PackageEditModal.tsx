@@ -3,7 +3,10 @@
 import { useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SearchableMultiSelect from "./SearchableMultiSelect";
-import PurchaseBatchEditor, { sumPurchaseBatchDraftMinutes } from "./PurchaseBatchEditor";
+import PurchaseBatchEditor, {
+  buildXdfBatchDraftsFromTotalMinutes,
+  sumPurchaseBatchDraftMinutes,
+} from "./PurchaseBatchEditor";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 
@@ -102,10 +105,7 @@ export default function PackageEditModal({
     () => (((pkg.sourceChannelName ?? "").includes("新东方") ? "270" : "600"))
   );
   const [useTopUpBatches, setUseTopUpBatches] = useState(false);
-  const [topUpBatchRows, setTopUpBatchRows] = useState([
-    { minutes: "360", note: "6h tranche / 6小时批次" },
-    { minutes: "1800", note: "30h tranche / 30小时批次" },
-  ]);
+  const [topUpBatchRows, setTopUpBatchRows] = useState(() => buildXdfBatchDraftsFromTotalMinutes(270));
   const [topUpNoteValue, setTopUpNoteValue] = useState("");
   const [topUpPaidValue, setTopUpPaidValue] = useState(false);
   const [topUpPaidAmountValue, setTopUpPaidAmountValue] = useState("");
@@ -261,10 +261,7 @@ export default function PackageEditModal({
           setShowEditAdvanced(false);
           setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
           setUseTopUpBatches(false);
-          setTopUpBatchRows([
-            { minutes: "360", note: "6h tranche / 6小时批次" },
-            { minutes: "1800", note: "30h tranche / 30小时批次" },
-          ]);
+          setTopUpBatchRows(buildXdfBatchDraftsFromTotalMinutes(topUpPresets[0]?.minutes ?? 600));
           setTopUpNoteValue("");
           setTopUpPaidValue(false);
           setTopUpPaidAmountValue("");
@@ -666,13 +663,19 @@ export default function PackageEditModal({
                 <input
                   type="checkbox"
                   checked={useTopUpBatches}
-                  onChange={(e) => {
-                    const next = e.target.checked;
-                    setUseTopUpBatches(next);
-                    if (!next) setTopUpMinutesValue(String(topUpPresets[0]?.minutes ?? 600));
-                  }}
-                />
-                Record this top-up as separate purchase batches / 把这次增购按独立购买批次记录
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setUseTopUpBatches(next);
+                  if (next) {
+                    const baseMinutes = Math.round(Number(topUpMinutesValue || topUpPresets[0]?.minutes || 600));
+                    setTopUpBatchRows(buildXdfBatchDraftsFromTotalMinutes(baseMinutes));
+                    setTopUpMinutesValue(String(baseMinutes));
+                  } else {
+                    setTopUpMinutesValue(String(topUpBatchTotalMinutes || topUpPresets[0]?.minutes || 600));
+                  }
+                }}
+              />
+              Record this top-up as separate purchase batches / 把这次增购按独立购买批次记录
               </label>
               {useTopUpBatches ? (
                 <PurchaseBatchEditor

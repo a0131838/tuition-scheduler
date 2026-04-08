@@ -5,6 +5,35 @@ export type PurchaseBatchDraft = {
   note: string;
 };
 
+export const XDF_LESSON_MINUTES = 45;
+export const XDF_LESSON_BATCH_PRESETS = [6, 8, 10, 20, 40] as const;
+
+export function buildXdfLessonBatchDraft(lessons: number): PurchaseBatchDraft {
+  const safeLessons = Math.max(1, Math.round(lessons));
+  return {
+    minutes: String(safeLessons * XDF_LESSON_MINUTES),
+    note: `${safeLessons} lessons tranche / ${safeLessons}课时批次`,
+  };
+}
+
+export function buildXdfBatchDraftsFromTotalMinutes(totalMinutes: number): PurchaseBatchDraft[] {
+  const safeMinutes = Math.round(Number(totalMinutes ?? 0));
+  if (!Number.isFinite(safeMinutes) || safeMinutes <= 0) {
+    return [{ minutes: "", note: "" }];
+  }
+  const lessons = safeMinutes / XDF_LESSON_MINUTES;
+  if (Number.isInteger(lessons) && lessons > 0) {
+    return [buildXdfLessonBatchDraft(lessons)];
+  }
+  return [{ minutes: String(safeMinutes), note: "" }];
+}
+
+function formatXdfLessons(minutes: number) {
+  const lessons = minutes / XDF_LESSON_MINUTES;
+  if (!Number.isFinite(lessons) || lessons <= 0) return "0";
+  return Number.isInteger(lessons) ? String(lessons) : lessons.toFixed(2).replace(/\.?0+$/, "");
+}
+
 export function sumPurchaseBatchDraftMinutes(rows: PurchaseBatchDraft[]) {
   return rows.reduce((sum, row) => {
     const minutes = Number(row.minutes ?? 0);
@@ -44,19 +73,41 @@ export default function PurchaseBatchEditor({
           </div>
         </div>
         <div style={{ fontSize: 13, color: "#1e3a8a" }}>
-          Total / 合计: <strong>{totalMinutes}</strong> mins
+          {isXdfPartner ? (
+            <>
+              Total / 合计: <strong>{formatXdfLessons(totalMinutes)}</strong> lessons ·{" "}
+              <strong>{totalMinutes}</strong> mins
+            </>
+          ) : (
+            <>
+              Total / 合计: <strong>{totalMinutes}</strong> mins
+            </>
+          )}
         </div>
       </div>
 
       {isXdfPartner ? (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => onChange([{ minutes: "360", note: "6h tranche / 6小时批次" }, { minutes: "1800", note: "30h tranche / 30小时批次" }])}
-            style={{ minHeight: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #93c5fd", background: "#fff", color: "#1d4ed8" }}
-          >
-            Use 6h + 30h / 套用 6小时 + 30小时
-          </button>
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ fontSize: 13, color: "#92400e" }}>
+            New Oriental bundles use lessons first. 1 lesson = 45 minutes. / 新东方课包按课时记录，1课时 = 45分钟。
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {XDF_LESSON_BATCH_PRESETS.map((lessons) => (
+              <button
+                key={lessons}
+                type="button"
+                onClick={() => {
+                  const nextRow = buildXdfLessonBatchDraft(lessons);
+                  const hasOnlyBlankRow =
+                    rows.length === 1 && !rows[0]?.minutes?.trim() && !rows[0]?.note?.trim();
+                  onChange(hasOnlyBlankRow ? [nextRow] : [...rows, nextRow]);
+                }}
+                style={{ minHeight: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #93c5fd", background: "#fff", color: "#1d4ed8" }}
+              >
+                Add {lessons} lessons / 加 {lessons}课时
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -72,15 +123,41 @@ export default function PurchaseBatchEditor({
             }}
           >
             <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12, color: "#475569" }}>Minutes / 分钟</span>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={row.minutes}
-                onChange={(e) => updateRow(index, { minutes: e.target.value })}
-                style={{ minHeight: 38 }}
-              />
+              <span style={{ fontSize: 12, color: "#475569" }}>
+                {isXdfPartner ? "Lessons / 课时" : "Minutes / 分钟"}
+              </span>
+              {isXdfPartner ? (
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={row.minutes ? formatXdfLessons(Number(row.minutes)) : ""}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    if (!nextValue) {
+                      updateRow(index, { minutes: "" });
+                      return;
+                    }
+                    const lessons = Number(nextValue);
+                    updateRow(index, {
+                      minutes:
+                        Number.isFinite(lessons) && lessons > 0
+                          ? String(Math.round(lessons * XDF_LESSON_MINUTES))
+                          : "",
+                    });
+                  }}
+                  style={{ minHeight: 38 }}
+                />
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={row.minutes}
+                  onChange={(e) => updateRow(index, { minutes: e.target.value })}
+                  style={{ minHeight: 38 }}
+                />
+              )}
             </label>
             <label style={{ display: "grid", gap: 4 }}>
               <span style={{ fontSize: 12, color: "#475569" }}>Batch note / 批次备注</span>
