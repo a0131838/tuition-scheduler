@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-08-r05` (teacher-lead month calendar board).
+- Current release line on this branch: `2026-04-08-r06` (teacher-lead week calendar expanded days).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -73,6 +73,19 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - teacher-lead QA should confirm `/teacher/lead` shows the new hourly board and still preserves the detailed table below
+
+## 2026-04-08-r06 Deployed
+
+- Scope: replace the teacher-lead month board with a one-week calendar that keeps every day's sessions directly expanded.
+- Business impact:
+  - `/teacher/lead` now focuses on the current week instead of the whole month, so the board is denser and easier to scan
+  - each day cell shows all visible sessions directly, so leads no longer have to rely on `+more` folding
+  - the selected-day details section and detailed table remain below for follow-up
+  - no ACL, filter, finance, or admin permission behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - teacher-lead QA should confirm `/teacher/lead` shows one week only and each day cell expands all sessions directly
 
 ## 2026-04-08-r05 Deployed
 

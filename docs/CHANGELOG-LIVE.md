@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r06
+
+- Release ID: `2026-04-08-r06`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: replace the teacher-lead month board with a weekly calendar board and expand each day's sessions directly inside the day cell.
+- Key files:
+  - `app/teacher/lead/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-teacher-lead-week-calendar-expanded-days.md`
+- Risk impact (if any): Low. This release only changes the teacher-lead schedule presentation; it does not change ACL rules, filter semantics, schedule data, finance logic, or admin permissions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - teacher `/teacher/lead` should show a one-week calendar with each day expanded directly
+- Rollback point: previous production commit before `2026-04-08-r06`.
+
 ## 2026-04-08-r05
 
 - Release ID: `2026-04-08-r05`

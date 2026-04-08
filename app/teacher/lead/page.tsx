@@ -30,45 +30,25 @@ function resolveSessionStudents(session: any) {
   return enrolled.filter((x: any) => !cancelledSet.has(x.id)).map((x: any) => x.name);
 }
 
-function parseMonthValue(value?: string | null) {
-  const raw = String(value ?? "").trim();
-  const match = raw.match(/^(\d{4})-(\d{2})$/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
-  return { year, month };
-}
-
-function monthKey(value: Date) {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthRange(month: string) {
-  const start = parseBusinessDateStart(`${month}-01`);
-  const parsed = parseMonthValue(month);
-  if (!start || !parsed) return null;
-  const nextMonthDate = new Date(parsed.year, parsed.month, 1);
-  const nextMonthStart = parseBusinessDateStart(`${monthKey(nextMonthDate)}-01`);
-  if (!nextMonthStart) return null;
-  return { start, endExclusive: nextMonthStart };
-}
-
-function buildCalendarDays(month: string) {
-  const parsed = parseMonthValue(month);
-  if (!parsed) return [];
-  const monthDate = new Date(parsed.year, parsed.month - 1, 1);
-  const start = new Date(monthDate);
-  const day = start.getDay();
+function startOfWeek(dateOnly: string) {
+  const start = parseBusinessDateStart(dateOnly);
+  if (!start) return null;
+  const local = new Date(start.getTime() + 8 * 60 * 60 * 1000);
+  const day = local.getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + diff);
-  return Array.from({ length: 42 }).map((_, idx) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + idx);
+  const weekStart = new Date(local);
+  weekStart.setUTCDate(local.getUTCDate() + diff);
+  return formatBusinessDateOnly(new Date(weekStart.getTime() - 8 * 60 * 60 * 1000));
+}
+
+function buildWeekDays(weekStartDateOnly: string) {
+  const start = parseBusinessDateStart(weekStartDateOnly);
+  if (!start) return [];
+  return Array.from({ length: 7 }).map((_, idx) => {
+    const date = new Date(start.getTime() + idx * 24 * 60 * 60 * 1000);
     return {
       date,
       dateKey: formatBusinessDateOnly(date),
-      inMonth: date.getMonth() === monthDate.getMonth(),
     };
   });
 }
@@ -76,23 +56,20 @@ function buildCalendarDays(month: string) {
 export default async function TeacherLeadPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string; date?: string; teacherId?: string; campusId?: string }>;
+  searchParams?: Promise<{ date?: string; teacherId?: string; campusId?: string }>;
 }) {
   await requireTeacherLead();
   const lang = await getLang();
   const sp = await searchParams;
   const today = formatBusinessDateOnly(new Date());
-  const requestedDate = String(sp?.date ?? today).trim() || today;
-  const selectedMonth = parseMonthValue(sp?.month) ? String(sp?.month) : requestedDate.slice(0, 7);
-  const date = requestedDate.startsWith(selectedMonth) ? requestedDate : `${selectedMonth}-01`;
+  const date = String(sp?.date ?? today).trim() || today;
   const teacherId = String(sp?.teacherId ?? "").trim();
   const campusId = String(sp?.campusId ?? "").trim();
   const selectedDateStart = parseBusinessDateStart(date) ?? parseBusinessDateStart(today)!;
   const selectedDateEnd = parseBusinessDateEnd(date) ?? parseBusinessDateEnd(today)!;
-  const selectedMonthRange = monthRange(selectedMonth) ?? {
-    start: parseBusinessDateStart(`${today.slice(0, 7)}-01`)!,
-    endExclusive: parseBusinessDateStart(`${monthKey(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1))}-01`)!,
-  };
+  const weekStartDateOnly = startOfWeek(date) ?? startOfWeek(today)!;
+  const weekStart = parseBusinessDateStart(weekStartDateOnly)!;
+  const weekEndExclusive = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const teacherFilter = teacherId
     ? {
@@ -112,7 +89,7 @@ export default async function TeacherLeadPage({
     prisma.campus.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.session.findMany({
       where: {
-        startAt: { gte: selectedMonthRange.start, lt: selectedMonthRange.endExclusive },
+        startAt: { gte: weekStart, lt: weekEndExclusive },
         ...teacherFilter,
         ...campusFilter,
       },
@@ -167,11 +144,9 @@ export default async function TeacherLeadPage({
     itemsByDay.get(key)!.push(item);
   }
 
-  const calendarDays = buildCalendarDays(selectedMonth);
-  const parsedMonth = parseMonthValue(selectedMonth);
-  const monthDate = parsedMonth ? new Date(parsedMonth.year, parsedMonth.month - 1, 1) : new Date();
-  const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
-  const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+  const weekDays = buildWeekDays(weekStartDateOnly);
+  const prevWeekDate = formatBusinessDateOnly(new Date(weekStart.getTime() - 24 * 60 * 60 * 1000));
+  const nextWeekDate = formatBusinessDateOnly(new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000));
   const visibleTeacherCount = new Set(calendarItems.map((row) => row.teacherName)).size;
   const visibleStudentCount = new Set(calendarItems.flatMap((row) => row.students)).size;
   const visibleCampusCount = new Set(calendarItems.map((row) => row.campusText)).size;
@@ -180,11 +155,9 @@ export default async function TeacherLeadPage({
   if (teacherId) navBase.set("teacherId", teacherId);
   if (campusId) navBase.set("campusId", campusId);
   const prevParams = new URLSearchParams(navBase);
-  prevParams.set("month", monthKey(prevMonth));
-  prevParams.set("date", `${monthKey(prevMonth)}-01`);
+  prevParams.set("date", prevWeekDate);
   const nextParams = new URLSearchParams(navBase);
-  nextParams.set("month", monthKey(nextMonth));
-  nextParams.set("date", `${monthKey(nextMonth)}-01`);
+  nextParams.set("date", nextWeekDate);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -192,8 +165,8 @@ export default async function TeacherLeadPage({
         title={t(lang, "Teacher Lead Desk", "老师主管工作台")}
         subtitle={t(
           lang,
-          "Scan the whole month first, then click a day to inspect the detailed schedule for teacher coverage and coordination.",
-          "先用月历查看整个月的课次分布，再点具体日期查看当天详细排班，方便主管协调老师安排。"
+          "Scan the current week first, then click a day to inspect the detailed schedule for teacher coverage and coordination.",
+          "先查看当前一周的课次分布，再点具体日期查看当天详细排班，方便主管协调老师安排。"
         )}
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
@@ -207,15 +180,15 @@ export default async function TeacherLeadPage({
           <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{date}</div>
         </div>
         <div style={{ border: "1px solid #dcfce7", borderRadius: 16, padding: 14, background: "#f0fdf4" }}>
-          <div style={{ color: "#15803d", fontSize: 12, fontWeight: 700 }}>{t(lang, "Month sessions", "本月课次数")}</div>
+          <div style={{ color: "#15803d", fontSize: 12, fontWeight: 700 }}>{t(lang, "Week sessions", "本周课次数")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{calendarItems.length}</div>
         </div>
         <div style={{ border: "1px solid #e9d5ff", borderRadius: 16, padding: 14, background: "#faf5ff" }}>
-          <div style={{ color: "#7c3aed", fontSize: 12, fontWeight: 700 }}>{t(lang, "Teachers this month", "本月老师数")}</div>
+          <div style={{ color: "#7c3aed", fontSize: 12, fontWeight: 700 }}>{t(lang, "Teachers this week", "本周老师数")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{visibleTeacherCount}</div>
         </div>
         <div style={{ border: "1px solid #fde68a", borderRadius: 16, padding: 14, background: "#fffbeb" }}>
-          <div style={{ color: "#b45309", fontSize: 12, fontWeight: 700 }}>{t(lang, "Students this month", "本月学生数")}</div>
+          <div style={{ color: "#b45309", fontSize: 12, fontWeight: 700 }}>{t(lang, "Students this week", "本周学生数")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{visibleStudentCount}</div>
           <div style={{ marginTop: 4, color: "#92400e", fontSize: 12 }}>
             {t(lang, "Campus combinations", "校区组合")}: {visibleCampusCount}
@@ -225,10 +198,6 @@ export default async function TeacherLeadPage({
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 14, background: "#ffffff" }}>
         <form method="GET" style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Month", "月份")}</span>
-            <input type="month" name="month" defaultValue={selectedMonth} />
-          </label>
           <label style={{ display: "grid", gap: 4 }}>
             <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Selected day", "当前日期")}</span>
             <input type="date" name="date" defaultValue={date} />
@@ -256,29 +225,31 @@ export default async function TeacherLeadPage({
             </select>
           </label>
           <button type="submit">{t(lang, "Apply", "应用")}</button>
-          <a href={`/teacher/lead?month=${today.slice(0, 7)}&date=${today}`}>{t(lang, "Today view", "回到今天")}</a>
+          <a href={`/teacher/lead?date=${today}`}>{t(lang, "Today view", "回到今天")}</a>
           <a href="/teacher/lead">{t(lang, "Clear filters", "清除筛选")}</a>
         </form>
       </div>
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 16, overflow: "hidden", background: "#ffffff" }}>
         <div style={{ padding: "12px 14px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", fontWeight: 800 }}>
-          {t(lang, "Monthly teacher schedule calendar", "月历课表总览")}
+          {t(lang, "Weekly teacher schedule calendar", "本周课表总览")}
         </div>
         {calendarItems.length === 0 ? (
           <div style={{ padding: 18, color: "#64748b" }}>
             {t(
               lang,
-              "No sessions match this month and filter set. Try switching month or clearing teacher and campus filters.",
-              "当前月份和筛选条件下没有课次。可以切换月份，或放宽老师、校区筛选。"
+              "No sessions match this week and filter set. Try switching the date or clearing teacher and campus filters.",
+              "当前这一周和筛选条件下没有课次。可以切换日期，或放宽老师、校区筛选。"
             )}
           </div>
         ) : (
           <>
             <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #e2e8f0", background: "#ffffff", flexWrap: "wrap" }}>
-              <a href={`/teacher/lead?${prevParams.toString()}`}>&lt;&lt; {t(lang, "Prev month", "上月")}</a>
-              <b>{selectedMonth}</b>
-              <a href={`/teacher/lead?${nextParams.toString()}`}>{t(lang, "Next month", "下月")} &gt;&gt;</a>
+              <a href={`/teacher/lead?${prevParams.toString()}`}>&lt;&lt; {t(lang, "Prev week", "上周")}</a>
+              <b>
+                {weekDays[0]?.dateKey} - {weekDays[6]?.dateKey}
+              </b>
+              <a href={`/teacher/lead?${nextParams.toString()}`}>{t(lang, "Next week", "下周")} &gt;&gt;</a>
             </div>
             <div style={{ padding: 12, background: "#f8fafc" }}>
               <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -292,37 +263,38 @@ export default async function TeacherLeadPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 6 }).map((_, rowIdx) => (
-                    <tr key={`calendar-row-${rowIdx}`}>
-                      {calendarDays.slice(rowIdx * 7, rowIdx * 7 + 7).map((day) => {
-                        const dayItems = (itemsByDay.get(day.dateKey) ?? []).slice().sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
-                        const topItems = dayItems.slice(0, 4);
-                        const extraCount = Math.max(0, dayItems.length - topItems.length);
-                        const selected = day.dateKey === date;
-                        const dayHrefParams = new URLSearchParams(navBase);
-                        dayHrefParams.set("month", selectedMonth);
-                        dayHrefParams.set("date", day.dateKey);
-                        return (
-                          <td
-                            key={day.dateKey}
-                            style={{
-                              border: "1px solid #e2e8f0",
-                              verticalAlign: "top",
-                              height: 170,
-                              width: `${100 / 7}%`,
-                              background: selected ? "#eff6ff" : day.inMonth ? "#ffffff" : "#f8fafc",
-                              padding: 0,
-                            }}
-                          >
-                            <a href={`/teacher/lead?${dayHrefParams.toString()}`} style={{ display: "block", color: "inherit", height: "100%", padding: 8 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                <b style={{ color: day.inMonth ? "#0f172a" : "#94a3b8" }}>{day.date.getDate()}</b>
-                                <span style={{ fontSize: 12, color: selected ? "#1d4ed8" : "#64748b" }}>
-                                  {dayItems.length} {t(lang, "sessions", "课次")}
-                                </span>
-                              </div>
-                              <div style={{ display: "grid", gap: 6 }}>
-                                {topItems.map((item) => (
+                  <tr>
+                    {weekDays.map((day) => {
+                      const dayItems = (itemsByDay.get(day.dateKey) ?? []).slice().sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
+                      const selected = day.dateKey === date;
+                      const dayHrefParams = new URLSearchParams(navBase);
+                      dayHrefParams.set("date", day.dateKey);
+                      return (
+                        <td
+                          key={day.dateKey}
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            verticalAlign: "top",
+                            height: 260,
+                            width: `${100 / 7}%`,
+                            background: selected ? "#eff6ff" : "#ffffff",
+                            padding: 0,
+                          }}
+                        >
+                          <a href={`/teacher/lead?${dayHrefParams.toString()}`} style={{ display: "block", color: "inherit", height: "100%", padding: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                              <b style={{ color: "#0f172a" }}>
+                                {day.date.getDate()}
+                              </b>
+                              <span style={{ fontSize: 12, color: selected ? "#1d4ed8" : "#64748b" }}>
+                                {dayItems.length} {t(lang, "sessions", "课次")}
+                              </span>
+                            </div>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {dayItems.length === 0 ? (
+                                <div style={{ minHeight: 40, borderRadius: 8, border: "1px dashed #e2e8f0", background: "#f8fafc" }} />
+                              ) : (
+                                dayItems.map((item) => (
                                   <div
                                     key={item.id}
                                     style={{
@@ -339,19 +311,14 @@ export default async function TeacherLeadPage({
                                     </div>
                                     <div style={{ color: "#334155" }}>{item.courseText}</div>
                                   </div>
-                                ))}
-                                {extraCount > 0 && (
-                                  <div style={{ fontSize: 12, color: "#64748b", paddingLeft: 2 }}>
-                                    +{extraCount} {t(lang, "more", "更多")}
-                                  </div>
-                                )}
-                              </div>
-                            </a>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                                ))
+                              )}
+                            </div>
+                          </a>
+                        </td>
+                      );
+                    })}
+                  </tr>
                 </tbody>
               </table>
             </div>
