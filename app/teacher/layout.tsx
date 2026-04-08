@@ -1,4 +1,4 @@
-﻿import { getCurrentUser, requireTeacher } from "@/lib/auth";
+﻿import { getCurrentUser, isTeacherLeadUser, requireTeacher } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import TeacherLanguageSelectorClient from "./TeacherLanguageSelectorClient";
 import TeacherSidebarNavClient from "./TeacherSidebarNavClient";
@@ -7,12 +7,14 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   const lang = await getLang();
   await requireTeacher();
   const user = await getCurrentUser();
+  const isLead = await isTeacherLeadUser(user);
   const navGroups = [
     {
       title: t(lang, "Today", "今天"),
       items: [
         { href: "/teacher", label: t(lang, "Dashboard", "总览") },
         { href: "/teacher/alerts", label: t(lang, "Sign-in Alerts", "签到告警") },
+        ...(isLead ? [{ href: "/teacher/lead", label: t(lang, "Lead Desk", "主管工作台") }] : []),
       ],
     },
     {

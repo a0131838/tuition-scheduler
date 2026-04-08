@@ -28,6 +28,16 @@ function managerEmailSet() {
   );
 }
 
+function teacherLeadEmailSet() {
+  const raw = process.env.TEACHER_LEAD_EMAILS ?? "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
 export function managerEmailsFromEnv() {
   return Array.from(managerEmailSet());
 }
@@ -46,11 +56,36 @@ export async function getManagerEmailSet() {
   return set;
 }
 
+export function teacherLeadEmailsFromEnv() {
+  return Array.from(teacherLeadEmailSet());
+}
+
+export async function getTeacherLeadEmailSet() {
+  const set = teacherLeadEmailSet();
+  try {
+    const rows = await prisma.teacherLeadAcl.findMany({
+      where: { isActive: true },
+      select: { email: true },
+    });
+    for (const row of rows) set.add(row.email.trim().toLowerCase());
+  } catch {
+    // Fallback to env-only when table is not available yet.
+  }
+  return set;
+}
+
 export async function isManagerUser(user: Pick<AuthUser, "role" | "email"> | null | undefined) {
   if (!user) return false;
   if (user.role !== "ADMIN" && user.role !== "TEACHER") return false;
   const set = await getManagerEmailSet();
   if (set.size === 0) return user.role === "ADMIN";
+  return set.has(user.email.toLowerCase());
+}
+
+export async function isTeacherLeadUser(user: Pick<AuthUser, "role" | "email" | "teacherId"> | null | undefined) {
+  if (!user) return false;
+  if (user.role !== "TEACHER" && !(user.role === "ADMIN" && user.teacherId)) return false;
+  const set = await getTeacherLeadEmailSet();
   return set.has(user.email.toLowerCase());
 }
 
@@ -194,4 +229,10 @@ export async function requireTeacherProfile() {
   }
 
   return { user, teacher: null };
+}
+
+export async function requireTeacherLead() {
+  const user = await requireTeacher();
+  if (await isTeacherLeadUser(user)) return user;
+  redirect("/teacher");
 }

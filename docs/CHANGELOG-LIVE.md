@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r02
+
+- Release ID: `2026-04-08-r02`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add the first `Teacher Lead / 老师主管` role pass as an additive teacher-side ACL so selected teachers can open a lead desk and review the all-teachers daily schedule without gaining admin-finance or system-control access.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260408093000_add_teacher_lead_acl/migration.sql`
+  - `lib/auth.ts`
+  - `app/api/admin/manager/teacher-leads/route.ts`
+  - `app/api/admin/manager/teacher-leads/[id]/route.ts`
+  - `app/admin/manager/users/page.tsx`
+  - `app/admin/manager/users/_components/TeacherLeadEmailAddClient.tsx`
+  - `app/admin/manager/users/_components/TeacherLeadEmailRemoveClient.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/teacher/lead/page.tsx`
+  - `docs/tasks/TASK-20260408-teacher-lead-v1.md`
+- Risk impact (if any): Low to medium. This release adds a new ACL table and a new teacher-side route, but keeps permissions narrow: teacher leads can only see the new lead desk and do not inherit admin finance, setup, or user-management privileges.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - owner-manager edit mode should show `Teacher Lead Access List / 老师主管名单维护`
+  - teacher accounts on that ACL should see `Lead Desk / 主管工作台` and reach `/teacher/lead`
+- Rollback point: previous production commit before `2026-04-08-r02`.
+
 ## 2026-04-08-r01
 
 - Release ID: `2026-04-08-r01`

@@ -1,7 +1,9 @@
 import {
   getManagerEmailSet,
+  getTeacherLeadEmailSet,
   isOwnerManager,
   managerEmailsFromEnv,
+  teacherLeadEmailsFromEnv,
   requireManager,
 } from "@/lib/auth";
 import NoticeBanner from "@/app/admin/_components/NoticeBanner";
@@ -9,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import ManagerEmailAddClient from "./_components/ManagerEmailAddClient";
 import ManagerEmailRemoveClient from "./_components/ManagerEmailRemoveClient";
+import TeacherLeadEmailAddClient from "./_components/TeacherLeadEmailAddClient";
+import TeacherLeadEmailRemoveClient from "./_components/TeacherLeadEmailRemoveClient";
 import SystemUserCreateClient from "./_components/SystemUserCreateClient";
 import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient";
 import SystemUserActionsClient from "./_components/SystemUserActionsClient";
@@ -49,7 +53,7 @@ export default async function ManagerUsersPage({
   const sp = await searchParams;
   const isEditMode = canEdit && (sp?.mode ?? "").toLowerCase() === "edit";
 
-  const [users, teachers, sessions, managerAclRows, managerSet] = await Promise.all([
+  const [users, teachers, sessions, managerAclRows, teacherLeadAclRows, managerSet, teacherLeadSet] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ role: "asc" }, { createdAt: "asc" }],
       include: { teacher: { select: { id: true, name: true } } },
@@ -67,9 +71,15 @@ export default async function ManagerUsersPage({
       where: { isActive: true },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.teacherLeadAcl.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+    }),
     getManagerEmailSet(),
+    getTeacherLeadEmailSet(),
   ]);
   const envManagerEmails = managerEmailsFromEnv();
+  const envTeacherLeadEmails = teacherLeadEmailsFromEnv();
 
   const sessionInfo = new Map<string, { count: number; lastCreatedAt: Date | null }>();
   for (const s of sessions) {
@@ -134,6 +144,7 @@ export default async function ManagerUsersPage({
           <div><b>STUDENT</b>: {roleCount.STUDENT}</div>
           <div><b>{t(lang, "Active Sessions", "活跃会话")}</b>: {sessions.length}</div>
           <div><b>{t(lang, "Manager Emails", "管理者名单")}</b>: {managerSet.size}</div>
+          <div><b>{t(lang, "Teacher Lead Emails", "老师主管名单")}</b>: {teacherLeadSet.size}</div>
         </div>
       </div>
 
@@ -198,6 +209,67 @@ export default async function ManagerUsersPage({
         </table>
       </div>
 
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 12 }}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Teacher Lead Access List", "老师主管名单维护")}</h3>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+          {t(
+            lang,
+            "Teacher lead list = env TEACHER_LEAD_EMAILS + entries below. Teacher leads keep teacher access and gain the lead desk only.",
+            "老师主管名单 = 环境变量 TEACHER_LEAD_EMAILS + 下方数据库名单。老师主管保留老师端权限，并额外获得主管工作台。"
+          )}
+        </div>
+
+        <div style={{ marginBottom: 10 }}>
+          <b>TEACHER_LEAD_EMAILS (.env)</b>: {envTeacherLeadEmails.length ? envTeacherLeadEmails.join(", ") : "(empty)"}
+        </div>
+
+        {isEditMode && isOwnerManager(currentUser) ? (
+          <TeacherLeadEmailAddClient
+            labels={{
+              email: t(lang, "Teacher Lead Email", "老师主管邮箱"),
+              noteOptional: t(lang, "Note (optional)", "备注(可选)"),
+              addLead: t(lang, "Add Teacher Lead", "新增老师主管"),
+              errorPrefix: t(lang, "Error", "错误"),
+            }}
+          />
+        ) : null}
+
+        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+          <thead>
+            <tr style={{ background: "#f8fafc" }}>
+              <th align="left">Email</th>
+              <th align="left">{t(lang, "Note", "备注")}</th>
+              <th align="left">{t(lang, "Created", "创建")}</th>
+              {isEditMode && isOwnerManager(currentUser) ? <th align="left">{t(lang, "Action", "操作")}</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {teacherLeadAclRows.map((row) => (
+              <tr key={row.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                <td>{row.email}</td>
+                <td>{row.note || "-"}</td>
+                <td>{formatBusinessDateTime(row.createdAt)}</td>
+                {isEditMode && isOwnerManager(currentUser) ? (
+                  <td>
+                    <TeacherLeadEmailRemoveClient
+                      id={row.id}
+                      confirmMessage={t(lang, "Remove this teacher lead email?", "确认移除该老师主管邮箱？")}
+                      label={t(lang, "Remove", "移除")}
+                      errorPrefix={t(lang, "Error", "错误")}
+                    />
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+            {teacherLeadAclRows.length === 0 ? (
+              <tr>
+                <td colSpan={isEditMode && isOwnerManager(currentUser) ? 4 : 3}>{t(lang, "No DB teacher lead emails.", "数据库中暂无老师主管邮箱。")}</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
       {isEditMode ? (
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: 12 }}>
           <h3 style={{ marginTop: 0 }}>{t(lang, "Create User", "新增用户")}</h3>
@@ -233,6 +305,7 @@ export default async function ManagerUsersPage({
             {users.map((u) => {
               const sess = sessionInfo.get(u.id);
               const isManager = managerSet.has(u.email.toLowerCase()) && u.role === "ADMIN";
+              const isTeacherLead = teacherLeadSet.has(u.email.toLowerCase());
               const rowEditable = canEditTargetUser(currentUser, u as BasicUser, managerSet).ok;
               return (
                 <tr key={u.id} style={{ borderTop: "1px solid #f1f5f9", verticalAlign: "top" }}>
@@ -242,6 +315,7 @@ export default async function ManagerUsersPage({
                     <div style={{ fontSize: 12, color: "#64748b" }}>
                       {t(lang, "Created", "创建")}: {formatBusinessDateTime(u.createdAt)}
                       {isManager ? ` | ${t(lang, "Manager", "管理者")}` : ""}
+                      {isTeacherLead ? ` | ${t(lang, "Teacher Lead", "老师主管")}` : ""}
                     </div>
                   </td>
                   <td>

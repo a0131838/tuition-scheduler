@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-07`
+- Last checked: `2026-04-08`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-08-r01` (final-report teacher form and parent-PDF alignment pass).
+- Current release line on this branch: `2026-04-08-r02` (teacher-lead v1).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-08-r02 Deployed
+
+- Scope: add a first-pass `Teacher Lead / 老师主管` role as a teacher-side additive ACL with a new `Lead Desk / 主管工作台` focused on the all-teachers daily schedule.
+- Business impact:
+  - owner-manager edit mode under `System User Admin / 系统使用者管理` now includes `Teacher Lead Access List / 老师主管名单维护`
+  - selected teacher-linked accounts can now see `Lead Desk / 主管工作台` inside the teacher portal
+  - `/teacher/lead` shows a read-only all-teachers daily schedule with date, teacher, and campus filters
+  - teacher leads do not gain finance approval, admin sidebar, system setup, student editing, or other admin-only powers
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - owner-manager QA should confirm teacher-lead ACL rows can be added/removed in `/admin/manager/users?mode=edit`
+  - a teacher-lead account should see `Lead Desk / 主管工作台` in the teacher sidebar and load `/teacher/lead`
 
 ## 2026-04-06-r12 Deployed
 
