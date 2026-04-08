@@ -98,10 +98,12 @@ export default async function TeacherLeadPage({
   ]);
 
   const rows = sessions.map((session) => {
+    const teacherIdValue = session.teacher?.id ?? session.class.teacher.id;
     const teacherName = session.teacher?.name ?? session.class.teacher.name;
     const students = resolveSessionStudents(session);
     return {
       id: session.id,
+      teacherId: teacherIdValue,
       startAt: session.startAt,
       endAt: session.endAt,
       teacherName,
@@ -115,12 +117,32 @@ export default async function TeacherLeadPage({
   const earliestHour = rows.length > 0 ? Math.max(0, Math.min(...rows.map((row) => businessHour(new Date(row.startAt)))) - 1) : 8;
   const latestHour = rows.length > 0 ? Math.min(23, Math.max(...rows.map((row) => businessHour(new Date(row.endAt)))) + 1) : 21;
   const hourSlots = Array.from({ length: latestHour - earliestHour + 1 }, (_, idx) => earliestHour + idx);
-  const rowsByHour = new Map<number, typeof rows>();
-  for (const hour of hourSlots) rowsByHour.set(hour, []);
+  const teacherLaneMap = new Map<string, { id: string; name: string }>();
+  for (const teacher of teachers) {
+    if (!teacherId || teacher.id === teacherId) teacherLaneMap.set(teacher.id, { id: teacher.id, name: teacher.name });
+  }
+  for (const row of rows) {
+    if (!teacherLaneMap.has(row.teacherId)) {
+      teacherLaneMap.set(row.teacherId, { id: row.teacherId, name: row.teacherName });
+    }
+  }
+  const teacherLanes = Array.from(teacherLaneMap.values()).sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  const rowsByTeacherByHour = new Map<string, Map<number, typeof rows>>();
+  for (const lane of teacherLanes) {
+    const hourMap = new Map<number, typeof rows>();
+    for (const hour of hourSlots) hourMap.set(hour, []);
+    rowsByTeacherByHour.set(lane.id, hourMap);
+  }
   for (const row of rows) {
     const hour = businessHour(new Date(row.startAt));
-    if (!rowsByHour.has(hour)) rowsByHour.set(hour, []);
-    rowsByHour.get(hour)!.push(row);
+    if (!rowsByTeacherByHour.has(row.teacherId)) {
+      const hourMap = new Map<number, typeof rows>();
+      for (const slotHour of hourSlots) hourMap.set(slotHour, []);
+      rowsByTeacherByHour.set(row.teacherId, hourMap);
+    }
+    const hourMap = rowsByTeacherByHour.get(row.teacherId)!;
+    if (!hourMap.has(hour)) hourMap.set(hour, []);
+    hourMap.get(hour)!.push(row);
   }
 
   const visibleTeacherCount = new Set(rows.map((row) => row.teacherName)).size;
@@ -200,7 +222,7 @@ export default async function TeacherLeadPage({
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 16, overflow: "hidden", background: "#ffffff" }}>
         <div style={{ padding: "12px 14px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", fontWeight: 800 }}>
-          {t(lang, "Visual day board", "日历板视图")}
+          {t(lang, "Teacher lane schedule board", "按老师分列课表板")}
         </div>
         {rows.length === 0 ? (
           <div style={{ padding: 18, color: "#64748b" }}>
@@ -211,23 +233,43 @@ export default async function TeacherLeadPage({
             )}
           </div>
         ) : (
-          <div style={{ display: "grid" }}>
-            {hourSlots.map((hour) => {
-              const slotRows = rowsByHour.get(hour) ?? [];
-              return (
+          <div style={{ overflowX: "auto", padding: 12, background: "#f8fafc" }}>
+            <div
+              style={{
+                minWidth: Math.max(860, 140 + teacherLanes.length * 240),
+                display: "grid",
+                gridTemplateColumns: `110px repeat(${teacherLanes.length}, minmax(220px, 1fr))`,
+                border: "1px solid #e2e8f0",
+                borderRadius: 14,
+                overflow: "hidden",
+                background: "#ffffff",
+              }}
+            >
+              <div style={{ padding: "12px 10px", background: "#eef2ff", fontWeight: 800, color: "#334155", borderRight: "1px solid #e2e8f0" }}>
+                {t(lang, "Time", "时间")}
+              </div>
+              {teacherLanes.map((lane) => (
                 <div
-                  key={`hour-${hour}`}
+                  key={`lane-head-${lane.id}`}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "110px 1fr",
-                    borderTop: hour === hourSlots[0] ? "none" : "1px solid #f1f5f9",
-                    alignItems: "stretch",
+                    padding: "12px 10px",
+                    background: "#eff6ff",
+                    borderLeft: "1px solid #e2e8f0",
+                    fontWeight: 800,
+                    color: "#1d4ed8",
                   }}
                 >
+                  {lane.name}
+                </div>
+              ))}
+              {hourSlots.map((hour) => (
+                <div key={`row-${hour}`} style={{ display: "contents" }}>
                   <div
+                    key={`label-${hour}`}
                     style={{
-                      padding: "14px 12px",
+                      padding: "14px 10px",
                       background: "#f8fafc",
+                      borderTop: "1px solid #e2e8f0",
                       borderRight: "1px solid #e2e8f0",
                       fontWeight: 800,
                       color: "#334155",
@@ -235,57 +277,62 @@ export default async function TeacherLeadPage({
                   >
                     {hourLabel(hour)}
                   </div>
-                  <div style={{ padding: 12, display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-                    {slotRows.length === 0 ? (
+                  {teacherLanes.map((lane) => {
+                    const slotRows = rowsByTeacherByHour.get(lane.id)?.get(hour) ?? [];
+                    return (
                       <div
+                        key={`cell-${lane.id}-${hour}`}
                         style={{
-                          minHeight: 64,
-                          borderRadius: 12,
-                          border: "1px dashed #e2e8f0",
-                          background: "#ffffff",
-                          color: "#94a3b8",
-                          display: "flex",
-                          alignItems: "center",
-                          padding: "0 12px",
-                          fontSize: 13,
+                          minHeight: 112,
+                          padding: 10,
+                          borderTop: "1px solid #e2e8f0",
+                          borderLeft: "1px solid #e2e8f0",
+                          background: hour % 2 === 0 ? "#ffffff" : "#fcfdff",
+                          display: "grid",
+                          gap: 8,
+                          alignContent: "start",
                         }}
                       >
-                        {t(lang, "No class starts in this hour", "这个整点没有课次开始")}
-                      </div>
-                    ) : (
-                      slotRows.map((row) => (
-                        <div
-                          key={row.id}
-                          style={{
-                            border: "1px solid #dbeafe",
-                            borderRadius: 14,
-                            background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
-                            padding: 12,
-                            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-                            display: "grid",
-                            gap: 6,
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                            <div style={{ fontWeight: 800, color: "#0f172a" }}>
-                              {formatBusinessTimeOnly(new Date(row.startAt))} - {formatBusinessTimeOnly(new Date(row.endAt))}
+                        {slotRows.length === 0 ? (
+                          <div
+                            style={{
+                              minHeight: 48,
+                              borderRadius: 10,
+                              border: "1px dashed #e2e8f0",
+                              background: "#f8fafc",
+                            }}
+                          />
+                        ) : (
+                          slotRows.map((row) => (
+                            <div
+                              key={row.id}
+                              style={{
+                                border: "1px solid #bfdbfe",
+                                borderRadius: 12,
+                                background: "linear-gradient(180deg, #ffffff 0%, #eff6ff 100%)",
+                                padding: 10,
+                                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                                display: "grid",
+                                gap: 4,
+                              }}
+                            >
+                              <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>
+                                {formatBusinessTimeOnly(new Date(row.startAt))} - {formatBusinessTimeOnly(new Date(row.endAt))}
+                              </div>
+                              <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.35 }}>{row.courseText}</div>
+                              <div style={{ color: "#64748b", fontSize: 12 }}>{row.campusText}</div>
+                              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.35 }}>
+                                {row.students.length ? row.students.join(", ") : t(lang, "No active students", "暂无有效学生")}
+                              </div>
                             </div>
-                            <div style={{ color: "#1d4ed8", fontWeight: 700 }}>{row.teacherName}</div>
-                          </div>
-                          <div style={{ color: "#334155", fontSize: 14, lineHeight: 1.4 }}>{row.courseText}</div>
-                          <div style={{ color: "#64748b", fontSize: 13 }}>
-                            <b>{t(lang, "Campus", "校区")}</b>: {row.campusText}
-                          </div>
-                          <div style={{ color: "#475569", fontSize: 13 }}>
-                            <b>{t(lang, "Students", "学生")}</b>: {row.students.length ? row.students.join(", ") : "-"}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         )}
       </div>

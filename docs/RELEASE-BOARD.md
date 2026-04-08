@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-08-r03` (teacher-lead visual day board).
+- Current release line on this branch: `2026-04-08-r04` (teacher-lead teacher-lane board).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -73,6 +73,19 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - teacher-lead QA should confirm `/teacher/lead` shows the new hourly board and still preserves the detailed table below
+
+## 2026-04-08-r04 Deployed
+
+- Scope: make the teacher-lead visual board feel more like a timetable by turning it into a teacher-column lane board.
+- Business impact:
+  - `/teacher/lead` now shows hours on the left and one lane per teacher, so leads can scan the whole day teacher by teacher instead of reading mixed cards in one shared hour bucket
+  - each lane cell still shows time, course, campus/room, and students for any sessions that start in that hour
+  - the detailed table remains available below as a secondary fallback view
+  - no ACL, filter, finance, or admin permission behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - teacher-lead QA should confirm `/teacher/lead` shows teachers as columns and hours as rows
 
 ## 2026-04-06-r12 Deployed
 

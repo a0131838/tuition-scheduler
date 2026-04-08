@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-08-r04
+
+- Release ID: `2026-04-08-r04`
+- Date/Time (Asia/Shanghai): `2026-04-08`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make the teacher-lead daily schedule feel more like a real timetable by replacing the mixed hourly card board with a teacher-column lane board.
+- Key files:
+  - `app/teacher/lead/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260408-teacher-lead-teacher-lane-board.md`
+- Risk impact (if any): Low. This release only changes the teacher-lead schedule presentation; it does not change ACL rules, filter semantics, schedule data, finance logic, or admin permissions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - teacher `/teacher/lead` should show a teacher-column board with hours on the left and each teacher in a separate lane
+- Rollback point: previous production commit before `2026-04-08-r04`.
+
 ## 2026-04-08-r03
 
 - Release ID: `2026-04-08-r03`
