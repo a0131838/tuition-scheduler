@@ -1761,7 +1761,7 @@
   - post-deploy startup check
   - admin final-report PDF route should continue returning `200` with `application/pdf`
 
-## 2026-04-08-r08 Ready
+## 2026-04-08-r08 Deployed
 
 - Scope: let ops record HOURS package sales and top-ups as split purchase batches so partner settlement can later split batches like `6h + 30h` without manual production repair.
 - Business impact:
