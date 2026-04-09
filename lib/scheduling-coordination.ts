@@ -1,4 +1,5 @@
 import { listBookingSlotsForMonth, monthKey, type BookingSlot } from "@/lib/booking";
+import type { ParentAvailabilityPayload } from "@/lib/parent-availability";
 
 type EnrollmentLike = {
   class: {
@@ -183,4 +184,74 @@ export async function evaluateSchedulingSpecialRequest(args: {
       .filter((slot) => slot.startAt.getTime() !== args.requestedStartAt.getTime())
       .slice(0, 3),
   };
+}
+
+const WEEKDAY_TO_JS_DAY: Record<string, number> = {
+  SUN: 0,
+  MON: 1,
+  TUE: 2,
+  WED: 3,
+  THU: 4,
+  FRI: 5,
+  SAT: 6,
+};
+
+export function filterSchedulingSlotsByParentAvailability(
+  slots: BookingSlot[],
+  payload: ParentAvailabilityPayload | null | undefined
+) {
+  if (!payload) return slots;
+
+  const allowedWeekdays = new Set(
+    payload.weekdays.map((weekday) => WEEKDAY_TO_JS_DAY[weekday]).filter((value) => Number.isInteger(value))
+  );
+  const earliestStart = payload.earliestStartDate ? new Date(`${payload.earliestStartDate}T00:00:00`) : null;
+  const timeRanges = payload.timeRanges
+    .map((range) => ({
+      start: range.start,
+      end: range.end,
+    }))
+    .filter((range) => range.start && range.end);
+
+  return slots.filter((slot) => {
+    if (earliestStart && slot.startAt < earliestStart) return false;
+    if (allowedWeekdays.size > 0 && !allowedWeekdays.has(slot.startAt.getDay())) return false;
+    if (timeRanges.length === 0) return true;
+    const start = `${String(slot.startAt.getHours()).padStart(2, "0")}:${String(slot.startAt.getMinutes()).padStart(2, "0")}`;
+    const end = `${String(slot.endAt.getHours()).padStart(2, "0")}:${String(slot.endAt.getMinutes()).padStart(2, "0")}`;
+    return timeRanges.some((range) => start >= range.start && end <= range.end);
+  });
+}
+
+export function buildSchedulingCoordinationSlotShareText(
+  slot: { teacherName: string; startAt: Date; endAt: Date },
+  variant: "default" | "match" | "alternative" = "default"
+) {
+  const yyyy = slot.startAt.getFullYear();
+  const mm = String(slot.startAt.getMonth() + 1).padStart(2, "0");
+  const dd = String(slot.startAt.getDate()).padStart(2, "0");
+  const dateLabel = `${yyyy}-${mm}-${dd}`;
+  const start = `${String(slot.startAt.getHours()).padStart(2, "0")}:${String(slot.startAt.getMinutes()).padStart(2, "0")}`;
+  const end = `${String(slot.endAt.getHours()).padStart(2, "0")}:${String(slot.endAt.getMinutes()).padStart(2, "0")}`;
+  const lead =
+    variant === "match"
+      ? "您好，您刚刚提出的这个时间老师 availability 可以直接安排。"
+      : variant === "alternative"
+        ? "您好，原时间暂时不在老师已提交的 availability 里，这里有一个最近可排的替代时间供您确认。"
+        : "您好，这里先给您一个基于老师 availability 的可排时间，您确认后我们就可以继续安排。";
+  const leadEn =
+    variant === "match"
+      ? "The requested time matches the teacher's submitted availability."
+      : variant === "alternative"
+        ? "The original request is outside current availability, but here is the nearest available alternative."
+        : "Here is an availability-backed lesson option for your confirmation.";
+  return [
+    lead,
+    `时间 / Time: ${dateLabel} ${start}-${end}`,
+    `老师 / Teacher: ${slot.teacherName}`,
+    "",
+    leadEn,
+    `Time: ${dateLabel} ${start}-${end}`,
+    `Teacher: ${slot.teacherName}`,
+  ].join("\n");
 }

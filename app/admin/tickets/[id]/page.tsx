@@ -30,6 +30,7 @@ import { revalidatePath } from "next/cache";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
   buildParentAvailabilityExpiresAt,
   buildParentAvailabilityPath,
@@ -39,6 +40,13 @@ import {
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
+import {
+  buildSchedulingCoordinationSlotShareText,
+  buildSchedulingCoordinationTeacherOptions,
+  filterSchedulingSlotsByParentAvailability,
+  inferSchedulingCoordinationDurationMin,
+  listSchedulingCoordinationCandidateSlots,
+} from "@/lib/scheduling-coordination";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -460,6 +468,68 @@ export default async function AdminTicketDetailPage({
   const studentCoordinationHref = row.studentId
     ? `/admin/students/${row.studentId}?focus=scheduling-coordination#scheduling-coordination`
     : "";
+  const coordinationContext =
+    row.type === "排课协调" && row.studentId
+      ? await (async () => {
+          const [enrollments, teachers] = await Promise.all([
+            prisma.enrollment.findMany({
+              where: { studentId: row.studentId! },
+              include: {
+                class: {
+                  include: {
+                    subject: true,
+                    level: true,
+                    teacher: true,
+                  },
+                },
+              },
+            }),
+            prisma.teacher.findMany({ include: { subjects: true }, orderBy: { name: "asc" } }),
+          ]);
+          const teacherOptions = buildSchedulingCoordinationTeacherOptions({ enrollments, teachers });
+          const classIds = enrollments.map((item) => item.classId);
+          const futureEnd = new Date();
+          futureEnd.setDate(futureEnd.getDate() + 60);
+          const relevantSessions = classIds.length
+            ? await prisma.session.findMany({
+                where: {
+                  classId: { in: classIds },
+                  startAt: { gte: new Date(), lt: futureEnd },
+                  OR: [{ studentId: null }, { studentId: row.studentId! }],
+                },
+                select: { startAt: true, endAt: true },
+                orderBy: { startAt: "asc" },
+              })
+            : [];
+          const durationMin = inferSchedulingCoordinationDurationMin({
+            upcomingSessions: relevantSessions,
+            monthlySessions: relevantSessions,
+          });
+          const searchStart = parentAvailabilityPayload?.earliestStartDate
+            ? new Date(`${parentAvailabilityPayload.earliestStartDate}T00:00:00`)
+            : new Date();
+          const availabilitySlots =
+            teacherOptions.length > 0
+              ? await listSchedulingCoordinationCandidateSlots({
+                  studentId: row.studentId!,
+                  teacherOptions,
+                  startAt: searchStart,
+                  durationMin,
+                  maxSlots: 12,
+                })
+              : [];
+          const matchedParentSlots = filterSchedulingSlotsByParentAvailability(
+            availabilitySlots,
+            parentAvailabilityPayload
+          ).slice(0, 5);
+          return {
+            teacherCount: teacherOptions.length,
+            durationMin,
+            matchedParentSlots,
+            fallbackSlots: availabilitySlots.slice(0, 3),
+          };
+        })()
+      : null;
   const flowNodes = [
     { key: "Need Info", label: "待补信息", caption: "Need Info" },
     { key: "Waiting Teacher", label: "等老师", caption: "Waiting Teacher" },
@@ -690,6 +760,83 @@ export default async function AdminTicketDetailPage({
                 <div><b>有效期 / Expires at</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
                 <div><b>下一步 / Next step</b>: {row.nextAction || "-"}</div>
               </div>
+              {coordinationContext ? (
+                <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontWeight: 700 }}>availability 命中结果 / Availability-backed result</div>
+                    <div style={{ fontSize: 12, color: "#475569" }}>
+                      {coordinationContext.teacherCount} teachers · {coordinationContext.durationMin} mins
+                    </div>
+                  </div>
+                  {parentAvailabilityPayload ? (
+                    coordinationContext.matchedParentSlots.length > 0 ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <div style={{ color: "#166534", fontSize: 13 }}>
+                          已找到 {coordinationContext.matchedParentSlots.length} 条符合家长提交时间的老师 availability，可直接发给家长确认。 /
+                          {` ${coordinationContext.matchedParentSlots.length} matching availability-backed slot(s) are ready to send to the parent.`}
+                        </div>
+                        {coordinationContext.matchedParentSlots.map((slot) => (
+                          <div key={`ticket-match-${slot.slotKey}`} style={{ border: "1px solid #bbf7d0", borderRadius: 10, padding: 10, background: "#f0fdf4", display: "grid", gap: 6 }}>
+                            <div style={{ fontWeight: 800 }}>
+                              {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                            </div>
+                            <div style={{ color: "#334155", fontSize: 13 }}>
+                              {slot.teacherName}
+                              {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                            </div>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <CopyTextButton
+                                text={buildSchedulingCoordinationSlotShareText(slot, "default")}
+                                label="复制发送文案 / Copy Message"
+                                copiedLabel="已复制文案 / Copied"
+                              />
+                              {studentCoordinationHref ? <a href={studentCoordinationHref}>打开学生协调页 / Open student coordination</a> : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <div style={{ color: "#b45309", fontSize: 13 }}>
+                          当前没有命中家长提交偏好的 availability，建议先看最近替代时间；如果家长坚持特殊时间，再走老师例外确认。 /
+                          No current availability matches the submitted parent preferences.
+                        </div>
+                        {coordinationContext.fallbackSlots.length > 0 ? (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            {coordinationContext.fallbackSlots.map((slot) => (
+                              <div key={`ticket-alt-${slot.slotKey}`} style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fffbeb", display: "grid", gap: 6 }}>
+                                <div style={{ fontWeight: 800 }}>
+                                  {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                                </div>
+                                <div style={{ color: "#334155", fontSize: 13 }}>
+                                  {slot.teacherName}
+                                  {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                                </div>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  <CopyTextButton
+                                    text={buildSchedulingCoordinationSlotShareText(slot, "alternative")}
+                                    label="复制替代文案 / Copy Alternative"
+                                    copiedLabel="已复制文案 / Copied"
+                                  />
+                                  {studentCoordinationHref ? <a href={studentCoordinationHref}>打开学生协调页 / Open student coordination</a> : null}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ color: "#475569", fontSize: 13 }}>
+                            当前没找到可直接用的替代 availability。请保留工单并走老师例外确认。 / No direct alternative availability was found.
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ) : (
+                    <div style={{ color: "#475569", fontSize: 13 }}>
+                      家长提交后，这里会直接显示 availability 命中结果和可复制的候选时间文案。 / Once the parent submits, this panel will show matching slot options here.
+                    </div>
+                  )}
+                </div>
+              ) : null}
               {parentAvailabilityRows.length > 0 ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   <div style={{ fontWeight: 700 }}>家长最近提交 / Latest parent submission</div>

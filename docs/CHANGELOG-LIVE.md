@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r08
+
+- Release ID: `2026-04-09-r08`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `READY`
+- Scope: make the scheduling coordination console more actionable by showing availability-backed results directly against the latest parent submission, including matching slots when the family's submitted times already fit current teacher availability and nearest alternatives when they do not.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `lib/scheduling-coordination.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-availability-match-console.md`
+- Risk impact (if any): Low. This release only enriches the scheduling-coordination operator console and candidate-slot filtering against parent-submitted availability; it does not change ticket tokens, quick schedule execution, session creation, attendance, packages, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin ticket detail for a submitted scheduling coordination item should show `availability 命中结果 / Availability-backed result`
+  - if parent-submitted times already fit teacher availability, ticket detail should show matching slot cards with `Copy Message`
+  - if there are no matches, ticket detail should show nearest alternative slot cards with `Copy Alternative`
+  - student detail scheduling coordination card should continue to show only slots that fit the submitted parent availability
+- Rollback point: previous production commit before `2026-04-09-r08`.
+
 ## 2026-04-09-r07
 
 - Release ID: `2026-04-09-r07`

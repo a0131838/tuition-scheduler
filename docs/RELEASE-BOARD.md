@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r07` (scheduling coordination console and parent-message actions).
+- Current release line on this branch: `2026-04-09-r08` (scheduling coordination availability-match console).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -120,6 +120,21 @@
   - admin `/admin/tickets/[id]` should show the new coordination console actions and latest parent summary
   - admin `/admin/students/[id]` should show matching parent-link actions and summary rows on the scheduling coordination card
   - `赵测试` style live QA should confirm slot cards expose `Copy Message` actions and parent-link regeneration returns a fresh public `/availability/...` URL
+
+## 2026-04-09-r08 Ready
+
+- Scope: make the scheduling coordination operator console availability-aware by comparing the latest parent-submitted preferences against teacher availability and surfacing either direct matches or nearest alternatives inside the admin ticket detail page.
+- Business impact:
+  - `/admin/tickets/[id]` now shows `Availability-backed result / availability 命中结果` for submitted scheduling coordination tickets
+  - if a parent submission already fits current teacher availability, ops can immediately copy and send those matching slot options from the ticket detail page
+  - if no current availability matches the submission, the ticket detail page now shows the nearest alternative slots and copyable fallback wording instead of leaving ops to cross-check manually
+  - `/admin/students/[id]` now narrows generated coordination slots against the submitted parent availability so the coordination card stays aligned with what the family actually said they can do
+  - no ticket token, quick schedule, session, attendance, package, or finance behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - admin `/admin/tickets/[id]` should show `Availability-backed result` with either matching slot cards or alternative slot cards
+  - student detail scheduling coordination card should only show generated slot cards that fit the submitted parent availability
 
 ## 2026-04-08-r02 Deployed
 

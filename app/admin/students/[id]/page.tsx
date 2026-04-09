@@ -26,8 +26,10 @@ import {
   SCHEDULING_COORDINATION_TICKET_TYPE,
 } from "@/lib/tickets";
 import {
+  buildSchedulingCoordinationSlotShareText,
   buildSchedulingCoordinationTeacherOptions,
   evaluateSchedulingSpecialRequest,
+  filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
 } from "@/lib/scheduling-coordination";
@@ -1671,14 +1673,17 @@ export default async function StudentDetailPage({
     coordSpecialStartAt && coordSpecialStartAt.includes("T") ? parseDatetimeLocal(coordSpecialStartAt) : null;
   const generatedCoordinationSlots =
     coordGenerate && coordinationTeacherOptions.length > 0
-      ? await listSchedulingCoordinationCandidateSlots({
-          studentId,
-          teacherOptions: coordinationTeacherOptions,
-          teacherId: effectiveCoordTeacherId || undefined,
-          startAt: effectiveCoordDate,
-          durationMin: coordinationDurationMin,
-          maxSlots: 5,
-        })
+      ? filterSchedulingSlotsByParentAvailability(
+          await listSchedulingCoordinationCandidateSlots({
+            studentId,
+            teacherOptions: coordinationTeacherOptions,
+            teacherId: effectiveCoordTeacherId || undefined,
+            startAt: effectiveCoordDate,
+            durationMin: coordinationDurationMin,
+            maxSlots: 8,
+          }),
+          parentAvailabilityPayload
+        ).slice(0, 5)
       : [];
   const specialRequestCheck =
     coordCheckSpecial && effectiveSpecialStartAt && coordinationTeacherOptions.length > 0
@@ -1708,33 +1713,6 @@ export default async function StudentDetailPage({
     if (defaults?.roomId) params.set("quickRoomId", defaults.roomId);
     return buildStudentDetailHref(studentId, params, "#quick-schedule", "#quick-schedule");
   };
-  const buildCoordinationSlotShareText = (
-    slot: { teacherName: string; startAt: Date; endAt: Date },
-    variant: "default" | "match" | "alternative" = "default"
-  ) => {
-    const lead =
-      variant === "match"
-        ? "您好，您刚刚提出的这个时间老师 availability 可以直接安排。"
-        : variant === "alternative"
-          ? "您好，原时间暂时不在老师已提交的 availability 里，这里有一个最近可排的替代时间供您确认。"
-          : "您好，这里先给您一个基于老师 availability 的可排时间，您确认后我们就可以继续安排。";
-    const leadEn =
-      variant === "match"
-        ? "The requested time matches the teacher's submitted availability."
-        : variant === "alternative"
-          ? "The original request is outside current availability, but here is the nearest available alternative."
-          : "Here is an availability-backed lesson option for your confirmation.";
-    return [
-      lead,
-      `时间 / Time: ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`,
-      `老师 / Teacher: ${slot.teacherName}`,
-      "",
-      leadEn,
-      `Time: ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`,
-      `Teacher: ${slot.teacherName}`,
-    ].join("\n");
-  };
-
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
@@ -2477,7 +2455,7 @@ export default async function StudentDetailPage({
                               {t(lang, "Use in Quick Schedule", "用这个时间去排课")}
                             </a>
                             <CopyTextButton
-                              text={buildCoordinationSlotShareText(slot, "default")}
+                              text={buildSchedulingCoordinationSlotShareText(slot, "default")}
                               label={t(lang, "Copy message", "复制发送文案")}
                               copiedLabel={t(lang, "Copied", "已复制")}
                             />
@@ -2610,7 +2588,7 @@ export default async function StudentDetailPage({
                               {t(lang, "Schedule this requested time", "用这个家长要求时间去排课")}
                             </a>
                             <CopyTextButton
-                              text={buildCoordinationSlotShareText(slot, "match")}
+                              text={buildSchedulingCoordinationSlotShareText(slot, "match")}
                               label={t(lang, "Copy message", "复制发送文案")}
                               copiedLabel={t(lang, "Copied", "已复制")}
                             />
@@ -2689,7 +2667,7 @@ export default async function StudentDetailPage({
                                 {t(lang, "Use this instead", "改用这个时间排课")}
                               </a>
                               <CopyTextButton
-                                text={buildCoordinationSlotShareText(slot, "alternative")}
+                                text={buildSchedulingCoordinationSlotShareText(slot, "alternative")}
                                 label={t(lang, "Copy message", "复制发送文案")}
                                 copiedLabel={t(lang, "Copied", "已复制")}
                               />
