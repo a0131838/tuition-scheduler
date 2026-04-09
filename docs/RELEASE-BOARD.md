@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r09` (scheduling coordination phase flow and quick progress actions).
+- Current release line on this branch: `2026-04-09-r09` (scheduling coordination phase flow and quick progress actions), live on production.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -104,6 +104,22 @@
   - Emily intake success state should show the new copy/send guidance
   - parent `/availability/[token]` should render the new helper panels and updated form inputs
   - `赵测试` real-flow QA should confirm the returned `parentAvailabilityUrl` uses the public `sgtmanage.com` host
+
+## 2026-04-09-r09 Deployed
+
+- Scope: make scheduling coordination feel more like a true operator state flow by adding a derived coordination phase, clearer next-step guidance, and one-click ticket progression for “options sent” and “teacher exception needed”.
+- Business impact:
+  - `/admin/tickets/[id]` now shows a coordination phase summary with clearer operator guidance based on live parent-submission and availability-match state
+  - coordination operators can now move a ticket forward with one click using `Mark options sent / 标记已发候选时间` or `Ask teacher exception / 转老师例外确认`
+  - `/admin/students/[id]` now mirrors the coordination phase summary so the student detail page shows the same state framing as the ticket console
+  - `Todo Center` coordination cards now derive and display the same phase text when a live reminder row exists
+  - no token handling, parent form storage, quick schedule execution, session creation, attendance, package, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = dea110a` and `https://sgtmanage.com/admin/login` returned `200`
+  - live admin ticket detail for `赵测试` showed `Coordination phase / 协调阶段`, `Availability options ready / 候选时间已就绪`, and `Mark options sent / 标记已发候选时间`
+  - live student detail for `赵测试` showed `Scheduling coordination / 排课协调` actions including `Open parent form`, `Copy link`, `Copy message`, and `Regenerate link`
+  - `Todo Center` phase text was not re-verified against a live due coordination reminder because no qualifying row was available during this QA pass
 
 ## 2026-04-09-r07 Deployed
 

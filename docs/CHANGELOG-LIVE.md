@@ -43,7 +43,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-09-r09`
 - Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: make scheduling coordination feel more like a true operator state flow by adding a derived coordination phase, clearer next-step guidance, and one-click ticket progression for “options sent” and “teacher exception needed”.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
@@ -56,12 +56,12 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low. This release only improves scheduling-coordination operator guidance, derived phase display, and ticket quick actions; it does not change tokens, parent form storage, quick schedule execution, session creation, attendance, package logic, or finance behavior.
 - Verification:
   - `npm run build` passed
-  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
-  - `https://sgtmanage.com/admin/login` must return `200`
-  - admin `/admin/tickets/[id]` for a coordination item should show a new `Coordination phase / 协调阶段` summary
-  - matching availability results should expose `Mark options sent`
-  - non-matching availability results should expose `Ask teacher exception`
-  - student detail and `Todo Center` should show the derived coordination phase text
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` confirmed `local / origin / server = dea110a`
+  - `https://sgtmanage.com/admin/login` returned `200`
+  - live admin `/admin/tickets/[id]` for `赵测试` coordination item showed the new `Coordination phase / 协调阶段` summary
+  - matching availability results exposed `Mark options sent / 标记已发候选时间`
+  - live student detail scheduling coordination card for `赵测试` showed the new coordination controls and summary actions
+  - `Todo Center` phase text was not re-verified against a live due item during this release because no current coordination reminder row was available to click in production
 - Rollback point: previous production commit before `2026-04-09-r09`.
 
 ## 2026-04-09-r07
