@@ -1,5 +1,6 @@
 ﻿﻿import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
@@ -33,8 +34,12 @@ import {
 import {
   buildParentAvailabilityExpiresAt,
   buildParentAvailabilityPath,
+  buildParentAvailabilityShareText,
   createParentAvailabilityToken,
+  coerceParentAvailabilityPayload,
+  formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
+import CopyTextButton from "../../_components/CopyTextButton";
 import {
   workbenchHeroStyle,
   workbenchInfoBarStyle,
@@ -1237,6 +1242,61 @@ async function createSchedulingCoordinationTicket(studentId: string) {
     )}`
   );
 }
+
+async function regenerateSchedulingCoordinationParentLink(studentId: string) {
+  "use server";
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
+  }
+
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      studentId,
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      parentAvailabilityRequest: { select: { ticketId: true } },
+    },
+  });
+
+  if (!ticket?.parentAvailabilityRequest) {
+    const params = new URLSearchParams({ err: "No active coordination ticket" });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.parentAvailabilityRequest.update({
+      where: { ticketId: ticket.id },
+      data: {
+        token: createParentAvailabilityToken(),
+        isActive: true,
+        expiresAt: buildParentAvailabilityExpiresAt(),
+        submittedAt: null,
+        payloadJson: Prisma.JsonNull,
+      },
+    }),
+    prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        status: "Waiting Parent",
+        parentAvailability: "Parent availability form sent / waiting for response",
+        nextAction:
+          "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.",
+        nextActionDue: now,
+        lastUpdateAt: now,
+      },
+    }),
+  ]);
+
+  const params = new URLSearchParams({ msg: "Parent availability link regenerated" });
+  redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+}
 export default async function StudentDetailPage({
   params,
   searchParams,
@@ -1372,6 +1432,8 @@ export default async function StudentDetailPage({
             expiresAt: true,
             submittedAt: true,
             createdAt: true,
+            courseLabel: true,
+            payloadJson: true,
           },
         },
       },
@@ -1423,6 +1485,19 @@ export default async function StudentDetailPage({
   const parentAvailabilityHref = parentAvailabilityRequest
     ? buildParentAvailabilityPath(parentAvailabilityRequest.token)
     : null;
+  const parentAvailabilityPayload = parentAvailabilityRequest?.submittedAt
+    ? coerceParentAvailabilityPayload(parentAvailabilityRequest.payloadJson)
+    : null;
+  const parentAvailabilityRows = parentAvailabilityPayload
+    ? formatParentAvailabilityFieldRows(parentAvailabilityPayload)
+    : [];
+  const parentAvailabilityShareText = parentAvailabilityHref
+    ? buildParentAvailabilityShareText({
+        studentName: student.name,
+        courseLabel: parentAvailabilityRequest?.courseLabel ?? null,
+        url: `https://sgtmanage.com${parentAvailabilityHref}`,
+      })
+    : "";
   const schedulingTicketHref = activeSchedulingTicket
     ? `/admin/tickets/${activeSchedulingTicket.id}?back=${encodeURIComponent(
         buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
@@ -1632,6 +1707,32 @@ export default async function StudentDetailPage({
     if (defaults?.campusId) params.set("quickCampusId", defaults.campusId);
     if (defaults?.roomId) params.set("quickRoomId", defaults.roomId);
     return buildStudentDetailHref(studentId, params, "#quick-schedule", "#quick-schedule");
+  };
+  const buildCoordinationSlotShareText = (
+    slot: { teacherName: string; startAt: Date; endAt: Date },
+    variant: "default" | "match" | "alternative" = "default"
+  ) => {
+    const lead =
+      variant === "match"
+        ? "您好，您刚刚提出的这个时间老师 availability 可以直接安排。"
+        : variant === "alternative"
+          ? "您好，原时间暂时不在老师已提交的 availability 里，这里有一个最近可排的替代时间供您确认。"
+          : "您好，这里先给您一个基于老师 availability 的可排时间，您确认后我们就可以继续安排。";
+    const leadEn =
+      variant === "match"
+        ? "The requested time matches the teacher's submitted availability."
+        : variant === "alternative"
+          ? "The original request is outside current availability, but here is the nearest available alternative."
+          : "Here is an availability-backed lesson option for your confirmation.";
+    return [
+      lead,
+      `时间 / Time: ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`,
+      `老师 / Teacher: ${slot.teacherName}`,
+      "",
+      leadEn,
+      `Time: ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`,
+      `Teacher: ${slot.teacherName}`,
+    ].join("\n");
   };
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
@@ -2201,13 +2302,39 @@ export default async function StudentDetailPage({
                       : "-"}
                 </div>
                 {parentAvailabilityHref ? (
-                  <div style={{ fontSize: 12, marginTop: 6 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                     <a href={parentAvailabilityHref} target="_blank" rel="noreferrer">
                       {t(lang, "Open parent form", "打开家长表单")}
                     </a>
+                    <CopyTextButton
+                      text={`https://sgtmanage.com${parentAvailabilityHref}`}
+                      label={t(lang, "Copy link", "复制链接")}
+                      copiedLabel={t(lang, "Copied", "已复制")}
+                    />
+                    <CopyTextButton
+                      text={parentAvailabilityShareText}
+                      label={t(lang, "Copy message", "复制发送文案")}
+                      copiedLabel={t(lang, "Copied", "已复制")}
+                    />
+                    <form action={regenerateSchedulingCoordinationParentLink.bind(null, studentId)}>
+                      <button type="submit">{t(lang, "Regenerate link", "重生链接")}</button>
+                    </form>
                   </div>
                 ) : null}
               </div>
+              {parentAvailabilityRows.length > 0 ? (
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff", gridColumn: "1 / -1" }}>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest parent submission", "家长最近提交")}</div>
+                  <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 8 }}>
+                    {parentAvailabilityRows.map((item) => (
+                      <div key={`${item.label}:${item.value}`} style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#f8fbff", padding: 10 }}>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>{item.label}</div>
+                        <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff", gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest summary", "最新摘要")}</div>
                 <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>
@@ -2349,6 +2476,11 @@ export default async function StudentDetailPage({
                             >
                               {t(lang, "Use in Quick Schedule", "用这个时间去排课")}
                             </a>
+                            <CopyTextButton
+                              text={buildCoordinationSlotShareText(slot, "default")}
+                              label={t(lang, "Copy message", "复制发送文案")}
+                              copiedLabel={t(lang, "Copied", "已复制")}
+                            />
                             {schedulingTicketHref ? (
                               <a
                                 href={schedulingTicketHref}
@@ -2477,6 +2609,11 @@ export default async function StudentDetailPage({
                             >
                               {t(lang, "Schedule this requested time", "用这个家长要求时间去排课")}
                             </a>
+                            <CopyTextButton
+                              text={buildCoordinationSlotShareText(slot, "match")}
+                              label={t(lang, "Copy message", "复制发送文案")}
+                              copiedLabel={t(lang, "Copied", "已复制")}
+                            />
                             {schedulingTicketHref ? (
                               <a
                                 href={schedulingTicketHref}
@@ -2551,6 +2688,11 @@ export default async function StudentDetailPage({
                               >
                                 {t(lang, "Use this instead", "改用这个时间排课")}
                               </a>
+                              <CopyTextButton
+                                text={buildCoordinationSlotShareText(slot, "alternative")}
+                                label={t(lang, "Copy message", "复制发送文案")}
+                                copiedLabel={t(lang, "Copied", "已复制")}
+                              />
                               {schedulingTicketHref ? (
                                 <a
                                   href={schedulingTicketHref}

@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r07
+
+- Release ID: `2026-04-09-r07`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: turn scheduling coordination into a more usable operator console by adding parent-form link controls, structured latest-submission summaries, and direct parent-message copy actions from both the ticket detail page and the student detail coordination card.
+- Key files:
+  - `app/admin/_components/CopyTextButton.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `lib/parent-availability.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-console-and-parent-message-actions.md`
+- Risk impact (if any): Low. This release only improves scheduling-coordination presentation, copy/share actions, and parent-link regeneration around existing ticket/token flows; it does not change session creation, quick schedule core logic, attendance, package balances, or finance behavior.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin ticket detail should show a richer `Scheduling Coordination Console` with copy-link, copy-message, regenerate-link, and latest-parent-submission summary
+  - student detail scheduling coordination card should show the same parent-link actions and structured latest parent submission details
+  - suggested slot cards should expose `Copy Message` actions so ops can send suggested times to parents without rewriting them
+- Rollback point: previous production commit before `2026-04-09-r07`.
+
 ## 2026-04-09-r06
 
 - Release ID: `2026-04-09-r06`

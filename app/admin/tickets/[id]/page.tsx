@@ -1,6 +1,7 @@
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { resolveTicketTeacherId } from "@/lib/ticket-teacher";
 import {
   canTransitionTicketStatus,
@@ -29,7 +30,15 @@ import { revalidatePath } from "next/cache";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
-import { buildParentAvailabilityPath } from "@/lib/parent-availability";
+import {
+  buildParentAvailabilityExpiresAt,
+  buildParentAvailabilityPath,
+  buildParentAvailabilityShareText,
+  coerceParentAvailabilityPayload,
+  createParentAvailabilityToken,
+  formatParentAvailabilityFieldRows,
+} from "@/lib/parent-availability";
+import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -91,6 +100,18 @@ function toDateTimeLocalValue(v: Date | null | undefined) {
   const hh = String(v.getHours()).padStart(2, "0");
   const mm = String(v.getMinutes()).padStart(2, "0");
   return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function schedulingCoordinationFollowUpAction() {
+  return "Review the submitted parent availability, generate teacher-availability-backed slot options, and confirm the final lesson plan with the family.";
+}
+
+function schedulingCoordinationWaitingParentAction() {
+  return "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.";
+}
+
+function schedulingCoordinationWaitingParentSummary() {
+  return "Parent availability form sent / waiting for response";
 }
 
 function sanitizeAdminBack(raw: string | null | undefined, fallback: string) {
@@ -317,6 +338,66 @@ async function archiveTicketAction(formData: FormData) {
   redirect(appendQuery(back, { ok: "archived" }));
 }
 
+async function regenerateParentAvailabilityAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), "/admin/tickets");
+  if (!id) redirect(back);
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      status: true,
+      isArchived: true,
+      type: true,
+      parentAvailabilityRequest: {
+        select: {
+          ticketId: true,
+        },
+      },
+    },
+  });
+  if (!row) redirect(back);
+  if (row.isArchived || ["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery(back, { err: "closed-parent-form" }));
+  }
+  if (row.type !== "排课协调" || !row.parentAvailabilityRequest) {
+    redirect(appendQuery(back, { err: "no-parent-form" }));
+  }
+
+  const now = new Date();
+  const expiresAt = buildParentAvailabilityExpiresAt();
+
+  await prisma.$transaction([
+    prisma.parentAvailabilityRequest.update({
+      where: { ticketId: id },
+      data: {
+        token: createParentAvailabilityToken(),
+        isActive: true,
+        expiresAt,
+        submittedAt: null,
+        payloadJson: Prisma.JsonNull,
+      },
+    }),
+    prisma.ticket.update({
+      where: { id },
+      data: {
+        status: "Waiting Parent",
+        parentAvailability: schedulingCoordinationWaitingParentSummary(),
+        nextAction: schedulingCoordinationWaitingParentAction(),
+        nextActionDue: now,
+        lastUpdateAt: now,
+      },
+    }),
+  ]);
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/admin/todos");
+  redirect(appendQuery(back, { ok: "parent-link-regenerated" }));
+}
+
 export default async function AdminTicketDetailPage({
   params,
   searchParams,
@@ -343,9 +424,11 @@ export default async function AdminTicketDetailPage({
       parentAvailabilityRequest: {
         select: {
           token: true,
+          isActive: true,
           expiresAt: true,
           submittedAt: true,
           courseLabel: true,
+          payloadJson: true,
         },
       },
     },
@@ -358,6 +441,25 @@ export default async function AdminTicketDetailPage({
     ? `本类型必填：${template.requiredFields.map(getTicketFieldLabel).join("、")}`
     : "本类型无额外必填字段";
   const overdue = isTicketOverdue(row);
+  const parentAvailabilityPayload = row.parentAvailabilityRequest?.submittedAt
+    ? coerceParentAvailabilityPayload(row.parentAvailabilityRequest.payloadJson)
+    : null;
+  const parentAvailabilityRows = parentAvailabilityPayload
+    ? formatParentAvailabilityFieldRows(parentAvailabilityPayload)
+    : [];
+  const parentAvailabilityHref = row.parentAvailabilityRequest
+    ? buildParentAvailabilityPath(row.parentAvailabilityRequest.token)
+    : null;
+  const parentAvailabilityShareText = parentAvailabilityHref
+    ? buildParentAvailabilityShareText({
+        studentName: row.studentName,
+        courseLabel: row.parentAvailabilityRequest?.courseLabel ?? row.course,
+        url: `https://sgtmanage.com${parentAvailabilityHref}`,
+      })
+    : "";
+  const studentCoordinationHref = row.studentId
+    ? `/admin/students/${row.studentId}?focus=scheduling-coordination#scheduling-coordination`
+    : "";
   const flowNodes = [
     { key: "Need Info", label: "待补信息", caption: "Need Info" },
     { key: "Waiting Teacher", label: "等老师", caption: "Waiting Teacher" },
@@ -403,6 +505,8 @@ export default async function AdminTicketDetailPage({
           {err === "completed-locked" && "已完成工单不可修改，请使用归档 / Completed ticket is locked. Use archive."}
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
+          {err === "closed-parent-form" && "当前工单已关闭，不能再重生家长表单链接 / Closed tickets cannot regenerate parent links."}
+          {err === "no-parent-form" && "当前工单没有家长时间表单链接 / No parent form is attached to this ticket."}
           {err === "edit-required" && "编辑保存失败：学生、来源、类型、优先级、负责人必填 / Required fields missing."}
           {err === "edit-type-required" &&
             `编辑保存失败：该工单类型缺少必填字段 / Missing required fields for this ticket type${fields ? `: ${fields}` : ""}`}
@@ -422,6 +526,11 @@ export default async function AdminTicketDetailPage({
       {ok === "archived" ? (
         <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
           工单已归档 / Ticket archived
+        </div>
+      ) : null}
+      {ok === "parent-link-regenerated" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          家长时间表单链接已重生，当前工单已回到等待家长 / Parent availability link regenerated
         </div>
       ) : null}
 
@@ -559,18 +668,78 @@ export default async function AdminTicketDetailPage({
           </div>
 
           {row.parentAvailabilityRequest ? (
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>家长时间表单 / Parent Availability Form</div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div><b>状态</b>: {row.parentAvailabilityRequest.submittedAt ? "已提交 / Submitted" : "等待家长 / Waiting for parent"}</div>
-                <div><b>课程</b>: {asText(row.parentAvailabilityRequest.courseLabel)}</div>
-                <div><b>最近提交</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
-                <div><b>有效期</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
-                <div>
-                  <a href={buildParentAvailabilityPath(row.parentAvailabilityRequest.token)} target="_blank" rel="noreferrer">
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fbff", padding: 12, display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontWeight: 700 }}>排课协调控制台 / Scheduling Coordination Console</div>
+                <div
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    background: row.parentAvailabilityRequest.submittedAt ? "#dcfce7" : "#fef3c7",
+                    color: row.parentAvailabilityRequest.submittedAt ? "#166534" : "#92400e",
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {row.parentAvailabilityRequest.submittedAt ? "家长已提交 / Parent submitted" : "等待家长 / Waiting for parent"}
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
+                <div><b>课程 / Course</b>: {asText(row.parentAvailabilityRequest.courseLabel)}</div>
+                <div><b>最近提交 / Latest submission</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
+                <div><b>有效期 / Expires at</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
+                <div><b>下一步 / Next step</b>: {row.nextAction || "-"}</div>
+              </div>
+              {parentAvailabilityRows.length > 0 ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontWeight: 700 }}>家长最近提交 / Latest parent submission</div>
+                  <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+                    {parentAvailabilityRows.map((item) => (
+                      <div key={`${item.label}:${item.value}`} style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: 10 }}>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>{item.label}</div>
+                        <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: "#475569", fontSize: 13 }}>
+                  家长还没提交结构化时间偏好。先发链接，等家长提交后再根据老师 availability 继续排课。/ The parent has not submitted structured time preferences yet.
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {parentAvailabilityHref ? (
+                  <a href={parentAvailabilityHref} target="_blank" rel="noreferrer">
                     打开家长表单 / Open parent form
                   </a>
-                </div>
+                ) : null}
+                {parentAvailabilityHref ? (
+                  <CopyTextButton
+                    text={`https://sgtmanage.com${parentAvailabilityHref}`}
+                    label="复制链接 / Copy Link"
+                    copiedLabel="已复制链接 / Copied"
+                  />
+                ) : null}
+                {parentAvailabilityShareText ? (
+                  <CopyTextButton
+                    text={parentAvailabilityShareText}
+                    label="复制发送文案 / Copy Message"
+                    copiedLabel="已复制文案 / Copied"
+                  />
+                ) : null}
+                {studentCoordinationHref ? (
+                  <a href={studentCoordinationHref}>
+                    打开学生协调页 / Open student coordination
+                  </a>
+                ) : null}
+                <form action={regenerateParentAvailabilityAction}>
+                  <input type="hidden" name="id" value={row.id} />
+                  <input type="hidden" name="back" value={selfHref} />
+                  <button type="submit">重生家长链接 / Regenerate Link</button>
+                </form>
+              </div>
+              <div style={{ fontSize: 12, color: "#475569" }}>
+                默认规则：老师已提交的 availability 先作为可直接排课依据；只有家长要求时间不命中 availability 时，才回到老师做例外确认。/ Teacher availability stays the default scheduling source.
               </div>
             </div>
           ) : null}

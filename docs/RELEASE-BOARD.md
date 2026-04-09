@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r06` (parent availability touchpoint polish).
+- Current release line on this branch: `2026-04-09-r07` (scheduling coordination console and parent-message actions).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -104,6 +104,22 @@
   - Emily intake success state should show the new copy/send guidance
   - parent `/availability/[token]` should render the new helper panels and updated form inputs
   - `赵测试` real-flow QA should confirm the returned `parentAvailabilityUrl` uses the public `sgtmanage.com` host
+
+## 2026-04-09-r07 Deployed
+
+- Scope: upgrade scheduling coordination from a basic summary into a more complete operator console with reusable parent-link actions, structured parent submission summaries, and copyable parent-message text from both tickets and student detail pages.
+- Business impact:
+  - `/admin/tickets/[id]` now shows a richer `Scheduling Coordination Console` with clear waiting-vs-submitted status, latest parent submission details, direct parent-form open/copy actions, and one-click link regeneration
+  - `/admin/students/[id]` now mirrors those parent-link controls so ops can work from the student page without jumping back to the ticket center
+  - generated availability candidate slots, exact-match special requests, and nearest alternatives now include `Copy Message` actions that produce ready-to-send parent wording
+  - submitted parent availability is rendered as structured summary rows instead of a raw blob, making it easier for ops to scan the family constraints before scheduling
+  - no ticket token model, quick schedule execution, session creation, attendance, package, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - admin `/admin/tickets/[id]` should show the new coordination console actions and latest parent summary
+  - admin `/admin/students/[id]` should show matching parent-link actions and summary rows on the scheduling coordination card
+  - `赵测试` style live QA should confirm slot cards expose `Copy Message` actions and parent-link regeneration returns a fresh public `/availability/...` URL
 
 ## 2026-04-08-r02 Deployed
 

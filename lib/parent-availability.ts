@@ -21,6 +21,11 @@ export type ParentAvailabilityPayload = {
   notes: string | null;
 };
 
+export type ParentAvailabilityFieldRow = {
+  label: string;
+  value: string;
+};
+
 function trimToNull(value: FormDataEntryValue | null, max: number) {
   const text = String(value ?? "").trim();
   if (!text) return null;
@@ -76,6 +81,71 @@ export function parseParentAvailabilityFormData(formData: FormData): ParentAvail
   };
 }
 
+export function coerceParentAvailabilityPayload(value: unknown): ParentAvailabilityPayload {
+  const payload = (value ?? {}) as Partial<ParentAvailabilityPayload>;
+  return {
+    weekdays: Array.isArray(payload.weekdays) ? payload.weekdays.map((item) => String(item)) : [],
+    timeRanges: Array.isArray(payload.timeRanges)
+      ? payload.timeRanges
+          .map((item) => ({
+            start: typeof item?.start === "string" ? item.start : "",
+            end: typeof item?.end === "string" ? item.end : "",
+          }))
+          .filter((item) => item.start && item.end)
+      : [],
+    earliestStartDate: typeof payload.earliestStartDate === "string" ? payload.earliestStartDate : null,
+    modePreference: typeof payload.modePreference === "string" ? payload.modePreference : null,
+    teacherPreference: typeof payload.teacherPreference === "string" ? payload.teacherPreference : null,
+    notes: typeof payload.notes === "string" ? payload.notes : null,
+  };
+}
+
+export function formatParentAvailabilityFieldRows(payload: ParentAvailabilityPayload): ParentAvailabilityFieldRow[] {
+  const weekdayLabelMap = new Map<string, string>(
+    PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => [option.value, `${option.zh} / ${option.en}`])
+  );
+  const rows: ParentAvailabilityFieldRow[] = [];
+
+  if (payload.weekdays.length > 0) {
+    rows.push({
+      label: "Available weekdays / 可上课星期",
+      value: payload.weekdays.map((value) => weekdayLabelMap.get(value) ?? value).join("、"),
+    });
+  }
+  if (payload.timeRanges.length > 0) {
+    rows.push({
+      label: "Preferred time ranges / 常用可上课时间段",
+      value: payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("；"),
+    });
+  }
+  if (payload.earliestStartDate) {
+    rows.push({
+      label: "Earliest start date / 最早可开始日期",
+      value: payload.earliestStartDate,
+    });
+  }
+  if (payload.modePreference) {
+    rows.push({
+      label: "Mode preference / 上课形式偏好",
+      value: payload.modePreference,
+    });
+  }
+  if (payload.teacherPreference) {
+    rows.push({
+      label: "Teacher preference / 老师偏好",
+      value: payload.teacherPreference,
+    });
+  }
+  if (payload.notes) {
+    rows.push({
+      label: "Notes / 备注",
+      value: payload.notes,
+    });
+  }
+
+  return rows;
+}
+
 export function summarizeParentAvailabilityPayload(payload: ParentAvailabilityPayload) {
   const weekdayLabelMap = new Map<string, string>(
     PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => [option.value, `${option.zh}/${option.en}`])
@@ -113,4 +183,25 @@ export function hasParentAvailabilityPayloadContent(payload: ParentAvailabilityP
       payload.teacherPreference ||
       payload.notes
   );
+}
+
+export function buildParentAvailabilityShareText(args: {
+  studentName: string;
+  courseLabel?: string | null;
+  url: string;
+}) {
+  const courseLine = args.courseLabel ? `课程 / Course: ${args.courseLabel}` : "";
+  return [
+    `您好，请帮忙填写 ${args.studentName} 的可上课时间。`,
+    courseLine,
+    "这只是时间收集表，不代表已经排课成功。",
+    "",
+    `Hello, please share the available lesson times for ${args.studentName}.`,
+    args.courseLabel ? `Course: ${args.courseLabel}` : "",
+    "This form only collects available times. It does not confirm the final schedule by itself.",
+    "",
+    args.url,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
