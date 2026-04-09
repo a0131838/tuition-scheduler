@@ -3500,3 +3500,25 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - generated coordination slots, matched special-time results, and alternative slots now render as action cards with direct `Use in Quick Schedule` entry points
 - Rollback point: previous production commit before `2026-04-09-r03`.
+
+## 2026-04-10-r01
+
+- Release ID: `2026-04-10-r01`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: add a separate parent package Statement of Account PDF and clarify that formal receipt PDFs only unlock after full manager and finance approval.
+- Key files:
+  - `app/api/exports/parent-statement/[id]/route.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release adds a read-only finance PDF and clearer export copy, but it does not change invoice creation, receipt approvals, package balances, settlement, or deduction logic.
+- Verification:
+  - `npm run build` passed
+  - finance invoice workbench now exposes `Statement of Account PDF` for a selected package
+  - package billing now exposes the same statement export and clearer receipt export wording
+  - receipt PDF export still requires full manager and finance approval
+- Rollback point: previous production commit before `2026-04-10-r01`.

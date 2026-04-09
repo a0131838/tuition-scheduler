@@ -173,6 +173,11 @@ export default async function PackageBillingPage({
         <div><b>{t(lang, "Course", "课程")}:</b> {pkg.course.name}</div>
         <div><b>{t(lang, "Package Id", "课包ID")}:</b> {pkg.id}</div>
         <div><b>{t(lang, "Paid", "已付款")}:</b> {pkg.paid ? t(lang, "Yes", "是") : t(lang, "No", "否")} / {money(pkg.paidAmount)}</div>
+        <div style={{ marginTop: 8 }}>
+          <a href={`/api/exports/parent-statement/${encodeURIComponent(packageId)}`}>
+            {t(lang, "Export Statement of Account PDF", "导出对账单 PDF")}
+          </a>
+        </div>
       </div>
 
       <h3>{t(lang, "Create Invoice", "创建 Invoice")}</h3>
@@ -314,7 +319,9 @@ export default async function PackageBillingPage({
                     {exportReady ? (
                       <a href={`/api/exports/parent-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
                     ) : (
-                      <span style={{ color: "#b45309" }}>Pending approval</span>
+                      <span style={{ color: "#b45309" }}>
+                        {t(lang, "Receipt PDF available after manager and finance approval", "收据 PDF 需经理和财务审批完成后导出")}
+                      </span>
                     )}
                   </td>
                   <td>

@@ -204,7 +204,16 @@ export default async function FinanceStudentPackageInvoicePage({
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {t(lang, "Select a package to load the actual paid and invoiced totals.", "请选择课时包，以加载实际已缴费和已开票金额。")}
           </div>
-        ) : null}
+        ) : (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
+            <a href={`/api/exports/parent-statement/${encodeURIComponent(selectedPackage.id)}`}>
+              {t(lang, "Export Statement of Account PDF", "导出对账单 PDF")}
+            </a>
+            <a href={`/admin/packages/${encodeURIComponent(selectedPackage.id)}/billing`}>
+              {t(lang, "Open full package billing", "打开完整课包账单页")}
+            </a>
+          </div>
+        )}
       </div>
 
       <form method="get" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, display: "grid", gap: 8 }}>
@@ -273,6 +282,9 @@ export default async function FinanceStudentPackageInvoicePage({
             </label>
             <div>
               <button type="submit">{t(lang, "Confirm and issue invoice", "确认并开票")}</button>
+              <a href={`/api/exports/parent-statement/${encodeURIComponent(selectedPackage.id)}`} style={{ marginLeft: 10 }}>
+                {t(lang, "Export Statement of Account PDF", "导出对账单 PDF")}
+              </a>
               <a href={`/admin/packages/${encodeURIComponent(selectedPackage.id)}/billing`} style={{ marginLeft: 10 }}>
                 {t(lang, "Open full package billing", "打开完整课包账单页")}
               </a>

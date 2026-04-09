@@ -1977,3 +1977,17 @@
   - `npm run build`
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
+
+## 2026-04-10-r01 Ready
+
+- Scope: add a read-only `Statement of Account / 对账单` PDF for one parent package and make receipt-export gating much clearer to finance users.
+- Business impact:
+  - `/api/exports/parent-statement/[id]` now generates a finance-facing package statement that lists invoice transactions, approved receipt payments, running balance, pending receipts not yet counted, and the current balance owing
+  - `/admin/finance/student-package-invoices` now exposes a direct statement export link once a package is selected, so finance can export the package statement without jumping into another workflow first
+  - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
+  - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
+  - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - verify statement export works from both finance invoice workbench and package billing
+  - verify unapproved receipts are shown as pending and still excluded from formal paid totals

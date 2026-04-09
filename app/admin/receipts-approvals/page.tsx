@@ -2438,7 +2438,9 @@ export default async function ReceiptsApprovalsPage({
                 {selectedRow.status === "COMPLETED" ? (
                   <a href={selectedRow.exportHref}>{t(lang, "Export PDF", "导出PDF")}</a>
                 ) : (
-                  <span style={{ color: "#b45309" }}>{t(lang, "Pending approval", "等待审批")}</span>
+                  <span style={{ color: "#b45309" }}>
+                    {t(lang, "Formal receipt PDF is available after manager and finance approval", "正式收据 PDF 需经理和财务审批完成后导出")}
+                  </span>
                 )}
               </div>
 
