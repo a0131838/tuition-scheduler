@@ -121,7 +121,7 @@
   - admin `/admin/students/[id]` should show matching parent-link actions and summary rows on the scheduling coordination card
   - `赵测试` style live QA should confirm slot cards expose `Copy Message` actions and parent-link regeneration returns a fresh public `/availability/...` URL
 
-## 2026-04-09-r08 Ready
+## 2026-04-09-r08 Deployed
 
 - Scope: make the scheduling coordination operator console availability-aware by comparing the latest parent-submitted preferences against teacher availability and surfacing either direct matches or nearest alternatives inside the admin ticket detail page.
 - Business impact:

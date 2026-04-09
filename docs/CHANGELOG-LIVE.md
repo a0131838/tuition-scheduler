@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-04-09-r08`
 - Date/Time (Asia/Shanghai): `2026-04-09`
-- Deployment status: `READY`
+- Deployment status: `LIVE` after deploy completion
 - Scope: make the scheduling coordination console more actionable by showing availability-backed results directly against the latest parent submission, including matching slots when the family's submitted times already fit current teacher availability and nearest alternatives when they do not.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
