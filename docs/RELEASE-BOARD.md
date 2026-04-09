@@ -1816,3 +1816,17 @@
   - `npm run build`
   - post-deploy startup check
   - `/teacher/scheduling-exceptions` route should be present in the production build and protected by the normal teacher login flow
+
+## 2026-04-09-r03 Deployed
+
+- Scope: turn student-detail scheduling coordination results into action cards and let ops jump straight from a suggested slot into `Quick Schedule` with the same time and suggested teacher already carried over.
+- Business impact:
+  - generated candidate slots now render as readable cards instead of plain rows, so ops can scan date, time, teacher, and action much faster during parent follow-up
+  - matching special-time results and nearest alternatives use the same card pattern, so there is one consistent path whether the parent request already fits availability or needs a fallback
+  - `Quick Schedule` now respects a carried-over suggested teacher and floats that teacher to the top of the eligible list, reducing one more manual step for ops
+  - if campus or subject still needs one extra confirmation, the card now says so explicitly before opening `Quick Schedule`
+  - no teacher availability rules, session-creation endpoints, booking links, attendance, package balances, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives

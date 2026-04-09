@@ -3254,3 +3254,22 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - teacher portal now includes `Scheduling Exceptions / 排课例外确认`, and the page only lists scheduling coordination tickets in `Waiting Teacher` or `Exception`
 - Rollback point: previous production commit before `2026-04-09-r02`.
+
+## 2026-04-09-r03
+
+- Release ID: `2026-04-09-r03`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make student-detail scheduling coordination much more direct by turning generated slots and availability-backed alternatives into action cards that can jump straight into `Quick Schedule` with the same suggested time and preferred teacher already carried over.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-slot-cards-and-quick-schedule-bridge.md`
+- Risk impact (if any): Low. This release only changes student-detail coordination helper presentation and how suggested slots prefill `Quick Schedule`; it does not change teacher availability rules, actual session creation APIs, booking links, attendance, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - generated coordination slots, matched special-time results, and alternative slots now render as action cards with direct `Use in Quick Schedule` entry points
+- Rollback point: previous production commit before `2026-04-09-r03`.

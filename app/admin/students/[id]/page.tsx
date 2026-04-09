@@ -372,6 +372,10 @@ function fmtDatetimeLocal(d: Date) {
   return `${y}-${m}-${dd}T${hh}:${mm}`;
 }
 
+function uniqueDefined(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
 function parseMonth(s?: string) {
   if (!s) return null;
   const m = s.match(/^(\d{4})-(\d{2})$/);
@@ -1241,6 +1245,7 @@ export default async function StudentDetailPage({
   const quickDurationMin = Math.max(15, toInt(sp?.quickDurationMin, 60));
   const quickCampusId = sp?.quickCampusId ?? "";
   const quickRoomId = sp?.quickRoomId ?? "";
+  const quickTeacherId = sp?.quickTeacherId ?? "";
   const monthParam = sp?.month ?? "";
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
@@ -1395,6 +1400,59 @@ export default async function StudentDetailPage({
       )}`
     : null;
   const coordinationTeacherOptions = buildSchedulingCoordinationTeacherOptions({ enrollments, teachers });
+  const coordinationDefaultSubjectId = uniqueDefined(
+    enrollments.map((enrollment) => enrollment.class.subjectId)
+  );
+  const coordinationDefaultCampusIds = uniqueDefined(
+    enrollments.map((enrollment) => enrollment.class.campusId)
+  );
+  const coordinationDefaultCampusId = coordinationDefaultCampusIds.length === 1 ? coordinationDefaultCampusIds[0]! : "";
+  const coordinationDefaultCampus = coordinationDefaultCampusId
+    ? campuses.find((campus) => campus.id === coordinationDefaultCampusId) ?? null
+    : null;
+  const coordinationDefaultRoomIds = coordinationDefaultCampusId
+    ? uniqueDefined(
+        enrollments
+          .filter((enrollment) => enrollment.class.campusId === coordinationDefaultCampusId)
+          .map((enrollment) => enrollment.class.roomId)
+      )
+    : [];
+  const coordinationDefaultRoomId =
+    coordinationDefaultCampus && campusRequiresRoom(coordinationDefaultCampus) && coordinationDefaultRoomIds.length === 1
+      ? coordinationDefaultRoomIds[0]!
+      : "";
+  const coordinationSlotDefaultsByTeacher = new Map<
+    string,
+    { subjectId: string; campusId: string; roomId: string }
+  >();
+  for (const option of coordinationTeacherOptions) {
+    const teacherMatchedEnrollments = enrollments.filter((enrollment) => {
+      if (option.subjectId && enrollment.class.subjectId !== option.subjectId) return false;
+      return enrollment.class.teacherId === option.teacherId;
+    });
+    const matchingEnrollments = teacherMatchedEnrollments.length > 0
+      ? teacherMatchedEnrollments
+      : enrollments.filter((enrollment) => (option.subjectId ? enrollment.class.subjectId === option.subjectId : true));
+    const campusIds = uniqueDefined(matchingEnrollments.map((enrollment) => enrollment.class.campusId));
+    const campusId =
+      campusIds.length === 1
+        ? campusIds[0]!
+        : coordinationDefaultCampusId;
+    const campus = campusId ? campuses.find((item) => item.id === campusId) ?? null : null;
+    const roomIds = campusId
+      ? uniqueDefined(
+          matchingEnrollments
+            .filter((enrollment) => enrollment.class.campusId === campusId)
+            .map((enrollment) => enrollment.class.roomId)
+        )
+      : [];
+    const roomId = campus && campusRequiresRoom(campus) && roomIds.length === 1 ? roomIds[0]! : "";
+    coordinationSlotDefaultsByTeacher.set(option.teacherId, {
+      subjectId: option.subjectId ?? (coordinationDefaultSubjectId.length === 1 ? coordinationDefaultSubjectId[0]! : ""),
+      campusId,
+      roomId,
+    });
+  }
   const coordinationPreservedEntries = Object.entries(sp ?? {}).filter(
     ([key, value]) =>
       Boolean(value) &&
@@ -1407,6 +1465,7 @@ export default async function StudentDetailPage({
         "coordSpecialStartAt",
         "coordSpecialDurationMin",
         "coordCheckSpecial",
+        "quickTeacherId",
       ].includes(key)
   ) as Array<[string, string]>;
   const coordinationClearParams = new URLSearchParams();
@@ -1527,6 +1586,24 @@ export default async function StudentDetailPage({
           durationMin: effectiveSpecialDurationMin,
         })
       : null;
+  const buildQuickScheduleHrefForCoordinationSlot = (slot: {
+    teacherId: string;
+    startAt: Date;
+    endAt: Date;
+  }) => {
+    const params = new URLSearchParams();
+    if (monthParam) params.set("month", monthParam);
+    params.set("quickOpen", "1");
+    params.set("focus", "quick-schedule");
+    params.set("quickTeacherId", slot.teacherId);
+    params.set("quickStartAt", fmtDatetimeLocal(slot.startAt));
+    params.set("quickDurationMin", String(Math.max(15, Math.round((slot.endAt.getTime() - slot.startAt.getTime()) / 60000))));
+    const defaults = coordinationSlotDefaultsByTeacher.get(slot.teacherId);
+    if (defaults?.subjectId) params.set("quickSubjectId", defaults.subjectId);
+    if (defaults?.campusId) params.set("quickCampusId", defaults.campusId);
+    if (defaults?.roomId) params.set("quickRoomId", defaults.roomId);
+    return buildStudentDetailHref(studentId, params, "#quick-schedule", "#quick-schedule");
+  };
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packageIds = packages.map((p) => p.id);
@@ -1726,6 +1803,20 @@ export default async function StudentDetailPage({
           continue;
         }
         quickCandidates.push({ id: tch.id, name: tch.name, ok: true });
+      }
+      if (quickTeacherId) {
+        quickCandidates.sort((a, b) => {
+          const aPriority = a.id === quickTeacherId ? 0 : 1;
+          const bPriority = b.id === quickTeacherId ? 0 : 1;
+          if (aPriority !== bPriority) return aPriority - bPriority;
+          if (a.ok !== b.ok) return a.ok ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+      } else {
+        quickCandidates.sort((a, b) => {
+          if (a.ok !== b.ok) return a.ok ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
       }
     }
   }
@@ -2159,21 +2250,64 @@ export default async function StudentDetailPage({
                   {generatedCoordinationSlots.length > 0 ? (
                     <div style={{ display: "grid", gap: 8 }}>
                       {generatedCoordinationSlots.map((slot) => (
+                        (() => {
+                          const slotDefaults = coordinationSlotDefaultsByTeacher.get(slot.teacherId);
+                          const quickScheduleReady = Boolean(slotDefaults?.subjectId && slotDefaults?.campusId);
+                          return (
                         <div
                           key={slot.slotKey}
-                          style={{ border: "1px solid #bfdbfe", borderRadius: 10, padding: 10, background: "#fff", display: "grid", gap: 4 }}
+                          style={{ border: "1px solid #bfdbfe", borderRadius: 12, padding: 12, background: "#fff", display: "grid", gap: 8 }}
                         >
-                          <div style={{ fontWeight: 800 }}>
-                            {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
-                          </div>
-                          <div style={{ color: "#334155", fontSize: 13 }}>
-                            {slot.teacherName}
-                            {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 800 }}>
+                                {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                              </div>
+                              <div style={{ color: "#334155", fontSize: 13 }}>
+                                {slot.teacherName}
+                                {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                                background: "#dbeafe",
+                                color: "#1d4ed8",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {t(lang, "Availability-ready", "老师 availability 可直接用")}
+                            </div>
                           </div>
                           <div style={{ color: "#64748b", fontSize: 12 }}>
-                            {t(lang, "Availability-backed option", "基于 availability 的可排时间")}
+                            {t(lang, "Use this option directly with the parent, then open Quick Schedule with the same time.", "这就是可直接发给家长的时间，确认后可直接带着同一时间进入排课。")}
+                          </div>
+                          {!quickScheduleReady ? (
+                            <div style={{ color: "#b45309", fontSize: 12 }}>
+                              {t(lang, "Quick Schedule will still open, but campus or subject needs one more selection before finding teachers.", "可以直接打开排课弹窗，但校区或科目还需要补选一次，系统才能继续匹配老师。")}
+                            </div>
+                          ) : null}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <a
+                              href={buildQuickScheduleHrefForCoordinationSlot(slot)}
+                              style={{ padding: "8px 12px", borderRadius: 10, background: "#2563eb", color: "#fff", textDecoration: "none", fontWeight: 700 }}
+                            >
+                              {t(lang, "Use in Quick Schedule", "用这个时间去排课")}
+                            </a>
+                            {schedulingTicketHref ? (
+                              <a
+                                href={schedulingTicketHref}
+                                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                              >
+                                {t(lang, "Update coordination ticket", "更新排课协调工单")}
+                              </a>
+                            ) : null}
                           </div>
                         </div>
+                          );
+                        })()
                       ))}
                     </div>
                   ) : (
@@ -2244,18 +2378,64 @@ export default async function StudentDetailPage({
               ) : null}
               {coordCheckSpecial && effectiveSpecialStartAt ? (
                 specialRequestCheck?.matches?.length ? (
-                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 10, padding: 10, background: "#fff" }}>
-                    <div style={{ fontWeight: 800, color: "#166534" }}>
-                      {t(lang, "This request matches submitted availability", "这个时间命中了老师已提交的 availability")}
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ border: "1px solid #bbf7d0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                      <div style={{ fontWeight: 800, color: "#166534" }}>
+                        {t(lang, "This request matches submitted availability", "这个时间命中了老师已提交的 availability")}
+                      </div>
                     </div>
-                    <div style={{ color: "#475569", marginTop: 4 }}>
-                      {specialRequestCheck.matches
-                        .map(
-                          (slot) =>
-                            `${slot.teacherName} | ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`
-                        )
-                        .join(" / ")}
-                    </div>
+                    {specialRequestCheck.matches.map((slot) => {
+                      const slotDefaults = coordinationSlotDefaultsByTeacher.get(slot.teacherId);
+                      const quickScheduleReady = Boolean(slotDefaults?.subjectId && slotDefaults?.campusId);
+                      return (
+                        <div key={`match-${slot.slotKey}`} style={{ border: "1px solid #bbf7d0", borderRadius: 12, padding: 12, background: "#fff", display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+                            <div style={{ display: "grid", gap: 4 }}>
+                              <div style={{ fontWeight: 800 }}>
+                                {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                              </div>
+                              <div style={{ color: "#475569" }}>
+                                {slot.teacherName}
+                                {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                                background: "#dcfce7",
+                                color: "#166534",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {t(lang, "Ready to schedule", "可以直接排课")}
+                            </div>
+                          </div>
+                          {!quickScheduleReady ? (
+                            <div style={{ color: "#b45309", fontSize: 12 }}>
+                              {t(lang, "This match is real, but campus or subject still needs one more confirmation in Quick Schedule.", "这个匹配时间真实可用，但校区或科目还需要在排课弹窗里再确认一次。")}
+                            </div>
+                          ) : null}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <a
+                              href={buildQuickScheduleHrefForCoordinationSlot(slot)}
+                              style={{ padding: "8px 12px", borderRadius: 10, background: "#16a34a", color: "#fff", textDecoration: "none", fontWeight: 700 }}
+                            >
+                              {t(lang, "Schedule this requested time", "用这个家长要求时间去排课")}
+                            </a>
+                            {schedulingTicketHref ? (
+                              <a
+                                href={schedulingTicketHref}
+                                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                              >
+                                {t(lang, "Update coordination ticket", "更新排课协调工单")}
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div style={{ display: "grid", gap: 8 }}>
@@ -2275,15 +2455,61 @@ export default async function StudentDetailPage({
                       <div style={{ display: "grid", gap: 8 }}>
                         <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Nearest availability-backed alternatives", "最近的 availability 替代时间")}</div>
                         {specialRequestCheck.alternatives.map((slot) => (
-                          <div key={`alt-${slot.slotKey}`} style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fff" }}>
-                            <div style={{ fontWeight: 800 }}>
-                              {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                          (() => {
+                            const slotDefaults = coordinationSlotDefaultsByTeacher.get(slot.teacherId);
+                            const quickScheduleReady = Boolean(slotDefaults?.subjectId && slotDefaults?.campusId);
+                            return (
+                          <div
+                            key={`alt-${slot.slotKey}`}
+                            style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fff", display: "grid", gap: 8 }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+                              <div style={{ display: "grid", gap: 4 }}>
+                                <div style={{ fontWeight: 800 }}>
+                                  {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                                </div>
+                                <div style={{ color: "#475569" }}>
+                                  {slot.teacherName}
+                                  {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  padding: "4px 8px",
+                                  borderRadius: 999,
+                                  background: "#fef3c7",
+                                  color: "#b45309",
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {t(lang, "Nearest alternative", "最近替代时间")}
+                              </div>
                             </div>
-                            <div style={{ color: "#475569", marginTop: 4 }}>
-                              {slot.teacherName}
-                              {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                            {!quickScheduleReady ? (
+                              <div style={{ color: "#b45309", fontSize: 12 }}>
+                                {t(lang, "This alternative can open Quick Schedule directly, but campus or subject still needs one more confirmation.", "这个替代时间可以直接打开排课弹窗，但校区或科目还需要再确认一次。")}
+                              </div>
+                            ) : null}
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <a
+                                href={buildQuickScheduleHrefForCoordinationSlot(slot)}
+                                style={{ padding: "8px 12px", borderRadius: 10, background: "#2563eb", color: "#fff", textDecoration: "none", fontWeight: 700 }}
+                              >
+                                {t(lang, "Use this instead", "改用这个时间排课")}
+                              </a>
+                              {schedulingTicketHref ? (
+                                <a
+                                  href={schedulingTicketHref}
+                                  style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                                >
+                                  {t(lang, "Record in ticket", "回工单记录")}
+                                </a>
+                              ) : null}
                             </div>
                           </div>
+                            );
+                          })()
                         ))}
                       </div>
                     ) : null}
@@ -2965,6 +3191,7 @@ export default async function StudentDetailPage({
           quickDurationMin={quickDurationMin}
           quickCampusId={quickCampusId}
           quickRoomId={quickRoomId}
+          quickTeacherId={quickTeacherId}
           openOnLoad={quickOpen || focus === "quick-schedule"}
           subjects={quickSubjects.map((s) => ({
             id: s.id,

@@ -94,6 +94,7 @@ export default function QuickScheduleModal({
   quickDurationMin,
   quickCampusId,
   quickRoomId,
+  quickTeacherId,
   subjects,
   levels,
   campuses,
@@ -114,6 +115,7 @@ export default function QuickScheduleModal({
   quickDurationMin: number;
   quickCampusId: string;
   quickRoomId: string;
+  quickTeacherId: string;
   subjects: SubjectOption[];
   levels: LevelOption[];
   campuses: CampusOption[];
@@ -232,6 +234,7 @@ export default function QuickScheduleModal({
         const params = new URLSearchParams(searchParams?.toString() ?? "");
         params.delete("err");
         params.delete("quickOpen");
+        params.delete("quickTeacherId");
         params.delete("quickCourseId");
         params.delete("quickSubjectId");
         params.delete("quickLevelId");
@@ -351,6 +354,16 @@ export default function QuickScheduleModal({
     if (!campusId) return rooms;
     return rooms.filter((r) => r.campusId === campusId);
   }, [rooms, campusId]);
+  const orderedCandidates = useMemo(() => {
+    if (!quickTeacherId) return candidates;
+    return [...candidates].sort((a, b) => {
+      const aPriority = a.id === quickTeacherId ? 0 : 1;
+      const bPriority = b.id === quickTeacherId ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      if (a.ok !== b.ok) return a.ok ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [candidates, quickTeacherId]);
 
   useEffect(() => {
     if (openOnLoad) {
@@ -409,6 +422,7 @@ export default function QuickScheduleModal({
     const params = new URLSearchParams();
     params.set("month", month);
     params.set("quickOpen", "1");
+    if (quickTeacherId) params.set("quickTeacherId", quickTeacherId);
     if (courseId) params.set("quickCourseId", courseId);
     if (subjectId) params.set("quickSubjectId", subjectId);
     if (levelId) params.set("quickLevelId", levelId);
@@ -686,9 +700,16 @@ export default function QuickScheduleModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.map((c) => (
+                  {orderedCandidates.map((c) => (
                     <tr key={c.id} style={{ borderTop: "1px solid #eee" }}>
-                      <td>{c.name}</td>
+                      <td>
+                        <div style={{ display: "grid", gap: 4 }}>
+                          <div>{c.name}</div>
+                          {quickTeacherId && c.id === quickTeacherId ? (
+                            <div style={{ fontSize: 12, color: "#1d4ed8", fontWeight: 700 }}>Suggested from coordination</div>
+                          ) : null}
+                        </div>
+                      </td>
                       <td style={{ color: c.ok ? "#0a7" : "#b00", fontWeight: c.ok ? 600 : 400 }}>
                         {c.ok ? labels.available : c.reason}
                       </td>
