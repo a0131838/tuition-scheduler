@@ -31,6 +31,7 @@ This file is the single source of truth for what changed in production.
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
   - `https://sgtmanage.com/admin/login` must return `200`
   - creating a scheduling coordination ticket through the external intake link should now return a parent link under `https://sgtmanage.com/availability/...`
+  - real `赵测试` intake QA should confirm the returned `parentAvailabilityUrl` no longer uses `localhost`
 - Rollback point: previous production commit before `2026-04-09-r05`.
 
 ## 2026-04-09-r04

@@ -89,6 +89,7 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - a real intake submission should now return `https://sgtmanage.com/availability/...` in the JSON payload
+  - `赵测试` real-flow QA should confirm the returned `parentAvailabilityUrl` uses the public `sgtmanage.com` host
 
 ## 2026-04-08-r02 Deployed
 
