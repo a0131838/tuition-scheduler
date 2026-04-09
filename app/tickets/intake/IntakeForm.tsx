@@ -91,6 +91,7 @@ export default function IntakeForm({
   const [situationAction, setSituationAction] = useState("");
   const [proofUrls, setProofUrls] = useState<string[]>([]);
   const [submittedParentAvailability, setSubmittedParentAvailability] = useState<{
+    ticketId: string;
     ticketNo: string;
     url: string;
     expiresAt: string | null;
@@ -263,7 +264,33 @@ export default function IntakeForm({
             家长时间填写链接已生成 / Parent availability link ready
           </div>
           <div style={{ fontSize: 13, color: "#166534" }}>
-            工单 {submittedParentAvailability.ticketNo} 已创建。现在可以直接把下面这个临时链接发给家长填写可上课时间。
+            工单 {submittedParentAvailability.ticketNo} 已创建。现在可以直接把下面这个临时链接发给家长，让家长填写可上课时间。
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            }}
+          >
+            <div style={{ border: "1px solid #86efac", borderRadius: 8, background: "#fff", padding: 10 }}>
+              <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>Step 1 / 第一步</div>
+              <div style={{ fontSize: 13, color: "#166534", marginTop: 4 }}>
+                复制链接并发给家长。/ Copy this link and send it to the parent.
+              </div>
+            </div>
+            <div style={{ border: "1px solid #86efac", borderRadius: 8, background: "#fff", padding: 10 }}>
+              <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>Step 2 / 第二步</div>
+              <div style={{ fontSize: 13, color: "#166534", marginTop: 4 }}>
+                家长填完后，系统会自动回写到这张排课协调工单。/ Once submitted, the result flows back into this scheduling ticket automatically.
+              </div>
+            </div>
+            <div style={{ border: "1px solid #86efac", borderRadius: 8, background: "#fff", padding: 10 }}>
+              <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>Step 3 / 第三步</div>
+              <div style={{ fontSize: 13, color: "#166534", marginTop: 4 }}>
+                教务再根据老师 availability 继续排课。/ Ops can continue scheduling from teacher availability afterwards.
+              </div>
+            </div>
           </div>
           <div
             style={{
@@ -278,7 +305,7 @@ export default function IntakeForm({
           >
             {submittedParentAvailability.url}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <button
               type="button"
               onClick={async () => {
@@ -292,6 +319,24 @@ export default function IntakeForm({
             >
               复制链接 / Copy Link
             </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const shareText = [
+                  "您好，这里是课程时间收集表，请填写您方便上课的时间。",
+                  "This form collects your available lesson times.",
+                  submittedParentAvailability.url,
+                ].join("\n");
+                try {
+                  await navigator.clipboard.writeText(shareText);
+                  setMsg(`已复制发送文案 / Copied parent message: ${submittedParentAvailability.ticketNo}`);
+                } catch {
+                  setErr("复制发送文案失败，请手动复制 / Copy message failed, please copy manually");
+                }
+              }}
+            >
+              复制发送文案 / Copy Message
+            </button>
             <a
               href={submittedParentAvailability.url}
               target="_blank"
@@ -301,10 +346,11 @@ export default function IntakeForm({
               打开家长页 / Open Parent Form
             </a>
           </div>
-          <div style={{ fontSize: 12, color: "#166534" }}>
+          <div style={{ fontSize: 12, color: "#166534", display: "grid", gap: 4 }}>
             {submittedParentAvailability.expiresAt
               ? `有效期至 / Expires at: ${formatBusinessDateTime(new Date(submittedParentAvailability.expiresAt))}`
               : "默认短期有效 / Temporary link"}
+            <span>请提醒家长：这是时间收集表，不代表已经排课成功。/ Please remind the parent that this is only a time-preference form, not a confirmed schedule.</span>
           </div>
         </div>
       ) : null}
@@ -376,6 +422,7 @@ export default function IntakeForm({
             setSubmittedParentAvailability(
               data?.parentAvailabilityUrl
                 ? {
+                    ticketId: String(data.id),
                     ticketNo: String(data.ticketNo),
                     url: String(data.parentAvailabilityUrl),
                     expiresAt: data.parentAvailabilityExpiresAt ? String(data.parentAvailabilityExpiresAt) : null,

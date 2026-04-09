@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r05` (intake parent-link origin hotfix).
+- Current release line on this branch: `2026-04-09-r06` (parent availability touchpoint polish).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -89,6 +89,20 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - a real intake submission should now return `https://sgtmanage.com/availability/...` in the JSON payload
+
+## 2026-04-09-r06 Deployed
+
+- Scope: make the Emily intake success state and the parent availability form easier to use without changing the underlying coordination flow.
+- Business impact:
+  - after creating a `Scheduling Coordination / 排课协调` ticket, Emily now sees a clearer handoff panel with step-by-step guidance, a direct copy-link action, and a copyable bilingual parent-message snippet
+  - the public `/availability/[token]` page now explains more clearly that it only collects available times rather than confirming a lesson schedule
+  - the parent form now has friendlier section guidance and more touch-friendly inputs for date, time, and preference fields
+  - no token creation, ticket status, parent-availability storage, scheduling coordination logic, quick schedule, attendance, package, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - Emily intake success state should show the new copy/send guidance
+  - parent `/availability/[token]` should render the new helper panels and updated form inputs
   - `赵测试` real-flow QA should confirm the returned `parentAvailabilityUrl` uses the public `sgtmanage.com` host
 
 ## 2026-04-08-r02 Deployed

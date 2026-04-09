@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r06
+
+- Release ID: `2026-04-09-r06`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: polish the external coordination touchpoints so Emily gets a clearer parent-link handoff panel after ticket submit and families see a simpler, more mobile-friendly availability form that explains the process more clearly.
+- Key files:
+  - `app/tickets/intake/IntakeForm.tsx`
+  - `app/availability/[token]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-parent-availability-touchpoint-polish.md`
+- Risk impact (if any): Low. This release only changes the intake success UI and the public parent-availability form presentation; it does not change token generation, ticket creation, parent submission storage, scheduling logic, or finance flows.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - Emily intake success state should show clearer copy/share guidance after creating a scheduling coordination ticket
+  - parent `/availability/[token]` should load the new guidance blocks and the friendlier input layout
+- Rollback point: previous production commit before `2026-04-09-r06`.
+
 ## 2026-04-09-r05
 
 - Release ID: `2026-04-09-r05`

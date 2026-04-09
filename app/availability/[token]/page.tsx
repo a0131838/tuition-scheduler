@@ -157,6 +157,37 @@ export default async function ParentAvailabilityPage({
         <div><b>Link expires / 链接有效期:</b> {request.expiresAt ? formatBusinessDateTime(request.expiresAt) : "-"}</div>
       </div>
 
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          background: "#fff",
+          padding: 16,
+          display: "grid",
+          gap: 10,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>What to do / 需要填写什么</div>
+          <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+            Share the days and times that usually work best for your family.
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>What happens next / 接下来会怎样</div>
+          <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+            The school team will review your submission and then confirm the final lesson arrangement with you.
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>Important / 重要说明</div>
+          <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
+            This form does not confirm the schedule by itself. It only helps us collect your available times.
+          </div>
+        </div>
+      </div>
+
       {msg === "submitted" ? (
         <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 16, color: "#166534" }}>
           Thank you. We have received your available lesson times. The school team will review them and confirm the final schedule with you.
@@ -173,6 +204,9 @@ export default async function ParentAvailabilityPage({
       <form action={submitParentAvailability.bind(null, token)} style={{ display: "grid", gap: 16 }}>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12 }}>
           <div style={{ fontWeight: 800 }}>Available weekdays / 可上课星期</div>
+          <div style={{ fontSize: 13, color: "#64748b" }}>
+            Choose the weekdays that usually work best. You can pick more than one. / 请选择通常方便上课的星期，可以多选。
+          </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => (
               <label
@@ -196,19 +230,22 @@ export default async function ParentAvailabilityPage({
 
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12 }}>
           <div style={{ fontWeight: 800 }}>Preferred time ranges / 常用可上课时间段</div>
+          <div style={{ fontSize: 13, color: "#64748b" }}>
+            Please share the time windows your family usually prefers, for example `18:00-19:30`. / 请填写家里通常方便的时间段，例如 `18:00-19:30`。
+          </div>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
             <label style={{ display: "grid", gap: 6 }}>
               <span>Range 1 / 时间段一</span>
               <div style={{ display: "flex", gap: 8 }}>
-                <input type="time" name="timeRange1Start" defaultValue={payload.timeRanges[0]?.start ?? ""} style={{ flex: 1 }} />
-                <input type="time" name="timeRange1End" defaultValue={payload.timeRanges[0]?.end ?? ""} style={{ flex: 1 }} />
+                <input type="time" name="timeRange1Start" defaultValue={payload.timeRanges[0]?.start ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
+                <input type="time" name="timeRange1End" defaultValue={payload.timeRanges[0]?.end ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
               </div>
             </label>
             <label style={{ display: "grid", gap: 6 }}>
               <span>Range 2 / 时间段二</span>
               <div style={{ display: "flex", gap: 8 }}>
-                <input type="time" name="timeRange2Start" defaultValue={payload.timeRanges[1]?.start ?? ""} style={{ flex: 1 }} />
-                <input type="time" name="timeRange2End" defaultValue={payload.timeRanges[1]?.end ?? ""} style={{ flex: 1 }} />
+                <input type="time" name="timeRange2Start" defaultValue={payload.timeRanges[1]?.start ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
+                <input type="time" name="timeRange2End" defaultValue={payload.timeRanges[1]?.end ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
               </div>
             </label>
           </div>
@@ -217,11 +254,11 @@ export default async function ParentAvailabilityPage({
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <label style={{ display: "grid", gap: 6 }}>
             <span>Earliest start date / 最早可开始日期</span>
-            <input type="date" name="earliestStartDate" defaultValue={payload.earliestStartDate ?? ""} />
+            <input type="date" name="earliestStartDate" defaultValue={payload.earliestStartDate ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
             <span>Mode preference / 上课形式偏好</span>
-            <select name="modePreference" defaultValue={payload.modePreference ?? ""}>
+            <select name="modePreference" defaultValue={payload.modePreference ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }}>
               <option value="">Either / 都可以</option>
               <option value="Online only">Online only / 仅线上</option>
               <option value="Onsite only">Onsite only / 仅线下</option>
@@ -231,7 +268,7 @@ export default async function ParentAvailabilityPage({
           </label>
           <label style={{ display: "grid", gap: 6 }}>
             <span>Teacher preference / 老师偏好</span>
-            <input type="text" name="teacherPreference" maxLength={120} defaultValue={payload.teacherPreference ?? ""} />
+            <input type="text" name="teacherPreference" maxLength={120} defaultValue={payload.teacherPreference ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
           </label>
         </div>
 
