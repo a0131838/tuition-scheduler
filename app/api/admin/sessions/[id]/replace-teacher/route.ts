@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
+import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -59,45 +60,7 @@ function canTeachClass(teacher: any, courseId?: string | null, subjectId?: strin
 }
 
 async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
-  if (startAt.toDateString() !== endAt.toDateString()) {
-    return "Session spans multiple days";
-  }
-
-  const startMin = toMinFromDate(startAt);
-  const endMin = toMinFromDate(endAt);
-
-  const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
-  const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
-
-  let slots = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
-
-  if (slots.length === 0) {
-    const weekday = startAt.getDay();
-    slots = await prisma.teacherAvailability.findMany({
-      where: { teacherId, weekday },
-      select: { startMin: true, endMin: true },
-      orderBy: { startMin: "asc" },
-    });
-
-    if (slots.length === 0) {
-      const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return `No availability on ${WEEKDAYS[weekday] ?? weekday} (no slots)`;
-    }
-  }
-
-  const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
-  if (!ok) {
-    const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
-    const weekday = startAt.getDay();
-    const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return `Outside availability ${WEEKDAYS[weekday] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`;
-  }
-
-  return null;
+  return checkTeacherSchedulingAvailability(prisma, teacherId, startAt, endAt);
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

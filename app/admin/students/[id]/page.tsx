@@ -49,6 +49,10 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
 } from "../../_components/workbenchStyles";
+import {
+  checkTeacherSchedulingAvailability,
+  inspectTeacherSchedulingAvailability,
+} from "@/lib/teacher-scheduling-availability";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -281,22 +285,10 @@ function parseDateInput(s: string) {
   return new Date(Y, M - 1, D, 0, 0, 0, 0);
 }
 
-function toMinFromDate(d: Date) {
-  return d.getHours() * 60 + d.getMinutes();
-}
-
 function fmtHHMM(d: Date) {
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h}:${m}`;
-}
-
-function fmtSlotRange(startMin: number, endMin: number) {
-  const sh = String(Math.floor(startMin / 60)).padStart(2, "0");
-  const sm = String(startMin % 60).padStart(2, "0");
-  const eh = String(Math.floor(endMin / 60)).padStart(2, "0");
-  const em = String(endMin % 60).padStart(2, "0");
-  return `${sh}:${sm}-${eh}:${em}`;
 }
 
 function canTeachSubject(teacher: any, subjectId?: string | null) {
@@ -468,57 +460,11 @@ function buildCourseLabelFromEnrollment(enrollment: {
   return parts.join(" / ");
 }
 async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
-  const result = await inspectTeacherAvailability(teacherId, startAt, endAt);
-  return result.error;
+  return checkTeacherSchedulingAvailability(prisma, teacherId, startAt, endAt);
 }
 
 async function inspectTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
-  if (startAt.toDateString() !== endAt.toDateString()) {
-    return { error: "Session spans multiple days", source: null as "date" | "weekly" | null };
-  }
-
-  const startMin = toMinFromDate(startAt);
-  const endMin = toMinFromDate(endAt);
-
-  const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
-  const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
-
-  let slots = await prisma.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
-
-  let source: "date" | "weekly" = "date";
-
-  if (slots.length === 0) {
-    const weekday = startAt.getDay();
-    slots = await prisma.teacherAvailability.findMany({
-      where: { teacherId, weekday },
-      select: { startMin: true, endMin: true },
-      orderBy: { startMin: "asc" },
-    });
-
-    if (slots.length === 0) {
-      return {
-        error: `No availability on ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} (no slots)`,
-        source: null as "date" | "weekly" | null,
-      };
-    }
-    source = "weekly";
-  }
-
-  const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
-  if (!ok) {
-    const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
-    const weekday = startAt.getDay();
-    return {
-      error: `Outside availability ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`,
-      source,
-    };
-  }
-
-  return { error: null as string | null, source };
+  return inspectTeacherSchedulingAvailability(prisma, teacherId, startAt, endAt);
 }
 
 function buildRedirectToTeacherWeek(teacherId: string, startAt: Date) {
@@ -1901,7 +1847,7 @@ export default async function StudentDetailPage({
           });
           continue;
         }
-        let availabilitySource: "date" | "weekly" | null = null;
+        let availabilitySource: "date" | null = null;
         if (!bypassAvailabilityCheck) {
           const availabilityCheck = await inspectTeacherAvailability(tch.id, startAt, endAt);
           availabilitySource = availabilityCheck.source;
@@ -1957,9 +1903,7 @@ export default async function StudentDetailPage({
           name: tch.name,
           ok: true,
           statusLabel:
-            availabilitySource === "weekly"
-              ? t(lang, "Available via weekly template", "按每周模板可排")
-              : t(lang, "Available via date availability", "按日期时段可排"),
+            availabilitySource === "date" ? t(lang, "Available via date availability", "按日期时段可排") : undefined,
         });
       }
       if (quickTeacherId) {

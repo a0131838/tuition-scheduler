@@ -7,6 +7,7 @@ import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { isSessionDuplicateError } from "@/lib/session-unique";
+import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 
 type OpMode = "preview" | "apply";
 type TaskType =
@@ -112,44 +113,7 @@ class StudentQuickScheduleConflictError extends Error {
 }
 
 async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
-  if (startAt.toDateString() !== endAt.toDateString()) {
-    return "Session spans multiple days";
-  }
-
-  const startMin = toMinFromDate(startAt);
-  const endMin = toMinFromDate(endAt);
-  const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
-  const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
-
-  let slots = await db.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
-
-  if (slots.length === 0) {
-    const weekday = startAt.getDay();
-    slots = await db.teacherAvailability.findMany({
-      where: { teacherId, weekday },
-      select: { startMin: true, endMin: true },
-      orderBy: { startMin: "asc" },
-    });
-
-    if (slots.length === 0) {
-      const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return `No availability on ${WEEKDAYS[weekday] ?? weekday} (no slots)`;
-    }
-  }
-
-  const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
-  if (!ok) {
-    const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
-    const weekday = startAt.getDay();
-    const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return `Outside availability ${WEEKDAYS[weekday] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`;
-  }
-
-  return null;
+  return checkTeacherSchedulingAvailability(db, teacherId, startAt, endAt);
 }
 
 async function previewAttendanceStatus(payload: Record<string, unknown>) {

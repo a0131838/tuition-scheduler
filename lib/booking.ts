@@ -90,14 +90,10 @@ export async function listBookingSlotsForMonth(opts: {
   const teacherNameMap = new Map(opts.teachers.map((x) => [x.teacherId, x.teacherName]));
   const teacherSubjectLabelMap = new Map(opts.teachers.map((x) => [x.teacherId, x.subjectLabel ?? ""]));
 
-  const [dateSlots, weeklySlots, sessions, appointments] = await Promise.all([
+  const [dateSlots, sessions, appointments] = await Promise.all([
     prisma.teacherAvailabilityDate.findMany({
       where: { teacherId: { in: teacherIds }, date: { gte: windowStart, lt: windowEnd } },
       orderBy: [{ teacherId: "asc" }, { date: "asc" }, { startMin: "asc" }],
-    }),
-    prisma.teacherAvailability.findMany({
-      where: { teacherId: { in: teacherIds } },
-      orderBy: [{ teacherId: "asc" }, { weekday: "asc" }, { startMin: "asc" }],
     }),
     prisma.session.findMany({
       where: {
@@ -137,14 +133,6 @@ export async function listBookingSlotsForMonth(opts: {
     dateMap.set(key, arr);
   }
 
-  const weeklyMap = new Map<string, { startMin: number; endMin: number }[]>();
-  for (const s of weeklySlots) {
-    const key = `${s.teacherId}|${s.weekday}`;
-    const arr = weeklyMap.get(key) ?? [];
-    arr.push({ startMin: s.startMin, endMin: s.endMin });
-    weeklyMap.set(key, arr);
-  }
-
   const busyByTeacher = new Map<string, { startAt: Date; endAt: Date }[]>();
   for (const s of sessions) {
     if (shouldIgnoreTeacherConflictSession(s)) continue;
@@ -176,11 +164,8 @@ export async function listBookingSlotsForMonth(opts: {
   const dayStart = new Date(windowStart.getFullYear(), windowStart.getMonth(), windowStart.getDate(), 0, 0, 0, 0);
   for (let d = new Date(dayStart); d < windowEnd; d.setDate(d.getDate() + 1)) {
     const dateKey = ymd(d);
-    const weekday = d.getDay();
     for (const teacherId of teacherIds) {
-      const specific = dateMap.get(`${teacherId}|${dateKey}`);
-      const weekly = weeklyMap.get(`${teacherId}|${weekday}`) ?? [];
-      const ranges = specific && specific.length > 0 ? specific : weekly;
+      const ranges = dateMap.get(`${teacherId}|${dateKey}`) ?? [];
       if (ranges.length === 0) continue;
 
       const busy = busyByTeacher.get(teacherId) ?? [];

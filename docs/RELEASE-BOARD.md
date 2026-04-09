@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r10` (teacher availability weekly-fallback clarity), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-09-r11` (date-only scheduling availability), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -134,6 +134,20 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - teacher availability QA should confirm inherited weekly slots render inside monthly cells where there is no date override
   - quick schedule QA should confirm teacher candidate statuses now indicate whether availability came from the weekly template or from date-specific availability
+
+## 2026-04-09-r11 Ready
+
+- Scope: stop all real scheduling flows from falling back to weekly templates so the only schedulable source is date-based availability for the specific day.
+- Business impact:
+  - quick schedule, class session creation, rescheduling, teacher replacement, appointment creation, and ops execution now reject a time if that day has no date availability row, even when the teacher has a matching weekly template
+  - booking candidate generation now only uses date availability rows within the requested range, so operators and families no longer see slots that come only from a weekly template
+  - the admin teacher availability page now clearly says that real scheduling uses the month date rows and that weekly templates are only for generating those rows
+  - weekly templates still remain available as a bulk month-generation tool; no schema or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - QA should confirm a date with no date availability cannot be quick-scheduled anymore
+  - QA should confirm booking candidates disappear for days that only had weekly-template availability
 
 ## 2026-04-09-r07 Deployed
 

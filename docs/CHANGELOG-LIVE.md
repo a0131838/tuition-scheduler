@@ -15,6 +15,44 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r11
+
+- Release ID: `2026-04-09-r11`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: stop all real scheduling flows from falling back to weekly availability templates so only date-based availability can authorize scheduling, rescheduling, teacher replacement, appointment creation, and booking candidate generation.
+- Key files:
+  - `lib/teacher-scheduling-availability.ts`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/schedule/page.tsx`
+  - `app/admin/classes/[id]/sessions/page.tsx`
+  - `app/admin/teachers/[id]/availability/AdminTeacherAvailabilityClient.tsx`
+  - `app/admin/teachers/[id]/availability/page.tsx`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/classes/[id]/sessions/route.ts`
+  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
+  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
+  - `app/api/admin/classes/[id]/sessions/replace-teacher/route.ts`
+  - `app/api/admin/students/[id]/sessions/replace-teacher/route.ts`
+  - `app/api/admin/sessions/[id]/replace-teacher/route.ts`
+  - `app/api/admin/appointments/route.ts`
+  - `app/api/admin/appointments/[id]/replace-teacher/route.ts`
+  - `app/api/admin/ops/execute/route.ts`
+  - `app/api/admin/booking-links/candidates/route.ts`
+  - `lib/booking.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-date-only-scheduling-availability.md`
+- Risk impact (if any): Medium-low. This release intentionally tightens scheduling eligibility across multiple admin entry points and booking candidate generation; weekly templates still exist, but only as a helper to generate month date slots.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin teacher availability page should explain that only date slots are used for real scheduling
+  - quick schedule should reject dates that have no date availability even if the teacher has a matching weekly template
+  - booking candidate generation should only consider date availability rows inside the requested range
+- Rollback point: previous production commit before `2026-04-09-r11`.
+
 ## 2026-04-09-r10
 
 - Release ID: `2026-04-09-r10`

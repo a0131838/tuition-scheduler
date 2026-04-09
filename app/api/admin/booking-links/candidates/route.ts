@@ -22,19 +22,11 @@ function hasLongEnoughSlot(
   teacherId: string,
   day: Date,
   durationMin: number,
-  dateSlotMap: Map<string, number[]>,
-  weeklySlotMap: Map<string, Map<number, number[]>>
+  dateSlotMap: Map<string, number[]>
 ) {
   const key = `${teacherId}|${fmtDateKey(day)}`;
   const dateSlots = dateSlotMap.get(key);
-  if (dateSlots && dateSlots.length > 0) {
-    return dateSlots.some((len) => len >= durationMin);
-  }
-  const byWeekday = weeklySlotMap.get(teacherId);
-  if (!byWeekday) return false;
-  const weekday = day.getDay();
-  const weeklySlots = byWeekday.get(weekday) ?? [];
-  return weeklySlots.some((len) => len >= durationMin);
+  return Boolean(dateSlots && dateSlots.some((len) => len >= durationMin));
 }
 
 export async function GET(req: Request) {
@@ -100,19 +92,13 @@ export async function GET(req: Request) {
     const rangeStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
     const rangeEnd = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
 
-    const [dateSlots, weeklySlots] = await Promise.all([
-      prisma.teacherAvailabilityDate.findMany({
-        where: {
-          teacherId: { in: teacherIds },
-          date: { gte: rangeStart, lte: rangeEnd },
-        },
-        select: { teacherId: true, date: true, startMin: true, endMin: true },
-      }),
-      prisma.teacherAvailability.findMany({
-        where: { teacherId: { in: teacherIds } },
-        select: { teacherId: true, weekday: true, startMin: true, endMin: true },
-      }),
-    ]);
+    const dateSlots = await prisma.teacherAvailabilityDate.findMany({
+      where: {
+        teacherId: { in: teacherIds },
+        date: { gte: rangeStart, lte: rangeEnd },
+      },
+      select: { teacherId: true, date: true, startMin: true, endMin: true },
+    });
 
     const dateSlotMap = new Map<string, number[]>();
     for (const slot of dateSlots) {
@@ -122,19 +108,11 @@ export async function GET(req: Request) {
       dateSlotMap.get(key)!.push(len);
     }
 
-    const weeklySlotMap = new Map<string, Map<number, number[]>>();
-    for (const slot of weeklySlots) {
-      if (!weeklySlotMap.has(slot.teacherId)) weeklySlotMap.set(slot.teacherId, new Map());
-      const byWeekday = weeklySlotMap.get(slot.teacherId)!;
-      if (!byWeekday.has(slot.weekday)) byWeekday.set(slot.weekday, []);
-      byWeekday.get(slot.weekday)!.push(Math.max(0, slot.endMin - slot.startMin));
-    }
-
     availableTeacherIdSet = new Set<string>();
     for (const teacherId of teacherIds) {
       let day = new Date(startDate);
       while (day <= endDate) {
-        if (hasLongEnoughSlot(teacherId, day, durationMin, dateSlotMap, weeklySlotMap)) {
+        if (hasLongEnoughSlot(teacherId, day, durationMin, dateSlotMap)) {
           availableTeacherIdSet.add(teacherId);
           break;
         }
@@ -164,4 +142,3 @@ export async function GET(req: Request) {
     timeFiltered: Boolean(startDateRaw && endDateRaw),
   });
 }
-

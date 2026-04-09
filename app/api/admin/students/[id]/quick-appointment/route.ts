@@ -8,6 +8,7 @@ import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "
 import { campusRequiresRoom } from "@/lib/campus";
 import { runRejectQuickScheduleBatch, runSkipQuickScheduleBatch } from "@/lib/quick-schedule-execution";
 import { isSessionDuplicateError } from "@/lib/session-unique";
+import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -20,24 +21,10 @@ function parseDatetimeLocal(s: string) {
   return new Date(Y, M - 1, D, hh, mm, 0, 0);
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function toMinFromDate(d: Date) {
-  return d.getHours() * 60 + d.getMinutes();
-}
-
 function fmtHHMM(d: Date) {
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h}:${m}`;
-}
-
-function fmtSlotRange(startMin: number, endMin: number) {
-  const sh = String(Math.floor(startMin / 60)).padStart(2, "0");
-  const sm = String(startMin % 60).padStart(2, "0");
-  const eh = String(Math.floor(endMin / 60)).padStart(2, "0");
-  const em = String(endMin % 60).padStart(2, "0");
-  return `${sh}:${sm}-${eh}:${em}`;
 }
 
 function fmtDateInput(d: Date | null) {
@@ -63,43 +50,7 @@ class QuickScheduleConflictError extends Error {
 }
 
 async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
-  if (startAt.toDateString() !== endAt.toDateString()) {
-    return "Session spans multiple days";
-  }
-
-  const startMin = toMinFromDate(startAt);
-  const endMin = toMinFromDate(endAt);
-
-  const dayStart = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 0, 0, 0, 0);
-  const dayEnd = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate(), 23, 59, 59, 999);
-
-  let slots = await db.teacherAvailabilityDate.findMany({
-    where: { teacherId, date: { gte: dayStart, lte: dayEnd } },
-    select: { startMin: true, endMin: true },
-    orderBy: { startMin: "asc" },
-  });
-
-  if (slots.length === 0) {
-    const weekday = startAt.getDay();
-    slots = await db.teacherAvailability.findMany({
-      where: { teacherId, weekday },
-      select: { startMin: true, endMin: true },
-      orderBy: { startMin: "asc" },
-    });
-
-    if (slots.length === 0) {
-      return `No availability on ${WEEKDAYS[weekday] ?? weekday} (no slots)`;
-    }
-  }
-
-  const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
-  if (!ok) {
-    const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
-    const weekday = startAt.getDay();
-    return `Outside availability ${WEEKDAYS[weekday] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`;
-  }
-
-  return null;
+  return checkTeacherSchedulingAvailability(db, teacherId, startAt, endAt);
 }
 
 function canTeachSubject(teacher: any, subjectId?: string | null) {
