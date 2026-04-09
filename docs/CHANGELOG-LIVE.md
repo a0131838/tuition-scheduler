@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r04
+
+- Release ID: `2026-04-09-r04`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: let external intake operators create `Scheduling Coordination / 排课协调` tickets and immediately get a temporary parent availability link so families can submit lesson-time preferences without logging into the back office.
+- Key files:
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `app/tickets/intake/IntakeForm.tsx`
+  - `app/tickets/intake/[token]/page.tsx`
+  - `app/availability/[token]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `lib/parent-availability.ts`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260409181306_add_parent_availability_requests/migration.sql`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-parent-availability-link-for-intake-scheduling-coordination.md`
+- Risk impact (if any): Low to medium. This release adds a new lightweight link-token table and new public form route, but it does not change session creation, quick schedule core logic, attendance, package math, or finance flows.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - Emily-style ticket intake should allow `Scheduling Coordination / 排课协调` with a confirmed student and show a copyable parent availability link after submit
+  - parent `/availability/[token]` should accept structured weekday/time submissions and show a success state without implying the lesson is already scheduled
+  - submitted parent availability should appear on the linked admin ticket, student detail scheduling card, and `Todo Center`
+- Rollback point: previous production commit before `2026-04-09-r04`.
+
 ## 2026-04-08-r07
 
 - Release ID: `2026-04-08-r07`

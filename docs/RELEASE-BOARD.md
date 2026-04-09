@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-08`
+- Last checked: `2026-04-09`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-08-r07` (partner settlement online purchase batches).
+- Current release line on this branch: `2026-04-09-r04` (parent availability links for intake-led scheduling coordination).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -61,6 +61,22 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - operator QA should confirm online partner-settlement rows are split by purchase batch and that billing only invoices explicitly selected rows
+
+## 2026-04-09-r04 Deployed
+
+- Scope: let Emily-style external intake operators create `Scheduling Coordination / 排课协调` tickets and immediately generate a temporary parent availability link that feeds back into the coordination workflow.
+- Business impact:
+  - intake submitters can now create coordination tickets without entering the admin system and receive a copyable family link right after submission
+  - each coordination ticket now has at most one active parent availability request with expiry and submission status
+  - parents can submit structured weekday/time preferences through a public `/availability/[token]` page without implying auto-scheduling
+  - submitted parent availability now flows into the linked ticket, student detail scheduling card, and `Todo Center`
+  - no scheduling execution, attendance, package, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - intake QA should confirm `Scheduling Coordination / 排课协调` returns a copyable parent link after submit
+  - parent-form QA should confirm `/availability/[token]` stores a structured submission and that operators can see it from admin ticket detail, student detail, and `Todo Center`
 
 ## 2026-04-08-r02 Deployed
 

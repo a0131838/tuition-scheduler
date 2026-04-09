@@ -31,6 +31,11 @@ import {
   listSchedulingCoordinationCandidateSlots,
 } from "@/lib/scheduling-coordination";
 import {
+  buildParentAvailabilityExpiresAt,
+  buildParentAvailabilityPath,
+  createParentAvailabilityToken,
+} from "@/lib/parent-availability";
+import {
   workbenchHeroStyle,
   workbenchInfoBarStyle,
   workbenchMetricCardStyle,
@@ -1188,7 +1193,7 @@ async function createSchedulingCoordinationTicket(studentId: string) {
 
   const created = await prisma.$transaction(async (tx) => {
     const ticketNo = await allocateTicketNo(tx);
-    return tx.ticket.create({
+    const ticket = await tx.ticket.create({
       data: {
         ticketNo,
         studentId: student.id,
@@ -1212,6 +1217,18 @@ async function createSchedulingCoordinationTicket(studentId: string) {
       },
       select: { id: true },
     });
+
+    await tx.parentAvailabilityRequest.create({
+      data: {
+        ticketId: ticket.id,
+        studentId: student.id,
+        courseLabel: courseLabel || null,
+        token: createParentAvailabilityToken(),
+        expiresAt: buildParentAvailabilityExpiresAt(),
+      },
+    });
+
+    return ticket;
   });
 
   redirect(
@@ -1349,6 +1366,14 @@ export default async function StudentDetailPage({
         nextActionDue: true,
         summary: true,
         createdAt: true,
+        parentAvailabilityRequest: {
+          select: {
+            token: true,
+            expiresAt: true,
+            submittedAt: true,
+            createdAt: true,
+          },
+        },
       },
     }),
     prisma.enrollment.findMany({
@@ -1394,6 +1419,10 @@ export default async function StudentDetailPage({
   ]);
 
   const schedulingSummary = activeSchedulingTicket ? parseTicketSituationSummary(activeSchedulingTicket.summary) : null;
+  const parentAvailabilityRequest = activeSchedulingTicket?.parentAvailabilityRequest ?? null;
+  const parentAvailabilityHref = parentAvailabilityRequest
+    ? buildParentAvailabilityPath(parentAvailabilityRequest.token)
+    : null;
   const schedulingTicketHref = activeSchedulingTicket
     ? `/admin/tickets/${activeSchedulingTicket.id}?back=${encodeURIComponent(
         buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
@@ -2154,6 +2183,30 @@ export default async function StudentDetailPage({
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
                   {t(lang, "Default rule", "默认规则")}: {t(lang, "Use availability first", "先用老师 availability")}
                 </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent time form", "家长时间表单")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>
+                  {parentAvailabilityRequest
+                    ? parentAvailabilityRequest.submittedAt
+                      ? t(lang, "Submitted", "已提交")
+                      : t(lang, "Sent, waiting for parent", "已发送，等待家长")
+                    : t(lang, "Not sent yet", "尚未发送")}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {parentAvailabilityRequest?.submittedAt
+                    ? `${t(lang, "Latest submission", "最近提交")}: ${formatBusinessDateTime(parentAvailabilityRequest.submittedAt)}`
+                    : parentAvailabilityRequest?.expiresAt
+                      ? `${t(lang, "Link expires", "链接有效期")}: ${formatBusinessDateTime(parentAvailabilityRequest.expiresAt)}`
+                      : "-"}
+                </div>
+                {parentAvailabilityHref ? (
+                  <div style={{ fontSize: 12, marginTop: 6 }}>
+                    <a href={parentAvailabilityHref} target="_blank" rel="noreferrer">
+                      {t(lang, "Open parent form", "打开家长表单")}
+                    </a>
+                  </div>
+                ) : null}
               </div>
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff", gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest summary", "最新摘要")}</div>

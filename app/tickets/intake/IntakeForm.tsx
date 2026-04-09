@@ -2,6 +2,7 @@
 
 import {
   getTicketFieldLabel,
+  SCHEDULING_COORDINATION_TICKET_TYPE,
   TICKET_HIGH_FREQUENCY_TYPES,
   getTicketTypeTemplate,
   parseTicketSituationSummary,
@@ -89,6 +90,11 @@ export default function IntakeForm({
   const [situationCurrent, setSituationCurrent] = useState("");
   const [situationAction, setSituationAction] = useState("");
   const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const [submittedParentAvailability, setSubmittedParentAvailability] = useState<{
+    ticketNo: string;
+    url: string;
+    expiresAt: string | null;
+  } | null>(null);
   const [studentLookupState, setStudentLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [studentLookupResult, setStudentLookupResult] = useState<{
     matchType: string;
@@ -241,6 +247,67 @@ export default function IntakeForm({
       ) : null}
       {msg ? <div style={{ color: "#166534", marginBottom: 10 }}>{msg}</div> : null}
       {err ? <div style={{ color: "#b91c1c", marginBottom: 10 }}>{err}</div> : null}
+      {submittedParentAvailability ? (
+        <div
+          style={{
+            border: "1px solid #bbf7d0",
+            background: "#f0fdf4",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 10,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 800, color: "#166534" }}>
+            家长时间填写链接已生成 / Parent availability link ready
+          </div>
+          <div style={{ fontSize: 13, color: "#166534" }}>
+            工单 {submittedParentAvailability.ticketNo} 已创建。现在可以直接把下面这个临时链接发给家长填写可上课时间。
+          </div>
+          <div
+            style={{
+              border: "1px solid #86efac",
+              borderRadius: 8,
+              padding: "10px 12px",
+              background: "#fff",
+              fontFamily: "monospace",
+              fontSize: 12,
+              wordBreak: "break-all",
+            }}
+          >
+            {submittedParentAvailability.url}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(submittedParentAvailability.url);
+                  setMsg(`已复制家长链接 / Copied parent link: ${submittedParentAvailability.ticketNo}`);
+                } catch {
+                  setErr("复制失败，请手动复制链接 / Copy failed, please copy manually");
+                }
+              }}
+            >
+              复制链接 / Copy Link
+            </button>
+            <a
+              href={submittedParentAvailability.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ alignSelf: "center" }}
+            >
+              打开家长页 / Open Parent Form
+            </a>
+          </div>
+          <div style={{ fontSize: 12, color: "#166534" }}>
+            {submittedParentAvailability.expiresAt
+              ? `有效期至 / Expires at: ${formatBusinessDateTime(new Date(submittedParentAvailability.expiresAt))}`
+              : "默认短期有效 / Temporary link"}
+          </div>
+        </div>
+      ) : null}
       <details style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", padding: "8px 10px", marginBottom: 10 }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>快速流程 / Quick SOP</summary>
         <ol style={{ margin: "8px 0 0", paddingLeft: 18, color: "#334155", lineHeight: 1.5 }}>
@@ -275,12 +342,18 @@ export default function IntakeForm({
         onSubmit={async (e) => {
           e.preventDefault();
           if (submitting) return;
+          if (selectedType === SCHEDULING_COORDINATION_TICKET_TYPE && !selectedStudentCandidate) {
+            setErr("排课协调工单需要先从学生匹配结果里确认学生 / Scheduling coordination needs a confirmed student match first");
+            return;
+          }
           const form = e.currentTarget;
           const fd = new FormData(form);
           setSubmitting(true);
           setMsg("");
           setErr("");
+          setSubmittedParentAvailability(null);
           const payload: Record<string, unknown> = Object.fromEntries(fd.entries());
+          payload.studentId = selectedStudentCandidate?.studentId ?? "";
           payload.proof = proofUrls.join("\n");
           if (forceDuplicate) payload.forceDuplicate = "1";
           try {
@@ -300,6 +373,15 @@ export default function IntakeForm({
               return;
             }
             setMsg(`提交成功 / Submitted: ${data.ticketNo}`);
+            setSubmittedParentAvailability(
+              data?.parentAvailabilityUrl
+                ? {
+                    ticketNo: String(data.ticketNo),
+                    url: String(data.parentAvailabilityUrl),
+                    expiresAt: data.parentAvailabilityExpiresAt ? String(data.parentAvailabilityExpiresAt) : null,
+                  }
+                : null
+            );
             setDupes([]);
             setForceDuplicate(false);
             setStudentName("");
@@ -356,6 +438,7 @@ export default function IntakeForm({
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
           <label style={labelStyle}>
             学生姓名* / Student*
+            <input type="hidden" name="studentId" value={selectedStudentCandidate?.studentId ?? ""} />
             <input
               name="studentName"
               required

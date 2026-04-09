@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import IntakeForm from "../IntakeForm";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { buildParentAvailabilityPath } from "@/lib/parent-availability";
 
 function isOpenStatus(status: string) {
   return !["Completed", "Cancelled"].includes(status);
@@ -71,6 +72,13 @@ export default async function TicketIntakeByTokenPage({
           nextAction: true,
           nextActionDue: true,
           createdAt: true,
+          parentAvailabilityRequest: {
+            select: {
+              token: true,
+              submittedAt: true,
+              expiresAt: true,
+            },
+          },
         },
       })
     : [];
@@ -164,7 +172,24 @@ export default async function TicketIntakeByTokenPage({
                         <div>
                           <b>录入时间 / Created:</b> {formatBusinessDateTime(row.createdAt)}
                         </div>
+                        {row.parentAvailabilityRequest ? (
+                          <div>
+                            <b>家长时间表单 / Parent form:</b>{" "}
+                            {row.parentAvailabilityRequest.submittedAt
+                              ? `已提交 / Submitted @ ${formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt)}`
+                              : row.parentAvailabilityRequest.expiresAt
+                                ? `等待家长 / Waiting (expires ${formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt)})`
+                                : "等待家长 / Waiting"}
+                          </div>
+                        ) : null}
                       </div>
+                      {row.parentAvailabilityRequest ? (
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
+                          <a href={buildParentAvailabilityPath(row.parentAvailabilityRequest.token)} target="_blank" rel="noreferrer">
+                            打开家长表单 / Open parent form
+                          </a>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

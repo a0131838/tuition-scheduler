@@ -564,6 +564,7 @@ model Student {
   bookingRequests    StudentBookingRequest[]
   settlements        PartnerSettlement[]
   tickets            Ticket[]
+  parentAvailabilityRequests ParentAvailabilityRequest[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1103,6 +1104,7 @@ model Ticket {
 
   student       Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
   completedByUser User? @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  parentAvailabilityRequest ParentAvailabilityRequest?
 
   @@index([status, createdAt])
   @@index([isArchived, createdAt])
@@ -1110,6 +1112,26 @@ model Ticket {
   @@index([studentName, createdAt])
   @@index([studentId, isArchived, createdAt])
   @@index([type, createdAt])
+}
+
+model ParentAvailabilityRequest {
+  id          String   @id @default(uuid())
+  ticketId     String   @unique
+  studentId    String
+  courseLabel  String?
+  token        String   @unique
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime?
+  submittedAt  DateTime?
+  payloadJson  Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticket   Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, isActive, createdAt])
+  @@index([isActive, submittedAt, createdAt])
 }
 
 model TicketHandover {

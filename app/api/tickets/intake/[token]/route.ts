@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   allocateTicketNo,
+  SCHEDULING_COORDINATION_TICKET_TYPE,
   composeTicketSituation,
   normalizeTicketInt,
   normalizeTicketTypeValue,
@@ -17,6 +18,11 @@ import {
   ticketTypeAliases,
   validateTicketTypeRequirements,
 } from "@/lib/tickets";
+import {
+  buildParentAvailabilityExpiresAt,
+  buildParentAvailabilityPath,
+  createParentAvailabilityToken,
+} from "@/lib/parent-availability";
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -133,11 +139,35 @@ export async function POST(
     normalizeTicketString(body.systemUpdated, 5),
     TICKET_SYSTEM_UPDATED_OPTIONS
   );
+  const studentId = normalizeTicketString(body.studentId, 80);
+  const linkedStudent = studentId
+    ? await prisma.student.findUnique({
+        where: { id: studentId },
+        select: { id: true, name: true },
+      })
+    : null;
+  if (studentId && !linkedStudent) {
+    return bad("Selected student could not be found / 选择的学生不存在");
+  }
+  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && !linkedStudent) {
+    return bad("Please confirm the student from the lookup before creating a scheduling coordination ticket / 请先从学生匹配列表确认学生后，再创建排课协调工单");
+  }
+
+  const shouldCreateParentAvailabilityLink =
+    normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && Boolean(linkedStudent);
+
+  const parentAvailabilityToken = shouldCreateParentAvailabilityLink ? createParentAvailabilityToken() : null;
+  const parentAvailabilityExpiresAt = shouldCreateParentAvailabilityLink ? buildParentAvailabilityExpiresAt() : null;
+  const parentAvailabilityPlaceholder = shouldCreateParentAvailabilityLink
+    ? `Parent availability form sent. Waiting for parent submission. / 已发送家长时间填写链接，等待家长提交。`
+    : null;
+
   const created = await prisma.$transaction(async (tx) => {
     const ticketNo = await allocateTicketNo(tx);
-    return tx.ticket.create({
+    const ticket = await tx.ticket.create({
       data: {
         ticketNo,
+        studentId: linkedStudent?.id ?? null,
         source,
         type,
         priority,
@@ -148,7 +178,7 @@ export async function POST(
         poc: normalizeTicketString(body.poc, 120),
         wechat,
         phone: null,
-        parentAvailability: null,
+        parentAvailability: parentAvailabilityPlaceholder,
         teacherAvailability: null,
         durationMin,
         mode,
@@ -170,7 +200,36 @@ export async function POST(
       },
       select: { id: true, ticketNo: true },
     });
+
+    if (shouldCreateParentAvailabilityLink && linkedStudent && parentAvailabilityToken && parentAvailabilityExpiresAt) {
+      await tx.parentAvailabilityRequest.create({
+        data: {
+          ticketId: ticket.id,
+          studentId: linkedStudent.id,
+          courseLabel: course,
+          token: parentAvailabilityToken,
+          expiresAt: parentAvailabilityExpiresAt,
+        },
+      });
+    }
+
+    return ticket;
   });
 
-  return Response.json({ ok: true, id: created.id, ticketNo: created.ticketNo }, { status: 201 });
+  const origin = new URL(req.url).origin;
+  const parentAvailabilityUrl =
+    shouldCreateParentAvailabilityLink && parentAvailabilityToken
+      ? new URL(buildParentAvailabilityPath(parentAvailabilityToken), origin).toString()
+      : null;
+
+  return Response.json(
+    {
+      ok: true,
+      id: created.id,
+      ticketNo: created.ticketNo,
+      parentAvailabilityUrl,
+      parentAvailabilityExpiresAt: parentAvailabilityExpiresAt?.toISOString() ?? null,
+    },
+    { status: 201 }
+  );
 }

@@ -29,6 +29,7 @@ import { revalidatePath } from "next/cache";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { buildParentAvailabilityPath } from "@/lib/parent-availability";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -338,6 +339,16 @@ export default async function AdminTicketDetailPage({
 
   const row = await prisma.ticket.findUnique({
     where: { id },
+    include: {
+      parentAvailabilityRequest: {
+        select: {
+          token: true,
+          expiresAt: true,
+          submittedAt: true,
+          courseLabel: true,
+        },
+      },
+    },
   });
   if (!row) notFound();
 
@@ -546,6 +557,23 @@ export default async function AdminTicketDetailPage({
             <div style={{ fontWeight: 700, marginBottom: 6 }}>地址或链接 / Address or Link</div>
             <div style={{ whiteSpace: "pre-wrap", color: "#334155" }}>{asText(row.addressOrLink)}</div>
           </div>
+
+          {row.parentAvailabilityRequest ? (
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>家长时间表单 / Parent Availability Form</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div><b>状态</b>: {row.parentAvailabilityRequest.submittedAt ? "已提交 / Submitted" : "等待家长 / Waiting for parent"}</div>
+                <div><b>课程</b>: {asText(row.parentAvailabilityRequest.courseLabel)}</div>
+                <div><b>最近提交</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
+                <div><b>有效期</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
+                <div>
+                  <a href={buildParentAvailabilityPath(row.parentAvailabilityRequest.token)} target="_blank" rel="noreferrer">
+                    打开家长表单 / Open parent form
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>证据 / Proof</div>

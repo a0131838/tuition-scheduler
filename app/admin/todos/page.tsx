@@ -640,7 +640,7 @@ export default async function AdminTodosPage({
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const schedulingFollowupWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow, schedulingCoordinationRows] = await Promise.all([
+  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow, schedulingCoordinationRows, submittedParentAvailabilityRows] = await Promise.all([
     getOrRunDailyConflictAudit(now),
     getLatestAutoFixResult(),
     prisma.coursePackage.findMany({
@@ -672,6 +672,32 @@ export default async function AdminTodosPage({
         status: true,
         nextAction: true,
         nextActionDue: true,
+      },
+    }),
+    prisma.parentAvailabilityRequest.findMany({
+      where: {
+        isActive: true,
+        submittedAt: { not: null },
+        ticket: {
+          isArchived: false,
+          status: { notIn: ["Completed", "Cancelled"] },
+          type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        },
+      },
+      orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+      select: {
+        ticketId: true,
+        submittedAt: true,
+        courseLabel: true,
+        ticket: {
+          select: {
+            ticketNo: true,
+            studentName: true,
+            owner: true,
+            nextAction: true,
+          },
+        },
       },
     }),
   ]);
@@ -1378,6 +1404,44 @@ export default async function AdminTodosPage({
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      <div
+        id="todo-parent-availability-submitted"
+        style={{ ...sectionStyle, borderColor: "#86efac", background: "linear-gradient(180deg, #f0fdf4 0%, #fff 100%)" }}
+      >
+        <div style={sectionHeaderStyle}>
+          <h3 style={{ margin: 0 }}>{t(lang, "Parent Availability Submitted", "家长时间表单已提交")}</h3>
+          <span style={{ color: "#166534", fontSize: 12 }}>
+            {t(lang, "Needs scheduling follow-up", "待教务继续处理")}
+          </span>
+        </div>
+        {submittedParentAvailabilityRows.length === 0 ? (
+          <div style={{ color: "#166534" }}>
+            {t(lang, "No newly submitted parent availability forms are waiting right now.", "当前没有新提交、待处理的家长时间表单。")}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+            {submittedParentAvailabilityRows.map((row) => (
+              <div key={row.ticketId} style={{ border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                  <div style={{ fontWeight: 700 }}>{row.ticket.ticketNo}</div>
+                  <div style={{ color: "#166534", fontSize: 12, fontWeight: 700 }}>
+                    {t(lang, "Submitted", "已提交")}
+                  </div>
+                </div>
+                <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.ticket.studentName}</div>
+                <div style={detailLineStyle}>{t(lang, "Course", "课程")}: {row.courseLabel || "-"}</div>
+                <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.ticket.owner ?? t(lang, "Unassigned", "未分配")}</div>
+                <div style={detailLineStyle}>{t(lang, "Submitted at", "提交时间")}: {row.submittedAt ? formatBusinessDateTime(row.submittedAt) : "-"}</div>
+                <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.ticket.nextAction ?? "-"}</div>
+                <a href={`/admin/tickets/${row.ticketId}?back=${encodeURIComponent("/admin/todos#todo-parent-availability-submitted")}`}>
+                  {t(lang, "Open ticket", "打开工单")}
+                </a>
+              </div>
+            ))}
           </div>
         )}
       </div>
