@@ -75,7 +75,11 @@ export default async function TeacherAvailabilityPage() {
     <div style={{ display: "grid", gap: 14 }}>
       <TeacherWorkspaceHero
         title={t(lang, "My Availability", "我的可上课时间")}
-        subtitle={t(lang, "Plan the next 30 days of bookable time here. Use clear-day and quick-add tools to keep your calendar accurate before new classes are arranged.", "在这里安排未来30天的可预约时间。用清空当天和快速添加工具保持日历准确，方便后续排课。")}
+        subtitle={t(
+          lang,
+          "Plan the next 30 days of real bookable date slots here. Ops scheduling only uses the date slots you save on this page.",
+          "在这里安排未来30天真正可排课的按日期时段。教务排课时只会读取你在本页保存的日期时段。"
+        )}
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/sessions", label: t(lang, "Open sessions", "打开我的课次") },
@@ -90,7 +94,9 @@ export default async function TeacherAvailabilityPage() {
         <div style={statCard("#f0fdf4", "#bbf7d0")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t(lang, "Total ranges", "总时段数")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#166534", marginTop: 8 }}>{totalRanges}</div>
-          <div style={{ color: "#166534", marginTop: 4 }}>{t(lang, "Saved date-based availability ranges.", "已保存的按日期可上课时段。")}</div>
+          <div style={{ color: "#166534", marginTop: 4 }}>
+            {t(lang, "Saved date-based ranges used for real scheduling.", "已保存的按日期可上课时段，这些会直接用于真实排课。")}
+          </div>
         </div>
         <div style={statCard("#fffbeb", "#fde68a")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e" }}>{t(lang, "Next 7 days", "未来7天")}</div>

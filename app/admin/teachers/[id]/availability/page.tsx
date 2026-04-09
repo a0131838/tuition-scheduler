@@ -72,16 +72,16 @@ export default async function AvailabilityPage({
           "Only the date slots in this month are used for real scheduling. The weekly template below is only a helper for generating this month's date slots.",
           "真实排课只认本月这里的按日期时段；下方每周模板只用于生成本月按日期时段。"
         ),
-        weeklyTitle: t(lang, "Weekly Template (for bulk month generation)", "每周模板（用于批量生成整月）"),
+        weeklyTitle: t(lang, "Weekly Generation Template", "每周生成模板"),
         weeklyAutoSyncNote: t(
           lang,
-          "Saving weekly template will auto-sync this month date slots.",
-          "保存每周模板后，会自动同步本月按日期可用时段。",
+          "Saving this template updates this month's date slots. The template itself is not used as direct scheduling availability.",
+          "保存这个模板后，会同步更新本月按日期时段。模板本身不会直接作为排课依据。",
         ),
         add: t(lang, "Add", "添加"),
         delete: t(lang, "Delete", "删除"),
-        addWeekly: t(lang, "Add Weekly", "添加每周模板"),
-        generate: t(lang, "Generate This Month From Weekly Template", "按每周模板生成本月"),
+        addWeekly: t(lang, "Save Weekly Template Row", "保存每周模板行"),
+        generate: t(lang, "Generate This Month Date Slots From Template", "按模板生成本月日期时段"),
         noSlots: t(lang, "No slots", "无时段"),
         noWeekly: t(lang, "No weekly template yet.", "暂无每周模板。"),
       }}

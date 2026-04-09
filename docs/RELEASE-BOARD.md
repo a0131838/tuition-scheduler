@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r11` (date-only scheduling availability), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r12` (availability wording clarity), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -148,6 +148,19 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - QA should confirm a date with no date availability cannot be quick-scheduled anymore
   - QA should confirm booking candidates disappear for days that only had weekly-template availability
+
+## 2026-04-10-r12 Ready
+
+- Scope: make the availability wording much more explicit for both teachers and ops so it is obvious which inputs control real scheduling.
+- Business impact:
+  - teacher `/teacher/availability` now clearly states that the saved date slots on that page are the real source used by ops scheduling
+  - admin teacher availability page now labels the weekly area as a generation template and says the template itself is not direct scheduling availability
+  - no scheduling rules, template generation logic, or permissions changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - teacher availability page should show the new blue guidance notice
+  - admin teacher availability page should show the stronger weekly-template wording
 
 ## 2026-04-09-r07 Deployed
 

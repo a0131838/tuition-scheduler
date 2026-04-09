@@ -483,6 +483,17 @@ export default function TeacherAvailabilityClient(props: {
         </div>
       ) : null}
 
+      <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12, color: "#1e3a8a", display: "grid", gap: 4 }}>
+        <div style={{ fontWeight: 700 }}>{tr(lang, "These are your real schedulable date slots", "这里维护的是你真正可排课的日期时段")}</div>
+        <div style={{ fontSize: 13 }}>
+          {tr(
+            lang,
+            "Ops can only arrange classes into the date slots saved here. If a day has no slot here, that day cannot be scheduled.",
+            "教务只能把课程排进这里保存的日期时段。如果某一天这里没有时段，那一天就不能排课。"
+          )}
+        </div>
+      </div>
+
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff", display: "grid", gap: 10 }}>
         <div style={{ fontWeight: 700 }}>{tr(lang, "Common templates", "常用模板")}</div>
         <div style={{ color: "#64748b", fontSize: 13 }}>

@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r12
+
+- Release ID: `2026-04-10-r12`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `LIVE` after deploy completion
+- Scope: clarify teacher-side and admin-side availability wording so everyone can clearly see that date slots are the real schedulable source and weekly templates are only generation helpers.
+- Key files:
+  - `app/teacher/availability/page.tsx`
+  - `app/teacher/availability/TeacherAvailabilityClient.tsx`
+  - `app/admin/teachers/[id]/availability/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-availability-wording-clarity.md`
+- Risk impact (if any): Low. This release changes wording only; it does not change scheduling behavior, availability storage, finance logic, or permissions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - teacher availability page should explain that date slots saved there are the real schedulable source
+  - admin teacher availability page should explain that weekly templates only generate month date slots
+- Rollback point: previous production commit before `2026-04-10-r12`.
+
 ## 2026-04-09-r11
 
 - Release ID: `2026-04-09-r11`
