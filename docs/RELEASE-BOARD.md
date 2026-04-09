@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r08` (scheduling coordination availability-match console).
+- Current release line on this branch: `2026-04-09-r09` (scheduling coordination phase flow and quick progress actions).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -135,6 +135,22 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - admin `/admin/tickets/[id]` should show `Availability-backed result` with either matching slot cards or alternative slot cards
   - student detail scheduling coordination card should only show generated slot cards that fit the submitted parent availability
+
+## 2026-04-09-r09 Ready
+
+- Scope: make scheduling coordination read more like a working queue by adding a derived coordination phase, clearer next-step guidance, and one-click progress actions for “options sent” and “teacher exception needed”.
+- Business impact:
+  - `/admin/tickets/[id]` now shows a derived `Coordination phase / 协调阶段` so ops can tell at a glance whether the item is still waiting for a parent submission, ready to send availability-backed options, waiting for the family to choose, or needs a teacher exception
+  - ticket detail now includes one-click actions to move a coordination item to `Waiting Parent` after sending slot options or to `Waiting Teacher` when a true exception is needed
+  - `/admin/students/[id]` now mirrors the derived coordination phase on the scheduling card so the student detail page no longer hides where the process is stuck
+  - `/admin/todos` now shows the same phase wording on coordination follow-up rows and submitted-parent-availability rows
+  - no token model, parent form storage, quick schedule execution, session creation, attendance, package, or finance behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - ticket detail QA should confirm the new phase card and quick progress actions render for scheduling coordination items
+  - student detail QA should confirm the scheduling coordination card shows the derived phase text
+  - `Todo Center` QA should confirm coordination rows show the phase text instead of only the raw status
 
 ## 2026-04-08-r02 Deployed
 

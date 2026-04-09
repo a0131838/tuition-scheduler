@@ -28,6 +28,7 @@ import {
 import {
   buildSchedulingCoordinationSlotShareText,
   buildSchedulingCoordinationTeacherOptions,
+  deriveSchedulingCoordinationPhase,
   evaluateSchedulingSpecialRequest,
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
@@ -1671,6 +1672,22 @@ export default async function StudentDetailPage({
   const effectiveSpecialDurationMin = Math.max(15, coordSpecialDurationMinRaw || coordinationDurationMin);
   const effectiveSpecialStartAt =
     coordSpecialStartAt && coordSpecialStartAt.includes("T") ? parseDatetimeLocal(coordSpecialStartAt) : null;
+  const coordinationPhasePreviewSlots =
+    activeSchedulingTicket && parentAvailabilityPayload && coordinationTeacherOptions.length > 0
+      ? filterSchedulingSlotsByParentAvailability(
+          await listSchedulingCoordinationCandidateSlots({
+            studentId,
+            teacherOptions: coordinationTeacherOptions,
+            teacherId: effectiveCoordTeacherId || undefined,
+            startAt: parentAvailabilityPayload.earliestStartDate
+              ? new Date(`${parentAvailabilityPayload.earliestStartDate}T00:00:00`)
+              : new Date(),
+            durationMin: coordinationDurationMin,
+            maxSlots: 8,
+          }),
+          parentAvailabilityPayload
+        ).slice(0, 5)
+      : [];
   const generatedCoordinationSlots =
     coordGenerate && coordinationTeacherOptions.length > 0
       ? filterSchedulingSlotsByParentAvailability(
@@ -1685,6 +1702,14 @@ export default async function StudentDetailPage({
           parentAvailabilityPayload
         ).slice(0, 5)
       : [];
+  const schedulingCoordinationPhase = activeSchedulingTicket
+    ? deriveSchedulingCoordinationPhase({
+        ticketStatus: activeSchedulingTicket.status,
+        hasParentForm: Boolean(parentAvailabilityRequest),
+        parentSubmittedAt: parentAvailabilityRequest?.submittedAt ?? null,
+        matchedSlotCount: coordinationPhasePreviewSlots.length,
+      })
+    : null;
   const specialRequestCheck =
     coordCheckSpecial && effectiveSpecialStartAt && coordinationTeacherOptions.length > 0
       ? await evaluateSchedulingSpecialRequest({
@@ -2245,6 +2270,13 @@ export default async function StudentDetailPage({
                 <div style={{ fontWeight: 800, marginTop: 4 }}>{activeSchedulingTicket.status}</div>
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
                   {activeSchedulingTicket.ticketNo}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #dbeafe", borderRadius: 10, padding: 10, background: "#eff6ff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Coordination phase", "协调阶段")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>{schedulingCoordinationPhase?.title ?? "-"}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {schedulingCoordinationPhase?.nextStep ?? "-"}
                 </div>
               </div>
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>

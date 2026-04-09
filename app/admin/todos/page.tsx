@@ -25,6 +25,7 @@ import {
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
 import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
+import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination";
 
 const TODO_DESK_COOKIE = "adminTodosDesk";
 const FORECAST_WINDOW_DAYS = 30;
@@ -672,6 +673,11 @@ export default async function AdminTodosPage({
         status: true,
         nextAction: true,
         nextActionDue: true,
+        parentAvailabilityRequest: {
+          select: {
+            submittedAt: true,
+          },
+        },
       },
     }),
     prisma.parentAvailabilityRequest.findMany({
@@ -695,6 +701,7 @@ export default async function AdminTodosPage({
             ticketNo: true,
             studentName: true,
             owner: true,
+            status: true,
             nextAction: true,
           },
         },
@@ -1383,6 +1390,11 @@ export default async function AdminTodosPage({
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
             {schedulingCoordinationRows.map((row) => {
               const isOverdue = !!row.nextActionDue && row.nextActionDue.getTime() < now.getTime();
+              const phase = deriveSchedulingCoordinationPhase({
+                ticketStatus: row.status,
+                hasParentForm: Boolean(row.parentAvailabilityRequest),
+                parentSubmittedAt: row.parentAvailabilityRequest?.submittedAt ?? null,
+              });
               return (
                 <div key={row.id} style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
@@ -1394,6 +1406,7 @@ export default async function AdminTodosPage({
                   <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.studentName}</div>
                   <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.owner ?? t(lang, "Unassigned", "未分配")}</div>
                   <div style={detailLineStyle}>{t(lang, "Status", "状态")}: {row.status}</div>
+                  <div style={detailLineStyle}>{t(lang, "Phase", "协调阶段")}: {phase.title}</div>
                   <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.nextAction ?? "-"}</div>
                   <div style={detailLineStyle}>
                     {t(lang, "Due", "截止")}: {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
@@ -1425,22 +1438,32 @@ export default async function AdminTodosPage({
         ) : (
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
             {submittedParentAvailabilityRows.map((row) => (
-              <div key={row.ticketId} style={{ border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                  <div style={{ fontWeight: 700 }}>{row.ticket.ticketNo}</div>
-                  <div style={{ color: "#166534", fontSize: 12, fontWeight: 700 }}>
-                    {t(lang, "Submitted", "已提交")}
+              (() => {
+                const phase = deriveSchedulingCoordinationPhase({
+                  ticketStatus: row.ticket.status ?? "Need Info",
+                  hasParentForm: true,
+                  parentSubmittedAt: row.submittedAt,
+                });
+                return (
+                  <div key={row.ticketId} style={{ border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                      <div style={{ fontWeight: 700 }}>{row.ticket.ticketNo}</div>
+                      <div style={{ color: "#166534", fontSize: 12, fontWeight: 700 }}>
+                        {t(lang, "Submitted", "已提交")}
+                      </div>
+                    </div>
+                    <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.ticket.studentName}</div>
+                    <div style={detailLineStyle}>{t(lang, "Course", "课程")}: {row.courseLabel || "-"}</div>
+                    <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.ticket.owner ?? t(lang, "Unassigned", "未分配")}</div>
+                    <div style={detailLineStyle}>{t(lang, "Submitted at", "提交时间")}: {row.submittedAt ? formatBusinessDateTime(row.submittedAt) : "-"}</div>
+                    <div style={detailLineStyle}>{t(lang, "Phase", "协调阶段")}: {phase.title}</div>
+                    <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.ticket.nextAction ?? "-"}</div>
+                    <a href={`/admin/tickets/${row.ticketId}?back=${encodeURIComponent("/admin/todos#todo-parent-availability-submitted")}`}>
+                      {t(lang, "Open ticket", "打开工单")}
+                    </a>
                   </div>
-                </div>
-                <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.ticket.studentName}</div>
-                <div style={detailLineStyle}>{t(lang, "Course", "课程")}: {row.courseLabel || "-"}</div>
-                <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.ticket.owner ?? t(lang, "Unassigned", "未分配")}</div>
-                <div style={detailLineStyle}>{t(lang, "Submitted at", "提交时间")}: {row.submittedAt ? formatBusinessDateTime(row.submittedAt) : "-"}</div>
-                <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.ticket.nextAction ?? "-"}</div>
-                <a href={`/admin/tickets/${row.ticketId}?back=${encodeURIComponent("/admin/todos#todo-parent-availability-submitted")}`}>
-                  {t(lang, "Open ticket", "打开工单")}
-                </a>
-              </div>
+                );
+              })()
             ))}
           </div>
         )}

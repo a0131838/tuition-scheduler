@@ -43,6 +43,7 @@ import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import {
   buildSchedulingCoordinationSlotShareText,
   buildSchedulingCoordinationTeacherOptions,
+  deriveSchedulingCoordinationPhase,
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
@@ -178,6 +179,19 @@ function flowCardStyle(state: string, pulsing: boolean) {
     background: "#f8fafc",
     color: "#475569",
   } as const;
+}
+
+function coordinationPhaseToneStyle(key: string) {
+  if (key === "ready_to_schedule" || key === "availability_options_ready") {
+    return { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" } as const;
+  }
+  if (key === "teacher_exception_needed" || key === "waiting_teacher_exception") {
+    return { border: "1px solid #fdba74", background: "#fff7ed", color: "#9a3412" } as const;
+  }
+  if (key === "closed") {
+    return { border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569" } as const;
+  }
+  return { border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1d4ed8" } as const;
 }
 
 async function updateStatusAction(formData: FormData) {
@@ -406,6 +420,70 @@ async function regenerateParentAvailabilityAction(formData: FormData) {
   redirect(appendQuery(back, { ok: "parent-link-regenerated" }));
 }
 
+async function markCoordinationParentChoiceAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), "/admin/tickets");
+  if (!id) redirect(back);
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { id: true, type: true, status: true, isArchived: true },
+  });
+  if (!row || row.type !== "排课协调" || row.isArchived || ["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery(back, { err: "closed-parent-form" }));
+  }
+
+  const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.ticket.update({
+    where: { id },
+    data: {
+      status: "Waiting Parent",
+      nextAction: "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling.",
+      nextActionDue: nextDue,
+      lastUpdateAt: new Date(),
+    },
+  });
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/admin/todos");
+  revalidatePath("/admin/students");
+  redirect(appendQuery(back, { ok: "coordination-waiting-parent-choice" }));
+}
+
+async function markCoordinationTeacherExceptionAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), "/admin/tickets");
+  if (!id) redirect(back);
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { id: true, type: true, status: true, isArchived: true },
+  });
+  if (!row || row.type !== "排课协调" || row.isArchived || ["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery(back, { err: "closed-parent-form" }));
+  }
+
+  const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.ticket.update({
+    where: { id },
+    data: {
+      status: "Waiting Teacher",
+      nextAction: "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time.",
+      nextActionDue: nextDue,
+      lastUpdateAt: new Date(),
+    },
+  });
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/admin/todos");
+  revalidatePath("/teacher/scheduling-exceptions");
+  redirect(appendQuery(back, { ok: "coordination-waiting-teacher" }));
+}
+
 export default async function AdminTicketDetailPage({
   params,
   searchParams,
@@ -530,6 +608,14 @@ export default async function AdminTicketDetailPage({
           };
         })()
       : null;
+  const coordinationPhase = row.type === "排课协调"
+    ? deriveSchedulingCoordinationPhase({
+        ticketStatus: row.status,
+        hasParentForm: Boolean(row.parentAvailabilityRequest),
+        parentSubmittedAt: row.parentAvailabilityRequest?.submittedAt ?? null,
+        matchedSlotCount: coordinationContext?.matchedParentSlots.length ?? 0,
+      })
+    : null;
   const flowNodes = [
     { key: "Need Info", label: "待补信息", caption: "Need Info" },
     { key: "Waiting Teacher", label: "等老师", caption: "Waiting Teacher" },
@@ -601,6 +687,16 @@ export default async function AdminTicketDetailPage({
       {ok === "parent-link-regenerated" ? (
         <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
           家长时间表单链接已重生，当前工单已回到等待家长 / Parent availability link regenerated
+        </div>
+      ) : null}
+      {ok === "coordination-waiting-parent-choice" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          已标记为等待家长确认候选时间 / Coordination ticket moved to waiting for the parent choice
+        </div>
+      ) : null}
+      {ok === "coordination-waiting-teacher" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          已标记为等待老师例外确认 / Coordination ticket moved to waiting for teacher exception confirmation
         </div>
       ) : null}
 
@@ -756,12 +852,20 @@ export default async function AdminTicketDetailPage({
               </div>
               <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
                 <div><b>课程 / Course</b>: {asText(row.parentAvailabilityRequest.courseLabel)}</div>
-                <div><b>最近提交 / Latest submission</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
-                <div><b>有效期 / Expires at</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
-                <div><b>下一步 / Next step</b>: {row.nextAction || "-"}</div>
+              <div><b>最近提交 / Latest submission</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
+              <div><b>有效期 / Expires at</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
+              <div><b>下一步 / Next step</b>: {row.nextAction || "-"}</div>
+            </div>
+            {coordinationPhase ? (
+              <div style={{ ...coordinationPhaseToneStyle(coordinationPhase.key), borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+                <div style={{ fontWeight: 800 }}>协调阶段 / Coordination phase</div>
+                <div style={{ fontWeight: 800 }}>{coordinationPhase.title}</div>
+                <div style={{ fontSize: 13 }}>{coordinationPhase.description}</div>
+                <div style={{ fontSize: 13 }}><b>Suggested next step</b>: {coordinationPhase.nextStep}</div>
               </div>
-              {coordinationContext ? (
-                <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 8 }}>
+            ) : null}
+            {coordinationContext ? (
+              <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <div style={{ fontWeight: 700 }}>availability 命中结果 / Availability-backed result</div>
                     <div style={{ fontSize: 12, color: "#475569" }}>
@@ -790,6 +894,13 @@ export default async function AdminTicketDetailPage({
                                 label="复制发送文案 / Copy Message"
                                 copiedLabel="已复制文案 / Copied"
                               />
+                              {row.status !== "Waiting Parent" ? (
+                                <form action={markCoordinationParentChoiceAction}>
+                                  <input type="hidden" name="id" value={row.id} />
+                                  <input type="hidden" name="back" value={selfHref} />
+                                  <button type="submit">标记已发候选时间 / Mark options sent</button>
+                                </form>
+                              ) : null}
                               {studentCoordinationHref ? <a href={studentCoordinationHref}>打开学生协调页 / Open student coordination</a> : null}
                             </div>
                           </div>
@@ -818,6 +929,20 @@ export default async function AdminTicketDetailPage({
                                     label="复制替代文案 / Copy Alternative"
                                     copiedLabel="已复制文案 / Copied"
                                   />
+                                  {row.status !== "Waiting Parent" ? (
+                                    <form action={markCoordinationParentChoiceAction}>
+                                      <input type="hidden" name="id" value={row.id} />
+                                      <input type="hidden" name="back" value={selfHref} />
+                                      <button type="submit">标记已发替代时间 / Mark alternatives sent</button>
+                                    </form>
+                                  ) : null}
+                                  {row.status !== "Waiting Teacher" && row.status !== "Exception" ? (
+                                    <form action={markCoordinationTeacherExceptionAction}>
+                                      <input type="hidden" name="id" value={row.id} />
+                                      <input type="hidden" name="back" value={selfHref} />
+                                      <button type="submit">转老师例外确认 / Ask teacher exception</button>
+                                    </form>
+                                  ) : null}
                                   {studentCoordinationHref ? <a href={studentCoordinationHref}>打开学生协调页 / Open student coordination</a> : null}
                                 </div>
                               </div>

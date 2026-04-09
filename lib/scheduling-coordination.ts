@@ -29,6 +29,23 @@ export type SchedulingCoordinationTeacherOption = {
   assigned: boolean;
 };
 
+export type SchedulingCoordinationPhaseKey =
+  | "waiting_parent_submission"
+  | "availability_options_ready"
+  | "waiting_parent_choice"
+  | "teacher_exception_needed"
+  | "waiting_teacher_exception"
+  | "ready_to_schedule"
+  | "closed";
+
+export type SchedulingCoordinationPhase = {
+  key: SchedulingCoordinationPhaseKey;
+  title: string;
+  badge: string;
+  description: string;
+  nextStep: string;
+};
+
 export function buildSchedulingCoordinationTeacherOptions(args: {
   enrollments: EnrollmentLike[];
   teachers: TeacherLike[];
@@ -78,6 +95,84 @@ export function buildSchedulingCoordinationTeacherOptions(args: {
     if (a.assigned !== b.assigned) return a.assigned ? -1 : 1;
     return a.teacherName.localeCompare(b.teacherName);
   });
+}
+
+export function deriveSchedulingCoordinationPhase(args: {
+  ticketStatus: string;
+  hasParentForm: boolean;
+  parentSubmittedAt?: Date | null;
+  matchedSlotCount?: number;
+}) : SchedulingCoordinationPhase {
+  const matchedSlotCount = Math.max(0, args.matchedSlotCount ?? 0);
+  const parentSubmitted = Boolean(args.parentSubmittedAt);
+
+  if (["Completed", "Cancelled"].includes(args.ticketStatus)) {
+    return {
+      key: "closed",
+      title: "Closed / 已关闭",
+      badge: "Closed / 已关闭",
+      description: "This coordination item has already been closed.",
+      nextStep: "Open a new coordination ticket only if timing needs to be re-opened.",
+    };
+  }
+
+  if (args.ticketStatus === "Confirmed") {
+    return {
+      key: "ready_to_schedule",
+      title: "Ready to schedule / 可直接排课",
+      badge: "Ready / 可排",
+      description: "The family and ops side are aligned enough to place the lesson using Quick Schedule.",
+      nextStep: "Use Quick Schedule to place the lesson, then close the coordination ticket.",
+    };
+  }
+
+  if (args.ticketStatus === "Waiting Teacher" || args.ticketStatus === "Exception") {
+    return {
+      key: "waiting_teacher_exception",
+      title: "Waiting teacher exception / 等老师例外确认",
+      badge: "Teacher / 老师",
+      description: "The requested timing sits outside normal availability and now needs a teacher-side answer.",
+      nextStep: "Wait for the teacher's exception reply or nudge the teacher if it becomes overdue.",
+    };
+  }
+
+  if (!args.hasParentForm || !parentSubmitted) {
+    return {
+      key: "waiting_parent_submission",
+      title: "Waiting for parent submission / 等家长提交",
+      badge: "Parent / 家长",
+      description: "The parent availability form has not been submitted yet.",
+      nextStep: "Send or resend the parent form link and wait for the family's available times.",
+    };
+  }
+
+  if (args.ticketStatus === "Waiting Parent") {
+    return {
+      key: "waiting_parent_choice",
+      title: "Waiting for parent choice / 等家长确认",
+      badge: "Reply / 等回复",
+      description: "Availability-backed options were already sent out and ops is now waiting for the family to choose.",
+      nextStep: "Wait for the parent's reply, or follow up again if no answer comes back.",
+    };
+  }
+
+  if (matchedSlotCount > 0) {
+    return {
+      key: "availability_options_ready",
+      title: "Availability options ready / 候选时间已就绪",
+      badge: "Match / 命中",
+      description: "The parent's submitted times already match current teacher availability.",
+      nextStep: "Send these matching slots to the parent, then move the ticket to waiting-for-parent-choice.",
+    };
+  }
+
+  return {
+    key: "teacher_exception_needed",
+    title: "Teacher exception likely needed / 可能需要老师例外确认",
+    badge: "Exception / 例外",
+    description: "No current availability matches the submitted parent preferences.",
+    nextStep: "Send nearby alternatives first, or mark the item for teacher exception confirmation if the family insists.",
+  };
 }
 
 export function inferSchedulingCoordinationDurationMin(args: {

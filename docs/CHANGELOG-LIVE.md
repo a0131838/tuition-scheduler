@@ -39,6 +39,31 @@ This file is the single source of truth for what changed in production.
   - student detail scheduling coordination card should continue to show only slots that fit the submitted parent availability
 - Rollback point: previous production commit before `2026-04-09-r08`.
 
+## 2026-04-09-r09
+
+- Release ID: `2026-04-09-r09`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `READY`
+- Scope: make scheduling coordination feel more like a true operator state flow by adding a derived coordination phase, clearer next-step guidance, and one-click ticket progression for “options sent” and “teacher exception needed”.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `lib/scheduling-coordination.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-phase-flow-and-quick-progress-actions.md`
+- Risk impact (if any): Low. This release only improves scheduling-coordination operator guidance, derived phase display, and ticket quick actions; it does not change tokens, parent form storage, quick schedule execution, session creation, attendance, package logic, or finance behavior.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin `/admin/tickets/[id]` for a coordination item should show a new `Coordination phase / 协调阶段` summary
+  - matching availability results should expose `Mark options sent`
+  - non-matching availability results should expose `Ask teacher exception`
+  - student detail and `Todo Center` should show the derived coordination phase text
+- Rollback point: previous production commit before `2026-04-09-r09`.
+
 ## 2026-04-09-r07
 
 - Release ID: `2026-04-09-r07`
