@@ -80,12 +80,15 @@ export default function AdminTeacherAvailabilityClient(props: {
     prev: string;
     next: string;
     monthlyTitle: string;
+    monthlyHelp: string;
     weeklyTitle: string;
     add: string;
     delete: string;
     addWeekly: string;
     generate: string;
     noSlots: string;
+    noDateOverride: string;
+    weeklyFallbackLabel: string;
     noWeekly: string;
     weeklyAutoSyncNote: string;
   };
@@ -127,6 +130,17 @@ export default function AdminTeacherAvailabilityClient(props: {
     for (const arr of m.values()) arr.sort((x, y) => x.startMin - y.startMin);
     return m;
   }, [dateAvails]);
+
+  const weeklyMap = useMemo(() => {
+    const m = new Map<number, WeeklySlot[]>();
+    for (const a of weeklyAvails) {
+      const arr = m.get(a.weekday) ?? [];
+      arr.push(a);
+      m.set(a.weekday, arr);
+    }
+    for (const arr of m.values()) arr.sort((x, y) => x.startMin - y.startMin);
+    return m;
+  }, [weeklyAvails]);
 
   const loadMonth = async (m: string) => {
     setLoading(true);
@@ -179,6 +193,7 @@ export default function AdminTeacherAvailabilityClient(props: {
       {msg ? <div style={{ marginTop: 10, color: "#166534", fontSize: 12 }}>{msg}</div> : null}
 
       <h3 style={{ marginTop: 18 }}>{labels.monthlyTitle}</h3>
+      <div style={{ marginBottom: 8, color: "#475569", fontSize: 12 }}>{labels.monthlyHelp}</div>
 
       <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
@@ -197,13 +212,35 @@ export default function AdminTeacherAvailabilityClient(props: {
                 if (!day) return <td key={j} style={{ border: "1px solid #eee", height: 120 }} />;
                 const key = ymd(day);
                 const list = dateMap.get(key) ?? [];
+                const weeklyFallback = weeklyMap.get(day.getDay()) ?? [];
 
                 return (
                   <td key={j} style={{ border: "1px solid #eee", verticalAlign: "top", padding: 8 }}>
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
 
                     {list.length === 0 ? (
-                      <div style={{ color: "#999", fontSize: 12 }}>{labels.noSlots}</div>
+                      weeklyFallback.length > 0 ? (
+                        <div style={{ display: "grid", gap: 4, marginBottom: 6 }}>
+                          <div style={{ color: "#64748b", fontSize: 12 }}>{labels.noDateOverride}</div>
+                          <div
+                            style={{
+                              border: "1px solid #bfdbfe",
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
+                              borderRadius: 8,
+                              padding: "6px 8px",
+                              fontSize: 12,
+                              display: "grid",
+                              gap: 2,
+                            }}
+                          >
+                            <div style={{ fontWeight: 700 }}>{labels.weeklyFallbackLabel}</div>
+                            <div>{weeklyFallback.map((slot) => `${fromMin(slot.startMin)}-${fromMin(slot.endMin)}`).join(", ")}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ color: "#999", fontSize: 12 }}>{labels.noSlots}</div>
+                      )
                     ) : (
                       <div style={{ display: "grid", gap: 4, marginBottom: 6 }}>
                         {list.map((a) => (

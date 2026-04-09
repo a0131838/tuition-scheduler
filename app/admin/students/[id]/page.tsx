@@ -468,8 +468,13 @@ function buildCourseLabelFromEnrollment(enrollment: {
   return parts.join(" / ");
 }
 async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
+  const result = await inspectTeacherAvailability(teacherId, startAt, endAt);
+  return result.error;
+}
+
+async function inspectTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
   if (startAt.toDateString() !== endAt.toDateString()) {
-    return "Session spans multiple days";
+    return { error: "Session spans multiple days", source: null as "date" | "weekly" | null };
   }
 
   const startMin = toMinFromDate(startAt);
@@ -484,6 +489,8 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     orderBy: { startMin: "asc" },
   });
 
+  let source: "date" | "weekly" = "date";
+
   if (slots.length === 0) {
     const weekday = startAt.getDay();
     slots = await prisma.teacherAvailability.findMany({
@@ -493,18 +500,25 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
     });
 
     if (slots.length === 0) {
-      return `No availability on ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} (no slots)`;
+      return {
+        error: `No availability on ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} (no slots)`,
+        source: null as "date" | "weekly" | null,
+      };
     }
+    source = "weekly";
   }
 
   const ok = slots.some((s) => s.startMin <= startMin && s.endMin >= endMin);
   if (!ok) {
     const ranges = slots.map((s) => fmtSlotRange(s.startMin, s.endMin)).join(", ");
     const weekday = startAt.getDay();
-    return `Outside availability ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`;
+    return {
+      error: `Outside availability ${WEEKDAYS[(weekday + 6) % 7] ?? weekday} ${fmtHHMM(startAt)}-${fmtHHMM(endAt)}. Available: ${ranges}`,
+      source,
+    };
   }
 
-  return null;
+  return { error: null as string | null, source };
 }
 
 function buildRedirectToTeacherWeek(teacherId: string, startAt: Date) {
@@ -1800,6 +1814,7 @@ export default async function StudentDetailPage({
     name: string;
     ok: boolean;
     reason?: string;
+    statusLabel?: string;
   }[] = [];
   let quickPackageWarn = "";
   const quickCampus = campuses.find((c) => c.id === quickCampusId) ?? null;
@@ -1886,10 +1901,12 @@ export default async function StudentDetailPage({
           });
           continue;
         }
+        let availabilitySource: "date" | "weekly" | null = null;
         if (!bypassAvailabilityCheck) {
-          const availErr = await checkTeacherAvailability(tch.id, startAt, endAt);
-          if (availErr) {
-            quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availErr });
+          const availabilityCheck = await inspectTeacherAvailability(tch.id, startAt, endAt);
+          availabilitySource = availabilityCheck.source;
+          if (availabilityCheck.error) {
+            quickCandidates.push({ id: tch.id, name: tch.name, ok: false, reason: availabilityCheck.error });
             continue;
           }
         }
@@ -1935,7 +1952,15 @@ export default async function StudentDetailPage({
           });
           continue;
         }
-        quickCandidates.push({ id: tch.id, name: tch.name, ok: true });
+        quickCandidates.push({
+          id: tch.id,
+          name: tch.name,
+          ok: true,
+          statusLabel:
+            availabilitySource === "weekly"
+              ? t(lang, "Available via weekly template", "按每周模板可排")
+              : t(lang, "Available via date availability", "按日期时段可排"),
+        });
       }
       if (quickTeacherId) {
         quickCandidates.sort((a, b) => {

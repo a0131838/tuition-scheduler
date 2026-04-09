@@ -67,6 +67,11 @@ export default async function AvailabilityPage({
         prev: t(lang, "Prev", "上个月"),
         next: t(lang, "Next", "下个月"),
         monthlyTitle: t(lang, "Monthly Availability (by date)", "月度可用时间（按日期）"),
+        monthlyHelp: t(
+          lang,
+          "Date rows show explicit day overrides first. If a day has no date override, scheduling can still fall back to the weekly template below.",
+          "这里优先显示按日期设置的时段；如果当天没有按日期覆盖，排课仍会继续回退使用下方每周模板。"
+        ),
         weeklyTitle: t(lang, "Weekly Template (for bulk month generation)", "每周模板（用于批量生成整月）"),
         weeklyAutoSyncNote: t(
           lang,
@@ -78,6 +83,8 @@ export default async function AvailabilityPage({
         addWeekly: t(lang, "Add Weekly", "添加每周模板"),
         generate: t(lang, "Generate This Month From Weekly Template", "按每周模板生成本月"),
         noSlots: t(lang, "No slots", "无时段"),
+        noDateOverride: t(lang, "No date override", "当天没有按日期覆盖"),
+        weeklyFallbackLabel: t(lang, "Weekly template still applies", "仍按每周模板可排"),
         noWeekly: t(lang, "No weekly template yet.", "暂无每周模板。"),
       }}
     />

@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r10
+
+- Release ID: `2026-04-09-r10`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: clarify teacher availability inheritance so monthly availability cells no longer look unavailable when scheduling is still correctly falling back to the teacher's weekly template.
+- Key files:
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/teachers/[id]/availability/AdminTeacherAvailabilityClient.tsx`
+  - `app/admin/teachers/[id]/availability/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-availability-weekly-fallback-clarity.md`
+- Risk impact (if any): Low. This release does not change the actual scheduling eligibility rules; it only makes the existing date-vs-weekly availability source much clearer in admin UI so ops do not mistake inherited weekly availability for forced scheduling.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - admin teacher availability month cells with no date override but matching weekly template should show `仍按每周模板可排`
+  - quick schedule candidate status should show whether a teacher is available via `按每周模板可排` or `按日期时段可排`
+- Rollback point: previous production commit before `2026-04-09-r10`.
+
 ## 2026-04-09-r08
 
 - Release ID: `2026-04-09-r08`

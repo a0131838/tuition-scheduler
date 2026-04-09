@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r09` (scheduling coordination phase flow and quick progress actions), live on production.
+- Current release line on this branch: `2026-04-09-r10` (teacher availability weekly-fallback clarity), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -120,6 +120,20 @@
   - live admin ticket detail for `赵测试` showed `Coordination phase / 协调阶段`, `Availability options ready / 候选时间已就绪`, and `Mark options sent / 标记已发候选时间`
   - live student detail for `赵测试` showed `Scheduling coordination / 排课协调` actions including `Open parent form`, `Copy link`, `Copy message`, and `Regenerate link`
   - `Todo Center` phase text was not re-verified against a live due coordination reminder because no qualifying row was available during this QA pass
+
+## 2026-04-09-r10 Ready
+
+- Scope: clarify the date-vs-weekly teacher availability inheritance so the UI no longer implies a teacher has no availability when scheduling is actually falling back to the weekly template.
+- Business impact:
+  - teacher monthly availability cells now explain when there is `No date override / 当天没有按日期覆盖` but the day is still schedulable through the weekly template
+  - those cells now show `Weekly template still applies / 仍按每周模板可排` together with the inherited weekly time range, so ops can see why scheduling is allowed
+  - quick schedule candidate rows now distinguish `按每周模板可排` from `按日期时段可排`, which makes the source of availability clear during manual scheduling
+  - no actual availability rules, session creation behavior, conflict checks, package logic, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - teacher availability QA should confirm inherited weekly slots render inside monthly cells where there is no date override
+  - quick schedule QA should confirm teacher candidate statuses now indicate whether availability came from the weekly template or from date-specific availability
 
 ## 2026-04-09-r07 Deployed
 
