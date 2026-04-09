@@ -563,6 +563,7 @@ model Student {
   bookingLinks       StudentBookingLink[]
   bookingRequests    StudentBookingRequest[]
   settlements        PartnerSettlement[]
+  tickets            Ticket[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1064,6 +1065,7 @@ model TicketDailyCounter {
 model Ticket {
   id                 String   @id @default(uuid())
   ticketNo           String   @unique
+  studentId          String?
   source             String
   type               String
   priority           String
@@ -1099,12 +1101,14 @@ model Ticket {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  student       Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
   completedByUser User? @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([isArchived, createdAt])
   @@index([priority, createdAt])
   @@index([studentName, createdAt])
+  @@index([studentId, isArchived, createdAt])
   @@index([type, createdAt])
 }
 

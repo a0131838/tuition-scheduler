@@ -3208,3 +3208,30 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - 新东方 split-batch entry now shows lessons-based rows and quick-add chips while still saving 45-minute batch totals underneath
 - Rollback point: previous production commit before `2026-04-08-r09`.
+
+## 2026-04-09-r01
+
+- Release ID: `2026-04-09-r01`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add scheduling coordination tickets on student detail pages so ops can track parent scheduling follow-up, generate candidate slots from trusted teacher availability, and check whether a parent special-time request is inside or outside submitted availability before going back to the teacher.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `app/tickets/intake/IntakeForm.tsx`
+  - `lib/tickets.ts`
+  - `lib/scheduling-coordination.ts`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260409100000_add_ticket_student_and_scheduling_coordination/migration.sql`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-phase-1-and-2.md`
+- Risk impact (if any): Medium-low. This release adds a nullable `Ticket.studentId`, a new scheduling-coordination ticket type, student-detail coordination helpers, and todo reminders, but it does not change actual session creation, availability rules, booking links, attendance, package balances, or finance logic.
+- Verification:
+  - `npm run prisma:generate` passed
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - student detail now shows a `Scheduling coordination / 排课协调` card with ticket summary, availability-based candidate slot generation, and special-time availability matching
+- Rollback point: previous production commit before `2026-04-09-r01`.

@@ -563,11 +563,11 @@ export default function IntakeForm({
             ) : null}
           </label>
           <label style={labelStyle}>
-            老师* / Teacher*
+            老师{fieldRequired("teacher") ? "*" : ""} / Teacher{fieldRequired("teacher") ? "*" : ""}
             <input type="hidden" name="teacherId" value={teacherIdValue} />
             <input
               name="teacher"
-              required
+              required={fieldRequired("teacher")}
               value={teacherName}
               onChange={(e) => {
                 setTeacherName(e.target.value);
@@ -575,7 +575,7 @@ export default function IntakeForm({
                 setSelectedTeacherCandidate(null);
                 setAutoFilledFields((prev) => ({ ...prev, teacher: false }));
               }}
-              placeholder="填写当前老师或目标老师"
+              placeholder={fieldSuggested("teacher") || fieldRequired("teacher") ? "填写当前老师、目标老师或主要老师" : ""}
               style={{
                 ...fieldStyle,
                 borderColor: autoFilledFields.teacher ? "#93c5fd" : fieldStyle.border?.toString(),

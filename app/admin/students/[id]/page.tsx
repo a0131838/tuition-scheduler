@@ -19,6 +19,18 @@ import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
+  allocateTicketNo,
+  composeTicketSituation,
+  parseTicketSituationSummary,
+  SCHEDULING_COORDINATION_TICKET_TYPE,
+} from "@/lib/tickets";
+import {
+  buildSchedulingCoordinationTeacherOptions,
+  evaluateSchedulingSpecialRequest,
+  inferSchedulingCoordinationDurationMin,
+  listSchedulingCoordinationCandidateSlots,
+} from "@/lib/scheduling-coordination";
+import {
   workbenchHeroStyle,
   workbenchInfoBarStyle,
   workbenchMetricCardStyle,
@@ -250,6 +262,12 @@ function parseDatetimeLocal(s: string) {
   return new Date(Y, M - 1, D, hh, mm, 0, 0);
 }
 
+function parseDateInput(s: string) {
+  const [Y, M, D] = s.split("-").map(Number);
+  if (!Number.isFinite(Y) || !Number.isFinite(M) || !Number.isFinite(D)) return null;
+  return new Date(Y, M - 1, D, 0, 0, 0, 0);
+}
+
 function toMinFromDate(d: Date) {
   return d.getHours() * 60 + d.getMinutes();
 }
@@ -402,6 +420,35 @@ function buildCalendarDays(monthDate: Date) {
     });
   }
   return days;
+}
+
+function resolveTicketSourceFromStudent(student: { sourceChannel?: { name?: string | null } | null }) {
+  const raw = String(student.sourceChannel?.name ?? "").trim();
+  if (raw.includes("新东方")) return "新东方外包";
+  return "自营学生";
+}
+
+function pickSchedulingTicketOwner(user: { name?: string | null; email?: string | null }) {
+  const source = `${user.name ?? ""} ${user.email ?? ""}`.toLowerCase();
+  if (source.includes("eva")) return "Eva";
+  if (source.includes("emily")) return "Emily";
+  if (source.includes("jasmine")) return "Jasmine";
+  return null;
+}
+
+function buildCourseLabelFromEnrollment(enrollment: {
+  class?: {
+    course?: { name?: string | null } | null;
+    subject?: { name?: string | null } | null;
+    level?: { name?: string | null } | null;
+  } | null;
+}) {
+  const parts = [
+    enrollment.class?.course?.name,
+    enrollment.class?.subject?.name,
+    enrollment.class?.level?.name,
+  ].filter(Boolean);
+  return parts.join(" / ");
 }
 async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt: Date) {
   if (startAt.toDateString() !== endAt.toDateString()) {
@@ -1081,6 +1128,94 @@ async function restoreStudentSession(studentId: string, formData: FormData) {
   if (month) params.set("month", month);
   redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
 }
+
+async function createSchedulingCoordinationTicket(studentId: string) {
+  "use server";
+  const user = await getCurrentUser();
+  if (!user) {
+    const params = new URLSearchParams({ err: "Login required" });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
+  const existing = await prisma.ticket.findFirst({
+    where: {
+      studentId,
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+    select: { id: true },
+  });
+  if (existing) {
+    redirect(
+      `/admin/tickets/${existing.id}?back=${encodeURIComponent(
+        buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
+      )}`
+    );
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      sourceChannel: true,
+      enrollments: {
+        include: {
+          class: { include: { course: true, subject: true, level: true, teacher: true } },
+        },
+        orderBy: { id: "asc" },
+        take: 1,
+      },
+    },
+  });
+  if (!student) {
+    const params = new URLSearchParams({ err: "Student not found" });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
+  const primaryEnrollment = student.enrollments[0] ?? null;
+  const courseLabel = primaryEnrollment ? buildCourseLabelFromEnrollment(primaryEnrollment) : null;
+  const teacherName = primaryEnrollment?.class?.teacher?.name ?? null;
+  const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const currentIssue =
+    "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source.";
+  const requiredAction =
+    "Send availability-based slot options to the parent, record any special time request, and only return to the teacher if the requested time falls outside submitted availability.";
+
+  const created = await prisma.$transaction(async (tx) => {
+    const ticketNo = await allocateTicketNo(tx);
+    return tx.ticket.create({
+      data: {
+        ticketNo,
+        studentId: student.id,
+        studentName: student.name,
+        source: resolveTicketSourceFromStudent(student),
+        type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        priority: "普通",
+        grade: student.grade ?? null,
+        course: courseLabel || null,
+        teacher: teacherName || null,
+        status: "Waiting Parent",
+        owner: pickSchedulingTicketOwner(user),
+        summary: composeTicketSituation({
+          currentIssue,
+          requiredAction,
+          latestDeadlineText: formatBusinessDateTime(dueAt),
+        }),
+        nextAction: requiredAction,
+        nextActionDue: dueAt,
+        createdByName: user.name ?? user.email ?? "Admin",
+      },
+      select: { id: true },
+    });
+  });
+
+  redirect(
+    `/admin/tickets/${created.id}?back=${encodeURIComponent(
+      buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
+    )}`
+  );
+}
 export default async function StudentDetailPage({
   params,
   searchParams,
@@ -1110,6 +1245,12 @@ export default async function StudentDetailPage({
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
   const focus = sp?.focus ?? "";
+  const coordDate = sp?.coordDate ?? fmtDateInput(new Date());
+  const coordTeacherId = sp?.coordTeacherId ?? "";
+  const coordGenerate = sp?.coordGenerate === "1";
+  const coordSpecialStartAt = sp?.coordSpecialStartAt ?? "";
+  const coordSpecialDurationMinRaw = Math.max(15, toInt(sp?.coordSpecialDurationMin, 45));
+  const coordCheckSpecial = sp?.coordCheckSpecial === "1";
   const calendarOpen = sp?.calendarOpen === "1" || focus === "calendar-tools";
   const attendanceOpen = focus === "attendance";
   const enrollmentsOpen = focus === "enrollments";
@@ -1168,6 +1309,7 @@ export default async function StudentDetailPage({
     packageCount,
     unpaidPackageCount,
     excusedCount,
+    activeSchedulingTicket,
     enrollments,
     packages,
     attendances,
@@ -1185,6 +1327,25 @@ export default async function StudentDetailPage({
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId) } }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId), paid: false } }),
     prisma.attendance.count({ where: { studentId, status: "EXCUSED" } }),
+    prisma.ticket.findFirst({
+      where: {
+        studentId,
+        type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        isArchived: false,
+        status: { notIn: ["Completed", "Cancelled"] },
+      },
+      orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        ticketNo: true,
+        status: true,
+        owner: true,
+        nextAction: true,
+        nextActionDue: true,
+        summary: true,
+        createdAt: true,
+      },
+    }),
     prisma.enrollment.findMany({
       where: { studentId },
       include: {
@@ -1226,6 +1387,36 @@ export default async function StudentDetailPage({
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
+
+  const schedulingSummary = activeSchedulingTicket ? parseTicketSituationSummary(activeSchedulingTicket.summary) : null;
+  const schedulingTicketHref = activeSchedulingTicket
+    ? `/admin/tickets/${activeSchedulingTicket.id}?back=${encodeURIComponent(
+        buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
+      )}`
+    : null;
+  const coordinationTeacherOptions = buildSchedulingCoordinationTeacherOptions({ enrollments, teachers });
+  const coordinationPreservedEntries = Object.entries(sp ?? {}).filter(
+    ([key, value]) =>
+      Boolean(value) &&
+      ![
+        "msg",
+        "err",
+        "coordDate",
+        "coordTeacherId",
+        "coordGenerate",
+        "coordSpecialStartAt",
+        "coordSpecialDurationMin",
+        "coordCheckSpecial",
+      ].includes(key)
+  ) as Array<[string, string]>;
+  const coordinationClearParams = new URLSearchParams();
+  for (const [key, value] of coordinationPreservedEntries) coordinationClearParams.set(key, value);
+  const coordinationClearHref = buildStudentDetailHref(
+    studentId,
+    coordinationClearParams,
+    "#scheduling-coordination",
+    "#scheduling-coordination"
+  );
 
   const classIds = enrollments.map((e) => e.classId);
   const upcomingRangeEnd = new Date();
@@ -1305,6 +1496,37 @@ export default async function StudentDetailPage({
   for (const c of teacherChanges) {
     if (!latestTeacherChangeMap.has(c.sessionId)) latestTeacherChangeMap.set(c.sessionId, c);
   }
+  const coordinationDurationMin = inferSchedulingCoordinationDurationMin({
+    upcomingSessions,
+    monthlySessions: teacherSessions,
+  });
+  const effectiveCoordTeacherId =
+    coordTeacherId && coordinationTeacherOptions.some((option) => option.teacherId === coordTeacherId) ? coordTeacherId : "";
+  const effectiveCoordDate = parseDateInput(coordDate) ?? new Date();
+  const effectiveSpecialDurationMin = Math.max(15, coordSpecialDurationMinRaw || coordinationDurationMin);
+  const effectiveSpecialStartAt =
+    coordSpecialStartAt && coordSpecialStartAt.includes("T") ? parseDatetimeLocal(coordSpecialStartAt) : null;
+  const generatedCoordinationSlots =
+    coordGenerate && coordinationTeacherOptions.length > 0
+      ? await listSchedulingCoordinationCandidateSlots({
+          studentId,
+          teacherOptions: coordinationTeacherOptions,
+          teacherId: effectiveCoordTeacherId || undefined,
+          startAt: effectiveCoordDate,
+          durationMin: coordinationDurationMin,
+          maxSlots: 5,
+        })
+      : [];
+  const specialRequestCheck =
+    coordCheckSpecial && effectiveSpecialStartAt && coordinationTeacherOptions.length > 0
+      ? await evaluateSchedulingSpecialRequest({
+          studentId,
+          teacherOptions: coordinationTeacherOptions,
+          teacherId: effectiveCoordTeacherId || undefined,
+          requestedStartAt: effectiveSpecialStartAt,
+          durationMin: effectiveSpecialDurationMin,
+        })
+      : null;
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const packageIds = packages.map((p) => p.id);
@@ -1633,6 +1855,7 @@ export default async function StudentDetailPage({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="#scheduling-coordination">{t(lang, "Scheduling coordination", "排课协调")}</a>
             <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
             <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
             <a href="#packages">{tl(lang, "Packages")}</a>
@@ -1737,6 +1960,12 @@ export default async function StudentDetailPage({
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
               <a
+                href="#scheduling-coordination"
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+              >
+                {t(lang, "Scheduling coordination", "排课协调")}
+              </a>
+              <a
                 href="#quick-schedule"
                 style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
               >
@@ -1766,6 +1995,301 @@ export default async function StudentDetailPage({
               >
                 {tl(lang, "Edit Student")}
               </a>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="scheduling-coordination"
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 14,
+            background: activeSchedulingTicket ? "#fffaf0" : "#f8fafc",
+            display: "grid",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Scheduling coordination", "排课协调")}</div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>
+                {t(
+                  lang,
+                  "Use one coordination ticket to track parent preferences, special time requests, and the next follow-up. Teacher availability remains the default scheduling source.",
+                  "用一张排课协调工单记录家长偏好、特殊时间要求和下次跟进时间。老师 availability 仍然是默认排课依据。"
+                )}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {schedulingTicketHref ? (
+                <a
+                  href={schedulingTicketHref}
+                  style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                >
+                  {t(lang, "Open coordination ticket", "打开排课协调工单")}
+                </a>
+              ) : null}
+              <form action={createSchedulingCoordinationTicket.bind(null, studentId)}>
+                <button type="submit">
+                  {activeSchedulingTicket
+                    ? t(lang, "Open active ticket", "打开当前工单")
+                    : t(lang, "Create scheduling ticket", "新建排课协调工单")}
+                </button>
+              </form>
+            </div>
+          </div>
+          {activeSchedulingTicket ? (
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Current status", "当前状态")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>{activeSchedulingTicket.status}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {activeSchedulingTicket.ticketNo}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Owner", "负责人")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>{activeSchedulingTicket.owner || t(lang, "Unassigned", "未分配")}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {t(lang, "Created", "创建于")}: {formatBusinessDateTime(activeSchedulingTicket.createdAt)}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next follow-up", "下次跟进")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>
+                  {activeSchedulingTicket.nextActionDue ? formatBusinessDateTime(activeSchedulingTicket.nextActionDue) : "-"}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {t(lang, "Default rule", "默认规则")}: {t(lang, "Use availability first", "先用老师 availability")}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff", gridColumn: "1 / -1" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest summary", "最新摘要")}</div>
+                <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>
+                  {schedulingSummary?.currentIssue || activeSchedulingTicket.nextAction || "-"}
+                </div>
+                <div style={{ fontSize: 13, color: "#475569", marginTop: 6, whiteSpace: "pre-wrap" }}>
+                  {activeSchedulingTicket.nextAction || schedulingSummary?.requiredAction || "-"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                border: "1px dashed #cbd5e1",
+                borderRadius: 10,
+                padding: 12,
+                background: "#fff",
+                color: "#475569",
+              }}
+            >
+              {t(
+                lang,
+                "No active coordination ticket yet. Create one when parent timing still needs follow-up or a special time request needs tracking.",
+                "当前还没有活跃的排课协调工单。如果家长时间还需要继续跟进，或需要记录特殊时间请求，可以先新建一张。"
+              )}
+            </div>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            }}
+          >
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#eff6ff", display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 800 }}>{t(lang, "Generate candidate slots", "生成候选时间")}</div>
+                <div style={{ fontSize: 12, color: "#475569" }}>
+                  {t(
+                    lang,
+                    "Use submitted teacher availability as the default source and send 3-5 concrete options to the parent without re-checking the teacher.",
+                    "直接用老师已提交的 availability 生成 3-5 个可发给家长的时间，不需要再重复问老师。"
+                  )}
+                </div>
+              </div>
+              {coordinationTeacherOptions.length > 0 ? (
+                <form method="get" action={`/admin/students/${studentId}#scheduling-coordination`} style={{ display: "grid", gap: 10 }}>
+                  {coordinationPreservedEntries.map(([key, value]) => (
+                    <input key={`${key}:${value}`} type="hidden" name={key} value={value} />
+                  ))}
+                  <input type="hidden" name="coordGenerate" value="1" />
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Start from date", "从哪天开始")}</label>
+                    <input type="date" name="coordDate" defaultValue={coordDate} />
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Teacher scope", "老师范围")}</label>
+                    <select name="coordTeacherId" defaultValue={effectiveCoordTeacherId}>
+                      <option value="">{t(lang, "All matched teachers", "全部匹配老师")}</option>
+                      {coordinationTeacherOptions.map((option) => (
+                        <option key={option.teacherId} value={option.teacherId}>
+                          {option.teacherName}
+                          {option.subjectLabel ? ` | ${option.subjectLabel}` : ""}
+                          {option.assigned ? ` | ${t(lang, "Assigned", "当前老师")}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="submit">{t(lang, "Generate slots", "生成时间")}</button>
+                    <a
+                      href={coordinationClearHref}
+                      style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                    >
+                      {t(lang, "Clear helper", "清除辅助")}
+                    </a>
+                  </div>
+                </form>
+              ) : (
+                <div style={{ border: "1px dashed #bfdbfe", borderRadius: 10, padding: 10, background: "#fff", color: "#475569" }}>
+                  {t(
+                    lang,
+                    "No matched teaching context yet. Add or confirm the student's enrollment first, then the system can generate availability-based slot options.",
+                    "当前还没有匹配到可教学的老师上下文。请先确认学生的报名信息，系统才能基于 availability 生成候选时间。"
+                  )}
+                </div>
+              )}
+              {coordGenerate ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 12, color: "#475569" }}>
+                    {t(lang, "Suggested duration", "当前建议课时")}: <strong>{coordinationDurationMin} mins</strong>
+                  </div>
+                  {generatedCoordinationSlots.length > 0 ? (
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {generatedCoordinationSlots.map((slot) => (
+                        <div
+                          key={slot.slotKey}
+                          style={{ border: "1px solid #bfdbfe", borderRadius: 10, padding: 10, background: "#fff", display: "grid", gap: 4 }}
+                        >
+                          <div style={{ fontWeight: 800 }}>
+                            {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                          </div>
+                          <div style={{ color: "#334155", fontSize: 13 }}>
+                            {slot.teacherName}
+                            {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                          </div>
+                          <div style={{ color: "#64748b", fontSize: 12 }}>
+                            {t(lang, "Availability-backed option", "基于 availability 的可排时间")}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ border: "1px dashed #bfdbfe", borderRadius: 10, padding: 10, background: "#fff", color: "#475569" }}>
+                      {t(
+                        lang,
+                        "No open slots were found in the next two weeks for the selected scope. Keep the coordination ticket open and switch to a special-time request only if the parent insists on a time outside availability.",
+                        "接下来两周内没有找到可直接用的 availability 时间。先继续保持排课协调工单打开，只有家长坚持特殊时间时再走例外请求。"
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ border: "1px solid #fde68a", borderRadius: 12, padding: 12, background: "#fffbeb", display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 800 }}>{t(lang, "Check special time request", "检查家长特殊时间")}</div>
+                <div style={{ fontSize: 12, color: "#475569" }}>
+                  {t(
+                    lang,
+                    "Only if the parent's requested time falls outside submitted availability should this go back to the teacher as an exception.",
+                    "只有当家长要求的时间不在老师已提交的 availability 里时，才需要回到老师做例外确认。"
+                  )}
+                </div>
+              </div>
+              {coordinationTeacherOptions.length > 0 ? (
+                <form method="get" action={`/admin/students/${studentId}#scheduling-coordination`} style={{ display: "grid", gap: 10 }}>
+                  {coordinationPreservedEntries.map(([key, value]) => (
+                    <input key={`special:${key}:${value}`} type="hidden" name={key} value={value} />
+                  ))}
+                  <input type="hidden" name="coordCheckSpecial" value="1" />
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Requested time", "家长想要的时间")}</label>
+                    <input
+                      type="datetime-local"
+                      name="coordSpecialStartAt"
+                      defaultValue={coordSpecialStartAt || `${coordDate}T18:00`}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Duration", "时长")}</label>
+                    <input type="number" min={15} step={15} name="coordSpecialDurationMin" defaultValue={effectiveSpecialDurationMin} />
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Teacher scope", "老师范围")}</label>
+                    <select name="coordTeacherId" defaultValue={effectiveCoordTeacherId}>
+                      <option value="">{t(lang, "All matched teachers", "全部匹配老师")}</option>
+                      {coordinationTeacherOptions.map((option) => (
+                        <option key={`special-${option.teacherId}`} value={option.teacherId}>
+                          {option.teacherName}
+                          {option.subjectLabel ? ` | ${option.subjectLabel}` : ""}
+                          {option.assigned ? ` | ${t(lang, "Assigned", "当前老师")}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="submit">{t(lang, "Check request", "检查请求")}</button>
+                    <a
+                      href={coordinationClearHref}
+                      style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                    >
+                      {t(lang, "Clear helper", "清除辅助")}
+                    </a>
+                  </div>
+                </form>
+              ) : null}
+              {coordCheckSpecial && effectiveSpecialStartAt ? (
+                specialRequestCheck?.matches?.length ? (
+                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                    <div style={{ fontWeight: 800, color: "#166534" }}>
+                      {t(lang, "This request matches submitted availability", "这个时间命中了老师已提交的 availability")}
+                    </div>
+                    <div style={{ color: "#475569", marginTop: 4 }}>
+                      {specialRequestCheck.matches
+                        .map(
+                          (slot) =>
+                            `${slot.teacherName} | ${formatBusinessDateOnly(slot.startAt)} ${formatBusinessTimeOnly(slot.startAt)}-${formatBusinessTimeOnly(slot.endAt)}`
+                        )
+                        .join(" / ")}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ border: "1px solid #fed7aa", borderRadius: 10, padding: 10, background: "#fff" }}>
+                      <div style={{ fontWeight: 800, color: "#b45309" }}>
+                        {t(lang, "This request does not match current availability", "这个时间不在当前 availability 里")}
+                      </div>
+                      <div style={{ color: "#475569", marginTop: 4 }}>
+                        {t(
+                          lang,
+                          "Keep the coordination ticket open, record the parent's special request, and only then ask the teacher for an exception.",
+                          "请继续保留排课协调工单，先记录家长的特殊时间，再按例外流程回到老师确认。"
+                        )}
+                      </div>
+                    </div>
+                    {specialRequestCheck?.alternatives?.length ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Nearest availability-backed alternatives", "最近的 availability 替代时间")}</div>
+                        {specialRequestCheck.alternatives.map((slot) => (
+                          <div key={`alt-${slot.slotKey}`} style={{ border: "1px solid #fde68a", borderRadius: 10, padding: 10, background: "#fff" }}>
+                            <div style={{ fontWeight: 800 }}>
+                              {formatBusinessDateOnly(slot.startAt)} {formatBusinessTimeOnly(slot.startAt)}-{formatBusinessTimeOnly(slot.endAt)}
+                            </div>
+                            <div style={{ color: "#475569", marginTop: 4 }}>
+                              {slot.teacherName}
+                              {slot.teacherSubjectLabel ? ` | ${slot.teacherSubjectLabel}` : ""}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              ) : null}
             </div>
           </div>
         </div>

@@ -37,11 +37,14 @@ export const TICKET_TYPE_OPTIONS: OptionItem[] = [
   { value: "补课加课", zh: "补课加课", en: "Extra Session" },
   { value: "新学生购买课时包", zh: "新学生购买课时包", en: "New Student Package Purchase" },
   { value: "新排课", zh: "新排课", en: "New Scheduling" },
+  { value: "排课协调", zh: "排课协调", en: "Scheduling Coordination" },
   { value: "临时评估学生（没有买课程）", zh: "临时评估学生（没有买课程）", en: "Assessment Without Package" },
   { value: "评估学生（已买课程）", zh: "评估学生（已买课程）", en: "Assessment With Package" },
   { value: "学术问题", zh: "学术问题", en: "Academic Issue" },
   { value: "非学术问题", zh: "非学术问题", en: "Non-academic Issue" },
 ];
+
+export const SCHEDULING_COORDINATION_TICKET_TYPE = "排课协调";
 
 export const TICKET_PRIORITY_OPTIONS: OptionItem[] = [
   { value: "普通", zh: "普通", en: "Normal" },
@@ -338,6 +341,16 @@ const TICKET_TYPE_TEMPLATE_MAP: Record<string, TicketTypeTemplate> = {
     draftCurrentIssue: "学生需要新排课，当前待确认老师、时间和授课形式。",
     draftRequiredAction: "请先匹配老师和可排时间，再确认授课形式并完成排课。",
   },
+  排课协调: {
+    title: "排课协调模板",
+    requiredFields: ["course"],
+    suggestedFields: ["teacher", "mode", "durationMin", "wechat"],
+    currentPlaceholder: "例如：家长需要确认固定上课时间，默认先按老师 availability 生成候选时间；若家长提出特殊时间，再标记为例外确认。",
+    actionPlaceholder: "例如：先发 availability 候选时间给家长，记录家长偏好；只有特殊时间不命中 availability 时，再回老师做例外确认。",
+    checklist: ["课程必填", "建议补充老师、授课形式、时长和微信群", "Situation 里先写家长限制，再写下一步跟进时间"],
+    draftCurrentIssue: "当前需要基于老师 availability 协调家长上课时间，并记录家长偏好或特殊时间要求。",
+    draftRequiredAction: "请先发送 availability 候选时间给家长，记录回复；如家长提出特殊时间且不在 availability 内，再做老师例外确认。",
+  },
   "临时评估学生（没有买课程）": {
     title: "临时评估模板",
     requiredFields: ["grade", "course"],
@@ -384,6 +397,7 @@ export const TICKET_HIGH_FREQUENCY_TYPES = [
   "改课程时间",
   "补课加课",
   "新排课",
+  "排课协调",
   "改上课老师",
   "临时取消&请假课程",
 ] as const;

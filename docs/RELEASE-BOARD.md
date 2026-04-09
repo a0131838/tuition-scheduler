@@ -1787,3 +1787,19 @@
   - `npm run build`
   - post-deploy startup check
   - 新东方 split batch rows now read/write in lessons while still storing minute totals under the hood
+
+## 2026-04-09-r01 Deployed
+
+- Scope: introduce scheduling coordination as a ticket-backed student-detail workflow so ops can follow up with parents, generate slot suggestions directly from trusted teacher availability, and decide whether a parent special-time request really needs a teacher exception.
+- Business impact:
+  - `lib/tickets.ts` now defines `SCHEDULE_COORDINATION / 排课协调`, so scheduling follow-up can stay inside the existing ticket workflow instead of becoming a separate system
+  - `Ticket.studentId` now exists as a nullable relation, allowing student detail pages to show the active coordination ticket, owner, summary, and next follow-up directly on the student record
+  - student detail pages can now generate the next 3-5 candidate slots from teacher availability without touching session creation, and can also check whether a parent-requested special time already matches current availability
+  - `Todo Center` now surfaces due scheduling coordination follow-ups, so ops do not need to remember which parent timing conversations are aging out
+  - ticket intake/admin edit flows no longer force a teacher field for every ticket type, allowing scheduling coordination tickets to stay parent-led by default
+  - no session creation, attendance, booking-link approval, package balance, payroll, or finance logic changed
+- Validation:
+  - `npm run prisma:generate`
+  - `npm run build`
+  - post-deploy startup check
+  - `/admin/students/[id]` should show the new scheduling coordination card and helper panels

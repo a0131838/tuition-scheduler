@@ -72,9 +72,6 @@ export async function POST(
   const grade = normalizeTicketString(body.grade, 40);
   const course = normalizeTicketString(body.course, 120);
   const teacher = normalizeTicketString(body.teacher, 120);
-  if (!teacher) {
-    return bad("Teacher is required / 老师必填");
-  }
   const durationMin = normalizeTicketInt(body.durationMin);
   const mode = validateByOptions(normalizeTicketString(body.mode, 40), TICKET_MODE_OPTIONS);
   const wechat = normalizeTicketString(body.wechat, 120);

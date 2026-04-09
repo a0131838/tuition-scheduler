@@ -219,9 +219,6 @@ async function updateTicketFieldsAction(formData: FormData) {
   const course = normalizeTicketString(formData.get("course"), 120);
   const teacher = normalizeTicketString(formData.get("teacher"), 120);
   const teacherIdInput = normalizeTicketString(formData.get("teacherId"), 80);
-  if (!teacher) {
-    redirect(appendQuery(back, { err: "edit-teacher-required" }));
-  }
   const durationMin = normalizeTicketInt(formData.get("durationMin"));
   const mode = validateByOptions(normalizeTicketString(formData.get("mode"), 40), TICKET_MODE_OPTIONS);
   const wechat = normalizeTicketString(formData.get("wechat"), 120);
@@ -250,10 +247,12 @@ async function updateTicketFieldsAction(formData: FormData) {
   if (!situationCurrent || !situationAction || !situationDeadlineRaw || !situationDeadline) {
     redirect(appendQuery(back, { err: "edit-situation" }));
   }
-  const teacherId = await resolveTicketTeacherId({
-    teacherName: teacher,
-    teacherId: teacherIdInput,
-  });
+  const teacherId = teacher
+    ? await resolveTicketTeacherId({
+        teacherName: teacher,
+        teacherId: teacherIdInput,
+      })
+    : null;
 
   await prisma.ticket.update({
     where: { id },
@@ -394,7 +393,6 @@ export default async function AdminTicketDetailPage({
           {err === "archived-locked" && "已归档工单不可修改 / Archived ticket is locked."}
           {err === "need-closed-archive" && "仅已完成或已取消工单可归档 / Only completed or cancelled tickets can be archived."}
           {err === "edit-required" && "编辑保存失败：学生、来源、类型、优先级、负责人必填 / Required fields missing."}
-          {err === "edit-teacher-required" && "编辑保存失败：老师必填 / Teacher is required."}
           {err === "edit-type-required" &&
             `编辑保存失败：该工单类型缺少必填字段 / Missing required fields for this ticket type${fields ? `: ${fields}` : ""}`}
           {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
@@ -418,9 +416,14 @@ export default async function AdminTicketDetailPage({
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>学生 / Student</div>
-          <div style={{ fontWeight: 700, marginTop: 4 }}>{row.studentName}</div>
-        </div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>学生 / Student</div>
+              <div style={{ fontWeight: 700, marginTop: 4 }}>{row.studentName}</div>
+              {row.studentId ? (
+                <Link scroll={false} href={`/admin/students/${row.studentId}#scheduling-coordination`} style={{ marginTop: 8, fontSize: 12 }}>
+                  打开学生详情 / Open student
+                </Link>
+              ) : null}
+            </div>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>负责人 / Owner</div>
           <div style={{ fontWeight: 700, marginTop: 4 }}>{asText(row.owner)}</div>
@@ -688,12 +691,16 @@ export default async function AdminTicketDetailPage({
                   />
                 </label>
                 <label>
-                  老师*
+                  老师{template.requiredFields.includes("teacher") ? "*" : ""}
                   <input
                     name="teacher"
-                    required
+                    required={template.requiredFields.includes("teacher")}
                     defaultValue={row.teacher ?? ""}
-                    placeholder="填写当前老师或目标老师"
+                    placeholder={
+                      template.requiredFields.includes("teacher") || template.suggestedFields.includes("teacher")
+                        ? "填写当前老师、目标老师或主要老师"
+                        : ""
+                    }
                     style={{ width: "100%", boxSizing: "border-box" }}
                   />
                 </label>

@@ -24,6 +24,7 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
+import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 
 const TODO_DESK_COOKIE = "adminTodosDesk";
 const FORECAST_WINDOW_DAYS = 30;
@@ -638,7 +639,8 @@ export default async function AdminTodosPage({
   const studentRemindersConfirmed = studentReminders.filter((r) => studentConfirmed.has(r.id));
 
   const usageSince = new Date(Date.now() - FORECAST_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow] = await Promise.all([
+  const schedulingFollowupWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const [dailyConflictAudit, lastAutoFix, packages, overdueUnmarkedGroups, ledgerAlertRow, schedulingCoordinationRows] = await Promise.all([
     getOrRunDailyConflictAudit(now),
     getLatestAutoFixResult(),
     prisma.coursePackage.findMany({
@@ -653,6 +655,25 @@ export default async function AdminTodosPage({
     }),
     getOverdueUnmarkedFollowupGroups({ now, thresholdHours: 3, lookbackDays: 7, perTeacherLimit: 4, totalLimit: 120 }),
     prisma.appSetting.findUnique({ where: { key: LEDGER_INTEGRITY_ALERT_KEY }, select: { value: true } }),
+    prisma.ticket.findMany({
+      where: {
+        type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        isArchived: false,
+        status: { notIn: ["Completed", "Cancelled"] },
+        nextActionDue: { lte: schedulingFollowupWindowEnd },
+      },
+      orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      take: 8,
+      select: {
+        id: true,
+        ticketNo: true,
+        studentName: true,
+        owner: true,
+        status: true,
+        nextAction: true,
+        nextActionDue: true,
+      },
+    }),
   ]);
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
   const packageIds = packages.map((p) => p.id);
@@ -1318,6 +1339,49 @@ export default async function AdminTodosPage({
         )}
       </div>
 
+      <div
+        id="todo-scheduling-coordination"
+        style={{ ...sectionStyle, borderColor: "#93c5fd", background: "linear-gradient(180deg, #eff6ff 0%, #fff 100%)" }}
+      >
+        <div style={sectionHeaderStyle}>
+          <h3 style={{ margin: 0 }}>{t(lang, "Scheduling Coordination Follow-up", "排课协调跟进")}</h3>
+          <span style={{ color: "#1d4ed8", fontSize: 12 }}>
+            {t(lang, "Window", "观察窗口")}: 48h
+          </span>
+        </div>
+        {schedulingCoordinationRows.length === 0 ? (
+          <div style={{ color: "#166534" }}>
+            {t(lang, "No coordination tickets need follow-up in the next 48 hours.", "未来48小时内没有需要跟进的排课协调工单。")}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+            {schedulingCoordinationRows.map((row) => {
+              const isOverdue = !!row.nextActionDue && row.nextActionDue.getTime() < now.getTime();
+              return (
+                <div key={row.id} style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <div style={{ fontWeight: 700 }}>{row.ticketNo}</div>
+                    <div style={{ color: isOverdue ? "#b91c1c" : "#1d4ed8", fontSize: 12, fontWeight: 700 }}>
+                      {isOverdue ? t(lang, "Overdue", "已超时") : t(lang, "Due soon", "即将到期")}
+                    </div>
+                  </div>
+                  <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.studentName}</div>
+                  <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.owner ?? t(lang, "Unassigned", "未分配")}</div>
+                  <div style={detailLineStyle}>{t(lang, "Status", "状态")}: {row.status}</div>
+                  <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.nextAction ?? "-"}</div>
+                  <div style={detailLineStyle}>
+                    {t(lang, "Due", "截止")}: {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
+                  </div>
+                  <a href={`/admin/tickets/${row.id}?back=${encodeURIComponent("/admin/todos#todo-scheduling-coordination")}`}>
+                    {t(lang, "Open ticket", "打开工单")}
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <details id="todo-reminder-desk" style={{ ...sectionStyle, marginBottom: 0 }}>
         <summary style={{ cursor: "pointer", fontWeight: 800 }}>
           {t(lang, "Reminder Desk & Supporting Views", "提醒台与辅助视图")}
@@ -1849,5 +1913,3 @@ export default async function AdminTodosPage({
     </div>
   );
 }
-
-
