@@ -23,6 +23,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
         { href: "/teacher/sessions", label: t(lang, "My Sessions", "我的课次") },
         { href: "/teacher/student-feedbacks", label: t(lang, "Student Feedbacks", "学生课后反馈") },
         { href: "/teacher/tickets", label: t(lang, "Ticket Board", "工单看板") },
+        { href: "/teacher/scheduling-exceptions", label: t(lang, "Scheduling Exceptions", "排课例外确认") },
       ],
     },
     {

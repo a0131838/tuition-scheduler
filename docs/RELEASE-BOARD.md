@@ -1803,3 +1803,16 @@
   - `npm run build`
   - post-deploy startup check
   - `/admin/students/[id]` should show the new scheduling coordination card and helper panels
+
+## 2026-04-09-r02 Deployed
+
+- Scope: add a lightweight teacher-side scheduling exception queue so teachers only answer coordination tickets that already fell outside their submitted availability.
+- Business impact:
+  - `/teacher/scheduling-exceptions` now lists only `排课协调 / Scheduling Coordination` tickets that are in `Waiting Teacher` or `Exception`
+  - teachers can respond with `Can do`, `Cannot do`, or `Suggest another slot`, and the ticket is pushed back to ops with an updated next action instead of forcing teachers into the full admin ticket editor
+  - the teacher sidebar now exposes `Scheduling Exceptions / 排课例外确认` alongside other daily teacher tasks
+  - no teacher availability data, session creation logic, booking links, attendance, package balance, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - `/teacher/scheduling-exceptions` route should be present in the production build and protected by the normal teacher login flow

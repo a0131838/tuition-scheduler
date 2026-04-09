@@ -3235,3 +3235,22 @@ This file is the single source of truth for what changed in production.
   - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
   - student detail now shows a `Scheduling coordination / 排课协调` card with ticket summary, availability-based candidate slot generation, and special-time availability matching
 - Rollback point: previous production commit before `2026-04-09-r01`.
+
+## 2026-04-09-r02
+
+- Release ID: `2026-04-09-r02`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: add a teacher-side `Scheduling Exceptions / 排课例外确认` page so teachers only respond to coordination tickets that already sit outside their submitted availability, instead of being pulled into everyday scheduling back-and-forth.
+- Key files:
+  - `app/teacher/scheduling-exceptions/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260409-scheduling-coordination-teacher-exception-page.md`
+- Risk impact (if any): Low. This release adds a teacher-facing view and lightweight ticket status updates for scheduling exceptions, but it does not change teacher availability rules, actual session creation, booking links, attendance, package balances, or finance logic.
+- Verification:
+  - `npm run build` passed
+  - post-deploy startup check confirmed the new release commit is aligned on local / origin / server
+  - teacher portal now includes `Scheduling Exceptions / 排课例外确认`, and the page only lists scheduling coordination tickets in `Waiting Teacher` or `Exception`
+- Rollback point: previous production commit before `2026-04-09-r02`.
