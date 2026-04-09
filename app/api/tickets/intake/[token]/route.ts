@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import {
   allocateTicketNo,
   SCHEDULING_COORDINATION_TICKET_TYPE,
@@ -41,6 +42,22 @@ async function getValidToken(token: string) {
   if (!row.isActive) return null;
   if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
   return row;
+}
+
+async function resolveOriginFromRequest(req: Request) {
+  const envBase = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
+  if (envBase) return envBase;
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "";
+  if (host) {
+    const proto =
+      h.get("x-forwarded-proto") ||
+      (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+
+  return new URL(req.url).origin;
 }
 
 export async function POST(
@@ -216,7 +233,7 @@ export async function POST(
     return ticket;
   });
 
-  const origin = new URL(req.url).origin;
+  const origin = await resolveOriginFromRequest(req);
   const parentAvailabilityUrl =
     shouldCreateParentAvailabilityLink && parentAvailabilityToken
       ? new URL(buildParentAvailabilityPath(parentAvailabilityToken), origin).toString()

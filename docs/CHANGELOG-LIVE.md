@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-09-r05
+
+- Release ID: `2026-04-09-r05`
+- Date/Time (Asia/Shanghai): `2026-04-09`
+- Deployment status: `LIVE` after deploy completion
+- Scope: fix the Emily intake success payload so generated parent availability links use the real production origin instead of an internal `localhost` host when running behind the server proxy.
+- Key files:
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This release only fixes the absolute origin used for the returned parent form link; it does not change ticket creation, parent form storage, scheduling logic, or finance flows.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - creating a scheduling coordination ticket through the external intake link should now return a parent link under `https://sgtmanage.com/availability/...`
+- Rollback point: previous production commit before `2026-04-09-r05`.
+
 ## 2026-04-09-r04
 
 - Release ID: `2026-04-09-r04`

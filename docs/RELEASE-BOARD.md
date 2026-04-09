@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-09-r04` (parent availability links for intake-led scheduling coordination).
+- Current release line on this branch: `2026-04-09-r05` (intake parent-link origin hotfix).
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -77,6 +77,18 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - intake QA should confirm `Scheduling Coordination / 排课协调` returns a copyable parent link after submit
   - parent-form QA should confirm `/availability/[token]` stores a structured submission and that operators can see it from admin ticket detail, student detail, and `Todo Center`
+
+## 2026-04-09-r05 Deployed
+
+- Scope: fix the parent availability link origin returned by the external intake API so Emily receives a production `sgtmanage.com` link instead of a `localhost` URL.
+- Business impact:
+  - intake-created `Scheduling Coordination / 排课协调` tickets now return a copyable parent form link that points at the public production site
+  - the parent availability token and storage flow remain unchanged; only the absolute origin selection is corrected
+  - no ticket status logic, parent submission handling, scheduling coordination cards, availability matching, or finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - a real intake submission should now return `https://sgtmanage.com/availability/...` in the JSON payload
 
 ## 2026-04-08-r02 Deployed
 
