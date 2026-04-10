@@ -132,6 +132,7 @@ export default async function FinanceStudentPackageInvoicePage({
     ...packages.map((p) => ({
       value: p.id,
       label: `${p.student.name} · ${p.course.name} · ${p.id.slice(0, 8)}`,
+      searchText: `${p.student.name} ${p.course.name} ${p.id}`,
     })),
   ];
 
@@ -256,10 +257,11 @@ export default async function FinanceStudentPackageInvoicePage({
             name="packageId"
             defaultValue={selectedPackageId}
             options={packageOptions}
+            lang={lang}
           />
         </label>
         <div style={{ fontSize: 12, color: "#475569" }}>
-          {t(lang, "Selecting a package auto-loads the paid and invoiced totals.", "选择课时包后会自动加载已缴费和已开票金额。")}
+          {t(lang, "Search in the picker first, then load the paid and invoiced totals after confirming the package.", "先在选择器里搜索并确认课时包，再加载已缴费和已开票金额。")}
           <button type="submit" style={{ marginLeft: 8 }}>
             {t(lang, "Load package summary", "加载课包摘要")}
           </button>

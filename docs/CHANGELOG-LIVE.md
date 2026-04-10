@@ -3724,6 +3724,26 @@ This file is the single source of truth for what changed in production.
   - clearing search also resets the quick-select field back to the current package
 - Rollback point: previous production commit before `2026-04-10-r23`.
 
+## 2026-04-10-r24
+
+- Release ID: `2026-04-10-r24`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the finance student-package invoice page easier to use when the package list is crowded.
+- Key files:
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `app/admin/finance/student-package-invoices/_components/PackageSelectAutoSubmit.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only improves package finding on the finance invoice page; it does not change invoice issuance, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - the finance invoice package picker now supports local search by student, course, or package ID
+  - the picker no longer auto-submits on every change, so finance can search first and then click `Load package summary / 加载课包摘要`
+  - the page still loads package totals and invoice preview only after the chosen package is submitted
+- Rollback point: previous production commit before `2026-04-10-r24`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

@@ -2047,6 +2047,19 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r24 Ready
+
+- Scope: make the finance student package invoice picker easier to use when many students and packages are in the list.
+- Business impact:
+  - `/admin/finance/student-package-invoices` now lets finance search packages locally by student name, course name, or package ID before selecting one
+  - the package picker no longer auto-submits on every dropdown change, so finance can search calmly and then confirm with `Load package summary / 加载课包摘要`
+  - the invoice page keeps the same summary-loading and invoice-preview logic after the package is submitted
+  - no invoice issuance rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify finance can search and narrow the package list locally before loading the package summary
+
 ## 2026-04-10-r23 Ready
 
 - Scope: make the package finance picker more compact so finance can see search, recent shortcuts, and package candidates without as much scrolling.
