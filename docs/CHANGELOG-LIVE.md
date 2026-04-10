@@ -3521,4 +3521,5 @@ This file is the single source of truth for what changed in production.
   - finance invoice workbench now exposes `Statement of Account PDF` for a selected package
   - package billing now exposes the same statement export and clearer receipt export wording
   - receipt PDF export still requires full manager and finance approval
+  - statement PDF now has a more formal finance-style title block, summary strip, and transaction-table hierarchy
 - Rollback point: previous production commit before `2026-04-10-r01`.

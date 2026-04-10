@@ -17,6 +17,8 @@ const SOFT_GREEN = "#ecfdf5";
 const SOFT_ORANGE = "#fff7ed";
 const SOFT_SLATE = "#f8fafc";
 const BORDER = "#cbd5e1";
+const DARK = "#0f172a";
+const MUTED = "#475569";
 const LOGO_PATH = path.join(process.cwd(), "public", "invoice-org.png");
 const LOGO_FALLBACK_PATH = path.join(process.cwd(), "public", "logo.png");
 
@@ -79,8 +81,16 @@ function drawText(
 
 function drawMetricCard(doc: PDFDoc, x: number, y: number, w: number, h: number, title: string, value: string, bg: string) {
   doc.roundedRect(x, y, w, h, 10).fillAndStroke(bg, BORDER);
-  drawText(doc, title, x + 10, y + 10, { size: 9, color: "#475569", bold: true });
+  drawText(doc, title, x + 10, y + 10, { size: 9, color: MUTED, bold: true });
   drawText(doc, value, x + 10, y + 28, { size: 15, bold: true });
+}
+
+function drawSectionTitle(doc: PDFDoc, x: number, y: number, width: number, title: string, subtitle?: string) {
+  doc.roundedRect(x, y, width, 24, 8).fillAndStroke("#eef2ff", "#bfdbfe");
+  drawText(doc, title, x + 10, y + 6, { size: 11, bold: true, color: BLUE });
+  if (subtitle) {
+    drawText(doc, subtitle, x + width - 180, y + 6, { size: 8, color: MUTED, width: 170, align: "right" });
+  }
 }
 
 function drawTableHeader(doc: PDFDoc, x: number, y: number, widths: number[]) {
@@ -121,6 +131,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
   const unapprovedReceipts = billing.receipts.filter((receipt) => !approvedReceipts.some((x) => x.id === receipt.id));
   const invoiceById = new Map(billing.invoices.map((x) => [x.id, x]));
+  const sortedInvoiceDates = billing.invoices
+    .map((x) => fmtDate(x.issueDate))
+    .filter((x) => x !== "-")
+    .sort();
+  const periodLabel = sortedInvoiceDates.length
+    ? `${sortedInvoiceDates[0]} - ${sortedInvoiceDates[sortedInvoiceDates.length - 1]}`
+    : "No invoice period";
+  const statementNo = `SOA-${pkg.id.slice(0, 8).toUpperCase()}`;
 
   const txns: StatementTxn[] = [
     ...billing.invoices.map((invoice) => ({
@@ -182,24 +200,40 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   drawText(doc, "Statement of Account / 对账单", pageWidth - 250, y + 6, {
     width: 218,
     align: "right",
-    size: 20,
+    size: 21,
     bold: true,
     color: BLUE,
+  });
+  drawText(doc, "Reshape Great Thinkers Pte. Ltd.", pageWidth - 250, y + 32, {
+    width: 218,
+    align: "right",
+    size: 9,
+    bold: true,
+    color: DARK,
   });
   drawText(doc, `Generated / 生成日期: ${formatDateOnly(new Date())}`, pageWidth - 250, y + 34, {
     width: 218,
     align: "right",
     size: 9,
-    color: "#475569",
+    color: MUTED,
   });
-  y += 72;
+  y += 64;
+
+  doc.roundedRect(32, y, printableWidth, 54, 12).fillAndStroke("#ffffff", BORDER);
+  drawText(doc, "Statement No. / 对账单号", 44, y + 10, { size: 8, color: MUTED, bold: true });
+  drawText(doc, statementNo, 44, y + 26, { size: 12, bold: true, color: DARK });
+  drawText(doc, "Statement period / 对账区间", 210, y + 10, { size: 8, color: MUTED, bold: true });
+  drawText(doc, periodLabel, 210, y + 26, { size: 11, bold: true, color: DARK, width: 150 });
+  drawText(doc, "Package status / 课包状态", 394, y + 10, { size: 8, color: MUTED, bold: true });
+  drawText(doc, String(pkg.status ?? "-"), 394, y + 26, { size: 11, bold: true, color: DARK, width: 126 });
+  y += 68;
 
   doc.roundedRect(32, y, printableWidth, 68, 12).fillAndStroke(SOFT_BLUE, BORDER);
-  drawText(doc, "Student / 学生", 44, y + 12, { size: 9, color: "#475569", bold: true });
+  drawText(doc, "Student / 学生", 44, y + 12, { size: 9, color: MUTED, bold: true });
   drawText(doc, pkg.student.name, 44, y + 30, { size: 14, bold: true });
-  drawText(doc, "Course / 课程", 205, y + 12, { size: 9, color: "#475569", bold: true });
+  drawText(doc, "Course / 课程", 205, y + 12, { size: 9, color: MUTED, bold: true });
   drawText(doc, pkg.course.name, 205, y + 30, { size: 14, bold: true, width: 170 });
-  drawText(doc, "Package / 课时包", 394, y + 12, { size: 9, color: "#475569", bold: true });
+  drawText(doc, "Package / 课时包", 394, y + 12, { size: 9, color: MUTED, bold: true });
   drawText(doc, pkg.id, 394, y + 30, { size: 11, bold: true, width: 126 });
   y += 84;
 
@@ -213,15 +247,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   drawText(
     doc,
-    "This statement shows invoice transactions and approved receipt payments only. Unapproved receipts stay listed below but are not counted as paid yet.",
+    "This statement shows invoice transactions and approved receipt payments only. Pending or rejected receipts are listed separately and do not count toward paid balance yet.",
     32,
     y,
-    { size: 9, color: "#475569", width: printableWidth, lineBreak: true },
+    { size: 9, color: MUTED, width: printableWidth, lineBreak: true },
   );
   y = doc.y + 10;
 
-  drawText(doc, "Transactions / 交易记录", 32, y, { size: 13, bold: true, color: BLUE });
-  y += 22;
+  drawSectionTitle(doc, 32, y, printableWidth, "Transactions / 交易记录", "approved financial movement only / 仅计入正式已确认交易");
+  y += 34;
 
   const colWidths = [62, 45, 95, 146, 52, 52, 58];
   const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
@@ -232,8 +266,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     doc.addPage();
     setPdfFont(doc);
     y = 32;
-    drawText(doc, "Statement of Account / 对账单", 32, y, { size: 14, bold: true, color: BLUE });
-    y += 24;
+    drawSectionTitle(doc, 32, y, printableWidth, "Transactions / 交易记录", "continued / 续页");
+    y += 34;
     drawTableHeader(doc, baseX, y, colWidths);
     y += 20;
   };
@@ -246,7 +280,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     drawText(doc, "No invoice or approved receipt records yet.", baseX + 8, y + 8, { size: 10, color: "#64748b" });
     y += 36;
   } else {
-    for (const row of txns) {
+    txns.forEach((row, rowIndex) => {
       const descHeight = Math.max(
         16,
         doc.heightOfString(row.description, {
@@ -256,6 +290,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
       const rowHeight = Math.max(22, descHeight);
       ensureSpace(rowHeight + 2);
+      if (rowIndex % 2 === 0) {
+        doc.rect(baseX, y, tableWidth, rowHeight).fill("#fcfdff");
+      }
       let x = baseX;
       const values = [
         row.date,
@@ -269,43 +306,55 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       values.forEach((value, index) => {
         doc.rect(x, y, colWidths[index], rowHeight).stroke(BORDER);
         const align = index >= 4 ? "right" : "left";
+        const color =
+          index === 1
+            ? row.type === "INVOICE"
+              ? "#1d4ed8"
+              : "#166534"
+            : index === 6 && row.runningBalance > 0.009
+              ? "#b91c1c"
+              : DARK;
         drawText(doc, value, x + 4, y + 6, {
           size: 9,
           width: colWidths[index] - 8,
           align,
           lineBreak: true,
+          color,
+          bold: index === 1 || index === 6,
         });
         x += colWidths[index];
       });
       y += rowHeight;
-    }
+    });
   }
 
   y += 16;
   ensureSpace(72);
-  drawText(doc, "Outstanding summary / 欠款摘要", 32, y, { size: 13, bold: true, color: BLUE });
-  y += 18;
-  drawText(doc, `Total invoiced: ${money(totalInvoiced)}`, 32, y, { size: 10, bold: true });
-  drawText(doc, `Approved paid: ${money(totalPaid)}`, 220, y, { size: 10, bold: true });
-  drawText(doc, `Balance owing: ${money(balanceOwing)}`, 390, y, { size: 10, bold: true, color: balanceOwing > 0.009 ? "#b91c1c" : "#166534" });
-  y += 22;
+  drawSectionTitle(doc, 32, y, printableWidth, "Outstanding summary / 欠款摘要");
+  y += 34;
+  doc.roundedRect(32, y, printableWidth, 38, 10).fillAndStroke("#ffffff", BORDER);
+  drawText(doc, `Total invoiced: ${money(totalInvoiced)}`, 44, y + 12, { size: 10, bold: true });
+  drawText(doc, `Approved paid: ${money(totalPaid)}`, 220, y + 12, { size: 10, bold: true });
+  drawText(doc, `Balance owing: ${money(balanceOwing)}`, 390, y + 12, { size: 10, bold: true, color: balanceOwing > 0.009 ? "#b91c1c" : "#166534" });
+  y += 50;
 
   if (unapprovedReceipts.length > 0) {
     ensureSpace(52);
-    drawText(doc, "Pending receipts not counted yet / 尚未计入已付款的收据", 32, y, { size: 13, bold: true, color: "#b45309" });
-    y += 18;
+    drawSectionTitle(doc, 32, y, printableWidth, "Pending receipts not counted yet / 尚未计入已付款的收据");
+    y += 34;
     for (const receipt of unapprovedReceipts) {
       ensureSpace(20);
       const approval = approvalMap.get(receipt.id);
       const status = approval?.managerRejectReason || approval?.financeRejectReason
         ? "Rejected / 已驳回"
         : "Pending approval / 等待审批";
+      doc.roundedRect(32, y - 2, printableWidth, 18, 6).fillAndStroke("#fffaf0", "#fed7aa");
       drawText(
         doc,
         `${fmtDate(receipt.receiptDate)}   ${receipt.receiptNo}   ${money(receipt.amountReceived)}   ${status}`,
         32,
         y,
-        { size: 9, width: printableWidth, lineBreak: true, color: "#7c2d12" },
+        { size: 9, width: printableWidth - 12, lineBreak: true, color: "#7c2d12" },
       );
       y = doc.y + 2;
     }

@@ -12,6 +12,7 @@ Finance needed two things without disturbing existing billing controls:
 - add a new read-only parent package Statement of Account PDF export
 - expose the export link from the finance invoice workbench and package billing page
 - replace vague `Pending approval` receipt copy with more explicit finance-facing wording
+- polish the statement PDF so it reads more like a formal finance document before sharing outward
 
 ## Guardrails
 
@@ -26,3 +27,4 @@ Finance needed two things without disturbing existing billing controls:
 - open a package billing page and confirm the new Statement of Account PDF link is present
 - open the finance invoice page with a selected package and confirm the same export link is present
 - confirm receipt actions still require full approval before formal receipt PDF export
+- visually confirm the statement PDF has a clearer title area, summary strip, and easier-to-scan transaction table
