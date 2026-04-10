@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r31
+
+- Release ID: `2026-04-11-r31`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: simplify partner invoice line descriptions so they show only the student name in newly created online settlement invoices and in exported partner invoice PDFs.
+- Key files:
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes partner invoice description text; it does not change receipt generation, invoice totals, settlement selection, approval rules, or deduction logic.
+- Verification:
+  - `npm run build` passed
+  - newly created online partner invoices now store each settlement line description as the student name only
+  - exported partner invoice PDFs now show only the student name even when older stored line descriptions still contain the legacy `Package settlement - student - course - dates` format
+- Rollback point: previous production commit before `2026-04-11-r31`.
+
 ## 2026-04-11-r30
 
 - Release ID: `2026-04-11-r30`

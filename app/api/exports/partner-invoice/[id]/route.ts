@@ -38,6 +38,14 @@ function safeName(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
+function displayPartnerInvoiceLineDescription(description: string) {
+  const raw = String(description ?? "").trim();
+  if (!raw) return "-";
+  const legacyMatch = /^Package settlement\s*-\s*(.+?)\s*-\s*.+$/i.exec(raw);
+  if (legacyMatch?.[1]) return legacyMatch[1].trim();
+  return raw;
+}
+
 function text(doc: PDFDoc, str: string, x: number, y: number, size = 10, bold = false, color = "#111827", width?: number, align: "left" | "right" | "center" = "left") {
   if (bold) setPdfBoldFont(doc);
   else setPdfFont(doc);
@@ -120,7 +128,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   lines.forEach((line, idx) => {
     const yy = tableY + 24 + idx * 22;
     text(doc, fmtQty(line.quantity), colX[0] + 8, yy, 9);
-    text(doc, line.description, colX[1], yy, 9, false, "#111827", colW[1]);
+    text(doc, displayPartnerInvoiceLineDescription(line.description), colX[1], yy, 9, false, "#111827", colW[1]);
     text(doc, money(line.amount), colX[2], yy, 9);
     text(doc, money(line.gstAmount), colX[3], yy, 9);
     text(doc, money(line.totalAmount), colX[4], yy, 9);
