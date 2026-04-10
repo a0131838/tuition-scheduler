@@ -1985,6 +1985,7 @@
   - `/api/exports/parent-statement/[id]` now generates a finance-facing package statement that lists invoice transactions, approved receipt payments, running balance, pending receipts not yet counted, and the current balance owing
   - the same statement PDF now reads more like a formal outward-facing finance document, with a cleaner heading area, summary row, and more scannable transaction table
   - `/admin/finance/student-package-invoices` now exposes a direct statement export link once a package is selected, so finance can export the package statement without jumping into another workflow first
+  - the same finance invoice page now shows `Prepared by / 创建人` in the preview block and `Created by / 创建人` in the recent invoice table, so finance can see who issued each invoice without opening another page
   - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
   - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
   - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed

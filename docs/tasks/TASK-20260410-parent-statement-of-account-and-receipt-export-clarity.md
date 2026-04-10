@@ -13,6 +13,7 @@ Finance needed two things without disturbing existing billing controls:
 - expose the export link from the finance invoice workbench and package billing page
 - replace vague `Pending approval` receipt copy with more explicit finance-facing wording
 - polish the statement PDF so it reads more like a formal finance document before sharing outward
+- expose invoice creator identity on the finance invoice page so finance can see who prepared and created each invoice
 
 ## Guardrails
 
@@ -28,3 +29,5 @@ Finance needed two things without disturbing existing billing controls:
 - open the finance invoice page with a selected package and confirm the same export link is present
 - confirm receipt actions still require full approval before formal receipt PDF export
 - visually confirm the statement PDF has a clearer title area, summary strip, and easier-to-scan transaction table
+- confirm the finance invoice preview shows `Prepared by / 创建人`
+- confirm the recent invoice table shows `Created by / 创建人`

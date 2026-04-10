@@ -92,7 +92,7 @@ export default async function FinanceStudentPackageInvoicePage({
     err?: string;
   }>;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
@@ -262,6 +262,10 @@ export default async function FinanceStudentPackageInvoicePage({
           <div style={{ fontSize: 12 }}>
             {t(lang, "Issue / Due", "开票/到期")}: {issueDate} / {dueDate} · {t(lang, "Total", "总额")}: SGD {money(totalAmount)}
           </div>
+          <div style={{ fontSize: 12 }}>
+            {t(lang, "Prepared by", "创建人")}: <b>{admin.name || admin.email}</b>
+            {admin.name && admin.email ? <span style={{ color: "#64748b" }}> ({admin.email})</span> : null}
+          </div>
           <form action={issueInvoiceAction} style={{ display: "grid", gap: 8 }}>
             <input type="hidden" name="packageId" value={selectedPackage.id} />
             <input type="hidden" name="issueDate" value={issueDate} />
@@ -308,6 +312,7 @@ export default async function FinanceStudentPackageInvoicePage({
                   <th align="left">{t(lang, "Issue date", "开票日期")}</th>
                   <th align="left">{t(lang, "Due date", "到期日期")}</th>
                   <th align="left">{t(lang, "Total amount", "合计金额")}</th>
+                  <th align="left">{t(lang, "Created by", "创建人")}</th>
                   <th align="left">{t(lang, "PDF", "PDF")}</th>
                 </tr>
               </thead>
@@ -318,6 +323,7 @@ export default async function FinanceStudentPackageInvoicePage({
                     <td>{normalizeDateOnly(inv.issueDate) ?? "-"}</td>
                     <td>{normalizeDateOnly(inv.dueDate) ?? "-"}</td>
                     <td>SGD {money(inv.totalAmount)}</td>
+                    <td>{inv.createdBy || "-"}</td>
                     <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(inv.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a></td>
                   </tr>
                 ))}
