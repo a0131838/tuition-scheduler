@@ -1121,6 +1121,7 @@ export async function ReceiptsApprovalsPageContent({
   const globalQueueHref = globalQueueQuery.toString()
     ? `${receiptScreenBasePath("queue")}?${globalQueueQuery.toString()}`
     : receiptScreenBasePath("queue");
+  const defaultQueueHref = `${receiptScreenBasePath("queue")}?clearQueue=1`;
 
   const parentQueue = rows.map((r) => {
     const pkg = packageMap.get(r.packageId);
@@ -1577,7 +1578,7 @@ export async function ReceiptsApprovalsPageContent({
               "已恢复你上次的收据队列；如果要回到默认队列，可直接用下方标签切回。"
             )}
           </div>
-          <a href={`${screenBasePath}?clearQueue=1`}>{t(lang, "Back to default queue", "回到默认队列")}</a>
+          <a href={defaultQueueHref}>{t(lang, "Back to default queue", "回到默认队列")}</a>
         </div>
       ) : null}
 
