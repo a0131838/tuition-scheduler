@@ -3523,4 +3523,5 @@ This file is the single source of truth for what changed in production.
   - receipt PDF export still requires full manager and finance approval
   - statement PDF now has a more formal finance-style title block, summary strip, and transaction-table hierarchy
   - finance invoice preview and latest-invoice table now show the invoice creator on-page without changing PDF output or billing logic
+  - latest invoices now prefer `Name (email)` for creator display when the matching user exists, so finance does not need to decode raw email addresses
 - Rollback point: previous production commit before `2026-04-10-r01`.

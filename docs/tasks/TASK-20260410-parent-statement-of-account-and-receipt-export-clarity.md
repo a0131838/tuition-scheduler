@@ -14,6 +14,7 @@ Finance needed two things without disturbing existing billing controls:
 - replace vague `Pending approval` receipt copy with more explicit finance-facing wording
 - polish the statement PDF so it reads more like a formal finance document before sharing outward
 - expose invoice creator identity on the finance invoice page so finance can see who prepared and created each invoice
+- show creator names more clearly by resolving stored creator emails to `Name (email)` when user records exist
 
 ## Guardrails
 
@@ -31,3 +32,4 @@ Finance needed two things without disturbing existing billing controls:
 - visually confirm the statement PDF has a clearer title area, summary strip, and easier-to-scan transaction table
 - confirm the finance invoice preview shows `Prepared by / 创建人`
 - confirm the recent invoice table shows `Created by / 创建人`
+- confirm the recent invoice table prefers `Name (email)` over raw email when the creator user record exists

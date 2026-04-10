@@ -17,6 +17,20 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function displayCreator(
+  creatorRaw: string | null | undefined,
+  userMap: Map<string, { name: string; email: string }>
+) {
+  const creator = String(creatorRaw ?? "").trim().toLowerCase();
+  if (!creator) return "-";
+  const user = userMap.get(creator);
+  if (!user) return creatorRaw ?? "-";
+  if (user.name && user.name.trim() && user.name.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+    return `${user.name} (${user.email})`;
+  }
+  return user.email;
+}
+
 async function issueInvoiceAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -147,6 +161,25 @@ export default async function FinanceStudentPackageInvoicePage({
     ? selectedBilling.invoices.reduce((sum, inv) => sum + Number(inv.totalAmount ?? 0), 0)
     : 0;
   const pendingToInvoice = Math.max(0, packagePaidAmount - invoicedAmount);
+  const creatorEmails = selectedBilling
+    ? Array.from(
+        new Set(
+          selectedBilling.invoices
+            .map((inv) => String(inv.createdBy ?? "").trim().toLowerCase())
+            .filter(Boolean)
+        )
+      )
+    : [];
+  const creatorUserMap = creatorEmails.length
+    ? new Map(
+        (
+          await prisma.user.findMany({
+            where: { email: { in: creatorEmails } },
+            select: { name: true, email: true },
+          })
+        ).map((user) => [user.email.trim().toLowerCase(), { name: user.name, email: user.email }] as const)
+      )
+    : new Map<string, { name: string; email: string }>();
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -323,7 +356,7 @@ export default async function FinanceStudentPackageInvoicePage({
                     <td>{normalizeDateOnly(inv.issueDate) ?? "-"}</td>
                     <td>{normalizeDateOnly(inv.dueDate) ?? "-"}</td>
                     <td>SGD {money(inv.totalAmount)}</td>
-                    <td>{inv.createdBy || "-"}</td>
+                    <td>{displayCreator(inv.createdBy, creatorUserMap)}</td>
                     <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(inv.id)}`}>{t(lang, "Export PDF", "导出 PDF")}</a></td>
                   </tr>
                 ))}
