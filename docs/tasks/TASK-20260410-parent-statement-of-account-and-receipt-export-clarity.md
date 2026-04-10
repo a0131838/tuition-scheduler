@@ -21,6 +21,7 @@ Finance needed two things without disturbing existing billing controls:
 - keep `Proof Repair` useful as a working repair queue by defaulting it to blocker rows, not only literal file-health problems
 - make the `All / 全部` chip on `Proof Repair` explicitly break out of the implicit default blocker mode, so finance can widen the queue from the same page
 - keep `Receipt History` visually consistent by removing lower queue-bucket controls that contradict the page-level history mode
+- make sure `Back to default queue / 回到默认队列` on `Receipt History` actually jumps back to the live approval queue instead of reloading the history screen
 
 ## Guardrails
 
@@ -46,3 +47,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm `/admin/receipts-approvals/repairs` shows repair blockers by default and only narrows to attachment-only issues when the `Proof or file issues` chip is selected
 - confirm clicking `All / 全部` on `/admin/receipts-approvals/repairs` widens the queue on that same page instead of silently restoring the default blocker scope
 - confirm `/admin/receipts-approvals/history` no longer shows lower queue-bucket switches that conflict with the page-level `Receipt History` mode
+- confirm `Back to default queue / 回到默认队列` on `/admin/receipts-approvals/history` now opens `/admin/receipts-approvals?clearQueue=1`
