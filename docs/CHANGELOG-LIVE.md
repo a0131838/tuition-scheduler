@@ -3524,4 +3524,5 @@ This file is the single source of truth for what changed in production.
   - statement PDF now has a more formal finance-style title block, summary strip, and transaction-table hierarchy
   - finance invoice preview and latest-invoice table now show the invoice creator on-page without changing PDF output or billing logic
   - latest invoices now prefer `Name (email)` for creator display when the matching user exists, so finance does not need to decode raw email addresses
+  - package billing now uses the same `Name (email)` creator display in the invoice `By` column, so finance sees consistent creator labels across both invoice pages
 - Rollback point: previous production commit before `2026-04-10-r01`.

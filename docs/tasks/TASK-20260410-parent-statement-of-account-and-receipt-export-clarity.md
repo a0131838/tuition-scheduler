@@ -15,6 +15,7 @@ Finance needed two things without disturbing existing billing controls:
 - polish the statement PDF so it reads more like a formal finance document before sharing outward
 - expose invoice creator identity on the finance invoice page so finance can see who prepared and created each invoice
 - show creator names more clearly by resolving stored creator emails to `Name (email)` when user records exist
+- keep package billing aligned with the same creator display so both invoice views show the same person label
 
 ## Guardrails
 
@@ -33,3 +34,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the finance invoice preview shows `Prepared by / 创建人`
 - confirm the recent invoice table shows `Created by / 创建人`
 - confirm the recent invoice table prefers `Name (email)` over raw email when the creator user record exists
+- confirm the package billing invoice `By` column prefers `Name (email)` over raw email when the creator user record exists

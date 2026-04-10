@@ -35,6 +35,20 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function displayCreator(
+  creatorRaw: string | null | undefined,
+  userMap: Map<string, { name: string | null; email: string }>
+) {
+  const creator = String(creatorRaw ?? "").trim().toLowerCase();
+  if (!creator) return "-";
+  const user = userMap.get(creator);
+  if (!user) return creatorRaw ?? "-";
+  if (user.name && user.name.trim() && user.name.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+    return `${user.name} (${user.email})`;
+  }
+  return user.email;
+}
+
 async function createInvoiceAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -158,6 +172,23 @@ export default async function PackageBillingPage({
   const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
+  const creatorEmails = Array.from(
+    new Set(
+      data.invoices
+        .map((invoice) => String(invoice.createdBy ?? "").trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+  const creatorUserMap = creatorEmails.length
+    ? new Map(
+        (
+          await prisma.user.findMany({
+            where: { email: { in: creatorEmails } },
+            select: { name: true, email: true },
+          })
+        ).map((user) => [user.email.trim().toLowerCase(), { name: user.name, email: user.email }] as const)
+      )
+    : new Map<string, { name: string | null; email: string }>();
 
   return (
     <div>
@@ -243,7 +274,7 @@ export default async function PackageBillingPage({
                 <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
                 <td>{normalizeDateOnly(r.dueDate) ?? "-"}</td>
                 <td>{money(r.totalAmount)}</td>
-                <td>{r.createdBy}</td>
+                <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
                 <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
                 <td>
                   <form action={deleteInvoiceAction}>
