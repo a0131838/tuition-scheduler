@@ -2792,6 +2792,18 @@ export async function ReceiptsApprovalsPageContent({
         .receipt-workspace > div { min-width: 0; }
         .receipt-queue-pane { display: grid; gap: 12px; }
         .receipt-detail-backdrop { display: none; }
+        .receipt-detail-backdrop,
+        .receipt-detail-backdrop:hover,
+        .receipt-detail-backdrop:active {
+          padding: 0;
+          min-height: 0;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+          transform: none;
+          color: transparent;
+          text-decoration: none;
+        }
         .receipt-mobile-header { display: none; }
         .receipt-actions-mobile-hidden { display: block; }
         @media (min-width: 1500px) {

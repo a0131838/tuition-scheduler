@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r29
+
+- Release ID: `2026-04-11-r29`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: neutralize the narrow-screen receipt detail backdrop so clicking or hovering outside the drawer no longer shows the global purple link/button tint.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This hotfix only resets inherited link styles on the receipt drawer backdrop; it does not change receipt approval behavior, package finance actions, invoice behavior, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - narrow-screen receipt drawer backdrop no longer shows the inherited purple button/link styling when finance clicks or hovers outside the drawer
+  - the drawer still closes back to the current list state when finance clicks outside it
+- Rollback point: previous production commit before `2026-04-11-r29`.
+
 ## 2026-04-10-r28
 
 - Release ID: `2026-04-10-r28`

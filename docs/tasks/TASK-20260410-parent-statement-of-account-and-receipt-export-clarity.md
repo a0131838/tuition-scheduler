@@ -47,6 +47,7 @@ Finance needed two things without disturbing existing billing controls:
 - keep `Receipt Queue / 收据审批队列` and `Receipt History / 收据历史` usable on narrower screens by opening selected receipt details inside an overlay instead of stacking list and details vertically
 - make the narrow-screen receipt overlay open only after an explicit row click and keep it as a smaller drawer instead of an almost full-screen takeover
 - surface receipt amount and invoice total near the top of selected receipt details so finance can immediately identify the row being reviewed
+- neutralize inherited global link/button styles on the narrow-screen receipt drawer backdrop so clicking outside the drawer no longer flashes a purple tinted block
 
 ## Guardrails
 
@@ -100,3 +101,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm narrower `Receipt Queue / 收据审批队列` and `Receipt History / 收据历史` screens now open the selected receipt details in an overlay with `Back to list / 返回列表`, while wider screens still keep the two-column layout
 - confirm that narrow receipt queue/history screens no longer auto-open the first receipt on load and that the overlay drawer leaves visible page margins instead of covering nearly the entire screen
 - confirm selected receipt details now show `Receipt amount / 收据金额` and `Invoice total / 发票总额` near the top, with a clear match or mismatch hint
+- confirm clicking or hovering outside the narrow receipt drawer no longer shows a purple global link/button tint on the backdrop
