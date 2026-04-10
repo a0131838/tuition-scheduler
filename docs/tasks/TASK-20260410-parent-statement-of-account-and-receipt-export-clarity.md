@@ -29,6 +29,7 @@ Finance needed two things without disturbing existing billing controls:
 - add a dedicated search box on `Receipt History` so finance can quickly find completed receipts and recent actions by student, course, receipt no., invoice no., or uploader
 - split `Proof Repair` visually into `Missing payment record` and `Missing file on linked proof` triage groups so finance can tell the repair type before opening a row
 - make the top receipt workflow tabs use client-side navigation so switching screens does not hard-refresh the whole admin layout and reset the left finance sidebar scroll position
+- keep those top receipt workflow tab switches from auto-scrolling the page back to the top, so the finance workspace stays at the same reading position while changing modes
 
 ## Guardrails
 
@@ -62,3 +63,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm `/admin/receipts-approvals/history` search filters both completed receipts and `Recent Finance Actions` by the entered keyword
 - confirm `/admin/receipts-approvals/repairs` shows separate quick-triage groups for `Missing payment record / 缺付款记录` and `Missing file on linked proof / 已关联但缺文件`
 - confirm the top receipt workflow tabs switch between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` without a full page reload, and the left finance sidebar keeps its scroll position
+- confirm those top receipt workflow tab switches also keep the main page scroll position instead of jumping the finance workspace back to the top

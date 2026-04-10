@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r16
+
+- Release ID: `2026-04-10-r16`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: keep the finance receipt workspace from auto-jumping back to the top when switching the top receipt mode tabs.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes scroll behavior for the top receipt mode tabs; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - top receipt mode tabs should keep using client navigation without a full page reload
+  - left finance sidebar should keep its current scroll position when switching between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`
+  - main finance receipt content should keep its current page scroll position instead of jumping back to the top on each top-tab switch
+- Rollback point: previous production commit before `2026-04-10-r16`.
+
 ## 2026-04-10-r15
 
 - Release ID: `2026-04-10-r15`

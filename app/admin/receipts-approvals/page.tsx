@@ -1589,6 +1589,7 @@ export async function ReceiptsApprovalsPageContent({
             <Link
               key={mode}
               href={buildScreenHref(mode)}
+              scroll={false}
               style={{
                 border: active ? "1px solid #2563eb" : "1px solid #d1d5db",
                 background: active ? "#eff6ff" : "#fff",

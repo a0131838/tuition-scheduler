@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r15` (finance receipt tab client navigation), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r16` (finance receipt tab scroll preservation), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -201,6 +201,18 @@
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - QA should confirm the top receipt tabs switch pages without a full reload and the left sidebar stays in place
+
+## 2026-04-10-r16 Ready
+
+- Scope: keep the top finance receipt workflow tabs from auto-scrolling the page back to the top after the move to client-side navigation.
+- Business impact:
+  - the top `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` tabs on `/admin/receipts-approvals*` now preserve the current page scroll position while switching modes
+  - finance can continue reading or cross-checking mid-page without being thrown back to the top of the workspace after each tab click
+  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - QA should confirm the top receipt tabs still switch without a full reload and now also keep the main page scroll position stable
 
 ## 2026-04-09-r07 Deployed
 
