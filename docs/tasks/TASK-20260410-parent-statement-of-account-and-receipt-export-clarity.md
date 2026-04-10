@@ -43,6 +43,7 @@ Finance needed two things without disturbing existing billing controls:
 - keep package search inside the browser so finance can search and confirm locally without triggering a full page refresh on every attempt
 - keep the package picker visually compact so recent shortcuts and search-result cards do not push the finance workspace too far down the page
 - make the finance student package invoice page use a searchable package picker too, so finance does not need to scroll through a long student dropdown before loading invoice summary data
+- remember recently used packages on the finance student package invoice page so finance can reopen the same few student packages without retyping the search every time
 
 ## Guardrails
 
@@ -92,3 +93,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm searching packages no longer reloads the page, and only `Open Finance Operations / 打开财务操作` or `Open package / 打开课包` navigates into a package
 - confirm the recent-package list and package result cards now use a tighter compact layout with less vertical height
 - confirm `/admin/finance/student-package-invoices` now lets finance search packages locally by student, course, or package ID before clicking `Load package summary / 加载课包摘要`
+- confirm `/admin/finance/student-package-invoices` now shows `Recent packages / 最近使用课包` after a package is loaded and that clicking a recent chip only changes the selection until finance explicitly clicks `Load package summary / 加载课包摘要`

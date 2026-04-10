@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r25
+
+- Release ID: `2026-04-10-r25`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the finance student-package invoice page remember recently used packages so repeated invoice work does not require a fresh search every time.
+- Key files:
+  - `app/admin/finance/student-package-invoices/_components/PackageSelectAutoSubmit.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only adds local recent-package shortcuts on the finance invoice page; it does not change invoice issuance, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - `/admin/finance/student-package-invoices` now remembers recent package selections in the browser and shows quick reopen chips
+  - selecting a recent package chip updates the picker without auto-submitting the form
+  - finance still must click `Load package summary / 加载课包摘要` before invoice totals and preview refresh
+- Rollback point: previous production commit before `2026-04-10-r25`.
+
 ## 2026-04-10-r17
 
 - Release ID: `2026-04-10-r17`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r17` (finance receipt queue jump and history focus filters), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r25` (finance invoice page recent package shortcuts), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -2059,6 +2059,19 @@
   - `npm run build`
   - post-deploy startup check
   - verify finance can search and narrow the package list locally before loading the package summary
+
+## 2026-04-10-r25 Ready
+
+- Scope: keep recently used package shortcuts on the finance invoice page so repeated invoice work does not require searching the same student packages again and again.
+- Business impact:
+  - `/admin/finance/student-package-invoices` now remembers recently chosen packages in the browser and shows them as one-click shortcuts near the package picker
+  - choosing a recent package shortcut updates the selection without auto-submitting, so finance can still review the form and then confirm with `Load package summary / 加载课包摘要`
+  - no invoice issuance rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify the finance invoice page shows `Recent packages / 最近使用课包` after a package has been loaded once
+  - verify clicking a recent package chip changes the selected package but still waits for explicit summary load
 
 ## 2026-04-10-r23 Ready
 
