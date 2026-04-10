@@ -886,9 +886,11 @@ export async function ReceiptsApprovalsPageContent({
   const viewMode = hasViewParam
     ? normalizeReceiptView(viewParamRaw.trim().toUpperCase())
     : rememberedQueue.view;
-  const queueFilter = !hasQueueFilterParam && !rememberedQueue.value && screenMode === "repairs"
-    ? "FILE_ISSUE"
-    : hasQueueFilterParam
+  const implicitRepairBlockerMode =
+    screenMode === "repairs" &&
+    !hasQueueFilterParam &&
+    !rememberedQueue.value;
+  const queueFilter = hasQueueFilterParam
       ? normalizeReceiptQueueFilter(queueFilterParamRaw.trim().toUpperCase())
       : rememberedQueue.queueFilter;
   const queueBucket = !hasQueueBucketParam && !rememberedQueue.value && screenMode === "history"
@@ -1206,6 +1208,15 @@ export async function ReceiptsApprovalsPageContent({
   if (queueFilter === "COMPLETED") unifiedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
   if (queueFilter === "NO_PAYMENT_RECORD") unifiedQueue = unifiedQueue.filter((x) => !x.paymentRecord);
   if (queueFilter === "FILE_ISSUE") unifiedQueue = unifiedQueue.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing));
+  if (implicitRepairBlockerMode) {
+    unifiedQueue = unifiedQueue.filter(
+      (x) =>
+        x.status === "REJECTED" ||
+        !x.paymentRecord ||
+        Boolean(x.paymentFileMissing) ||
+        (x.riskCount ?? 0) > 0
+    );
+  }
   if (queueFilter === "TODAY_MINE") {
     const todayPrefix = `${today} `;
     unifiedQueue = unifiedQueue.filter((x: any) => {
@@ -1336,8 +1347,7 @@ export async function ReceiptsApprovalsPageContent({
       if (selectedId) q.set("selectedId", selectedId);
       if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
       if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
-      if (target === "repairs") q.set("queueFilter", "FILE_ISSUE");
-      else if (queueFilter !== "ALL") q.set("queueFilter", queueFilter);
+      if (queueFilter !== "ALL") q.set("queueFilter", queueFilter);
       if (target === "history") q.set("queueBucket", "HISTORY");
       else if (queueBucket !== "ALL") q.set("queueBucket", queueBucket);
     }
@@ -1402,9 +1412,20 @@ export async function ReceiptsApprovalsPageContent({
   const queueBlockerCount = actionableQueue.filter(
     (x) => !x.paymentRecord || Boolean(x.paymentFileMissing) || (x.riskCount ?? 0) > 0
   ).length;
+  const repairBlockerCount = actionableQueue.filter(
+    (x) =>
+      x.status === "REJECTED" ||
+      !x.paymentRecord ||
+      Boolean(x.paymentFileMissing) ||
+      (x.riskCount ?? 0) > 0
+  ).length;
   const queueMissingProofCount = actionableQueue.filter((x) => !x.paymentRecord).length;
   const queueMissingFileCount = actionableQueue.filter((x) => Boolean(x.paymentFileMissing)).length;
   const queueFileIssueCount = actionableQueue.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing)).length;
+  const queueScopeLabel =
+    isRepairsScreen && implicitRepairBlockerMode
+      ? t(lang, "Repair blockers only", "仅显示待修复阻塞项")
+      : queueFilter;
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
@@ -1549,8 +1570,15 @@ export async function ReceiptsApprovalsPageContent({
         <span style={{ ...tagStyle(viewMode === "ALL" ? "muted" : "ok"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
           {t(lang, "View", "视图")}: {viewMode === "ALL" ? t(lang, "All", "全部") : viewMode === "PARENT" ? t(lang, "Parent", "家长") : t(lang, "Partner", "合作方")}
         </span>
-        <span style={{ ...tagStyle(queueFilter === "ALL" ? "muted" : "warn"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
-          {t(lang, "Queue filter", "队列筛选")}: {queueFilter}
+        <span
+          style={{
+            ...tagStyle(isRepairsScreen && implicitRepairBlockerMode ? "warn" : queueFilter === "ALL" ? "muted" : "warn"),
+            borderRadius: 999,
+            padding: "4px 10px",
+            fontSize: 12,
+          }}
+        >
+          {t(lang, "Queue filter", "队列筛选")}: {queueScopeLabel}
         </span>
         <span style={{ ...tagStyle(packageWorkspaceMode ? "ok" : "muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
           {packageWorkspaceMode ? t(lang, "Package workspace active", "当前课包工作区已启用") : t(lang, "Working from global queue", "当前从全局队列工作")}
@@ -1583,8 +1611,8 @@ export async function ReceiptsApprovalsPageContent({
           <div style={{ color: "#475569", fontSize: 13 }}>
             {t(
               lang,
-              `Missing payment record: ${queueMissingProofCount}. Missing file on linked proof: ${queueMissingFileCount}.`,
-              `缺少付款记录：${queueMissingProofCount}。已关联凭证但文件缺失：${queueMissingFileCount}。`
+              `Items needing repair: ${repairBlockerCount}. Missing payment record: ${queueMissingProofCount}. Missing file on linked proof: ${queueMissingFileCount}.`,
+              `需修复项目：${repairBlockerCount}。缺少付款记录：${queueMissingProofCount}。已关联凭证但文件缺失：${queueMissingFileCount}。`
             )}
           </div>
         </div>
@@ -2306,8 +2334,16 @@ export async function ReceiptsApprovalsPageContent({
         </details>
         {unifiedQueue.length === 0 ? (
           <div style={{ color: "#64748b", display: "grid", gap: 8, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
-            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No receipts match the current queue filters", "当前队列筛选下没有收据")}</div>
-            <div>{t(lang, "Try switching the queue bucket, clearing the queue filter, or opening a package workspace to create or repair receipts.", "可以切换队列分组、清空筛选，或进入课包工作区创建/修复收据。")}</div>
+            <div style={{ fontWeight: 700, color: "#334155" }}>
+              {isRepairsScreen && implicitRepairBlockerMode
+                ? t(lang, "There are no repair blockers right now", "当前没有待修复阻塞项")
+                : t(lang, "No receipts match the current queue filters", "当前队列筛选下没有收据")}
+            </div>
+            <div>
+              {isRepairsScreen && implicitRepairBlockerMode
+                ? t(lang, "This repair desk shows rejected receipts and proof blockers by default. If you need a wider view, switch the chips above or go back to the full queue.", "修复台默认只显示被驳回或有凭证阻塞的收据；如果要看更宽范围，可切换上方标签或回到完整队列。")
+                : t(lang, "Try switching the queue bucket, clearing the queue filter, or opening a package workspace to create or repair receipts.", "可以切换队列分组、清空筛选，或进入课包工作区创建/修复收据。")}
+            </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a>
               <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
