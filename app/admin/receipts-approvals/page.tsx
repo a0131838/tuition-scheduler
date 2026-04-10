@@ -1383,6 +1383,7 @@ export async function ReceiptsApprovalsPageContent({
   const selectedActionNextHref = nextQueueRow
     ? openHref(nextQueueRow.type, nextQueueRow.id)
     : `${receiptScreenBasePath("queue")}?clearQueue=1&queueDone=1`;
+  const hasExplicitSelection = Boolean(selectedType && selectedId);
   const actionMovedToNext =
     Boolean(msg) &&
     Boolean(selectedId) &&
@@ -2792,6 +2793,7 @@ export async function ReceiptsApprovalsPageContent({
         .receipt-queue-pane { display: grid; gap: 12px; }
         .receipt-detail-backdrop { display: none; }
         .receipt-mobile-header { display: none; }
+        .receipt-actions-mobile-hidden { display: block; }
         @media (min-width: 1500px) {
           .receipt-workspace { grid-template-columns: minmax(460px, 0.92fr) minmax(540px, 1.08fr); }
         }
@@ -2819,6 +2821,7 @@ export async function ReceiptsApprovalsPageContent({
         @media (max-width: 1499px) {
           .receipt-workspace { position: relative; }
           .receipt-actions-empty { display: none; }
+          .receipt-actions-mobile-hidden { display: none; }
           .receipt-detail-backdrop {
             display: block;
             position: fixed;
@@ -2828,10 +2831,11 @@ export async function ReceiptsApprovalsPageContent({
           }
           .receipt-actions-mobile-open {
             position: fixed;
-            top: 16px;
+            top: 24px;
             right: 16px;
-            bottom: 16px;
-            left: 16px;
+            bottom: 24px;
+            width: min(720px, calc(100vw - 32px));
+            max-width: calc(100vw - 32px);
             z-index: 81;
             background: #fff;
             border-radius: 16px;
@@ -3052,7 +3056,7 @@ export async function ReceiptsApprovalsPageContent({
         )}
       </details>
 
-      {selectedRow ? (
+      {selectedRow && hasExplicitSelection ? (
         <a
           href={currentScreenListHref}
           className="receipt-detail-backdrop"
@@ -3060,7 +3064,7 @@ export async function ReceiptsApprovalsPageContent({
         />
       ) : null}
       <div
-        className={`receipt-actions${selectedRow ? " receipt-actions-mobile-open" : " receipt-actions-empty"}`}
+        className={`receipt-actions${selectedRow && hasExplicitSelection ? " receipt-actions-mobile-open" : selectedRow ? " receipt-actions-mobile-hidden" : " receipt-actions-empty"}`}
         style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}
       >
         <div className="receipt-mobile-header">

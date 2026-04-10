@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r26` (mobile receipt detail overlay), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r27` (mobile receipt detail drawer follow-up), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -2086,6 +2086,19 @@
   - post-deploy startup check
   - verify narrow receipt queue/history screens now show the selected detail pane as an overlay with `Back to list / 返回列表`
   - verify wide screens still show the normal left queue plus right detail layout
+
+## 2026-04-10-r27 Ready
+
+- Scope: fix the narrow-screen receipt overlay so it does not auto-open on page load and feels more like a contained drawer than a full-screen takeover.
+- Business impact:
+  - narrow `Receipt Queue / 收据审批队列` and `Receipt History / 收据历史` screens now open the detail drawer only after finance explicitly clicks a receipt row
+  - the drawer now sits with visible margins and a narrower width, so finance keeps more context of the page behind it
+  - wider screens still keep the side-by-side queue and detail layout, and no receipt approval or package-finance logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify narrow queue/history views stay list-only until a row is clicked
+  - verify the opened detail panel looks like a smaller drawer rather than covering almost the full viewport
 
 ## 2026-04-10-r23 Ready
 

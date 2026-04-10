@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r27
+
+- Release ID: `2026-04-10-r27`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: tighten the narrow-screen receipt detail overlay so it opens only after an explicit row click and behaves like a contained drawer instead of covering nearly the full screen.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This hotfix only adjusts when the narrow-screen receipt overlay appears and how large it is; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - narrow receipt queue/history screens do not show the overlay until finance explicitly opens a receipt row
+  - the narrow-screen overlay now renders as a smaller right-side drawer with visible page margins instead of occupying almost the whole screen
+  - wide screens keep the existing two-column queue-plus-detail layout
+- Rollback point: previous production commit before `2026-04-10-r27`.
+
 ## 2026-04-10-r26
 
 - Release ID: `2026-04-10-r26`
