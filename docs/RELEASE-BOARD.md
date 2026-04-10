@@ -2047,6 +2047,20 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r21 Ready
+
+- Scope: help finance jump back into recently handled student packages without searching from scratch each time.
+- Business impact:
+  - the package finance workspace now shows `Recently opened packages / 最近打开的课包`, so finance can reopen the same few active student packages in one click
+  - opening a package from the search form, quick-select dropdown, or priority list now records that package into the recent list inside the current browser
+  - finance can clear the recent list at any time without touching billing data, because the memory is stored only in browser local storage
+  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify package opens now populate `Recently opened packages / 最近打开的课包`
+  - verify the recent list offers direct reopen actions and can be cleared from the package workspace
+
 ## 2026-04-10-r20 Ready
 
 - Scope: make the package finance workspace easier to open when finance is dealing with a large number of student packages.

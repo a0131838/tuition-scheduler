@@ -3665,6 +3665,26 @@ This file is the single source of truth for what changed in production.
   - the quick-select dropdown now follows the same filtered search results instead of forcing finance to scan the entire package list
 - Rollback point: previous production commit before `2026-04-10-r20`.
 
+## 2026-04-10-r21
+
+- Release ID: `2026-04-10-r21`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: help finance reopen the same few student packages quickly without searching from scratch each time.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/_components/PackageWorkspaceRecentPackagesClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only remembers recent package openings in the browser and adds faster reopen links in the package workspace; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - opening a package from the package workspace search, dropdown, or priority list now records it into `Recently opened packages / 最近打开的课包`
+  - the recent-package list appears inside the package workspace with direct reopen actions and a clear button
+  - reloading the page keeps the recent-package list because the memory stays in browser local storage, not in billing data
+- Rollback point: previous production commit before `2026-04-10-r21`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

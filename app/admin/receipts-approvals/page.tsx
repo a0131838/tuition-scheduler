@@ -52,6 +52,7 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
 } from "../_components/workbenchStyles";
+import PackageWorkspaceRecentPackagesClient from "./_components/PackageWorkspaceRecentPackagesClient";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const RECEIPTS_QUEUE_COOKIE = "adminReceiptsPreferredQueue";
@@ -2426,6 +2427,7 @@ export async function ReceiptsApprovalsPageContent({
             method="get"
             className="ts-filter-bar"
             style={{ marginTop: 10, display: "grid", gap: 10 }}
+            data-package-open-form="1"
           >
             {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
             {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
@@ -2460,6 +2462,20 @@ export async function ReceiptsApprovalsPageContent({
             </label>
             <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
           </form>
+          <PackageWorkspaceRecentPackagesClient
+            lang={lang}
+            basePath={receiptScreenBasePath("package")}
+            currentPackageId={packageIdFilter || undefined}
+            packages={packageWorkspaceOptions.map((option) => ({
+              id: option.id,
+              studentName: option.studentName,
+              courseName: option.courseName,
+              pendingApprovalCount: option.pendingApprovalCount,
+              pendingReceiptCount: option.pendingReceiptCount,
+              rejectedCount: option.rejectedCount,
+              paymentRecordCount: option.paymentRecordCount,
+            }))}
+          />
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
             <div style={{ fontWeight: 700 }}>
               {packageSearchTerm ? t(lang, "Search matches", "搜索结果") : t(lang, "Priority package list", "优先处理课包")}
@@ -2511,6 +2527,7 @@ export async function ReceiptsApprovalsPageContent({
                       </div>
                       <a
                         href={openPackageHref}
+                        data-package-open-id={option.id}
                         style={{
                           ...primaryButtonStyle,
                           textDecoration: "none",

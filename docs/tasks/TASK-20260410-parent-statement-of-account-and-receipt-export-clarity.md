@@ -39,6 +39,7 @@ Finance needed two things without disturbing existing billing controls:
 - add a CSV export for `Receipt History / 收据历史` that follows the current history filters instead of forcing finance to copy data manually
 - add a clear `Suggested next step / 建议下一步` callout in the package workspace so finance can immediately see whether to upload proof, create a receipt, or return to approval
 - replace the crowded package picker with package search plus a priority list so finance can open the right package quickly even when the package count is large
+- keep a lightweight `Recently opened packages / 最近打开的课包` list in the package workspace so finance can jump back into the same few student packages without searching again
 
 ## Guardrails
 
@@ -84,3 +85,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm `/admin/receipts-approvals/history` now exposes an `Export CSV / 导出CSV` action and the downloaded file respects the current history filters
 - confirm the package workspace now shows a `Suggested next step / 建议下一步` panel with a direct button into the most relevant next finance step
 - confirm the package workspace opener now supports keyword search and shows a priority package list with direct `Open package / 打开课包` actions
+- confirm the package workspace now remembers recent package opens and shows a `Recently opened packages / 最近打开的课包` list with direct reopen actions
