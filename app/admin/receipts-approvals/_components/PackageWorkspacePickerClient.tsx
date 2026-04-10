@@ -18,6 +18,7 @@ type PackageOption = {
 
 const STORAGE_KEY = "financeReceiptRecentPackages";
 const MAX_RECENT = 6;
+const MAX_RECENT_DISPLAY = 4;
 
 function getCopy(
   lang: "BILINGUAL" | "ZH" | "EN",
@@ -108,7 +109,7 @@ export default function PackageWorkspacePickerClient({
 
   const recentPackages = useMemo(() => {
     const map = new Map(packages.map((pkg) => [pkg.id, pkg]));
-    return recentIds.map((id) => map.get(id)).filter(Boolean) as PackageOption[];
+    return recentIds.map((id) => map.get(id)).filter(Boolean).slice(0, MAX_RECENT_DISPLAY) as PackageOption[];
   }, [packages, recentIds]);
 
   const labels = {
@@ -159,7 +160,7 @@ export default function PackageWorkspacePickerClient({
   };
 
   return (
-    <div style={{ marginTop: 10, display: "grid", gap: 12 }}>
+    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
       <div style={{ color: "#64748b", fontSize: 12 }}>{labels.intro}</div>
       <div style={{ display: "grid", gap: 10 }}>
         <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
@@ -185,6 +186,7 @@ export default function PackageWorkspacePickerClient({
               onClick={() => {
                 setDraftSearch("");
                 setAppliedSearch("");
+                setSelectedPackageId(currentPackageId ?? "");
               }}
             >
               {labels.clearSearch}
@@ -230,35 +232,35 @@ export default function PackageWorkspacePickerClient({
               {labels.clearRecent}
             </button>
           </div>
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gap: 6 }}>
             {recentPackages.map((option) => (
               <div
                 key={`recent-package-${option.id}`}
                 style={{
                   border: "1px solid #e5e7eb",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   background: "#fff",
-                  padding: "10px 12px",
+                  padding: "8px 10px",
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: 12,
+                  gap: 10,
                   flexWrap: "wrap",
                   alignItems: "center",
                 }}
               >
-                <div style={{ display: "grid", gap: 4 }}>
-                  <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                <div style={{ display: "grid", gap: 2, minWidth: 0, flex: "1 1 240px" }}>
+                  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.3 }}>
                     {option.studentName} | {option.courseName}
                   </div>
-                  <div style={{ color: "#64748b", fontSize: 12 }}>{option.id}</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#475569" }}>
+                  <div style={{ color: "#64748b", fontSize: 11 }}>{option.id.slice(0, 12)}...</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 11, color: "#475569" }}>
                     <span>{labels.waiting}: {option.pendingApprovalCount}</span>
                     <span>{labels.needReceipt}: {option.pendingReceiptCount}</span>
                     <span>{labels.rejected}: {option.rejectedCount}</span>
                     <span>{labels.proofs}: {option.paymentRecordCount}</span>
                   </div>
                 </div>
-                <button type="button" onClick={() => openPackage(option.id)}>
+                <button type="button" onClick={() => openPackage(option.id)} style={{ whiteSpace: "nowrap" }}>
                   {labels.reopen}
                 </button>
               </div>
@@ -274,35 +276,35 @@ export default function PackageWorkspacePickerClient({
         {suggestedPackages.length === 0 ? (
           <div style={{ color: "#64748b", fontSize: 13 }}>{labels.noMatch}</div>
         ) : (
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gap: 6 }}>
             {suggestedPackages.map((option) => (
               <div
                 key={`package-open-${option.id}`}
                 style={{
                   border: "1px solid #e5e7eb",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   background: option.pendingApprovalCount > 0 || option.pendingReceiptCount > 0 ? "#f8fbff" : "#fff",
-                  padding: "10px 12px",
+                  padding: "8px 10px",
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: 12,
+                  gap: 10,
                   flexWrap: "wrap",
                   alignItems: "center",
                 }}
               >
-                <div style={{ display: "grid", gap: 4 }}>
-                  <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                <div style={{ display: "grid", gap: 2, minWidth: 0, flex: "1 1 300px" }}>
+                  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.3 }}>
                     {option.studentName} | {option.courseName}
                   </div>
-                  <div style={{ color: "#64748b", fontSize: 12 }}>{option.id}</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#475569" }}>
+                  <div style={{ color: "#64748b", fontSize: 11 }}>{option.id.slice(0, 12)}...</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 11, color: "#475569" }}>
                     <span>{labels.waiting}: {option.pendingApprovalCount}</span>
                     <span>{labels.needReceipt}: {option.pendingReceiptCount}</span>
                     <span>{labels.rejected}: {option.rejectedCount}</span>
                     <span>{labels.proofs}: {option.paymentRecordCount}</span>
                   </div>
                 </div>
-                <button type="button" onClick={() => openPackage(option.id)}>
+                <button type="button" onClick={() => openPackage(option.id)} style={{ whiteSpace: "nowrap" }}>
                   {labels.openPackage}
                 </button>
               </div>

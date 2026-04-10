@@ -2047,6 +2047,19 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r23 Ready
+
+- Scope: make the package finance picker more compact so finance can see search, recent shortcuts, and package candidates without as much scrolling.
+- Business impact:
+  - the `Recently opened packages / 最近打开的课包` list now shows fewer, tighter rows so it stays useful without taking over the page
+  - search-result and priority package cards now use a denser row layout with shorter metadata, keeping the package workspace higher on screen
+  - clearing search also resets the quick-select field back toward the currently open package, reducing confusion after repeated searches
+  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify the package picker now occupies less vertical space while keeping the same open-package actions
+
 ## 2026-04-10-r22 Ready
 
 - Scope: stop package searching from reloading the whole finance workspace and give finance a clearer confirm flow before opening a package.

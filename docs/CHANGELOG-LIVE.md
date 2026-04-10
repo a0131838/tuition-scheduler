@@ -3705,6 +3705,25 @@ This file is the single source of truth for what changed in production.
   - only `Open Finance Operations / 打开财务操作`, `Open package / 打开课包`, or `Open again / 重新打开` navigates into a package
 - Rollback point: previous production commit before `2026-04-10-r22`.
 
+## 2026-04-10-r23
+
+- Release ID: `2026-04-10-r23`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the finance package picker denser so the search area and recent shortcuts take less vertical space.
+- Key files:
+  - `app/admin/receipts-approvals/_components/PackageWorkspacePickerClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only tightens the layout of the client-side package picker; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - the recent-package list now shows fewer, tighter rows with shorter metadata
+  - priority and search-result package cards now use a denser row layout and occupy less page height
+  - clearing search also resets the quick-select field back to the current package
+- Rollback point: previous production commit before `2026-04-10-r23`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`
