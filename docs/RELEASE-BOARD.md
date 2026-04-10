@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r12` (availability wording clarity), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r13` (finance receipt usability guidance), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -161,6 +161,20 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - teacher availability page should show the new blue guidance notice
   - admin teacher availability page should show the stronger weekly-template wording
+
+## 2026-04-10-r13 Ready
+
+- Scope: make the split finance receipt routes easier to operate by surfacing the next best queue item and adding clearer package-workspace step guidance.
+- Business impact:
+  - `/admin/receipts-approvals` queue-facing screens now show `Next best item / 下一条最该处理`, so finance can immediately see which receipt to clear next and why it is the best candidate
+  - the new next-item card now explains whether the row is blocked by missing proof, missing file, prior rejection, or just needs a quick amount/detail check before approval
+  - `/admin/receipts-approvals/package` now shows three step cards for `Upload`, `Check Records`, and `Create Receipt`, with `Done / Current / Next` states so finance can stay oriented while working one package
+  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - queue QA should confirm `Next best item / 下一条最该处理` appears whenever an actionable finance row exists
+  - package-workspace QA should confirm the three step cards render with sensible `Done / Current / Next` states as package proof/receipt progress changes
 
 ## 2026-04-09-r07 Deployed
 

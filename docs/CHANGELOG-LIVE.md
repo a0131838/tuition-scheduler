@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r13
+
+- Release ID: `2026-04-10-r13`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make the split finance receipt flows easier to operate by surfacing the next best queue item and turning the package workspace into a clearer step-by-step handoff.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only improves finance guidance and flow framing; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - receipt queue screens should show a `Next best item / 下一条最该处理` card above the queue controls whenever there is an actionable row
+  - the card should explain whether the next item is blocked by missing proof, missing file, prior rejection, or only needs a quick amount/detail check
+  - package workspace should show `Step 1 Upload`, `Step 2 Check Records`, and `Step 3 Create Receipt` cards with clear done/current/next states
+- Rollback point: previous production commit before `2026-04-10-r13`.
+
 ## 2026-04-10-r12
 
 - Release ID: `2026-04-10-r12`

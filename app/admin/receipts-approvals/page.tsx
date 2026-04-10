@@ -475,6 +475,12 @@ function renderQueueSection(
   );
 }
 
+function packageStepTone(status: "done" | "active" | "upcoming") {
+  if (status === "done") return { border: "#86efac", bg: "#f0fdf4", title: "#166534", note: "#166534" };
+  if (status === "active") return { border: "#93c5fd", bg: "#eff6ff", title: "#1d4ed8", note: "#1d4ed8" };
+  return { border: "#e5e7eb", bg: "#f8fafc", title: "#475569", note: "#64748b" };
+}
+
 async function uploadPaymentRecordAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -1426,6 +1432,18 @@ export async function ReceiptsApprovalsPageContent({
   const queueMissingProofCount = actionableQueue.filter((x) => !x.paymentRecord).length;
   const queueMissingFileCount = actionableQueue.filter((x) => Boolean(x.paymentFileMissing)).length;
   const queueFileIssueCount = actionableQueue.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing)).length;
+  const nextBestQueueRow = mineQueue[0] ?? otherQueue[0] ?? null;
+  const nextBestQueueReason = nextBestQueueRow
+    ? !nextBestQueueRow.paymentRecord
+      ? t(lang, "Missing proof is blocking approval. Link or upload a payment record first.", "当前缺少缴费凭证，先补凭证才能继续审批。")
+      : nextBestQueueRow.paymentFileMissing
+        ? t(lang, "The proof record exists but the file is missing. Re-upload the file before continuing approval.", "当前缴费记录已存在，但附件文件缺失，请先补文件。")
+        : nextBestQueueRow.status === "REJECTED"
+          ? t(lang, "This receipt was rejected earlier and is now the next repair-ready item.", "这条收据之前被驳回了，现在是下一条待修复项。")
+          : (nextBestQueueRow.riskCount ?? 0) > 0
+            ? t(lang, "This receipt is next in line, but needs a quick amount/detail check before approval.", "这条是当前下一条，但批准前需要先快速核对金额或明细。")
+            : t(lang, "This is the cleanest pending item to clear next.", "这是当前最适合先清掉的一条待处理项。")
+    : "";
   const queueScopeLabel =
     isRepairsScreen && implicitRepairBlockerMode
       ? t(lang, "Repair blockers only", "仅显示待修复阻塞项")
@@ -1464,6 +1482,34 @@ export async function ReceiptsApprovalsPageContent({
     if (queueBucket !== "ALL") params.set("queueBucket", queueBucket);
     return params.toString();
   })();
+  const packageStepCards = [
+    {
+      key: "upload",
+      label: t(lang, "Step 1 Upload", "步骤1 上传"),
+      note: usablePaymentRecordCount > 0
+        ? t(lang, "Usable proof already exists; only upload again if you need a new or replacement file.", "当前已有可用凭证；只有新增或替换文件时才需要再上传。")
+        : t(lang, "Start here when the parent payment proof has not been uploaded yet.", "如果家长付款凭证还没上传，就从这里开始。"),
+      status: workflowStep === "upload" ? "active" as const : usablePaymentRecordCount > 0 ? "done" as const : "upcoming" as const,
+    },
+    {
+      key: "records",
+      label: t(lang, "Step 2 Check Records", "步骤2 查看记录"),
+      note: missingPaymentFileCount > 0
+        ? t(lang, "Some uploaded records are missing files and need attention before receipt creation.", "部分已上传记录缺文件，创建收据前需要先处理。")
+        : linkedPaymentRecordCount > 0
+          ? t(lang, "Review which proof is already linked and whether you need a fresh one for this receipt.", "先确认哪些凭证已经绑定收据，以及当前是否需要换一条。")
+          : t(lang, "Check uploaded payment records and confirm which one should be used.", "先核对已上传缴费记录，确认当前要用哪一条。"),
+      status: workflowStep === "records" ? "active" as const : usablePaymentRecordCount > 0 ? "done" as const : "upcoming" as const,
+    },
+    {
+      key: "create",
+      label: t(lang, "Step 3 Create Receipt", "步骤3 创建收据"),
+      note: pendingReceiptAmount > 0
+        ? t(lang, "There is still amount waiting for receipt creation in this package.", "这个课包还有金额等待创建收据。")
+        : t(lang, "Once invoice and proof are confirmed, create the receipt here.", "确认发票和凭证后，在这里创建收据。"),
+      status: workflowStep === "create" ? "active" as const : totalReceiptAmount > 0 && pendingReceiptAmount <= 0 ? "done" as const : "upcoming" as const,
+    },
+  ];
 
   return (
     <div>
@@ -1796,6 +1842,38 @@ export async function ReceiptsApprovalsPageContent({
               "You are now working inside one package. Use the workspace below to upload proof, check records, and create a receipt. Return to the global queue when this package is done.",
               "你现在正在处理单个课包。请使用下方工作区上传凭证、查看记录并创建收据。处理完成后再返回统一收据队列。"
             )}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            {packageStepCards.map((step) => {
+              const tone = packageStepTone(step.status);
+              return (
+                <a
+                  key={step.key}
+                  href={stepHref(step.key as "upload" | "records" | "create")}
+                  style={{
+                    border: `1px solid ${tone.border}`,
+                    background: tone.bg,
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    textDecoration: "none",
+                    display: "grid",
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 800, color: tone.title }}>{step.label}</div>
+                    <span style={{ ...tagStyle(step.status === "done" ? "ok" : step.status === "active" ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+                      {step.status === "done"
+                        ? t(lang, "Done", "已完成")
+                        : step.status === "active"
+                          ? t(lang, "Current", "当前")
+                          : t(lang, "Next", "下一步")}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: tone.note, lineHeight: 1.45 }}>{step.note}</div>
+                </a>
+              );
+            })}
           </div>
           {selectedType && selectedId ? (
             <div style={{ color: "#1d4ed8", fontSize: 13 }}>
@@ -2293,6 +2371,49 @@ export async function ReceiptsApprovalsPageContent({
             {bilingualLabel("Completed history", "已完成历史")}: {completedQueue.length}
           </span>
         </div>
+        {!isHistoryScreen && nextBestQueueRow ? (
+          <div
+            style={{
+              marginBottom: 10,
+              display: "grid",
+              gap: 8,
+              border: "1px solid #bfdbfe",
+              borderRadius: 12,
+              background: "#f8fbff",
+              padding: "12px 14px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Next best item", "下一条最该处理")}</div>
+                <div style={{ color: "#334155", marginTop: 2 }}>
+                  {nextBestQueueRow.receiptNo} | {nextBestQueueRow.partyName}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ ...tagStyle(queueStatusKind(nextBestQueueRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
+                  {queueStatusLabel(lang, nextBestQueueRow.status)}
+                </span>
+                <span style={{ ...tagStyle(queueRiskBadgeKind(nextBestQueueRow)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
+                  {queueRiskBadgeLabel(lang, nextBestQueueRow)}
+                </span>
+              </div>
+            </div>
+            <div style={{ color: "#475569", fontSize: 13 }}>{nextBestQueueReason}</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} style={{ fontWeight: 700 }}>
+                {queuePrimaryActionLabel(lang, nextBestQueueRow.status)}
+              </a>
+              {nextBestQueueRow.type === "PARENT" && (nextBestQueueRow.status === "REJECTED" || !nextBestQueueRow.paymentRecord || nextBestQueueRow.paymentFileMissing) ? (
+                <a
+                  href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(nextBestQueueRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(nextBestQueueRow.id)}`}
+                >
+                  {t(lang, "Open fix tools first", "先打开修复工具")}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <details open={queueBucket !== "ALL" || queueFilter !== "ALL"} style={{ marginBottom: 8 }}>
           <summary style={{ cursor: "pointer", fontWeight: 700, color: "#475569" }}>
             {isHistoryScreen ? t(lang, "History display controls", "历史显示控制") : t(lang, "Queue display controls", "队列显示控制")}
