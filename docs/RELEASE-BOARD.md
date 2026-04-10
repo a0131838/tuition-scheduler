@@ -1992,6 +1992,7 @@
   - receipt finance work is now split into four clearer routes: `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`, so approval, package handling, repair, and lookup no longer compete on one long mixed page
   - `Proof Repair` now defaults to a blocker-first repair queue, so rejected receipts and other repair-needed rows still appear even when there are no pure attachment-health issues
   - the `All / 全部` chip on `Proof Repair` now explicitly clears into the wider repair-page queue instead of bouncing back into the implicit default blocker filter
+  - `Receipt History` now suppresses the lower bucket-switch controls that conflicted with the top `Receipt History` page mode, leaving only history-safe controls on that screen
   - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
   - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
   - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed
@@ -2001,3 +2002,4 @@
   - verify unapproved receipts are shown as pending and still excluded from formal paid totals
   - verify `Proof Repair` shows repair blockers by default, while the explicit `Proof or file issues` chip still narrows to attachment-only problems
   - verify clicking `All / 全部` inside `Proof Repair` actually widens the page queue instead of appearing stuck
+  - verify `Receipt History` no longer shows conflicting lower bucket toggles such as `Show all buckets` and `Only open work`

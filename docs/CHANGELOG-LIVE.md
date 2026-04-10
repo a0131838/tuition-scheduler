@@ -3529,4 +3529,5 @@ This file is the single source of truth for what changed in production.
   - receipt work is now split into clearer finance entry pages: the default page is a focused `Receipt Queue`, while `Package Workspace`, `Proof Repair`, and `Receipt History` each get their own dedicated route and sidebar entry without changing upload, receipt creation, or approval logic
   - `Proof Repair` now defaults to a more practical blocker view that shows rejected receipts and other repair-needed rows, instead of looking empty when there are no literal file-missing items
   - the `All / 全部` chip inside `Proof Repair` now truly expands back to the full repair-page queue instead of silently reapplying the default blocker filter
+  - `Receipt History` now hides the conflicting bucket-switch row and only keeps history-appropriate controls, so the top page mode no longer fights with the lower queue toggles
 - Rollback point: previous production commit before `2026-04-10-r01`.

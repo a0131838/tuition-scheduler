@@ -1428,6 +1428,23 @@ export async function ReceiptsApprovalsPageContent({
     isRepairsScreen && implicitRepairBlockerMode
       ? t(lang, "Repair blockers only", "仅显示待修复阻塞项")
       : queueFilter;
+  const queueBucketOptions = [
+    ["ALL", t(lang, "Show all buckets", "显示全部分组")],
+    ["MINE", t(lang, "Only my actions", "只看我待处理的")],
+    ["OPEN", t(lang, "Only open work", "只看未完成")],
+    ["HISTORY", t(lang, "Only completed history", "只看已完成历史")],
+  ] as const;
+  const queueFilterOptions = isHistoryScreen
+    ? ([["COMPLETED", t(lang, "Completed only", "仅看已完成")]] as const)
+    : ([
+        ["ALL", t(lang, "All", "全部")],
+        ["PENDING", t(lang, "Pending", "待审批")],
+        ["REJECTED", t(lang, "Rejected", "已驳回")],
+        ["COMPLETED", t(lang, "Completed", "已完成")],
+        ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
+        ["FILE_ISSUE", t(lang, "Proof or file issues", "凭证或文件异常")],
+        ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
+      ] as const);
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
@@ -2276,16 +2293,20 @@ export async function ReceiptsApprovalsPageContent({
         </div>
         <details open={queueBucket !== "ALL" || queueFilter !== "ALL"} style={{ marginBottom: 8 }}>
           <summary style={{ cursor: "pointer", fontWeight: 700, color: "#475569" }}>
-            {t(lang, "Queue display controls", "队列显示控制")}
+            {isHistoryScreen ? t(lang, "History display controls", "历史显示控制") : t(lang, "Queue display controls", "队列显示控制")}
           </summary>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {([
-                ["ALL", t(lang, "Show all buckets", "显示全部分组")],
-                ["MINE", t(lang, "Only my actions", "只看我待处理的")],
-                ["OPEN", t(lang, "Only open work", "只看未完成")],
-                ["HISTORY", t(lang, "Only completed history", "只看已完成历史")],
-              ] as const).map(([bucket, label]) => (
+            {isHistoryScreen ? (
+              <div style={{ color: "#64748b", fontSize: 12 }}>
+                {t(
+                  lang,
+                  "This page is already locked to completed history. Use the top page tabs to go back to open-work views.",
+                  "这一页已经固定为已完成历史；如果要回到待处理队列，请使用上方页面标签切换。"
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {queueBucketOptions.map(([bucket, label]) => (
                 <a
                   key={bucket}
                   href={queueBucketHref(bucket)}
@@ -2303,17 +2324,10 @@ export async function ReceiptsApprovalsPageContent({
                   {label}
                 </a>
               ))}
-            </div>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {([
-                ["ALL", t(lang, "All", "全部")],
-                ["PENDING", t(lang, "Pending", "待审批")],
-                ["REJECTED", t(lang, "Rejected", "已驳回")],
-                ["COMPLETED", t(lang, "Completed", "已完成")],
-                ["NO_PAYMENT_RECORD", t(lang, "No Payment Record", "无付款记录")],
-                ["FILE_ISSUE", t(lang, "Proof or file issues", "凭证或文件异常")],
-                ["TODAY_MINE", t(lang, "Today Mine", "今天我处理的")],
-              ] as const).map(([filter, label]) => (
+              {queueFilterOptions.map(([filter, label]) => (
                 <a
                   key={filter}
                   href={queueFilterHref(filter)}
