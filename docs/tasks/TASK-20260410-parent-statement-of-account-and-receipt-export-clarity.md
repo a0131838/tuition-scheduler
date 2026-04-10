@@ -16,6 +16,7 @@ Finance needed two things without disturbing existing billing controls:
 - expose invoice creator identity on the finance invoice page so finance can see who prepared and created each invoice
 - show creator names more clearly by resolving stored creator emails to `Name (email)` when user records exist
 - keep package billing aligned with the same creator display so both invoice views show the same person label
+- prevent the global receipt-approval queue from falsely flagging valid proof uploads as missing when no package filter is selected
 
 ## Guardrails
 
@@ -35,3 +36,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the recent invoice table shows `Created by / 创建人`
 - confirm the recent invoice table prefers `Name (email)` over raw email when the creator user record exists
 - confirm the package billing invoice `By` column prefers `Name (email)` over raw email when the creator user record exists
+- confirm a receipt with a valid linked payment proof no longer shows `file missing` in the global approval queue just because the page is opened without `packageId`

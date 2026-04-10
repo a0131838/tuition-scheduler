@@ -959,17 +959,30 @@ export default async function ReceiptsApprovalsPage({
   const selectedBilling = packageIdFilter
     ? await listParentBillingForPackage(packageIdFilter).catch(() => null)
     : null;
+  const visibleReceiptPaymentRecordIds = Array.from(
+    new Set(rows.map((receipt) => String(receipt.paymentRecordId ?? "").trim()).filter(Boolean))
+  );
+  const paymentRecordIdsToCheck = Array.from(
+    new Set([
+      ...visibleReceiptPaymentRecordIds,
+      ...(selectedBilling?.paymentRecords.map((record) => record.id) ?? []),
+    ])
+  );
   const paymentRecordFileMap = new Map<string, boolean>(
-    selectedBilling
-      ? await Promise.all(
-          selectedBilling.paymentRecords.map(async (record) => {
-            return [
-              record.id,
-              await storedBusinessFileExists(record.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs),
-            ] as const;
-          })
-        )
-      : []
+    await Promise.all(
+      paymentRecordIdsToCheck.map(async (paymentRecordId) => {
+        const record =
+          parentPaymentRecordMap.get(paymentRecordId) ??
+          selectedBilling?.paymentRecords.find((item) => item.id === paymentRecordId) ??
+          null;
+        return [
+          paymentRecordId,
+          record
+            ? await storedBusinessFileExists(record.relativePath, BUSINESS_UPLOAD_PREFIX.paymentProofs)
+            : false,
+        ] as const;
+      })
+    )
   );
   const availableInvoices = selectedBilling
     ? selectedBilling.invoices.filter((inv) => !selectedBilling.receipts.some((r) => r.invoiceId === inv.id))

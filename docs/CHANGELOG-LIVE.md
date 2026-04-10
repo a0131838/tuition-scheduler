@@ -3525,4 +3525,5 @@ This file is the single source of truth for what changed in production.
   - finance invoice preview and latest-invoice table now show the invoice creator on-page without changing PDF output or billing logic
   - latest invoices now prefer `Name (email)` for creator display when the matching user exists, so finance does not need to decode raw email addresses
   - package billing now uses the same `Name (email)` creator display in the invoice `By` column, so finance sees consistent creator labels across both invoice pages
+  - receipt approvals no longer mislabel linked proofs as `file missing` when finance is reviewing the global queue without a specific `packageId`; file health now checks the queue row's actual linked payment record
 - Rollback point: previous production commit before `2026-04-10-r01`.
