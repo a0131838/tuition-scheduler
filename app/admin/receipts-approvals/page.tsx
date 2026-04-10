@@ -67,6 +67,8 @@ export type ReceiptsApprovalSearchParams = {
   msg?: string;
   err?: string;
   clearQueue?: string;
+  historyActionKind?: string;
+  historyFocus?: string;
   historySearch?: string;
   packageId?: string;
   month?: string;
@@ -186,6 +188,18 @@ function normalizeReceiptQueueFilter(value: string) {
 function normalizeReceiptQueueBucket(value: string) {
   return (["ALL", "MINE", "OPEN", "HISTORY"] as const).includes(value as any)
     ? (value as "ALL" | "MINE" | "OPEN" | "HISTORY")
+    : "ALL";
+}
+
+function normalizeHistoryFocus(value: string) {
+  return (["ALL", "RECEIPTS", "ACTIONS"] as const).includes(value as any)
+    ? (value as "ALL" | "RECEIPTS" | "ACTIONS")
+    : "ALL";
+}
+
+function normalizeHistoryActionKind(value: string) {
+  return (["ALL", "PAYMENT_UPLOAD", "INVOICE_CREATE", "RECEIPT_CREATE"] as const).includes(value as any)
+    ? (value as "ALL" | "PAYMENT_UPLOAD" | "INVOICE_CREATE" | "RECEIPT_CREATE")
     : "ALL";
 }
 
@@ -867,8 +881,12 @@ export async function ReceiptsApprovalsPageContent({
   const historySearchTerm = String(sp?.historySearch ?? "").trim();
   const hasMonthParam = typeof sp?.month === "string";
   const hasViewParam = typeof sp?.view === "string";
+  const hasHistoryFocusParam = typeof sp?.historyFocus === "string";
+  const hasHistoryActionKindParam = typeof sp?.historyActionKind === "string";
   const hasQueueFilterParam = typeof sp?.queueFilter === "string";
   const hasQueueBucketParam = typeof sp?.queueBucket === "string";
+  const historyFocusParamRaw = hasHistoryFocusParam ? String(sp?.historyFocus).trim() : "";
+  const historyActionKindParamRaw = hasHistoryActionKindParam ? String(sp?.historyActionKind).trim() : "";
   const monthParamRaw = hasMonthParam ? String(sp.month).trim() : "";
   const viewParamRaw = hasViewParam ? String(sp.view).trim() : "";
   const queueFilterParamRaw = hasQueueFilterParam ? String(sp.queueFilter).trim() : "";
@@ -885,6 +903,8 @@ export async function ReceiptsApprovalsPageContent({
   const canResumeRememberedQueue =
     !clearQueue &&
     !packageIdFilter &&
+    !hasHistoryFocusParam &&
+    !hasHistoryActionKindParam &&
     !hasMonthParam &&
     !hasViewParam &&
     !hasQueueFilterParam &&
@@ -905,6 +925,12 @@ export async function ReceiptsApprovalsPageContent({
   const viewMode = hasViewParam
     ? normalizeReceiptView(viewParamRaw.trim().toUpperCase())
     : rememberedQueue.view;
+  const historyFocus = hasHistoryFocusParam
+    ? normalizeHistoryFocus(historyFocusParamRaw.trim().toUpperCase())
+    : "ALL";
+  const historyActionKind = hasHistoryActionKindParam
+    ? normalizeHistoryActionKind(historyActionKindParamRaw.trim().toUpperCase())
+    : "ALL";
   const implicitRepairBlockerMode =
     screenMode === "repairs" &&
     !hasQueueFilterParam &&
@@ -1081,6 +1107,8 @@ export async function ReceiptsApprovalsPageContent({
 
   const baseQuery = new URLSearchParams();
   if (packageIdFilter) baseQuery.set("packageId", packageIdFilter);
+  if (historyActionKind !== "ALL") baseQuery.set("historyActionKind", historyActionKind);
+  if (historyFocus !== "ALL") baseQuery.set("historyFocus", historyFocus);
   if (monthFilter) baseQuery.set("month", monthFilter);
   if (historySearchTerm) baseQuery.set("historySearch", historySearchTerm);
   if (viewMode !== "ALL") baseQuery.set("view", viewMode);
@@ -1257,6 +1285,8 @@ export async function ReceiptsApprovalsPageContent({
   });
   const actionableQueue = unifiedQueue.filter((x) => x.status !== "COMPLETED");
   const completedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
+  const showHistoryActions = !isHistoryScreen || historyFocus !== "RECEIPTS";
+  const showHistoryReceipts = !isHistoryScreen || historyFocus !== "ACTIONS";
   const searchedCompletedQueue = historySearchTerm
     ? completedQueue.filter((x) =>
         matchesSearchTerm(historySearchTerm, [
@@ -1276,7 +1306,10 @@ export async function ReceiptsApprovalsPageContent({
   const otherQueue = actionableQueue.filter((x) => !mineQueue.some((mine) => mine.type === x.type && mine.id === x.id));
   const visibleMineQueue = queueBucket === "OPEN" || queueBucket === "HISTORY" ? [] : mineQueue;
   const visibleOtherQueue = queueBucket === "MINE" || queueBucket === "HISTORY" ? [] : otherQueue;
-  const visibleCompletedQueue = queueBucket === "MINE" || queueBucket === "OPEN" ? [] : searchedCompletedQueue;
+  const visibleCompletedQueue =
+    queueBucket === "MINE" || queueBucket === "OPEN" || (isHistoryScreen && !showHistoryReceipts)
+      ? []
+      : searchedCompletedQueue;
   const repairMissingPaymentRows = actionableQueue.filter((x) => !x.paymentRecord);
   const repairMissingFileRows = actionableQueue.filter((x) => Boolean(x.paymentFileMissing));
   const defaultVisibleQueue =
@@ -1453,20 +1486,21 @@ export async function ReceiptsApprovalsPageContent({
       title: x.receiptNo,
     })),
   ]
-    .sort((a, b) => +new Date(b.at) - +new Date(a.at))
-    .slice(0, 8);
-  const visibleRecentOps = historySearchTerm
-    ? recentOps.filter((op) => {
-        const pkg = opPackageMap.get(op.packageId);
-        return matchesSearchTerm(historySearchTerm, [
-          op.title,
-          op.actor,
-          op.packageId,
-          pkg?.student?.name,
-          pkg?.course?.name,
-        ]);
-      })
-    : recentOps;
+    .sort((a, b) => +new Date(b.at) - +new Date(a.at));
+  const filteredRecentOps = recentOps.filter((op) => {
+    if (historyActionKind !== "ALL" && op.kind !== historyActionKind) return false;
+    if (monthFilter && monthKeyFromDateOnly(formatDateOnly(new Date(op.at))) !== monthFilter) return false;
+    if (!historySearchTerm) return true;
+    const pkg = opPackageMap.get(op.packageId);
+    return matchesSearchTerm(historySearchTerm, [
+      op.title,
+      op.actor,
+      op.packageId,
+      pkg?.student?.name,
+      pkg?.course?.name,
+    ]);
+  });
+  const visibleRecentOps = filteredRecentOps.slice(0, 8);
   const queueBlockerCount = actionableQueue.filter(
     (x) => !x.paymentRecord || Boolean(x.paymentFileMissing) || (x.riskCount ?? 0) > 0
   ).length;
@@ -1997,13 +2031,24 @@ export async function ReceiptsApprovalsPageContent({
             placeholder={t(lang, "Search student / invoice / receipt / uploader", "搜索学生 / 发票 / 收据 / 操作人")}
             style={{ minWidth: 280, flex: "1 1 320px" }}
           />
+          <select name="historyFocus" defaultValue={historyFocus}>
+            <option value="ALL">{t(lang, "All history", "全部历史")}</option>
+            <option value="RECEIPTS">{t(lang, "Receipts only", "只看收据")}</option>
+            <option value="ACTIONS">{t(lang, "Actions only", "只看动作")}</option>
+          </select>
+          <select name="historyActionKind" defaultValue={historyActionKind}>
+            <option value="ALL">{t(lang, "All actions", "全部动作")}</option>
+            <option value="PAYMENT_UPLOAD">{t(lang, "Payment uploads", "缴费上传")}</option>
+            <option value="INVOICE_CREATE">{t(lang, "Invoice created", "创建发票")}</option>
+            <option value="RECEIPT_CREATE">{t(lang, "Receipt created", "创建收据")}</option>
+          </select>
           <button type="submit">{t(lang, "Search", "搜索")}</button>
           <a href={clearHistorySearchHref}>{t(lang, "Clear", "清除")}</a>
         </div>
       </form>
       ) : null}
 
-      {isHistoryScreen ? (
+      {isHistoryScreen && showHistoryActions ? (
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Recent Finance Actions", "最近财务操作")} ({visibleRecentOps.length})
@@ -2460,7 +2505,7 @@ export async function ReceiptsApprovalsPageContent({
           background: #fff;
         }
       `}</style>
-      {isPackageScreen ? null : (
+      {isPackageScreen || !showHistoryReceipts ? null : (
       <div className="receipt-workspace">
       <details
         open={!packageWorkspaceMode || workflowStep === "review"}
@@ -2518,6 +2563,17 @@ export async function ReceiptsApprovalsPageContent({
             </div>
             <div style={{ color: "#475569", fontSize: 13 }}>{nextBestQueueReason}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a
+                href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)}
+                style={{
+                  ...primaryButtonStyle,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {t(lang, "Open next item", "打开下一条")}
+              </a>
               <a href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} style={{ fontWeight: 700 }}>
                 {queuePrimaryActionLabel(lang, nextBestQueueRow.status)}
               </a>

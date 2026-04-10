@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r17
+
+- Release ID: `2026-04-10-r17`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the finance receipt queue easier to move through and make receipt history easier to narrow without changing any billing or approval rules.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only adds navigation and filtering helpers on the finance receipt screens; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - `Next best item / 下一条最该处理` should show a direct `Open next item / 打开下一条` action
+  - `/admin/receipts-approvals/history` should support `All history / 全部历史`, `Receipts only / 只看收据`, and `Actions only / 只看动作`
+  - `/admin/receipts-approvals/history` should let finance narrow `Recent Finance Actions / 最近财务动作` by action type
+- Rollback point: previous production commit before `2026-04-10-r17`.
+
 ## 2026-04-10-r16
 
 - Release ID: `2026-04-10-r16`

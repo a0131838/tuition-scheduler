@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r16` (finance receipt tab scroll preservation), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r17` (finance receipt queue jump and history focus filters), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -215,6 +215,21 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - QA should confirm the top receipt tabs still switch without a full reload and now also keep the main page scroll position stable
   - QA should confirm the finance sidebar still highlights `Receipt Queue / 收据审批队列` after reopening the queue from top tabs or dashboard shortcuts
+
+## 2026-04-10-r17 Ready
+
+- Scope: make the finance receipt queue easier to advance and give receipt history a clearer focus filter without changing finance business logic.
+- Business impact:
+  - `Next best item / 下一条最该处理` now includes a direct `Open next item / 打开下一条` action so finance can jump straight into the recommended row
+  - `/admin/receipts-approvals/history` now supports `All history / 全部历史`, `Receipts only / 只看收据`, and `Actions only / 只看动作`, so finance can switch between lookup modes without wading through mixed content
+  - the history page can also narrow `Recent Finance Actions / 最近财务动作` by action type such as payment upload, invoice creation, or receipt creation
+  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - QA should confirm `Next best item / 下一条最该处理` opens the recommended row in one click
+  - QA should confirm the history page focus filter can hide receipts or recent actions independently
+  - QA should confirm recent-action type filtering works on `/admin/receipts-approvals/history`
 
 ## 2026-04-09-r07 Deployed
 
