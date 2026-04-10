@@ -1995,6 +1995,7 @@
   - `Receipt History` now suppresses the lower bucket-switch controls that conflicted with the top `Receipt History` page mode, leaving only history-safe controls on that screen
   - `Receipt History` now routes `Back to default queue / 回到默认队列` back to `/admin/receipts-approvals` instead of staying on `/history`, which fixes the false "button did nothing" feeling during QA
   - finance sidebar and receipt-center `Receipt Queue / 收据审批队列` links now explicitly clear remembered queue state, so clicking the queue entry always lands on the live approval queue instead of unexpectedly reopening history
+  - the top receipt-page `Receipt Queue / 收据审批队列` tab now also clears remembered queue state instead of preserving `queueBucket=HISTORY`, so the page-level mode switch behaves the same way as the sidebar
   - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
   - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
   - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed
@@ -2007,3 +2008,4 @@
   - verify `Receipt History` no longer shows conflicting lower bucket toggles such as `Show all buckets` and `Only open work`
   - verify `Back to default queue / 回到默认队列` from `Receipt History` lands on `/admin/receipts-approvals?clearQueue=1`
   - verify clicking the finance sidebar `Receipt Queue / 收据审批队列` entry opens `/admin/receipts-approvals?clearQueue=1` and no longer re-enters `Receipt History`
+  - verify clicking the top `Receipt Queue / 收据审批队列` page tab from `Receipt History` also opens `/admin/receipts-approvals?clearQueue=1`

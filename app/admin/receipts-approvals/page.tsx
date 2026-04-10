@@ -1335,6 +1335,7 @@ export async function ReceiptsApprovalsPageContent({
       ? `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
       : "";
   const buildScreenHref = (target: ReceiptScreenMode) => {
+    if (target === "queue") return defaultQueueHref;
     const q = new URLSearchParams();
     if (target === "package") {
       if (packageIdFilter) q.set("packageId", packageIdFilter);
@@ -1344,7 +1345,6 @@ export async function ReceiptsApprovalsPageContent({
       if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
       if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
     } else {
-      if (target === "queue") q.set("clearQueue", "1");
       if (monthFilter) q.set("month", monthFilter);
       if (viewMode !== "ALL") q.set("view", viewMode);
       if (selectedType) q.set("selectedType", selectedType);

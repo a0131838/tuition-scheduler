@@ -3532,4 +3532,5 @@ This file is the single source of truth for what changed in production.
   - `Receipt History` now hides the conflicting bucket-switch row and only keeps history-appropriate controls, so the top page mode no longer fights with the lower queue toggles
   - `Receipt History` now sends `Back to default queue / 回到默认队列` to the actual receipt queue route instead of reloading the history page with `clearQueue=1`, so finance can truly jump back into active approval work
   - finance sidebar and receipt-page `Receipt Queue / 收据审批队列` links now open the real default approval queue with `clearQueue=1`, so clicking the queue entry no longer re-enters remembered `Receipt History`
+  - the top receipt-mode tab `Receipt Queue / 收据审批队列` now uses the same default-queue reset target instead of carrying `queueBucket=HISTORY`, so switching out of `Receipt History` finally returns to the live approval queue
 - Rollback point: previous production commit before `2026-04-10-r01`.

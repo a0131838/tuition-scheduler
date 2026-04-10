@@ -23,6 +23,7 @@ Finance needed two things without disturbing existing billing controls:
 - keep `Receipt History` visually consistent by removing lower queue-bucket controls that contradict the page-level history mode
 - make sure `Back to default queue / 回到默认队列` on `Receipt History` actually jumps back to the live approval queue instead of reloading the history screen
 - make sure finance-facing `Receipt Queue / 收据审批队列` entry points clear remembered queue state so they do not unexpectedly reopen `Receipt History`
+- make sure the top receipt-mode `Receipt Queue / 收据审批队列` tab clears remembered history mode too, not only the sidebar entry
 
 ## Guardrails
 
@@ -50,3 +51,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm `/admin/receipts-approvals/history` no longer shows lower queue-bucket switches that conflict with the page-level `Receipt History` mode
 - confirm `Back to default queue / 回到默认队列` on `/admin/receipts-approvals/history` now opens `/admin/receipts-approvals?clearQueue=1`
 - confirm the finance sidebar and receipt-page `Receipt Queue / 收据审批队列` links now open `/admin/receipts-approvals?clearQueue=1` and do not reopen remembered history
+- confirm the top `Receipt Queue / 收据审批队列` tab from `/admin/receipts-approvals/history` now opens `/admin/receipts-approvals?clearQueue=1`
