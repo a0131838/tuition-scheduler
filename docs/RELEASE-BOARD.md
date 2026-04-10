@@ -207,12 +207,14 @@
 - Scope: keep the top finance receipt workflow tabs from auto-scrolling the page back to the top after the move to client-side navigation.
 - Business impact:
   - the top `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` tabs on `/admin/receipts-approvals*` now preserve the current page scroll position while switching modes
+  - `Receipt Queue / 收据审批队列` now uses a stable dedicated queue route, so the finance sidebar keeps the same active queue item instead of visually changing when query-based resets fire
   - finance can continue reading or cross-checking mid-page without being thrown back to the top of the workspace after each tab click
   - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
 - Validation:
   - `npm run build`
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - QA should confirm the top receipt tabs still switch without a full reload and now also keep the main page scroll position stable
+  - QA should confirm the finance sidebar still highlights `Receipt Queue / 收据审批队列` after reopening the queue from top tabs or dashboard shortcuts
 
 ## 2026-04-09-r07 Deployed
 

@@ -34,6 +34,7 @@ This file is the single source of truth for what changed in production.
   - top receipt mode tabs should keep using client navigation without a full page reload
   - left finance sidebar should keep its current scroll position when switching between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`
   - main finance receipt content should keep its current page scroll position instead of jumping back to the top on each top-tab switch
+  - finance sidebar should keep `Receipt Queue / 收据审批队列` highlighted when the queue is reopened from top workflow tabs or finance dashboard links
 - Rollback point: previous production commit before `2026-04-10-r16`.
 
 ## 2026-04-10-r15

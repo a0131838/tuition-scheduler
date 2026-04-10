@@ -225,6 +225,7 @@ function parentPaymentRecordFileHref(recordId: string) {
 }
 
 function receiptScreenBasePath(screenMode: ReceiptScreenMode) {
+  if (screenMode === "queue") return "/admin/receipts-approvals/queue";
   if (screenMode === "package") return "/admin/receipts-approvals/package";
   if (screenMode === "repairs") return "/admin/receipts-approvals/repairs";
   if (screenMode === "history") return "/admin/receipts-approvals/history";
@@ -850,9 +851,11 @@ export default async function ReceiptsApprovalsPage({
 export async function ReceiptsApprovalsPageContent({
   searchParams,
   screenMode = "queue",
+  forceClearQueue = false,
 }: {
   searchParams?: Promise<ReceiptsApprovalSearchParams>;
   screenMode?: ReceiptScreenMode;
+  forceClearQueue?: boolean;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -860,7 +863,7 @@ export async function ReceiptsApprovalsPageContent({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
-  const clearQueue = String(sp?.clearQueue ?? "").trim() === "1";
+  const clearQueue = forceClearQueue || String(sp?.clearQueue ?? "").trim() === "1";
   const historySearchTerm = String(sp?.historySearch ?? "").trim();
   const hasMonthParam = typeof sp?.month === "string";
   const hasViewParam = typeof sp?.view === "string";

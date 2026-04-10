@@ -65,7 +65,7 @@ export default async function AdminHome() {
               <div style={{ fontWeight: 800 }}>{t(lang, "Partner Settlement", "合作方结算")}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Review settlement totals and close outstanding partner items.", "核对结算总额并关闭合作方待处理项。")}</div>
             </a>
-            <a href="/admin/receipts-approvals?clearQueue=1" style={{ ...tileStyle, background: "#fffbeb", borderColor: "#fde68a" }}>
+            <a href="/admin/receipts-approvals/queue" style={{ ...tileStyle, background: "#fffbeb", borderColor: "#fde68a" }}>
               <div style={{ fontWeight: 800 }}>{t(lang, "Receipt Approvals", "收据审批")}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Create, review, and repair receipt items.", "创建、审核和修复收据项。")}</div>
             </a>
