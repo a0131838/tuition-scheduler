@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   BUSINESS_UPLOAD_PREFIX,
   deleteStoredBusinessFile,
@@ -1585,7 +1586,7 @@ export async function ReceiptsApprovalsPageContent({
         ] as const).map(([mode, label]) => {
           const active = screenMode === mode;
           return (
-            <a
+            <Link
               key={mode}
               href={buildScreenHref(mode)}
               style={{
@@ -1600,7 +1601,7 @@ export async function ReceiptsApprovalsPageContent({
               }}
             >
               {label}
-            </a>
+            </Link>
           );
         })}
       </div>

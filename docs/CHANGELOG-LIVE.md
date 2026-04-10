@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r15
+
+- Release ID: `2026-04-10-r15`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `LIVE` after deploy completion
+- Scope: stop the finance receipt top mode tabs from doing full page reloads so the left sidebar scroll state stays put while switching between finance receipt sub-pages.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes navigation behavior for the top receipt mode tabs; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - top receipt mode tabs should switch screens through client navigation instead of full page reload
+  - left finance sidebar should keep its current scroll position when switching between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`
+- Rollback point: previous production commit before `2026-04-10-r15`.
+
 ## 2026-04-10-r14
 
 - Release ID: `2026-04-10-r14`

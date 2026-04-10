@@ -28,6 +28,7 @@ Finance needed two things without disturbing existing billing controls:
 - strengthen the split package workspace with explicit `Upload`, `Check Records`, and `Create Receipt` step cards so the package flow reads like a guided handoff instead of a long mixed form
 - add a dedicated search box on `Receipt History` so finance can quickly find completed receipts and recent actions by student, course, receipt no., invoice no., or uploader
 - split `Proof Repair` visually into `Missing payment record` and `Missing file on linked proof` triage groups so finance can tell the repair type before opening a row
+- make the top receipt workflow tabs use client-side navigation so switching screens does not hard-refresh the whole admin layout and reset the left finance sidebar scroll position
 
 ## Guardrails
 
@@ -60,3 +61,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the package workspace shows step cards for `Step 1 Upload`, `Step 2 Check Records`, and `Step 3 Create Receipt`, with `Done / Current / Next` states that match the current proof/receipt progress
 - confirm `/admin/receipts-approvals/history` search filters both completed receipts and `Recent Finance Actions` by the entered keyword
 - confirm `/admin/receipts-approvals/repairs` shows separate quick-triage groups for `Missing payment record / 缺付款记录` and `Missing file on linked proof / 已关联但缺文件`
+- confirm the top receipt workflow tabs switch between `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` without a full page reload, and the left finance sidebar keeps its scroll position

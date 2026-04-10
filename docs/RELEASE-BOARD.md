@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r14` (finance history search and repair triage), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r15` (finance receipt tab client navigation), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -189,6 +189,18 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - history QA should confirm search filters both the completed queue and `Recent Finance Actions`
   - repairs QA should confirm the two triage panels show the right counts and direct jump links for missing-record vs missing-file rows
+
+## 2026-04-10-r15 Ready
+
+- Scope: keep the finance sidebar stable while switching between the top receipt workflow tabs.
+- Business impact:
+  - the top `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History` tabs on `/admin/receipts-approvals*` now use client-side navigation instead of raw anchor reloads
+  - switching those top tabs no longer forces a full page refresh, so the left finance sidebar keeps its current scroll position instead of jumping back to the top
+  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - QA should confirm the top receipt tabs switch pages without a full reload and the left sidebar stays in place
 
 ## 2026-04-09-r07 Deployed
 
