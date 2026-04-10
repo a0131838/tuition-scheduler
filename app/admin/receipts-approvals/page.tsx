@@ -52,7 +52,7 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
 } from "../_components/workbenchStyles";
-import PackageWorkspaceRecentPackagesClient from "./_components/PackageWorkspaceRecentPackagesClient";
+import PackageWorkspacePickerClient from "./_components/PackageWorkspacePickerClient";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const RECEIPTS_QUEUE_COOKIE = "adminReceiptsPreferredQueue";
@@ -913,7 +913,6 @@ export async function ReceiptsApprovalsPageContent({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
-  const packageSearchTerm = String(sp?.packageSearch ?? "").trim();
   const clearQueue = forceClearQueue || String(sp?.clearQueue ?? "").trim() === "1";
   const queueDone = String(sp?.queueDone ?? "").trim() === "1";
   const historySearchTerm = String(sp?.historySearch ?? "").trim();
@@ -1719,17 +1718,6 @@ export async function ReceiptsApprovalsPageContent({
       if (b.score !== a.score) return b.score - a.score;
       return a.studentName.localeCompare(b.studentName);
     });
-  const filteredPackageWorkspaceOptions = packageSearchTerm
-    ? packageWorkspaceOptions.filter((option) =>
-        matchesSearchTerm(packageSearchTerm, [
-          option.studentName,
-          option.courseName,
-          option.id,
-          option.searchText,
-        ])
-      )
-    : packageWorkspaceOptions;
-  const suggestedPackageWorkspaceOptions = filteredPackageWorkspaceOptions.slice(0, packageSearchTerm ? 12 : 8);
   const packageQueueRows = packageIdFilter
     ? parentQueue.filter((x) => x.packageId === packageIdFilter)
     : [];
@@ -2423,126 +2411,12 @@ export async function ReceiptsApprovalsPageContent({
           <summary style={{ cursor: "pointer", fontWeight: 700 }}>
             {t(lang, "Open one package workspace", "打开单个课包工作区")}
           </summary>
-          <form
-            method="get"
-            className="ts-filter-bar"
-            style={{ marginTop: 10, display: "grid", gap: 10 }}
-            data-package-open-form="1"
-          >
-            {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
-            {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
-            <div style={{ color: "#64748b", fontSize: 12 }}>
-              {t(
-                lang,
-                "When packages get crowded, search by student, course, invoice no., receipt no., or package ID below. The priority list under the search box also floats the most urgent packages first.",
-                "当课包很多时，可以直接按学生、课程、发票号、收据号或课包ID搜索。下面的优先列表也会把最该先处理的课包浮到前面。"
-              )}
-            </div>
-            <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
-              {t(lang, "Search package", "搜索课包")}
-              <input
-                name="packageSearch"
-                defaultValue={packageSearchTerm}
-                placeholder={t(lang, "Search student / course / invoice / receipt / package id", "搜索学生 / 课程 / 发票 / 收据 / 课包ID")}
-                style={{ width: "100%", minWidth: 0, maxWidth: 520 }}
-              />
-            </label>
-            <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
-              {t(lang, "Quick Select Package", "快捷选择课包")}
-              <select name="packageId" defaultValue={packageIdFilter} style={{ width: "100%", minWidth: 0, maxWidth: 520 }}>
-                <option value="">
-                  {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
-                </option>
-                {filteredPackageWorkspaceOptions.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {`${x.studentName} | ${x.courseName} | ${x.id.slice(0, 8)}... | ${t(lang, "Proofs", "凭证")} ${x.paymentRecordCount}, ${t(lang, "Invoices", "发票")} ${x.invoiceCount}, ${t(lang, "Receipts", "收据")} ${x.receiptCount}, ${t(lang, "Waiting", "待处理")} ${x.pendingApprovalCount}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
-          </form>
-          <PackageWorkspaceRecentPackagesClient
+          <PackageWorkspacePickerClient
             lang={lang}
             basePath={receiptScreenBasePath("package")}
             currentPackageId={packageIdFilter || undefined}
-            packages={packageWorkspaceOptions.map((option) => ({
-              id: option.id,
-              studentName: option.studentName,
-              courseName: option.courseName,
-              pendingApprovalCount: option.pendingApprovalCount,
-              pendingReceiptCount: option.pendingReceiptCount,
-              rejectedCount: option.rejectedCount,
-              paymentRecordCount: option.paymentRecordCount,
-            }))}
+            packages={packageWorkspaceOptions}
           />
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ fontWeight: 700 }}>
-              {packageSearchTerm ? t(lang, "Search matches", "搜索结果") : t(lang, "Priority package list", "优先处理课包")}
-            </div>
-            {suggestedPackageWorkspaceOptions.length === 0 ? (
-              <div style={{ color: "#64748b", fontSize: 13 }}>
-                {t(lang, "No package matched the current search yet.", "当前搜索下还没有匹配到课包。")}
-              </div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {suggestedPackageWorkspaceOptions.map((option) => {
-                  const openPackageHref = `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(option.id)}`;
-                  return (
-                    <div
-                      key={`package-open-${option.id}`}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        background: option.pendingApprovalCount > 0 || option.pendingReceiptCount > 0 ? "#f8fbff" : "#fff",
-                        padding: "10px 12px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div style={{ display: "grid", gap: 4 }}>
-                        <div style={{ fontWeight: 800, color: "#0f172a" }}>
-                          {option.studentName} | {option.courseName}
-                        </div>
-                        <div style={{ color: "#64748b", fontSize: 12 }}>
-                          {option.id}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          <span style={{ ...tagStyle(option.pendingApprovalCount > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Waiting approval", "待审批")}: {option.pendingApprovalCount}
-                          </span>
-                          <span style={{ ...tagStyle(option.pendingReceiptCount > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Need receipt", "待建收据")}: {option.pendingReceiptCount}
-                          </span>
-                          <span style={{ ...tagStyle(option.rejectedCount > 0 ? "err" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Rejected", "已驳回")}: {option.rejectedCount}
-                          </span>
-                          <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Proofs", "凭证")}: {option.paymentRecordCount}
-                          </span>
-                        </div>
-                      </div>
-                      <a
-                        href={openPackageHref}
-                        data-package-open-id={option.id}
-                        style={{
-                          ...primaryButtonStyle,
-                          textDecoration: "none",
-                          display: "inline-flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        {t(lang, "Open package", "打开课包")}
-                      </a>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </details>
       ) : null}
 

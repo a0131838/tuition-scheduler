@@ -40,6 +40,7 @@ Finance needed two things without disturbing existing billing controls:
 - add a clear `Suggested next step / 建议下一步` callout in the package workspace so finance can immediately see whether to upload proof, create a receipt, or return to approval
 - replace the crowded package picker with package search plus a priority list so finance can open the right package quickly even when the package count is large
 - keep a lightweight `Recently opened packages / 最近打开的课包` list in the package workspace so finance can jump back into the same few student packages without searching again
+- keep package search inside the browser so finance can search and confirm locally without triggering a full page refresh on every attempt
 
 ## Guardrails
 
@@ -86,3 +87,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the package workspace now shows a `Suggested next step / 建议下一步` panel with a direct button into the most relevant next finance step
 - confirm the package workspace opener now supports keyword search and shows a priority package list with direct `Open package / 打开课包` actions
 - confirm the package workspace now remembers recent package opens and shows a `Recently opened packages / 最近打开的课包` list with direct reopen actions
+- confirm searching packages no longer reloads the page, and only `Open Finance Operations / 打开财务操作` or `Open package / 打开课包` navigates into a package

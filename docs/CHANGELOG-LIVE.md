@@ -3685,6 +3685,26 @@ This file is the single source of truth for what changed in production.
   - reloading the page keeps the recent-package list because the memory stays in browser local storage, not in billing data
 - Rollback point: previous production commit before `2026-04-10-r21`.
 
+## 2026-04-10-r22
+
+- Release ID: `2026-04-10-r22`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: stop the package workspace search from reloading the whole page and give finance a clear confirm flow for opening packages.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/_components/PackageWorkspacePickerClient.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release moves package searching into a client-side picker and keeps recent-package shortcuts in browser storage; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - package search now filters locally with `Search / 搜索` and `Clear / 清除` buttons instead of reloading the page
+  - pressing Enter inside the package search input now applies the local filter instead of submitting a full page request
+  - only `Open Finance Operations / 打开财务操作`, `Open package / 打开课包`, or `Open again / 重新打开` navigates into a package
+- Rollback point: previous production commit before `2026-04-10-r22`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

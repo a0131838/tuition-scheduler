@@ -2047,6 +2047,20 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r22 Ready
+
+- Scope: stop package searching from reloading the whole finance workspace and give finance a clearer confirm flow before opening a package.
+- Business impact:
+  - the package workspace search now stays entirely in the browser, so finance can search repeatedly without refreshing the page each time
+  - the search area now has explicit `Search / 搜索`, `Clear / 清除`, and `Open Finance Operations / 打开财务操作` buttons, making the flow clearer when package lists are crowded
+  - recent-package shortcuts and priority package cards now use the same client-side opener, so they stay fast and consistent
+  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify package search filters locally without a full page reload
+  - verify only the open buttons navigate into a package workspace
+
 ## 2026-04-10-r21 Ready
 
 - Scope: help finance jump back into recently handled student packages without searching from scratch each time.
