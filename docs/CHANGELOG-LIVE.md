@@ -3626,6 +3626,26 @@ This file is the single source of truth for what changed in production.
   - the package workspace now shows a fourth `Step 4 Approval Queue / 步骤4 进入审批` card plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts
 - Rollback point: previous production commit before `2026-04-10-r18`.
 
+## 2026-04-10-r19
+
+- Release ID: `2026-04-10-r19`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: let finance export the filtered receipt history as CSV and make the package finance workspace explicitly tell the user what step to do next.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/history/export/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release adds a read-only CSV export and another finance guidance panel; it does not change invoice creation, receipt approvals, package balances, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - `Receipt History / 收据历史` now exposes `Export CSV / 导出CSV`, and the export follows the active history filters for focus, side, month, action type, and keyword
+  - partner-side history actions are included in the CSV when the history view is filtered to `Partner only / 只看合作方`
+  - the package workspace now shows a `Suggested next step / 建议下一步` panel that points finance directly to upload, create receipt, approval queue, or back to the global queue depending on current package state
+- Rollback point: previous production commit before `2026-04-10-r19`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

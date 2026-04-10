@@ -1467,6 +1467,15 @@ export async function ReceiptsApprovalsPageContent({
     const targetBase = receiptScreenBasePath("history");
     return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
   })();
+  const historyCsvHref = (() => {
+    const q = new URLSearchParams();
+    if (monthFilter) q.set("month", monthFilter);
+    if (viewMode !== "ALL") q.set("view", viewMode);
+    if (historyFocus !== "ALL") q.set("historyFocus", historyFocus);
+    if (historyActionKind !== "ALL") q.set("historyActionKind", historyActionKind);
+    if (historySearchTerm) q.set("historySearch", historySearchTerm);
+    return `/admin/receipts-approvals/history/export?${q.toString()}`;
+  })();
   const screenEyebrow = isPackageScreen
     ? t(lang, "Package Workspace", "课包工作区")
     : isRepairsScreen
@@ -1696,6 +1705,31 @@ export async function ReceiptsApprovalsPageContent({
             : "upcoming" as const,
     },
   ];
+  const packageNextStep = !packageWorkspaceMode
+    ? null
+    : usablePaymentRecordCount <= 0
+      ? {
+          label: t(lang, "Upload payment proof first", "先上传付款凭证"),
+          note: t(lang, "No usable payment proof exists yet, so the package cannot move into receipt creation or approval.", "当前还没有可用的付款凭证，所以这个课包还不能进入创建收据或审批。"),
+          href: stepHref("upload"),
+        }
+      : pendingReceiptAmount > 0
+        ? {
+            label: t(lang, "Create the next receipt", "创建下一张收据"),
+            note: t(lang, "This package already has usable proof and invoiced amount waiting to become a receipt.", "这个课包已经有可用凭证，而且还有已开票金额等待生成收据。"),
+            href: stepHref("create"),
+          }
+        : packagePendingApprovalCount > 0
+          ? {
+              label: t(lang, "Return to approval queue", "回到审批队列"),
+              note: t(lang, "Receipts are already created for this package and now need finance or manager approval.", "这个课包的收据已经创建完，当前重点是继续做财务或管理审批。"),
+              href: stepHref("review"),
+            }
+          : {
+              label: t(lang, "Package flow is clear", "当前课包流程已清完"),
+              note: t(lang, "This package already has completed receipts and no pending finance step is blocking it right now.", "这个课包当前已经有完成收据，也没有挂着的财务步骤。"),
+              href: globalQueueHref,
+            };
 
   return (
     <div>
@@ -2134,6 +2168,38 @@ export async function ReceiptsApprovalsPageContent({
               "你现在正在处理单个课包。请使用下方工作区上传凭证、查看记录并创建收据。处理完成后再返回统一收据队列。"
             )}
           </div>
+          {packageNextStep ? (
+            <div
+              style={{
+                border: "1px solid #c7d2fe",
+                background: "#eef2ff",
+                borderRadius: 12,
+                padding: "10px 12px",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 800, color: "#3730a3" }}>{t(lang, "Suggested next step", "建议下一步")}</div>
+                <div style={{ color: "#312e81", fontWeight: 700 }}>{packageNextStep.label}</div>
+                <div style={{ color: "#475569", fontSize: 13 }}>{packageNextStep.note}</div>
+              </div>
+              <a
+                href={packageNextStep.href}
+                style={{
+                  ...primaryButtonStyle,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {t(lang, "Go now", "现在前往")}
+              </a>
+            </div>
+          ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             {packageStepCards.map((step) => {
               const tone = packageStepTone(step.status);
@@ -2209,6 +2275,7 @@ export async function ReceiptsApprovalsPageContent({
             <option value="RECEIPT_CREATE">{t(lang, "Receipt created", "创建收据")}</option>
           </select>
           <button type="submit">{t(lang, "Search", "搜索")}</button>
+          <a href={historyCsvHref}>{t(lang, "Export CSV", "导出CSV")}</a>
           <a href={clearHistorySearchHref}>{t(lang, "Clear", "清除")}</a>
         </div>
       </form>

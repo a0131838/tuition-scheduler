@@ -36,6 +36,8 @@ Finance needed two things without disturbing existing billing controls:
 - let `Receipt History / 收据历史` filter by party side and month from the same search panel, and include partner-side finance actions in the timeline lane
 - reduce `Proof Repair / 凭证修复` queue-card noise by keeping one primary fix action visible and pushing secondary actions behind `More actions / 更多操作`
 - extend the package workspace progress cards so finance can see upload, record check, receipt creation, and approval-handoff state at a glance
+- add a CSV export for `Receipt History / 收据历史` that follows the current history filters instead of forcing finance to copy data manually
+- add a clear `Suggested next step / 建议下一步` callout in the package workspace so finance can immediately see whether to upload proof, create a receipt, or return to approval
 
 ## Guardrails
 
@@ -78,3 +80,5 @@ Finance needed two things without disturbing existing billing controls:
 - confirm partner-side finance actions now appear inside `Recent Finance Actions / 最近财务操作` when `Partner only / 只看合作方` is selected
 - confirm repair queue cards on `/admin/receipts-approvals/repairs` now show a single primary fix action with secondary links moved into `More actions / 更多操作`
 - confirm the package workspace now shows four progress cards, including `Step 4 Approval Queue / 步骤4 进入审批`, plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts
+- confirm `/admin/receipts-approvals/history` now exposes an `Export CSV / 导出CSV` action and the downloaded file respects the current history filters
+- confirm the package workspace now shows a `Suggested next step / 建议下一步` panel with a direct button into the most relevant next finance step

@@ -2047,6 +2047,21 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r19 Ready
+
+- Scope: add a filtered CSV export for receipt history and give the package finance workspace a more explicit next-step handoff.
+- Business impact:
+  - `Receipt History / 收据历史` now has a direct `Export CSV / 导出CSV` action that follows the current focus, side, month, action-type, and keyword filters instead of making finance copy table results manually
+  - the history CSV now includes partner-side uploads, invoices, and receipts when finance switches to the partner view
+  - the package workspace now shows a `Suggested next step / 建议下一步` panel that points finance straight to the most relevant next action for that package
+  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify `Receipt History / 收据历史` exports CSV using the current filters
+  - verify partner-side timeline rows appear in the CSV when `Partner only / 只看合作方` is active
+  - verify the package workspace next-step panel points to upload, create receipt, review queue, or global queue according to current package state
+
 ## 2026-04-10-r18 Ready
 
 - Scope: make the finance receipt flow easier to keep moving by improving next-item feedback, widening history filters, simplifying repair-card actions, and expanding package-workspace progress states.
