@@ -2047,6 +2047,21 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r20 Ready
+
+- Scope: make the package finance workspace easier to open when finance is dealing with a large number of student packages.
+- Business impact:
+  - the package workspace opener now supports keyword search by student, course, invoice number, receipt number, and package ID, so finance no longer has to scan a crowded dropdown one item at a time
+  - the same opener now shows a priority package list with direct `Open package / 打开课包` actions, pushing the most urgent finance packages to the top
+  - the quick-select dropdown now follows the same filtered search results, so searching once narrows both the shortlist and the dropdown options together
+  - no invoice creation rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify package search matches student, course, invoice number, receipt number, and package ID keywords
+  - verify the priority package list shows direct `Open package / 打开课包` actions and floats urgent packages first
+  - verify the quick-select dropdown only shows the currently filtered package matches
+
 ## 2026-04-10-r19 Ready
 
 - Scope: add a filtered CSV export for receipt history and give the package finance workspace a more explicit next-step handoff.

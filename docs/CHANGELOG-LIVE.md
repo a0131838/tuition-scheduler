@@ -3646,6 +3646,25 @@ This file is the single source of truth for what changed in production.
   - the package workspace now shows a `Suggested next step / 建议下一步` panel that points finance directly to upload, create receipt, approval queue, or back to the global queue depending on current package state
 - Rollback point: previous production commit before `2026-04-10-r19`.
 
+## 2026-04-10-r20
+
+- Release ID: `2026-04-10-r20`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the package finance workspace easier to open when finance is dealing with a large number of student packages.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes how finance finds and opens package workspaces; it does not change invoice creation, receipt approvals, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - the package workspace opener now includes a keyword search input for student, course, invoice no., receipt no., or package ID
+  - the same opener now shows a priority package list with direct `Open package / 打开课包` actions, sorted so the most urgent finance packages float first
+  - the quick-select dropdown now follows the same filtered search results instead of forcing finance to scan the entire package list
+- Rollback point: previous production commit before `2026-04-10-r20`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

@@ -71,6 +71,7 @@ export type ReceiptsApprovalSearchParams = {
   historyActionKind?: string;
   historyFocus?: string;
   historySearch?: string;
+  packageSearch?: string;
   packageId?: string;
   month?: string;
   view?: string;
@@ -911,6 +912,7 @@ export async function ReceiptsApprovalsPageContent({
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
+  const packageSearchTerm = String(sp?.packageSearch ?? "").trim();
   const clearQueue = forceClearQueue || String(sp?.clearQueue ?? "").trim() === "1";
   const queueDone = String(sp?.queueDone ?? "").trim() === "1";
   const historySearchTerm = String(sp?.historySearch ?? "").trim();
@@ -1011,6 +1013,13 @@ export async function ReceiptsApprovalsPageContent({
       })
     : [];
   const invoicePackageMap = new Map(invoicePackages.map((x) => [x.id, x]));
+  const packageIdsFromFinanceWorkspace = Array.from(
+    new Set(
+      [...all.invoices.map((x) => x.packageId), ...all.paymentRecords.map((x) => x.packageId), ...all.receipts.map((x) => x.packageId)]
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+    )
+  );
   const packageIds = Array.from(new Set(all.receipts.map((x) => x.packageId)));
   const packages = packageIds.length
     ? await prisma.coursePackage.findMany({
@@ -1641,6 +1650,85 @@ export async function ReceiptsApprovalsPageContent({
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
+  const paymentRecordCountByPackage = new Map<string, number>();
+  const recentFinanceAtByPackage = new Map<string, number>();
+  for (const row of all.paymentRecords) {
+    paymentRecordCountByPackage.set(row.packageId, (paymentRecordCountByPackage.get(row.packageId) ?? 0) + 1);
+    const ts = +new Date(row.uploadedAt);
+    recentFinanceAtByPackage.set(row.packageId, Math.max(recentFinanceAtByPackage.get(row.packageId) ?? 0, ts));
+  }
+  for (const row of all.invoices) {
+    const ts = +new Date(row.createdAt);
+    recentFinanceAtByPackage.set(row.packageId, Math.max(recentFinanceAtByPackage.get(row.packageId) ?? 0, ts));
+  }
+  for (const row of all.receipts) {
+    const ts = +new Date(row.createdAt);
+    recentFinanceAtByPackage.set(row.packageId, Math.max(recentFinanceAtByPackage.get(row.packageId) ?? 0, ts));
+  }
+  const pendingApprovalCountByPackage = new Map<string, number>();
+  const rejectedCountByPackage = new Map<string, number>();
+  for (const row of parentQueue) {
+    if (row.status !== "COMPLETED") {
+      pendingApprovalCountByPackage.set(row.packageId, (pendingApprovalCountByPackage.get(row.packageId) ?? 0) + 1);
+    }
+    if (row.status === "REJECTED") {
+      rejectedCountByPackage.set(row.packageId, (rejectedCountByPackage.get(row.packageId) ?? 0) + 1);
+    }
+  }
+  const packageWorkspaceOptions = packageIdsFromFinanceWorkspace
+    .map((id) => {
+      const pkg = invoicePackageMap.get(id) ?? opPackageMap.get(id);
+      const invoiceCount = invoiceCountByPackage.get(id) ?? 0;
+      const receiptCount = receiptCountByPackage.get(id) ?? 0;
+      const paymentRecordCount = paymentRecordCountByPackage.get(id) ?? 0;
+      const pendingApprovalCount = pendingApprovalCountByPackage.get(id) ?? 0;
+      const rejectedCount = rejectedCountByPackage.get(id) ?? 0;
+      const pendingReceiptCount = Math.max(0, invoiceCount - receiptCount);
+      const recentAt = recentFinanceAtByPackage.get(id) ?? 0;
+      const score =
+        pendingApprovalCount * 1000 +
+        rejectedCount * 700 +
+        pendingReceiptCount * 200 +
+        paymentRecordCount * 10 +
+        Math.floor(recentAt / 1000);
+      return {
+        id,
+        studentName: pkg?.student?.name ?? "Unknown",
+        courseName: pkg?.course?.name ?? "-",
+        invoiceCount,
+        receiptCount,
+        paymentRecordCount,
+        pendingApprovalCount,
+        rejectedCount,
+        pendingReceiptCount,
+        recentAt,
+        score,
+        searchText: [
+          pkg?.student?.name,
+          pkg?.course?.name,
+          id,
+          ...all.invoices.filter((x) => x.packageId === id).map((x) => x.invoiceNo),
+          ...all.receipts.filter((x) => x.packageId === id).map((x) => x.receiptNo),
+        ]
+          .filter(Boolean)
+          .join(" "),
+      };
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.studentName.localeCompare(b.studentName);
+    });
+  const filteredPackageWorkspaceOptions = packageSearchTerm
+    ? packageWorkspaceOptions.filter((option) =>
+        matchesSearchTerm(packageSearchTerm, [
+          option.studentName,
+          option.courseName,
+          option.id,
+          option.searchText,
+        ])
+      )
+    : packageWorkspaceOptions;
+  const suggestedPackageWorkspaceOptions = filteredPackageWorkspaceOptions.slice(0, packageSearchTerm ? 12 : 8);
   const packageQueueRows = packageIdFilter
     ? parentQueue.filter((x) => x.packageId === packageIdFilter)
     : [];
@@ -2337,37 +2425,107 @@ export async function ReceiptsApprovalsPageContent({
           <form
             method="get"
             className="ts-filter-bar"
-            style={{ marginTop: 10 }}
+            style={{ marginTop: 10, display: "grid", gap: 10 }}
           >
             {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
             {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
+            <div style={{ color: "#64748b", fontSize: 12 }}>
+              {t(
+                lang,
+                "When packages get crowded, search by student, course, invoice no., receipt no., or package ID below. The priority list under the search box also floats the most urgent packages first.",
+                "当课包很多时，可以直接按学生、课程、发票号、收据号或课包ID搜索。下面的优先列表也会把最该先处理的课包浮到前面。"
+              )}
+            </div>
+            <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
+              {t(lang, "Search package", "搜索课包")}
+              <input
+                name="packageSearch"
+                defaultValue={packageSearchTerm}
+                placeholder={t(lang, "Search student / course / invoice / receipt / package id", "搜索学生 / 课程 / 发票 / 收据 / 课包ID")}
+                style={{ width: "100%", minWidth: 0, maxWidth: 520 }}
+              />
+            </label>
             <label style={{ display: "grid", gap: 6, minWidth: 0, width: "100%" }}>
               {t(lang, "Quick Select Package", "快捷选择课包")}
-              <select name="packageId" defaultValue="" style={{ width: "100%", minWidth: 0, maxWidth: 420 }}>
-                <option value="" disabled>
+              <select name="packageId" defaultValue={packageIdFilter} style={{ width: "100%", minWidth: 0, maxWidth: 520 }}>
+                <option value="">
                   {t(lang, "Select package to open finance operations", "选择课包以打开财务操作")}
                 </option>
-                {packageIdsFromInvoices
-                  .map((id) => {
-                    const pkg = invoicePackageMap.get(id);
-                    const invoiceCount = invoiceCountByPackage.get(id) ?? 0;
-                    const receiptCount = receiptCountByPackage.get(id) ?? 0;
-                    const remaining = Math.max(0, invoiceCount - receiptCount);
-                    return {
-                      id,
-                      label: `${pkg?.student?.name ?? "Unknown"} | ${pkg?.course?.name ?? "-"} | ${id.slice(0, 8)}... | Invoices ${invoiceCount}, Receipts ${receiptCount}, Pending ${remaining}`,
-                    };
-                  })
-                  .sort((a, b) => a.label.localeCompare(b.label))
-                  .map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.label}
-                    </option>
-                  ))}
+                {filteredPackageWorkspaceOptions.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {`${x.studentName} | ${x.courseName} | ${x.id.slice(0, 8)}... | ${t(lang, "Proofs", "凭证")} ${x.paymentRecordCount}, ${t(lang, "Invoices", "发票")} ${x.invoiceCount}, ${t(lang, "Receipts", "收据")} ${x.receiptCount}, ${t(lang, "Waiting", "待处理")} ${x.pendingApprovalCount}`}
+                  </option>
+                ))}
               </select>
             </label>
             <button type="submit">{t(lang, "Open Finance Operations", "打开财务操作")}</button>
           </form>
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>
+              {packageSearchTerm ? t(lang, "Search matches", "搜索结果") : t(lang, "Priority package list", "优先处理课包")}
+            </div>
+            {suggestedPackageWorkspaceOptions.length === 0 ? (
+              <div style={{ color: "#64748b", fontSize: 13 }}>
+                {t(lang, "No package matched the current search yet.", "当前搜索下还没有匹配到课包。")}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {suggestedPackageWorkspaceOptions.map((option) => {
+                  const openPackageHref = `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(option.id)}`;
+                  return (
+                    <div
+                      key={`package-open-${option.id}`}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        background: option.pendingApprovalCount > 0 || option.pendingReceiptCount > 0 ? "#f8fbff" : "#fff",
+                        padding: "10px 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                          {option.studentName} | {option.courseName}
+                        </div>
+                        <div style={{ color: "#64748b", fontSize: 12 }}>
+                          {option.id}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ ...tagStyle(option.pendingApprovalCount > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Waiting approval", "待审批")}: {option.pendingApprovalCount}
+                          </span>
+                          <span style={{ ...tagStyle(option.pendingReceiptCount > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Need receipt", "待建收据")}: {option.pendingReceiptCount}
+                          </span>
+                          <span style={{ ...tagStyle(option.rejectedCount > 0 ? "err" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Rejected", "已驳回")}: {option.rejectedCount}
+                          </span>
+                          <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                            {t(lang, "Proofs", "凭证")}: {option.paymentRecordCount}
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={openPackageHref}
+                        style={{
+                          ...primaryButtonStyle,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        {t(lang, "Open package", "打开课包")}
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </details>
       ) : null}
 

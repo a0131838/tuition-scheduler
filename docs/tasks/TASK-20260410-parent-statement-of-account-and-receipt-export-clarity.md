@@ -38,6 +38,7 @@ Finance needed two things without disturbing existing billing controls:
 - extend the package workspace progress cards so finance can see upload, record check, receipt creation, and approval-handoff state at a glance
 - add a CSV export for `Receipt History / 收据历史` that follows the current history filters instead of forcing finance to copy data manually
 - add a clear `Suggested next step / 建议下一步` callout in the package workspace so finance can immediately see whether to upload proof, create a receipt, or return to approval
+- replace the crowded package picker with package search plus a priority list so finance can open the right package quickly even when the package count is large
 
 ## Guardrails
 
@@ -82,3 +83,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the package workspace now shows four progress cards, including `Step 4 Approval Queue / 步骤4 进入审批`, plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts
 - confirm `/admin/receipts-approvals/history` now exposes an `Export CSV / 导出CSV` action and the downloaded file respects the current history filters
 - confirm the package workspace now shows a `Suggested next step / 建议下一步` panel with a direct button into the most relevant next finance step
+- confirm the package workspace opener now supports keyword search and shows a priority package list with direct `Open package / 打开课包` actions
