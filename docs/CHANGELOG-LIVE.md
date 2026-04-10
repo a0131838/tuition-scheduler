@@ -3605,6 +3605,27 @@ This file is the single source of truth for what changed in production.
   - generated coordination slots, matched special-time results, and alternative slots now render as action cards with direct `Use in Quick Schedule` entry points
 - Rollback point: previous production commit before `2026-04-09-r03`.
 
+## 2026-04-10-r18
+
+- Release ID: `2026-04-10-r18`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make the finance receipt workspace flow more continuous by clarifying post-approval next steps, expanding history filters, compressing repair-card actions, and showing fuller package-workspace progress.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes finance receipt workspace presentation, navigation feedback, and search/filter controls; it does not change invoice creation, receipt approval rules, package balance math, settlement logic, or deduction behavior.
+- Verification:
+  - `npm run build` passed
+  - approve/reject actions now either land on the next receipt with a clear `Now reviewing the next item / 现在已切到下一条` banner or return to the default queue with a `This queue section is clear for now / 当前这一组已经清完了` banner when that lane is exhausted
+  - `Receipt History / 收据历史` now filters from one form across focus, party side, month, and action type
+  - partner-side finance actions now appear in `Recent Finance Actions / 最近财务操作` when the history view is switched to `Partner only / 只看合作方`
+  - `Proof Repair / 凭证修复` queue cards now keep one primary fix action visible and move secondary links into `More actions / 更多操作`
+  - the package workspace now shows a fourth `Step 4 Approval Queue / 步骤4 进入审批` card plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts
+- Rollback point: previous production commit before `2026-04-10-r18`.
+
 ## 2026-04-10-r01
 
 - Release ID: `2026-04-10-r01`

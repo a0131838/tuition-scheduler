@@ -32,6 +32,10 @@ Finance needed two things without disturbing existing billing controls:
 - keep those top receipt workflow tab switches from auto-scrolling the page back to the top, so the finance workspace stays at the same reading position while changing modes
 - give `Receipt Queue / 收据审批队列` a stable dedicated route so the finance sidebar keeps the same active queue state when the queue is reopened from top tabs or dashboard shortcuts
 - make `Next best item / 下一条最该处理` openable in one click and give `Receipt History / 收据历史` a simple focus filter between completed receipts and recent finance actions
+- make approve/reject flows tell finance clearly when they were moved onto the next receipt and when the current queue lane has been cleared
+- let `Receipt History / 收据历史` filter by party side and month from the same search panel, and include partner-side finance actions in the timeline lane
+- reduce `Proof Repair / 凭证修复` queue-card noise by keeping one primary fix action visible and pushing secondary actions behind `More actions / 更多操作`
+- extend the package workspace progress cards so finance can see upload, record check, receipt creation, and approval-handoff state at a glance
 
 ## Guardrails
 
@@ -69,3 +73,8 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the finance sidebar still highlights `Receipt Queue / 收据审批队列` after entering the queue from the top workflow tabs or finance dashboard
 - confirm `Next best item / 下一条最该处理` shows a direct `Open next item / 打开下一条` action
 - confirm `/admin/receipts-approvals/history` can be filtered to `All history / Receipts only / Actions only` and can narrow recent actions by action type
+- confirm approve/reject actions now either land on the next receipt with a clear `Now reviewing the next item / 现在已切到下一条` message or return to the default queue with a `This queue section is clear for now / 当前这一组已经清完了` message when no next item exists
+- confirm `/admin/receipts-approvals/history` can now be filtered by `All parties / 全部对象`, `Parent only / 只看家长`, `Partner only / 只看合作方`, and month from the same history form
+- confirm partner-side finance actions now appear inside `Recent Finance Actions / 最近财务操作` when `Partner only / 只看合作方` is selected
+- confirm repair queue cards on `/admin/receipts-approvals/repairs` now show a single primary fix action with secondary links moved into `More actions / 更多操作`
+- confirm the package workspace now shows four progress cards, including `Step 4 Approval Queue / 步骤4 进入审批`, plus summary chips for usable proofs, created receipts, waiting approval, and completed receipts

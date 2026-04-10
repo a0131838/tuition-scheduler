@@ -67,6 +67,7 @@ export type ReceiptsApprovalSearchParams = {
   msg?: string;
   err?: string;
   clearQueue?: string;
+  queueDone?: string;
   historyActionKind?: string;
   historyFocus?: string;
   historySearch?: string;
@@ -292,12 +293,15 @@ function queuePriority(
 function describeReceiptActionResult(
   lang: "BILINGUAL" | "ZH" | "EN",
   rawMsg: string,
-  movedToNext: boolean
+  movedToNext: boolean,
+  queueDone: boolean
 ) {
   const normalized = String(rawMsg || "").trim();
-  const withMove = movedToNext
-    ? t(lang, "Moved to next item", "已跳转到下一条")
-    : t(lang, "Queue updated", "队列已更新");
+  const withMove = queueDone
+    ? t(lang, "Queue section finished", "当前这一组已处理完成")
+    : movedToNext
+      ? t(lang, "Moved to next item", "已跳转到下一条")
+      : t(lang, "Queue updated", "队列已更新");
   if (normalized === "Manager approved") return `${t(lang, "Manager approved", "管理已批准")} · ${withMove}`;
   if (normalized === "Manager rejected") return `${t(lang, "Manager rejected", "管理已驳回")} · ${withMove}`;
   if (normalized === "Finance approved") return `${t(lang, "Finance approved", "财务已批准")} · ${withMove}`;
@@ -385,7 +389,8 @@ function renderQueueCards(
   lang: "BILINGUAL" | "ZH" | "EN",
   selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null,
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
-  openHref: (type: "PARENT" | "PARTNER", id: string) => string
+  openHref: (type: "PARENT" | "PARTNER", id: string) => string,
+  opts?: { compactRepairActions?: boolean }
 ) {
   return rows.map((x) => (
     <article
@@ -434,17 +439,43 @@ function renderQueueCards(
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <a href={openHref(x.type, x.id)} style={{ fontWeight: 600 }}>
-          {queuePrimaryActionLabel(lang, x.status)}
-        </a>
-        {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
-          <a
-            href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
-            style={{ fontSize: 12, color: "#b45309" }}
-          >
-            {t(lang, "Fix payment proof", "修复缴费凭证")}
-          </a>
-        ) : null}
+        {opts?.compactRepairActions && x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
+          <>
+            <a
+              href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+              style={{ fontWeight: 700, color: "#b45309" }}
+            >
+              {t(lang, "Open fix flow", "打开修复流程")}
+            </a>
+            <details>
+              <summary style={{ cursor: "pointer", fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                {t(lang, "More actions", "更多操作")}
+              </summary>
+              <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href={openHref(x.type, x.id)} style={{ fontSize: 12 }}>
+                  {queuePrimaryActionLabel(lang, x.status)}
+                </a>
+                <a href={`/admin/packages/${encodeURIComponent(x.packageId)}/billing`} style={{ fontSize: 12 }}>
+                  {t(lang, "Open package billing", "打开课包账单页")}
+                </a>
+              </div>
+            </details>
+          </>
+        ) : (
+          <>
+            <a href={openHref(x.type, x.id)} style={{ fontWeight: 600 }}>
+              {queuePrimaryActionLabel(lang, x.status)}
+            </a>
+            {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
+              <a
+                href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+                style={{ fontSize: 12, color: "#b45309" }}
+              >
+                {t(lang, "Fix payment proof", "修复缴费凭证")}
+              </a>
+            ) : null}
+          </>
+        )}
       </div>
     </article>
   ));
@@ -477,6 +508,7 @@ function renderQueueSection(
     selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null;
     roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] };
     openHref: (type: "PARENT" | "PARTNER", id: string) => string;
+    compactRepairActions?: boolean;
   }
 ) {
   if (rows.length === 0) return null;
@@ -486,7 +518,9 @@ function renderQueueSection(
         {opts.heading} ({opts.count})
       </div>
       <div style={{ display: "grid", gap: 10 }}>
-        {renderQueueCards(rows, opts.lang, opts.selectedRow, opts.roleCfg, opts.openHref)}
+        {renderQueueCards(rows, opts.lang, opts.selectedRow, opts.roleCfg, opts.openHref, {
+          compactRepairActions: opts.compactRepairActions,
+        })}
       </div>
     </section>
   );
@@ -878,6 +912,7 @@ export async function ReceiptsApprovalsPageContent({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
   const clearQueue = forceClearQueue || String(sp?.clearQueue ?? "").trim() === "1";
+  const queueDone = String(sp?.queueDone ?? "").trim() === "1";
   const historySearchTerm = String(sp?.historySearch ?? "").trim();
   const hasMonthParam = typeof sp?.month === "string";
   const hasViewParam = typeof sp?.view === "string";
@@ -1338,14 +1373,13 @@ export async function ReceiptsApprovalsPageContent({
       : activeQueueForNavigation[0] ?? null;
   const selectedActionNextHref = nextQueueRow
     ? openHref(nextQueueRow.type, nextQueueRow.id)
-    : selectedRow
-      ? openHref(selectedRow.type, selectedRow.id)
-      : `${screenBasePath}?${baseQuery.toString()}`;
+    : `${receiptScreenBasePath("queue")}?clearQueue=1&queueDone=1`;
   const actionMovedToNext =
     Boolean(msg) &&
     Boolean(selectedId) &&
     Boolean(selectedRow) &&
     `${selectedType}:${selectedId}` !== `${selectedRow.type}:${selectedRow.id}`;
+  const actionFinishedQueue = Boolean(msg) && queueDone;
   const currentRoleFocus = isFinanceApprover
     ? t(lang, "Finance actions", "财务操作")
     : isManagerApprover
@@ -1463,41 +1497,89 @@ export async function ReceiptsApprovalsPageContent({
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
+      view: "PARENT" as const,
       kind: "PAYMENT_UPLOAD" as const,
       packageId: x.packageId,
       actor: x.uploadedBy,
       at: x.uploadedAt,
       title: x.originalFileName,
+      partyName: opPackageMap.get(x.packageId)?.student?.name ?? "",
+      courseName: opPackageMap.get(x.packageId)?.course?.name ?? "",
+      openHref: `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=records`,
     })),
     ...all.invoices.map((x) => ({
       id: `inv-${x.id}`,
+      view: "PARENT" as const,
       kind: "INVOICE_CREATE" as const,
       packageId: x.packageId,
       actor: x.createdBy,
       at: x.createdAt,
       title: x.invoiceNo,
+      partyName: opPackageMap.get(x.packageId)?.student?.name ?? "",
+      courseName: opPackageMap.get(x.packageId)?.course?.name ?? "",
+      openHref: `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&invoiceId=${encodeURIComponent(x.id)}`,
     })),
     ...all.receipts.map((x) => ({
       id: `rc-${x.id}`,
+      view: "PARENT" as const,
       kind: "RECEIPT_CREATE" as const,
       packageId: x.packageId,
       actor: x.createdBy,
       at: x.createdAt,
       title: x.receiptNo,
+      partyName: opPackageMap.get(x.packageId)?.student?.name ?? "",
+      courseName: opPackageMap.get(x.packageId)?.course?.name ?? "",
+      openHref: `${receiptScreenBasePath("queue")}?selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`,
+    })),
+    ...partnerAll.paymentRecords.map((x) => ({
+      id: `partner-pay-${x.id}`,
+      view: "PARTNER" as const,
+      kind: "PAYMENT_UPLOAD" as const,
+      packageId: "",
+      actor: x.uploadedBy,
+      at: x.uploadedAt,
+      title: x.originalFileName,
+      partyName: t(lang, "Partner billing", "合作方账务"),
+      courseName: x.mode,
+      openHref: `${receiptScreenBasePath("history")}?view=PARTNER&historyFocus=ACTIONS&historyActionKind=PAYMENT_UPLOAD`,
+    })),
+    ...partnerAll.invoices.map((x) => ({
+      id: `partner-inv-${x.id}`,
+      view: "PARTNER" as const,
+      kind: "INVOICE_CREATE" as const,
+      packageId: "",
+      actor: x.createdBy,
+      at: x.createdAt,
+      title: x.invoiceNo,
+      partyName: x.billTo || x.partnerName || "Partner",
+      courseName: x.mode,
+      openHref: `${receiptScreenBasePath("history")}?view=PARTNER&historyFocus=ACTIONS&historyActionKind=INVOICE_CREATE`,
+    })),
+    ...partnerAll.receipts.map((x) => ({
+      id: `partner-rc-${x.id}`,
+      view: "PARTNER" as const,
+      kind: "RECEIPT_CREATE" as const,
+      packageId: "",
+      actor: x.createdBy,
+      at: x.createdAt,
+      title: x.receiptNo,
+      partyName: partnerInvoiceMap.get(x.invoiceId)?.billTo || "Partner",
+      courseName: x.mode,
+      openHref: `${receiptScreenBasePath("queue")}?view=PARTNER&selectedType=PARTNER&selectedId=${encodeURIComponent(x.id)}`,
     })),
   ]
     .sort((a, b) => +new Date(b.at) - +new Date(a.at));
   const filteredRecentOps = recentOps.filter((op) => {
+    if (viewMode !== "ALL" && op.view !== viewMode) return false;
     if (historyActionKind !== "ALL" && op.kind !== historyActionKind) return false;
     if (monthFilter && monthKeyFromDateOnly(formatDateOnly(new Date(op.at))) !== monthFilter) return false;
     if (!historySearchTerm) return true;
-    const pkg = opPackageMap.get(op.packageId);
     return matchesSearchTerm(historySearchTerm, [
       op.title,
       op.actor,
       op.packageId,
-      pkg?.student?.name,
-      pkg?.course?.name,
+      op.partyName,
+      op.courseName,
     ]);
   });
   const visibleRecentOps = filteredRecentOps.slice(0, 8);
@@ -1550,6 +1632,11 @@ export async function ReceiptsApprovalsPageContent({
   const packageWorkspaceRiskCount = packageWorkspaceMode
     ? [missingPaymentFileCount > 0, pendingReceiptAmount > 0, uninvoicedPaidAmount > 0].filter(Boolean).length
     : 0;
+  const packageQueueRows = packageIdFilter
+    ? parentQueue.filter((x) => x.packageId === packageIdFilter)
+    : [];
+  const packagePendingApprovalCount = packageQueueRows.filter((x) => x.status !== "COMPLETED").length;
+  const packageCompletedApprovalCount = packageQueueRows.filter((x) => x.status === "COMPLETED").length;
   const controlsOpen =
     Boolean(packageIdFilter) ||
     Boolean(historySearchTerm) ||
@@ -1592,6 +1679,22 @@ export async function ReceiptsApprovalsPageContent({
         : t(lang, "Once invoice and proof are confirmed, create the receipt here.", "确认发票和凭证后，在这里创建收据。"),
       status: workflowStep === "create" ? "active" as const : totalReceiptAmount > 0 && pendingReceiptAmount <= 0 ? "done" as const : "upcoming" as const,
     },
+    {
+      key: "review",
+      label: t(lang, "Step 4 Approval Queue", "步骤4 进入审批"),
+      note: packagePendingApprovalCount > 0
+        ? t(lang, "Receipts in this package are now waiting inside the approval queue and can be cleared from here.", "这个课包已有收据进入审批队列，可以从这里继续清理。")
+        : packageCompletedApprovalCount > 0
+          ? t(lang, "This package already has completed receipts, so the approval handoff is done for now.", "这个课包已经有完成的收据，当前审批交接已完成。")
+          : t(lang, "Once a receipt is created, come here to finish the review handoff.", "创建收据后，再回到这里完成审批交接。"),
+      status: workflowStep === "review"
+        ? "active" as const
+        : packagePendingApprovalCount === 0 && packageCompletedApprovalCount > 0
+          ? "done" as const
+          : totalReceiptAmount > 0
+            ? "upcoming" as const
+            : "upcoming" as const,
+    },
   ];
 
   return (
@@ -1611,7 +1714,52 @@ export async function ReceiptsApprovalsPageContent({
       ) : null}
       {msg ? (
         <div style={{ marginBottom: 12, color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "8px 10px" }}>
-          {t(lang, "Success", "成功")}: {describeReceiptActionResult(lang, msg, actionMovedToNext)}
+          {t(lang, "Success", "成功")}: {describeReceiptActionResult(lang, msg, actionMovedToNext, actionFinishedQueue)}
+        </div>
+      ) : null}
+      {actionMovedToNext && selectedRow ? (
+        <div
+          style={{
+            marginBottom: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+            alignItems: "center",
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            borderRadius: 10,
+            padding: "10px 12px",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Now reviewing the next item", "现在已切到下一条")}</div>
+            <div style={{ color: "#334155", fontSize: 13 }}>
+              {selectedRow.receiptNo} | {selectedRow.partyName}
+            </div>
+          </div>
+          <a href={selectedReviewHref} style={{ ...primaryButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+            {t(lang, "Keep processing", "继续处理")}
+          </a>
+        </div>
+      ) : null}
+      {actionFinishedQueue ? (
+        <div
+          style={{
+            marginBottom: 12,
+            display: "grid",
+            gap: 6,
+            border: "1px solid #bfdbfe",
+            background: "#f8fbff",
+            borderRadius: 10,
+            padding: "10px 12px",
+            color: "#1d4ed8",
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{t(lang, "This queue section is clear for now", "当前这一组已经清完了")}</div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {t(lang, "No next receipt was waiting in this lane, so you were returned to the default queue. You can switch buckets or move into another finance screen from here.", "当前这个处理分组里已经没有下一条，所以系统把你带回了默认队列；你可以继续切换分组，或进入其他财务页面。")}
+          </div>
         </div>
       ) : null}
       <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1965,6 +2113,20 @@ export async function ReceiptsApprovalsPageContent({
               {t(lang, "Package mode active", "当前处于课包模式")}
             </span>
           </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ ...tagStyle(usablePaymentRecordCount > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Usable proofs", "可用凭证")}: {usablePaymentRecordCount}
+            </span>
+            <span style={{ ...tagStyle(totalReceiptAmount > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Receipts created", "已创建收据")}: {selectedBilling?.receipts.length ?? 0}
+            </span>
+            <span style={{ ...tagStyle(packagePendingApprovalCount > 0 ? "warn" : "ok"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Waiting approval", "待审批")}: {packagePendingApprovalCount}
+            </span>
+            <span style={{ ...tagStyle(packageCompletedApprovalCount > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+              {t(lang, "Completed receipts", "已完成收据")}: {packageCompletedApprovalCount}
+            </span>
+          </div>
           <div style={{ color: "#475569", fontSize: 13 }}>
             {t(
               lang,
@@ -1978,7 +2140,7 @@ export async function ReceiptsApprovalsPageContent({
               return (
                 <a
                   key={step.key}
-                  href={stepHref(step.key as "upload" | "records" | "create")}
+                  href={stepHref(step.key as "upload" | "records" | "create" | "review")}
                   style={{
                     border: `1px solid ${tone.border}`,
                     background: tone.bg,
@@ -2017,8 +2179,6 @@ export async function ReceiptsApprovalsPageContent({
       ) : null}
       {isHistoryScreen ? (
       <form method="get" style={{ ...workbenchFilterPanelStyle, marginBottom: 12, display: "grid", gap: 10 }}>
-        {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
-        {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
         <input type="hidden" name="queueBucket" value="HISTORY" />
         <div style={{ fontWeight: 700 }}>{t(lang, "History search", "历史搜索")}</div>
         <div style={{ color: "#64748b", fontSize: 12 }}>
@@ -2036,6 +2196,12 @@ export async function ReceiptsApprovalsPageContent({
             <option value="RECEIPTS">{t(lang, "Receipts only", "只看收据")}</option>
             <option value="ACTIONS">{t(lang, "Actions only", "只看动作")}</option>
           </select>
+          <select name="view" defaultValue={viewMode}>
+            <option value="ALL">{t(lang, "All parties", "全部对象")}</option>
+            <option value="PARENT">{t(lang, "Parent only", "只看家长")}</option>
+            <option value="PARTNER">{t(lang, "Partner only", "只看合作方")}</option>
+          </select>
+          <input name="month" type="month" defaultValue={monthFilter} />
           <select name="historyActionKind" defaultValue={historyActionKind}>
             <option value="ALL">{t(lang, "All actions", "全部动作")}</option>
             <option value="PAYMENT_UPLOAD">{t(lang, "Payment uploads", "缴费上传")}</option>
@@ -2065,20 +2231,28 @@ export async function ReceiptsApprovalsPageContent({
                   : op.kind === "INVOICE_CREATE"
                     ? t(lang, "Invoice created", "创建发票")
                     : t(lang, "Receipt created", "创建收据");
-              const openPkgHref = `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(op.packageId)}&step=records`;
               return (
                 <div key={op.id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 8px", background: "#fff", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <div style={{ display: "grid", gap: 2 }}>
                     <div style={{ fontWeight: 600 }}>{actionLabel}: {op.title}</div>
                     <div style={{ fontSize: 12, color: "#6b7280" }}>
-                      {pkg ? `${pkg.student.name} | ${pkg.course.name}` : op.packageId}
+                      {op.partyName || pkg
+                        ? `${op.partyName || pkg?.student?.name || "-"} | ${op.courseName || pkg?.course?.name || "-"}`
+                        : op.packageId || t(lang, "Partner timeline", "合作方时间线")}
                     </div>
                     <div style={{ fontSize: 12, color: "#6b7280" }}>
                       {formatBusinessDateTime(new Date(op.at))} · {op.actor}
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <a href={openPkgHref}>{t(lang, "Open package", "打开课包")}</a>
+                    <span style={{ ...tagStyle(op.view === "PARTNER" ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
+                      {op.view === "PARTNER" ? t(lang, "Partner", "合作方") : t(lang, "Parent", "家长")}
+                    </span>
+                    {op.openHref ? (
+                      <a href={op.openHref}>
+                        {op.view === "PARTNER" ? t(lang, "Open related view", "打开相关视图") : t(lang, "Open package", "打开课包")}
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -2678,6 +2852,7 @@ export async function ReceiptsApprovalsPageContent({
               selectedRow,
               roleCfg,
               openHref,
+              compactRepairActions: isRepairsScreen,
             })}
             {renderQueueSection(visibleOtherQueue, {
               heading: bilingualLabel("Other open items", "其他待处理项"),
@@ -2687,6 +2862,7 @@ export async function ReceiptsApprovalsPageContent({
               selectedRow,
               roleCfg,
               openHref,
+              compactRepairActions: isRepairsScreen,
             })}
             {visibleCompletedQueue.length > 0 ? (
               <details open={queueBucket === "HISTORY"}>

@@ -2047,6 +2047,24 @@
   - post-deploy startup check
   - `/admin/students/[id]` coordination cards now show `Use in Quick Schedule` actions for generated slots, matched special requests, and nearest availability alternatives
 
+## 2026-04-10-r18 Ready
+
+- Scope: make the finance receipt flow easier to keep moving by improving next-item feedback, widening history filters, simplifying repair-card actions, and expanding package-workspace progress states.
+- Business impact:
+  - after approve/reject actions, finance now gets an explicit banner telling them whether they were moved onto the next receipt or whether the current queue lane is already clear
+  - `Receipt History / 收据历史` now has one search/filter strip that can narrow by focus, party side, month, and action type instead of forcing finance to combine scattered controls
+  - partner-side uploads, invoices, and receipts now appear in the history action timeline when finance switches to the partner view
+  - repair queue cards now present one obvious primary fix action and tuck secondary links under `More actions / 更多操作`, reducing button noise on blocker-heavy screens
+  - the package workspace now exposes four progress cards, ending with `Step 4 Approval Queue / 步骤4 进入审批`, plus compact chips showing usable proofs, receipt count, waiting approvals, and completed receipts
+  - no invoice rules, receipt rules, approval logic, package balances, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify approve/reject actions show either the next-item banner or the queue-cleared banner
+  - verify history filters now include party side and month, and partner recent actions appear when selected
+  - verify repair queue cards now show a single primary fix action with `More actions` for secondary paths
+  - verify package workspace now shows four progress cards and the extra status chips
+
 ## 2026-04-10-r01 Ready
 
 - Scope: add a read-only `Statement of Account / 对账单` PDF for one parent package and make receipt-export gating much clearer to finance users.
