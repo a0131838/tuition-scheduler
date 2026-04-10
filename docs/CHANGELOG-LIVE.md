@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r30
+
+- Release ID: `2026-04-11-r30`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: force the narrow-screen receipt drawer backdrop to keep the same dark overlay color during hover, active, and focus states so the page no longer flashes the global purple link tint when finance clicks outside the drawer.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This hotfix only strengthens backdrop style overrides for the receipt drawer overlay; it does not change receipt approval behavior, package finance actions, invoice behavior, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - narrow-screen receipt drawer backdrop keeps the same dark overlay during hover, click, and focus instead of flashing the global purple link/button tint
+  - clicking outside the drawer still closes back to the current queue or history list state
+- Rollback point: previous production commit before `2026-04-11-r30`.
+
 ## 2026-04-11-r29
 
 - Release ID: `2026-04-11-r29`

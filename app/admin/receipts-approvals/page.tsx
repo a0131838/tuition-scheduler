@@ -2794,15 +2794,19 @@ export async function ReceiptsApprovalsPageContent({
         .receipt-detail-backdrop { display: none; }
         .receipt-detail-backdrop,
         .receipt-detail-backdrop:hover,
-        .receipt-detail-backdrop:active {
-          padding: 0;
-          min-height: 0;
-          border: 0;
-          border-radius: 0;
-          box-shadow: none;
-          transform: none;
-          color: transparent;
-          text-decoration: none;
+        .receipt-detail-backdrop:active,
+        .receipt-detail-backdrop:focus,
+        .receipt-detail-backdrop:focus-visible {
+          padding: 0 !important;
+          min-height: 0 !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          transform: none !important;
+          color: transparent !important;
+          text-decoration: none !important;
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent;
         }
         .receipt-mobile-header { display: none; }
         .receipt-actions-mobile-hidden { display: block; }
@@ -2838,7 +2842,7 @@ export async function ReceiptsApprovalsPageContent({
             display: block;
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.42);
+            background: rgba(15, 23, 42, 0.42) !important;
             z-index: 80;
           }
           .receipt-actions-mobile-open {

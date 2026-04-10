@@ -48,6 +48,7 @@ Finance needed two things without disturbing existing billing controls:
 - make the narrow-screen receipt overlay open only after an explicit row click and keep it as a smaller drawer instead of an almost full-screen takeover
 - surface receipt amount and invoice total near the top of selected receipt details so finance can immediately identify the row being reviewed
 - neutralize inherited global link/button styles on the narrow-screen receipt drawer backdrop so clicking outside the drawer no longer flashes a purple tinted block
+- keep the receipt drawer backdrop locked to the same dark overlay color across hover, active, and focus states so the purple global link tint cannot reappear on click
 
 ## Guardrails
 
@@ -102,3 +103,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm that narrow receipt queue/history screens no longer auto-open the first receipt on load and that the overlay drawer leaves visible page margins instead of covering nearly the entire screen
 - confirm selected receipt details now show `Receipt amount / 收据金额` and `Invoice total / 发票总额` near the top, with a clear match or mismatch hint
 - confirm clicking or hovering outside the narrow receipt drawer no longer shows a purple global link/button tint on the backdrop
+- confirm clicking outside the narrow receipt drawer keeps the backdrop dark during hover, active, and focus states instead of flashing purple
