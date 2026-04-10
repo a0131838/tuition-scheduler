@@ -1101,8 +1101,10 @@ export async function ReceiptsApprovalsPageContent({
     filter: "ALL" | "PENDING" | "REJECTED" | "COMPLETED" | "NO_PAYMENT_RECORD" | "FILE_ISSUE" | "TODAY_MINE"
   ) => {
     const q = new URLSearchParams(baseQuery.toString());
-    if (filter === "ALL") q.delete("queueFilter");
-    else q.set("queueFilter", filter);
+    if (filter === "ALL") {
+      if (screenMode === "repairs") q.set("queueFilter", "ALL");
+      else q.delete("queueFilter");
+    } else q.set("queueFilter", filter);
     return `${screenBasePath}?${q.toString()}`;
   };
   const queueBucketHref = (bucket: "ALL" | "MINE" | "OPEN" | "HISTORY") => {

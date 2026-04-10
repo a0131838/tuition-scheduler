@@ -19,6 +19,7 @@ Finance needed two things without disturbing existing billing controls:
 - prevent the global receipt-approval queue from falsely flagging valid proof uploads as missing when no package filter is selected
 - split the overloaded finance receipt page into dedicated routes for queue, package workspace, proof repair, and history while keeping all billing actions on the same underlying logic
 - keep `Proof Repair` useful as a working repair queue by defaulting it to blocker rows, not only literal file-health problems
+- make the `All / 全部` chip on `Proof Repair` explicitly break out of the implicit default blocker mode, so finance can widen the queue from the same page
 
 ## Guardrails
 
@@ -42,3 +43,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the finance sidebar now exposes dedicated receipt routes for queue, package workspace, proof repair, and history
 - confirm `/admin/receipts-approvals?packageId=...` redirects into the package workspace so older links still land on the right split page
 - confirm `/admin/receipts-approvals/repairs` shows repair blockers by default and only narrows to attachment-only issues when the `Proof or file issues` chip is selected
+- confirm clicking `All / 全部` on `/admin/receipts-approvals/repairs` widens the queue on that same page instead of silently restoring the default blocker scope
