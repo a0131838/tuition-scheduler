@@ -17,6 +17,7 @@ Finance needed two things without disturbing existing billing controls:
 - show creator names more clearly by resolving stored creator emails to `Name (email)` when user records exist
 - keep package billing aligned with the same creator display so both invoice views show the same person label
 - prevent the global receipt-approval queue from falsely flagging valid proof uploads as missing when no package filter is selected
+- split the overloaded finance receipt page into dedicated routes for queue, package workspace, proof repair, and history while keeping all billing actions on the same underlying logic
 
 ## Guardrails
 
@@ -37,3 +38,5 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the recent invoice table prefers `Name (email)` over raw email when the creator user record exists
 - confirm the package billing invoice `By` column prefers `Name (email)` over raw email when the creator user record exists
 - confirm a receipt with a valid linked payment proof no longer shows `file missing` in the global approval queue just because the page is opened without `packageId`
+- confirm the finance sidebar now exposes dedicated receipt routes for queue, package workspace, proof repair, and history
+- confirm `/admin/receipts-approvals?packageId=...` redirects into the package workspace so older links still land on the right split page

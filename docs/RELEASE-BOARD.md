@@ -1989,6 +1989,7 @@
   - when the invoice creator matches a known user record, the recent invoice table now shows `Name (email)` instead of only a raw email string
   - `/admin/packages/[id]/billing` now resolves the invoice `By` column the same way, so package billing no longer falls back to raw emails when the user profile exists
   - `/admin/receipts-approvals` now checks proof-file health against each queue row's linked payment record even in the all-packages queue, so valid uploads no longer get falsely blocked as missing just because no package filter is selected
+  - receipt finance work is now split into four clearer routes: `Receipt Queue`, `Package Workspace`, `Proof Repair`, and `Receipt History`, so approval, package handling, repair, and lookup no longer compete on one long mixed page
   - `/admin/packages/[id]/billing` now exposes the same statement export link and replaces the vague receipt `Pending approval` copy with a clearer explanation that formal receipt PDFs unlock only after manager and finance approval
   - `/admin/receipts-approvals` now uses the same plain-language receipt export message, reducing confusion without changing the approval gate itself
   - no invoice creation rules, receipt creation rules, approval requirements, package balance math, settlement logic, or deduction behavior changed

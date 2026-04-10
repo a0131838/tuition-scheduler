@@ -61,6 +61,22 @@ const RECEIPT_REJECT_REASON_OPTIONS = [
   "Wrong linked record / 关联记录错误",
   "Incomplete details / 信息不完整",
 ] as const;
+export type ReceiptScreenMode = "queue" | "package" | "repairs" | "history";
+export type ReceiptsApprovalSearchParams = {
+  msg?: string;
+  err?: string;
+  clearQueue?: string;
+  packageId?: string;
+  month?: string;
+  view?: string;
+  selectedType?: string;
+  selectedId?: string;
+  step?: string;
+  queueFilter?: string;
+  queueBucket?: string;
+  paymentRecordId?: string;
+  invoiceId?: string;
+};
 
 const primaryButtonStyle = {
   background: "#2563eb",
@@ -204,6 +220,13 @@ function isImageFile(pathOrName: string) {
 
 function parentPaymentRecordFileHref(recordId: string) {
   return `/api/admin/parent-payment-records/${encodeURIComponent(recordId)}/file`;
+}
+
+function receiptScreenBasePath(screenMode: ReceiptScreenMode) {
+  if (screenMode === "package") return "/admin/receipts-approvals/package";
+  if (screenMode === "repairs") return "/admin/receipts-approvals/repairs";
+  if (screenMode === "history") return "/admin/receipts-approvals/history";
+  return "/admin/receipts-approvals";
 }
 
 function withQuery(base: string, packageId?: string) {
@@ -399,7 +422,7 @@ function renderQueueCards(
         </a>
         {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
           <a
-            href={`/admin/receipts-approvals?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+            href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
             style={{ fontSize: 12, color: "#b45309" }}
           >
             {t(lang, "Fix payment proof", "修复缴费凭证")}
@@ -805,21 +828,17 @@ async function revokePartnerReceiptForRedoAction(formData: FormData) {
 export default async function ReceiptsApprovalsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{
-    msg?: string;
-    err?: string;
-    clearQueue?: string;
-    packageId?: string;
-    month?: string;
-    view?: string;
-    selectedType?: string;
-    selectedId?: string;
-    step?: string;
-    queueFilter?: string;
-    queueBucket?: string;
-    paymentRecordId?: string;
-    invoiceId?: string;
-  }>;
+  searchParams?: Promise<ReceiptsApprovalSearchParams>;
+}) {
+  return ReceiptsApprovalsPageContent({ searchParams, screenMode: "queue" });
+}
+
+export async function ReceiptsApprovalsPageContent({
+  searchParams,
+  screenMode = "queue",
+}: {
+  searchParams?: Promise<ReceiptsApprovalSearchParams>;
+  screenMode?: ReceiptScreenMode;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -867,12 +886,16 @@ export default async function ReceiptsApprovalsPage({
   const viewMode = hasViewParam
     ? normalizeReceiptView(viewParamRaw.trim().toUpperCase())
     : rememberedQueue.view;
-  const queueFilter = hasQueueFilterParam
-    ? normalizeReceiptQueueFilter(queueFilterParamRaw.trim().toUpperCase())
-    : rememberedQueue.queueFilter;
-  const queueBucket = hasQueueBucketParam
-    ? normalizeReceiptQueueBucket(queueBucketParamRaw.trim().toUpperCase())
-    : rememberedQueue.queueBucket;
+  const queueFilter = !hasQueueFilterParam && !rememberedQueue.value && screenMode === "repairs"
+    ? "FILE_ISSUE"
+    : hasQueueFilterParam
+      ? normalizeReceiptQueueFilter(queueFilterParamRaw.trim().toUpperCase())
+      : rememberedQueue.queueFilter;
+  const queueBucket = !hasQueueBucketParam && !rememberedQueue.value && screenMode === "history"
+    ? "HISTORY"
+    : hasQueueBucketParam
+      ? normalizeReceiptQueueBucket(queueBucketParamRaw.trim().toUpperCase())
+      : rememberedQueue.queueBucket;
   const resumedRememberedQueue =
     canResumeRememberedQueue && Boolean(rememberedQueue.value);
 
@@ -1028,6 +1051,12 @@ export default async function ReceiptsApprovalsPage({
   const paidAmount = Number(selectedPackage?.paidAmount ?? 0) || 0;
   const pendingReceiptAmount = Math.max(0, totalInvoicedAmount - totalReceiptAmount);
   const uninvoicedPaidAmount = Math.max(0, paidAmount - totalInvoicedAmount);
+  const packageWorkspaceMode = Boolean(packageIdFilter);
+  const isQueueScreen = screenMode === "queue";
+  const isPackageScreen = screenMode === "package";
+  const isRepairsScreen = screenMode === "repairs";
+  const isHistoryScreen = screenMode === "history";
+  const screenBasePath = receiptScreenBasePath(screenMode);
 
   const baseQuery = new URLSearchParams();
   if (packageIdFilter) baseQuery.set("packageId", packageIdFilter);
@@ -1038,20 +1067,29 @@ export default async function ReceiptsApprovalsPage({
   if (queueBucket !== "ALL") baseQuery.set("queueBucket", queueBucket);
   if (preferredPaymentRecordId) baseQuery.set("paymentRecordId", preferredPaymentRecordId);
   if (preferredInvoiceId) baseQuery.set("invoiceId", preferredInvoiceId);
+  if (screenMode === "queue" && packageIdFilter) {
+    redirect(`${receiptScreenBasePath("package")}?${baseQuery.toString()}`);
+  }
+  if (screenMode === "queue" && !packageIdFilter && queueFilter === "FILE_ISSUE") {
+    redirect(`${receiptScreenBasePath("repairs")}?${baseQuery.toString()}`);
+  }
+  if (screenMode === "queue" && !packageIdFilter && queueBucket === "HISTORY") {
+    redirect(`${receiptScreenBasePath("history")}?${baseQuery.toString()}`);
+  }
   const openHref = (type: "PARENT" | "PARTNER", id: string) => {
     const q = new URLSearchParams(baseQuery.toString());
     q.set("selectedType", type);
     q.set("selectedId", id);
-    return `/admin/receipts-approvals?${q.toString()}`;
+    return `${screenBasePath}?${q.toString()}`;
   };
   const selectedReviewHref =
     selectedType && selectedId
       ? openHref(selectedType, selectedId)
-      : `/admin/receipts-approvals?${baseQuery.toString()}`;
+      : `${screenBasePath}?${baseQuery.toString()}`;
   const stepHref = (step: "upload" | "records" | "create" | "review") => {
     const q = new URLSearchParams(baseQuery.toString());
     q.set("step", step);
-    return `/admin/receipts-approvals?${q.toString()}`;
+    return `${receiptScreenBasePath("package")}?${q.toString()}`;
   };
   const selectedRepairReturnHref =
     selectedType && selectedId
@@ -1063,13 +1101,13 @@ export default async function ReceiptsApprovalsPage({
     const q = new URLSearchParams(baseQuery.toString());
     if (filter === "ALL") q.delete("queueFilter");
     else q.set("queueFilter", filter);
-    return `/admin/receipts-approvals?${q.toString()}`;
+    return `${screenBasePath}?${q.toString()}`;
   };
   const queueBucketHref = (bucket: "ALL" | "MINE" | "OPEN" | "HISTORY") => {
     const q = new URLSearchParams(baseQuery.toString());
     if (bucket === "ALL") q.delete("queueBucket");
     else q.set("queueBucket", bucket);
-    return `/admin/receipts-approvals?${q.toString()}`;
+    return `${screenBasePath}?${q.toString()}`;
   };
   const globalQueueQuery = new URLSearchParams(baseQuery.toString());
   globalQueueQuery.delete("packageId");
@@ -1077,9 +1115,8 @@ export default async function ReceiptsApprovalsPage({
   globalQueueQuery.delete("paymentRecordId");
   globalQueueQuery.delete("invoiceId");
   const globalQueueHref = globalQueueQuery.toString()
-    ? `/admin/receipts-approvals?${globalQueueQuery.toString()}`
-    : "/admin/receipts-approvals";
-  const packageWorkspaceMode = Boolean(packageIdFilter);
+    ? `${receiptScreenBasePath("queue")}?${globalQueueQuery.toString()}`
+    : receiptScreenBasePath("queue");
 
   const parentQueue = rows.map((r) => {
     const pkg = packageMap.get(r.packageId);
@@ -1222,7 +1259,7 @@ export default async function ReceiptsApprovalsPage({
     ? openHref(nextQueueRow.type, nextQueueRow.id)
     : selectedRow
       ? openHref(selectedRow.type, selectedRow.id)
-      : `/admin/receipts-approvals?${baseQuery.toString()}`;
+      : `${screenBasePath}?${baseQuery.toString()}`;
   const actionMovedToNext =
     Boolean(msg) &&
     Boolean(selectedId) &&
@@ -1281,8 +1318,59 @@ export default async function ReceiptsApprovalsPage({
     selectedRow && selectedRow.status !== "COMPLETED" ? `${selectedReviewHref}#receipt-primary-actions` : "";
   const selectedFixToolsHref =
     selectedRow && selectedRow.type === "PARENT"
-      ? `/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
+      ? `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
       : "";
+  const buildScreenHref = (target: ReceiptScreenMode) => {
+    const q = new URLSearchParams();
+    if (target === "package") {
+      if (packageIdFilter) q.set("packageId", packageIdFilter);
+      if (workflowStep !== "upload") q.set("step", workflowStep);
+      if (selectedType) q.set("selectedType", selectedType);
+      if (selectedId) q.set("selectedId", selectedId);
+      if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
+      if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
+    } else {
+      if (monthFilter) q.set("month", monthFilter);
+      if (viewMode !== "ALL") q.set("view", viewMode);
+      if (selectedType) q.set("selectedType", selectedType);
+      if (selectedId) q.set("selectedId", selectedId);
+      if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
+      if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
+      if (target === "repairs") q.set("queueFilter", "FILE_ISSUE");
+      else if (queueFilter !== "ALL") q.set("queueFilter", queueFilter);
+      if (target === "history") q.set("queueBucket", "HISTORY");
+      else if (queueBucket !== "ALL") q.set("queueBucket", queueBucket);
+    }
+    const targetBase = receiptScreenBasePath(target);
+    return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
+  };
+  const screenEyebrow = isPackageScreen
+    ? t(lang, "Package Workspace", "课包工作区")
+    : isRepairsScreen
+      ? t(lang, "Proof Repair Desk", "凭证修复台")
+      : isHistoryScreen
+        ? t(lang, "Receipt History", "收据历史")
+        : t(lang, "Global Queue Mode", "全局队列模式");
+  const screenTitle = isPackageScreen
+    ? t(lang, "Handle one package cleanly without queue noise", "只处理一个课包，不被全局队列打扰")
+    : isRepairsScreen
+      ? t(lang, "Fix proof blockers before returning to approval", "先修复凭证阻塞，再回到审批")
+      : isHistoryScreen
+        ? t(lang, "Review completed receipts and finance timeline", "查看已完成收据与财务时间线")
+        : t(lang, "Pick the next blocked receipt and clear it", "选中下一条被阻塞的收据并清掉它");
+  const screenDescription = isPackageScreen && selectedPackage
+    ? `${selectedPackage.student.name} | ${selectedPackage.course.name}`
+    : isPackageScreen
+      ? t(lang, "Open one package and finish upload, record checks, and receipt creation in one place.", "打开一个课包后，在同一页面完成上传、检查记录和创建收据。")
+      : isRepairsScreen
+        ? t(lang, "Stay in the file-issue lane only: missing payment records, missing files, and repair jumps back to the original receipt.", "只处理凭证异常：缺失付款记录、文件缺失，以及修复后返回原收据。")
+        : isHistoryScreen
+          ? t(lang, "Use this page only for completed receipts and recent finance actions, not for active approval work.", "这一页只看已完成收据和最近财务动作，不承担正在进行的审批。")
+          : t(
+              lang,
+              "Use the queue for prioritization, then clear the current item before opening another workflow.",
+              "先用队列决定优先级，再处理完当前项后再进入其他工作流。"
+            );
   const recentOps = [
     ...all.paymentRecords.map((x) => ({
       id: `pay-${x.id}`,
@@ -1355,25 +1443,45 @@ export default async function ReceiptsApprovalsPage({
           {t(lang, "Success", "成功")}: {describeReceiptActionResult(lang, msg, actionMovedToNext)}
         </div>
       ) : null}
+      <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {([
+          ["queue", t(lang, "Receipt Queue", "收据审批队列")],
+          ["package", t(lang, "Package Workspace", "课包财务工作区")],
+          ["repairs", t(lang, "Proof Repair", "凭证修复")],
+          ["history", t(lang, "Receipt History", "收据历史")],
+        ] as const).map(([mode, label]) => {
+          const active = screenMode === mode;
+          return (
+            <a
+              key={mode}
+              href={buildScreenHref(mode)}
+              style={{
+                border: active ? "1px solid #2563eb" : "1px solid #d1d5db",
+                background: active ? "#eff6ff" : "#fff",
+                color: active ? "#1d4ed8" : "#374151",
+                borderRadius: 999,
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              {label}
+            </a>
+          );
+        })}
+      </div>
 
       <div style={workbenchHeroStyle("indigo")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
-            {packageWorkspaceMode ? t(lang, "Package Mode", "课包模式") : t(lang, "Global Queue Mode", "全局队列模式")}
+            {screenEyebrow}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>
-            {packageWorkspaceMode
-              ? t(lang, "Finish one package cleanly, then return to the queue", "先把单个课包处理干净，再返回队列")
-              : t(lang, "Pick the next blocked receipt and clear it", "选中下一条被阻塞的收据并清掉它")}
+            {screenTitle}
           </div>
           <div style={{ color: "#475569", lineHeight: 1.5 }}>
-            {packageWorkspaceMode && selectedPackage
-              ? `${selectedPackage.student.name} | ${selectedPackage.course.name}`
-              : t(
-                  lang,
-                  "Use the queue for prioritization, then use the workspace below only for the package or receipt you are actively resolving.",
-                  "先用队列确定优先级，再只在下方工作区处理当前正在解决的课包或收据。"
-                )}
+            {screenDescription}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -1429,10 +1537,11 @@ export default async function ReceiptsApprovalsPage({
               "已恢复你上次的收据队列；如果要回到默认队列，可直接用下方标签切回。"
             )}
           </div>
-          <a href="/admin/receipts-approvals?clearQueue=1">{t(lang, "Back to default queue", "回到默认队列")}</a>
+          <a href={`${screenBasePath}?clearQueue=1`}>{t(lang, "Back to default queue", "回到默认队列")}</a>
         </div>
       ) : null}
 
+      {!isPackageScreen ? (
       <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span style={{ ...tagStyle("muted"), borderRadius: 999, padding: "4px 10px", fontSize: 12 }}>
           {t(lang, "Month", "月份")}: {monthFilter || t(lang, "All months", "全部月份")}
@@ -1450,7 +1559,9 @@ export default async function ReceiptsApprovalsPage({
           {t(lang, "Proof or file issues", "凭证或文件异常")}: {queueFileIssueCount}
         </span>
       </div>
+      ) : null}
 
+      {isRepairsScreen ? (
       <div
         style={{
           marginBottom: 12,
@@ -1483,7 +1594,9 @@ export default async function ReceiptsApprovalsPage({
           {queueFilter !== "ALL" ? <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a> : null}
         </div>
       </div>
+      ) : null}
 
+      {!isPackageScreen ? (
       <details open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Queue filters & mode controls", "队列筛选与模式控制")}
@@ -1518,7 +1631,7 @@ export default async function ReceiptsApprovalsPage({
               </select>
             </label>
             <button type="submit">{t(lang, "Filter", "筛选")}</button>
-            <a href="/admin/receipts-approvals?clearQueue=1">{t(lang, "Reset", "重置")}</a>
+            <a href={`${screenBasePath}?clearQueue=1`}>{t(lang, "Reset", "重置")}</a>
           </form>
           {packageIdFilter ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1550,6 +1663,7 @@ export default async function ReceiptsApprovalsPage({
           ) : null}
         </div>
       </details>
+      ) : null}
 
       {packageIdFilter && selectedType && selectedId ? (
         <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: "8px 10px" }}>
@@ -1594,7 +1708,7 @@ export default async function ReceiptsApprovalsPage({
           </div>
         </div>
       ) : null}
-      {packageWorkspaceMode && selectedPackage ? (
+      {isPackageScreen && packageWorkspaceMode && selectedPackage ? (
         <div style={{ marginBottom: 12, display: "grid", gap: 8, border: "1px solid #bfdbfe", background: "#f8fbff", borderRadius: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div>
@@ -1645,6 +1759,7 @@ export default async function ReceiptsApprovalsPage({
           ) : null}
         </div>
       ) : null}
+      {isHistoryScreen ? (
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Recent Finance Actions", "最近财务操作")} ({recentOps.length})
@@ -1661,7 +1776,7 @@ export default async function ReceiptsApprovalsPage({
                   : op.kind === "INVOICE_CREATE"
                     ? t(lang, "Invoice created", "创建发票")
                     : t(lang, "Receipt created", "创建收据");
-              const openPkgHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(op.packageId)}&step=records`;
+              const openPkgHref = `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(op.packageId)}&step=records`;
               return (
                 <div key={op.id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 8px", background: "#fff", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <div style={{ display: "grid", gap: 2 }}>
@@ -1682,8 +1797,9 @@ export default async function ReceiptsApprovalsPage({
           </div>
         )}
       </details>
+      ) : null}
 
-      {!packageIdFilter ? (
+      {isPackageScreen ? (
         <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <summary style={{ cursor: "pointer", fontWeight: 700 }}>
             {t(lang, "Open one package workspace", "打开单个课包工作区")}
@@ -1725,6 +1841,7 @@ export default async function ReceiptsApprovalsPage({
         </details>
       ) : null}
 
+      {isPackageScreen ? (
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Finance Receipt Operations", "财务收据操作")}</h3>
         {!packageIdFilter ? (
@@ -2068,6 +2185,7 @@ export default async function ReceiptsApprovalsPage({
           </details>
         )}
       </div>
+      ) : null}
 
       <style>{`
         .receipt-workspace { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
@@ -2098,6 +2216,7 @@ export default async function ReceiptsApprovalsPage({
           background: #fff;
         }
       `}</style>
+      {isPackageScreen ? null : (
       <div className="receipt-workspace">
       <details
         open={!packageWorkspaceMode || workflowStep === "review"}
@@ -2291,7 +2410,7 @@ export default async function ReceiptsApprovalsPage({
                   <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
                   {selectedRow.type === "PARENT" ? (
                     <>
-                      <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                      <a href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
                       <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
@@ -2464,7 +2583,7 @@ export default async function ReceiptsApprovalsPage({
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                   {selectedRow.type === "PARENT" ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                      <a href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
                       <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
@@ -2496,6 +2615,7 @@ export default async function ReceiptsApprovalsPage({
         )}
       </div>
       </div>
+      )}
     </div>
   );
 }
