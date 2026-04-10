@@ -22,6 +22,7 @@ Finance needed two things without disturbing existing billing controls:
 - make the `All / 全部` chip on `Proof Repair` explicitly break out of the implicit default blocker mode, so finance can widen the queue from the same page
 - keep `Receipt History` visually consistent by removing lower queue-bucket controls that contradict the page-level history mode
 - make sure `Back to default queue / 回到默认队列` on `Receipt History` actually jumps back to the live approval queue instead of reloading the history screen
+- make sure finance-facing `Receipt Queue / 收据审批队列` entry points clear remembered queue state so they do not unexpectedly reopen `Receipt History`
 
 ## Guardrails
 
@@ -48,3 +49,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm clicking `All / 全部` on `/admin/receipts-approvals/repairs` widens the queue on that same page instead of silently restoring the default blocker scope
 - confirm `/admin/receipts-approvals/history` no longer shows lower queue-bucket switches that conflict with the page-level `Receipt History` mode
 - confirm `Back to default queue / 回到默认队列` on `/admin/receipts-approvals/history` now opens `/admin/receipts-approvals?clearQueue=1`
+- confirm the finance sidebar and receipt-page `Receipt Queue / 收据审批队列` links now open `/admin/receipts-approvals?clearQueue=1` and do not reopen remembered history

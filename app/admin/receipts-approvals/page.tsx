@@ -1344,6 +1344,7 @@ export async function ReceiptsApprovalsPageContent({
       if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
       if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
     } else {
+      if (target === "queue") q.set("clearQueue", "1");
       if (monthFilter) q.set("month", monthFilter);
       if (viewMode !== "ALL") q.set("view", viewMode);
       if (selectedType) q.set("selectedType", selectedType);

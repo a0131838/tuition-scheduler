@@ -189,7 +189,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
-        { href: "/admin/receipts-approvals", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
+        { href: "/admin/receipts-approvals?clearQueue=1", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/package", label: t(lang, "Package Workspace", "课包财务工作区"), tone: "success" as const },
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
@@ -256,7 +256,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
-        { href: "/admin/receipts-approvals", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
+        { href: "/admin/receipts-approvals?clearQueue=1", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/package", label: t(lang, "Package Workspace", "课包财务工作区"), tone: "success" as const },
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },

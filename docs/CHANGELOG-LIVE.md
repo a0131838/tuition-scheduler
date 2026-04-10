@@ -3531,4 +3531,5 @@ This file is the single source of truth for what changed in production.
   - the `All / 全部` chip inside `Proof Repair` now truly expands back to the full repair-page queue instead of silently reapplying the default blocker filter
   - `Receipt History` now hides the conflicting bucket-switch row and only keeps history-appropriate controls, so the top page mode no longer fights with the lower queue toggles
   - `Receipt History` now sends `Back to default queue / 回到默认队列` to the actual receipt queue route instead of reloading the history page with `clearQueue=1`, so finance can truly jump back into active approval work
+  - finance sidebar and receipt-page `Receipt Queue / 收据审批队列` links now open the real default approval queue with `clearQueue=1`, so clicking the queue entry no longer re-enters remembered `Receipt History`
 - Rollback point: previous production commit before `2026-04-10-r01`.
