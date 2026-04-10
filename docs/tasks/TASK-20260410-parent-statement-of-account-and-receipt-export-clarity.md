@@ -44,6 +44,7 @@ Finance needed two things without disturbing existing billing controls:
 - keep the package picker visually compact so recent shortcuts and search-result cards do not push the finance workspace too far down the page
 - make the finance student package invoice page use a searchable package picker too, so finance does not need to scroll through a long student dropdown before loading invoice summary data
 - remember recently used packages on the finance student package invoice page so finance can reopen the same few student packages without retyping the search every time
+- keep `Receipt Queue / 收据审批队列` and `Receipt History / 收据历史` usable on narrower screens by opening selected receipt details inside an overlay instead of stacking list and details vertically
 
 ## Guardrails
 
@@ -94,3 +95,4 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the recent-package list and package result cards now use a tighter compact layout with less vertical height
 - confirm `/admin/finance/student-package-invoices` now lets finance search packages locally by student, course, or package ID before clicking `Load package summary / 加载课包摘要`
 - confirm `/admin/finance/student-package-invoices` now shows `Recent packages / 最近使用课包` after a package is loaded and that clicking a recent chip only changes the selection until finance explicitly clicks `Load package summary / 加载课包摘要`
+- confirm narrower `Receipt Queue / 收据审批队列` and `Receipt History / 收据历史` screens now open the selected receipt details in an overlay with `Back to list / 返回列表`, while wider screens still keep the two-column layout

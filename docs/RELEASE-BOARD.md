@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r25` (finance invoice page recent package shortcuts), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r26` (mobile receipt detail overlay), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -2072,6 +2072,20 @@
   - post-deploy startup check
   - verify the finance invoice page shows `Recent packages / 最近使用课包` after a package has been loaded once
   - verify clicking a recent package chip changes the selected package but still waits for explicit summary load
+
+## 2026-04-10-r26 Ready
+
+- Scope: keep the finance receipt queue and history workable on narrower screens by opening selected receipt details in an overlay instead of forcing a long stacked layout.
+- Business impact:
+  - `/admin/receipts-approvals/queue` and `/admin/receipts-approvals/history` now open selected receipt details as a dismissible overlay on narrower screens, so finance can stay anchored in the queue list
+  - the overlay includes an explicit `Back to list / 返回列表` action and outside-tap close path, both of which return to the same filtered queue or history view without changing the underlying review state
+  - wider screens keep the existing two-column layout, so desktop finance users do not lose the side-by-side workflow
+  - no receipt approval rules, package finance actions, invoice rules, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify narrow receipt queue/history screens now show the selected detail pane as an overlay with `Back to list / 返回列表`
+  - verify wide screens still show the normal left queue plus right detail layout
 
 ## 2026-04-10-r23 Ready
 

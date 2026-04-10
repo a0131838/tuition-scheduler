@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r26
+
+- Release ID: `2026-04-10-r26`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: keep receipt queue and receipt history usable on narrower screens by turning the selected receipt detail panel into a dismissible overlay instead of a long stacked second column.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only changes narrow-screen presentation for receipt details; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - on narrow screens, selecting a receipt from `Receipt Queue / 收据审批队列` or `Receipt History / 收据历史` now opens the detail panel as an overlay instead of stacking it below the queue
+  - the overlay includes a direct `Back to list / 返回列表` action and tapping outside it closes back to the current filtered list
+  - on wide screens, the existing two-column queue-plus-detail layout remains unchanged
+- Rollback point: previous production commit before `2026-04-10-r26`.
+
 ## 2026-04-10-r25
 
 - Release ID: `2026-04-10-r25`

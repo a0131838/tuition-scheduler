@@ -1469,6 +1469,26 @@ export async function ReceiptsApprovalsPageContent({
     const targetBase = receiptScreenBasePath(target);
     return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
   };
+  const currentScreenListHref = (() => {
+    const q = new URLSearchParams();
+    if (screenMode === "package") {
+      if (packageIdFilter) q.set("packageId", packageIdFilter);
+      if (workflowStep !== "upload") q.set("step", workflowStep);
+      if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
+      if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
+    } else {
+      if (monthFilter) q.set("month", monthFilter);
+      if (historySearchTerm) q.set("historySearch", historySearchTerm);
+      if (viewMode !== "ALL") q.set("view", viewMode);
+      if (preferredPaymentRecordId) q.set("paymentRecordId", preferredPaymentRecordId);
+      if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
+      if (queueFilter !== "ALL") q.set("queueFilter", queueFilter);
+      if (screenMode === "history") q.set("queueBucket", "HISTORY");
+      else if (queueBucket !== "ALL") q.set("queueBucket", queueBucket);
+    }
+    const targetBase = receiptScreenBasePath(screenMode);
+    return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
+  })();
   const clearHistorySearchHref = (() => {
     const q = new URLSearchParams(baseQuery.toString());
     q.delete("historySearch");
@@ -2770,6 +2790,8 @@ export async function ReceiptsApprovalsPageContent({
         .receipt-workspace { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
         .receipt-workspace > div { min-width: 0; }
         .receipt-queue-pane { display: grid; gap: 12px; }
+        .receipt-detail-backdrop { display: none; }
+        .receipt-mobile-header { display: none; }
         @media (min-width: 1500px) {
           .receipt-workspace { grid-template-columns: minmax(460px, 0.92fr) minmax(540px, 1.08fr); }
         }
@@ -2793,6 +2815,42 @@ export async function ReceiptsApprovalsPageContent({
           border-radius: 10px;
           padding: 10px;
           background: #fff;
+        }
+        @media (max-width: 1499px) {
+          .receipt-workspace { position: relative; }
+          .receipt-actions-empty { display: none; }
+          .receipt-detail-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.42);
+            z-index: 80;
+          }
+          .receipt-actions-mobile-open {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            bottom: 16px;
+            left: 16px;
+            z-index: 81;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
+            overflow: auto;
+            padding-top: 14px !important;
+          }
+          .receipt-mobile-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            padding-bottom: 10px;
+            z-index: 2;
+          }
         }
       `}</style>
       {isPackageScreen || !showHistoryReceipts ? null : (
@@ -2994,7 +3052,36 @@ export async function ReceiptsApprovalsPageContent({
         )}
       </details>
 
-      <div className="receipt-actions" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+      {selectedRow ? (
+        <a
+          href={currentScreenListHref}
+          className="receipt-detail-backdrop"
+          aria-label={t(lang, "Close receipt details", "关闭收据详情")}
+        />
+      ) : null}
+      <div
+        className={`receipt-actions${selectedRow ? " receipt-actions-mobile-open" : " receipt-actions-empty"}`}
+        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}
+      >
+        <div className="receipt-mobile-header">
+          <div style={{ fontWeight: 800, color: "#0f172a" }}>
+            {selectedRow
+              ? t(lang, "Receipt detail drawer", "收据详情浮层")
+              : t(lang, "Receipt detail", "收据详情")}
+          </div>
+          <a
+            href={currentScreenListHref}
+            style={{
+              ...secondaryButtonStyle,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "8px 12px",
+            }}
+          >
+            {t(lang, "Back to list", "返回列表")}
+          </a>
+        </div>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>
         {!selectedRow ? (
           <div style={{ color: "#64748b", display: "grid", gap: 8, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
