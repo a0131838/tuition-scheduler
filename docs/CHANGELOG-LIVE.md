@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r28
+
+- Release ID: `2026-04-10-r28`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `READY`
+- Scope: make selected receipt details easier to identify by surfacing receipt amount and invoice total near the top of the approval detail panel.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only adds amount summary display inside receipt details; it does not change receipt approval rules, package finance actions, invoice behavior, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - selected receipt details now show `Receipt amount / 收据金额` and `Invoice total / 发票总额` near the top
+  - the detail summary should clearly indicate whether the receipt amount matches the invoice total
+- Rollback point: previous production commit before `2026-04-10-r28`.
+
 ## 2026-04-10-r27
 
 - Release ID: `2026-04-10-r27`

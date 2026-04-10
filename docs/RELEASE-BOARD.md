@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r27` (mobile receipt detail drawer follow-up), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r28` (receipt detail amount summary), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -2099,6 +2099,18 @@
   - post-deploy startup check
   - verify narrow queue/history views stay list-only until a row is clicked
   - verify the opened detail panel looks like a smaller drawer rather than covering almost the full viewport
+
+## 2026-04-10-r28 Ready
+
+- Scope: show amount information much more clearly in the selected receipt detail panel so finance can immediately tell which receipt is open.
+- Business impact:
+  - selected receipt details now show both `Receipt amount / 收据金额` and `Invoice total / 发票总额` near the top of the panel
+  - the amount summary now also signals whether the receipt matches the linked invoice amount, reducing the chance that finance reviews the wrong row
+  - no receipt approval rules, invoice rules, package finance actions, settlement calculations, or deduction logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify selected receipt details show the amount summary cards and mismatch indicator near the top
 
 ## 2026-04-10-r23 Ready
 

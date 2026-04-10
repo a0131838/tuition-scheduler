@@ -3108,6 +3108,11 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ color: "#334155" }}>
                 {queueTypeLabel(lang, selectedRow.type)} | {selectedRow.receiptNo} | {selectedRow.partyName}
               </div>
+              <div style={{ color: "#0f172a", fontWeight: 700, marginTop: 6 }}>
+                {t(lang, "Receipt amount", "收据金额")}: {money(selectedRow.amountReceived)}
+                {" · "}
+                {t(lang, "Invoice total", "发票总额")}: {money(selectedRow.invoiceTotalAmount)}
+              </div>
             </div>
             {selectedRiskMessages.length > 0 ? (
               <div style={{ marginBottom: 10, color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 10px" }}>
@@ -3165,6 +3170,20 @@ export async function ReceiptsApprovalsPageContent({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Type", "类型")}</div>
                 <div style={{ fontWeight: 700, marginTop: 4 }}>{queueTypeLabel(lang, selectedRow.type)}</div>
                 <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{selectedRow.invoiceNo}</div>
+              </div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipt amount", "收据金额")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4, color: "#0f172a" }}>{money(selectedRow.amountReceived)}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{t(lang, "Actual received", "本次实收")}</div>
+              </div>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Invoice total", "发票总额")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4, color: "#0f172a" }}>{money(selectedRow.invoiceTotalAmount)}</div>
+                <div style={{ fontSize: 12, color: selectedRowAmountDiff > 0.01 ? "#b45309" : "#166534", marginTop: 2 }}>
+                  {selectedRowAmountDiff > 0.01
+                    ? t(lang, "Amount mismatch", "金额不一致")
+                    : t(lang, "Matches receipt", "与收据一致")}
+                </div>
               </div>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Proof status", "凭证状态")}</div>
