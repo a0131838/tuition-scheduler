@@ -66,6 +66,7 @@ export type ReceiptsApprovalSearchParams = {
   msg?: string;
   err?: string;
   clearQueue?: string;
+  historySearch?: string;
   packageId?: string;
   month?: string;
   view?: string;
@@ -481,6 +482,12 @@ function packageStepTone(status: "done" | "active" | "upcoming") {
   return { border: "#e5e7eb", bg: "#f8fafc", title: "#475569", note: "#64748b" };
 }
 
+function matchesSearchTerm(term: string, values: Array<string | null | undefined>) {
+  const normalizedTerm = term.trim().toLowerCase();
+  if (!normalizedTerm) return true;
+  return values.some((value) => String(value ?? "").toLowerCase().includes(normalizedTerm));
+}
+
 async function uploadPaymentRecordAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -853,6 +860,7 @@ export async function ReceiptsApprovalsPageContent({
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const packageIdFilter = sp?.packageId ? String(sp.packageId).trim() : "";
   const clearQueue = String(sp?.clearQueue ?? "").trim() === "1";
+  const historySearchTerm = String(sp?.historySearch ?? "").trim();
   const hasMonthParam = typeof sp?.month === "string";
   const hasViewParam = typeof sp?.view === "string";
   const hasQueueFilterParam = typeof sp?.queueFilter === "string";
@@ -881,7 +889,8 @@ export async function ReceiptsApprovalsPageContent({
     !selectedType &&
     !selectedId &&
     !preferredPaymentRecordId &&
-    !preferredInvoiceId;
+    !preferredInvoiceId &&
+    !historySearchTerm;
   const cookieStore = await cookies();
   const rememberedQueue = canResumeRememberedQueue
     ? parseRememberedReceiptsQueue(cookieStore.get(RECEIPTS_QUEUE_COOKIE)?.value ?? "")
@@ -1069,6 +1078,7 @@ export async function ReceiptsApprovalsPageContent({
   const baseQuery = new URLSearchParams();
   if (packageIdFilter) baseQuery.set("packageId", packageIdFilter);
   if (monthFilter) baseQuery.set("month", monthFilter);
+  if (historySearchTerm) baseQuery.set("historySearch", historySearchTerm);
   if (viewMode !== "ALL") baseQuery.set("view", viewMode);
   if (workflowStep !== "upload") baseQuery.set("step", workflowStep);
   if (queueFilter !== "ALL") baseQuery.set("queueFilter", queueFilter);
@@ -1243,6 +1253,17 @@ export async function ReceiptsApprovalsPageContent({
   });
   const actionableQueue = unifiedQueue.filter((x) => x.status !== "COMPLETED");
   const completedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
+  const searchedCompletedQueue = historySearchTerm
+    ? completedQueue.filter((x) =>
+        matchesSearchTerm(historySearchTerm, [
+          x.receiptNo,
+          x.invoiceNo,
+          x.partyName,
+          x.createdBy,
+          x.paymentRecord?.name,
+        ])
+      )
+    : completedQueue;
   const mineQueue = actionableQueue.filter((x) => {
     const managerTodo = isManagerApprover && x.approval.managerApprovedBy.length < roleCfg.managerApproverEmails.length;
     const financeTodo = isFinanceApprover && x.approval.financeApprovedBy.length < roleCfg.financeApproverEmails.length;
@@ -1251,7 +1272,9 @@ export async function ReceiptsApprovalsPageContent({
   const otherQueue = actionableQueue.filter((x) => !mineQueue.some((mine) => mine.type === x.type && mine.id === x.id));
   const visibleMineQueue = queueBucket === "OPEN" || queueBucket === "HISTORY" ? [] : mineQueue;
   const visibleOtherQueue = queueBucket === "MINE" || queueBucket === "HISTORY" ? [] : otherQueue;
-  const visibleCompletedQueue = queueBucket === "MINE" || queueBucket === "OPEN" ? [] : completedQueue;
+  const visibleCompletedQueue = queueBucket === "MINE" || queueBucket === "OPEN" ? [] : searchedCompletedQueue;
+  const repairMissingPaymentRows = actionableQueue.filter((x) => !x.paymentRecord);
+  const repairMissingFileRows = actionableQueue.filter((x) => Boolean(x.paymentFileMissing));
   const defaultVisibleQueue =
     queueBucket === "MINE"
       ? visibleMineQueue
@@ -1261,7 +1284,8 @@ export async function ReceiptsApprovalsPageContent({
           ? visibleCompletedQueue
           : [...visibleMineQueue, ...visibleOtherQueue, ...visibleCompletedQueue];
   const selectedRow =
-    unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) ??
+    defaultVisibleQueue.find((x) => x.type === selectedType && x.id === selectedId) ??
+    (!isHistoryScreen ? unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) : null) ??
     defaultVisibleQueue[0] ??
     null;
   const activeQueueForNavigation =
@@ -1352,6 +1376,7 @@ export async function ReceiptsApprovalsPageContent({
       if (preferredInvoiceId) q.set("invoiceId", preferredInvoiceId);
     } else {
       if (monthFilter) q.set("month", monthFilter);
+      if (historySearchTerm) q.set("historySearch", historySearchTerm);
       if (viewMode !== "ALL") q.set("view", viewMode);
       if (selectedType) q.set("selectedType", selectedType);
       if (selectedId) q.set("selectedId", selectedId);
@@ -1364,6 +1389,13 @@ export async function ReceiptsApprovalsPageContent({
     const targetBase = receiptScreenBasePath(target);
     return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
   };
+  const clearHistorySearchHref = (() => {
+    const q = new URLSearchParams(baseQuery.toString());
+    q.delete("historySearch");
+    q.set("queueBucket", "HISTORY");
+    const targetBase = receiptScreenBasePath("history");
+    return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
+  })();
   const screenEyebrow = isPackageScreen
     ? t(lang, "Package Workspace", "课包工作区")
     : isRepairsScreen
@@ -1419,6 +1451,18 @@ export async function ReceiptsApprovalsPageContent({
   ]
     .sort((a, b) => +new Date(b.at) - +new Date(a.at))
     .slice(0, 8);
+  const visibleRecentOps = historySearchTerm
+    ? recentOps.filter((op) => {
+        const pkg = opPackageMap.get(op.packageId);
+        return matchesSearchTerm(historySearchTerm, [
+          op.title,
+          op.actor,
+          op.packageId,
+          pkg?.student?.name,
+          pkg?.course?.name,
+        ]);
+      })
+    : recentOps;
   const queueBlockerCount = actionableQueue.filter(
     (x) => !x.paymentRecord || Boolean(x.paymentFileMissing) || (x.riskCount ?? 0) > 0
   ).length;
@@ -1470,6 +1514,7 @@ export async function ReceiptsApprovalsPageContent({
     : 0;
   const controlsOpen =
     Boolean(packageIdFilter) ||
+    Boolean(historySearchTerm) ||
     Boolean(monthFilter) ||
     viewMode !== "ALL" ||
     queueFilter !== "ALL" ||
@@ -1691,6 +1736,51 @@ export async function ReceiptsApprovalsPageContent({
       </div>
       ) : null}
 
+      {isRepairsScreen ? (
+      <div style={{ marginBottom: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
+        <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: "10px 12px", display: "grid", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, color: "#c2410c" }}>{t(lang, "Missing payment record", "缺付款记录")}</div>
+            <div style={{ color: "#7c2d12", fontSize: 13 }}>
+              {t(lang, "These receipts need a proof record linked before review can continue.", "这些收据需要先补或关联付款记录，审核才能继续。")}
+            </div>
+          </div>
+          <div style={{ ...tagStyle(repairMissingPaymentRows.length > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12, width: "fit-content" }}>
+            {t(lang, "Rows", "条数")}: {repairMissingPaymentRows.length}
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {repairMissingPaymentRows.slice(0, 4).map((row) => (
+              <a key={`missing-proof-${row.type}-${row.id}`} href={openHref(row.type, row.id)} style={{ textDecoration: "none", color: "#9a3412", border: "1px solid #fdba74", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
+                <div style={{ fontWeight: 700 }}>{row.receiptNo}</div>
+                <div style={{ fontSize: 13 }}>{row.partyName}</div>
+              </a>
+            ))}
+            {repairMissingPaymentRows.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No receipts are waiting for proof linking right now.", "当前没有等待补付款记录的收据。")}</div> : null}
+          </div>
+        </div>
+        <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fff7f7", padding: "10px 12px", display: "grid", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, color: "#b91c1c" }}>{t(lang, "Missing file on linked proof", "已关联但缺文件")}</div>
+            <div style={{ color: "#7f1d1d", fontSize: 13 }}>
+              {t(lang, "These receipts already point to a proof record, but the server file needs to be re-uploaded.", "这些收据已经关联付款记录，但服务器文件缺失，需要重新上传。")}
+            </div>
+          </div>
+          <div style={{ ...tagStyle(repairMissingFileRows.length > 0 ? "err" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12, width: "fit-content" }}>
+            {t(lang, "Rows", "条数")}: {repairMissingFileRows.length}
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {repairMissingFileRows.slice(0, 4).map((row) => (
+              <a key={`missing-file-${row.type}-${row.id}`} href={openHref(row.type, row.id)} style={{ textDecoration: "none", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
+                <div style={{ fontWeight: 700 }}>{row.receiptNo}</div>
+                <div style={{ fontSize: 13 }}>{row.partyName}</div>
+              </a>
+            ))}
+            {repairMissingFileRows.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No receipts are waiting for file re-upload right now.", "当前没有等待补文件的收据。")}</div> : null}
+          </div>
+        </div>
+      </div>
+      ) : null}
+
       {!isPackageScreen ? (
       <details open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
@@ -1887,15 +1977,37 @@ export async function ReceiptsApprovalsPageContent({
         </div>
       ) : null}
       {isHistoryScreen ? (
+      <form method="get" style={{ ...workbenchFilterPanelStyle, marginBottom: 12, display: "grid", gap: 10 }}>
+        {monthFilter ? <input type="hidden" name="month" value={monthFilter} /> : null}
+        {viewMode !== "ALL" ? <input type="hidden" name="view" value={viewMode} /> : null}
+        <input type="hidden" name="queueBucket" value="HISTORY" />
+        <div style={{ fontWeight: 700 }}>{t(lang, "History search", "历史搜索")}</div>
+        <div style={{ color: "#64748b", fontSize: 12 }}>
+          {t(lang, "Search completed receipts and recent actions by student, course, receipt no., invoice no., or uploader.", "按学生、课程、收据号、发票号或操作人搜索已完成收据和最近财务动作。")}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <input
+            name="historySearch"
+            defaultValue={historySearchTerm}
+            placeholder={t(lang, "Search student / invoice / receipt / uploader", "搜索学生 / 发票 / 收据 / 操作人")}
+            style={{ minWidth: 280, flex: "1 1 320px" }}
+          />
+          <button type="submit">{t(lang, "Search", "搜索")}</button>
+          <a href={clearHistorySearchHref}>{t(lang, "Clear", "清除")}</a>
+        </div>
+      </form>
+      ) : null}
+
+      {isHistoryScreen ? (
       <details style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10, marginBottom: 12, background: "#fafafa" }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-          {t(lang, "Recent Finance Actions", "最近财务操作")} ({recentOps.length})
+          {t(lang, "Recent Finance Actions", "最近财务操作")} ({visibleRecentOps.length})
         </summary>
-        {recentOps.length === 0 ? (
+        {visibleRecentOps.length === 0 ? (
           <div style={{ marginTop: 8, color: "#6b7280" }}>{t(lang, "No recent actions.", "暂无最近操作。")}</div>
         ) : (
           <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-            {recentOps.map((op) => {
+            {visibleRecentOps.map((op) => {
               const pkg = opPackageMap.get(op.packageId);
               const actionLabel =
                 op.kind === "PAYMENT_UPLOAD"

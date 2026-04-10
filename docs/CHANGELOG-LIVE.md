@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-10-r14
+
+- Release ID: `2026-04-10-r14`
+- Date/Time (Asia/Shanghai): `2026-04-10`
+- Deployment status: `LIVE` after deploy completion
+- Scope: make finance history lookup and proof repair triage more direct without changing any receipt or billing rules.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260410-parent-statement-of-account-and-receipt-export-clarity.md`
+- Risk impact (if any): Low. This release only improves receipt-history search and repair-page grouping; it does not change invoice creation, receipt creation, approval rules, package balances, settlement logic, or deductions.
+- Verification:
+  - `npm run build` passed
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned
+  - `https://sgtmanage.com/admin/login` must return `200`
+  - `Receipt History / 收据历史` should support searching completed receipts and recent finance actions by student, course, receipt no., invoice no., or uploader
+  - `Proof Repair / 凭证修复` should show separate quick-triage groups for `Missing payment record / 缺付款记录` and `Missing file on linked proof / 已关联但缺文件`
+- Rollback point: previous production commit before `2026-04-10-r14`.
+
 ## 2026-04-10-r13
 
 - Release ID: `2026-04-10-r13`

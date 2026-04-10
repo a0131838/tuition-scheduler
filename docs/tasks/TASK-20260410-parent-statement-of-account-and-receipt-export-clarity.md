@@ -26,6 +26,8 @@ Finance needed two things without disturbing existing billing controls:
 - make sure the top receipt-mode `Receipt Queue / 收据审批队列` tab clears remembered history mode too, not only the sidebar entry
 - surface a `Next best item / 下一条最该处理` summary on queue-facing receipt screens so finance can immediately see what to clear next and why
 - strengthen the split package workspace with explicit `Upload`, `Check Records`, and `Create Receipt` step cards so the package flow reads like a guided handoff instead of a long mixed form
+- add a dedicated search box on `Receipt History` so finance can quickly find completed receipts and recent actions by student, course, receipt no., invoice no., or uploader
+- split `Proof Repair` visually into `Missing payment record` and `Missing file on linked proof` triage groups so finance can tell the repair type before opening a row
 
 ## Guardrails
 
@@ -56,3 +58,5 @@ Finance needed two things without disturbing existing billing controls:
 - confirm the top `Receipt Queue / 收据审批队列` tab from `/admin/receipts-approvals/history` now opens `/admin/receipts-approvals?clearQueue=1`
 - confirm queue-facing screens show `Next best item / 下一条最该处理` with a reason that matches the next row's real blocker or readiness state
 - confirm the package workspace shows step cards for `Step 1 Upload`, `Step 2 Check Records`, and `Step 3 Create Receipt`, with `Done / Current / Next` states that match the current proof/receipt progress
+- confirm `/admin/receipts-approvals/history` search filters both completed receipts and `Recent Finance Actions` by the entered keyword
+- confirm `/admin/receipts-approvals/repairs` shows separate quick-triage groups for `Missing payment record / 缺付款记录` and `Missing file on linked proof / 已关联但缺文件`

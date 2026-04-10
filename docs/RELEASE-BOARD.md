@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-10-r13` (finance receipt usability guidance), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-10-r14` (finance history search and repair triage), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -175,6 +175,20 @@
   - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
   - queue QA should confirm `Next best item / 下一条最该处理` appears whenever an actionable finance row exists
   - package-workspace QA should confirm the three step cards render with sensible `Done / Current / Next` states as package proof/receipt progress changes
+
+## 2026-04-10-r14 Ready
+
+- Scope: make receipt history easier to search and make proof-repair triage more obvious on the split finance routes.
+- Business impact:
+  - `/admin/receipts-approvals/history` now includes a dedicated search box that filters completed receipts and recent finance actions by student, course, receipt number, invoice number, or uploader
+  - the history page now keeps the selected receipt aligned with the visible filtered results, so finance does not end up viewing a stale completed row after narrowing the search
+  - `/admin/receipts-approvals/repairs` now shows two separate quick-triage panels for `Missing payment record / 缺付款记录` and `Missing file on linked proof / 已关联但缺文件`, so finance can immediately see whether a row needs proof linking or file re-upload
+  - no receipt creation rules, invoice rules, approval requirements, package balances, settlement logic, or deduction behavior changed
+- Validation:
+  - `npm run build`
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm `local / origin / server` aligned and `https://sgtmanage.com/admin/login` returned `200`
+  - history QA should confirm search filters both the completed queue and `Recent Finance Actions`
+  - repairs QA should confirm the two triage panels show the right counts and direct jump links for missing-record vs missing-file rows
 
 ## 2026-04-09-r07 Deployed
 
