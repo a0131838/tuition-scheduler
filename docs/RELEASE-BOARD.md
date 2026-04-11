@@ -2232,3 +2232,19 @@
   - verify `Back to default queue / 回到默认队列` from `Receipt History` lands on `/admin/receipts-approvals?clearQueue=1`
   - verify clicking the finance sidebar `Receipt Queue / 收据审批队列` entry opens `/admin/receipts-approvals?clearQueue=1` and no longer re-enters `Receipt History`
   - verify clicking the top `Receipt Queue / 收据审批队列` page tab from `Receipt History` also opens `/admin/receipts-approvals?clearQueue=1`
+
+## 2026-04-11-r34 Ready
+
+- Scope: make scheduling-coordination wording bilingual and expose duplicate open coordination tickets on the student workbench.
+- Business impact:
+  - the student scheduling-coordination card now warns when a student has more than one open coordination ticket and shows which ticket is currently selected by the system
+  - the same student card now lists the open ticket numbers so ops can jump straight into the right ticket instead of guessing
+  - scheduling-coordination system text now renders as Chinese + English on the student coordination card, ticket detail page, admin ticket list, archived ticket list, and teacher ticket list, which cleans up old test tickets that previously looked half-English
+  - future parent-availability summaries now save bilingual field labels such as `可上课星期 / Available days` and `老师偏好 / Teacher preference`
+  - no package rules, finance logic, receipt rules, invoice rules, attendance logic, or scheduling placement logic changed
+- Validation:
+  - `npm run build`
+  - post-deploy startup check
+  - verify `赵测试` shows the duplicate-ticket warning on the student coordination card when multiple open coordination tickets exist
+  - verify student and ticket views now show bilingual scheduling-coordination summary text instead of English-only system copy
+  - verify new parent submissions write bilingual summary labels into the linked coordination ticket

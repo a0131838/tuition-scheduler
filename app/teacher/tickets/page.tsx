@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 
 function proofItems(proof: string | null | undefined) {
@@ -335,7 +336,7 @@ export default async function TeacherTicketsPage({
                 <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>{r.status}</td>
                 <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>
-                  {parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-"}
+                  {formatSchedulingCoordinationSystemText(parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-")}
                 </td>
                 <td style={{ maxWidth: 220 }}>
                   {proofItems(r.proof).length === 0 ? (

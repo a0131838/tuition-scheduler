@@ -18,6 +18,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -41,8 +42,8 @@ function proofItems(proof: string | null | undefined) {
 function situationLines(summary: string | null | undefined, nextAction: string | null | undefined, nextActionDue: Date | null | undefined) {
   const parsed = parseTicketSituationSummary(summary);
   return {
-    currentIssue: parsed.currentIssue || "-",
-    requiredAction: parsed.requiredAction || nextAction || "-",
+    currentIssue: formatSchedulingCoordinationSystemText(parsed.currentIssue || "-"),
+    requiredAction: formatSchedulingCoordinationSystemText(parsed.requiredAction || nextAction || "-"),
     latestDeadline: parsed.latestDeadlineText || (nextActionDue ? formatBusinessDateTime(nextActionDue) : "-"),
   };
 }

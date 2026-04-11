@@ -153,22 +153,22 @@ export function summarizeParentAvailabilityPayload(payload: ParentAvailabilityPa
   const parts: string[] = [];
 
   if (payload.weekdays.length > 0) {
-    parts.push(`Available days: ${payload.weekdays.map((value) => weekdayLabelMap.get(value) ?? value).join(", ")}`);
+    parts.push(`可上课星期 / Available days: ${payload.weekdays.map((value) => weekdayLabelMap.get(value) ?? value).join(", ")}`);
   }
   if (payload.timeRanges.length > 0) {
-    parts.push(`Available time ranges: ${payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("; ")}`);
+    parts.push(`常用可上课时间段 / Available time ranges: ${payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("; ")}`);
   }
   if (payload.earliestStartDate) {
-    parts.push(`Earliest start: ${payload.earliestStartDate}`);
+    parts.push(`最早可开始日期 / Earliest start: ${payload.earliestStartDate}`);
   }
   if (payload.modePreference) {
-    parts.push(`Mode preference: ${payload.modePreference}`);
+    parts.push(`上课形式偏好 / Mode preference: ${payload.modePreference}`);
   }
   if (payload.teacherPreference) {
-    parts.push(`Teacher preference: ${payload.teacherPreference}`);
+    parts.push(`老师偏好 / Teacher preference: ${payload.teacherPreference}`);
   }
   if (payload.notes) {
-    parts.push(`Parent note: ${payload.notes}`);
+    parts.push(`家长备注 / Parent note: ${payload.notes}`);
   }
 
   return parts.join("\n");

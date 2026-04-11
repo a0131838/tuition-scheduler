@@ -31,9 +31,14 @@ import {
   deriveSchedulingCoordinationPhase,
   evaluateSchedulingSpecialRequest,
   filterSchedulingSlotsByParentAvailability,
+  formatSchedulingCoordinationSystemText,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationCurrentIssueText,
+  schedulingCoordinationInitialRequiredActionText,
+  schedulingCoordinationParentChoiceLoggedText,
   schedulingCoordinationTeacherExceptionAction,
+  schedulingCoordinationTeacherExceptionLoggedText,
   schedulingCoordinationWaitingParentAction,
   schedulingCoordinationWaitingParentChoiceAction,
   schedulingCoordinationWaitingParentSummary,
@@ -1172,10 +1177,8 @@ async function createSchedulingCoordinationTicket(studentId: string) {
   const courseLabel = primaryEnrollment ? buildCourseLabelFromEnrollment(primaryEnrollment) : null;
   const teacherName = primaryEnrollment?.class?.teacher?.name ?? null;
   const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const currentIssue =
-    "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source.";
-  const requiredAction =
-    "Send availability-based slot options to the parent, record any special time request, and only return to the teacher if the requested time falls outside submitted availability.";
+  const currentIssue = schedulingCoordinationCurrentIssueText();
+  const requiredAction = schedulingCoordinationInitialRequiredActionText();
 
   const created = await prisma.$transaction(async (tx) => {
     const ticketNo = await allocateTicketNo(tx);
@@ -1312,10 +1315,10 @@ async function markSchedulingCoordinationParentChoice(studentId: string, formDat
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
       summary: composeTicketSituation({
-        currentIssue: previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up",
+        currentIssue: formatSchedulingCoordinationSystemText(previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up"),
         requiredAction: [
-          previousSummary.requiredAction,
-          "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice.",
+          formatSchedulingCoordinationSystemText(previousSummary.requiredAction),
+          schedulingCoordinationParentChoiceLoggedText(),
           nextAction,
         ]
           .filter(Boolean)
@@ -1363,10 +1366,10 @@ async function markSchedulingCoordinationTeacherException(studentId: string, for
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
       summary: composeTicketSituation({
-        currentIssue: previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up",
+        currentIssue: formatSchedulingCoordinationSystemText(previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up"),
         requiredAction: [
-          previousSummary.requiredAction,
-          "Ops escalated the parent's requested timing to the teacher because it falls outside current availability.",
+          formatSchedulingCoordinationSystemText(previousSummary.requiredAction),
+          schedulingCoordinationTeacherExceptionLoggedText(),
           nextAction,
         ]
           .filter(Boolean)
@@ -1473,7 +1476,7 @@ export default async function StudentDetailPage({
     packageCount,
     unpaidPackageCount,
     excusedCount,
-    activeSchedulingTicket,
+    openSchedulingTickets,
     enrollments,
     packages,
     attendances,
@@ -1491,7 +1494,7 @@ export default async function StudentDetailPage({
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId) } }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId), paid: false } }),
     prisma.attendance.count({ where: { studentId, status: "EXCUSED" } }),
-    prisma.ticket.findFirst({
+    prisma.ticket.findMany({
       where: {
         studentId,
         type: SCHEDULING_COORDINATION_TICKET_TYPE,
@@ -1499,6 +1502,7 @@ export default async function StudentDetailPage({
         status: { notIn: ["Completed", "Cancelled"] },
       },
       orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      take: 6,
       select: {
         id: true,
         ticketNo: true,
@@ -1562,7 +1566,15 @@ export default async function StudentDetailPage({
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
 
+  const activeSchedulingTicket = openSchedulingTickets[0] ?? null;
+  const additionalOpenSchedulingTickets = openSchedulingTickets.slice(1);
   const schedulingSummary = activeSchedulingTicket ? parseTicketSituationSummary(activeSchedulingTicket.summary) : null;
+  const schedulingSummaryCurrentDisplay = activeSchedulingTicket
+    ? formatSchedulingCoordinationSystemText(schedulingSummary?.currentIssue || activeSchedulingTicket.nextAction || "-")
+    : "-";
+  const schedulingSummaryActionDisplay = activeSchedulingTicket
+    ? formatSchedulingCoordinationSystemText(activeSchedulingTicket.nextAction || schedulingSummary?.requiredAction || "-")
+    : "-";
   const parentAvailabilityRequest = activeSchedulingTicket?.parentAvailabilityRequest ?? null;
   const parentAvailabilityHref = parentAvailabilityRequest
     ? buildParentAvailabilityPath(parentAvailabilityRequest.token)
@@ -2362,6 +2374,52 @@ export default async function StudentDetailPage({
               </form>
             </div>
           </div>
+          {activeSchedulingTicket && additionalOpenSchedulingTickets.length > 0 ? (
+            <div style={{ border: "1px solid #fdba74", borderRadius: 10, padding: 10, background: "#fff7ed", color: "#9a3412", display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800 }}>
+                {t(lang, "Multiple open coordination tickets found", "发现多条未关闭的排课协调工单")}
+              </div>
+              <div style={{ fontSize: 13 }}>
+                {t(
+                  lang,
+                  `This student currently has ${openSchedulingTickets.length} open coordination tickets. This page is using ${activeSchedulingTicket.ticketNo} based on the earliest follow-up due date, then newest created time.`,
+                  `这个学生当前有 ${openSchedulingTickets.length} 条未关闭的排课协调工单。学生页目前按“下次跟进最早优先，其次创建时间最新”使用 ${activeSchedulingTicket.ticketNo} 作为当前工单。`
+                )}
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {openSchedulingTickets.map((ticket) => {
+                  const ticketHref = `/admin/tickets/${ticket.id}?back=${encodeURIComponent(buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination"))}`;
+                  return (
+                    <a
+                      key={ticket.id}
+                      href={ticketHref}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: ticket.id === activeSchedulingTicket.id ? "1px solid #f59e0b" : "1px solid #fed7aa",
+                        background: ticket.id === activeSchedulingTicket.id ? "#fff" : "#fffbeb",
+                        textDecoration: "none",
+                        color: "inherit",
+                      }}
+                    >
+                      <span>
+                        <strong>{ticket.ticketNo}</strong>
+                        {` | ${ticket.status}`}
+                        {ticket.id === activeSchedulingTicket.id ? ` | ${t(lang, "Current ticket", "当前工单")}` : ""}
+                      </span>
+                      <span style={{ fontSize: 12 }}>
+                        {t(lang, "Created", "创建于")}: {formatBusinessDateTime(ticket.createdAt)}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {activeSchedulingTicket ? (
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
@@ -2447,10 +2505,10 @@ export default async function StudentDetailPage({
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff", gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest summary", "最新摘要")}</div>
                 <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>
-                  {schedulingSummary?.currentIssue || activeSchedulingTicket.nextAction || "-"}
+                  {schedulingSummaryCurrentDisplay}
                 </div>
                 <div style={{ fontSize: 13, color: "#475569", marginTop: 6, whiteSpace: "pre-wrap" }}>
-                  {activeSchedulingTicket.nextAction || schedulingSummary?.requiredAction || "-"}
+                  {schedulingSummaryActionDisplay}
                 </div>
               </div>
             </div>

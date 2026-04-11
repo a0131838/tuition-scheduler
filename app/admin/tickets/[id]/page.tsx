@@ -45,9 +45,12 @@ import {
   buildSchedulingCoordinationTeacherOptions,
   deriveSchedulingCoordinationPhase,
   filterSchedulingSlotsByParentAvailability,
+  formatSchedulingCoordinationSystemText,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationParentChoiceLoggedText,
   schedulingCoordinationTeacherExceptionAction,
+  schedulingCoordinationTeacherExceptionLoggedText,
   schedulingCoordinationWaitingParentAction,
   schedulingCoordinationWaitingParentChoiceAction,
   schedulingCoordinationWaitingParentSummary,
@@ -438,10 +441,10 @@ async function markCoordinationParentChoiceAction(formData: FormData) {
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
       summary: composeTicketSituation({
-        currentIssue: previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up",
+        currentIssue: formatSchedulingCoordinationSystemText(previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up"),
         requiredAction: [
-          previousSummary.requiredAction,
-          "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice.",
+          formatSchedulingCoordinationSystemText(previousSummary.requiredAction),
+          schedulingCoordinationParentChoiceLoggedText(),
           nextAction,
         ]
           .filter(Boolean)
@@ -483,10 +486,10 @@ async function markCoordinationTeacherExceptionAction(formData: FormData) {
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
       summary: composeTicketSituation({
-        currentIssue: previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up",
+        currentIssue: formatSchedulingCoordinationSystemText(previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up"),
         requiredAction: [
-          previousSummary.requiredAction,
-          "Ops escalated the parent's requested timing to the teacher because it falls outside current availability.",
+          formatSchedulingCoordinationSystemText(previousSummary.requiredAction),
+          schedulingCoordinationTeacherExceptionLoggedText(),
           nextAction,
         ]
           .filter(Boolean)
@@ -808,8 +811,8 @@ export default async function AdminTicketDetailPage({
             <div style={{ fontWeight: 700, marginBottom: 4 }}>当前处理提示 / Current Guidance</div>
             <div style={{ color: overdue ? "#9a3412" : "#334155" }}>
               {overdue
-                ? `当前工单已超时，优先处理下一步：${asText(row.nextAction)}`
-                : `当前下一步：${asText(row.nextAction)}`}
+                ? `当前工单已超时，优先处理下一步：${formatSchedulingCoordinationSystemText(asText(row.nextAction))}`
+                : `当前下一步：${formatSchedulingCoordinationSystemText(asText(row.nextAction))}`}
             </div>
           </div>
         </div>
@@ -840,8 +843,8 @@ export default async function AdminTicketDetailPage({
           <div>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Situation</div>
             <div style={{ display: "grid", gap: 8 }}>
-              <div><b>当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.currentIssue)}</span></div>
-              <div><b>需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{asText(parsed.requiredAction || row.nextAction)}</span></div>
+              <div><b>当前问题</b>: <span style={{ whiteSpace: "pre-wrap" }}>{formatSchedulingCoordinationSystemText(asText(parsed.currentIssue))}</span></div>
+              <div><b>需要怎么做</b>: <span style={{ whiteSpace: "pre-wrap" }}>{formatSchedulingCoordinationSystemText(asText(parsed.requiredAction || row.nextAction))}</span></div>
               <div><b>最晚截止时间</b>: {parsed.latestDeadlineText || (row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-")}</div>
             </div>
           </div>
@@ -872,14 +875,14 @@ export default async function AdminTicketDetailPage({
                 <div><b>课程 / Course</b>: {asText(row.parentAvailabilityRequest.courseLabel)}</div>
               <div><b>最近提交 / Latest submission</b>: {row.parentAvailabilityRequest.submittedAt ? formatBusinessDateTime(row.parentAvailabilityRequest.submittedAt) : "-"}</div>
               <div><b>有效期 / Expires at</b>: {row.parentAvailabilityRequest.expiresAt ? formatBusinessDateTime(row.parentAvailabilityRequest.expiresAt) : "-"}</div>
-              <div><b>下一步 / Next step</b>: {row.nextAction || "-"}</div>
+              <div><b>下一步 / Next step</b>: {formatSchedulingCoordinationSystemText(row.nextAction || "-")}</div>
             </div>
             {coordinationPhase ? (
               <div style={{ ...coordinationPhaseToneStyle(coordinationPhase.key), borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
                 <div style={{ fontWeight: 800 }}>协调阶段 / Coordination phase</div>
                 <div style={{ fontWeight: 800 }}>{coordinationPhase.title}</div>
-                <div style={{ fontSize: 13 }}>{coordinationPhase.description}</div>
-                <div style={{ fontSize: 13 }}><b>Suggested next step</b>: {coordinationPhase.nextStep}</div>
+                <div style={{ fontSize: 13 }}>{formatSchedulingCoordinationSystemText(coordinationPhase.description)}</div>
+                <div style={{ fontSize: 13 }}><b>Suggested next step</b>: {formatSchedulingCoordinationSystemText(coordinationPhase.nextStep)}</div>
               </div>
             ) : null}
             {coordinationContext ? (

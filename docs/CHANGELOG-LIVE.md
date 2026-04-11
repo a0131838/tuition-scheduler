@@ -3951,3 +3951,30 @@ This file is the single source of truth for what changed in production.
   - finance sidebar and receipt-page `Receipt Queue / 收据审批队列` links now open the real default approval queue with `clearQueue=1`, so clicking the queue entry no longer re-enters remembered `Receipt History`
   - the top receipt-mode tab `Receipt Queue / 收据审批队列` now uses the same default-queue reset target instead of carrying `queueBucket=HISTORY`, so switching out of `Receipt History` finally returns to the live approval queue
 - Rollback point: previous production commit before `2026-04-10-r01`.
+
+## 2026-04-11-r34
+
+- Release ID: `2026-04-11-r34`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: make scheduling-coordination copy bilingual and make duplicate open coordination tickets visible on the student and ticket views.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/tickets/archived/page.tsx`
+  - `app/teacher/tickets/page.tsx`
+  - `app/availability/[token]/page.tsx`
+  - `lib/scheduling-coordination.ts`
+  - `lib/parent-availability.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-scheduling-coordination-multi-ticket-and-bilingual-copy.md`
+- Risk impact (if any): Low. This release only changes scheduling-coordination wording and visibility around duplicate open tickets; it does not change package, finance, receipt, invoice, attendance, or actual lesson-placement logic.
+- Verification:
+  - `npm run build` passed
+  - student detail now warns when more than one open scheduling-coordination ticket exists and shows which ticket is currently driving the coordination card
+  - the student coordination card now explains that it picks the ticket with the earliest follow-up due date, then the newest created time
+  - scheduling-coordination system copy now renders in bilingual form on the student detail page, ticket detail page, admin ticket list, archived tickets list, and teacher ticket list
+  - parent-availability summaries now store bilingual field labels for future submissions
+- Rollback point: previous production commit before `2026-04-11-r34`.

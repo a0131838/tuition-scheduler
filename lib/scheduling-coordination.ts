@@ -46,20 +46,237 @@ export type SchedulingCoordinationPhase = {
   nextStep: string;
 };
 
+function bilingualCoordinationText(zh: string, en: string) {
+  return `${zh} / ${en}`;
+}
+
+const SCHEDULING_COORDINATION_EXACT_TEXT_MAP = new Map<string, string>([
+  [
+    "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source.",
+    bilingualCoordinationText("当前需要基于老师 availability 协调家长上课时间，并以老师已提交的 availability 作为默认排课依据。", "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source."),
+  ],
+  [
+    "Send availability-based slot options to the parent, record any special time request, and only return to the teacher if the requested time falls outside submitted availability.",
+    bilingualCoordinationText("先把基于 availability 的候选时间发给家长，记录特殊时间要求；只有当家长要求时间不在已提交 availability 内时，才回到老师确认。", "Send availability-based slot options to the parent, record any special time request, and only return to the teacher if the requested time falls outside submitted availability."),
+  ],
+  [
+    "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.",
+    bilingualCoordinationText("发送或重发家长可上课时间表单，等待家长提交偏好时间，再继续按老师 availability 往下推进。", "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability."),
+  ],
+  [
+    "Parent availability form sent / waiting for response",
+    bilingualCoordinationText("家长可上课时间表单已发送，等待回复", "Parent availability form sent / waiting for response"),
+  ],
+  [
+    "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling.",
+    bilingualCoordinationText("基于 availability 的候选时间已发给家长，等待家长选定后再排课。", "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling."),
+  ],
+  [
+    "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time.",
+    bilingualCoordinationText("家长偏好与当前 availability 不匹配，需要老师确认是否接受这个例外，或提供其他时间。", "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time."),
+  ],
+  [
+    "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan.",
+    bilingualCoordinationText("这张工单已确认后，家长又提交了新的可上课时间；调整最终课表前请先人工复核。", "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan."),
+  ],
+  [
+    "Parent availability already matches current teacher availability. Review the matched slots, send the availability-backed options to the family, and then move the ticket to waiting for the parent choice.",
+    bilingualCoordinationText("家长提交的时间已经命中当前老师 availability。请先查看命中的时间，发给家长确认，再把工单推进到等待家长选择。", "Parent availability already matches current teacher availability. Review the matched slots, send the availability-backed options to the family, and then move the ticket to waiting for the parent choice."),
+  ],
+  [
+    "Parent availability was submitted but no current teacher availability matches yet. Review nearby alternatives first, then ask for a teacher exception only if the family insists on the unavailable timing.",
+    bilingualCoordinationText("家长已提交时间，但当前没有老师 availability 命中。请先看邻近替代时间，只有家长坚持该时间时才转老师做例外确认。", "Parent availability was submitted but no current teacher availability matches yet. Review nearby alternatives first, then ask for a teacher exception only if the family insists on the unavailable timing."),
+  ],
+  [
+    "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice.",
+    bilingualCoordinationText("教务已把基于 availability 的候选时间发给家长，当前等待家长选择。", "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice."),
+  ],
+  [
+    "Ops escalated the parent's requested timing to the teacher because it falls outside current availability.",
+    bilingualCoordinationText("由于家长要求的时间不在当前 availability 内，教务已把这个请求转给老师做例外确认。", "Ops escalated the parent's requested timing to the teacher because it falls outside current availability."),
+  ],
+  [
+    "Scheduling coordination follow-up",
+    bilingualCoordinationText("排课协调跟进", "Scheduling coordination follow-up"),
+  ],
+  [
+    "Need parent preferred lesson times",
+    bilingualCoordinationText("需要家长提供偏好的上课时间", "Need parent preferred lesson times"),
+  ],
+  [
+    "Hotfix retest for parent availability origin",
+    bilingualCoordinationText("家长时间表链接来源热修复回归测试", "Hotfix retest for parent availability origin"),
+  ],
+  [
+    "QA final verification for Emily success panel",
+    bilingualCoordinationText("Emily 成功提示面板最终测试", "QA final verification for Emily success panel"),
+  ],
+  [
+    "This coordination item has already been closed.",
+    bilingualCoordinationText("这条排课协调已关闭。", "This coordination item has already been closed."),
+  ],
+  [
+    "Open a new coordination ticket only if timing needs to be re-opened.",
+    bilingualCoordinationText("只有在需要重新打开时间协调时，才新建一张排课协调工单。", "Open a new coordination ticket only if timing needs to be re-opened."),
+  ],
+  [
+    "The family and ops side are aligned enough to place the lesson using Quick Schedule.",
+    bilingualCoordinationText("家长和教务这边的信息已经足够一致，可以直接用快速排课安排课程。", "The family and ops side are aligned enough to place the lesson using Quick Schedule."),
+  ],
+  [
+    "Use Quick Schedule to place the lesson, then close the coordination ticket.",
+    bilingualCoordinationText("先用快速排课把课程排进去，再关闭这张排课协调工单。", "Use Quick Schedule to place the lesson, then close the coordination ticket."),
+  ],
+  [
+    "The requested timing sits outside normal availability and now needs a teacher-side answer.",
+    bilingualCoordinationText("当前请求时间落在正常 availability 之外，需要老师端给出答复。", "The requested timing sits outside normal availability and now needs a teacher-side answer."),
+  ],
+  [
+    "Wait for the teacher's exception reply or nudge the teacher if it becomes overdue.",
+    bilingualCoordinationText("等待老师的例外确认回复；如果超时，就继续催老师。", "Wait for the teacher's exception reply or nudge the teacher if it becomes overdue."),
+  ],
+  [
+    "The parent availability form has not been submitted yet.",
+    bilingualCoordinationText("家长可上课时间表单还没有提交。", "The parent availability form has not been submitted yet."),
+  ],
+  [
+    "Send or resend the parent form link and wait for the family's available times.",
+    bilingualCoordinationText("发送或重发家长表单链接，并等待家长提交可上课时间。", "Send or resend the parent form link and wait for the family's available times."),
+  ],
+  [
+    "Availability-backed options were already sent out and ops is now waiting for the family to choose.",
+    bilingualCoordinationText("基于 availability 的候选时间已经发出，当前等待家长选择。", "Availability-backed options were already sent out and ops is now waiting for the family to choose."),
+  ],
+  [
+    "Wait for the parent's reply, or follow up again if no answer comes back.",
+    bilingualCoordinationText("等待家长回复；如果迟迟没有回音，就继续跟进。", "Wait for the parent's reply, or follow up again if no answer comes back."),
+  ],
+  [
+    "The parent's submitted times already match current teacher availability.",
+    bilingualCoordinationText("家长提交的时间已经命中当前老师 availability。", "The parent's submitted times already match current teacher availability."),
+  ],
+  [
+    "Send these matching slots to the parent, then move the ticket to waiting-for-parent-choice.",
+    bilingualCoordinationText("先把这些命中的时间发给家长，再把工单推进到等待家长确认。", "Send these matching slots to the parent, then move the ticket to waiting-for-parent-choice."),
+  ],
+  [
+    "No current availability matches the submitted parent preferences.",
+    bilingualCoordinationText("当前没有 availability 能命中家长提交的偏好。", "No current availability matches the submitted parent preferences."),
+  ],
+  [
+    "Send nearby alternatives first, or mark the item for teacher exception confirmation if the family insists.",
+    bilingualCoordinationText("先发邻近替代时间；如果家长坚持原时间，再把这条记录转成老师例外确认。", "Send nearby alternatives first, or mark the item for teacher exception confirmation if the family insists."),
+  ],
+]);
+
+const SCHEDULING_COORDINATION_PREFIX_REPLACEMENTS: Array<[string, string]> = [
+  ["Parent availability summary:", "家长时间表摘要 / Parent availability summary:"],
+  ["Available days:", "可上课星期 / Available days:"],
+  ["Available time ranges:", "常用可上课时间段 / Available time ranges:"],
+  ["Earliest start:", "最早可开始日期 / Earliest start:"],
+  ["Mode preference:", "上课形式偏好 / Mode preference:"],
+  ["Teacher preference:", "老师偏好 / Teacher preference:"],
+  ["Parent note:", "家长备注 / Parent note:"],
+];
+
+export function formatSchedulingCoordinationSystemText(raw: string | null | undefined) {
+  const src = String(raw ?? "");
+  if (!src.trim()) return "";
+
+  const replacePattern = (line: string) => {
+    let replaced = line;
+    replaced = replaced.replace(
+      /Parent availability submitted \/ (\d+) matching availability-backed slot\(s\) ready for ops review/g,
+      (_, count) => `家长已提交时间表，已找到 ${count} 条 availability 候选时间待教务查看 / Parent availability submitted / ${count} matching availability-backed slot(s) ready for ops review`
+    );
+    replaced = replaced.replace(
+      /Parent re-submitted availability after confirmation \/ (\d+) matching slot\(s\) found/g,
+      (_, count) => `家长在工单确认后再次提交时间表，已找到 ${count} 条命中时间 / Parent re-submitted availability after confirmation / ${count} matching slot(s) found`
+    );
+    replaced = replaced.replace(
+      /Parent re-submitted availability after confirmation \/ manual review needed/g,
+      "家长在工单确认后再次提交时间表，需要人工复核 / Parent re-submitted availability after confirmation / manual review needed"
+    );
+    replaced = replaced.replace(
+      /Parent availability submitted \/ no current availability match yet/g,
+      "家长已提交时间表，但当前还没有 availability 命中 / Parent availability submitted / no current availability match yet"
+    );
+    replaced = replaced.replace(
+      /QA final verification for Emily success panel/g,
+      "Emily 成功提示面板最终测试 / QA final verification for Emily success panel"
+    );
+    replaced = replaced.replace(
+      /Hotfix retest for parent availability origin/g,
+      "家长时间表链接来源热修复回归测试 / Hotfix retest for parent availability origin"
+    );
+    return replaced;
+  };
+
+  return src
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return line;
+      const exact = SCHEDULING_COORDINATION_EXACT_TEXT_MAP.get(trimmed);
+      if (exact) return line.replace(trimmed, exact);
+      for (const [prefix, replacement] of SCHEDULING_COORDINATION_PREFIX_REPLACEMENTS) {
+        if (trimmed.startsWith(prefix)) {
+          return line.replace(trimmed, `${replacement} ${trimmed.slice(prefix.length).trimStart()}`.trim());
+        }
+      }
+      const regexReplaced = replacePattern(trimmed);
+      if (regexReplaced !== trimmed) {
+        return line.replace(trimmed, regexReplaced);
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+export function schedulingCoordinationCurrentIssueText() {
+  return formatSchedulingCoordinationSystemText(
+    "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source."
+  );
+}
+
+export function schedulingCoordinationInitialRequiredActionText() {
+  return formatSchedulingCoordinationSystemText(
+    "Send availability-based slot options to the parent, record any special time request, and only return to the teacher if the requested time falls outside submitted availability."
+  );
+}
+
 export function schedulingCoordinationWaitingParentAction() {
-  return "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.";
+  return formatSchedulingCoordinationSystemText(
+    "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability."
+  );
 }
 
 export function schedulingCoordinationWaitingParentSummary() {
-  return "Parent availability form sent / waiting for response";
+  return formatSchedulingCoordinationSystemText("Parent availability form sent / waiting for response");
 }
 
 export function schedulingCoordinationWaitingParentChoiceAction() {
-  return "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling.";
+  return formatSchedulingCoordinationSystemText(
+    "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling."
+  );
 }
 
 export function schedulingCoordinationTeacherExceptionAction() {
-  return "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time.";
+  return formatSchedulingCoordinationSystemText(
+    "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time."
+  );
+}
+
+export function schedulingCoordinationParentChoiceLoggedText() {
+  return formatSchedulingCoordinationSystemText(
+    "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice."
+  );
+}
+
+export function schedulingCoordinationTeacherExceptionLoggedText() {
+  return formatSchedulingCoordinationSystemText(
+    "Ops escalated the parent's requested timing to the teacher because it falls outside current availability."
+  );
 }
 
 export function deriveSchedulingCoordinationParentSubmissionUpdate(args: {
@@ -70,29 +287,36 @@ export function deriveSchedulingCoordinationParentSubmissionUpdate(args: {
   if (args.currentStatus === "Confirmed") {
     return {
       status: "Confirmed",
-      nextAction:
-        "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan.",
+      nextAction: formatSchedulingCoordinationSystemText(
+        "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan."
+      ),
       parentAvailabilitySummary:
         matchedSlotCount > 0
-          ? `Parent re-submitted availability after confirmation / ${matchedSlotCount} matching slot(s) found`
-          : "Parent re-submitted availability after confirmation / manual review needed",
+          ? formatSchedulingCoordinationSystemText(`Parent re-submitted availability after confirmation / ${matchedSlotCount} matching slot(s) found`)
+          : formatSchedulingCoordinationSystemText("Parent re-submitted availability after confirmation / manual review needed"),
     } as const;
   }
 
   if (matchedSlotCount > 0) {
     return {
       status: "Need Info",
-      nextAction:
-        "Parent availability already matches current teacher availability. Review the matched slots, send the availability-backed options to the family, and then move the ticket to waiting for the parent choice.",
-      parentAvailabilitySummary: `Parent availability submitted / ${matchedSlotCount} matching availability-backed slot(s) ready for ops review`,
+      nextAction: formatSchedulingCoordinationSystemText(
+        "Parent availability already matches current teacher availability. Review the matched slots, send the availability-backed options to the family, and then move the ticket to waiting for the parent choice."
+      ),
+      parentAvailabilitySummary: formatSchedulingCoordinationSystemText(
+        `Parent availability submitted / ${matchedSlotCount} matching availability-backed slot(s) ready for ops review`
+      ),
     } as const;
   }
 
   return {
     status: "Need Info",
-    nextAction:
-      "Parent availability was submitted but no current teacher availability matches yet. Review nearby alternatives first, then ask for a teacher exception only if the family insists on the unavailable timing.",
-    parentAvailabilitySummary: "Parent availability submitted / no current availability match yet",
+    nextAction: formatSchedulingCoordinationSystemText(
+      "Parent availability was submitted but no current teacher availability matches yet. Review nearby alternatives first, then ask for a teacher exception only if the family insists on the unavailable timing."
+    ),
+    parentAvailabilitySummary: formatSchedulingCoordinationSystemText(
+      "Parent availability submitted / no current availability match yet"
+    ),
   } as const;
 }
 
@@ -152,7 +376,7 @@ export function deriveSchedulingCoordinationPhase(args: {
   hasParentForm: boolean;
   parentSubmittedAt?: Date | null;
   matchedSlotCount?: number;
-}) : SchedulingCoordinationPhase {
+}): SchedulingCoordinationPhase {
   const matchedSlotCount = Math.max(0, args.matchedSlotCount ?? 0);
   const parentSubmitted = Boolean(args.parentSubmittedAt);
 
@@ -161,8 +385,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "closed",
       title: "Closed / 已关闭",
       badge: "Closed / 已关闭",
-      description: "This coordination item has already been closed.",
-      nextStep: "Open a new coordination ticket only if timing needs to be re-opened.",
+      description: formatSchedulingCoordinationSystemText("This coordination item has already been closed."),
+      nextStep: formatSchedulingCoordinationSystemText("Open a new coordination ticket only if timing needs to be re-opened."),
     };
   }
 
@@ -171,8 +395,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "ready_to_schedule",
       title: "Ready to schedule / 可直接排课",
       badge: "Ready / 可排",
-      description: "The family and ops side are aligned enough to place the lesson using Quick Schedule.",
-      nextStep: "Use Quick Schedule to place the lesson, then close the coordination ticket.",
+      description: formatSchedulingCoordinationSystemText("The family and ops side are aligned enough to place the lesson using Quick Schedule."),
+      nextStep: formatSchedulingCoordinationSystemText("Use Quick Schedule to place the lesson, then close the coordination ticket."),
     };
   }
 
@@ -181,8 +405,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "waiting_teacher_exception",
       title: "Waiting teacher exception / 等老师例外确认",
       badge: "Teacher / 老师",
-      description: "The requested timing sits outside normal availability and now needs a teacher-side answer.",
-      nextStep: "Wait for the teacher's exception reply or nudge the teacher if it becomes overdue.",
+      description: formatSchedulingCoordinationSystemText("The requested timing sits outside normal availability and now needs a teacher-side answer."),
+      nextStep: formatSchedulingCoordinationSystemText("Wait for the teacher's exception reply or nudge the teacher if it becomes overdue."),
     };
   }
 
@@ -191,8 +415,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "waiting_parent_submission",
       title: "Waiting for parent submission / 等家长提交",
       badge: "Parent / 家长",
-      description: "The parent availability form has not been submitted yet.",
-      nextStep: "Send or resend the parent form link and wait for the family's available times.",
+      description: formatSchedulingCoordinationSystemText("The parent availability form has not been submitted yet."),
+      nextStep: formatSchedulingCoordinationSystemText("Send or resend the parent form link and wait for the family's available times."),
     };
   }
 
@@ -201,8 +425,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "waiting_parent_choice",
       title: "Waiting for parent choice / 等家长确认",
       badge: "Reply / 等回复",
-      description: "Availability-backed options were already sent out and ops is now waiting for the family to choose.",
-      nextStep: "Wait for the parent's reply, or follow up again if no answer comes back.",
+      description: formatSchedulingCoordinationSystemText("Availability-backed options were already sent out and ops is now waiting for the family to choose."),
+      nextStep: formatSchedulingCoordinationSystemText("Wait for the parent's reply, or follow up again if no answer comes back."),
     };
   }
 
@@ -211,8 +435,8 @@ export function deriveSchedulingCoordinationPhase(args: {
       key: "availability_options_ready",
       title: "Availability options ready / 候选时间已就绪",
       badge: "Match / 命中",
-      description: "The parent's submitted times already match current teacher availability.",
-      nextStep: "Send these matching slots to the parent, then move the ticket to waiting-for-parent-choice.",
+      description: formatSchedulingCoordinationSystemText("The parent's submitted times already match current teacher availability."),
+      nextStep: formatSchedulingCoordinationSystemText("Send these matching slots to the parent, then move the ticket to waiting-for-parent-choice."),
     };
   }
 
@@ -220,8 +444,8 @@ export function deriveSchedulingCoordinationPhase(args: {
     key: "teacher_exception_needed",
     title: "Teacher exception likely needed / 可能需要老师例外确认",
     badge: "Exception / 例外",
-    description: "No current availability matches the submitted parent preferences.",
-    nextStep: "Send nearby alternatives first, or mark the item for teacher exception confirmation if the family insists.",
+    description: formatSchedulingCoordinationSystemText("No current availability matches the submitted parent preferences."),
+    nextStep: formatSchedulingCoordinationSystemText("Send nearby alternatives first, or mark the item for teacher exception confirmation if the family insists."),
   };
 }
 

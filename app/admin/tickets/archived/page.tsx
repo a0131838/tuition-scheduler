@@ -14,6 +14,7 @@ import Link from "next/link";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
 
 function proofItems(proof: string | null | undefined) {
   if (!proof) return [];
@@ -154,7 +155,7 @@ export default async function AdminArchivedTicketsPage({
                 <td>{r.completedAt ? formatBusinessDateTime(r.completedAt) : "-"}</td>
                 <td>{formatBusinessDateTime(r.updatedAt)}</td>
                 <td style={{ maxWidth: 320, whiteSpace: "pre-wrap" }}>
-                  {parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-"}
+                  {formatSchedulingCoordinationSystemText(parseTicketSituationSummary(r.summary).currentIssue || r.summary || "-")}
                 </td>
                 <td style={{ maxWidth: 260, whiteSpace: "pre-wrap" }}>
                   {proofItems(r.proof).length === 0 ? (

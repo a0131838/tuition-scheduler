@@ -17,6 +17,7 @@ import {
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationCurrentIssueText,
 } from "@/lib/scheduling-coordination";
 
 function asPayload(value: unknown): ParentAvailabilityPayload {
@@ -121,7 +122,7 @@ async function submitParentAvailability(token: string, formData: FormData) {
   });
   const previousSummary = parseTicketSituationSummary(request.ticket.summary);
   const requiredAction = [
-    `Parent availability summary:
+    `家长时间表摘要 / Parent availability summary:
 ${summarizeParentAvailabilityPayload(payload)}`,
     coordinationUpdate.nextAction,
   ]
@@ -147,7 +148,7 @@ ${summarizeParentAvailabilityPayload(payload)}`,
         summary: composeTicketSituation({
           currentIssue:
             previousSummary.currentIssue ||
-            "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source.",
+            schedulingCoordinationCurrentIssueText(),
           requiredAction,
           latestDeadlineText: formatBusinessDateTime(followUpDue),
         }),
