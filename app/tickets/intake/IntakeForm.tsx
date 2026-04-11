@@ -95,6 +95,7 @@ export default function IntakeForm({
     ticketNo: string;
     url: string;
     expiresAt: string | null;
+    reusedExisting: boolean;
   } | null>(null);
   const [studentLookupState, setStudentLookupState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [studentLookupResult, setStudentLookupResult] = useState<{
@@ -261,10 +262,14 @@ export default function IntakeForm({
           }}
         >
           <div style={{ fontWeight: 800, color: "#166534" }}>
-            家长时间填写链接已生成 / Parent availability link ready
+            {submittedParentAvailability.reusedExisting
+              ? "当前排课协调工单已沿用 / Current coordination ticket reused"
+              : "家长时间填写链接已生成 / Parent availability link ready"}
           </div>
           <div style={{ fontSize: 13, color: "#166534" }}>
-            工单 {submittedParentAvailability.ticketNo} 已创建。现在可以直接把下面这个临时链接发给家长，让家长填写可上课时间。
+            {submittedParentAvailability.reusedExisting
+              ? `工单 ${submittedParentAvailability.ticketNo} 已沿用。现在可以继续把下面这个当前有效链接发给家长，让家长填写可上课时间。`
+              : `工单 ${submittedParentAvailability.ticketNo} 已创建。现在可以直接把下面这个临时链接发给家长，让家长填写可上课时间。`}
           </div>
           <div
             style={{
@@ -430,6 +435,7 @@ export default function IntakeForm({
                     ticketNo: String(data.ticketNo),
                     url: String(data.parentAvailabilityUrl),
                     expiresAt: data.parentAvailabilityExpiresAt ? String(data.parentAvailabilityExpiresAt) : null,
+                    reusedExisting: Boolean(data.reusedExisting),
                   }
                 : null
             );

@@ -15,6 +15,46 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r35
+
+- Release ID: `2026-04-11-r35`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: let Zhao Hongwei permanently delete already-closed tickets from the ticket center while keeping the existing archive-first flow for everyone else.
+- Key files:
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/archived/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-ticket-center-zhao-hongwei-hard-delete.md`
+- Risk impact (if any): Medium. This release adds an irreversible delete path for one strict super admin, but only for completed, cancelled, or archived tickets; it does not change open-ticket handling, status transitions, intake links, scheduling, sessions, packages, deductions, or finance flows.
+- Verification:
+  - `npm run build`
+  - Zhao Hongwei should see `Delete permanently / 永久删除` on completed, cancelled, or archived tickets in ticket center surfaces
+  - non-Zhao users should not see or be able to use the permanent delete path
+  - open tickets should still reject permanent delete attempts
+- Rollback point: previous production commit before `2026-04-11-r35`.
+
+## 2026-04-11-r34
+
+- Release ID: `2026-04-11-r34`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: keep scheduling-coordination ticket reuse consistent by making the intake success state clearly say when the current open coordination ticket was reused instead of implying a new one was created.
+- Key files:
+  - `app/tickets/intake/IntakeForm.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-scheduling-coordination-ticket-reuse.md`
+- Risk impact (if any): Low. This release only corrects reuse messaging in the coordination intake success state; it does not change how the active coordination ticket is selected, how parent links are generated, or any scheduling, session, package, deduction, or finance behavior.
+- Verification:
+  - `npm run build`
+  - when intake reuses an existing open scheduling-coordination ticket, the success banner should clearly say the current ticket was reused
+  - if that reused ticket still has an active parent-availability link, the green success card should say the current ticket was reused instead of saying a new ticket was created
+  - new scheduling-coordination tickets should keep the existing "ticket created" success wording
+- Rollback point: previous production commit before `2026-04-11-r34`.
+
 ## 2026-04-11-r33
 
 - Release ID: `2026-04-11-r33`

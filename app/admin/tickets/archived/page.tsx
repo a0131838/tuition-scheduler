@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,6 +11,8 @@ import {
   ticketTypeAliases,
 } from "@/lib/tickets";
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -53,18 +55,53 @@ function isTicketProofMissing(item: string) {
   return !existsSync(abs);
 }
 
+function appendQuery(path: string, params: Record<string, string>) {
+  const url = new URL(path, "https://local.invalid");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
+async function deleteTicketAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const id = String(formData.get("id") ?? "").trim().slice(0, 80);
+  if (!id) redirect("/admin/tickets/archived");
+  if (!isStrictSuperAdmin(user)) {
+    redirect(appendQuery("/admin/tickets/archived", { err: "delete-forbidden" }));
+  }
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, isArchived: true },
+  });
+  if (!row) redirect("/admin/tickets/archived");
+  if (!row.isArchived && !["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery("/admin/tickets/archived", { err: "need-closed-delete" }));
+  }
+  await prisma.ticket.delete({ where: { id } });
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/tickets/archived");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/teacher/tickets");
+  redirect(appendQuery("/admin/tickets/archived", { ok: "deleted" }));
+}
+
 export default async function AdminArchivedTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; ok?: string }>;
 }) {
-  await requireAdmin();
+  const adminUser = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const q = String(sp?.q ?? "").trim();
   const status = String(sp?.status ?? "").trim();
   const owner = String(sp?.owner ?? "").trim();
   const type = String(sp?.type ?? "").trim();
+  const err = String(sp?.err ?? "").trim();
+  const ok = String(sp?.ok ?? "").trim();
+  const canHardDeleteTickets = isStrictSuperAdmin(adminUser);
 
   const rows = await prisma.ticket.findMany({
     where: {
@@ -92,6 +129,8 @@ export default async function AdminArchivedTicketsPage({
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Ticket Center", "返回工单中心")}</Link>
       </div>
+      {err ? <div style={{ color: "#b91c1c", marginBottom: 8 }}>{err === "delete-forbidden" ? t(lang, "Only Zhao Hongwei can permanently delete tickets.", "只有 Zhao Hongwei 可以永久删除工单。") : err === "need-closed-delete" ? t(lang, "Only completed, cancelled, or archived tickets can be permanently deleted.", "只有已完成、已取消或已归档工单可以永久删除。") : ""}</div> : null}
+      {ok === "deleted" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket deleted permanently.", "工单已永久删除。")}</div> : null}
 
       <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
         <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
@@ -139,12 +178,13 @@ export default async function AdminArchivedTicketsPage({
               <th align="left">{t(lang, "Updated", "更新时间")}</th>
               <th align="left">{t(lang, "Situation", "情况")}</th>
               <th align="left">{t(lang, "Proof", "证据")}</th>
+              <th align="left">{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                <td>{r.ticketNo}</td>
+                <td><Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(`/admin/tickets/archived?q=${q}&status=${status}&owner=${owner}&type=${type}`)}`}>{r.ticketNo}</Link></td>
                 <td>{r.studentName}</td>
                 <td>{r.source}</td>
                 <td>{normalizeTicketTypeValue(r.type)}</td>
@@ -189,6 +229,19 @@ export default async function AdminArchivedTicketsPage({
                       </div>
                     </details>
                   )}
+                </td>
+                <td>
+                  <div style={{ display: "grid", gap: 6, maxWidth: 220 }}>
+                    <Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(`/admin/tickets/archived?q=${q}&status=${status}&owner=${owner}&type=${type}`)}`}>
+                      {t(lang, "Open", "打开")}
+                    </Link>
+                    {canHardDeleteTickets ? (
+                      <form action={deleteTicketAction}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <button type="submit" style={{ background: "#7f1d1d", color: "#fff", borderColor: "#7f1d1d" }}>{t(lang, "Delete permanently", "永久删除")}</button>
+                      </form>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

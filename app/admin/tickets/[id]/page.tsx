@@ -1,5 +1,5 @@
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { resolveTicketTeacherId } from "@/lib/ticket-teacher";
@@ -232,7 +232,7 @@ async function updateStatusAction(formData: FormData) {
 
 async function updateTicketFieldsAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const adminUser = await requireAdmin();
   const id = trimValue(formData, "id", 80);
   const back = sanitizeAdminBack(trimValue(formData, "back", 1000), "/admin/tickets");
   if (!id) redirect(back);
@@ -353,6 +353,33 @@ async function archiveTicketAction(formData: FormData) {
   revalidatePath(`/admin/tickets/${id}`);
   revalidatePath("/teacher/tickets");
   redirect(appendQuery(back, { ok: "archived" }));
+}
+
+async function deleteTicketAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = sanitizeAdminBack(trimValue(formData, "back", 1000), "/admin/tickets");
+  if (!id) redirect(back);
+  if (!isStrictSuperAdmin(user)) {
+    redirect(appendQuery(back, { err: "delete-forbidden" }));
+  }
+
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, isArchived: true },
+  });
+  if (!row) redirect(back);
+  if (!row.isArchived && !["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery(back, { err: "need-closed-delete" }));
+  }
+
+  await prisma.ticket.delete({ where: { id } });
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/tickets/archived");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/teacher/tickets");
+  redirect(appendQuery(back, { ok: "deleted" }));
 }
 
 async function regenerateParentAvailabilityAction(formData: FormData) {
@@ -512,7 +539,7 @@ export default async function AdminTicketDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string }>;
 }) {
-  await requireAdmin();
+  const adminUser = await requireAdmin();
   const route = await params;
   const sp = await searchParams;
   const id = String(route.id ?? "").trim();
@@ -524,6 +551,7 @@ export default async function AdminTicketDetailPage({
   const err = String(sp?.err ?? "").trim();
   const ok = String(sp?.ok ?? "").trim();
   const fields = String(sp?.fields ?? "").trim();
+  const canHardDeleteTicket = isStrictSuperAdmin(adminUser);
 
   const row = await prisma.ticket.findUnique({
     where: { id },
@@ -688,6 +716,8 @@ export default async function AdminTicketDetailPage({
           {err === "edit-type-required" &&
             `编辑保存失败：该工单类型缺少必填字段 / Missing required fields for this ticket type${fields ? `: ${fields}` : ""}`}
           {err === "edit-situation" && "编辑保存失败：Situation 三项必填 / Situation fields are required."}
+          {err === "delete-forbidden" && "只有 Zhao Hongwei 可以永久删除工单 / Only Zhao Hongwei can permanently delete tickets."}
+          {err === "need-closed-delete" && "只有已完成、已取消或已归档工单可以永久删除 / Only completed, cancelled, or archived tickets can be permanently deleted."}
         </div>
       ) : null}
       {ok === "edited" ? (
@@ -703,6 +733,11 @@ export default async function AdminTicketDetailPage({
       {ok === "archived" ? (
         <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
           工单已归档 / Ticket archived
+        </div>
+      ) : null}
+      {ok === "deleted" ? (
+        <div style={{ color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: 10 }}>
+          工单已永久删除 / Ticket deleted permanently
         </div>
       ) : null}
       {ok === "parent-link-regenerated" ? (
@@ -1074,7 +1109,17 @@ export default async function AdminTicketDetailPage({
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff" }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>状态操作 / Status Action</div>
             {row.isArchived ? (
-              <div style={{ color: "#334155" }}>当前工单已归档，只读查看。/ This ticket is archived and now read-only.</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ color: "#334155" }}>当前工单已归档，只读查看。/ This ticket is archived and now read-only.</div>
+                {canHardDeleteTicket ? (
+                  <form action={deleteTicketAction} style={{ display: "grid", gap: 6 }}>
+                    <input type="hidden" name="id" value={row.id} />
+                    <input type="hidden" name="back" value={listBack} />
+                    <button type="submit" style={{ background: "#7f1d1d", color: "#fff", borderColor: "#7f1d1d" }}>永久删除 / Delete Permanently</button>
+                    <div style={{ fontSize: 12, color: "#7f1d1d" }}>仅 Zhao Hongwei 可用，且删除后不可恢复。/ Only Zhao Hongwei can use this and it cannot be undone.</div>
+                  </form>
+                ) : null}
+              </div>
             ) : row.status === "Completed" || row.status === "Cancelled" ? (
               <div style={{ display: "grid", gap: 8 }}>
                 <div style={{ color: row.status === "Cancelled" ? "#b45309" : "#166534", fontWeight: 700 }}>
@@ -1087,6 +1132,14 @@ export default async function AdminTicketDetailPage({
                   <input type="hidden" name="back" value={selfHref} />
                   <button type="submit">归档 / Archive</button>
                 </form>
+                {canHardDeleteTicket ? (
+                  <form action={deleteTicketAction} style={{ display: "grid", gap: 6 }}>
+                    <input type="hidden" name="id" value={row.id} />
+                    <input type="hidden" name="back" value={listBack} />
+                    <button type="submit" style={{ background: "#7f1d1d", color: "#fff", borderColor: "#7f1d1d" }}>永久删除 / Delete Permanently</button>
+                    <div style={{ fontSize: 12, color: "#7f1d1d" }}>仅 Zhao Hongwei 可用，且删除后不可恢复。/ Only Zhao Hongwei can use this and it cannot be undone.</div>
+                  </form>
+                ) : null}
               </div>
             ) : (
               <form action={updateStatusAction} style={{ display: "grid", gap: 8 }}>

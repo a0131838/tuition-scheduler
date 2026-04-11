@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
@@ -28,6 +28,14 @@ function trimValue(formData: FormData, key: string, max = 400) {
 function validateByOptions(value: string | null, options: { value: string }[]) {
   if (!value) return null;
   return options.some((o) => o.value === value) ? value : null;
+}
+
+function appendQuery(path: string, params: Record<string, string>) {
+  const url = new URL(path, "https://local.invalid");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return `${url.pathname}${url.search}`;
 }
 
 function proofItems(proof: string | null | undefined) {
@@ -112,6 +120,31 @@ async function archiveTicketAction(formData: FormData) {
   redirect(back);
 }
 
+async function deleteTicketAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const id = trimValue(formData, "id", 80);
+  const back = trimValue(formData, "back", 500) || "/admin/tickets";
+  if (!id) redirect(back);
+  if (!isStrictSuperAdmin(user)) {
+    redirect(appendQuery(back, { err: "delete-forbidden" }));
+  }
+  const row = await prisma.ticket.findUnique({
+    where: { id },
+    select: { status: true, isArchived: true },
+  });
+  if (!row) redirect(back);
+  if (!row.isArchived && !["Completed", "Cancelled"].includes(row.status)) {
+    redirect(appendQuery(back, { err: "need-closed-delete" }));
+  }
+  await prisma.ticket.delete({ where: { id } });
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/tickets/archived");
+  revalidatePath(`/admin/tickets/${id}`);
+  revalidatePath("/teacher/tickets");
+  redirect(appendQuery(back, { ok: "deleted" }));
+}
+
 async function createIntakeTokenAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -159,7 +192,7 @@ export default async function AdminTicketsPage({
 }: {
   searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string }>;
 }) {
-  await requireAdmin();
+  const adminUser = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const q = String(sp?.q ?? "").trim();
@@ -171,6 +204,7 @@ export default async function AdminTicketsPage({
   const ok = String(sp?.ok ?? "").trim();
   const fields = String(sp?.fields ?? "").trim();
   const tokenSaved = sp?.tok === "1";
+  const canHardDeleteTickets = isStrictSuperAdmin(adminUser);
 
   const [rows, tokens, overdueGroups] = await Promise.all([
     prisma.ticket.findMany({
@@ -237,10 +271,13 @@ export default async function AdminTicketsPage({
               `保存编辑失败：该工单类型缺少必填字段${fields ? `：${decodeURIComponent(fields)}` : "。"}`
             )}
           {err === "edit-situation" && t(lang, "Could not save edits. All situation fields are required.", "保存编辑失败：情况说明相关字段必须全部填写。")}
+          {err === "delete-forbidden" && t(lang, "Only Zhao Hongwei can permanently delete tickets.", "只有 Zhao Hongwei 可以永久删除工单。")}
+          {err === "need-closed-delete" && t(lang, "Only completed, cancelled, or archived tickets can be permanently deleted.", "只有已完成、已取消或已归档工单可以永久删除。")}
         </div>
       ) : null}
       {ok === "edited" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket updated.", "工单已更新。")}</div> : null}
       {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Intake link updated.", "录入链接已更新。")}</div> : null}
+      {ok === "deleted" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket deleted permanently.", "工单已永久删除。")}</div> : null}
       {focus === "mgmt" ? (
         <div style={{ color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: 8, marginBottom: 8 }}>
           {t(lang, "Management focus: exception, urgent, and overdue unfinished tickets.", "管理介入视图：异常、紧急和逾期未完成工单。")}
@@ -494,6 +531,15 @@ export default async function AdminTicketsPage({
                         <input type="hidden" name="back" value={backHref} />
                         <button type="submit">{t(lang, "Archive", "归档")}</button>
                       </form>
+                      {canHardDeleteTickets ? (
+                        <form action={deleteTicketAction}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="back" value={backHref} />
+                          <button type="submit" style={{ background: "#7f1d1d", color: "#fff", borderColor: "#7f1d1d" }}>
+                            {t(lang, "Delete permanently", "永久删除")}
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   ) : (
                     <form action={updateStatusAction} style={{ display: "grid", gap: 6, maxWidth: 210 }}>

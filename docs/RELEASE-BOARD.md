@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r33` (student coordination page now also pushes progress actions and summary updates directly), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r35` (Zhao Hongwei can now permanently delete already-closed tickets from ticket center surfaces), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,32 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r35 Ready
+
+- Scope: let Zhao Hongwei permanently delete already-closed tickets from the ticket center while leaving the existing archive-first workflow in place for everyone else.
+- Business impact:
+  - completed or cancelled tickets in the main ticket center can now show a strict-super-admin-only `Delete permanently / 永久删除` action in addition to archive
+  - archived tickets and ticket detail now expose the same permanent delete action only for Zhao Hongwei
+  - open tickets still cannot be permanently deleted, and other admins keep the existing non-destructive archive flow
+- Validation:
+  - `npm run build`
+  - Zhao Hongwei should see the permanent delete action on completed, cancelled, and archived tickets across ticket center surfaces
+  - non-Zhao users should not be able to use the permanent delete path
+  - open tickets should continue rejecting permanent delete attempts
+
+## 2026-04-11-r34 Ready
+
+- Scope: make scheduling-coordination ticket reuse read consistently in the intake success state so operators are told when the current open ticket was reused rather than being told a new one was created.
+- Business impact:
+  - external intake already reuses the current open scheduling-coordination ticket for the same student; the success card now explains that reuse clearly when an active parent link is still available
+  - newly created scheduling-coordination tickets keep the existing "created" success wording, so operators can still tell the difference between a new ticket and a reused one
+  - no ticket selection rules, parent-link generation, parent submission storage, scheduling execution, session, package, or finance logic changed
+- Validation:
+  - `npm run build`
+  - intake QA should confirm the top success message still says `已沿用当前排课协调工单 / Reused current coordination ticket` when an open ticket is reused
+  - intake QA should confirm the green parent-link card now also says the current ticket was reused instead of saying the ticket was created
+  - intake QA should confirm genuinely new scheduling-coordination tickets still show the existing "ticket created" wording
 
 ## 2026-04-08-r07 Deployed
 
