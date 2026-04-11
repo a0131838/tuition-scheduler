@@ -54,6 +54,14 @@ export function schedulingCoordinationWaitingParentSummary() {
   return "Parent availability form sent / waiting for response";
 }
 
+export function schedulingCoordinationWaitingParentChoiceAction() {
+  return "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling.";
+}
+
+export function schedulingCoordinationTeacherExceptionAction() {
+  return "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time.";
+}
+
 export function deriveSchedulingCoordinationParentSubmissionUpdate(args: {
   currentStatus: string;
   matchedSlotCount?: number;

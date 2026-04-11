@@ -33,7 +33,9 @@ import {
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationTeacherExceptionAction,
   schedulingCoordinationWaitingParentAction,
+  schedulingCoordinationWaitingParentChoiceAction,
   schedulingCoordinationWaitingParentSummary,
 } from "@/lib/scheduling-coordination";
 import {
@@ -409,6 +411,20 @@ function normalizeStudentDetailHash(hash?: string | null, fallback = "#student-w
 function buildStudentDetailHref(studentId: string, params?: URLSearchParams | null, hash?: string | null, fallbackHash = "#student-workbench-bar") {
   const query = params?.toString() ?? "";
   return `/admin/students/${studentId}${query ? `?${query}` : ""}${normalizeStudentDetailHash(hash, fallbackHash)}`;
+}
+
+function sanitizeStudentDetailBack(studentId: string, raw: string | null | undefined) {
+  const value = String(raw ?? "").trim();
+  if (!value.startsWith(`/admin/students/${studentId}`)) {
+    return buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination");
+  }
+  return value.slice(0, 2000);
+}
+
+function appendStudentDetailQuery(path: string, params: Record<string, string>) {
+  const url = new URL(path, "https://local.invalid");
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function startOfCalendar(d: Date) {
@@ -1261,6 +1277,108 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string) {
   const params = new URLSearchParams({ msg: "Parent availability link regenerated" });
   redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
 }
+async function markSchedulingCoordinationParentChoice(studentId: string, formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
+  }
+
+  const back = sanitizeStudentDetailBack(studentId, String(formData.get("back") ?? ""));
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      studentId,
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+    select: { id: true, summary: true },
+  });
+
+  if (!ticket) {
+    const params = new URLSearchParams({ err: "No active coordination ticket" });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
+  const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextAction = schedulingCoordinationWaitingParentChoiceAction();
+  const previousSummary = parseTicketSituationSummary(ticket.summary);
+  await prisma.ticket.update({
+    where: { id: ticket.id },
+    data: {
+      status: "Waiting Parent",
+      nextAction,
+      nextActionDue: nextDue,
+      lastUpdateAt: new Date(),
+      summary: composeTicketSituation({
+        currentIssue: previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up",
+        requiredAction: [
+          previousSummary.requiredAction,
+          "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice.",
+          nextAction,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        latestDeadlineText: formatBusinessDateTime(nextDue),
+      }),
+    },
+  });
+
+  redirect(appendStudentDetailQuery(back, { msg: "Coordination moved to waiting for parent choice" }));
+}
+
+async function markSchedulingCoordinationTeacherException(studentId: string, formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    redirect(`/login?next=${encodeURIComponent(`/admin/students/${studentId}`)}`);
+  }
+
+  const back = sanitizeStudentDetailBack(studentId, String(formData.get("back") ?? ""));
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      studentId,
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+    select: { id: true, summary: true },
+  });
+
+  if (!ticket) {
+    const params = new URLSearchParams({ err: "No active coordination ticket" });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
+  const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextAction = schedulingCoordinationTeacherExceptionAction();
+  const previousSummary = parseTicketSituationSummary(ticket.summary);
+  await prisma.ticket.update({
+    where: { id: ticket.id },
+    data: {
+      status: "Waiting Teacher",
+      nextAction,
+      nextActionDue: nextDue,
+      lastUpdateAt: new Date(),
+      summary: composeTicketSituation({
+        currentIssue: previousSummary.currentIssue || ticket.summary || "Scheduling coordination follow-up",
+        requiredAction: [
+          previousSummary.requiredAction,
+          "Ops escalated the parent's requested timing to the teacher because it falls outside current availability.",
+          nextAction,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        latestDeadlineText: formatBusinessDateTime(nextDue),
+      }),
+    },
+  });
+
+  redirect(appendStudentDetailQuery(back, { msg: "Coordination moved to waiting for teacher exception" }));
+}
+
 export default async function StudentDetailPage({
   params,
   searchParams,
@@ -1541,6 +1659,17 @@ export default async function StudentDetailPage({
   const coordinationClearHref = buildStudentDetailHref(
     studentId,
     coordinationClearParams,
+    "#scheduling-coordination",
+    "#scheduling-coordination"
+  );
+  const coordinationActionBackParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp ?? {})) {
+    if (!value || key === "msg" || key === "err") continue;
+    coordinationActionBackParams.set(key, value);
+  }
+  const coordinationActionBackHref = buildStudentDetailHref(
+    studentId,
+    coordinationActionBackParams,
     "#scheduling-coordination",
     "#scheduling-coordination"
   );
@@ -2461,6 +2590,12 @@ export default async function StudentDetailPage({
                               label={t(lang, "Copy message", "复制发送文案")}
                               copiedLabel={t(lang, "Copied", "已复制")}
                             />
+                            {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
+                              <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                <input type="hidden" name="back" value={coordinationActionBackHref} />
+                                <button type="submit">{t(lang, "Mark options sent", "标记已发候选时间")}</button>
+                              </form>
+                            ) : null}
                             {schedulingTicketHref ? (
                               <a
                                 href={schedulingTicketHref}
@@ -2594,6 +2729,12 @@ export default async function StudentDetailPage({
                               label={t(lang, "Copy message", "复制发送文案")}
                               copiedLabel={t(lang, "Copied", "已复制")}
                             />
+                            {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
+                              <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                <input type="hidden" name="back" value={coordinationActionBackHref} />
+                                <button type="submit">{t(lang, "Mark options sent", "标记已发候选时间")}</button>
+                              </form>
+                            ) : null}
                             {schedulingTicketHref ? (
                               <a
                                 href={schedulingTicketHref}
@@ -2673,6 +2814,18 @@ export default async function StudentDetailPage({
                                 label={t(lang, "Copy message", "复制发送文案")}
                                 copiedLabel={t(lang, "Copied", "已复制")}
                               />
+                              {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
+                                <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                  <input type="hidden" name="back" value={coordinationActionBackHref} />
+                                  <button type="submit">{t(lang, "Mark alternatives sent", "标记已发替代时间")}</button>
+                                </form>
+                              ) : null}
+                              {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Teacher" && activeSchedulingTicket.status !== "Exception" ? (
+                                <form action={markSchedulingCoordinationTeacherException.bind(null, studentId)}>
+                                  <input type="hidden" name="back" value={coordinationActionBackHref} />
+                                  <button type="submit">{t(lang, "Ask teacher exception", "转老师例外确认")}</button>
+                                </form>
+                              ) : null}
                               {schedulingTicketHref ? (
                                 <a
                                   href={schedulingTicketHref}

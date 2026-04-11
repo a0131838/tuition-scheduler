@@ -47,7 +47,9 @@ import {
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationTeacherExceptionAction,
   schedulingCoordinationWaitingParentAction,
+  schedulingCoordinationWaitingParentChoiceAction,
   schedulingCoordinationWaitingParentSummary,
 } from "@/lib/scheduling-coordination";
 
@@ -419,20 +421,33 @@ async function markCoordinationParentChoiceAction(formData: FormData) {
 
   const row = await prisma.ticket.findUnique({
     where: { id },
-    select: { id: true, type: true, status: true, isArchived: true },
+    select: { id: true, type: true, status: true, isArchived: true, summary: true },
   });
   if (!row || row.type !== "排课协调" || row.isArchived || ["Completed", "Cancelled"].includes(row.status)) {
     redirect(appendQuery(back, { err: "closed-parent-form" }));
   }
 
   const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextAction = schedulingCoordinationWaitingParentChoiceAction();
+  const previousSummary = parseTicketSituationSummary(row.summary);
   await prisma.ticket.update({
     where: { id },
     data: {
       status: "Waiting Parent",
-      nextAction: "Availability-backed slot options have been sent to the parent. Wait for the family to choose one before scheduling.",
+      nextAction,
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
+      summary: composeTicketSituation({
+        currentIssue: previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up",
+        requiredAction: [
+          previousSummary.requiredAction,
+          "Ops sent availability-backed slot options to the parent and is now waiting for the family's choice.",
+          nextAction,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        latestDeadlineText: formatBusinessDateTime(nextDue),
+      }),
     },
   });
   revalidatePath("/admin/tickets");
@@ -451,20 +466,33 @@ async function markCoordinationTeacherExceptionAction(formData: FormData) {
 
   const row = await prisma.ticket.findUnique({
     where: { id },
-    select: { id: true, type: true, status: true, isArchived: true },
+    select: { id: true, type: true, status: true, isArchived: true, summary: true },
   });
   if (!row || row.type !== "排课协调" || row.isArchived || ["Completed", "Cancelled"].includes(row.status)) {
     redirect(appendQuery(back, { err: "closed-parent-form" }));
   }
 
   const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextAction = schedulingCoordinationTeacherExceptionAction();
+  const previousSummary = parseTicketSituationSummary(row.summary);
   await prisma.ticket.update({
     where: { id },
     data: {
       status: "Waiting Teacher",
-      nextAction: "Parent preferences do not match current availability. Ask the teacher to confirm this exception or suggest another time.",
+      nextAction,
       nextActionDue: nextDue,
       lastUpdateAt: new Date(),
+      summary: composeTicketSituation({
+        currentIssue: previousSummary.currentIssue || row.summary || "Scheduling coordination follow-up",
+        requiredAction: [
+          previousSummary.requiredAction,
+          "Ops escalated the parent's requested timing to the teacher because it falls outside current availability.",
+          nextAction,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        latestDeadlineText: formatBusinessDateTime(nextDue),
+      }),
     },
   });
   revalidatePath("/admin/tickets");

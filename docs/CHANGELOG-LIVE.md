@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r33
+
+- Release ID: `2026-04-11-r33`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: let ops push scheduling-coordination progress directly from the student coordination page, while also writing clearer follow-up notes into the linked coordination ticket summary.
+- Key files:
+  - `lib/scheduling-coordination.ts`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-scheduling-coordination-student-action-sync.md`
+- Risk impact (if any): Low. This release only adds clearer scheduling-coordination progress actions and summary updates; it does not change quick scheduling rules, teacher exception replies, sessions, packages, deductions, or finance flows.
+- Verification:
+  - `npx tsc --noEmit` passed
+  - `npm run build` passed
+  - ticket detail quick actions now update both status and coordination summary wording
+  - student coordination helper cards now let ops mark options sent, mark alternatives sent, or move the item into teacher exception follow-up without leaving the student page
+  - these student-page actions return to the same coordination section instead of dropping the operator out of context
+- Rollback point: previous production commit before `2026-04-11-r33`.
+
 ## 2026-04-11-r32
 
 - Release ID: `2026-04-11-r32`
