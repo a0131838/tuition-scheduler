@@ -7,12 +7,18 @@ import {
   type ParentAvailabilitySelectionMode,
 } from "@/lib/parent-availability";
 
-type CalendarEntry = {
-  date: string;
-  enabled: boolean;
+type CalendarRange = {
   start: string;
   end: string;
 };
+
+type CalendarEntry = {
+  date: string;
+  enabled: boolean;
+  ranges: CalendarRange[];
+};
+
+const MAX_CALENDAR_RANGES = 3;
 
 const CALENDAR_WEEKDAY_LABELS = [
   { zh: "周日", en: "Sun" },
@@ -85,14 +91,18 @@ export default function ParentAvailabilityFormFields({
   const [teacherPreference, setTeacherPreference] = useState(payload.teacherPreference ?? "");
   const [notes, setNotes] = useState(payload.notes ?? "");
   const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>(() => {
-    const existing = new Map(payload.dateSelections.map((item) => [item.date, item]));
+    const existing = new Map<string, CalendarRange[]>();
+    for (const item of payload.dateSelections) {
+      const current = existing.get(item.date) ?? [];
+      current.push({ start: item.start, end: item.end });
+      existing.set(item.date, current);
+    }
     return buildCalendarDates(payload.dateSelections.map((item) => item.date)).map((date) => {
-      const current = existing.get(date);
+      const current = existing.get(date) ?? [];
       return {
         date,
-        enabled: Boolean(current),
-        start: current?.start ?? "",
-        end: current?.end ?? "",
+        enabled: current.length > 0,
+        ranges: current.length > 0 ? current.slice(0, MAX_CALENDAR_RANGES) : [{ start: "", end: "" }],
       };
     });
   });
@@ -105,9 +115,58 @@ export default function ParentAvailabilityFormFields({
     );
   }
 
-  function updateCalendarEntry(date: string, patch: Partial<CalendarEntry>) {
+  function toggleCalendarEntry(date: string, enabled: boolean) {
     setCalendarEntries((current) =>
-      current.map((entry) => (entry.date === date ? { ...entry, ...patch } : entry))
+      current.map((entry) => {
+        if (entry.date !== date) return entry;
+        if (!enabled) {
+          return { ...entry, enabled: false };
+        }
+        return {
+          ...entry,
+          enabled: true,
+          ranges: entry.ranges.length > 0 ? entry.ranges : [{ start: "", end: "" }],
+        };
+      })
+    );
+  }
+
+  function updateCalendarRange(date: string, index: number, patch: Partial<CalendarRange>) {
+    setCalendarEntries((current) =>
+      current.map((entry) => {
+        if (entry.date !== date) return entry;
+        return {
+          ...entry,
+          ranges: entry.ranges.map((range, rangeIndex) =>
+            rangeIndex === index ? { ...range, ...patch } : range
+          ),
+        };
+      })
+    );
+  }
+
+  function addCalendarRange(date: string) {
+    setCalendarEntries((current) =>
+      current.map((entry) => {
+        if (entry.date !== date || entry.ranges.length >= MAX_CALENDAR_RANGES) return entry;
+        return {
+          ...entry,
+          ranges: [...entry.ranges, { start: "", end: "" }],
+        };
+      })
+    );
+  }
+
+  function removeCalendarRange(date: string, index: number) {
+    setCalendarEntries((current) =>
+      current.map((entry) => {
+        if (entry.date !== date) return entry;
+        const nextRanges = entry.ranges.filter((_, rangeIndex) => rangeIndex !== index);
+        return {
+          ...entry,
+          ranges: nextRanges.length > 0 ? nextRanges : [{ start: "", end: "" }],
+        };
+      })
     );
   }
 
@@ -228,7 +287,7 @@ export default function ParentAvailabilityFormFields({
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12 }}>
           <div style={{ fontWeight: 800 }}>Calendar date picks / 具体日期选择</div>
           <div style={{ fontSize: 13, color: "#64748b" }}>
-            Tick the dates that work, then fill a start and end time for each selected date. / 勾选方便的日期后，请为每一天填写开始和结束时间。
+            Tick the dates that work, then fill up to three time ranges for each selected date. / 勾选方便的日期后，请为每一天填写最多三个可上课时间段。
           </div>
           <div style={{ overflowX: "auto" }}>
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(7, minmax(120px, 1fr))", minWidth: 860 }}>
@@ -258,26 +317,69 @@ export default function ParentAvailabilityFormFields({
                           name="specificDates"
                           value={entry.date}
                           checked={entry.enabled}
-                          onChange={(event) => updateCalendarEntry(entry.date, { enabled: event.target.checked })}
+                          onChange={(event) => toggleCalendarEntry(entry.date, event.target.checked)}
                         />
                       </div>
                     </label>
                     {entry.enabled ? (
                       <div style={{ display: "grid", gap: 6 }}>
-                        <input
-                          type="time"
-                          name={`specificDateStart:${entry.date}`}
-                          value={entry.start}
-                          onChange={(event) => updateCalendarEntry(entry.date, { start: event.target.value })}
-                          style={{ minHeight: 38, border: "1px solid #93c5fd", borderRadius: 10, padding: "6px 8px" }}
-                        />
-                        <input
-                          type="time"
-                          name={`specificDateEnd:${entry.date}`}
-                          value={entry.end}
-                          onChange={(event) => updateCalendarEntry(entry.date, { end: event.target.value })}
-                          style={{ minHeight: 38, border: "1px solid #93c5fd", borderRadius: 10, padding: "6px 8px" }}
-                        />
+                        {entry.ranges.map((range, index) => (
+                          <div key={`${entry.date}-${index}`} style={{ display: "grid", gap: 6, border: "1px solid #bfdbfe", borderRadius: 10, padding: 8, background: "#ffffffcc" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>
+                                Range {index + 1} / 时间段 {index + 1}
+                              </div>
+                              {entry.ranges.length > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeCalendarRange(entry.date, index)}
+                                  style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "#b91c1c",
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    padding: 0,
+                                  }}
+                                >
+                                  Remove / 删除
+                                </button>
+                              ) : null}
+                            </div>
+                            <input
+                              type="time"
+                              name={`specificDateStart:${entry.date}:${index}`}
+                              value={range.start}
+                              onChange={(event) => updateCalendarRange(entry.date, index, { start: event.target.value })}
+                              style={{ minHeight: 38, border: "1px solid #93c5fd", borderRadius: 10, padding: "6px 8px" }}
+                            />
+                            <input
+                              type="time"
+                              name={`specificDateEnd:${entry.date}:${index}`}
+                              value={range.end}
+                              onChange={(event) => updateCalendarRange(entry.date, index, { end: event.target.value })}
+                              style={{ minHeight: 38, border: "1px solid #93c5fd", borderRadius: 10, padding: "6px 8px" }}
+                            />
+                          </div>
+                        ))}
+                        {entry.ranges.length < MAX_CALENDAR_RANGES ? (
+                          <button
+                            type="button"
+                            onClick={() => addCalendarRange(entry.date)}
+                            style={{
+                              minHeight: 36,
+                              border: "1px dashed #60a5fa",
+                              borderRadius: 10,
+                              background: "#dbeafe",
+                              color: "#1d4ed8",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Add time range / 增加时间段
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       <div style={{ minHeight: 82, borderRadius: 10, border: "1px dashed #cbd5e1", background: "#f8fafc" }} />

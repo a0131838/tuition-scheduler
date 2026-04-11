@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r38` (parent availability now supports both weekly templates and calendar-style exact-date picks), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r39` (parent availability exact-date mode now supports multiple time ranges on the same day), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r39 Ready
+
+- Scope: let the parent-availability exact-date mode collect multiple time ranges on a single selected day without changing the existing weekly template flow or payload schema.
+- Business impact:
+  - parents using `/availability/[token]` calendar-date mode can now add up to three time ranges for one selected date instead of being limited to one range
+  - submissions still store the existing flat `dateSelections[]` structure, so repeated dates now represent multiple ranges on the same day
+  - admin-side summaries group those repeated date entries into one clearer date line for ticket and student review
+- Validation:
+  - `npm run build`
+  - calendar-date mode should allow adding and removing extra time ranges for a selected day
+  - weekly template mode should continue behaving exactly as before
+  - calendar-mode summary text should show one date followed by all submitted time ranges for that date
 
 ## 2026-04-11-r38 Ready
 

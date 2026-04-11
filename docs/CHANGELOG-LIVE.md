@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r39
+
+- Release ID: `2026-04-11-r39`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: let the parent-availability calendar-date mode accept multiple time ranges on the same day, while keeping the original weekly template and data shape intact.
+- Key files:
+  - `app/availability/[token]/ParentAvailabilityFormFields.tsx`
+  - `lib/parent-availability.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-parent-availability-multi-range-per-date.md`
+- Risk impact (if any): Low to medium. This release only expands the exact-date parent-availability input so one selected day can carry multiple time ranges; it keeps the existing weekly template mode, database schema, scheduling slot matching model, quick scheduling, sessions, packages, deductions, and finance logic unchanged.
+- Verification:
+  - `npm run build`
+  - `/availability/[token]` calendar-date mode should let families add up to three time ranges to one selected date
+  - the submitted payload should continue using the existing flat `dateSelections[]` structure, with repeated dates allowed for multiple ranges
+  - admin summaries should group one date's multiple time ranges into a readable combined line
+- Rollback point: previous production commit before `2026-04-11-r39`.
+
 ## 2026-04-11-r38
 
 - Release ID: `2026-04-11-r38`

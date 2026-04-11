@@ -36,6 +36,8 @@ export type ParentAvailabilityFieldRow = {
   value: string;
 };
 
+const MAX_CALENDAR_RANGES_PER_DATE = 3;
+
 function trimToNull(value: FormDataEntryValue | null, max: number) {
   const text = String(value ?? "").trim();
   if (!text) return null;
@@ -61,8 +63,38 @@ function parseDateStart(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatDateSelection(selection: ParentAvailabilityDateSelection) {
-  return `${selection.date} ${selection.start}-${selection.end}`;
+function collectCalendarDateSelections(formData: FormData, date: string) {
+  const normalizedDate = normalizeDate(date);
+  if (!normalizedDate) return [];
+
+  const indexedRanges = Array.from({ length: MAX_CALENDAR_RANGES_PER_DATE }, (_, index) => ({
+    start: normalizeTime(formData.get(`specificDateStart:${date}:${index}`)),
+    end: normalizeTime(formData.get(`specificDateEnd:${date}:${index}`)),
+  })).filter((range): range is { start: string; end: string } => Boolean(range.start && range.end && range.end > range.start));
+
+  if (indexedRanges.length > 0) {
+    return indexedRanges.map((range) => ({ date: normalizedDate, start: range.start, end: range.end }));
+  }
+
+  const legacyStart = normalizeTime(formData.get(`specificDateStart:${date}`));
+  const legacyEnd = normalizeTime(formData.get(`specificDateEnd:${date}`));
+  if (!legacyStart || !legacyEnd || legacyEnd <= legacyStart) {
+    return [];
+  }
+
+  return [{ date: normalizedDate, start: legacyStart, end: legacyEnd }];
+}
+
+function formatGroupedDateSelections(dateSelections: ParentAvailabilityDateSelection[]) {
+  const grouped = new Map<string, string[]>();
+  for (const selection of dateSelections) {
+    const current = grouped.get(selection.date) ?? [];
+    current.push(`${selection.start}-${selection.end}`);
+    grouped.set(selection.date, current);
+  }
+  return Array.from(grouped.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, ranges]) => `${date} ${ranges.join(" / ")}`);
 }
 
 export function createParentAvailabilityToken() {
@@ -100,15 +132,9 @@ export function parseParentAvailabilityFormData(formData: FormData): ParentAvail
       : [];
   const dateSelections =
     selectionMode === "calendar"
-      ? Array.from(new Set(formData.getAll("specificDates").map((item) => String(item)))).flatMap((date) => {
-          const normalizedDate = normalizeDate(date);
-          const start = normalizeTime(formData.get(`specificDateStart:${date}`));
-          const end = normalizeTime(formData.get(`specificDateEnd:${date}`));
-          if (!normalizedDate || !start || !end || end <= start) {
-            return [];
-          }
-          return [{ date: normalizedDate, start, end }];
-        })
+      ? Array.from(new Set(formData.getAll("specificDates").map((item) => String(item)))).flatMap((date) =>
+          collectCalendarDateSelections(formData, date)
+        )
       : [];
 
   return {
@@ -221,7 +247,7 @@ export function formatParentAvailabilityFieldRows(payload: ParentAvailabilityPay
   if (payload.selectionMode === "calendar" && payload.dateSelections.length > 0) {
     rows.push({
       label: "Specific calendar dates / 具体日期时间",
-      value: payload.dateSelections.map(formatDateSelection).join("；"),
+      value: formatGroupedDateSelections(payload.dateSelections).join("；"),
     });
   }
   if (payload.earliestStartDate) {
@@ -269,7 +295,7 @@ export function summarizeParentAvailabilityPayload(payload: ParentAvailabilityPa
     parts.push(`常用可上课时间段 / Available time ranges: ${payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("; ")}`);
   }
   if (payload.selectionMode === "calendar" && payload.dateSelections.length > 0) {
-    parts.push(`具体日期时间 / Specific dates: ${payload.dateSelections.map(formatDateSelection).join("; ")}`);
+    parts.push(`具体日期时间 / Specific dates: ${formatGroupedDateSelections(payload.dateSelections).join("; ")}`);
   }
   if (payload.earliestStartDate) {
     parts.push(`最早可开始日期 / Earliest start: ${payload.earliestStartDate}`);
