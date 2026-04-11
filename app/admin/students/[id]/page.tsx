@@ -49,6 +49,7 @@ import {
   buildParentAvailabilityShareText,
   createParentAvailabilityToken,
   coerceParentAvailabilityPayload,
+  deriveParentAvailabilitySearchWindow,
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
 import CopyTextButton from "../../_components/CopyTextButton";
@@ -1776,16 +1777,22 @@ export default async function StudentDetailPage({
   const coordinationPhasePreviewSlots =
     activeSchedulingTicket && parentAvailabilityPayload && coordinationTeacherOptions.length > 0
       ? filterSchedulingSlotsByParentAvailability(
-          await listSchedulingCoordinationCandidateSlots({
-            studentId,
-            teacherOptions: coordinationTeacherOptions,
-            teacherId: effectiveCoordTeacherId || undefined,
-            startAt: parentAvailabilityPayload.earliestStartDate
-              ? new Date(`${parentAvailabilityPayload.earliestStartDate}T00:00:00`)
-              : new Date(),
-            durationMin: coordinationDurationMin,
-            maxSlots: 8,
-          }),
+          await (async () => {
+            const parentSearchWindow = deriveParentAvailabilitySearchWindow({
+              payload: parentAvailabilityPayload,
+              now: new Date(),
+              defaultHorizonDays: 14,
+            });
+            return listSchedulingCoordinationCandidateSlots({
+              studentId,
+              teacherOptions: coordinationTeacherOptions,
+              teacherId: effectiveCoordTeacherId || undefined,
+              startAt: parentSearchWindow.startAt,
+              horizonDays: parentSearchWindow.horizonDays,
+              durationMin: coordinationDurationMin,
+              maxSlots: parentAvailabilityPayload.selectionMode === "calendar" ? 24 : 8,
+            });
+          })(),
           parentAvailabilityPayload
         ).slice(0, 5)
       : [];

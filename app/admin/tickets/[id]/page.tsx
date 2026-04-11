@@ -38,6 +38,7 @@ import {
   buildParentAvailabilityShareText,
   coerceParentAvailabilityPayload,
   createParentAvailabilityToken,
+  deriveParentAvailabilitySearchWindow,
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
@@ -636,17 +637,19 @@ export default async function AdminTicketDetailPage({
             upcomingSessions: relevantSessions,
             monthlySessions: relevantSessions,
           });
-          const searchStart = parentAvailabilityPayload?.earliestStartDate
-            ? new Date(`${parentAvailabilityPayload.earliestStartDate}T00:00:00`)
-            : new Date();
+          const parentSearchWindow = deriveParentAvailabilitySearchWindow({
+            payload: parentAvailabilityPayload,
+            now: new Date(),
+          });
           const availabilitySlots =
             teacherOptions.length > 0
               ? await listSchedulingCoordinationCandidateSlots({
                   studentId: row.studentId!,
                   teacherOptions,
-                  startAt: searchStart,
+                  startAt: parentSearchWindow.startAt,
+                  horizonDays: parentSearchWindow.horizonDays,
                   durationMin,
-                  maxSlots: 12,
+                  maxSlots: parentAvailabilityPayload?.selectionMode === "calendar" ? 24 : 12,
                 })
               : [];
           const matchedParentSlots = filterSchedulingSlotsByParentAvailability(

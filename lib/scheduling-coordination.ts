@@ -140,6 +140,10 @@ const SCHEDULING_COORDINATION_EXACT_TEXT_MAP = new Map<string, string>([
     bilingualCoordinationText("家长可上课时间表单还没有提交。", "The parent availability form has not been submitted yet."),
   ],
   [
+    "Collection mode:",
+    bilingualCoordinationText("收集方式 / Collection mode:", "Collection mode:"),
+  ],
+  [
     "Send or resend the parent form link and wait for the family's available times.",
     bilingualCoordinationText("发送或重发家长表单链接，并等待家长提交可上课时间。", "Send or resend the parent form link and wait for the family's available times."),
   ],
@@ -177,6 +181,7 @@ const SCHEDULING_COORDINATION_PREFIX_REPLACEMENTS: Array<[string, string]> = [
   ["Mode preference:", "上课形式偏好 / Mode preference:"],
   ["Teacher preference:", "老师偏好 / Teacher preference:"],
   ["Parent note:", "家长备注 / Parent note:"],
+  ["Specific dates:", "具体日期时间 / Specific dates:"],
 ];
 
 export function formatSchedulingCoordinationSystemText(raw: string | null | undefined) {
@@ -570,6 +575,15 @@ export function filterSchedulingSlotsByParentAvailability(
   payload: ParentAvailabilityPayload | null | undefined
 ) {
   if (!payload) return slots;
+
+  if (payload.selectionMode === "calendar" && payload.dateSelections.length > 0) {
+    return slots.filter((slot) => {
+      const dateKey = `${slot.startAt.getFullYear()}-${String(slot.startAt.getMonth() + 1).padStart(2, "0")}-${String(slot.startAt.getDate()).padStart(2, "0")}`;
+      const start = `${String(slot.startAt.getHours()).padStart(2, "0")}:${String(slot.startAt.getMinutes()).padStart(2, "0")}`;
+      const end = `${String(slot.endAt.getHours()).padStart(2, "0")}:${String(slot.endAt.getMinutes()).padStart(2, "0")}`;
+      return payload.dateSelections.some((selection) => selection.date === dateKey && start >= selection.start && end <= selection.end);
+    });
+  }
 
   const allowedWeekdays = new Set(
     payload.weekdays.map((weekday) => WEEKDAY_TO_JS_DAY[weekday]).filter((value) => Number.isInteger(value))

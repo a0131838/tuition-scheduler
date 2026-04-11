@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r38
+
+- Release ID: `2026-04-11-r38`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: add a second parent-availability input mode so families can either fill a weekly repeating template or pick specific upcoming dates and times in a calendar-style view.
+- Key files:
+  - `app/availability/[token]/page.tsx`
+  - `app/availability/[token]/ParentAvailabilityFormFields.tsx`
+  - `lib/parent-availability.ts`
+  - `lib/scheduling-coordination.ts`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-parent-availability-calendar-mode.md`
+- Risk impact (if any): Medium. This release expands the parent-availability payload and matching rules to support specific date picks, but it keeps the existing weekly template mode intact and does not change teacher availability storage, quick scheduling, sessions, packages, deductions, or finance logic.
+- Verification:
+  - `npm run build`
+  - `/availability/[token]` should let families choose between weekly template mode and calendar-date mode
+  - weekly submissions should continue storing and matching the current weekday plus time-range structure
+  - calendar submissions should store specific date plus time selections and show them in ticket/student detail summaries
+  - scheduling-coordination preview matching should respect the submitted mode without missing later exact-date selections
+- Rollback point: previous production commit before `2026-04-11-r38`.
+
 ## 2026-04-11-r37
 
 - Release ID: `2026-04-11-r37`

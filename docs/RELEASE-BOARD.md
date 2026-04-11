@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r37` (ticket completion now prompts for the required completion note before submit, without bouncing operators to the page top), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r38` (parent availability now supports both weekly templates and calendar-style exact-date picks), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r38 Ready
+
+- Scope: add a second parent-availability collection mode so families can either submit a weekly repeating template or choose specific dates and times in a calendar-style grid.
+- Business impact:
+  - the public `/availability/[token]` page now supports both a weekly template mode and a specific-date mode without removing the original weekly flow
+  - ticket detail and student detail summaries now show which mode the parent used and display exact-date picks when that mode was chosen
+  - scheduling-coordination matching now respects exact-date submissions and expands the search window so later selected dates are not dropped before filtering
+- Validation:
+  - `npm run build`
+  - parent form should switch cleanly between weekly and specific-date modes
+  - weekly submissions should continue to behave as before
+  - exact-date submissions should appear in admin summaries and affect matching previews correctly
 
 ## 2026-04-11-r37 Ready
 

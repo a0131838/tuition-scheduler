@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
   buildParentAvailabilityPath,
+  coerceParentAvailabilityPayload,
+  deriveParentAvailabilitySearchWindow,
   hasParentAvailabilityPayloadContent,
   parseParentAvailabilityFormData,
-  PARENT_AVAILABILITY_WEEKDAY_OPTIONS,
   summarizeParentAvailabilityPayload,
-  type ParentAvailabilityPayload,
 } from "@/lib/parent-availability";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { composeTicketSituation, parseTicketSituationSummary } from "@/lib/tickets";
@@ -19,25 +19,7 @@ import {
   listSchedulingCoordinationCandidateSlots,
   schedulingCoordinationCurrentIssueText,
 } from "@/lib/scheduling-coordination";
-
-function asPayload(value: unknown): ParentAvailabilityPayload {
-  const payload = (value ?? {}) as Partial<ParentAvailabilityPayload>;
-  return {
-    weekdays: Array.isArray(payload.weekdays) ? payload.weekdays.map((item) => String(item)) : [],
-    timeRanges: Array.isArray(payload.timeRanges)
-      ? payload.timeRanges
-          .map((item) => ({
-            start: typeof item?.start === "string" ? item.start : "",
-            end: typeof item?.end === "string" ? item.end : "",
-          }))
-          .filter((item) => item.start && item.end)
-      : [],
-    earliestStartDate: typeof payload.earliestStartDate === "string" ? payload.earliestStartDate : null,
-    modePreference: typeof payload.modePreference === "string" ? payload.modePreference : null,
-    teacherPreference: typeof payload.teacherPreference === "string" ? payload.teacherPreference : null,
-    notes: typeof payload.notes === "string" ? payload.notes : null,
-  };
-}
+import ParentAvailabilityFormFields from "./ParentAvailabilityFormFields";
 
 async function submitParentAvailability(token: string, formData: FormData) {
   "use server";
@@ -105,14 +87,15 @@ async function submitParentAvailability(token: string, formData: FormData) {
     upcomingSessions: relevantSessions,
     monthlySessions: relevantSessions,
   });
-  const searchStart = payload.earliestStartDate ? new Date(`${payload.earliestStartDate}T00:00:00`) : now;
+  const searchWindow = deriveParentAvailabilitySearchWindow({ payload, now });
   const availabilitySlots = teacherOptions.length
     ? await listSchedulingCoordinationCandidateSlots({
         studentId: request.studentId,
         teacherOptions,
-        startAt: searchStart,
+        startAt: searchWindow.startAt,
+        horizonDays: searchWindow.horizonDays,
         durationMin,
-        maxSlots: 12,
+        maxSlots: payload.selectionMode === "calendar" ? 48 : 12,
       })
     : [];
   const matchedSlotCount = filterSchedulingSlotsByParentAvailability(availabilitySlots, payload).length;
@@ -162,7 +145,6 @@ ${summarizeParentAvailabilityPayload(payload)}`,
   revalidatePath("/admin/todos");
   redirect(`${buildParentAvailabilityPath(token)}?msg=submitted`);
 }
-
 
 export default async function ParentAvailabilityPage({
   params,
@@ -217,14 +199,14 @@ export default async function ParentAvailabilityPage({
     );
   }
 
-  const payload = asPayload(request.payloadJson);
+  const payload = coerceParentAvailabilityPayload(request.payloadJson);
 
   return (
     <div style={{ maxWidth: 820, margin: "24px auto", padding: "0 16px 40px", display: "grid", gap: 16 }}>
       <div style={{ display: "grid", gap: 8 }}>
         <h1 style={{ margin: 0 }}>Available Lesson Times / 可上课时间收集</h1>
         <div style={{ color: "#475569", lineHeight: 1.6 }}>
-          Please share the times that usually work for your family. This form only collects your available times. The school team will confirm the final lesson schedule with you afterwards.
+          Please share the times that usually work for your family. You can either fill a weekly template or pick specific dates in the calendar below. The school team will confirm the final lesson schedule with you afterwards.
         </div>
       </div>
 
@@ -249,7 +231,7 @@ export default async function ParentAvailabilityPage({
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontWeight: 800 }}>What to do / 需要填写什么</div>
           <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
-            Share the days and times that usually work best for your family.
+            Choose either a weekly pattern or the exact dates and time windows that work best for your family.
           </div>
         </div>
         <div style={{ display: "grid", gap: 4 }}>
@@ -274,93 +256,13 @@ export default async function ParentAvailabilityPage({
       {err ? (
         <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", padding: 16, color: "#b91c1c" }}>
           {err === "empty"
-            ? "Please fill at least one available day, time range, or note before submitting."
+            ? "Please fill at least one weekly preference, specific date selection, or note before submitting."
             : "This form could not be submitted. Please refresh and try again."}
         </div>
       ) : null}
 
       <form action={submitParentAvailability.bind(null, token)} style={{ display: "grid", gap: 16 }}>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12 }}>
-          <div style={{ fontWeight: 800 }}>Available weekdays / 可上课星期</div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>
-            Choose the weekdays that usually work best. You can pick more than one. / 请选择通常方便上课的星期，可以多选。
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                style={{
-                  display: "inline-flex",
-                  gap: 8,
-                  alignItems: "center",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 999,
-                  padding: "8px 12px",
-                  background: "#fff",
-                }}
-              >
-                <input type="checkbox" name="weekdays" value={option.value} defaultChecked={payload.weekdays.includes(option.value)} />
-                <span>{option.zh} / {option.en}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12 }}>
-          <div style={{ fontWeight: 800 }}>Preferred time ranges / 常用可上课时间段</div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>
-            Please share the time windows your family usually prefers, for example `18:00-19:30`. / 请填写家里通常方便的时间段，例如 `18:00-19:30`。
-          </div>
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Range 1 / 时间段一</span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="time" name="timeRange1Start" defaultValue={payload.timeRanges[0]?.start ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-                <input type="time" name="timeRange1End" defaultValue={payload.timeRanges[0]?.end ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-              </div>
-            </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Range 2 / 时间段二</span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="time" name="timeRange2Start" defaultValue={payload.timeRanges[1]?.start ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-                <input type="time" name="timeRange2End" defaultValue={payload.timeRanges[1]?.end ?? ""} style={{ flex: 1, minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff", padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Earliest start date / 最早可开始日期</span>
-            <input type="date" name="earliestStartDate" defaultValue={payload.earliestStartDate ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Mode preference / 上课形式偏好</span>
-            <select name="modePreference" defaultValue={payload.modePreference ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }}>
-              <option value="">Either / 都可以</option>
-              <option value="Online only">Online only / 仅线上</option>
-              <option value="Onsite only">Onsite only / 仅线下</option>
-              <option value="Prefer online">Prefer online / 更偏向线上</option>
-              <option value="Prefer onsite">Prefer onsite / 更偏向线下</option>
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Teacher preference / 老师偏好</span>
-            <input type="text" name="teacherPreference" maxLength={120} defaultValue={payload.teacherPreference ?? ""} style={{ minHeight: 42, border: "1px solid #cbd5e1", borderRadius: 10, padding: "8px 10px" }} />
-          </label>
-        </div>
-
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Notes / 备注</span>
-          <textarea
-            name="notes"
-            rows={5}
-            maxLength={1000}
-            defaultValue={payload.notes ?? ""}
-            placeholder="Share any fixed constraints, exam weeks, travel periods, or special requests."
-            style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 12, padding: 12 }}
-          />
-        </label>
+        <ParentAvailabilityFormFields payload={payload} />
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>

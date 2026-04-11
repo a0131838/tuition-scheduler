@@ -12,9 +12,19 @@ export const PARENT_AVAILABILITY_WEEKDAY_OPTIONS = [
   { value: "SUN", zh: "周日", en: "Sun" },
 ] as const;
 
+export type ParentAvailabilitySelectionMode = "weekly" | "calendar";
+
+export type ParentAvailabilityDateSelection = {
+  date: string;
+  start: string;
+  end: string;
+};
+
 export type ParentAvailabilityPayload = {
+  selectionMode: ParentAvailabilitySelectionMode;
   weekdays: string[];
   timeRanges: Array<{ start: string; end: string }>;
+  dateSelections: ParentAvailabilityDateSelection[];
   earliestStartDate: string | null;
   modePreference: string | null;
   teacherPreference: string | null;
@@ -44,6 +54,17 @@ function normalizeDate(value: FormDataEntryValue | null) {
   return text;
 }
 
+function parseDateStart(value: string | null | undefined) {
+  const normalized = normalizeDate(value ?? null);
+  if (!normalized) return null;
+  const date = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateSelection(selection: ParentAvailabilityDateSelection) {
+  return `${selection.date} ${selection.start}-${selection.end}`;
+}
+
 export function createParentAvailabilityToken() {
   return crypto.randomBytes(24).toString("hex");
 }
@@ -57,24 +78,45 @@ export function buildParentAvailabilityExpiresAt() {
 }
 
 export function parseParentAvailabilityFormData(formData: FormData): ParentAvailabilityPayload {
-  const weekdays = PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => option.value).filter((value) =>
-    formData.getAll("weekdays").map((item) => String(item)).includes(value)
-  );
-  const timeRanges = [
-    {
-      start: normalizeTime(formData.get("timeRange1Start")),
-      end: normalizeTime(formData.get("timeRange1End")),
-    },
-    {
-      start: normalizeTime(formData.get("timeRange2Start")),
-      end: normalizeTime(formData.get("timeRange2End")),
-    },
-  ].filter((range): range is { start: string; end: string } => Boolean(range.start && range.end && range.end > range.start));
+  const selectionMode = String(formData.get("selectionMode") ?? "").trim() === "calendar" ? "calendar" : "weekly";
+  const weekdays =
+    selectionMode === "weekly"
+      ? PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => option.value).filter((value) =>
+          formData.getAll("weekdays").map((item) => String(item)).includes(value)
+        )
+      : [];
+  const timeRanges =
+    selectionMode === "weekly"
+      ? [
+          {
+            start: normalizeTime(formData.get("timeRange1Start")),
+            end: normalizeTime(formData.get("timeRange1End")),
+          },
+          {
+            start: normalizeTime(formData.get("timeRange2Start")),
+            end: normalizeTime(formData.get("timeRange2End")),
+          },
+        ].filter((range): range is { start: string; end: string } => Boolean(range.start && range.end && range.end > range.start))
+      : [];
+  const dateSelections =
+    selectionMode === "calendar"
+      ? Array.from(new Set(formData.getAll("specificDates").map((item) => String(item)))).flatMap((date) => {
+          const normalizedDate = normalizeDate(date);
+          const start = normalizeTime(formData.get(`specificDateStart:${date}`));
+          const end = normalizeTime(formData.get(`specificDateEnd:${date}`));
+          if (!normalizedDate || !start || !end || end <= start) {
+            return [];
+          }
+          return [{ date: normalizedDate, start, end }];
+        })
+      : [];
 
   return {
+    selectionMode,
     weekdays,
     timeRanges,
-    earliestStartDate: normalizeDate(formData.get("earliestStartDate")),
+    dateSelections,
+    earliestStartDate: selectionMode === "weekly" ? normalizeDate(formData.get("earliestStartDate")) : null,
     modePreference: trimToNull(formData.get("modePreference"), 40),
     teacherPreference: trimToNull(formData.get("teacherPreference"), 120),
     notes: trimToNull(formData.get("notes"), 1000),
@@ -83,7 +125,23 @@ export function parseParentAvailabilityFormData(formData: FormData): ParentAvail
 
 export function coerceParentAvailabilityPayload(value: unknown): ParentAvailabilityPayload {
   const payload = (value ?? {}) as Partial<ParentAvailabilityPayload>;
+  const dateSelections = Array.isArray(payload.dateSelections)
+    ? payload.dateSelections
+        .map((item) => ({
+          date: typeof item?.date === "string" ? item.date : "",
+          start: typeof item?.start === "string" ? item.start : "",
+          end: typeof item?.end === "string" ? item.end : "",
+        }))
+        .filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.date) && /^\d{2}:\d{2}$/.test(item.start) && /^\d{2}:\d{2}$/.test(item.end) && item.end > item.start)
+    : [];
+
+  const selectionMode: ParentAvailabilitySelectionMode =
+    payload.selectionMode === "calendar" || (!(payload.selectionMode === "weekly") && dateSelections.length > 0)
+      ? "calendar"
+      : "weekly";
+
   return {
+    selectionMode,
     weekdays: Array.isArray(payload.weekdays) ? payload.weekdays.map((item) => String(item)) : [],
     timeRanges: Array.isArray(payload.timeRanges)
       ? payload.timeRanges
@@ -91,8 +149,9 @@ export function coerceParentAvailabilityPayload(value: unknown): ParentAvailabil
             start: typeof item?.start === "string" ? item.start : "",
             end: typeof item?.end === "string" ? item.end : "",
           }))
-          .filter((item) => item.start && item.end)
+          .filter((item) => item.start && item.end && item.end > item.start)
       : [],
+    dateSelections,
     earliestStartDate: typeof payload.earliestStartDate === "string" ? payload.earliestStartDate : null,
     modePreference: typeof payload.modePreference === "string" ? payload.modePreference : null,
     teacherPreference: typeof payload.teacherPreference === "string" ? payload.teacherPreference : null,
@@ -100,22 +159,69 @@ export function coerceParentAvailabilityPayload(value: unknown): ParentAvailabil
   };
 }
 
+export function deriveParentAvailabilitySearchWindow(args: {
+  payload: ParentAvailabilityPayload | null | undefined;
+  now?: Date;
+  defaultHorizonDays?: number;
+}) {
+  const now = args.now ? new Date(args.now) : new Date();
+  const defaultHorizonDays = Math.max(1, args.defaultHorizonDays ?? 14);
+  const payload = args.payload;
+
+  if (payload?.selectionMode === "calendar" && payload.dateSelections.length > 0) {
+    const dates = payload.dateSelections
+      .map((item) => parseDateStart(item.date))
+      .filter((item): item is Date => Boolean(item))
+      .sort((a, b) => a.getTime() - b.getTime());
+    const startAt = dates[0] ?? now;
+    const lastDate = dates[dates.length - 1] ?? startAt;
+    const diffDays = Math.max(0, Math.round((lastDate.getTime() - startAt.getTime()) / 86400000));
+    return {
+      startAt,
+      horizonDays: Math.max(1, diffDays + 1),
+    };
+  }
+
+  if (payload?.earliestStartDate) {
+    return {
+      startAt: new Date(`${payload.earliestStartDate}T00:00:00`),
+      horizonDays: defaultHorizonDays,
+    };
+  }
+
+  return {
+    startAt: now,
+    horizonDays: defaultHorizonDays,
+  };
+}
+
 export function formatParentAvailabilityFieldRows(payload: ParentAvailabilityPayload): ParentAvailabilityFieldRow[] {
   const weekdayLabelMap = new Map<string, string>(
     PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => [option.value, `${option.zh} / ${option.en}`])
   );
-  const rows: ParentAvailabilityFieldRow[] = [];
+  const rows: ParentAvailabilityFieldRow[] = [
+    {
+      label: "Collection mode / 收集方式",
+      value: payload.selectionMode === "calendar" ? "按具体日期 / Specific dates" : "每周固定模板 / Weekly template",
+    },
+  ];
 
-  if (payload.weekdays.length > 0) {
+  if (payload.selectionMode === "weekly" && payload.weekdays.length > 0) {
     rows.push({
       label: "Available weekdays / 可上课星期",
       value: payload.weekdays.map((value) => weekdayLabelMap.get(value) ?? value).join("、"),
     });
   }
-  if (payload.timeRanges.length > 0) {
+  if (payload.selectionMode === "weekly" && payload.timeRanges.length > 0) {
     rows.push({
       label: "Preferred time ranges / 常用可上课时间段",
       value: payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("；"),
+    });
+  }
+  if (payload.selectionMode === "calendar" && payload.dateSelections.length > 0) {
+    rows.push({
+      label: "Specific calendar dates / 具体日期时间",
+      value: payload.dateSelections.map(formatDateSelection).join("；"),
     });
   }
   if (payload.earliestStartDate) {
@@ -150,13 +256,20 @@ export function summarizeParentAvailabilityPayload(payload: ParentAvailabilityPa
   const weekdayLabelMap = new Map<string, string>(
     PARENT_AVAILABILITY_WEEKDAY_OPTIONS.map((option) => [option.value, `${option.zh}/${option.en}`])
   );
-  const parts: string[] = [];
+  const parts: string[] = [
+    payload.selectionMode === "calendar"
+      ? "收集方式 / Collection mode: 按具体日期 / Specific dates"
+      : "收集方式 / Collection mode: 每周固定模板 / Weekly template",
+  ];
 
-  if (payload.weekdays.length > 0) {
+  if (payload.selectionMode === "weekly" && payload.weekdays.length > 0) {
     parts.push(`可上课星期 / Available days: ${payload.weekdays.map((value) => weekdayLabelMap.get(value) ?? value).join(", ")}`);
   }
-  if (payload.timeRanges.length > 0) {
+  if (payload.selectionMode === "weekly" && payload.timeRanges.length > 0) {
     parts.push(`常用可上课时间段 / Available time ranges: ${payload.timeRanges.map((range) => `${range.start}-${range.end}`).join("; ")}`);
+  }
+  if (payload.selectionMode === "calendar" && payload.dateSelections.length > 0) {
+    parts.push(`具体日期时间 / Specific dates: ${payload.dateSelections.map(formatDateSelection).join("; ")}`);
   }
   if (payload.earliestStartDate) {
     parts.push(`最早可开始日期 / Earliest start: ${payload.earliestStartDate}`);
@@ -178,6 +291,7 @@ export function hasParentAvailabilityPayloadContent(payload: ParentAvailabilityP
   return Boolean(
     payload.weekdays.length > 0 ||
       payload.timeRanges.length > 0 ||
+      payload.dateSelections.length > 0 ||
       payload.earliestStartDate ||
       payload.modePreference ||
       payload.teacherPreference ||
@@ -194,10 +308,12 @@ export function buildParentAvailabilityShareText(args: {
   return [
     `您好，请帮忙填写 ${args.studentName} 的可上课时间。`,
     courseLine,
+    "现在可以二选一：填写每周固定模板，或者直接按日历选择具体日期和时间。",
     "这只是时间收集表，不代表已经排课成功。",
     "",
     `Hello, please share the available lesson times for ${args.studentName}.`,
     args.courseLabel ? `Course: ${args.courseLabel}` : "",
+    "You can either fill a weekly template or pick specific calendar dates and times.",
     "This form only collects available times. It does not confirm the final schedule by itself.",
     "",
     args.url,
