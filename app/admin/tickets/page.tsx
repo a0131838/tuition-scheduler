@@ -19,6 +19,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
+import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -557,7 +558,12 @@ export default async function AdminTicketsPage({
                         placeholder={t(lang, "Completion note (required only when marking completed)", "完成说明（仅标记完成时必填）")}
                         style={{ width: "100%", boxSizing: "border-box" }}
                       />
-                      <button type="submit" style={{ width: "100%", boxSizing: "border-box" }}>{t(lang, "Save", "保存")}</button>
+                      <TicketStatusSubmitButton
+                        label={t(lang, "Save", "保存")}
+                        promptLabel={t(lang, "Please add a completion note before marking this ticket completed.", "标记完成前请先填写完成说明。")}
+                        missingNoteAlert={t(lang, "Completion note is required. Nothing was submitted.", "完成说明不能为空，本次未提交。")}
+                        style={{ width: "100%", boxSizing: "border-box" }}
+                      />
                     </form>
                   )}
                 </td>

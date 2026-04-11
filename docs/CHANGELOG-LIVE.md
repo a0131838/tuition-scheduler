@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r37
+
+- Release ID: `2026-04-11-r37`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: restore a clear completion-note prompt in ticket-center status actions so operators are asked for the note before a ticket is marked completed, without bouncing the page to the top.
+- Key files:
+  - `app/admin/_components/TicketStatusSubmitButton.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-ticket-complete-note-prompt.md`
+- Risk impact (if any): Low. This release only changes the completion-note prompt UX before status submission; it keeps the existing server-side completion-note requirement and does not change ticket rules, permissions, scheduling, sessions, packages, deductions, or finance logic.
+- Verification:
+  - `npm run build`
+  - choosing `Completed` without a note from ticket-center list should show a prompt before submission
+  - choosing `Completed` without a note from ticket detail should show the same prompt before submission
+  - cancelling or leaving the prompt empty should not submit the form or jump to the top of the page
+- Rollback point: previous production commit before `2026-04-11-r37`.
+
 ## 2026-04-11-r36
 
 - Release ID: `2026-04-11-r36`

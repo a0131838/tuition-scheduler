@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r36` (ticket-center actions now return to the current row or section instead of jumping back to the top), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r37` (ticket completion now prompts for the required completion note before submit, without bouncing operators to the page top), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r37 Ready
+
+- Scope: bring back a clear completion-note prompt before marking a ticket completed, while keeping the new anchored return behavior in ticket-center pages.
+- Business impact:
+  - list and detail status actions now prompt for the required completion note before submitting a `Completed` status change
+  - cancelling the prompt or leaving it blank now stops submission locally, so operators keep their place instead of landing on a top-of-page error
+  - server-side completion-note validation still stays in place as a safety guard
+- Validation:
+  - `npm run build`
+  - selecting `Completed` without a note should open a prompt from both `/admin/tickets` and `/admin/tickets/[id]`
+  - cancelling or leaving the prompt empty should keep the operator on the current row or section with no submit
+  - entering a completion note in the prompt should submit successfully and keep the current anchored return behavior
 
 ## 2026-04-11-r36 Ready
 

@@ -30,6 +30,7 @@ import { revalidatePath } from "next/cache";
 import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
+import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
   buildParentAvailabilityExpiresAt,
@@ -1162,7 +1163,12 @@ export default async function AdminTicketDetailPage({
                   完成说明（仅完成时必填）/ Completion note
                   <textarea name="completionNote" rows={3} style={{ width: "100%", boxSizing: "border-box" }} />
                 </label>
-                <button type="submit">保存状态 / Save Status</button>
+                <TicketStatusSubmitButton
+                  label="保存状态 / Save Status"
+                  promptLabel="标记完成前请先填写完成说明。 / Please add a completion note before marking this ticket completed."
+                  missingNoteAlert="完成说明不能为空，本次未提交。 / Completion note is required, so nothing was submitted."
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
               </form>
             )}
           </div>
