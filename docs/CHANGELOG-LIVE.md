@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r36
+
+- Release ID: `2026-04-11-r36`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: keep ticket-center operators in context by returning list actions to the current ticket area and detail actions to the section they just edited instead of bouncing the page back to the top.
+- Key files:
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/tickets/archived/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-ticket-center-scroll-position.md`
+- Risk impact (if any): Low. This release only changes post-action return anchors in ticket-center surfaces; it does not change ticket permissions, status rules, archive/delete eligibility, intake behavior, scheduling, sessions, packages, deductions, or finance logic.
+- Verification:
+  - `npm run build`
+  - saving an open ticket status from `/admin/tickets` should return to the same ticket row instead of the top of the page
+  - archiving or deleting a closed ticket from ticket-center lists should return to the ticket list section instead of the top summary area
+  - saving status, editing fields, or using scheduling-coordination quick actions in ticket detail should return to the same section instead of the page top
+- Rollback point: previous production commit before `2026-04-11-r36`.
+
 ## 2026-04-11-r35
 
 - Release ID: `2026-04-11-r35`

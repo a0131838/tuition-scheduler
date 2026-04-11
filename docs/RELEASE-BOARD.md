@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r35` (Zhao Hongwei can now permanently delete already-closed tickets from ticket center surfaces), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r36` (ticket-center actions now return to the current row or section instead of jumping back to the top), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r36 Ready
+
+- Scope: keep ticket-center actions anchored to the current work area so operators stay on the same ticket row or detail section after each server action.
+- Business impact:
+  - ticket-center list status saves now return to the same ticket row instead of the top of the page
+  - ticket-center archive and permanent-delete actions now return to the ticket list section, including archived-ticket filters
+  - ticket detail status, edit, and scheduling-coordination quick actions now return to the section the operator just used instead of the page top
+- Validation:
+  - `npm run build`
+  - status saves from `/admin/tickets` should stay on the active row
+  - detail-page status, edit, and coordination actions should stay on their section anchors
+  - archived-ticket deletes should preserve filters and return to the archived list area
 
 ## 2026-04-11-r35 Ready
 

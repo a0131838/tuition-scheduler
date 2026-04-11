@@ -129,7 +129,7 @@ function appendQuery(path: string, params: Record<string, string>) {
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
-  return `${url.pathname}${url.search}`;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function isTicketOverdue(ticket: { nextActionDue: Date | null; status: string }) {
@@ -548,6 +548,9 @@ export default async function AdminTicketDetailPage({
     listBack === "/admin/tickets"
       ? `/admin/tickets/${id}`
       : appendQuery(`/admin/tickets/${id}`, { back: listBack });
+  const statusSectionHref = `${selfHref}#status-action`;
+  const coordinationConsoleHref = `${selfHref}#coordination-console`;
+  const ticketEditHref = `${selfHref}#ticket-edit`;
   const err = String(sp?.err ?? "").trim();
   const ok = String(sp?.ok ?? "").trim();
   const fields = String(sp?.fields ?? "").trim();
@@ -890,7 +893,7 @@ export default async function AdminTicketDetailPage({
           </div>
 
           {row.parentAvailabilityRequest ? (
-            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fbff", padding: 12, display: "grid", gap: 10 }}>
+            <div id="coordination-console" style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fbff", padding: 12, display: "grid", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ fontWeight: 700 }}>排课协调控制台 / Scheduling Coordination Console</div>
                 <div
@@ -953,7 +956,7 @@ export default async function AdminTicketDetailPage({
                               {row.status !== "Waiting Parent" ? (
                                 <form action={markCoordinationParentChoiceAction}>
                                   <input type="hidden" name="id" value={row.id} />
-                                  <input type="hidden" name="back" value={selfHref} />
+                                  <input type="hidden" name="back" value={coordinationConsoleHref} />
                                   <button type="submit">标记已发候选时间 / Mark options sent</button>
                                 </form>
                               ) : null}
@@ -988,14 +991,14 @@ export default async function AdminTicketDetailPage({
                                   {row.status !== "Waiting Parent" ? (
                                     <form action={markCoordinationParentChoiceAction}>
                                       <input type="hidden" name="id" value={row.id} />
-                                      <input type="hidden" name="back" value={selfHref} />
+                                      <input type="hidden" name="back" value={coordinationConsoleHref} />
                                       <button type="submit">标记已发替代时间 / Mark alternatives sent</button>
                                     </form>
                                   ) : null}
                                   {row.status !== "Waiting Teacher" && row.status !== "Exception" ? (
                                     <form action={markCoordinationTeacherExceptionAction}>
                                       <input type="hidden" name="id" value={row.id} />
-                                      <input type="hidden" name="back" value={selfHref} />
+                                      <input type="hidden" name="back" value={coordinationConsoleHref} />
                                       <button type="submit">转老师例外确认 / Ask teacher exception</button>
                                     </form>
                                   ) : null}
@@ -1062,7 +1065,7 @@ export default async function AdminTicketDetailPage({
                 ) : null}
                 <form action={regenerateParentAvailabilityAction}>
                   <input type="hidden" name="id" value={row.id} />
-                  <input type="hidden" name="back" value={selfHref} />
+                  <input type="hidden" name="back" value={coordinationConsoleHref} />
                   <button type="submit">重生家长链接 / Regenerate Link</button>
                 </form>
               </div>
@@ -1106,7 +1109,7 @@ export default async function AdminTicketDetailPage({
         </div>
 
         <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff" }}>
+          <div id="status-action" style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff" }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>状态操作 / Status Action</div>
             {row.isArchived ? (
               <div style={{ display: "grid", gap: 8 }}>
@@ -1129,7 +1132,7 @@ export default async function AdminTicketDetailPage({
                 </div>
                 <form action={archiveTicketAction} style={{ display: "grid", gap: 8 }}>
                   <input type="hidden" name="id" value={row.id} />
-                  <input type="hidden" name="back" value={selfHref} />
+                  <input type="hidden" name="back" value={statusSectionHref} />
                   <button type="submit">归档 / Archive</button>
                 </form>
                 {canHardDeleteTicket ? (
@@ -1144,7 +1147,7 @@ export default async function AdminTicketDetailPage({
             ) : (
               <form action={updateStatusAction} style={{ display: "grid", gap: 8 }}>
                 <input type="hidden" name="id" value={row.id} />
-                <input type="hidden" name="back" value={selfHref} />
+                <input type="hidden" name="back" value={statusSectionHref} />
                 <label>
                   下一状态 / Next Status
                   <select name="nextStatus" defaultValue={row.status} style={{ width: "100%", boxSizing: "border-box" }}>
@@ -1165,9 +1168,9 @@ export default async function AdminTicketDetailPage({
           </div>
 
           {!row.isArchived && row.status !== "Completed" ? (
-            <form action={updateTicketFieldsAction} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", display: "grid", gap: 10 }}>
+            <form id="ticket-edit" action={updateTicketFieldsAction} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", display: "grid", gap: 10 }}>
               <input type="hidden" name="id" value={row.id} />
-              <input type="hidden" name="back" value={selfHref} />
+              <input type="hidden" name="back" value={ticketEditHref} />
               <div style={{ fontWeight: 700 }}>编辑工单 / Edit Ticket</div>
               <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, fontSize: 12, color: "#334155" }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{template.title}</div>

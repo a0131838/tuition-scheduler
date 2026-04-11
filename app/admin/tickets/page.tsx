@@ -35,7 +35,7 @@ function appendQuery(path: string, params: Record<string, string>) {
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
-  return `${url.pathname}${url.search}`;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function proofItems(proof: string | null | undefined) {
@@ -161,7 +161,7 @@ async function createIntakeTokenAction(formData: FormData) {
     },
   });
   revalidatePath("/admin/tickets");
-  redirect("/admin/tickets?tok=1");
+  redirect("/admin/tickets?tok=1#intake-link-management");
 }
 
 async function disableTokenAction(formData: FormData) {
@@ -174,7 +174,7 @@ async function disableTokenAction(formData: FormData) {
     data: { isActive: false },
   });
   revalidatePath("/admin/tickets");
-  redirect("/admin/tickets?tok=1");
+  redirect("/admin/tickets?tok=1#intake-link-management");
 }
 
 async function deleteTokenAction(formData: FormData) {
@@ -184,7 +184,7 @@ async function deleteTokenAction(formData: FormData) {
   if (!id) redirect("/admin/tickets");
   await prisma.ticketIntakeToken.delete({ where: { id } });
   revalidatePath("/admin/tickets");
-  redirect("/admin/tickets?tok=1");
+  redirect("/admin/tickets?tok=1#intake-link-management");
 }
 
 export default async function AdminTicketsPage({
@@ -326,7 +326,7 @@ export default async function AdminTicketsPage({
         )}
       </div>
 
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
+      <div id="intake-link-management" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Intake link management", "录入链接管理")}</div>
         <div style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>
           {t(lang, "The label becomes the default intake owner for this link and is also used to filter that person's ticket board. For example, use", "标签会作为该链接默认录入人，并用于个人工单看板过滤。比如给")}
@@ -447,7 +447,7 @@ export default async function AdminTicketsPage({
         <Link scroll={false} href="/admin/tickets?focus=mgmt">{t(lang, "Management focus", "管理介入")}</Link>
       </form>
 
-      <div className="table-scroll">
+      <div id="ticket-list" className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1030, tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "84px" }} />
@@ -481,9 +481,9 @@ export default async function AdminTicketsPage({
             {rows.map((r) => {
               const situation = situationLines(r.summary, r.nextAction, r.nextActionDue);
               return (
-              <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
+              <tr id={`ticket-row-${r.id}`} key={r.id} style={{ borderTop: "1px solid #e2e8f0", verticalAlign: "top" }}>
                 <td>
-                  <Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(backHref)}`}>
+                  <Link scroll={false} href={`/admin/tickets/${r.id}?back=${encodeURIComponent(`${backHref}#ticket-row-${r.id}`)}`}>
                     {r.ticketNo}
                   </Link>
                 </td>
@@ -528,13 +528,13 @@ export default async function AdminTicketsPage({
                       </div>
                       <form action={archiveTicketAction}>
                         <input type="hidden" name="id" value={r.id} />
-                        <input type="hidden" name="back" value={backHref} />
+                        <input type="hidden" name="back" value={`${backHref}#ticket-list`} />
                         <button type="submit">{t(lang, "Archive", "归档")}</button>
                       </form>
                       {canHardDeleteTickets ? (
                         <form action={deleteTicketAction}>
                           <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="back" value={backHref} />
+                          <input type="hidden" name="back" value={`${backHref}#ticket-list`} />
                           <button type="submit" style={{ background: "#7f1d1d", color: "#fff", borderColor: "#7f1d1d" }}>
                             {t(lang, "Delete permanently", "永久删除")}
                           </button>
@@ -544,7 +544,7 @@ export default async function AdminTicketsPage({
                   ) : (
                     <form action={updateStatusAction} style={{ display: "grid", gap: 6, maxWidth: 210 }}>
                       <input type="hidden" name="id" value={r.id} />
-                      <input type="hidden" name="back" value={backHref} />
+                      <input type="hidden" name="back" value={`${backHref}#ticket-row-${r.id}`} />
                       <select name="nextStatus" defaultValue={r.status} style={{ width: "100%", boxSizing: "border-box" }}>
                         {TICKET_STATUS_OPTIONS.filter((o) => canTransitionTicketStatus(r.status, o.value)).map((o) => (
                           <option key={o.value} value={o.value}>
