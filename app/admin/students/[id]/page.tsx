@@ -1148,11 +1148,10 @@ async function createSchedulingCoordinationTicket(studentId: string) {
     select: { id: true },
   });
   if (existing) {
-    redirect(
-      `/admin/tickets/${existing.id}?back=${encodeURIComponent(
-        buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
-      )}`
-    );
+    const params = new URLSearchParams({
+      msg: "Existing coordination ticket reused / 已沿用当前排课协调工单",
+    });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
   }
 
   const student = await prisma.student.findUnique({
@@ -2357,23 +2356,30 @@ export default async function StudentDetailPage({
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {schedulingTicketHref ? (
+              {activeSchedulingTicket && schedulingTicketHref ? (
                 <a
                   href={schedulingTicketHref}
                   style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
                 >
-                  {t(lang, "Open coordination ticket", "打开排课协调工单")}
+                  {t(lang, "Open active ticket", "打开当前工单")}
                 </a>
               ) : null}
-              <form action={createSchedulingCoordinationTicket.bind(null, studentId)}>
-                <button type="submit">
-                  {activeSchedulingTicket
-                    ? t(lang, "Open active ticket", "打开当前工单")
-                    : t(lang, "Create scheduling ticket", "新建排课协调工单")}
-                </button>
-              </form>
+              {!activeSchedulingTicket ? (
+                <form action={createSchedulingCoordinationTicket.bind(null, studentId)}>
+                  <button type="submit">{t(lang, "Create scheduling ticket", "新建排课协调工单")}</button>
+                </form>
+              ) : null}
             </div>
           </div>
+          {activeSchedulingTicket ? (
+            <div style={{ fontSize: 12, color: "#92400e" }}>
+              {t(
+                lang,
+                "Reuse the current open coordination ticket first. Only open a new one after the existing follow-up is completed or cancelled.",
+                "请优先沿用当前未关闭的排课协调工单。只有当前跟进完成或取消后，才重新新建。"
+              )}
+            </div>
+          ) : null}
           {activeSchedulingTicket && additionalOpenSchedulingTickets.length > 0 ? (
             <div style={{ border: "1px solid #fdba74", borderRadius: 10, padding: 10, background: "#fff7ed", color: "#9a3412", display: "grid", gap: 8 }}>
               <div style={{ fontWeight: 800 }}>
@@ -2384,6 +2390,13 @@ export default async function StudentDetailPage({
                   lang,
                   `This student currently has ${openSchedulingTickets.length} open coordination tickets. This page is using ${activeSchedulingTicket.ticketNo} based on the earliest follow-up due date, then newest created time.`,
                   `这个学生当前有 ${openSchedulingTickets.length} 条未关闭的排课协调工单。学生页目前按“下次跟进最早优先，其次创建时间最新”使用 ${activeSchedulingTicket.ticketNo} 作为当前工单。`
+                )}
+              </div>
+              <div style={{ fontSize: 13 }}>
+                {t(
+                  lang,
+                  "Please reuse one of the open tickets below and close extra test tickets when they are no longer needed.",
+                  "请优先沿用下面已有的未关闭工单；如果是多余的测试工单，处理后请尽快关闭。"
                 )}
               </div>
               <div style={{ display: "grid", gap: 6 }}>

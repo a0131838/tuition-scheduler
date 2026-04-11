@@ -418,7 +418,11 @@ export default function IntakeForm({
               setErr(String(data?.message ?? "提交失败 / Submit failed"));
               return;
             }
-            setMsg(`提交成功 / Submitted: ${data.ticketNo}`);
+            setMsg(
+              data?.reusedExisting
+                ? `已沿用当前排课协调工单 / Reused current coordination ticket: ${data.ticketNo}`
+                : `提交成功 / Submitted: ${data.ticketNo}`
+            );
             setSubmittedParentAvailability(
               data?.parentAvailabilityUrl
                 ? {

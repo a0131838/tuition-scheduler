@@ -2248,3 +2248,18 @@
   - verify `赵测试` shows the duplicate-ticket warning on the student coordination card when multiple open coordination tickets exist
   - verify student and ticket views now show bilingual scheduling-coordination summary text instead of English-only system copy
   - verify new parent submissions write bilingual summary labels into the linked coordination ticket
+
+## 2026-04-11-r35 Ready
+
+- Scope: reuse the current open scheduling-coordination ticket instead of creating another one for the same student.
+- Business impact:
+  - student detail now shows a clearer `Open active ticket / 打开当前工单` action and a reuse note whenever the student already has an open coordination ticket
+  - the student-side server action now redirects back with `Existing coordination ticket reused / 已沿用当前排课协调工单` instead of silently opening a second path
+  - the ticket-intake API now returns the existing open scheduling-coordination ticket for the same student, which prevents duplicate test tickets from being created through intake links
+  - the intake form now surfaces a bilingual reuse success message and still exposes the existing parent-availability link when that open ticket is still waiting for submission
+  - no scheduling placement rules, finance logic, package logic, receipt logic, invoice logic, or attendance logic changed
+- Validation:
+  - `npm run build`
+  - verify student detail shows only the reuse/open-current action when an open coordination ticket already exists
+  - verify the student-detail create action returns to the coordination card with a bilingual reuse message instead of creating another open ticket
+  - verify ticket intake returns the current open coordination ticket for the same student and shows the bilingual reuse success message

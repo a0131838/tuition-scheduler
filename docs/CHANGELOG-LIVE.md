@@ -3978,3 +3978,25 @@ This file is the single source of truth for what changed in production.
   - scheduling-coordination system copy now renders in bilingual form on the student detail page, ticket detail page, admin ticket list, archived tickets list, and teacher ticket list
   - parent-availability summaries now store bilingual field labels for future submissions
 - Rollback point: previous production commit before `2026-04-11-r34`.
+
+## 2026-04-11-r35
+
+- Release ID: `2026-04-11-r35`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: reuse existing scheduling-coordination tickets instead of creating duplicates for the same student.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `app/tickets/intake/IntakeForm.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-scheduling-coordination-ticket-reuse.md`
+- Risk impact (if any): Low. This release only changes how scheduling-coordination ticket creation is routed when an open ticket already exists for the same student; it does not change scheduling placement, finance, package, receipt, invoice, or attendance logic.
+- Verification:
+  - `npm run build` passed
+  - student detail now shows `Open active ticket / 打开当前工单` and a reuse note instead of encouraging a second open coordination ticket
+  - student detail server action now redirects back with a bilingual reuse message when an open coordination ticket already exists
+  - intake API now returns the existing open coordination ticket for the same student instead of creating another scheduling-coordination ticket
+  - intake form now shows a bilingual reuse success message and preserves the existing parent-availability link when applicable
+- Rollback point: previous production commit before `2026-04-11-r35`.

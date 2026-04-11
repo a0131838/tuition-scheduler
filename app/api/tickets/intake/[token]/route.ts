@@ -126,6 +126,71 @@ export async function POST(
     latestDeadlineText: situationDeadlineRaw,
   });
 
+  const version = validateByOptions(normalizeTicketString(body.version, 10), TICKET_VERSION_OPTIONS);
+  const systemUpdated = validateByOptions(
+    normalizeTicketString(body.systemUpdated, 5),
+    TICKET_SYSTEM_UPDATED_OPTIONS
+  );
+  const studentId = normalizeTicketString(body.studentId, 80);
+  const linkedStudent = studentId
+    ? await prisma.student.findUnique({
+        where: { id: studentId },
+        select: { id: true, name: true },
+      })
+    : null;
+  if (studentId && !linkedStudent) {
+    return bad("Selected student could not be found / 选择的学生不存在");
+  }
+  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && !linkedStudent) {
+    return bad("Please confirm the student from the lookup before creating a scheduling coordination ticket / 请先从学生匹配列表确认学生后，再创建排课协调工单");
+  }
+
+  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && linkedStudent) {
+    const existingCoordination = await prisma.ticket.findFirst({
+      where: {
+        studentId: linkedStudent.id,
+        type: SCHEDULING_COORDINATION_TICKET_TYPE,
+        isArchived: false,
+        status: { notIn: ["Completed", "Cancelled"] },
+      },
+      orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        ticketNo: true,
+        parentAvailabilityRequest: {
+          select: {
+            token: true,
+            expiresAt: true,
+            isActive: true,
+            submittedAt: true,
+          },
+        },
+      },
+    });
+
+    if (existingCoordination) {
+      const origin = await resolveOriginFromRequest(req);
+      const parentAvailabilityUrl =
+        existingCoordination.parentAvailabilityRequest?.token &&
+        existingCoordination.parentAvailabilityRequest.isActive &&
+        !existingCoordination.parentAvailabilityRequest.submittedAt
+          ? new URL(buildParentAvailabilityPath(existingCoordination.parentAvailabilityRequest.token), origin).toString()
+          : null;
+      return Response.json(
+        {
+          ok: true,
+          id: existingCoordination.id,
+          ticketNo: existingCoordination.ticketNo,
+          reusedExisting: true,
+          message: "Existing coordination ticket reused / 已沿用当前排课协调工单",
+          parentAvailabilityUrl,
+          parentAvailabilityExpiresAt: existingCoordination.parentAvailabilityRequest?.expiresAt?.toISOString() ?? null,
+        },
+        { status: 200 }
+      );
+    }
+  }
+
   const force = String(body.forceDuplicate ?? "").trim() === "1";
   const dupeSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const duplicates = await prisma.ticket.findMany({
@@ -149,25 +214,6 @@ export async function POST(
         summary: d.summary ?? "",
       })),
     });
-  }
-
-  const version = validateByOptions(normalizeTicketString(body.version, 10), TICKET_VERSION_OPTIONS);
-  const systemUpdated = validateByOptions(
-    normalizeTicketString(body.systemUpdated, 5),
-    TICKET_SYSTEM_UPDATED_OPTIONS
-  );
-  const studentId = normalizeTicketString(body.studentId, 80);
-  const linkedStudent = studentId
-    ? await prisma.student.findUnique({
-        where: { id: studentId },
-        select: { id: true, name: true },
-      })
-    : null;
-  if (studentId && !linkedStudent) {
-    return bad("Selected student could not be found / 选择的学生不存在");
-  }
-  if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && !linkedStudent) {
-    return bad("Please confirm the student from the lookup before creating a scheduling coordination ticket / 请先从学生匹配列表确认学生后，再创建排课协调工单");
   }
 
   const shouldCreateParentAvailabilityLink =
