@@ -47,6 +47,8 @@ import {
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationWaitingParentAction,
+  schedulingCoordinationWaitingParentSummary,
 } from "@/lib/scheduling-coordination";
 
 function trimValue(formData: FormData, key: string, max = 400) {
@@ -109,18 +111,6 @@ function toDateTimeLocalValue(v: Date | null | undefined) {
   const hh = String(v.getHours()).padStart(2, "0");
   const mm = String(v.getMinutes()).padStart(2, "0");
   return `${y}-${m}-${d}T${hh}:${mm}`;
-}
-
-function schedulingCoordinationFollowUpAction() {
-  return "Review the submitted parent availability, generate teacher-availability-backed slot options, and confirm the final lesson plan with the family.";
-}
-
-function schedulingCoordinationWaitingParentAction() {
-  return "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.";
-}
-
-function schedulingCoordinationWaitingParentSummary() {
-  return "Parent availability form sent / waiting for response";
 }
 
 function sanitizeAdminBack(raw: string | null | undefined, fallback: string) {

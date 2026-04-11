@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r32
+
+- Release ID: `2026-04-11-r32`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: continue scheduling-coordination auto-progress so a parent availability submission now immediately re-evaluates current teacher availability and updates the linked coordination ticket to a more accurate ops follow-up state.
+- Key files:
+  - `lib/scheduling-coordination.ts`
+  - `app/availability/[token]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-scheduling-coordination-auto-phase-advance.md`
+- Risk impact (if any): Low to medium. This release only changes scheduling-coordination ticket follow-up updates after a parent availability submission; it does not change quick scheduling, teacher exception reply logic, sessions, packages, deductions, or finance flows.
+- Verification:
+  - `npx tsc --noEmit` passed
+  - parent availability submission now checks current teacher-availability-backed slot matches before writing back to the linked coordination ticket
+  - matching submissions now move the ticket into an ops-review state with "matching slots ready" guidance
+  - no-match submissions now move the ticket into an ops-review state with "review alternatives first / ask teacher exception if needed" guidance
+- Rollback point: previous production commit before `2026-04-11-r32`.
+
 ## 2026-04-11-r31
 
 - Release ID: `2026-04-11-r31`

@@ -46,6 +46,48 @@ export type SchedulingCoordinationPhase = {
   nextStep: string;
 };
 
+export function schedulingCoordinationWaitingParentAction() {
+  return "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.";
+}
+
+export function schedulingCoordinationWaitingParentSummary() {
+  return "Parent availability form sent / waiting for response";
+}
+
+export function deriveSchedulingCoordinationParentSubmissionUpdate(args: {
+  currentStatus: string;
+  matchedSlotCount?: number;
+}) {
+  const matchedSlotCount = Math.max(0, args.matchedSlotCount ?? 0);
+  if (args.currentStatus === "Confirmed") {
+    return {
+      status: "Confirmed",
+      nextAction:
+        "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan.",
+      parentAvailabilitySummary:
+        matchedSlotCount > 0
+          ? `Parent re-submitted availability after confirmation / ${matchedSlotCount} matching slot(s) found`
+          : "Parent re-submitted availability after confirmation / manual review needed",
+    } as const;
+  }
+
+  if (matchedSlotCount > 0) {
+    return {
+      status: "Need Info",
+      nextAction:
+        "Parent availability already matches current teacher availability. Review the matched slots, send the availability-backed options to the family, and then move the ticket to waiting for the parent choice.",
+      parentAvailabilitySummary: `Parent availability submitted / ${matchedSlotCount} matching availability-backed slot(s) ready for ops review`,
+    } as const;
+  }
+
+  return {
+    status: "Need Info",
+    nextAction:
+      "Parent availability was submitted but no current teacher availability matches yet. Review nearby alternatives first, then ask for a teacher exception only if the family insists on the unavailable timing.",
+    parentAvailabilitySummary: "Parent availability submitted / no current availability match yet",
+  } as const;
+}
+
 export function buildSchedulingCoordinationTeacherOptions(args: {
   enrollments: EnrollmentLike[];
   teachers: TeacherLike[];

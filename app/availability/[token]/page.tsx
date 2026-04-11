@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,6 +10,14 @@ import {
   type ParentAvailabilityPayload,
 } from "@/lib/parent-availability";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { composeTicketSituation, parseTicketSituationSummary } from "@/lib/tickets";
+import {
+  buildSchedulingCoordinationTeacherOptions,
+  deriveSchedulingCoordinationParentSubmissionUpdate,
+  filterSchedulingSlotsByParentAvailability,
+  inferSchedulingCoordinationDurationMin,
+  listSchedulingCoordinationCandidateSlots,
+} from "@/lib/scheduling-coordination";
 
 function asPayload(value: unknown): ParentAvailabilityPayload {
   const payload = (value ?? {}) as Partial<ParentAvailabilityPayload>;
@@ -39,6 +48,7 @@ async function submitParentAvailability(token: string, formData: FormData) {
           id: true,
           status: true,
           isArchived: true,
+          summary: true,
         },
       },
     },
@@ -60,7 +70,63 @@ async function submitParentAvailability(token: string, formData: FormData) {
 
   const now = new Date();
   const followUpDue = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const summary = summarizeParentAvailabilityPayload(payload);
+  const [enrollments, teachers] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: { studentId: request.studentId },
+      include: {
+        class: {
+          include: {
+            subject: true,
+            level: true,
+            teacher: true,
+          },
+        },
+      },
+    }),
+    prisma.teacher.findMany({ include: { subjects: true }, orderBy: { name: "asc" } }),
+  ]);
+  const teacherOptions = buildSchedulingCoordinationTeacherOptions({ enrollments, teachers });
+  const classIds = enrollments.map((item) => item.classId);
+  const futureEnd = new Date(now);
+  futureEnd.setDate(futureEnd.getDate() + 60);
+  const relevantSessions = classIds.length
+    ? await prisma.session.findMany({
+        where: {
+          classId: { in: classIds },
+          startAt: { gte: now, lt: futureEnd },
+          OR: [{ studentId: null }, { studentId: request.studentId }],
+        },
+        select: { startAt: true, endAt: true },
+        orderBy: { startAt: "asc" },
+      })
+    : [];
+  const durationMin = inferSchedulingCoordinationDurationMin({
+    upcomingSessions: relevantSessions,
+    monthlySessions: relevantSessions,
+  });
+  const searchStart = payload.earliestStartDate ? new Date(`${payload.earliestStartDate}T00:00:00`) : now;
+  const availabilitySlots = teacherOptions.length
+    ? await listSchedulingCoordinationCandidateSlots({
+        studentId: request.studentId,
+        teacherOptions,
+        startAt: searchStart,
+        durationMin,
+        maxSlots: 12,
+      })
+    : [];
+  const matchedSlotCount = filterSchedulingSlotsByParentAvailability(availabilitySlots, payload).length;
+  const coordinationUpdate = deriveSchedulingCoordinationParentSubmissionUpdate({
+    currentStatus: request.ticket.status,
+    matchedSlotCount,
+  });
+  const previousSummary = parseTicketSituationSummary(request.ticket.summary);
+  const requiredAction = [
+    `Parent availability summary:
+${summarizeParentAvailabilityPayload(payload)}`,
+    coordinationUpdate.nextAction,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   await prisma.$transaction([
     prisma.parentAvailabilityRequest.update({
@@ -73,18 +139,29 @@ async function submitParentAvailability(token: string, formData: FormData) {
     prisma.ticket.update({
       where: { id: request.ticketId },
       data: {
-        parentAvailability: summary,
-        status: request.ticket.status === "Waiting Parent" ? "Need Info" : request.ticket.status,
-        nextAction:
-          "Review the submitted parent availability, generate teacher-availability-backed slot options, and confirm the final lesson plan with the family.",
+        parentAvailability: coordinationUpdate.parentAvailabilitySummary,
+        status: coordinationUpdate.status,
+        nextAction: coordinationUpdate.nextAction,
         nextActionDue: followUpDue,
         lastUpdateAt: now,
+        summary: composeTicketSituation({
+          currentIssue:
+            previousSummary.currentIssue ||
+            "Need to coordinate lesson times with the parent using the teacher's submitted availability as the default scheduling source.",
+          requiredAction,
+          latestDeadlineText: formatBusinessDateTime(followUpDue),
+        }),
       },
     }),
   ]);
 
+  revalidatePath("/admin/tickets");
+  revalidatePath(`/admin/tickets/${request.ticketId}`);
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/todos");
   redirect(`${buildParentAvailabilityPath(token)}?msg=submitted`);
 }
+
 
 export default async function ParentAvailabilityPage({
   params,

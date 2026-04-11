@@ -33,6 +33,8 @@ import {
   filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  schedulingCoordinationWaitingParentAction,
+  schedulingCoordinationWaitingParentSummary,
 } from "@/lib/scheduling-coordination";
 import {
   buildParentAvailabilityExpiresAt,
@@ -1248,9 +1250,8 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string) {
       where: { id: ticket.id },
       data: {
         status: "Waiting Parent",
-        parentAvailability: "Parent availability form sent / waiting for response",
-        nextAction:
-          "Send or resend the parent availability form, wait for the family to submit preferred times, then continue from teacher availability.",
+        parentAvailability: schedulingCoordinationWaitingParentSummary(),
+        nextAction: schedulingCoordinationWaitingParentAction(),
         nextActionDue: now,
         lastUpdateAt: now,
       },
