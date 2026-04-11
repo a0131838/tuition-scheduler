@@ -24,6 +24,10 @@ import {
   buildParentAvailabilityPath,
   createParentAvailabilityToken,
 } from "@/lib/parent-availability";
+import {
+  normalizeSchedulingCoordinationCourseKey,
+  schedulingCoordinationCourseLabelsMatch,
+} from "@/lib/scheduling-coordination";
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -146,7 +150,7 @@ export async function POST(
   }
 
   if (normalizedType === SCHEDULING_COORDINATION_TICKET_TYPE && linkedStudent) {
-    const existingCoordination = await prisma.ticket.findFirst({
+    const existingCoordinations = await prisma.ticket.findMany({
       where: {
         studentId: linkedStudent.id,
         type: SCHEDULING_COORDINATION_TICKET_TYPE,
@@ -154,19 +158,32 @@ export async function POST(
         status: { notIn: ["Completed", "Cancelled"] },
       },
       orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+      take: 6,
       select: {
         id: true,
         ticketNo: true,
+        course: true,
         parentAvailabilityRequest: {
           select: {
             token: true,
             expiresAt: true,
             isActive: true,
             submittedAt: true,
+            courseLabel: true,
           },
         },
       },
     });
+
+    const desiredCourseKey = normalizeSchedulingCoordinationCourseKey(course);
+    const existingCoordination =
+      existingCoordinations.find((item) =>
+        schedulingCoordinationCourseLabelsMatch(
+          item.parentAvailabilityRequest?.courseLabel ?? item.course,
+          course
+        )
+      ) ??
+      (!desiredCourseKey ? existingCoordinations[0] ?? null : null);
 
     if (existingCoordination) {
       const origin = await resolveOriginFromRequest(req);

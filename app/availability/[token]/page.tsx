@@ -21,6 +21,19 @@ import {
 } from "@/lib/scheduling-coordination";
 import ParentAvailabilityFormFields from "./ParentAvailabilityFormFields";
 
+type ParentAvailabilityRequestPageRow = {
+  token: string;
+  courseLabel: string | null;
+  expiresAt: Date | null;
+  submittedAt: Date | null;
+  payloadJson: unknown;
+  ticket: {
+    ticketNo: string;
+    status: string;
+    isArchived: boolean;
+  };
+};
+
 async function submitParentAvailability(token: string, formData: FormData) {
   "use server";
   const request = await prisma.parentAvailabilityRequest.findUnique({
@@ -199,7 +212,38 @@ export default async function ParentAvailabilityPage({
     );
   }
 
-  const payload = coerceParentAvailabilityPayload(request.payloadJson);
+  const relatedRequests = await prisma.parentAvailabilityRequest.findMany({
+    where: {
+      studentId: request.studentId,
+      isActive: true,
+      OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+      ticket: {
+        isArchived: false,
+        status: { notIn: ["Completed", "Cancelled"] },
+      },
+    },
+    select: {
+      token: true,
+      courseLabel: true,
+      expiresAt: true,
+      submittedAt: true,
+      payloadJson: true,
+      ticket: {
+        select: {
+          ticketNo: true,
+          status: true,
+          isArchived: true,
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+  const requestCards = relatedRequests
+    .sort((left, right) => {
+      if (left.token === token) return -1;
+      if (right.token === token) return 1;
+      return 0;
+    }) as ParentAvailabilityRequestPageRow[];
 
   return (
     <div style={{ maxWidth: 820, margin: "24px auto", padding: "0 16px 40px", display: "grid", gap: 16 }}>
@@ -212,9 +256,12 @@ export default async function ParentAvailabilityPage({
 
       <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fbff", padding: 16, display: "grid", gap: 8 }}>
         <div><b>Student / 学生:</b> {request.student.name}</div>
-        <div><b>Course / 课程:</b> {request.courseLabel || "-"}</div>
-        <div><b>Reference / 参考工单:</b> {request.ticket.ticketNo}</div>
-        <div><b>Link expires / 链接有效期:</b> {request.expiresAt ? formatBusinessDateTime(request.expiresAt) : "-"}</div>
+        <div><b>Current course / 当前课程:</b> {request.courseLabel || "-"}</div>
+        <div><b>Current reference / 当前参考工单:</b> {request.ticket.ticketNo}</div>
+        <div><b>Current link expires / 当前链接有效期:</b> {request.expiresAt ? formatBusinessDateTime(request.expiresAt) : "-"}</div>
+        {requestCards.length > 1 ? (
+          <div><b>Courses on this page / 本页课程数:</b> {requestCards.length}</div>
+        ) : null}
       </div>
 
       <div
@@ -248,29 +295,76 @@ export default async function ParentAvailabilityPage({
         </div>
       </div>
 
-      {msg === "submitted" ? (
-        <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 16, color: "#166534" }}>
-          Thank you. We have received your available lesson times. The school team will review them and confirm the final schedule with you.
-        </div>
-      ) : null}
-      {err ? (
-        <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", padding: 16, color: "#b91c1c" }}>
-          {err === "empty"
-            ? "Please fill at least one weekly preference, specific date selection, or note before submitting."
-            : "This form could not be submitted. Please refresh and try again."}
+      {requestCards.length > 1 ? (
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#eff6ff", padding: 16, color: "#1d4ed8" }}>
+          This page includes multiple courses for the same student. Please submit each course separately below. / 这个页面会同时显示同一学生的多门课程，请分别提交每门课程的可上课时间。
         </div>
       ) : null}
 
-      <form action={submitParentAvailability.bind(null, token)} style={{ display: "grid", gap: 16 }}>
-        <ParentAvailabilityFormFields payload={payload} />
+      {requestCards.map((item) => {
+        const payload = coerceParentAvailabilityPayload(item.payloadJson);
+        const isCurrentCard = item.token === token;
+        return (
+          <div
+            key={item.token}
+            style={{
+              border: isCurrentCard ? "2px solid #2563eb" : "1px solid #e2e8f0",
+              borderRadius: 14,
+              background: "#fff",
+              padding: 16,
+              display: "grid",
+              gap: 16,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ fontWeight: 800, fontSize: 18 }}>{item.courseLabel || "Course pending / 课程待确认"}</div>
+                  {isCurrentCard ? (
+                    <div style={{ padding: "3px 8px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 12, fontWeight: 700 }}>
+                      Current link / 当前链接
+                    </div>
+                  ) : null}
+                </div>
+                <div style={{ fontSize: 13, color: "#475569" }}>
+                  Reference / 参考工单: {item.ticket.ticketNo} | Status / 状态: {item.ticket.status}
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  {item.submittedAt
+                    ? `Latest submission / 最近提交: ${formatBusinessDateTime(item.submittedAt)}`
+                    : item.expiresAt
+                      ? `Link expires / 链接有效期: ${formatBusinessDateTime(item.expiresAt)}`
+                      : "Link active / 链接有效"}
+                </div>
+              </div>
+            </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            Latest submission / 最近提交: {request.submittedAt ? formatBusinessDateOnly(request.submittedAt) : "Not submitted yet / 还未提交"}
+            {isCurrentCard && msg === "submitted" ? (
+              <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 16, color: "#166534" }}>
+                Thank you. We have received the available times for this course. The school team will review them and confirm the final schedule with you.
+              </div>
+            ) : null}
+            {isCurrentCard && err ? (
+              <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", padding: 16, color: "#b91c1c" }}>
+                {err === "empty"
+                  ? "Please fill at least one weekly preference, specific date selection, or note before submitting this course."
+                  : "This course form could not be submitted. Please refresh and try again."}
+              </div>
+            ) : null}
+
+            <form action={submitParentAvailability.bind(null, item.token)} style={{ display: "grid", gap: 16 }}>
+              <ParentAvailabilityFormFields payload={payload} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  Latest submission / 最近提交: {item.submittedAt ? formatBusinessDateOnly(item.submittedAt) : "Not submitted yet / 还未提交"}
+                </div>
+                <button type="submit">Submit availability / 提交可上课时间</button>
+              </div>
+            </form>
           </div>
-          <button type="submit">Submit availability / 提交可上课时间</button>
-        </div>
-      </form>
+        );
+      })}
     </div>
   );
 }

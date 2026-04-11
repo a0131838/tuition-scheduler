@@ -34,7 +34,9 @@ import {
   formatSchedulingCoordinationSystemText,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  normalizeSchedulingCoordinationCourseKey,
   schedulingCoordinationCurrentIssueText,
+  schedulingCoordinationCourseLabelsMatch,
   schedulingCoordinationInitialRequiredActionText,
   schedulingCoordinationParentChoiceLoggedText,
   schedulingCoordinationTeacherExceptionAction,
@@ -1130,30 +1132,14 @@ async function restoreStudentSession(studentId: string, formData: FormData) {
   redirect(buildStudentDetailHref(studentId, params, returnHash, "#upcoming-sessions"));
 }
 
-async function createSchedulingCoordinationTicket(studentId: string) {
+async function createSchedulingCoordinationTicket(studentId: string, formData: FormData) {
   "use server";
   const user = await getCurrentUser();
   if (!user) {
     const params = new URLSearchParams({ err: "Login required" });
     redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
   }
-
-  const existing = await prisma.ticket.findFirst({
-    where: {
-      studentId,
-      type: SCHEDULING_COORDINATION_TICKET_TYPE,
-      isArchived: false,
-      status: { notIn: ["Completed", "Cancelled"] },
-    },
-    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
-    select: { id: true },
-  });
-  if (existing) {
-    const params = new URLSearchParams({
-      msg: "Existing coordination ticket reused / 已沿用当前排课协调工单",
-    });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
-  }
+  const enrollmentId = String(formData.get("enrollmentId") ?? "").trim();
 
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -1164,7 +1150,6 @@ async function createSchedulingCoordinationTicket(studentId: string) {
           class: { include: { course: true, subject: true, level: true, teacher: true } },
         },
         orderBy: { id: "asc" },
-        take: 1,
       },
     },
   });
@@ -1173,9 +1158,43 @@ async function createSchedulingCoordinationTicket(studentId: string) {
     redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
   }
 
-  const primaryEnrollment = student.enrollments[0] ?? null;
-  const courseLabel = primaryEnrollment ? buildCourseLabelFromEnrollment(primaryEnrollment) : null;
-  const teacherName = primaryEnrollment?.class?.teacher?.name ?? null;
+  const targetEnrollment =
+    (enrollmentId ? student.enrollments.find((item) => item.id === enrollmentId) ?? null : null) ||
+    student.enrollments[0] ||
+    null;
+  const courseLabel = targetEnrollment ? buildCourseLabelFromEnrollment(targetEnrollment) : null;
+  const teacherName = targetEnrollment?.class?.teacher?.name ?? null;
+
+  const existingTickets = await prisma.ticket.findMany({
+    where: {
+      studentId,
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      course: true,
+      parentAvailabilityRequest: { select: { courseLabel: true } },
+    },
+  });
+  const existingMatch =
+    existingTickets.find((item) =>
+      schedulingCoordinationCourseLabelsMatch(
+        item.parentAvailabilityRequest?.courseLabel ?? item.course,
+        courseLabel
+      )
+    ) ??
+    (!normalizeSchedulingCoordinationCourseKey(courseLabel) ? existingTickets[0] ?? null : null);
+  if (existingMatch) {
+    const params = new URLSearchParams({
+      msg: "Existing coordination ticket reused / 已沿用当前排课协调工单",
+      coordTicketId: existingMatch.id,
+    });
+    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  }
+
   const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const currentIssue = schedulingCoordinationCurrentIssueText();
   const requiredAction = schedulingCoordinationInitialRequiredActionText();
@@ -1227,7 +1246,7 @@ async function createSchedulingCoordinationTicket(studentId: string) {
   );
 }
 
-async function regenerateSchedulingCoordinationParentLink(studentId: string) {
+async function regenerateSchedulingCoordinationParentLink(studentId: string, ticketId: string) {
   "use server";
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
@@ -1236,12 +1255,12 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string) {
 
   const ticket = await prisma.ticket.findFirst({
     where: {
+      id: ticketId,
       studentId,
       type: SCHEDULING_COORDINATION_TICKET_TYPE,
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
-    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
       parentAvailabilityRequest: { select: { ticketId: true } },
@@ -1288,14 +1307,15 @@ async function markSchedulingCoordinationParentChoice(studentId: string, formDat
   }
 
   const back = sanitizeStudentDetailBack(studentId, String(formData.get("back") ?? ""));
+  const ticketId = String(formData.get("ticketId") ?? "").trim();
   const ticket = await prisma.ticket.findFirst({
     where: {
+      id: ticketId,
       studentId,
       type: SCHEDULING_COORDINATION_TICKET_TYPE,
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
-    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
     select: { id: true, summary: true },
   });
 
@@ -1339,14 +1359,15 @@ async function markSchedulingCoordinationTeacherException(studentId: string, for
   }
 
   const back = sanitizeStudentDetailBack(studentId, String(formData.get("back") ?? ""));
+  const ticketId = String(formData.get("ticketId") ?? "").trim();
   const ticket = await prisma.ticket.findFirst({
     where: {
+      id: ticketId,
       studentId,
       type: SCHEDULING_COORDINATION_TICKET_TYPE,
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
-    orderBy: [{ nextActionDue: "asc" }, { createdAt: "desc" }],
     select: { id: true, summary: true },
   });
 
@@ -1414,6 +1435,7 @@ export default async function StudentDetailPage({
   const focus = sp?.focus ?? "";
   const coordDate = sp?.coordDate ?? fmtDateInput(new Date());
   const coordTeacherId = sp?.coordTeacherId ?? "";
+  const coordTicketId = sp?.coordTicketId ?? "";
   const coordGenerate = sp?.coordGenerate === "1";
   const coordSpecialStartAt = sp?.coordSpecialStartAt ?? "";
   const coordSpecialDurationMinRaw = Math.max(15, toInt(sp?.coordSpecialDurationMin, 45));
@@ -1507,6 +1529,8 @@ export default async function StudentDetailPage({
         id: true,
         ticketNo: true,
         status: true,
+        course: true,
+        teacher: true,
         owner: true,
         nextAction: true,
         nextActionDue: true,
@@ -1566,8 +1590,13 @@ export default async function StudentDetailPage({
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
   ]);
 
-  const activeSchedulingTicket = openSchedulingTickets[0] ?? null;
-  const additionalOpenSchedulingTickets = openSchedulingTickets.slice(1);
+  const activeSchedulingTicket =
+    openSchedulingTickets.find((ticket) => ticket.id === coordTicketId) ??
+    openSchedulingTickets[0] ??
+    null;
+  const additionalOpenSchedulingTickets = activeSchedulingTicket
+    ? openSchedulingTickets.filter((ticket) => ticket.id !== activeSchedulingTicket.id)
+    : [];
   const schedulingSummary = activeSchedulingTicket ? parseTicketSituationSummary(activeSchedulingTicket.summary) : null;
   const schedulingSummaryCurrentDisplay = activeSchedulingTicket
     ? formatSchedulingCoordinationSystemText(schedulingSummary?.currentIssue || activeSchedulingTicket.nextAction || "-")
@@ -1597,6 +1626,28 @@ export default async function StudentDetailPage({
         buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
       )}`
     : null;
+  const openSchedulingCourseKeySet = new Set(
+    openSchedulingTickets
+      .map((ticket) =>
+        normalizeSchedulingCoordinationCourseKey(ticket.parentAvailabilityRequest?.courseLabel ?? ticket.course)
+      )
+      .filter(Boolean)
+  );
+  const coordinationCreationOptions = enrollments
+    .map((enrollment) => {
+      const courseLabel = buildCourseLabelFromEnrollment(enrollment);
+      return {
+        enrollmentId: enrollment.id,
+        courseLabel,
+        teacherName: enrollment.class.teacher?.name ?? null,
+        hasOpenTicket: openSchedulingCourseKeySet.has(normalizeSchedulingCoordinationCourseKey(courseLabel)),
+      };
+    })
+    .filter(
+      (option, index, array) =>
+        option.courseLabel &&
+        array.findIndex((candidate) => candidate.courseLabel === option.courseLabel) === index
+    );
   const coordinationTeacherOptions = buildSchedulingCoordinationTeacherOptions({ enrollments, teachers });
   const coordinationDefaultSubjectId = uniqueDefined(
     enrollments.map((enrollment) => enrollment.class.subjectId)
@@ -1685,6 +1736,20 @@ export default async function StudentDetailPage({
     "#scheduling-coordination",
     "#scheduling-coordination"
   );
+  const buildCoordinationTicketPanelHref = (ticketId: string) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp ?? {})) {
+      if (!value || key === "msg" || key === "err") continue;
+      params.set(key, value);
+    }
+    params.set("coordTicketId", ticketId);
+    return buildStudentDetailHref(
+      studentId,
+      params,
+      "#scheduling-coordination",
+      "#scheduling-coordination"
+    );
+  };
 
   const classIds = enrollments.map((e) => e.classId);
   const upcomingRangeEnd = new Date();
@@ -2357,8 +2422,8 @@ export default async function StudentDetailPage({
               <div style={{ color: "#64748b", fontSize: 12 }}>
                 {t(
                   lang,
-                  "Use one coordination ticket to track parent preferences, special time requests, and the next follow-up. Teacher availability remains the default scheduling source.",
-                  "用一张排课协调工单记录家长偏好、特殊时间要求和下次跟进时间。老师 availability 仍然是默认排课依据。"
+                  "Use one coordination ticket per course to track parent preferences, special time requests, and the next follow-up. Teacher availability remains the default scheduling source.",
+                  "每门课程各用一张排课协调工单记录家长偏好、特殊时间要求和下次跟进时间。老师 availability 仍然是默认排课依据。"
                 )}
               </div>
             </div>
@@ -2371,7 +2436,7 @@ export default async function StudentDetailPage({
                   {t(lang, "Open active ticket", "打开当前工单")}
                 </a>
               ) : null}
-              {!activeSchedulingTicket ? (
+              {!activeSchedulingTicket && coordinationCreationOptions.length === 0 ? (
                 <form action={createSchedulingCoordinationTicket.bind(null, studentId)}>
                   <button type="submit">{t(lang, "Create scheduling ticket", "新建排课协调工单")}</button>
                 </form>
@@ -2382,59 +2447,162 @@ export default async function StudentDetailPage({
             <div style={{ fontSize: 12, color: "#92400e" }}>
               {t(
                 lang,
-                "Reuse the current open coordination ticket first. Only open a new one after the existing follow-up is completed or cancelled.",
-                "请优先沿用当前未关闭的排课协调工单。只有当前跟进完成或取消后，才重新新建。"
+                "Reuse the matching course ticket first. Only create another coordination ticket when a different course still needs its own follow-up.",
+                "请优先沿用对应课程的未关闭排课协调工单。只有另一门课程也需要单独跟进时，才再新建。"
               )}
             </div>
           ) : null}
-          {activeSchedulingTicket && additionalOpenSchedulingTickets.length > 0 ? (
+          {coordinationCreationOptions.length > 0 ? (
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 10, padding: 10, background: "#f8fbff", display: "grid", gap: 8 }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Course coordination lanes", "课程协调分道")}</div>
+              <div style={{ fontSize: 13, color: "#475569" }}>
+                {t(
+                  lang,
+                  "Each course can keep its own coordination ticket and parent form. Create a new lane only for courses that are not already being tracked.",
+                  "每门课程都可以保留独立的协调工单和家长时间表单。只有还没被跟进的课程，才需要新建新的协调分道。"
+                )}
+              </div>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                {coordinationCreationOptions.map((option) => (
+                  <div key={option.enrollmentId} style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 8 }}>
+                    <div style={{ fontWeight: 700 }}>{option.courseLabel}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      {option.teacherName ? `${t(lang, "Teacher", "老师")}: ${option.teacherName}` : t(lang, "Teacher pending", "老师待确认")}
+                    </div>
+                    {option.hasOpenTicket ? (
+                      <div style={{ fontSize: 12, color: "#166534" }}>
+                        {t(lang, "An open coordination ticket already exists for this course.", "这门课程已经有未关闭的排课协调工单。")}
+                      </div>
+                    ) : (
+                      <form action={createSchedulingCoordinationTicket.bind(null, studentId)}>
+                        <input type="hidden" name="enrollmentId" value={option.enrollmentId} />
+                        <button type="submit">{t(lang, "Create course ticket", "为这门课新建工单")}</button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {openSchedulingTickets.length > 0 ? (
             <div style={{ border: "1px solid #fdba74", borderRadius: 10, padding: 10, background: "#fff7ed", color: "#9a3412", display: "grid", gap: 8 }}>
               <div style={{ fontWeight: 800 }}>
-                {t(lang, "Multiple open coordination tickets found", "发现多条未关闭的排课协调工单")}
+                {t(lang, "Open coordination tickets", "未关闭排课协调工单")}
               </div>
               <div style={{ fontSize: 13 }}>
                 {t(
                   lang,
-                  `This student currently has ${openSchedulingTickets.length} open coordination tickets. This page is using ${activeSchedulingTicket.ticketNo} based on the earliest follow-up due date, then newest created time.`,
-                  `这个学生当前有 ${openSchedulingTickets.length} 条未关闭的排课协调工单。学生页目前按“下次跟进最早优先，其次创建时间最新”使用 ${activeSchedulingTicket.ticketNo} 作为当前工单。`
+                  "Select the course ticket you want to work on below. The helper panels further down will follow that selected ticket.",
+                  "请在下面选择当前要处理的课程工单；下方的辅助面板会跟随你选中的这张工单。"
                 )}
               </div>
-              <div style={{ fontSize: 13 }}>
-                {t(
-                  lang,
-                  "Please reuse one of the open tickets below and close extra test tickets when they are no longer needed.",
-                  "请优先沿用下面已有的未关闭工单；如果是多余的测试工单，处理后请尽快关闭。"
-                )}
-              </div>
-              <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ display: "grid", gap: 8 }}>
                 {openSchedulingTickets.map((ticket) => {
                   const ticketHref = `/admin/tickets/${ticket.id}?back=${encodeURIComponent(buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination"))}`;
+                  const ticketCourseLabel = ticket.parentAvailabilityRequest?.courseLabel ?? ticket.course ?? "-";
+                  const ticketParentHref = ticket.parentAvailabilityRequest
+                    ? buildParentAvailabilityPath(ticket.parentAvailabilityRequest.token)
+                    : "";
+                  const ticketShareText = ticketParentHref
+                    ? buildParentAvailabilityShareText({
+                        studentName: student.name,
+                        courseLabel: ticketCourseLabel,
+                        url: `https://sgtmanage.com${ticketParentHref}`,
+                      })
+                    : "";
+                  const ticketRows = ticket.parentAvailabilityRequest?.submittedAt
+                    ? formatParentAvailabilityFieldRows(
+                        coerceParentAvailabilityPayload(ticket.parentAvailabilityRequest.payloadJson)
+                      )
+                    : [];
                   return (
-                    <a
+                    <div
                       key={ticket.id}
-                      href={ticketHref}
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        flexWrap: "wrap",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: ticket.id === activeSchedulingTicket.id ? "1px solid #f59e0b" : "1px solid #fed7aa",
-                        background: ticket.id === activeSchedulingTicket.id ? "#fff" : "#fffbeb",
-                        textDecoration: "none",
-                        color: "inherit",
+                        display: "grid",
+                        gap: 8,
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: ticket.id === activeSchedulingTicket?.id ? "1px solid #f59e0b" : "1px solid #fed7aa",
+                        background: ticket.id === activeSchedulingTicket?.id ? "#fff" : "#fffbeb",
                       }}
                     >
-                      <span>
-                        <strong>{ticket.ticketNo}</strong>
-                        {` | ${ticket.status}`}
-                        {ticket.id === activeSchedulingTicket.id ? ` | ${t(lang, "Current ticket", "当前工单")}` : ""}
-                      </span>
-                      <span style={{ fontSize: 12 }}>
-                        {t(lang, "Created", "创建于")}: {formatBusinessDateTime(ticket.createdAt)}
-                      </span>
-                    </a>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div style={{ display: "grid", gap: 4 }}>
+                          <div style={{ fontWeight: 800 }}>
+                            {ticketCourseLabel}
+                            {ticket.id === activeSchedulingTicket?.id ? ` | ${t(lang, "Current ticket", "当前工单")}` : ""}
+                          </div>
+                          <div style={{ fontSize: 13 }}>
+                            <strong>{ticket.ticketNo}</strong>
+                            {` | ${ticket.status}`}
+                            {ticket.owner ? ` | ${ticket.owner}` : ""}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#7c2d12" }}>
+                            {ticket.parentAvailabilityRequest?.submittedAt
+                              ? `${t(lang, "Latest submission", "最近提交")}: ${formatBusinessDateTime(ticket.parentAvailabilityRequest.submittedAt)}`
+                              : ticket.parentAvailabilityRequest?.expiresAt
+                                ? `${t(lang, "Link expires", "链接有效期")}: ${formatBusinessDateTime(ticket.parentAvailabilityRequest.expiresAt)}`
+                                : `${t(lang, "Created", "创建于")}: ${formatBusinessDateTime(ticket.createdAt)}`}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {ticket.id !== activeSchedulingTicket?.id ? (
+                            <a
+                              href={buildCoordinationTicketPanelHref(ticket.id)}
+                              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit" }}
+                            >
+                              {t(lang, "Use in helper", "切换到这张工单")}
+                            </a>
+                          ) : null}
+                          <a
+                            href={ticketHref}
+                            style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit" }}
+                          >
+                            {t(lang, "Open ticket", "打开工单")}
+                          </a>
+                          {ticketParentHref ? (
+                            <a
+                              href={ticketParentHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit" }}
+                            >
+                              {t(lang, "Open parent form", "打开家长表单")}
+                            </a>
+                          ) : null}
+                          {ticketParentHref ? (
+                            <CopyTextButton
+                              text={`https://sgtmanage.com${ticketParentHref}`}
+                              label={t(lang, "Copy link", "复制链接")}
+                              copiedLabel={t(lang, "Copied", "已复制")}
+                            />
+                          ) : null}
+                          {ticketShareText ? (
+                            <CopyTextButton
+                              text={ticketShareText}
+                              label={t(lang, "Copy message", "复制发送文案")}
+                              copiedLabel={t(lang, "Copied", "已复制")}
+                            />
+                          ) : null}
+                          {ticket.parentAvailabilityRequest ? (
+                            <form action={regenerateSchedulingCoordinationParentLink.bind(null, studentId, ticket.id)}>
+                              <button type="submit">{t(lang, "Regenerate link", "重生链接")}</button>
+                            </form>
+                          ) : null}
+                        </div>
+                      </div>
+                      {ticketRows.length > 0 ? (
+                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                          {ticketRows.map((item) => (
+                            <div key={`${ticket.id}:${item.label}:${item.value}`} style={{ border: "1px solid #fed7aa", borderRadius: 10, background: "#fff", padding: 10 }}>
+                              <div style={{ fontSize: 12, color: "#9a3412" }}>{item.label}</div>
+                              <div style={{ fontWeight: 700, marginTop: 4, whiteSpace: "pre-wrap" }}>{item.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
@@ -2503,7 +2671,7 @@ export default async function StudentDetailPage({
                       label={t(lang, "Copy message", "复制发送文案")}
                       copiedLabel={t(lang, "Copied", "已复制")}
                     />
-                    <form action={regenerateSchedulingCoordinationParentLink.bind(null, studentId)}>
+                    <form action={regenerateSchedulingCoordinationParentLink.bind(null, studentId, activeSchedulingTicket.id)}>
                       <button type="submit">{t(lang, "Regenerate link", "重生链接")}</button>
                     </form>
                   </div>
@@ -2670,6 +2838,7 @@ export default async function StudentDetailPage({
                             />
                             {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
                               <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                <input type="hidden" name="ticketId" value={activeSchedulingTicket.id} />
                                 <input type="hidden" name="back" value={coordinationActionBackHref} />
                                 <button type="submit">{t(lang, "Mark options sent", "标记已发候选时间")}</button>
                               </form>
@@ -2809,6 +2978,7 @@ export default async function StudentDetailPage({
                             />
                             {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
                               <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                <input type="hidden" name="ticketId" value={activeSchedulingTicket.id} />
                                 <input type="hidden" name="back" value={coordinationActionBackHref} />
                                 <button type="submit">{t(lang, "Mark options sent", "标记已发候选时间")}</button>
                               </form>
@@ -2894,12 +3064,14 @@ export default async function StudentDetailPage({
                               />
                               {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Parent" ? (
                                 <form action={markSchedulingCoordinationParentChoice.bind(null, studentId)}>
+                                  <input type="hidden" name="ticketId" value={activeSchedulingTicket.id} />
                                   <input type="hidden" name="back" value={coordinationActionBackHref} />
                                   <button type="submit">{t(lang, "Mark alternatives sent", "标记已发替代时间")}</button>
                                 </form>
                               ) : null}
                               {activeSchedulingTicket && activeSchedulingTicket.status !== "Waiting Teacher" && activeSchedulingTicket.status !== "Exception" ? (
                                 <form action={markSchedulingCoordinationTeacherException.bind(null, studentId)}>
+                                  <input type="hidden" name="ticketId" value={activeSchedulingTicket.id} />
                                   <input type="hidden" name="back" value={coordinationActionBackHref} />
                                   <button type="submit">{t(lang, "Ask teacher exception", "转老师例外确认")}</button>
                                 </form>

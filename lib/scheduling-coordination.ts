@@ -46,6 +46,22 @@ export type SchedulingCoordinationPhase = {
   nextStep: string;
 };
 
+export function normalizeSchedulingCoordinationCourseKey(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+export function schedulingCoordinationCourseLabelsMatch(
+  left: string | null | undefined,
+  right: string | null | undefined
+) {
+  const normalizedLeft = normalizeSchedulingCoordinationCourseKey(left);
+  const normalizedRight = normalizeSchedulingCoordinationCourseKey(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
 function bilingualCoordinationText(zh: string, en: string) {
   return `${zh} / ${en}`;
 }

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r39` (parent availability exact-date mode now supports multiple time ranges on the same day), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-11-r40` (parent availability now supports one student multi-course same-page collection with course-separated coordination lanes), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-11-r40 Ready
+
+- Scope: let one active parent-availability link open a same-student multi-course page while still keeping each course on its own coordination ticket, submission payload, and helper lane.
+- Business impact:
+  - the public `/availability/[token]` page can now show multiple active course cards for the same student, and each course submits independently
+  - student detail now treats coordination as course-separated lanes, so ops can switch the helper panel between open tickets and create a new coordination ticket only for courses not already being tracked
+  - intake reuse is now course-aware, so an incoming coordination request will reuse the matching course lane instead of always reusing the first open coordination ticket for that student
+- Validation:
+  - `npm run build`
+  - one valid parent link should render all same-student active coordination course cards on the same page
+  - each course card should keep its own payload and success state
+  - student detail should switch helper focus by selected coordination ticket
+  - intake should only reuse the matching course coordination lane
 
 ## 2026-04-11-r39 Ready
 

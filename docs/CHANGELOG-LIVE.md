@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-11-r40
+
+- Release ID: `2026-04-11-r40`
+- Date/Time (Asia/Shanghai): `2026-04-11`
+- Deployment status: `READY`
+- Scope: let one valid parent-availability link show all active coordination courses for the same student on one page, while keeping each course on its own ticket, submission, and matching lane.
+- Key files:
+  - `app/availability/[token]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/api/tickets/intake/[token]/route.ts`
+  - `lib/scheduling-coordination.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260411-parent-availability-multi-course-same-page.md`
+- Risk impact (if any): Medium. This release keeps the existing schema and one-ticket-per-course storage model, but it changes how coordination tickets are reused and displayed by making the student page and public parent form course-aware instead of always following only the first open coordination ticket.
+- Verification:
+  - `npm run build`
+  - opening any valid `/availability/[token]` link for a student with multiple active coordination requests should show one card per course on the same page
+  - each course card should submit independently without overwriting another course's payload
+  - student detail should let ops switch helper focus between open coordination tickets and create a new coordination ticket only for courses that are not already being tracked
+  - intake should reuse an open coordination ticket only when the incoming course matches the existing course lane; a different course should not be forced into the first open ticket
+- Rollback point: previous production commit before `2026-04-11-r40`.
+
 ## 2026-04-11-r39
 
 - Release ID: `2026-04-11-r39`
