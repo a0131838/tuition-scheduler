@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-12-r41` (coordination helper now treats post-confirmation parent re-submissions as manual review and searches candidate slots inside the parent-submitted availability window), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-12-r42` (calendar-mode coordination candidates now prioritize broader parent-date coverage inside the first shortlist), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -72,6 +72,18 @@
   - post-confirmation parent re-submissions should show `Manual review needed / 需人工复核` on student detail, ticket detail, and todo cards
   - helper candidate generation should prefer parent-window matches when they exist
   - suggested duration should use `ticket.durationMin` first when available
+
+## 2026-04-12-r42 Ready
+
+- Scope: rebalance calendar-mode coordination helper shortlists so the first few visible matches cover more of the parent's selected dates.
+- Business impact:
+  - helper candidate generation still uses the same parent-time matching rules, but now the first shortlist is less likely to be dominated by the earliest matching date
+  - ops can see more date coverage immediately when a parent selected several calendar dates and multiple dates already have real availability matches
+  - dates with no real matches still stay absent, so this improves visibility without weakening the filtering rules
+- Validation:
+  - `npm run build`
+  - calendar-mode helper shortlists should try to include more unique parent-selected dates before repeating the same date
+  - the example ticket `20260409-004` should now show `2026-04-11`, `2026-04-13`, `2026-04-19`, and `2026-04-20` inside the first five generated options
 
 ## 2026-04-11-r39 Ready
 

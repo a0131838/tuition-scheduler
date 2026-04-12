@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-12-r42
+
+- Release ID: `2026-04-12-r42`
+- Date/Time (Asia/Shanghai): `2026-04-12`
+- Deployment status: `READY`
+- Scope: rebalance calendar-mode coordination candidates so the first helper slots cover more of the parent's selected dates instead of letting earlier dates consume the whole shortlist.
+- Key files:
+  - `lib/scheduling-coordination.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260412-coordination-calendar-date-coverage.md`
+- Risk impact (if any): Low. This release does not change teacher availability, parent payload matching rules, ticket lifecycle, or scheduling storage; it only changes how already-matched calendar-date slots are prioritized before the helper trims them to a short list.
+- Verification:
+  - `npm run build`
+  - for calendar-mode parent submissions with several selected dates, the first helper shortlist should try to surface at least one option from each requested date before repeating earlier dates
+  - the underlying matching rules should stay the same, so dates with no matching teacher availability should still be absent
+  - the existing example ticket `20260409-004` should now surface `2026-04-11`, `2026-04-13`, `2026-04-19`, and `2026-04-20` inside the first five generated options instead of concentrating mostly on the earliest two dates
+- Rollback point: previous production commit before `2026-04-12-r42`.
+
 ## 2026-04-12-r41
 
 - Release ID: `2026-04-12-r41`

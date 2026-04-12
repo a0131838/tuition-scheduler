@@ -642,10 +642,61 @@ export async function listSchedulingCoordinationParentMatchedSlots(args: {
     maxSlots: scanLimit,
   });
 
-  return filterSchedulingSlotsByParentAvailability(teacherSlots, payload).slice(
-    0,
-    Math.max(1, args.maxSlots ?? 5)
+  const matchedSlots = filterSchedulingSlotsByParentAvailability(teacherSlots, payload);
+  const maxSlots = Math.max(1, args.maxSlots ?? 5);
+  if (payload.selectionMode !== "calendar" || payload.dateSelections.length === 0) {
+    return matchedSlots.slice(0, maxSlots);
+  }
+  return prioritizeCalendarDateCoverage(matchedSlots, payload, maxSlots);
+}
+
+function prioritizeCalendarDateCoverage(
+  slots: BookingSlot[],
+  payload: ParentAvailabilityPayload,
+  maxSlots: number
+) {
+  const requestedDates = Array.from(
+    new Set(payload.dateSelections.map((selection) => selection.date).filter(Boolean))
   );
+  if (requestedDates.length <= 1 || slots.length <= maxSlots) {
+    return slots.slice(0, maxSlots);
+  }
+
+  const slotsByDate = new Map<string, BookingSlot[]>();
+  for (const slot of slots) {
+    const bucket = slotsByDate.get(slot.dateKey) ?? [];
+    bucket.push(slot);
+    slotsByDate.set(slot.dateKey, bucket);
+  }
+
+  const remainingByDate = new Map<string, BookingSlot[]>(
+    requestedDates.map((date) => [date, [...(slotsByDate.get(date) ?? [])]])
+  );
+  const prioritized: BookingSlot[] = [];
+  const seenSlotKeys = new Set<string>();
+
+  while (prioritized.length < maxSlots) {
+    let addedInRound = false;
+    for (const date of requestedDates) {
+      if (prioritized.length >= maxSlots) break;
+      const bucket = remainingByDate.get(date) ?? [];
+      const next = bucket.shift();
+      remainingByDate.set(date, bucket);
+      if (!next || seenSlotKeys.has(next.slotKey)) continue;
+      prioritized.push(next);
+      seenSlotKeys.add(next.slotKey);
+      addedInRound = true;
+    }
+    if (!addedInRound) break;
+  }
+
+  for (const slot of slots) {
+    if (prioritized.length >= maxSlots) break;
+    if (seenSlotKeys.has(slot.slotKey)) continue;
+    prioritized.push(slot);
+  }
+
+  return prioritized.slice(0, maxSlots);
 }
 
 const WEEKDAY_TO_JS_DAY: Record<string, number> = {
