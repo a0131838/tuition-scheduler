@@ -1,5 +1,8 @@
 import { listBookingSlotsForMonth, monthKey, type BookingSlot } from "@/lib/booking";
-import type { ParentAvailabilityPayload } from "@/lib/parent-availability";
+import {
+  deriveParentAvailabilitySearchWindow,
+  type ParentAvailabilityPayload,
+} from "@/lib/parent-availability";
 
 type EnrollmentLike = {
   class: {
@@ -35,6 +38,7 @@ export type SchedulingCoordinationPhaseKey =
   | "waiting_parent_choice"
   | "teacher_exception_needed"
   | "waiting_teacher_exception"
+  | "manual_review_after_resubmission"
   | "ready_to_schedule"
   | "closed";
 
@@ -397,9 +401,11 @@ export function deriveSchedulingCoordinationPhase(args: {
   hasParentForm: boolean;
   parentSubmittedAt?: Date | null;
   matchedSlotCount?: number;
+  parentAvailabilitySummary?: string | null;
 }): SchedulingCoordinationPhase {
   const matchedSlotCount = Math.max(0, args.matchedSlotCount ?? 0);
   const parentSubmitted = Boolean(args.parentSubmittedAt);
+  const parentAvailabilitySummary = String(args.parentAvailabilitySummary ?? "");
 
   if (["Completed", "Cancelled"].includes(args.ticketStatus)) {
     return {
@@ -412,6 +418,21 @@ export function deriveSchedulingCoordinationPhase(args: {
   }
 
   if (args.ticketStatus === "Confirmed") {
+    if (parentAvailabilitySummary.includes("Parent re-submitted availability after confirmation")) {
+      return {
+        key: "manual_review_after_resubmission",
+        title: "Manual review needed / 需人工复核",
+        badge: "Review / 复核",
+        description: formatSchedulingCoordinationSystemText(
+          "A new parent availability submission arrived after the ticket had already been confirmed. Review it manually before changing the final lesson plan."
+        ),
+        nextStep: formatSchedulingCoordinationSystemText(
+          matchedSlotCount > 0
+            ? "Parent availability already matches current teacher availability. Review the matched slots first, then decide whether the final lesson plan should change."
+            : "No current availability matches the new parent submission yet. Review alternatives first before changing the final lesson plan."
+        ),
+      };
+    }
     return {
       key: "ready_to_schedule",
       title: "Ready to schedule / 可直接排课",
@@ -471,9 +492,14 @@ export function deriveSchedulingCoordinationPhase(args: {
 }
 
 export function inferSchedulingCoordinationDurationMin(args: {
+  ticketDurationMin?: number | null;
   upcomingSessions: Array<{ startAt: Date; endAt: Date }>;
   monthlySessions: Array<{ startAt: Date; endAt: Date }>;
 }) {
+  const ticketDurationMin = Math.round(Number(args.ticketDurationMin ?? 0));
+  if (Number.isFinite(ticketDurationMin) && ticketDurationMin >= 15) {
+    return ticketDurationMin;
+  }
   const sample = args.upcomingSessions[0] ?? args.monthlySessions[0] ?? null;
   if (!sample) return 45;
   const minutes = Math.round((sample.endAt.getTime() - sample.startAt.getTime()) / 60000);
@@ -574,6 +600,52 @@ export async function evaluateSchedulingSpecialRequest(args: {
       .filter((slot) => slot.startAt.getTime() !== args.requestedStartAt.getTime())
       .slice(0, 3),
   };
+}
+
+export async function listSchedulingCoordinationParentMatchedSlots(args: {
+  studentId: string;
+  teacherOptions: SchedulingCoordinationTeacherOption[];
+  teacherId?: string;
+  payload: ParentAvailabilityPayload | null | undefined;
+  startAt?: Date;
+  durationMin: number;
+  maxSlots?: number;
+}) {
+  const payload = args.payload;
+  if (!payload) {
+    return listSchedulingCoordinationCandidateSlots({
+      studentId: args.studentId,
+      teacherOptions: args.teacherOptions,
+      teacherId: args.teacherId,
+      startAt: args.startAt ?? new Date(),
+      durationMin: args.durationMin,
+      maxSlots: args.maxSlots,
+    });
+  }
+
+  const requestedStart = args.startAt ?? new Date();
+  const derivedWindow = deriveParentAvailabilitySearchWindow({
+    payload,
+    now: requestedStart,
+    defaultHorizonDays: 14,
+  });
+  const windowStart =
+    derivedWindow.startAt.getTime() > requestedStart.getTime() ? derivedWindow.startAt : requestedStart;
+  const scanLimit = payload.selectionMode === "calendar" ? 240 : 180;
+  const teacherSlots = await listSchedulingCoordinationCandidateSlots({
+    studentId: args.studentId,
+    teacherOptions: args.teacherOptions,
+    teacherId: args.teacherId,
+    startAt: windowStart,
+    horizonDays: derivedWindow.horizonDays,
+    durationMin: args.durationMin,
+    maxSlots: scanLimit,
+  });
+
+  return filterSchedulingSlotsByParentAvailability(teacherSlots, payload).slice(
+    0,
+    Math.max(1, args.maxSlots ?? 5)
+  );
 }
 
 const WEEKDAY_TO_JS_DAY: Record<string, number> = {

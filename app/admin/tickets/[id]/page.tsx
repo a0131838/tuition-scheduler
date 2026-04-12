@@ -46,10 +46,10 @@ import {
   buildSchedulingCoordinationSlotShareText,
   buildSchedulingCoordinationTeacherOptions,
   deriveSchedulingCoordinationPhase,
-  filterSchedulingSlotsByParentAvailability,
   formatSchedulingCoordinationSystemText,
   inferSchedulingCoordinationDurationMin,
   listSchedulingCoordinationCandidateSlots,
+  listSchedulingCoordinationParentMatchedSlots,
   schedulingCoordinationParentChoiceLoggedText,
   schedulingCoordinationTeacherExceptionAction,
   schedulingCoordinationTeacherExceptionLoggedText,
@@ -634,28 +634,38 @@ export default async function AdminTicketDetailPage({
               })
             : [];
           const durationMin = inferSchedulingCoordinationDurationMin({
+            ticketDurationMin: row.durationMin,
             upcomingSessions: relevantSessions,
             monthlySessions: relevantSessions,
           });
-          const parentSearchWindow = deriveParentAvailabilitySearchWindow({
-            payload: parentAvailabilityPayload,
-            now: new Date(),
-          });
+          const parentSearchWindow = parentAvailabilityPayload
+            ? deriveParentAvailabilitySearchWindow({
+                payload: parentAvailabilityPayload,
+                now: new Date(),
+              })
+            : null;
           const availabilitySlots =
             teacherOptions.length > 0
               ? await listSchedulingCoordinationCandidateSlots({
                   studentId: row.studentId!,
                   teacherOptions,
-                  startAt: parentSearchWindow.startAt,
-                  horizonDays: parentSearchWindow.horizonDays,
+                  startAt: parentSearchWindow?.startAt ?? new Date(),
+                  horizonDays: parentSearchWindow?.horizonDays,
                   durationMin,
                   maxSlots: parentAvailabilityPayload?.selectionMode === "calendar" ? 24 : 12,
                 })
               : [];
-          const matchedParentSlots = filterSchedulingSlotsByParentAvailability(
-            availabilitySlots,
-            parentAvailabilityPayload
-          ).slice(0, 5);
+          const matchedParentSlots =
+            teacherOptions.length > 0
+              ? await listSchedulingCoordinationParentMatchedSlots({
+                  studentId: row.studentId!,
+                  teacherOptions,
+                  payload: parentAvailabilityPayload,
+                  startAt: new Date(),
+                  durationMin,
+                  maxSlots: 5,
+                })
+              : [];
           return {
             teacherCount: teacherOptions.length,
             durationMin,
@@ -670,6 +680,7 @@ export default async function AdminTicketDetailPage({
         hasParentForm: Boolean(row.parentAvailabilityRequest),
         parentSubmittedAt: row.parentAvailabilityRequest?.submittedAt ?? null,
         matchedSlotCount: coordinationContext?.matchedParentSlots.length ?? 0,
+        parentAvailabilitySummary: row.parentAvailability ?? null,
       })
     : null;
   const flowNodes = [

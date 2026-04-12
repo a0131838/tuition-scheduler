@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import {
   buildParentAvailabilityPath,
   coerceParentAvailabilityPayload,
-  deriveParentAvailabilitySearchWindow,
   hasParentAvailabilityPayloadContent,
   parseParentAvailabilityFormData,
   summarizeParentAvailabilityPayload,
@@ -14,9 +13,8 @@ import { composeTicketSituation, parseTicketSituationSummary } from "@/lib/ticke
 import {
   buildSchedulingCoordinationTeacherOptions,
   deriveSchedulingCoordinationParentSubmissionUpdate,
-  filterSchedulingSlotsByParentAvailability,
   inferSchedulingCoordinationDurationMin,
-  listSchedulingCoordinationCandidateSlots,
+  listSchedulingCoordinationParentMatchedSlots,
   schedulingCoordinationCurrentIssueText,
 } from "@/lib/scheduling-coordination";
 import ParentAvailabilityFormFields from "./ParentAvailabilityFormFields";
@@ -45,6 +43,7 @@ async function submitParentAvailability(token: string, formData: FormData) {
           status: true,
           isArchived: true,
           summary: true,
+          durationMin: true,
         },
       },
     },
@@ -97,21 +96,21 @@ async function submitParentAvailability(token: string, formData: FormData) {
       })
     : [];
   const durationMin = inferSchedulingCoordinationDurationMin({
+    ticketDurationMin: request.ticket.durationMin,
     upcomingSessions: relevantSessions,
     monthlySessions: relevantSessions,
   });
-  const searchWindow = deriveParentAvailabilitySearchWindow({ payload, now });
-  const availabilitySlots = teacherOptions.length
-    ? await listSchedulingCoordinationCandidateSlots({
+  const matchedSlots = teacherOptions.length
+    ? await listSchedulingCoordinationParentMatchedSlots({
         studentId: request.studentId,
         teacherOptions,
-        startAt: searchWindow.startAt,
-        horizonDays: searchWindow.horizonDays,
+        payload,
+        startAt: now,
         durationMin,
-        maxSlots: payload.selectionMode === "calendar" ? 48 : 12,
+        maxSlots: payload.selectionMode === "calendar" ? 48 : 24,
       })
     : [];
-  const matchedSlotCount = filterSchedulingSlotsByParentAvailability(availabilitySlots, payload).length;
+  const matchedSlotCount = matchedSlots.length;
   const coordinationUpdate = deriveSchedulingCoordinationParentSubmissionUpdate({
     currentStatus: request.ticket.status,
     matchedSlotCount,

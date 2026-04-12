@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-12-r41
+
+- Release ID: `2026-04-12-r41`
+- Date/Time (Asia/Shanghai): `2026-04-12`
+- Deployment status: `READY`
+- Scope: make scheduling-coordination helper status stop claiming a confirmed ticket is ready to schedule after the parent re-submits availability, and generate candidate slots by searching the parent-submitted availability window before filtering.
+- Key files:
+  - `lib/scheduling-coordination.ts`
+  - `app/availability/[token]/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260412-coordination-manual-review-and-parent-window-match.md`
+- Risk impact (if any): Medium. This release changes scheduling-coordination helper interpretation and candidate-slot generation, but it keeps the existing parent-availability payload, ticket lifecycle, teacher availability storage, quick scheduling, sessions, packages, deductions, and finance logic unchanged.
+- Verification:
+  - `npm run build`
+  - a coordination ticket that was already `Confirmed` and then receives a new parent submission should show `Manual review needed / 需人工复核` instead of `Ready to schedule / 可直接排课`
+  - student detail, ticket detail, and todo follow-up cards should agree on that manual-review phase
+  - generated helper slots should search within the parent-submitted availability window first instead of only slicing a small teacher-slot list and filtering afterwards
+  - suggested duration should prefer the coordination ticket's own `durationMin` when present, and only fall back to existing session samples or `45`
+- Rollback point: previous production commit before `2026-04-12-r41`.
+
 ## 2026-04-11-r40
 
 - Release ID: `2026-04-11-r40`

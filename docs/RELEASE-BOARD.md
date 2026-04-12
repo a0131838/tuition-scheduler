@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-11-r40` (parent availability now supports one student multi-course same-page collection with course-separated coordination lanes), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-12-r41` (coordination helper now treats post-confirmation parent re-submissions as manual review and searches candidate slots inside the parent-submitted availability window), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -59,6 +59,19 @@
   - each course card should keep its own payload and success state
   - student detail should switch helper focus by selected coordination ticket
   - intake should only reuse the matching course coordination lane
+
+## 2026-04-12-r41 Ready
+
+- Scope: fix scheduling-coordination helper state after post-confirmation parent re-submissions and search candidate slots inside the parent-submitted availability window before filtering.
+- Business impact:
+  - a coordination ticket that was already confirmed will now show a manual-review state if the parent later submits new availability, instead of still looking immediately ready to schedule
+  - helper candidate generation now searches the parent-submitted availability window first, so it is less likely to miss viable parent-matching times just because the initial teacher slot slice was too small
+  - suggested duration now prefers the coordination ticket's stored duration before falling back to historical session samples or the old `45` minute default
+- Validation:
+  - `npm run build`
+  - post-confirmation parent re-submissions should show `Manual review needed / 需人工复核` on student detail, ticket detail, and todo cards
+  - helper candidate generation should prefer parent-window matches when they exist
+  - suggested duration should use `ticket.durationMin` first when available
 
 ## 2026-04-11-r39 Ready
 

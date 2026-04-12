@@ -30,10 +30,9 @@ import {
   buildSchedulingCoordinationTeacherOptions,
   deriveSchedulingCoordinationPhase,
   evaluateSchedulingSpecialRequest,
-  filterSchedulingSlotsByParentAvailability,
   formatSchedulingCoordinationSystemText,
   inferSchedulingCoordinationDurationMin,
-  listSchedulingCoordinationCandidateSlots,
+  listSchedulingCoordinationParentMatchedSlots,
   normalizeSchedulingCoordinationCourseKey,
   schedulingCoordinationCurrentIssueText,
   schedulingCoordinationCourseLabelsMatch,
@@ -51,7 +50,6 @@ import {
   buildParentAvailabilityShareText,
   createParentAvailabilityToken,
   coerceParentAvailabilityPayload,
-  deriveParentAvailabilitySearchWindow,
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
 import CopyTextButton from "../../_components/CopyTextButton";
@@ -1530,11 +1528,13 @@ export default async function StudentDetailPage({
         ticketNo: true,
         status: true,
         course: true,
+        durationMin: true,
         teacher: true,
         owner: true,
         nextAction: true,
         nextActionDue: true,
         summary: true,
+        parentAvailability: true,
         createdAt: true,
         parentAvailabilityRequest: {
           select: {
@@ -1830,6 +1830,7 @@ export default async function StudentDetailPage({
     if (!latestTeacherChangeMap.has(c.sessionId)) latestTeacherChangeMap.set(c.sessionId, c);
   }
   const coordinationDurationMin = inferSchedulingCoordinationDurationMin({
+    ticketDurationMin: activeSchedulingTicket?.durationMin ?? null,
     upcomingSessions,
     monthlySessions: teacherSessions,
   });
@@ -1841,39 +1842,27 @@ export default async function StudentDetailPage({
     coordSpecialStartAt && coordSpecialStartAt.includes("T") ? parseDatetimeLocal(coordSpecialStartAt) : null;
   const coordinationPhasePreviewSlots =
     activeSchedulingTicket && parentAvailabilityPayload && coordinationTeacherOptions.length > 0
-      ? filterSchedulingSlotsByParentAvailability(
-          await (async () => {
-            const parentSearchWindow = deriveParentAvailabilitySearchWindow({
-              payload: parentAvailabilityPayload,
-              now: new Date(),
-              defaultHorizonDays: 14,
-            });
-            return listSchedulingCoordinationCandidateSlots({
-              studentId,
-              teacherOptions: coordinationTeacherOptions,
-              teacherId: effectiveCoordTeacherId || undefined,
-              startAt: parentSearchWindow.startAt,
-              horizonDays: parentSearchWindow.horizonDays,
-              durationMin: coordinationDurationMin,
-              maxSlots: parentAvailabilityPayload.selectionMode === "calendar" ? 24 : 8,
-            });
-          })(),
-          parentAvailabilityPayload
-        ).slice(0, 5)
+      ? await listSchedulingCoordinationParentMatchedSlots({
+          studentId,
+          teacherOptions: coordinationTeacherOptions,
+          teacherId: effectiveCoordTeacherId || undefined,
+          payload: parentAvailabilityPayload,
+          startAt: new Date(),
+          durationMin: coordinationDurationMin,
+          maxSlots: 5,
+        })
       : [];
   const generatedCoordinationSlots =
     coordGenerate && coordinationTeacherOptions.length > 0
-      ? filterSchedulingSlotsByParentAvailability(
-          await listSchedulingCoordinationCandidateSlots({
-            studentId,
-            teacherOptions: coordinationTeacherOptions,
-            teacherId: effectiveCoordTeacherId || undefined,
-            startAt: effectiveCoordDate,
-            durationMin: coordinationDurationMin,
-            maxSlots: 8,
-          }),
-          parentAvailabilityPayload
-        ).slice(0, 5)
+      ? await listSchedulingCoordinationParentMatchedSlots({
+          studentId,
+          teacherOptions: coordinationTeacherOptions,
+          teacherId: effectiveCoordTeacherId || undefined,
+          payload: parentAvailabilityPayload,
+          startAt: effectiveCoordDate,
+          durationMin: coordinationDurationMin,
+          maxSlots: 5,
+        })
       : [];
   const schedulingCoordinationPhase = activeSchedulingTicket
     ? deriveSchedulingCoordinationPhase({
@@ -1881,6 +1870,7 @@ export default async function StudentDetailPage({
         hasParentForm: Boolean(parentAvailabilityRequest),
         parentSubmittedAt: parentAvailabilityRequest?.submittedAt ?? null,
         matchedSlotCount: coordinationPhasePreviewSlots.length,
+        parentAvailabilitySummary: activeSchedulingTicket.parentAvailability ?? null,
       })
     : null;
   const specialRequestCheck =

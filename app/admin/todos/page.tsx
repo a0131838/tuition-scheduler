@@ -673,6 +673,7 @@ export default async function AdminTodosPage({
         status: true,
         nextAction: true,
         nextActionDue: true,
+        parentAvailability: true,
         parentAvailabilityRequest: {
           select: {
             submittedAt: true,
@@ -703,6 +704,7 @@ export default async function AdminTodosPage({
             owner: true,
             status: true,
             nextAction: true,
+            parentAvailability: true,
           },
         },
       },
@@ -1394,6 +1396,7 @@ export default async function AdminTodosPage({
                 ticketStatus: row.status,
                 hasParentForm: Boolean(row.parentAvailabilityRequest),
                 parentSubmittedAt: row.parentAvailabilityRequest?.submittedAt ?? null,
+                parentAvailabilitySummary: row.parentAvailability ?? null,
               });
               return (
                 <div key={row.id} style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
@@ -1443,6 +1446,7 @@ export default async function AdminTodosPage({
                   ticketStatus: row.ticket.status ?? "Need Info",
                   hasParentForm: true,
                   parentSubmittedAt: row.submittedAt,
+                  parentAvailabilitySummary: row.ticket.parentAvailability ?? null,
                 });
                 return (
                   <div key={row.ticketId} style={{ border: "1px solid #bbf7d0", borderRadius: 10, background: "#fff", padding: 10, display: "grid", gap: 6 }}>
