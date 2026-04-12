@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-12-r43` (student detail now sends full scheduling coordination into a dedicated coordination page), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-12-r44` (dedicated student coordination page now exposes a clear close/return action back to the main student detail page), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -97,6 +97,19 @@
   - main student detail should show only the lighter coordination summary card
   - the dedicated coordination page should load the same coordination workspace and actions
   - coordination helper actions and ticket back-links should return to the dedicated coordination page
+
+## 2026-04-12-r44 Ready
+
+- Scope: add a clear close/return action inside the dedicated student coordination page so ops can leave the workspace in one click.
+- Business impact:
+  - the dedicated `/admin/students/[id]/coordination` page now shows an explicit `Close coordination workspace / 关闭排课协调工作台` action instead of making users infer that they should use browser navigation
+  - the student workbench also changes its first link to the same close action when the user is already inside the dedicated coordination workspace
+  - returning to the main student detail page no longer feels like getting trapped in a one-way workspace
+- Validation:
+  - `npm run build`
+  - the dedicated coordination page should show a visible close action in both the workbench links and the page header
+  - clicking the close action should return to the main student detail page
+  - the main student detail page should still show the normal `Scheduling coordination / 排课协调` entry when not inside the dedicated workspace
 
 ## 2026-04-11-r39 Ready
 

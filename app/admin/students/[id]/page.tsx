@@ -2249,7 +2249,11 @@ export default async function StudentDetailPage({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href={studentCoordinationHref}>{t(lang, "Scheduling coordination", "排课协调")}</a>
+            <a href={coordinationOnly ? studentDetailHomeHref : studentCoordinationHref}>
+              {coordinationOnly
+                ? t(lang, "Close coordination workspace", "关闭排课协调工作台")
+                : t(lang, "Scheduling coordination", "排课协调")}
+            </a>
             <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
             <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
             <a href="#packages">{tl(lang, "Packages")}</a>
@@ -2413,7 +2417,7 @@ export default async function StudentDetailPage({
               href={studentDetailHomeHref}
               style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit" }}
             >
-              {t(lang, "Back to student detail", "返回学生详情")}
+              {t(lang, "Close coordination workspace", "关闭排课协调工作台")}
             </a>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>

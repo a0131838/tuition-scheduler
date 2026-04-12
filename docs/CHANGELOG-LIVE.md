@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-12-r44
+
+- Release ID: `2026-04-12-r44`
+- Date/Time (Asia/Shanghai): `2026-04-12`
+- Deployment status: `READY`
+- Scope: add an obvious close/return action inside the dedicated student coordination workspace so ops can leave the workspace without getting stuck on that page.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260412-student-coordination-close-button.md`
+- Risk impact (if any): Low. This release only adjusts student-detail coordination navigation labels and destinations; it does not change coordination tickets, helper generation, parent availability, quick scheduling, sessions, packages, deductions, or finance logic.
+- Verification:
+  - `npm run build`
+  - the student-detail workbench should show `Close coordination workspace / 关闭排课协调工作台` instead of another open-link when already inside `/admin/students/[id]/coordination`
+  - the dedicated coordination page header should also expose the same close action back to the main student detail page
+  - closing the workspace should return to `/admin/students/[id]` without affecting any coordination state
+- Rollback point: previous production commit before `2026-04-12-r44`.
+
 ## 2026-04-12-r43
 
 - Release ID: `2026-04-12-r43`
