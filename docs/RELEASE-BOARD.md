@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-12-r42` (calendar-mode coordination candidates now prioritize broader parent-date coverage inside the first shortlist), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-12-r43` (student detail now sends full scheduling coordination into a dedicated coordination page), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -84,6 +84,19 @@
   - `npm run build`
   - calendar-mode helper shortlists should try to include more unique parent-selected dates before repeating the same date
   - the example ticket `20260409-004` should now show `2026-04-11`, `2026-04-13`, `2026-04-19`, and `2026-04-20` inside the first five generated options
+
+## 2026-04-12-r43 Ready
+
+- Scope: move the full scheduling-coordination workspace off the crowded student detail page and into a dedicated student coordination page.
+- Business impact:
+  - the main student detail page becomes shorter and easier to scan because it keeps only a coordination summary card
+  - a dedicated `/admin/students/[id]/coordination` page now carries the full coordination workspace, including helper tools and ticket switching
+  - coordination-related entry points and returns now land on the dedicated coordination page instead of sending ops back into the long main detail page
+- Validation:
+  - `npm run build`
+  - main student detail should show only the lighter coordination summary card
+  - the dedicated coordination page should load the same coordination workspace and actions
+  - coordination helper actions and ticket back-links should return to the dedicated coordination page
 
 ## 2026-04-11-r39 Ready
 

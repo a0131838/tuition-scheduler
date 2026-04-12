@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-12-r43
+
+- Release ID: `2026-04-12-r43`
+- Date/Time (Asia/Shanghai): `2026-04-12`
+- Deployment status: `READY`
+- Scope: move the student-detail scheduling-coordination workspace out of the already crowded profile page into its own dedicated student coordination page, while leaving the coordination logic itself unchanged.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/coordination/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260412-student-detail-coordination-dedicated-page.md`
+- Risk impact (if any): Low to medium. This release changes student-detail navigation and where coordination actions live, but it does not change ticket logic, parent-time matching, quick scheduling rules, teacher availability, sessions, packages, deductions, or finance behavior.
+- Verification:
+  - `npm run build`
+  - `/admin/students/[id]` should now show a concise coordination summary card instead of the full coordination workspace
+  - the new `/admin/students/[id]/coordination` page should load the full existing coordination workspace
+  - student-detail coordination buttons, helper forms, and ticket back-links should now open or return to the dedicated coordination page
+  - the rest of student detail should remain usable without the large coordination block in the middle of the page
+- Rollback point: previous production commit before `2026-04-12-r43`.
+
 ## 2026-04-12-r42
 
 - Release ID: `2026-04-12-r42`

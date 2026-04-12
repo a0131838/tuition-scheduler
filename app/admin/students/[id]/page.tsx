@@ -419,10 +419,20 @@ function buildStudentDetailHref(studentId: string, params?: URLSearchParams | nu
   return `/admin/students/${studentId}${query ? `?${query}` : ""}${normalizeStudentDetailHash(hash, fallbackHash)}`;
 }
 
+function buildStudentCoordinationHref(
+  studentId: string,
+  params?: URLSearchParams | null,
+  hash?: string | null,
+  fallbackHash = "#scheduling-coordination"
+) {
+  const nextParams = new URLSearchParams(params?.toString() ?? "");
+  return `/admin/students/${studentId}/coordination${nextParams.toString() ? `?${nextParams.toString()}` : ""}${normalizeStudentDetailHash(hash, fallbackHash)}`;
+}
+
 function sanitizeStudentDetailBack(studentId: string, raw: string | null | undefined) {
   const value = String(raw ?? "").trim();
   if (!value.startsWith(`/admin/students/${studentId}`)) {
-    return buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination");
+    return buildStudentCoordinationHref(studentId);
   }
   return value.slice(0, 2000);
 }
@@ -1135,7 +1145,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
   const user = await getCurrentUser();
   if (!user) {
     const params = new URLSearchParams({ err: "Login required" });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
   const enrollmentId = String(formData.get("enrollmentId") ?? "").trim();
 
@@ -1153,7 +1163,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
   });
   if (!student) {
     const params = new URLSearchParams({ err: "Student not found" });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
 
   const targetEnrollment =
@@ -1190,7 +1200,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
       msg: "Existing coordination ticket reused / 已沿用当前排课协调工单",
       coordTicketId: existingMatch.id,
     });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
 
   const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -1239,7 +1249,7 @@ async function createSchedulingCoordinationTicket(studentId: string, formData: F
 
   redirect(
     `/admin/tickets/${created.id}?back=${encodeURIComponent(
-      buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
+      buildStudentCoordinationHref(studentId)
     )}`
   );
 }
@@ -1267,7 +1277,7 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string, tic
 
   if (!ticket?.parentAvailabilityRequest) {
     const params = new URLSearchParams({ err: "No active coordination ticket" });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
 
   const now = new Date();
@@ -1295,7 +1305,7 @@ async function regenerateSchedulingCoordinationParentLink(studentId: string, tic
   ]);
 
   const params = new URLSearchParams({ msg: "Parent availability link regenerated" });
-  redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+  redirect(buildStudentCoordinationHref(studentId, params));
 }
 async function markSchedulingCoordinationParentChoice(studentId: string, formData: FormData) {
   "use server";
@@ -1319,7 +1329,7 @@ async function markSchedulingCoordinationParentChoice(studentId: string, formDat
 
   if (!ticket) {
     const params = new URLSearchParams({ err: "No active coordination ticket" });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
 
   const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -1371,7 +1381,7 @@ async function markSchedulingCoordinationTeacherException(studentId: string, for
 
   if (!ticket) {
     const params = new URLSearchParams({ err: "No active coordination ticket" });
-    redirect(buildStudentDetailHref(studentId, params, "#scheduling-coordination", "#scheduling-coordination"));
+    redirect(buildStudentCoordinationHref(studentId, params));
   }
 
   const nextDue = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -1438,6 +1448,7 @@ export default async function StudentDetailPage({
   const coordSpecialStartAt = sp?.coordSpecialStartAt ?? "";
   const coordSpecialDurationMinRaw = Math.max(15, toInt(sp?.coordSpecialDurationMin, 45));
   const coordCheckSpecial = sp?.coordCheckSpecial === "1";
+  const coordinationOnly = focus === "scheduling-coordination";
   const calendarOpen = sp?.calendarOpen === "1" || focus === "calendar-tools";
   const attendanceOpen = focus === "attendance";
   const enrollmentsOpen = focus === "enrollments";
@@ -1621,9 +1632,11 @@ export default async function StudentDetailPage({
         url: `https://sgtmanage.com${parentAvailabilityHref}`,
       })
     : "";
+  const studentCoordinationHref = buildStudentCoordinationHref(studentId);
+  const studentDetailHomeHref = buildStudentDetailHref(studentId);
   const schedulingTicketHref = activeSchedulingTicket
     ? `/admin/tickets/${activeSchedulingTicket.id}?back=${encodeURIComponent(
-        buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination")
+        buildStudentCoordinationHref(studentId)
       )}`
     : null;
   const openSchedulingCourseKeySet = new Set(
@@ -1719,23 +1732,13 @@ export default async function StudentDetailPage({
   ) as Array<[string, string]>;
   const coordinationClearParams = new URLSearchParams();
   for (const [key, value] of coordinationPreservedEntries) coordinationClearParams.set(key, value);
-  const coordinationClearHref = buildStudentDetailHref(
-    studentId,
-    coordinationClearParams,
-    "#scheduling-coordination",
-    "#scheduling-coordination"
-  );
+  const coordinationWorkspaceClearHref = buildStudentCoordinationHref(studentId, coordinationClearParams);
   const coordinationActionBackParams = new URLSearchParams();
   for (const [key, value] of Object.entries(sp ?? {})) {
     if (!value || key === "msg" || key === "err") continue;
     coordinationActionBackParams.set(key, value);
   }
-  const coordinationActionBackHref = buildStudentDetailHref(
-    studentId,
-    coordinationActionBackParams,
-    "#scheduling-coordination",
-    "#scheduling-coordination"
-  );
+  const coordinationActionBackHref = buildStudentCoordinationHref(studentId, coordinationActionBackParams);
   const buildCoordinationTicketPanelHref = (ticketId: string) => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(sp ?? {})) {
@@ -1743,12 +1746,7 @@ export default async function StudentDetailPage({
       params.set(key, value);
     }
     params.set("coordTicketId", ticketId);
-    return buildStudentDetailHref(
-      studentId,
-      params,
-      "#scheduling-coordination",
-      "#scheduling-coordination"
-    );
+    return buildStudentCoordinationHref(studentId, params);
   };
 
   const classIds = enrollments.map((e) => e.classId);
@@ -2251,7 +2249,7 @@ export default async function StudentDetailPage({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href="#scheduling-coordination">{t(lang, "Scheduling coordination", "排课协调")}</a>
+            <a href={studentCoordinationHref}>{t(lang, "Scheduling coordination", "排课协调")}</a>
             <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
             <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
             <a href="#packages">{tl(lang, "Packages")}</a>
@@ -2356,7 +2354,7 @@ export default async function StudentDetailPage({
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
               <a
-                href="#scheduling-coordination"
+                href={studentCoordinationHref}
                 style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
               >
                 {t(lang, "Scheduling coordination", "排课协调")}
@@ -2395,6 +2393,7 @@ export default async function StudentDetailPage({
           </div>
         </div>
 
+        {coordinationOnly ? (
         <div
           id="scheduling-coordination"
           style={{
@@ -2406,6 +2405,17 @@ export default async function StudentDetailPage({
             gap: 12,
           }}
         >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(lang, "This workspace isolates scheduling coordination so you can focus on parent timing, candidate slots, special-time checks, and follow-up without the rest of the student profile in the way.", "这个工作台把排课协调单独拆出来，方便只专注处理家长时间、候选时间、特殊时间检查和跟进动作，不再被学生详情其他内容打断。")}
+            </div>
+            <a
+              href={studentDetailHomeHref}
+              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit" }}
+            >
+              {t(lang, "Back to student detail", "返回学生详情")}
+            </a>
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ display: "grid", gap: 4 }}>
               <div style={{ fontWeight: 800 }}>{t(lang, "Scheduling coordination", "排课协调")}</div>
@@ -2488,7 +2498,7 @@ export default async function StudentDetailPage({
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 {openSchedulingTickets.map((ticket) => {
-                  const ticketHref = `/admin/tickets/${ticket.id}?back=${encodeURIComponent(buildStudentDetailHref(studentId, null, "#scheduling-coordination", "#scheduling-coordination"))}`;
+                  const ticketHref = `/admin/tickets/${ticket.id}?back=${encodeURIComponent(buildStudentCoordinationHref(studentId))}`;
                   const ticketCourseLabel = ticket.parentAvailabilityRequest?.courseLabel ?? ticket.course ?? "-";
                   const ticketParentHref = ticket.parentAvailabilityRequest
                     ? buildParentAvailabilityPath(ticket.parentAvailabilityRequest.token)
@@ -2726,7 +2736,7 @@ export default async function StudentDetailPage({
                 </div>
               </div>
               {coordinationTeacherOptions.length > 0 ? (
-                <form method="get" action={`/admin/students/${studentId}#scheduling-coordination`} style={{ display: "grid", gap: 10 }}>
+                <form method="get" action={studentCoordinationHref} style={{ display: "grid", gap: 10 }}>
                   {coordinationPreservedEntries.map(([key, value]) => (
                     <input key={`${key}:${value}`} type="hidden" name={key} value={value} />
                   ))}
@@ -2751,7 +2761,7 @@ export default async function StudentDetailPage({
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button type="submit">{t(lang, "Generate slots", "生成时间")}</button>
                     <a
-                      href={coordinationClearHref}
+                      href={coordinationWorkspaceClearHref}
                       style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
                     >
                       {t(lang, "Clear helper", "清除辅助")}
@@ -2872,7 +2882,7 @@ export default async function StudentDetailPage({
                 </div>
               </div>
               {coordinationTeacherOptions.length > 0 ? (
-                <form method="get" action={`/admin/students/${studentId}#scheduling-coordination`} style={{ display: "grid", gap: 10 }}>
+                <form method="get" action={studentCoordinationHref} style={{ display: "grid", gap: 10 }}>
                   {coordinationPreservedEntries.map(([key, value]) => (
                     <input key={`special:${key}:${value}`} type="hidden" name={key} value={value} />
                   ))}
@@ -2905,7 +2915,7 @@ export default async function StudentDetailPage({
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button type="submit">{t(lang, "Check request", "检查请求")}</button>
                     <a
-                      href={coordinationClearHref}
+                      href={coordinationWorkspaceClearHref}
                       style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
                     >
                       {t(lang, "Clear helper", "清除辅助")}
@@ -3087,6 +3097,63 @@ export default async function StudentDetailPage({
             </div>
           </div>
         </div>
+        ) : (
+          <div
+            id="scheduling-coordination"
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: 14,
+              background: "#f8fafc",
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 800 }}>{t(lang, "Scheduling coordination", "排课协调")}</div>
+                <div style={{ color: "#64748b", fontSize: 12 }}>
+                  {t(lang, "The full coordination workspace now lives on its own page so this student detail view stays cleaner.", "完整的排课协调工作台现在已经挪到独立页面，这个学生详情页会更清爽。")}
+                </div>
+              </div>
+              <a
+                href={studentCoordinationHref}
+                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none", color: "inherit", fontWeight: 700 }}
+              >
+                {t(lang, "Open coordination workspace", "打开排课协调工作台")}
+              </a>
+            </div>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Open lanes", "打开中的协调分道")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>{openSchedulingTickets.length}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {openSchedulingTickets.length > 0
+                    ? t(lang, "Open the workspace to switch between course tickets and helper tools.", "打开工作台后可以在不同课程工单和辅助工具之间切换。")
+                    : t(lang, "No active coordination ticket yet.", "目前还没有活跃的排课协调工单。")}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Current phase", "当前阶段")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>{schedulingCoordinationPhase?.title ?? t(lang, "No active ticket", "暂无活跃工单")}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {activeSchedulingTicket ? schedulingCoordinationPhase?.nextStep ?? "-" : t(lang, "Create or reopen a coordination lane only when timing still needs follow-up.", "只有在时间仍需继续跟进时，才新建或重新打开协调分道。")}
+                </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Latest parent submission", "最近家长提交")}</div>
+                <div style={{ fontWeight: 800, marginTop: 4 }}>
+                  {parentAvailabilityRequest?.submittedAt ? formatBusinessDateTime(parentAvailabilityRequest.submittedAt) : t(lang, "No submission yet", "还没有提交")}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                  {parentAvailabilityRows.length > 0
+                    ? parentAvailabilityRows[0]?.value ?? "-"
+                    : t(lang, "Open the workspace for the full parent submission and helper tools.", "打开工作台可查看完整家长提交内容和辅助工具。")}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <details id="calendar-tools" open={Boolean(quickOpen || calendarOpen)} style={{ marginBottom: 14 }}>
             <summary style={{ fontWeight: 700 }}>{t(lang, "Planning tools & calendar", "排课工具与日历")}</summary>
