@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-13-r46` (finance-facing package billing, statement export, and receipt history now surface invoice-level partial-receipt progress and remaining balance), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-13-r47` (receipt creation now highlights the recommended next parent receipt and auto-carries the most usable proof/defaults into the create workspace), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -131,6 +131,20 @@
   - `/admin/packages/[id]/billing` should show invoice-level receipt progress and next-receipt action links
   - `/api/exports/parent-statement/[id]` should include an invoice receipt breakdown section
   - `/admin/receipts-approvals/history/export` should include invoice-level total/receipted/pending/remaining fields for parent receipts
+
+## 2026-04-13-r47 Ready
+
+- Scope: streamline the next parent receipt create flow by preloading the recommended invoice/proof pair and making the next receipt number visible before submit.
+- Business impact:
+  - package finance workspace now shows a recommended next-receipt card with invoice number, next receipt number, remaining amount, and suggested proof
+  - when only one usable unlinked payment proof exists, the create flow now auto-selects it and explains that choice
+  - package-level `Create the next receipt` shortcuts now jump into a ready-to-create view instead of a generic create step
+  - invoice pickers now display the next expected receipt number, helping finance confirm whether they are creating `-RC`, `-RC2`, or later
+- Validation:
+  - `npm run build`
+  - package finance workspace should show the recommended next-receipt helper card
+  - package next-step CTA should carry the recommended invoice and proof into the create step
+  - create-step invoice dropdowns should show the next receipt number for each invoice
 
 ## 2026-04-11-r39 Ready
 

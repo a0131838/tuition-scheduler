@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r47
+
+- Release ID: `2026-04-13-r47`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: streamline the next parent receipt creation flow by surfacing a recommended next-receipt card, carrying the next receipt number into invoice pickers, and auto-selecting the most usable unlinked payment proof when possible.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-next-receipt-helper.md`
+- Risk impact (if any): Low. This release only improves finance-side guidance and default selections inside the create-receipt workspace. It does not change receipt numbering rules, amount validation, approvals, statement math, package deduction logic, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - package finance workspace should show a recommended next-receipt card with invoice no., next receipt no., remaining amount, and suggested proof
+  - when only one usable unlinked payment record exists, it should auto-select and explain why
+  - `Create the next receipt` package helper should open the create step with the recommended invoice and proof already carried in the URL
+  - invoice pickers in the create flow should show the next receipt number alongside remaining amount
+- Rollback point: previous production commit before `2026-04-13-r47`.
+
 ## 2026-04-13-r46
 
 - Release ID: `2026-04-13-r46`
