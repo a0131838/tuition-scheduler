@@ -19,6 +19,10 @@ function csvEscape(value: unknown) {
   return /[",\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
 }
 
+function roundMoney(value: number) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
 function normalizeView(value: string) {
   if (value === "PARENT" || value === "PARTNER") return value;
   return "ALL";
@@ -87,6 +91,42 @@ export async function GET(req: Request) {
     getParentReceiptApprovalMap(parentReceiptIds),
     getPartnerReceiptApprovalMap(partnerReceiptIds),
   ]);
+  const parentInvoiceReceiptSummaryMap = new Map(
+    parentAll.invoices.map((invoice) => {
+      const linkedReceipts = parentAll.receipts.filter((receipt) => receipt.invoiceId === invoice.id);
+      let pendingAmount = 0;
+      for (const receipt of linkedReceipts) {
+        const approval = parentApprovalMap.get(receipt.id) ?? {
+          managerApprovedBy: [],
+          financeApprovedBy: [],
+          managerRejectReason: null,
+          financeRejectReason: null,
+        };
+        const status = statusLabel(
+          approval.managerApprovedBy,
+          approval.financeApprovedBy,
+          roleCfg.managerApproverEmails,
+          roleCfg.financeApproverEmails,
+          approval.managerRejectReason,
+          approval.financeRejectReason
+        );
+        if (status === "PENDING") {
+          pendingAmount += Number(receipt.amountReceived || 0);
+        }
+      }
+      const totalReceipted = roundMoney(linkedReceipts.reduce((sum, receipt) => sum + Number(receipt.amountReceived || 0), 0));
+      return [
+        invoice.id,
+        {
+          invoiceTotal: roundMoney(invoice.totalAmount || 0),
+          receiptCount: linkedReceipts.length,
+          totalReceipted,
+          pendingAmount: roundMoney(pendingAmount),
+          remainingAmount: Math.max(0, roundMoney((invoice.totalAmount || 0) - totalReceipted)),
+        },
+      ] as const;
+    })
+  );
 
   const receiptHeader = [
     choose(lang, "Row Type", "行类型"),
@@ -99,6 +139,11 @@ export async function GET(req: Request) {
     choose(lang, "Amount Received", "实收金额"),
     choose(lang, "Status", "状态"),
     choose(lang, "Risk State", "风险状态"),
+    choose(lang, "Invoice Total", "发票总额"),
+    choose(lang, "Invoice Receipt Count", "该发票收据数"),
+    choose(lang, "Invoice Receipted", "该发票已开收据"),
+    choose(lang, "Invoice Pending Approval", "该发票待审批"),
+    choose(lang, "Invoice Remaining", "该发票剩余"),
     choose(lang, "Created By", "创建人"),
     choose(lang, "Created At", "创建时间"),
   ];
@@ -137,6 +182,15 @@ export async function GET(req: Request) {
           approval.managerRejectReason,
           approval.financeRejectReason
         );
+        const invoiceSummary = inv
+          ? parentInvoiceReceiptSummaryMap.get(inv.id) ?? {
+              invoiceTotal: roundMoney(inv.totalAmount || 0),
+              receiptCount: 0,
+              totalReceipted: 0,
+              pendingAmount: 0,
+              remainingAmount: roundMoney(inv.totalAmount || 0),
+            }
+          : null;
         return {
           view: "PARENT",
           receiptNo: row.receiptNo,
@@ -147,6 +201,11 @@ export async function GET(req: Request) {
           amountReceived: row.amountReceived,
           status,
           riskState: row.paymentRecordId ? "LINKED" : "NO_PAYMENT_RECORD",
+          invoiceTotal: invoiceSummary?.invoiceTotal ?? "",
+          invoiceReceiptCount: invoiceSummary?.receiptCount ?? "",
+          invoiceReceipted: invoiceSummary?.totalReceipted ?? "",
+          invoicePendingApproval: invoiceSummary?.pendingAmount ?? "",
+          invoiceRemaining: invoiceSummary?.remainingAmount ?? "",
           createdBy: row.createdBy,
           createdAt: formatBusinessDateTime(new Date(row.createdAt)),
         };
@@ -192,6 +251,11 @@ export async function GET(req: Request) {
           amountReceived: row.amountReceived,
           status,
           riskState: row.paymentRecordId ? "LINKED" : "NO_PAYMENT_RECORD",
+          invoiceTotal: "",
+          invoiceReceiptCount: "",
+          invoiceReceipted: "",
+          invoicePendingApproval: "",
+          invoiceRemaining: "",
           createdBy: row.createdBy,
           createdAt: formatBusinessDateTime(new Date(row.createdAt)),
         };
@@ -220,6 +284,11 @@ export async function GET(req: Request) {
           row.amountReceived,
           row.status,
           row.riskState,
+          row.invoiceTotal,
+          row.invoiceReceiptCount,
+          row.invoiceReceipted,
+          row.invoicePendingApproval,
+          row.invoiceRemaining,
           row.createdBy,
           row.createdAt,
         ]

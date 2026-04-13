@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r46
+
+- Release ID: `2026-04-13-r46`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: make parent partial-receipt progress easier for finance to read by surfacing invoice-level receipt totals, remaining balance, and next-step context in package billing, statement export, and receipt-history export.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/api/exports/parent-statement/[id]/route.ts`
+  - `app/admin/receipts-approvals/history/export/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-partial-receipt-visibility.md`
+- Risk impact (if any): Low. This release only improves finance-facing visibility for invoice receipt progress and remaining balance; it does not change parent receipt numbering, approval rules, payment-record linking, package deduction logic, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - package billing should show each invoice's receipt count, created/approved/pending amounts, and remaining amount
+  - each receipt row in package billing should show the linked invoice's overall receipt progress
+  - statement PDF should include an invoice receipt breakdown section so finance can see partial receipt progress per invoice
+  - receipt history CSV should export invoice total, receipt count, receipted amount, pending amount, and remaining amount for parent receipts
+- Rollback point: previous production commit before `2026-04-13-r46`.
+
 ## 2026-04-13-r45
 
 - Release ID: `2026-04-13-r45`

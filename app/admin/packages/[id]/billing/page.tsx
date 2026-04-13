@@ -35,6 +35,10 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function roundMoney(v: number | null | undefined) {
+  return Math.round((Number(v ?? 0) + Number.EPSILON) * 100) / 100;
+}
+
 function displayCreator(
   creatorRaw: string | null | undefined,
   userMap: Map<string, { name: string | null; email: string }>
@@ -172,6 +176,51 @@ export default async function PackageBillingPage({
   const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
+  const receiptProgressMap = new Map(
+    data.invoices.map((invoice) => {
+      const linkedReceipts = data.receipts.filter((receipt) => receipt.invoiceId === invoice.id);
+      let approvedAmount = 0;
+      let pendingAmount = 0;
+      let rejectedAmount = 0;
+      for (const receipt of linkedReceipts) {
+        const approval = approvalMap.get(receipt.id) ?? {
+          managerApprovedBy: [],
+          financeApprovedBy: [],
+          managerRejectReason: null,
+          financeRejectReason: null,
+        };
+        const amount = roundMoney(receipt.amountReceived);
+        const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+        const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+        if (approval.managerRejectReason || approval.financeRejectReason) {
+          rejectedAmount += amount;
+        } else if (managerReady && financeReady) {
+          approvedAmount += amount;
+        } else {
+          pendingAmount += amount;
+        }
+      }
+      const createdAmount = roundMoney(linkedReceipts.reduce((sum, receipt) => sum + Number(receipt.amountReceived || 0), 0));
+      const remainingAmount = Math.max(0, roundMoney(invoice.totalAmount - createdAmount));
+      return [
+        invoice.id,
+        {
+          receiptCount: linkedReceipts.length,
+          createdAmount,
+          approvedAmount: roundMoney(approvedAmount),
+          pendingAmount: roundMoney(pendingAmount),
+          rejectedAmount: roundMoney(rejectedAmount),
+          remainingAmount,
+          status:
+            linkedReceipts.length === 0
+              ? t(lang, "No receipts yet", "还没有收据")
+              : remainingAmount > 0.01
+                ? t(lang, "Partially receipted", "部分已开收据")
+                : t(lang, "Fully receipted", "已全部开收据"),
+        },
+      ] as const;
+    })
+  );
   const creatorEmails = Array.from(
     new Set(
       data.invoices
@@ -262,29 +311,72 @@ export default async function PackageBillingPage({
               <th align="left">Issue</th>
               <th align="left">Due</th>
               <th align="left">Total</th>
+              <th align="left">{t(lang, "Receipt progress", "收据进度")}</th>
+              <th align="left">{t(lang, "Approval snapshot", "审批快照")}</th>
               <th align="left">By</th>
+              <th align="left">{t(lang, "Action", "操作")}</th>
               <th align="left">PDF</th>
               <th align="left">Delete</th>
             </tr>
           </thead>
           <tbody>
-            {data.invoices.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                <td>{r.invoiceNo}</td>
-                <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
-                <td>{normalizeDateOnly(r.dueDate) ?? "-"}</td>
-                <td>{money(r.totalAmount)}</td>
-                <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
-                <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
-                <td>
-                  <form action={deleteInvoiceAction}>
-                    <input type="hidden" name="packageId" value={packageId} />
-                    <input type="hidden" name="invoiceId" value={r.id} />
-                    <button type="submit">Delete</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+            {data.invoices.map((r) => {
+              const progress = receiptProgressMap.get(r.id) ?? {
+                receiptCount: 0,
+                createdAmount: 0,
+                approvedAmount: 0,
+                pendingAmount: 0,
+                rejectedAmount: 0,
+                remainingAmount: roundMoney(r.totalAmount),
+                status: t(lang, "No receipts yet", "还没有收据"),
+              };
+              return (
+                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td>{r.invoiceNo}</td>
+                  <td>{normalizeDateOnly(r.issueDate) ?? "-"}</td>
+                  <td>{normalizeDateOnly(r.dueDate) ?? "-"}</td>
+                  <td>{money(r.totalAmount)}</td>
+                  <td>
+                    <div style={{ fontWeight: 700 }}>{progress.status}</div>
+                    <div style={{ fontSize: 12, color: "#475569" }}>
+                      {progress.receiptCount} {t(lang, "receipt(s)", "张收据")} · {t(lang, "created", "已建")}: {money(progress.createdAmount)}
+                    </div>
+                    <div style={{ fontSize: 12, color: progress.remainingAmount > 0.01 ? "#b45309" : "#166534" }}>
+                      {t(lang, "remaining", "剩余")}: {money(progress.remainingAmount)}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: 12, color: "#334155" }}>
+                      {t(lang, "approved", "已批")}: {money(progress.approvedAmount)}
+                    </div>
+                    <div style={{ fontSize: 12, color: progress.pendingAmount > 0.01 ? "#92400e" : "#64748b" }}>
+                      {t(lang, "pending", "待批")}: {money(progress.pendingAmount)}
+                    </div>
+                    {progress.rejectedAmount > 0.01 ? (
+                      <div style={{ fontSize: 12, color: "#b91c1c" }}>
+                        {t(lang, "rejected", "已驳回")}: {money(progress.rejectedAmount)}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
+                  <td>
+                    <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}&step=create&invoiceId=${encodeURIComponent(r.id)}`}>
+                      {progress.remainingAmount > 0.01
+                        ? t(lang, "Create next receipt", "创建下一张收据")
+                        : t(lang, "Review receipts", "查看收据")}
+                    </a>
+                  </td>
+                  <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
+                  <td>
+                    <form action={deleteInvoiceAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="invoiceId" value={r.id} />
+                      <button type="submit">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
@@ -306,6 +398,7 @@ export default async function PackageBillingPage({
               <th align="left">Date</th>
               <th align="left">Received From</th>
               <th align="left">Amount Received</th>
+              <th align="left">{t(lang, "Invoice progress", "发票进度")}</th>
               <th align="left">Manager</th>
               <th align="left">Finance</th>
               <th align="left">Approval</th>
@@ -331,6 +424,22 @@ export default async function PackageBillingPage({
                   <td>{normalizeDateOnly(r.receiptDate) ?? "-"}</td>
                   <td>{r.receivedFrom}</td>
                   <td>{money(r.amountReceived)}</td>
+                  <td>
+                    {r.invoiceId ? (() => {
+                      const progress = receiptProgressMap.get(r.invoiceId);
+                      if (!progress) return "-";
+                      return (
+                        <>
+                          <div style={{ fontSize: 12, color: "#334155" }}>
+                            {progress.receiptCount} {t(lang, "receipt(s)", "张收据")} · {t(lang, "created", "已建")}: {money(progress.createdAmount)}
+                          </div>
+                          <div style={{ fontSize: 12, color: progress.remainingAmount > 0.01 ? "#b45309" : "#166534" }}>
+                            {t(lang, "remaining", "剩余")}: {money(progress.remainingAmount)}
+                          </div>
+                        </>
+                      );
+                    })() : "-"}
+                  </td>
                   <td>
                     {roleCfg.managerApproverEmails.length === 0
                       ? "No approver config"

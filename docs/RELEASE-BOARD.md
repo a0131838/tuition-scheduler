@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-13-r45` (parent billing now supports multiple receipts on one invoice for partial payments, while finance pages show remaining receiptable amount and partial-receipt status), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-13-r46` (finance-facing package billing, statement export, and receipt history now surface invoice-level partial-receipt progress and remaining balance), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -118,13 +118,19 @@
   - parent invoices can now keep using the same invoice for split payments instead of being blocked after the first receipt
   - the first receipt stays `InvoiceNo-RC`, and later receipts become `InvoiceNo-RC2`, `InvoiceNo-RC3`, etc.
   - the receipt creation page now shows how much has already been receipted and how much remains, and defaults the next receipt to the remaining amount
-  - finance workbench now distinguishes invoices that are only partially receipted from those that are fully finished
+
+## 2026-04-13-r46 Ready
+
+- Scope: make parent partial-receipt progress more legible across finance-facing package billing, statement export, and receipt-history export views.
+- Business impact:
+  - package billing now shows invoice-level receipt counts, created/approved/pending amounts, and remaining balance, so finance can tell at a glance whether an invoice is still waiting for another receipt
+  - each receipt row in package billing now echoes the linked invoice's overall receipt progress, reducing the need to switch back to the create-receipt view just to understand the remaining balance
+  - statement export and receipt-history CSV now include invoice-level receipt progress so partial receipts are easier to reconcile outside the live app
 - Validation:
   - `npm run build`
-  - a partially receipted parent invoice should still be selectable in `/admin/receipts-approvals`
-  - the next receipt number after the first one should auto-generate `-RC2`, `-RC3`, and so on
-  - payment records should not be reusable across multiple receipts
-  - finance workbench should show `Partially Receipted / 部分已开收据` until the invoice is fully covered
+  - `/admin/packages/[id]/billing` should show invoice-level receipt progress and next-receipt action links
+  - `/api/exports/parent-statement/[id]` should include an invoice receipt breakdown section
+  - `/admin/receipts-approvals/history/export` should include invoice-level total/receipted/pending/remaining fields for parent receipts
 
 ## 2026-04-11-r39 Ready
 

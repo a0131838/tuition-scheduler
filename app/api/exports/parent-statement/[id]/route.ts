@@ -51,6 +51,10 @@ function moneyValue(n: number) {
   return Number(n || 0).toFixed(2);
 }
 
+function roundMoney(n: number) {
+  return Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
+}
+
 function money(n: number) {
   return `SGD ${moneyValue(n)}`;
 }
@@ -119,6 +123,46 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!pkg) return new Response("Package not found", { status: 404 });
 
   const approvalMap = await getParentReceiptApprovalMap(billing.receipts.map((x) => x.id));
+  const invoiceReceiptSummaryMap = new Map(
+    billing.invoices.map((invoice) => {
+      const linkedReceipts = billing.receipts.filter((receipt) => receipt.invoiceId === invoice.id);
+      let approvedAmount = 0;
+      let pendingAmount = 0;
+      let rejectedAmount = 0;
+      for (const receipt of linkedReceipts) {
+        const approval = approvalMap.get(receipt.id) ?? {
+          managerApprovedBy: [],
+          financeApprovedBy: [],
+          managerRejectReason: null,
+          financeRejectReason: null,
+        };
+        const amount = roundMoney(receipt.amountReceived || 0);
+        if (approval.managerRejectReason || approval.financeRejectReason) {
+          rejectedAmount += amount;
+          continue;
+        }
+        if (
+          areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails) &&
+          areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
+        ) {
+          approvedAmount += amount;
+        } else {
+          pendingAmount += amount;
+        }
+      }
+      return [
+        invoice.id,
+        {
+          receiptCount: linkedReceipts.length,
+          approvedAmount: roundMoney(approvedAmount),
+          pendingAmount: roundMoney(pendingAmount),
+          rejectedAmount: roundMoney(rejectedAmount),
+          remainingApprovedBalance: Math.max(0, roundMoney(invoice.totalAmount - approvedAmount)),
+          remainingToCreate: Math.max(0, roundMoney(invoice.totalAmount - linkedReceipts.reduce((sum, receipt) => sum + Number(receipt.amountReceived || 0), 0))),
+        },
+      ] as const;
+    })
+  );
   const approvedReceipts = billing.receipts.filter((receipt) => {
     const approval = approvalMap.get(receipt.id) ?? {
       managerApprovedBy: [],
@@ -337,6 +381,58 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   drawText(doc, `Approved paid: ${money(totalPaid)}`, 220, y + 12, { size: 10, bold: true });
   drawText(doc, `Balance owing: ${money(balanceOwing)}`, 390, y + 12, { size: 10, bold: true, color: balanceOwing > 0.009 ? "#b91c1c" : "#166534" });
   y += 50;
+
+  if (billing.invoices.length > 0) {
+    ensureSpace(70);
+    drawSectionTitle(doc, 32, y, printableWidth, "Invoice receipt breakdown / 发票收据拆分");
+    y += 34;
+    for (const invoice of billing.invoices) {
+      const summary = invoiceReceiptSummaryMap.get(invoice.id) ?? {
+        receiptCount: 0,
+        approvedAmount: 0,
+        pendingAmount: 0,
+        rejectedAmount: 0,
+        remainingApprovedBalance: roundMoney(invoice.totalAmount),
+        remainingToCreate: roundMoney(invoice.totalAmount),
+      };
+      ensureSpace(44);
+      doc.roundedRect(32, y, printableWidth, 38, 8).fillAndStroke("#ffffff", BORDER);
+      drawText(doc, `${invoice.invoiceNo}   Total ${money(invoice.totalAmount)}`, 42, y + 8, {
+        size: 10,
+        bold: true,
+        width: 210,
+        lineBreak: true,
+      });
+      drawText(
+        doc,
+        `Receipts ${summary.receiptCount} · Approved ${money(summary.approvedAmount)} · Pending ${money(summary.pendingAmount)}`,
+        248,
+        y + 8,
+        { size: 9, width: 220, lineBreak: true, color: DARK }
+      );
+      const rightLine = summary.remainingApprovedBalance > 0.009
+        ? `Balance ${money(summary.remainingApprovedBalance)}`
+        : "Fully covered";
+      drawText(doc, rightLine, 474, y + 8, {
+        size: 9,
+        bold: true,
+        width: 92,
+        align: "right",
+        color: summary.remainingApprovedBalance > 0.009 ? "#b91c1c" : "#166534",
+        lineBreak: true,
+      });
+      if (summary.rejectedAmount > 0.009 || summary.remainingToCreate > 0.009) {
+        drawText(
+          doc,
+          `${summary.rejectedAmount > 0.009 ? `Rejected ${money(summary.rejectedAmount)} · ` : ""}Remaining to receipt ${money(summary.remainingToCreate)}`,
+          248,
+          y + 22,
+          { size: 8, width: 318, lineBreak: true, color: summary.rejectedAmount > 0.009 ? "#92400e" : MUTED }
+        );
+      }
+      y += 46;
+    }
+  }
 
   if (unapprovedReceipts.length > 0) {
     ensureSpace(52);
