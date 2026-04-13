@@ -1316,11 +1316,15 @@ export async function ReceiptsApprovalsPageContent({
     const invoiceRemainingAmount = Math.max(0, roundMoney(invoiceTotalAmount - invoiceReceiptedAmount));
     const invoiceOverReceivedAmount = Math.max(0, roundMoney(invoiceReceiptedAmount - invoiceTotalAmount));
     const riskCount = (pay ? 0 : 1) + (paymentFileMissing ? 1 : 0) + (invoiceOverReceivedAmount > 0.01 ? 1 : 0);
+    const nextReceiptOrdinal = invoiceReceipts.reduce((maxOrdinal, item) => {
+      return Math.max(maxOrdinal, parseParentReceiptOrdinal(item.receiptNo, inv?.invoiceNo ?? ""));
+    }, 0) + 1;
     return {
       id: r.id,
       type: "PARENT" as const,
       receiptNo: r.receiptNo,
       receiptDate: r.receiptDate,
+      invoiceId: r.invoiceId ?? null,
       invoiceNo: inv?.invoiceNo ?? "-",
       partyName: pkg?.student?.name ?? "-",
       mode: "-",
@@ -1330,6 +1334,7 @@ export async function ReceiptsApprovalsPageContent({
       invoiceRemainingAmount,
       invoiceOverReceivedAmount,
       receiptCountForInvoice: invoiceReceipts.length,
+      nextReceiptNo: inv?.invoiceNo ? buildParentReceiptNo(inv.invoiceNo, nextReceiptOrdinal) : null,
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate } : null,
@@ -1533,6 +1538,18 @@ export async function ReceiptsApprovalsPageContent({
   const selectedFixToolsHref =
     selectedRow && selectedRow.type === "PARENT"
       ? `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
+      : "";
+  const selectedNextReceiptHref =
+    selectedRow &&
+    selectedRow.type === "PARENT" &&
+    selectedRow.invoiceId &&
+    selectedRow.invoiceRemainingAmount > 0.01 &&
+    selectedRowInvoiceOverReceived <= 0.01
+      ? buildCreateReceiptHref(selectedRow.invoiceId, null)
+      : "";
+  const selectedNextReceiptLabel =
+    selectedRow && selectedRow.type === "PARENT" && selectedRow.nextReceiptNo
+      ? selectedRow.nextReceiptNo.split("-").pop() ?? selectedRow.nextReceiptNo
       : "";
   const buildScreenHref = (target: ReceiptScreenMode) => {
     if (target === "queue") return defaultQueueHref;
@@ -1902,7 +1919,13 @@ export async function ReceiptsApprovalsPageContent({
         }
       : pendingReceiptAmount > 0
         ? {
-            label: t(lang, "Create the next receipt", "创建下一张收据"),
+            label: selectedCreateInvoiceSummary
+              ? t(
+                  lang,
+                  `Create ${selectedCreateInvoiceSummary.nextReceiptNo.split("-").pop() ?? selectedCreateInvoiceSummary.nextReceiptNo}`,
+                  `创建 ${selectedCreateInvoiceSummary.nextReceiptNo.split("-").pop() ?? selectedCreateInvoiceSummary.nextReceiptNo}`
+                )
+              : t(lang, "Create the next receipt", "创建下一张收据"),
             note: selectedCreateInvoiceSummary
               ? `${selectedCreateInvoice?.invoiceNo ?? "-"} · ${selectedCreateInvoiceSummary.nextReceiptNo} · ${t(lang, "remaining", "剩余")} ${money(selectedCreateInvoiceSummary.remainingAmount)}`
               : t(lang, "This package already has usable proof and invoiced amount waiting to become a receipt.", "这个课包已经有可用凭证，而且还有已开票金额等待生成收据。"),
@@ -3418,6 +3441,27 @@ export async function ReceiptsApprovalsPageContent({
                 {" "}{t(lang, "remaining", "剩余")}: {money(selectedRow.invoiceRemainingAmount)}
               </div>
             ) : null}
+            {selectedNextReceiptHref && selectedRow.type === "PARENT" ? (
+              <div style={{ marginBottom: 10, display: "grid", gap: 8, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontWeight: 700 }}>
+                  {t(lang, "Next partial receipt available", "可继续创建下一张部分收据")}
+                </div>
+                <div style={{ fontSize: 13, color: "#1e3a8a" }}>
+                  {selectedRow.nextReceiptNo} · {t(lang, "remaining", "剩余")} {money(selectedRow.invoiceRemainingAmount)}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569" }}>
+                  {t(lang, "This shortcut only carries the invoice into the create step. Choose a new unlinked payment proof there.", "这个快捷入口只会把发票带入创建步骤；进入后仍需要选择新的、未绑定的付款凭证。")}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <a href={selectedNextReceiptHref}>
+                    {t(lang, `Create ${selectedNextReceiptLabel}`, `创建 ${selectedNextReceiptLabel}`)}
+                  </a>
+                  <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                    {t(lang, "Open package billing", "打开课包账单页")}
+                  </a>
+                </div>
+              </div>
+            ) : null}
             <div style={{ marginBottom: 10, border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{bilingualLabel("Timeline", "时间线")}</div>
               <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
@@ -3539,6 +3583,11 @@ export async function ReceiptsApprovalsPageContent({
                       <a href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
+                      {selectedNextReceiptHref ? (
+                        <a href={selectedNextReceiptHref}>
+                          {t(lang, `Create ${selectedNextReceiptLabel}`, `创建 ${selectedNextReceiptLabel}`)}
+                        </a>
+                      ) : null}
                       <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
                         {t(lang, "Open package billing", "打开课包账单页")}
                       </a>

@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r49
+
+- Release ID: `2026-04-13-r49`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: make parent partial-receipt follow-up actions more explicit by exposing the exact next receipt number in package billing and receipt-approval detail shortcuts, so finance can jump straight into `RC2`, `RC3`, and later receipts instead of guessing from a generic "next receipt" label.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-next-receipt-shortcuts.md`
+- Risk impact (if any): Low. This release only changes finance-facing shortcut labels and navigation hints for follow-up parent receipts. It does not change receipt numbering rules, amount validation, proof-link uniqueness, approvals, statement math, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - package billing invoice rows with remaining balance should show `Create RC2` / `Create RC3` style actions plus the full next receipt number
+  - receipt-approval package workspace next-step helper should expose the same explicit `RC2` / `RC3` label when a next receipt is recommended
+  - selected parent receipt details should show a dedicated next partial-receipt card that opens the create step with the same invoice only, without reusing the current linked payment proof
+- Rollback point: previous production commit before `2026-04-13-r49`.
+
 ## 2026-04-13-r48
 
 - Release ID: `2026-04-13-r48`

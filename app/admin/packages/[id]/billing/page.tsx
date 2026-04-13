@@ -39,6 +39,28 @@ function roundMoney(v: number | null | undefined) {
   return Math.round((Number(v ?? 0) + Number.EPSILON) * 100) / 100;
 }
 
+function nextParentReceiptNo(invoiceNo: string, receiptNos: string[]) {
+  const normalizedInvoiceNo = String(invoiceNo ?? "").trim();
+  if (!normalizedInvoiceNo) return "RC";
+  const escapedInvoiceNo = normalizedInvoiceNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let maxOrdinal = 0;
+  for (const receiptNo of receiptNos) {
+    const normalizedReceiptNo = String(receiptNo ?? "").trim();
+    if (!normalizedReceiptNo) continue;
+    if (normalizedReceiptNo === `${normalizedInvoiceNo}-RC`) {
+      maxOrdinal = Math.max(maxOrdinal, 1);
+      continue;
+    }
+    const match = normalizedReceiptNo.match(new RegExp(`^${escapedInvoiceNo}-RC([2-9]\\d*)$`));
+    if (!match) continue;
+    const ordinal = Number(match[1]);
+    if (Number.isInteger(ordinal) && ordinal >= 2) {
+      maxOrdinal = Math.max(maxOrdinal, ordinal);
+    }
+  }
+  return maxOrdinal + 1 <= 1 ? `${normalizedInvoiceNo}-RC` : `${normalizedInvoiceNo}-RC${maxOrdinal + 1}`;
+}
+
 function displayCreator(
   creatorRaw: string | null | undefined,
   userMap: Map<string, { name: string | null; email: string }>
@@ -211,6 +233,7 @@ export default async function PackageBillingPage({
           pendingAmount: roundMoney(pendingAmount),
           rejectedAmount: roundMoney(rejectedAmount),
           remainingAmount,
+          nextReceiptNo: nextParentReceiptNo(invoice.invoiceNo, linkedReceipts.map((receipt) => receipt.receiptNo)),
           status:
             linkedReceipts.length === 0
               ? t(lang, "No receipts yet", "还没有收据")
@@ -328,8 +351,10 @@ export default async function PackageBillingPage({
                 pendingAmount: 0,
                 rejectedAmount: 0,
                 remainingAmount: roundMoney(r.totalAmount),
+                nextReceiptNo: `${r.invoiceNo}-RC`,
                 status: t(lang, "No receipts yet", "还没有收据"),
               };
+              const nextReceiptLabel = progress.nextReceiptNo.split("-").pop() ?? progress.nextReceiptNo;
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.invoiceNo}</td>
@@ -362,9 +387,14 @@ export default async function PackageBillingPage({
                   <td>
                     <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}&step=create&invoiceId=${encodeURIComponent(r.id)}`}>
                       {progress.remainingAmount > 0.01
-                        ? t(lang, "Create next receipt", "创建下一张收据")
+                        ? t(lang, `Create ${nextReceiptLabel}`, `创建 ${nextReceiptLabel}`)
                         : t(lang, "Review receipts", "查看收据")}
                     </a>
+                    {progress.remainingAmount > 0.01 ? (
+                      <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                        {t(lang, "Next receipt", "下一张收据")}: {progress.nextReceiptNo}
+                      </div>
+                    ) : null}
                   </td>
                   <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
                   <td>
