@@ -195,6 +195,13 @@ export default async function PackageBillingPage({
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
+  const linkedPaymentRecordIdSet = new Set(
+    data.receipts.map((receipt) => String(receipt.paymentRecordId ?? "").trim()).filter(Boolean)
+  );
+  const unlinkedPaymentRecords = data.paymentRecords
+    .filter((record) => !linkedPaymentRecordIdSet.has(record.id))
+    .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+  const soleSuggestedPaymentRecord = unlinkedPaymentRecords.length === 1 ? unlinkedPaymentRecords[0] : null;
   const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
@@ -318,6 +325,13 @@ export default async function PackageBillingPage({
         <div style={{ marginBottom: 8, color: "#374151" }}>
           Payment records and receipt creation are handled in the finance center with receipt approvals.
         </div>
+        {soleSuggestedPaymentRecord ? (
+          <div style={{ marginBottom: 8, color: "#1e40af", fontSize: 12 }}>
+            {t(lang, "Only one unlinked payment proof is currently available, so the next-receipt shortcut will carry it automatically.", "当前只有一条未绑定付款凭证，下一张收据快捷入口会自动带上它。")}
+            {" "}
+            {soleSuggestedPaymentRecord.originalFileName}
+          </div>
+        ) : null}
         <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}`}>
           Open Finance Receipt Center
         </a>
@@ -385,14 +399,21 @@ export default async function PackageBillingPage({
                   </td>
                   <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
                   <td>
-                    <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}&step=create&invoiceId=${encodeURIComponent(r.id)}`}>
+                    <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}&step=create&invoiceId=${encodeURIComponent(r.id)}${soleSuggestedPaymentRecord && progress.remainingAmount > 0.01 ? `&paymentRecordId=${encodeURIComponent(soleSuggestedPaymentRecord.id)}` : ""}`}>
                       {progress.remainingAmount > 0.01
                         ? t(lang, `Create ${nextReceiptLabel}`, `创建 ${nextReceiptLabel}`)
                         : t(lang, "Review receipts", "查看收据")}
                     </a>
                     {progress.remainingAmount > 0.01 ? (
-                      <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                      <div style={{ fontSize: 12, color: "#475569", marginTop: 4, display: "grid", gap: 2 }}>
+                        <div>
                         {t(lang, "Next receipt", "下一张收据")}: {progress.nextReceiptNo}
+                        </div>
+                        {soleSuggestedPaymentRecord ? (
+                          <div>
+                            {t(lang, "Suggested proof", "推荐凭证")}: {soleSuggestedPaymentRecord.originalFileName}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </td>

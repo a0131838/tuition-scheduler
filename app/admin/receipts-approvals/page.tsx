@@ -53,6 +53,7 @@ import {
   workbenchMetricLabelStyle,
 } from "../_components/workbenchStyles";
 import PackageWorkspacePickerClient from "./_components/PackageWorkspacePickerClient";
+import ReceiptAmountReceivedField from "./_components/ReceiptAmountReceivedField";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const RECEIPTS_QUEUE_COOKIE = "adminReceiptsPreferredQueue";
@@ -1186,6 +1187,12 @@ export async function ReceiptsApprovalsPageContent({
   const amountOverRemaining = selectedCreateInvoiceSummary
     ? Math.max(0, roundMoney((Number(defaultAmountReceived) || 0) - selectedCreateInvoiceSummary.remainingAmount))
     : 0;
+  const amountShortOfRemaining = selectedCreateInvoiceSummary
+    ? Math.max(0, roundMoney(selectedCreateInvoiceSummary.remainingAmount - (Number(defaultAmountReceived) || 0)))
+    : 0;
+  const suggestedCreatePaymentRecordLabel = selectedCreatePaymentRecord
+    ? `${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"}`
+    : null;
   const missingPaymentFileCount = selectedBilling
     ? selectedBilling.paymentRecords.filter((r) => !(paymentRecordFileMap.get(r.id) ?? false)).length
     : 0;
@@ -2902,7 +2909,12 @@ export async function ReceiptsApprovalsPageContent({
                 <label>{t(lang, "Amount", "金额")}<input name="amount" type="number" step="0.01" defaultValue={defaultAmount} style={{ width: "100%" }} /></label>
                 <label>{t(lang, "GST", "消费税")}<input name="gstAmount" type="number" step="0.01" defaultValue={defaultGst} style={{ width: "100%" }} /></label>
                 <label>{t(lang, "Total", "合计")}<input name="totalAmount" type="number" step="0.01" defaultValue={defaultTotal} style={{ width: "100%" }} /></label>
-                <label>{t(lang, "Amount Received", "实收金额")} *<input name="amountReceived" required type="number" min={0} step="0.01" defaultValue={defaultAmountReceived} style={{ width: "100%" }} /></label>
+                <ReceiptAmountReceivedField
+                  lang={lang}
+                  defaultValue={defaultAmountReceived}
+                  remainingAmount={selectedCreateInvoiceSummary?.remainingAmount ?? 0}
+                  suggestedProofLabel={suggestedCreatePaymentRecordLabel}
+                />
                 <label>{t(lang, "Payment Record", "付款记录")}
                   <select
                     name="paymentRecordId"
@@ -2964,6 +2976,11 @@ export async function ReceiptsApprovalsPageContent({
                   {t(lang, "Warning: amount received exceeds the invoice remaining receipt balance.", "警告：实收金额超过该发票剩余可开收据金额。")}
                   {" "}
                   {t(lang, "Please double-check before create.", "请创建前再次确认。")}
+                </div>
+              ) : null}
+              {selectedCreateInvoiceSummary && amountShortOfRemaining > 0.01 ? (
+                <div style={{ marginTop: 8, color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "6px 8px", fontSize: 12 }}>
+                  {t(lang, "This draft amount is below the remaining balance and will keep part of the invoice open for another receipt.", "当前默认金额低于剩余待开金额，创建后会让这张发票继续保持部分未开收据状态。")}
                 </div>
               ) : null}
               {selectedBilling && availableCreatePaymentRecords.length > 0 && !selectedCreatePaymentRecord ? (

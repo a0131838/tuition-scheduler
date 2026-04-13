@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r50
+
+- Release ID: `2026-04-13-r50`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: finish the next round of finance-side parent partial-receipt improvements by adding a dedicated partial-receipt follow-up queue in finance workbench, a downloadable invoice receipt progress CSV, stronger create-form amount warnings, and more automatic next-receipt shortcuts that carry the only unlinked proof when it is unambiguous.
+- Key files:
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/_components/ReceiptAmountReceivedField.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-partial-receipt-finance-polish.md`
+- Risk impact (if any): Low. This release improves finance-facing queueing, export, shortcut, and warning UX around parent partial receipts. It does not change receipt numbering rules, amount-validation caps, payment-record uniqueness, approval decisions, statement math, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - finance workbench should expose a dedicated partial-receipt follow-up queue sorted by due date and remaining amount
+  - finance workbench should export an invoice receipt progress CSV for the current filtered dataset
+  - package billing should carry the only unlinked payment proof into next-receipt shortcuts when that recommendation is unambiguous
+  - receipt create form should show live warnings when amount received is above or below the invoice remaining balance
+- Rollback point: previous production commit before `2026-04-13-r50`.
+
 ## 2026-04-13-r49
 
 - Release ID: `2026-04-13-r49`

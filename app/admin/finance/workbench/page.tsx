@@ -26,6 +26,7 @@ type WorkbenchRow = {
   receiptCount: number;
   receiptedAmount: number;
   remainingAmount: number;
+  nextReceiptNo: string | null;
   status: WorkbenchStatus;
   nextAction: string;
   approvalText: string;
@@ -41,6 +42,22 @@ function money(v: number | null | undefined) {
 
 function roundMoney(v: number) {
   return Math.round((Number(v) + Number.EPSILON) * 100) / 100;
+}
+
+function parseParentReceiptOrdinal(receiptNo: string, invoiceNo: string) {
+  const normalizedReceiptNo = String(receiptNo ?? "").trim().toLowerCase();
+  const normalizedInvoiceNo = String(invoiceNo ?? "").trim().toLowerCase();
+  if (!normalizedReceiptNo || !normalizedInvoiceNo) return 0;
+  const firstReceiptNo = `${normalizedInvoiceNo}-rc`;
+  if (normalizedReceiptNo === firstReceiptNo) return 1;
+  const match = normalizedReceiptNo.match(new RegExp(`^${normalizedInvoiceNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-rc([2-9]\\d*)$`, "i"));
+  if (!match) return 0;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal >= 2 ? ordinal : 0;
+}
+
+function buildParentReceiptNo(invoiceNo: string, ordinal: number) {
+  return ordinal <= 1 ? `${invoiceNo}-RC` : `${invoiceNo}-RC${ordinal}`;
 }
 
 function statusLabel(lang: Lang, status: WorkbenchStatus) {
@@ -182,6 +199,10 @@ export default async function FinanceWorkbenchPage({
       receipts.reduce((sum, receipt) => sum + (Number(receipt.amountReceived) || 0), 0),
     );
     const remainingAmount = Math.max(0, roundMoney((Number(inv.totalAmount ?? 0) || 0) - receiptedAmount));
+    const nextReceiptOrdinal = receipts.reduce((maxOrdinal, receipt) => {
+      return Math.max(maxOrdinal, parseParentReceiptOrdinal(receipt.receiptNo, inv.invoiceNo));
+    }, 0) + 1;
+    const nextReceiptNo = buildParentReceiptNo(inv.invoiceNo, nextReceiptOrdinal);
     const rejectedReceipt =
       receipts.find((receipt) => {
         const approval = parentApprovalMap.get(receipt.id);
@@ -230,8 +251,12 @@ export default async function FinanceWorkbenchPage({
           : t(lang, "Awaiting finance approval", "等待财务审批");
       } else if (remainingAmount > 0.01) {
         status = "PARTIALLY_RECEIPTED";
-        nextAction = t(lang, "Create next receipt for remaining amount", "继续为剩余金额创建收据");
-        approvalText = `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · ${t(lang, "Remaining", "剩余")} ${money(remainingAmount)}`;
+        nextAction = t(
+          lang,
+          `Create ${nextReceiptNo.split("-").pop() ?? nextReceiptNo} for remaining amount`,
+          `继续创建 ${nextReceiptNo.split("-").pop() ?? nextReceiptNo} 处理剩余金额`
+        );
+        approvalText = `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · ${t(lang, "Remaining", "剩余")} ${money(remainingAmount)} · ${nextReceiptNo}`;
         openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&step=create&invoiceId=${encodeURIComponent(inv.id)}`;
       } else {
         status = "COMPLETED";
@@ -267,6 +292,7 @@ export default async function FinanceWorkbenchPage({
       receiptCount: receipts.length,
       receiptedAmount,
       remainingAmount,
+      nextReceiptNo: remainingAmount > 0.01 ? nextReceiptNo : null,
       status,
       nextAction,
       approvalText,
@@ -338,6 +364,7 @@ export default async function FinanceWorkbenchPage({
       receiptCount: receipt ? 1 : 0,
       receiptedAmount: Number(receipt?.amountReceived ?? 0) || 0,
       remainingAmount: receipt ? 0 : Number(inv.totalAmount ?? 0) || 0,
+      nextReceiptNo: null,
       status,
       nextAction,
       approvalText,
@@ -362,13 +389,18 @@ export default async function FinanceWorkbenchPage({
     );
   }
 
-  const filteredRows = rows.filter((x) => {
-    if (statusFilter && x.status !== statusFilter) return false;
+  function matchesCommonFilters(x: WorkbenchRow) {
     if (channelFilter && x.channel !== channelFilter) return false;
     if (!containsQuery(x)) return false;
     if (exceptionOnly === "1" && !x.isException) return false;
     if (exceptionOnly === "0" && x.isException) return false;
     if (exceptionReasonFilter && !x.exceptionReasons.includes(exceptionReasonFilter)) return false;
+    return true;
+  }
+
+  const commonFilteredRows = rows.filter(matchesCommonFilters);
+  const filteredRows = commonFilteredRows.filter((x) => {
+    if (statusFilter && x.status !== statusFilter) return false;
     return true;
   });
   const exceptionRows = filteredRows.filter((x) => x.isException);
@@ -451,6 +483,64 @@ export default async function FinanceWorkbenchPage({
   );
   const reminderCsv = [reminderCsvHeader, ...reminderCsvRows].join("\n");
   const reminderCsvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(reminderCsv)}`;
+  const invoiceProgressCsvHeader = [
+    t(lang, "Channel", "渠道"),
+    t(lang, "Invoice No.", "发票号"),
+    t(lang, "Party", "对象"),
+    t(lang, "Issue Date", "开票日"),
+    t(lang, "Due Date", "到期日"),
+    t(lang, "Invoice Total", "发票总额"),
+    t(lang, "Receipt Count", "收据数"),
+    t(lang, "Receipted", "已开收据"),
+    t(lang, "Remaining", "剩余"),
+    t(lang, "Status", "状态"),
+    t(lang, "Next Receipt No.", "下一张收据号"),
+    t(lang, "Next Action", "下一步"),
+    t(lang, "Open Link", "打开链接"),
+  ].map((x) => csvCell(x)).join(",");
+  const invoiceProgressCsvRows = commonFilteredRows
+    .map((x) =>
+      [
+        x.channel,
+        x.invoiceNo,
+        x.partyName,
+        x.issueDate,
+        x.dueDate,
+        money(x.totalAmount),
+        x.receiptCount,
+        money(x.receiptedAmount),
+        money(x.remainingAmount),
+        statusLabel(lang, x.status),
+        x.nextReceiptNo ?? "",
+        x.nextAction,
+        x.openHref,
+      ].map((v) => csvCell(v)).join(",")
+    );
+  const invoiceProgressCsv = [invoiceProgressCsvHeader, ...invoiceProgressCsvRows].join("\n");
+  const invoiceProgressCsvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(invoiceProgressCsv)}`;
+  const partialQueueRows = commonFilteredRows
+    .filter((x) => x.status === "PARTIALLY_RECEIPTED")
+    .sort((a, b) => {
+      const aDue = a.dueDate === "-" ? "9999-99-99" : a.dueDate;
+      const bDue = b.dueDate === "-" ? "9999-99-99" : b.dueDate;
+      if (aDue !== bDue) return aDue.localeCompare(bDue);
+      if (a.remainingAmount !== b.remainingAmount) return b.remainingAmount - a.remainingAmount;
+      return a.invoiceNo.localeCompare(b.invoiceNo);
+    });
+  const partialQueueTop = partialQueueRows.slice(0, 20);
+  const partialQueueHref = (() => {
+    const params = new URLSearchParams();
+    if (monthFilter) params.set("month", monthFilter);
+    if (channelFilter) params.set("channel", channelFilter);
+    if (q) params.set("q", q);
+    if (exceptionOnly) params.set("exceptionOnly", exceptionOnly);
+    if (exceptionReasonFilter) params.set("exceptionReason", exceptionReasonFilter);
+    if (reminderTone) params.set("reminderTone", reminderTone);
+    if (reminderTarget) params.set("reminderTarget", reminderTarget);
+    params.set("status", "PARTIALLY_RECEIPTED");
+    params.set("view", "OVERVIEW");
+    return `/admin/finance/workbench?${params.toString()}`;
+  })();
   const checklistMonth = monthFilter || today.slice(0, 7);
   const checklistRows = rows.filter((x) => monthKeyFromDateOnly(x.issueDate) === checklistMonth);
   const checklistCounts = {
@@ -555,6 +645,19 @@ export default async function FinanceWorkbenchPage({
         )}
       </div>
 
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <a href={partialQueueHref} style={{ fontSize: 12 }}>
+          {t(lang, "Open partial-receipt queue", "打开部分收据跟进队列")}
+        </a>
+        <a
+          href={invoiceProgressCsvHref}
+          download={`finance-invoice-progress-${monthFilter || "all"}.csv`}
+          style={{ fontSize: 12 }}
+        >
+          {t(lang, "Export invoice receipt progress (CSV)", "导出发票收据进度表（CSV）")}
+        </a>
+      </div>
+
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <a
           href={tabHref("OVERVIEW")}
@@ -581,6 +684,32 @@ export default async function FinanceWorkbenchPage({
           {t(lang, "Month-end Close", "月结检查")}
         </a>
       </div>
+
+      {(viewMode === "OVERVIEW" || viewMode === "CLOSING") && (
+      <div style={{ border: "1px solid #fdba74", borderRadius: 8, padding: 10, background: "#fff7ed" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <div style={{ fontWeight: 700, color: "#c2410c" }}>
+            {t(lang, "Partial Receipt Follow-up Queue", "部分收据跟进队列")} ({partialQueueRows.length})
+          </div>
+          <div style={{ fontSize: 12, color: "#9a3412" }}>
+            {t(lang, "Sorted by earliest due date, then largest remaining amount.", "按最早到期日优先，其次按剩余金额从大到小排序。")}
+          </div>
+        </div>
+        {partialQueueTop.length === 0 ? (
+          <div style={{ color: "#9a3412", fontSize: 12 }}>
+            {t(lang, "No partially receipted invoices match the current filters.", "当前筛选下没有部分已开收据的发票。")}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 6 }}>
+            {partialQueueTop.map((x) => (
+              <div key={`partial-${x.channel}-${x.invoiceNo}`} style={{ fontSize: 12, color: "#9a3412" }}>
+                [{x.channel}] {x.invoiceNo} · {x.partyName} · {t(lang, "Due", "到期")} {x.dueDate} · {t(lang, "Remaining", "剩余")} {money(x.remainingAmount)} · {x.nextReceiptNo ?? "-"} · <a href={x.openHref}>{t(lang, "Create now", "立即创建")}</a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
 
       {(viewMode === "OVERVIEW" || viewMode === "CLOSING") && (
       <div style={{ border: "1px solid #d1fae5", borderRadius: 8, padding: 10, background: "#ecfdf5" }}>
@@ -892,6 +1021,9 @@ export default async function FinanceWorkbenchPage({
                         <div>
                           {t(lang, "Receipt progress", "收据进度")}: {x.receiptCount} {t(lang, "receipt(s)", "张收据")} · {t(lang, "receipted", "已开")} {money(x.receiptedAmount)} · {t(lang, "remaining", "剩余")} {money(x.remainingAmount)}
                         </div>
+                        {x.nextReceiptNo ? (
+                          <div>{t(lang, "Next receipt no.", "下一张收据号")}: {x.nextReceiptNo}</div>
+                        ) : null}
                         <div>{t(lang, "Approval progress", "审批进度")}: {x.approvalText}</div>
                         <div>
                           {t(lang, "Exception Reasons", "异常原因")}:{" "}
