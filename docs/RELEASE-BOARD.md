@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-13-r47` (receipt creation now highlights the recommended next parent receipt and auto-carries the most usable proof/defaults into the create workspace), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-13-r48` (parent multi-receipt backend now accepts `-RC2+` correctly and has automated coverage for numbering, remaining-balance caps, and payment-record uniqueness), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -145,6 +145,18 @@
   - package finance workspace should show the recommended next-receipt helper card
   - package next-step CTA should carry the recommended invoice and proof into the create step
   - create-step invoice dropdowns should show the next receipt number for each invoice
+
+## 2026-04-13-r48 Ready
+
+- Scope: fix the backend receipt-number validator for parent multi-receipt flows and lock the feature down with focused automated tests.
+- Business impact:
+  - parent multi-receipt flows no longer depend on the old single-receipt regex in the store layer, so `-RC2`, `-RC3`, and later receipt numbers are accepted correctly
+  - automated coverage now protects the main edge cases for partial receipts: numbering progression, second-receipt creation up to the remaining amount, over-receipt blocking, and duplicate payment-record rejection
+  - this release reduces the chance of silently reintroducing the old `RC only` assumption in future finance changes
+- Validation:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npm run test:backend`
+  - `npm run build`
 
 ## 2026-04-11-r39 Ready
 

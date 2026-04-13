@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r48
+
+- Release ID: `2026-04-13-r48`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: add automated parent partial-receipt backend coverage and fix the leftover receipt-number validator so `-RC2`, `-RC3`, and later receipts are accepted by the store layer instead of being blocked by the old single-receipt regex.
+- Key files:
+  - `lib/student-parent-billing.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-partial-receipt-tests-and-validator-fix.md`
+- Risk impact (if any): Medium. This release changes backend receipt-number validation for parent receipts and adds automated coverage around multi-receipt edge cases. It does not change partner billing, finance approvals, statement math, package deduction logic, scheduling, sessions, or package behavior.
+- Verification:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npm run test:backend`
+  - `npm run build`
+  - the backend should now accept `InvoiceNo-RC2`, `InvoiceNo-RC3`, and later parent receipt numbers
+  - tests should cover numbering progression, valid second partial receipt creation, over-receipt blocking, and duplicate payment-record rejection
+- Rollback point: previous production commit before `2026-04-13-r48`.
+
 ## 2026-04-13-r47
 
 - Release ID: `2026-04-13-r47`

@@ -268,8 +268,8 @@ function ensureUniqueInvoiceNo(store: ParentBillingStore, invoiceNo: string) {
 function ensureUniqueReceiptNo(store: ParentBillingStore, receiptNo: string) {
   const key = receiptNo.trim().toLowerCase();
   if (!key) throw new Error("Receipt No. is required");
-  if (!/^rgt-\d{6}-\d{4}-rc$/i.test(key)) {
-    throw new Error("Receipt No. format must be RGT-yyyymm-xxxx-RC");
+  if (!/^rgt-\d{6}-\d{4}-rc(?:[2-9]\d*)?$/i.test(key)) {
+    throw new Error("Receipt No. format must be RGT-yyyymm-xxxx-RC or RGT-yyyymm-xxxx-RC2");
   }
   if (store.receipts.some((x) => x.receiptNo.trim().toLowerCase() === key)) {
     throw new Error(`Receipt No. already exists: ${receiptNo}`);
