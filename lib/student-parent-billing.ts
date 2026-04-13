@@ -513,6 +513,47 @@ export async function replaceParentPaymentRecord(input: {
   return { oldItem: oldItem!, item: next! };
 }
 
+export async function updateParentPaymentRecordAmount(input: {
+  recordId: string;
+  packageId: string;
+  paymentAmount?: number | null;
+  actorEmail: string;
+}) {
+  let item: ParentPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
+      if (idx < 0) throw new Error("Payment record not found");
+      const current = store.paymentRecords[idx];
+      if (current.packageId !== input.packageId.trim()) {
+        throw new Error("Payment record does not belong to this package");
+      }
+      item = {
+        ...current,
+        paymentAmount: input.paymentAmount == null ? null : roundMoney(input.paymentAmount),
+      };
+      store.paymentRecords[idx] = item;
+    },
+  });
+  await logAudit({
+    actor: { email: input.actorEmail, role: "ADMIN" },
+    module: "PARENT_BILLING",
+    action: "UPDATE_PAYMENT_PROOF_AMOUNT",
+    entityType: "ParentPaymentRecord",
+    entityId: item!.id,
+    meta: {
+      packageId: item!.packageId,
+      studentId: item!.studentId,
+      file: item!.originalFileName,
+      paymentAmount: item!.paymentAmount,
+    },
+  });
+  return item!;
+}
+
 export async function deleteParentPaymentRecord(input: { recordId: string; actorEmail: string }) {
   let row: ParentPaymentRecordItem | null = null;
   await mutateJsonAppSetting({

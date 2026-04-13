@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r52
+
+- Release ID: `2026-04-14-r52`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: let finance backfill or correct amounts on existing parent payment-proof records inline, and require a final click-through confirmation when a new receipt amount diverges from the invoice remaining balance or the selected proof amount.
+- Key files:
+  - `lib/student-parent-billing.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/_components/ConfirmCreateReceiptButton.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-parent-proof-amount-backfill-and-confirmation.md`
+- Risk impact (if any): Low. This release adds finance-side metadata editing for existing parent payment proofs and a submit-time confirmation guard for create-receipt mismatches. It does not change invoice math, receipt numbering, payment-record uniqueness, approval decisions, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - existing payment-proof rows should allow finance to save or update a proof amount inline
+  - create-receipt submit should pop a confirmation when amount received is above or below invoice remaining balance
+  - create-receipt submit should also pop a confirmation when amount received differs from the selected proof amount
+- Rollback point: previous production commit before `2026-04-14-r52`.
+
 ## 2026-04-13-r51
 
 - Release ID: `2026-04-13-r51`

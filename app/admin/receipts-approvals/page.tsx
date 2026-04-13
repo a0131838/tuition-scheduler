@@ -20,6 +20,7 @@ import {
   listAllParentBilling,
   listParentBillingForPackage,
   replaceParentPaymentRecord,
+  updateParentPaymentRecordAmount,
 } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import {
@@ -54,6 +55,7 @@ import {
 } from "../_components/workbenchStyles";
 import PackageWorkspacePickerClient from "./_components/PackageWorkspacePickerClient";
 import ReceiptAmountReceivedField from "./_components/ReceiptAmountReceivedField";
+import ConfirmCreateReceiptButton from "./_components/ConfirmCreateReceiptButton";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const RECEIPTS_QUEUE_COOKIE = "adminReceiptsPreferredQueue";
@@ -669,6 +671,33 @@ async function deletePaymentRecordAction(formData: FormData) {
     redirect(appendResultParam(actionHref, "err", msg));
   }
   redirect(appendResultParam(actionHref, "msg", "Payment record deleted"));
+}
+
+async function updatePaymentRecordAmountAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  if (!canFinanceOperate(admin.email, admin.role)) {
+    redirect("/admin/receipts-approvals?err=Only+finance+can+update+payment+record+amounts");
+  }
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const recordId = String(formData.get("recordId") ?? "").trim();
+  const fallbackHref = withQuery("/admin/receipts-approvals", packageId);
+  const actionHref = resolveActionHref(formData, fallbackHref);
+  if (!packageId || !recordId) {
+    redirect(appendResultParam(actionHref, "err", "Missing payment record id"));
+  }
+  try {
+    await updateParentPaymentRecordAmount({
+      packageId,
+      recordId,
+      paymentAmount: parseOptionalNum(formData.get("paymentAmount")),
+      actorEmail: admin.email,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Update payment record amount failed";
+    redirect(appendResultParam(actionHref, "err", msg));
+  }
+  redirect(appendResultParam(actionHref, "msg", "Payment record amount updated"));
 }
 
 async function createReceiptAction(formData: FormData) {
@@ -2722,7 +2751,26 @@ export async function ReceiptsApprovalsPageContent({
                             <td>{formatBusinessDateTime(new Date(r.uploadedAt))}</td>
                             <td>{r.paymentDate ? normalizeDateOnly(r.paymentDate) ?? "-" : "-"}</td>
                             <td>{r.paymentMethod || "-"}</td>
-                            <td>{r.paymentAmount == null ? "-" : money(r.paymentAmount)}</td>
+                            <td>
+                              <div>{r.paymentAmount == null ? "-" : money(r.paymentAmount)}</div>
+                              <form action={updatePaymentRecordAmountAction} style={{ marginTop: 6, display: "grid", gap: 6 }}>
+                                <input type="hidden" name="packageId" value={packageIdFilter} />
+                                <input type="hidden" name="recordId" value={r.id} />
+                                <input type="hidden" name="nextHref" value={selectedRepairReturnHref} />
+                                <input
+                                  name="paymentAmount"
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  defaultValue={r.paymentAmount == null ? "" : String(r.paymentAmount)}
+                                  placeholder="2000.00"
+                                  style={{ width: 120 }}
+                                />
+                                <button type="submit" style={{ width: "fit-content" }}>
+                                  {t(lang, "Save amount", "保存金额")}
+                                </button>
+                              </form>
+                            </td>
                             <td>{r.referenceNo || "-"}</td>
                             <td>
                               {fileExists ? (
@@ -3008,7 +3056,12 @@ export async function ReceiptsApprovalsPageContent({
                 {t(lang, "Required fields are marked with *.", "带 * 的字段为必填。")}
               </div>
               <div style={{ marginTop: 8 }}>
-                <button type="submit" disabled={availableInvoices.length === 0}>{t(lang, "Create Receipt", "创建收据")}</button>
+                <ConfirmCreateReceiptButton
+                  lang={lang}
+                  disabled={availableInvoices.length === 0}
+                  remainingAmount={selectedCreateInvoiceSummary?.remainingAmount ?? 0}
+                  suggestedProofAmount={selectedCreatePaymentRecord?.paymentAmount ?? null}
+                />
                 {availableInvoices.length === 0 ? (
                   <span style={{ marginLeft: 8, color: "#92400e" }}>{t(lang, "All invoices are already fully receipted.", "所有发票都已全部开完收据。")}</span>
                 ) : null}
