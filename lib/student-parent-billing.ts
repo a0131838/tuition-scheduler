@@ -81,6 +81,37 @@ function parseNumber(v: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function roundMoney(v: number) {
+  return Math.round((Number(v) + Number.EPSILON) * 100) / 100;
+}
+
+function buildParentReceiptNo(invoiceNo: string, ordinal: number) {
+  return ordinal <= 1 ? `${invoiceNo}-RC` : `${invoiceNo}-RC${ordinal}`;
+}
+
+function parseParentReceiptOrdinal(receiptNo: string, invoiceNo: string) {
+  const normalizedReceiptNo = String(receiptNo ?? "").trim().toLowerCase();
+  const normalizedInvoiceNo = String(invoiceNo ?? "").trim().toLowerCase();
+  if (!normalizedReceiptNo || !normalizedInvoiceNo) return 0;
+  const firstReceiptNo = `${normalizedInvoiceNo}-rc`;
+  if (normalizedReceiptNo === firstReceiptNo) return 1;
+  const match = normalizedReceiptNo.match(new RegExp(`^${normalizedInvoiceNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-rc([2-9]\\d*)$`, "i"));
+  if (!match) return 0;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal >= 2 ? ordinal : 0;
+}
+
+function nextParentReceiptOrdinalForInvoice(
+  receipts: Array<Pick<ParentReceiptItem, "receiptNo">>,
+  invoiceNo: string,
+) {
+  let maxOrdinal = 0;
+  for (const receipt of receipts) {
+    maxOrdinal = Math.max(maxOrdinal, parseParentReceiptOrdinal(receipt.receiptNo, invoiceNo));
+  }
+  return maxOrdinal + 1;
+}
+
 function sanitizeStore(input: unknown): ParentBillingStore {
   const out: ParentBillingStore = { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
   const today = formatDateOnly(new Date());
@@ -535,19 +566,34 @@ export async function createParentReceipt(input: {
         if (invoice.packageId !== input.packageId) {
           throw new Error("Invoice does not belong to this package");
         }
-        const hasLinked = store.receipts.some((x) => x.invoiceId === invoiceId);
-        if (hasLinked) throw new Error("This invoice already has a receipt");
-        const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
+        const linkedReceipts = store.receipts.filter((x) => x.invoiceId === invoiceId);
+        const alreadyReceipted = roundMoney(
+          linkedReceipts.reduce((sum, receipt) => sum + (Number(receipt.amountReceived) || 0), 0),
+        );
+        const nextAmountReceived = roundMoney(alreadyReceipted + (Number(input.amountReceived) || 0));
+        const invoiceTotal = roundMoney(Number(invoice.totalAmount) || 0);
+        if (nextAmountReceived > invoiceTotal + 0.01) {
+          const remainingAmount = Math.max(0, roundMoney(invoiceTotal - alreadyReceipted));
+          throw new Error(`Amount Received exceeds invoice remaining balance: ${remainingAmount.toFixed(2)}`);
+        }
+        const expectedReceiptNo = buildParentReceiptNo(
+          invoice.invoiceNo,
+          nextParentReceiptOrdinalForInvoice(linkedReceipts, invoice.invoiceNo),
+        );
         if (normalizedReceiptNo.toLowerCase() !== expectedReceiptNo.toLowerCase()) {
           throw new Error(`Receipt No. must match linked invoice: ${expectedReceiptNo}`);
         }
+      }
+      const paymentRecordId = input.paymentRecordId?.trim() || null;
+      if (paymentRecordId && store.receipts.some((x) => x.paymentRecordId === paymentRecordId)) {
+        throw new Error("This payment record is already linked to another receipt");
       }
       item = {
         id: crypto.randomUUID(),
         packageId: input.packageId,
         studentId: input.studentId,
         invoiceId,
-        paymentRecordId: input.paymentRecordId?.trim() || null,
+        paymentRecordId,
         receiptNo: normalizedReceiptNo,
         receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
         receivedFrom: input.receivedFrom.trim(),
@@ -581,9 +627,11 @@ export async function buildParentReceiptNoForInvoice(invoiceId: string) {
   const store = await loadStore();
   const invoice = store.invoices.find((x) => x.id === invoiceId.trim());
   if (!invoice) throw new Error("Invoice not found");
-  const receiptNo = `${invoice.invoiceNo}-RC`;
-  const already = store.receipts.find((x) => x.invoiceId === invoice.id);
-  if (already) throw new Error("This invoice already has a receipt");
+  const linkedReceipts = store.receipts.filter((x) => x.invoiceId === invoice.id);
+  const receiptNo = buildParentReceiptNo(
+    invoice.invoiceNo,
+    nextParentReceiptOrdinalForInvoice(linkedReceipts, invoice.invoiceNo),
+  );
   if (store.receipts.some((x) => x.receiptNo.trim().toLowerCase() === receiptNo.trim().toLowerCase())) {
     throw new Error(`Receipt No. already exists: ${receiptNo}`);
   }
@@ -665,15 +713,31 @@ export async function applyParentInvoiceNumberAssignments(
           used.add(key);
         }
 
-        for (const rec of store.receipts) {
-          if (!rec.invoiceId) continue;
-          const beforeNo = originalNoById.get(rec.invoiceId);
-          const afterNo = map.get(rec.invoiceId);
-          if (!beforeNo || !afterNo || beforeNo === afterNo) continue;
-          const expectedOld = `${beforeNo}-RC`.toLowerCase();
-          if (rec.receiptNo.trim().toLowerCase() === expectedOld) {
-            rec.receiptNo = `${afterNo}-RC`;
-            rec.updatedAt = new Date().toISOString();
+        for (const [invoiceId, afterNo] of map.entries()) {
+          const beforeNo = originalNoById.get(invoiceId);
+          if (!beforeNo || beforeNo === afterNo) continue;
+          const receipts = store.receipts
+            .filter((rec) => rec.invoiceId === invoiceId)
+            .sort((a, b) => {
+              const aOrdinal = parseParentReceiptOrdinal(a.receiptNo, beforeNo) || Number.MAX_SAFE_INTEGER;
+              const bOrdinal = parseParentReceiptOrdinal(b.receiptNo, beforeNo) || Number.MAX_SAFE_INTEGER;
+              if (aOrdinal !== bOrdinal) return aOrdinal - bOrdinal;
+              return String(a.createdAt).localeCompare(String(b.createdAt));
+            });
+          const usedOrdinals = new Set<number>();
+          let nextFallbackOrdinal = 1;
+          for (const rec of receipts) {
+            let ordinal = parseParentReceiptOrdinal(rec.receiptNo, beforeNo);
+            if (ordinal < 1 || usedOrdinals.has(ordinal)) {
+              while (usedOrdinals.has(nextFallbackOrdinal)) nextFallbackOrdinal += 1;
+              ordinal = nextFallbackOrdinal;
+            }
+            usedOrdinals.add(ordinal);
+            const nextReceiptNo = buildParentReceiptNo(afterNo, ordinal);
+            if (rec.receiptNo !== nextReceiptNo) {
+              rec.receiptNo = nextReceiptNo;
+              rec.updatedAt = new Date().toISOString();
+            }
           }
         }
       }

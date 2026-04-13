@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r45
+
+- Release ID: `2026-04-13-r45`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: support multiple parent receipts on the same invoice for partial payments, keep the first receipt number as `-RC`, continue later receipts as `-RC2`, `-RC3`, and make finance pages show remaining receiptable amount instead of blocking after the first receipt.
+- Key files:
+  - `lib/student-parent-billing.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/finance/workbench/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-partial-multi-receipt.md`
+- Risk impact (if any): Medium. This release changes parent receipt numbering, invoice-to-receipt linking rules, finance workbench status interpretation, and create-receipt defaults for partial payments. It intentionally does not change partner billing, package deduction logic, scheduling, sessions, packages, or finance approvals themselves.
+- Verification:
+  - `npm run build`
+  - a parent invoice with one approved partial receipt should still remain selectable in `/admin/receipts-approvals` while it has remaining receiptable amount
+  - the next auto-generated receipt number should be `InvoiceNo-RC2`, `InvoiceNo-RC3`, etc., while the first receipt stays `InvoiceNo-RC`
+  - create-receipt defaults should show `already receipted` and `remaining to receipt`, and should default the new receipt amount to the remaining amount
+  - finance workbench should show `Partially Receipted / 部分已开收据` instead of treating the invoice as fully finished after the first approved partial receipt
+  - over-receipting should be blocked, while valid partial receipts should no longer be flagged as a mismatch by default
+- Rollback point: previous production commit before `2026-04-13-r45`.
+
 ## 2026-04-12-r44
 
 - Release ID: `2026-04-12-r44`

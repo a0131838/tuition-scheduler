@@ -9,10 +9,10 @@ import { listAllParentBilling } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
-type WorkbenchStatus = "PENDING_RECEIPT" | "PENDING_APPROVAL" | "REJECTED" | "COMPLETED";
+type WorkbenchStatus = "PENDING_RECEIPT" | "PARTIALLY_RECEIPTED" | "PENDING_APPROVAL" | "REJECTED" | "COMPLETED";
 type ExceptionReason = "REJECTED_BY_APPROVER" | "OVERDUE_PENDING_RECEIPT" | "APPROVER_CONFIG_MISSING";
 type ReminderTone = "SOFT" | "NORMAL" | "STRONG";
-type ReminderTarget = "ALL" | "PENDING_RECEIPT" | "PENDING_APPROVAL" | "REJECTED";
+type ReminderTarget = "ALL" | "PENDING_RECEIPT" | "PARTIALLY_RECEIPTED" | "PENDING_APPROVAL" | "REJECTED";
 type ViewMode = "OVERVIEW" | "EXCEPTIONS" | "REMINDERS" | "CLOSING";
 
 type WorkbenchRow = {
@@ -23,6 +23,9 @@ type WorkbenchRow = {
   partyName: string;
   totalAmount: number;
   receiptNo: string | null;
+  receiptCount: number;
+  receiptedAmount: number;
+  remainingAmount: number;
   status: WorkbenchStatus;
   nextAction: string;
   approvalText: string;
@@ -36,8 +39,13 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function roundMoney(v: number) {
+  return Math.round((Number(v) + Number.EPSILON) * 100) / 100;
+}
+
 function statusLabel(lang: Lang, status: WorkbenchStatus) {
   if (status === "PENDING_RECEIPT") return t(lang, "Pending Receipt", "待创建收据");
+  if (status === "PARTIALLY_RECEIPTED") return t(lang, "Partially Receipted", "部分已开收据");
   if (status === "PENDING_APPROVAL") return t(lang, "Pending Approval", "待审批");
   if (status === "REJECTED") return t(lang, "Rejected", "已驳回");
   return t(lang, "Completed", "已完成");
@@ -45,6 +53,7 @@ function statusLabel(lang: Lang, status: WorkbenchStatus) {
 
 function statusColor(status: WorkbenchStatus) {
   if (status === "PENDING_RECEIPT") return "#92400e";
+  if (status === "PARTIALLY_RECEIPTED") return "#c2410c";
   if (status === "PENDING_APPROVAL") return "#b45309";
   if (status === "REJECTED") return "#b91c1c";
   return "#166534";
@@ -89,7 +98,7 @@ export default async function FinanceWorkbenchPage({
   const monthFilter = /^\d{4}-\d{2}$/.test(monthRaw) ? monthRaw : "";
   const statusRaw = String(sp?.status ?? "").trim().toUpperCase();
   const statusFilter = (
-    ["PENDING_RECEIPT", "PENDING_APPROVAL", "REJECTED", "COMPLETED"] as const
+    ["PENDING_RECEIPT", "PARTIALLY_RECEIPTED", "PENDING_APPROVAL", "REJECTED", "COMPLETED"] as const
   ).includes(statusRaw as WorkbenchStatus)
     ? (statusRaw as WorkbenchStatus)
     : "";
@@ -114,7 +123,7 @@ export default async function FinanceWorkbenchPage({
     : "NORMAL";
   const reminderTargetRaw = String(sp?.reminderTarget ?? "").trim().toUpperCase();
   const reminderTarget = (
-    ["ALL", "PENDING_RECEIPT", "PENDING_APPROVAL", "REJECTED"] as const
+    ["ALL", "PENDING_RECEIPT", "PARTIALLY_RECEIPTED", "PENDING_APPROVAL", "REJECTED"] as const
   ).includes(reminderTargetRaw as ReminderTarget)
     ? (reminderTargetRaw as ReminderTarget)
     : "ALL";
@@ -143,9 +152,13 @@ export default async function FinanceWorkbenchPage({
       )
     : new Map();
 
-  const parentReceiptByInvoiceId = new Map(
-    parentAll.receipts.filter((x) => x.invoiceId).map((x) => [String(x.invoiceId), x]),
-  );
+  const parentReceiptsByInvoiceId = new Map<string, typeof parentAll.receipts>();
+  for (const receipt of parentAll.receipts) {
+    if (!receipt.invoiceId) continue;
+    const bucket = parentReceiptsByInvoiceId.get(String(receipt.invoiceId)) ?? [];
+    bucket.push(receipt);
+    parentReceiptsByInvoiceId.set(String(receipt.invoiceId), bucket);
+  }
   const partnerReceiptByInvoiceId = new Map(partnerAll.receipts.map((x) => [x.invoiceId, x]));
 
   const [parentApprovalMap, partnerApprovalMap] = await Promise.all([
@@ -164,8 +177,31 @@ export default async function FinanceWorkbenchPage({
 
   for (const inv of parentAll.invoices) {
     if (monthFilter && monthKeyFromDateOnly(inv.issueDate) !== monthFilter) continue;
-    const receipt = parentReceiptByInvoiceId.get(inv.id) ?? null;
-    const approval = receipt ? parentApprovalMap.get(receipt.id) : null;
+    const receipts = parentReceiptsByInvoiceId.get(inv.id) ?? [];
+    const receiptedAmount = roundMoney(
+      receipts.reduce((sum, receipt) => sum + (Number(receipt.amountReceived) || 0), 0),
+    );
+    const remainingAmount = Math.max(0, roundMoney((Number(inv.totalAmount ?? 0) || 0) - receiptedAmount));
+    const rejectedReceipt =
+      receipts.find((receipt) => {
+        const approval = parentApprovalMap.get(receipt.id);
+        return Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
+      }) ?? null;
+    const pendingReceipt =
+      receipts.find((receipt) => {
+        const approval = parentApprovalMap.get(receipt.id);
+        const managerReady = approval
+          ? areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails)
+          : false;
+        const financeReady = approval
+          ? areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
+          : false;
+        const hasReject = Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
+        return !hasReject && !(managerReady && financeReady);
+      }) ?? null;
+    const latestReceipt = receipts[0] ?? null;
+    const reviewReceipt = rejectedReceipt ?? pendingReceipt ?? latestReceipt;
+    const approval = reviewReceipt ? parentApprovalMap.get(reviewReceipt.id) : null;
     const managerReady = approval
       ? areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails)
       : false;
@@ -177,24 +213,30 @@ export default async function FinanceWorkbenchPage({
     let status: WorkbenchStatus = "PENDING_RECEIPT";
     let nextAction = t(lang, "Create receipt in Receipt Approvals", "去收据审批页创建收据");
     let approvalText = "-";
-    let openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}`;
+    let openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&step=create&invoiceId=${encodeURIComponent(inv.id)}`;
 
-    if (receipt) {
+    if (reviewReceipt) {
       approvalText = roleCfg.managerApproverEmails.length && roleCfg.financeApproverEmails.length
-        ? `M ${approval?.managerApprovedBy.length ?? 0}/${roleCfg.managerApproverEmails.length} · F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
+        ? `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · M ${approval?.managerApprovedBy.length ?? 0}/${roleCfg.managerApproverEmails.length} · F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
         : t(lang, "Approver config missing", "审批人配置缺失");
-      openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&selectedType=PARENT&selectedId=${encodeURIComponent(receipt.id)}`;
+      openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&selectedType=PARENT&selectedId=${encodeURIComponent(reviewReceipt.id)}`;
       if (hasReject) {
         status = "REJECTED";
         nextAction = t(lang, "Fix and resubmit in Receipt Approvals", "去收据审批页修复并重提");
-      } else if (managerReady && financeReady) {
-        status = "COMPLETED";
-        nextAction = t(lang, "Export receipt/invoice", "导出收据/发票");
-      } else {
+      } else if (!(managerReady && financeReady)) {
         status = "PENDING_APPROVAL";
         nextAction = !managerReady
           ? t(lang, "Awaiting manager approval", "等待经理审批")
           : t(lang, "Awaiting finance approval", "等待财务审批");
+      } else if (remainingAmount > 0.01) {
+        status = "PARTIALLY_RECEIPTED";
+        nextAction = t(lang, "Create next receipt for remaining amount", "继续为剩余金额创建收据");
+        approvalText = `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · ${t(lang, "Remaining", "剩余")} ${money(remainingAmount)}`;
+        openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&step=create&invoiceId=${encodeURIComponent(inv.id)}`;
+      } else {
+        status = "COMPLETED";
+        nextAction = t(lang, "Export receipt/invoice", "导出收据/发票");
+        approvalText = `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)}`;
       }
     }
 
@@ -203,7 +245,7 @@ export default async function FinanceWorkbenchPage({
     const dueDate = normalizeDateOnly(inv.dueDate) ?? "-";
     const exceptionReasons: ExceptionReason[] = [];
     if (status === "REJECTED") exceptionReasons.push("REJECTED_BY_APPROVER");
-    if (status === "PENDING_RECEIPT" && dueDate !== "-" && dueDate < today) {
+    if ((status === "PENDING_RECEIPT" || status === "PARTIALLY_RECEIPTED") && dueDate !== "-" && dueDate < today) {
       exceptionReasons.push("OVERDUE_PENDING_RECEIPT");
     }
     if (
@@ -221,7 +263,10 @@ export default async function FinanceWorkbenchPage({
       dueDate,
       partyName,
       totalAmount: Number(inv.totalAmount ?? 0),
-      receiptNo: receipt?.receiptNo ?? null,
+      receiptNo: reviewReceipt?.receiptNo ?? null,
+      receiptCount: receipts.length,
+      receiptedAmount,
+      remainingAmount,
       status,
       nextAction,
       approvalText,
@@ -290,6 +335,9 @@ export default async function FinanceWorkbenchPage({
       partyName: inv.billTo || inv.partnerName || "-",
       totalAmount: Number(inv.totalAmount ?? 0),
       receiptNo: receipt?.receiptNo ?? null,
+      receiptCount: receipt ? 1 : 0,
+      receiptedAmount: Number(receipt?.amountReceived ?? 0) || 0,
+      remainingAmount: receipt ? 0 : Number(inv.totalAmount ?? 0) || 0,
       status,
       nextAction,
       approvalText,
@@ -327,6 +375,7 @@ export default async function FinanceWorkbenchPage({
   const counts = {
     total: filteredRows.length,
     pendingReceipt: filteredRows.filter((x) => x.status === "PENDING_RECEIPT").length,
+    partiallyReceipted: filteredRows.filter((x) => x.status === "PARTIALLY_RECEIPTED").length,
     pendingApproval: filteredRows.filter((x) => x.status === "PENDING_APPROVAL").length,
     rejected: filteredRows.filter((x) => x.status === "REJECTED").length,
     completed: filteredRows.filter((x) => x.status === "COMPLETED").length,
@@ -356,6 +405,8 @@ export default async function FinanceWorkbenchPage({
     const statusHint =
       x.status === "PENDING_RECEIPT"
         ? t(lang, "receipt not created", "收据尚未创建")
+        : x.status === "PARTIALLY_RECEIPTED"
+          ? t(lang, "remaining receipt still needs to be created", "还有剩余金额待创建收据")
         : x.status === "PENDING_APPROVAL"
           ? t(lang, "receipt pending approval", "收据待审批")
           : t(lang, "receipt was rejected and needs resubmission", "收据已驳回，需修复重提");
@@ -369,6 +420,7 @@ export default async function FinanceWorkbenchPage({
     if (x.status === "REJECTED") return "P0";
     if (x.exceptionReasons.includes("OVERDUE_PENDING_RECEIPT")) return "P1";
     if (x.status === "PENDING_APPROVAL") return "P2";
+    if (x.status === "PARTIALLY_RECEIPTED") return "P2";
     return "P3";
   }
   const reminderCsvHeader = [
@@ -404,6 +456,7 @@ export default async function FinanceWorkbenchPage({
   const checklistCounts = {
     total: checklistRows.length,
     pendingReceipt: checklistRows.filter((x) => x.status === "PENDING_RECEIPT").length,
+    partiallyReceipted: checklistRows.filter((x) => x.status === "PARTIALLY_RECEIPTED").length,
     pendingApproval: checklistRows.filter((x) => x.status === "PENDING_APPROVAL").length,
     rejected: checklistRows.filter((x) => x.status === "REJECTED").length,
     completed: checklistRows.filter((x) => x.status === "COMPLETED").length,
@@ -417,6 +470,7 @@ export default async function FinanceWorkbenchPage({
   const checklistReady =
     checklistCounts.total > 0 &&
     checklistCounts.pendingReceipt === 0 &&
+    checklistCounts.partiallyReceipted === 0 &&
     checklistCounts.pendingApproval === 0 &&
     checklistCounts.rejected === 0;
   const checklistRisk =
@@ -431,15 +485,15 @@ export default async function FinanceWorkbenchPage({
     })
     .slice(0, 10);
   const overduePendingToday = checklistRows.filter(
-    (x) => x.status === "PENDING_RECEIPT" && x.dueDate !== "-" && x.dueDate < today,
+    (x) => (x.status === "PENDING_RECEIPT" || x.status === "PARTIALLY_RECEIPTED") && x.dueDate !== "-" && x.dueDate < today,
   ).length;
   const overduePendingYesterday = checklistRows.filter(
-    (x) => x.status === "PENDING_RECEIPT" && x.dueDate !== "-" && x.dueDate < yesterday,
+    (x) => (x.status === "PENDING_RECEIPT" || x.status === "PARTIALLY_RECEIPTED") && x.dueDate !== "-" && x.dueDate < yesterday,
   ).length;
   const newlyOverdueIn24h = Math.max(0, overduePendingToday - overduePendingYesterday);
   const dueSoonPending = checklistRows.filter(
     (x) =>
-      x.status === "PENDING_RECEIPT" &&
+      (x.status === "PENDING_RECEIPT" || x.status === "PARTIALLY_RECEIPTED") &&
       x.dueDate !== "-" &&
       x.dueDate >= today &&
       x.dueDate <= threeDaysLater,
@@ -453,7 +507,7 @@ export default async function FinanceWorkbenchPage({
         : "LOW";
   const deltaWatchRows = checklistRows
     .filter((x) => x.status !== "COMPLETED")
-    .filter((x) => x.status === "REJECTED" || (x.status === "PENDING_RECEIPT" && x.dueDate !== "-"))
+    .filter((x) => x.status === "REJECTED" || ((x.status === "PENDING_RECEIPT" || x.status === "PARTIALLY_RECEIPTED") && x.dueDate !== "-"))
     .sort((a, b) => {
       const pa = reminderPriority(a);
       const pb = reminderPriority(b);
@@ -545,6 +599,7 @@ export default async function FinanceWorkbenchPage({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           <span style={{ fontSize: 12 }}>{t(lang, "Total", "总数")}: {checklistCounts.total}</span>
           <span style={{ fontSize: 12 }}>{t(lang, "Pending Receipt", "待创建收据")}: {checklistCounts.pendingReceipt}</span>
+          <span style={{ fontSize: 12 }}>{t(lang, "Partially Receipted", "部分已开收据")}: {checklistCounts.partiallyReceipted}</span>
           <span style={{ fontSize: 12 }}>{t(lang, "Pending Approval", "待审批")}: {checklistCounts.pendingApproval}</span>
           <span style={{ fontSize: 12 }}>{t(lang, "Rejected", "已驳回")}: {checklistCounts.rejected}</span>
           <span style={{ fontSize: 12 }}>{t(lang, "Completed", "已完成")}: {checklistCounts.completed}</span>
@@ -627,6 +682,7 @@ export default async function FinanceWorkbenchPage({
             <select name="status" defaultValue={statusFilter} style={{ marginLeft: 4 }}>
               <option value="">{t(lang, "All", "全部")}</option>
               <option value="PENDING_RECEIPT">{statusLabel(lang, "PENDING_RECEIPT")}</option>
+              <option value="PARTIALLY_RECEIPTED">{statusLabel(lang, "PARTIALLY_RECEIPTED")}</option>
               <option value="PENDING_APPROVAL">{statusLabel(lang, "PENDING_APPROVAL")}</option>
               <option value="REJECTED">{statusLabel(lang, "REJECTED")}</option>
               <option value="COMPLETED">{statusLabel(lang, "COMPLETED")}</option>
@@ -686,6 +742,7 @@ export default async function FinanceWorkbenchPage({
               <select name="reminderTarget" defaultValue={reminderTarget} style={{ marginLeft: 4 }}>
                 <option value="ALL">{t(lang, "All non-completed", "全部未完成")}</option>
                 <option value="PENDING_RECEIPT">{statusLabel(lang, "PENDING_RECEIPT")}</option>
+                <option value="PARTIALLY_RECEIPTED">{statusLabel(lang, "PARTIALLY_RECEIPTED")}</option>
                 <option value="PENDING_APPROVAL">{statusLabel(lang, "PENDING_APPROVAL")}</option>
                 <option value="REJECTED">{statusLabel(lang, "REJECTED")}</option>
               </select>
@@ -706,6 +763,9 @@ export default async function FinanceWorkbenchPage({
         </div>
         <div style={{ border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 10px" }}>
           <b>{t(lang, "Pending Receipt", "待创建收据")}</b>: {counts.pendingReceipt}
+        </div>
+        <div style={{ border: "1px solid #fdba74", borderRadius: 8, padding: "8px 10px" }}>
+          <b>{t(lang, "Partially Receipted", "部分已开收据")}</b>: {counts.partiallyReceipted}
         </div>
         <div style={{ border: "1px solid #fdba74", borderRadius: 8, padding: "8px 10px" }}>
           <b>{t(lang, "Pending Approval", "待审批")}</b>: {counts.pendingApproval}
@@ -829,6 +889,9 @@ export default async function FinanceWorkbenchPage({
                       <div style={{ marginTop: 6, fontSize: 12, color: "#475569", display: "grid", gap: 4 }}>
                         <div>{t(lang, "Issue Date", "开票日")}: {x.issueDate}</div>
                         <div>{t(lang, "Receipt", "收据")}: {x.receiptNo ?? "-"}</div>
+                        <div>
+                          {t(lang, "Receipt progress", "收据进度")}: {x.receiptCount} {t(lang, "receipt(s)", "张收据")} · {t(lang, "receipted", "已开")} {money(x.receiptedAmount)} · {t(lang, "remaining", "剩余")} {money(x.remainingAmount)}
+                        </div>
                         <div>{t(lang, "Approval progress", "审批进度")}: {x.approvalText}</div>
                         <div>
                           {t(lang, "Exception Reasons", "异常原因")}:{" "}

@@ -127,6 +127,26 @@ function money(v: number | null | undefined) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function roundMoney(v: number) {
+  return Math.round((Number(v) + Number.EPSILON) * 100) / 100;
+}
+
+function parseParentReceiptOrdinal(receiptNo: string, invoiceNo: string) {
+  const normalizedReceiptNo = String(receiptNo ?? "").trim().toLowerCase();
+  const normalizedInvoiceNo = String(invoiceNo ?? "").trim().toLowerCase();
+  if (!normalizedReceiptNo || !normalizedInvoiceNo) return 0;
+  if (normalizedReceiptNo === `${normalizedInvoiceNo}-rc`) return 1;
+  const escapedInvoiceNo = normalizedInvoiceNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = normalizedReceiptNo.match(new RegExp(`^${escapedInvoiceNo}-rc([2-9]\\d*)$`, "i"));
+  if (!match) return 0;
+  const ordinal = Number(match[1]);
+  return Number.isInteger(ordinal) && ordinal >= 2 ? ordinal : 0;
+}
+
+function buildParentReceiptNo(invoiceNo: string, ordinal: number) {
+  return ordinal <= 1 ? `${invoiceNo}-RC` : `${invoiceNo}-RC${ordinal}`;
+}
+
 function tagStyle(kind: "ok" | "warn" | "err" | "muted") {
   if (kind === "ok") return { color: "#166534", background: "#dcfce7", border: "1px solid #86efac" };
   if (kind === "warn") return { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d" };
@@ -1098,31 +1118,61 @@ export async function ReceiptsApprovalsPageContent({
       })
     )
   );
+  const invoiceReceiptSummaryMap = new Map(
+    (selectedBilling?.invoices ?? []).map((inv) => {
+      const linkedReceipts = (selectedBilling?.receipts ?? []).filter((r) => r.invoiceId === inv.id);
+      const receiptedAmount = roundMoney(
+        linkedReceipts.reduce((sum, receipt) => sum + (Number(receipt.amountReceived) || 0), 0),
+      );
+      const remainingAmount = Math.max(0, roundMoney((Number(inv.totalAmount) || 0) - receiptedAmount));
+      const nextOrdinal = linkedReceipts.reduce((maxOrdinal, receipt) => {
+        return Math.max(maxOrdinal, parseParentReceiptOrdinal(receipt.receiptNo, inv.invoiceNo));
+      }, 0) + 1;
+      return [
+        inv.id,
+        {
+          receiptedAmount,
+          remainingAmount,
+          receiptCount: linkedReceipts.length,
+          nextReceiptNo: buildParentReceiptNo(inv.invoiceNo, nextOrdinal),
+        },
+      ] as const;
+    }),
+  );
   const availableInvoices = selectedBilling
-    ? selectedBilling.invoices.filter((inv) => !selectedBilling.receipts.some((r) => r.invoiceId === inv.id))
+    ? selectedBilling.invoices.filter((inv) => (invoiceReceiptSummaryMap.get(inv.id)?.remainingAmount ?? 0) > 0.01)
     : [];
   const selectedCreateInvoice =
     availableInvoices.find((inv) => inv.id === preferredInvoiceId) ??
     availableInvoices[0] ??
     null;
+  const selectedCreateInvoiceSummary = selectedCreateInvoice
+    ? invoiceReceiptSummaryMap.get(selectedCreateInvoice.id) ?? {
+        receiptedAmount: 0,
+        remainingAmount: Number(selectedCreateInvoice.totalAmount ?? 0) || 0,
+        receiptCount: 0,
+        nextReceiptNo: `${selectedCreateInvoice.invoiceNo}-RC`,
+      }
+    : null;
   const linkedPaymentRecordIdSet = new Set(
     (selectedBilling?.receipts ?? []).map((r) => r.paymentRecordId).filter((x): x is string => Boolean(x))
   );
+  const availableCreatePaymentRecords = selectedBilling?.paymentRecords.filter((r) => !linkedPaymentRecordIdSet.has(r.id)) ?? [];
   const selectedCreatePaymentRecord =
-    selectedBilling?.paymentRecords.find((r) => r.id === preferredPaymentRecordId) ??
-    selectedBilling?.paymentRecords.find((r) => (paymentRecordFileMap.get(r.id) ?? false) && !linkedPaymentRecordIdSet.has(r.id)) ??
-    selectedBilling?.paymentRecords.find((r) => (paymentRecordFileMap.get(r.id) ?? false)) ??
+    availableCreatePaymentRecords.find((r) => r.id === preferredPaymentRecordId) ??
+    availableCreatePaymentRecords.find((r) => (paymentRecordFileMap.get(r.id) ?? false)) ??
+    availableCreatePaymentRecords[0] ??
     null;
   const defaultReceiptDate =
     normalizeDateOnly(selectedCreatePaymentRecord?.paymentDate ?? null) ?? today;
   const defaultPaidBy = selectedCreatePaymentRecord?.paymentMethod || "Paynow";
   const defaultReceivedFrom = selectedPackage?.student?.name || "";
-  const defaultAmount = selectedCreateInvoice?.totalAmount ?? selectedPackage?.paidAmount ?? 0;
+  const defaultAmount = selectedCreateInvoiceSummary?.remainingAmount ?? selectedPackage?.paidAmount ?? 0;
   const defaultGst = 0;
-  const defaultTotal = selectedCreateInvoice?.totalAmount ?? selectedPackage?.paidAmount ?? 0;
-  const defaultAmountReceived = selectedCreateInvoice?.totalAmount ?? selectedPackage?.paidAmount ?? 0;
-  const amountDiffVsInvoice = selectedCreateInvoice
-    ? Math.abs((Number(defaultAmountReceived) || 0) - (Number(selectedCreateInvoice.totalAmount) || 0))
+  const defaultTotal = selectedCreateInvoiceSummary?.remainingAmount ?? selectedPackage?.paidAmount ?? 0;
+  const defaultAmountReceived = selectedCreateInvoiceSummary?.remainingAmount ?? selectedPackage?.paidAmount ?? 0;
+  const amountOverRemaining = selectedCreateInvoiceSummary
+    ? Math.max(0, roundMoney((Number(defaultAmountReceived) || 0) - selectedCreateInvoiceSummary.remainingAmount))
     : 0;
   const missingPaymentFileCount = selectedBilling
     ? selectedBilling.paymentRecords.filter((r) => !(paymentRecordFileMap.get(r.id) ?? false)).length
@@ -1219,6 +1269,7 @@ export async function ReceiptsApprovalsPageContent({
     const pkg = packageMap.get(r.packageId);
     const inv = r.invoiceId ? invoiceMap.get(r.invoiceId) : null;
     const pay = r.paymentRecordId ? parentPaymentRecordMap.get(r.paymentRecordId) : null;
+    const invoiceReceipts = rows.filter((item) => item.invoiceId === r.invoiceId);
     const approval = approvalMap.get(r.id) ?? {
       managerApprovedBy: [],
       financeApprovedBy: [],
@@ -1233,8 +1284,13 @@ export async function ReceiptsApprovalsPageContent({
         ? "REJECTED"
         : "PENDING";
     const paymentFileMissing = Boolean(pay && !(paymentRecordFileMap.get(pay.id) ?? false));
-    const amountDiff = Math.abs((Number(r.amountReceived) || 0) - (Number(inv?.totalAmount ?? 0) || 0));
-    const riskCount = (pay ? 0 : 1) + (paymentFileMissing ? 1 : 0) + (amountDiff > 0.01 ? 1 : 0);
+    const invoiceTotalAmount = Number(inv?.totalAmount ?? 0) || 0;
+    const invoiceReceiptedAmount = roundMoney(
+      invoiceReceipts.reduce((sum, item) => sum + (Number(item.amountReceived) || 0), 0),
+    );
+    const invoiceRemainingAmount = Math.max(0, roundMoney(invoiceTotalAmount - invoiceReceiptedAmount));
+    const invoiceOverReceivedAmount = Math.max(0, roundMoney(invoiceReceiptedAmount - invoiceTotalAmount));
+    const riskCount = (pay ? 0 : 1) + (paymentFileMissing ? 1 : 0) + (invoiceOverReceivedAmount > 0.01 ? 1 : 0);
     return {
       id: r.id,
       type: "PARENT" as const,
@@ -1244,7 +1300,11 @@ export async function ReceiptsApprovalsPageContent({
       partyName: pkg?.student?.name ?? "-",
       mode: "-",
       amountReceived: r.amountReceived,
-      invoiceTotalAmount: Number(inv?.totalAmount ?? 0) || 0,
+      invoiceTotalAmount,
+      invoiceReceiptedAmount,
+      invoiceRemainingAmount,
+      invoiceOverReceivedAmount,
+      receiptCountForInvoice: invoiceReceipts.length,
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate } : null,
@@ -1285,6 +1345,10 @@ export async function ReceiptsApprovalsPageContent({
       mode: r.mode,
       amountReceived: r.amountReceived,
       invoiceTotalAmount: Number(inv?.totalAmount ?? 0) || 0,
+      invoiceReceiptedAmount: Number(r.amountReceived ?? 0) || 0,
+      invoiceRemainingAmount: 0,
+      invoiceOverReceivedAmount: amountDiff > 0.01 ? amountDiff : 0,
+      receiptCountForInvoice: 1,
       approval,
       status,
       paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
@@ -1395,8 +1459,8 @@ export async function ReceiptsApprovalsPageContent({
     : isManagerApprover
       ? t(lang, "Manager actions", "管理操作")
       : t(lang, "View only", "仅查看");
-  const selectedRowAmountDiff =
-    selectedRow ? Math.abs((Number(selectedRow.amountReceived) || 0) - (Number(selectedRow.invoiceTotalAmount) || 0)) : 0;
+  const selectedRowInvoiceOverReceived =
+    selectedRow ? Math.max(0, Number(selectedRow.invoiceOverReceivedAmount ?? 0) || 0) : 0;
   const selectedRiskMessages: string[] = [];
   if (selectedRow) {
     if (!selectedRow.paymentRecord) {
@@ -1405,9 +1469,9 @@ export async function ReceiptsApprovalsPageContent({
     if (selectedRow.paymentFileMissing) {
       selectedRiskMessages.push(t(lang, "Payment file is missing.", "缴费文件缺失。"));
     }
-    if (selectedRowAmountDiff > 0.01) {
+    if (selectedRowInvoiceOverReceived > 0.01) {
       selectedRiskMessages.push(
-        t(lang, "Amount differs from invoice total.", "收据金额与发票总额不一致。")
+        t(lang, "Receipts exceed invoice total.", "该发票累计收据金额超过发票总额。")
       );
     }
   }
@@ -1418,8 +1482,8 @@ export async function ReceiptsApprovalsPageContent({
     if (line.includes("Payment file is missing") || line.includes("缴费文件缺失")) {
       return t(lang, "Next step: open fix tools and re-upload the payment file.", "下一步：打开修复工具并重新上传缴费文件。");
     }
-    if (line.includes("Amount differs from invoice total") || line.includes("收据金额与发票总额不一致")) {
-      return t(lang, "Next step: confirm the invoice and receipt amounts before approval.", "下一步：批准前先核对发票金额和收据金额。");
+    if (line.includes("Receipts exceed invoice total") || line.includes("累计收据金额超过发票总额")) {
+      return t(lang, "Next step: verify invoice total and all linked receipt amounts before approval.", "下一步：批准前先核对发票总额与该发票下所有收据金额。");
     }
     return null;
   }).filter((line): line is string => Boolean(line));
@@ -2674,16 +2738,23 @@ export async function ReceiptsApprovalsPageContent({
                     <select name="invoiceId" defaultValue={selectedCreateInvoice?.id ?? ""} style={{ width: "100%" }}>
                       <option value="">{t(lang, "(auto first available)", "（默认首个可用）")}</option>
                       {availableInvoices.map((inv) => (
-                        <option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>
+                        <option key={inv.id} value={inv.id}>
+                          {inv.invoiceNo} / {money(inv.totalAmount)} / {t(lang, "remaining", "剩余")} {money(invoiceReceiptSummaryMap.get(inv.id)?.remainingAmount ?? 0)}
+                        </option>
                       ))}
                     </select>
                   </label>
                   <label>{t(lang, "Payment Record", "付款记录")}
                     <select name="paymentRecordId" defaultValue={selectedCreatePaymentRecord?.id ?? ""} style={{ width: "100%" }}>
                       <option value="">{t(lang, "(optional)", "（可选）")}</option>
-                      {selectedBilling.paymentRecords.map((r) => (
-                        <option key={r.id} value={r.id}>{formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}</option>
-                      ))}
+                      {selectedBilling.paymentRecords.map((r) => {
+                        const alreadyLinked = linkedPaymentRecordIdSet.has(r.id);
+                        return (
+                          <option key={r.id} value={r.id} disabled={alreadyLinked}>
+                            {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </label>
                 </div>
@@ -2697,15 +2768,17 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
                 <label>{t(lang, "Source Invoice", "来源发票")}
                   <select name="invoiceId" defaultValue={selectedCreateInvoice?.id ?? ""} required style={{ width: "100%" }}>
-                    <option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No available invoice)", "（无可用发票）") : t(lang, "Select an invoice", "请选择发票")}</option>
+                    <option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No invoice with remaining receipt amount)", "（无剩余可开收据发票）") : t(lang, "Select an invoice", "请选择发票")}</option>
                     {availableInvoices.map((inv) => (
-                      <option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>
+                      <option key={inv.id} value={inv.id}>
+                        {inv.invoiceNo} / {money(inv.totalAmount)} / {t(lang, "receipted", "已开")} {money(invoiceReceiptSummaryMap.get(inv.id)?.receiptedAmount ?? 0)} / {t(lang, "remaining", "剩余")} {money(invoiceReceiptSummaryMap.get(inv.id)?.remainingAmount ?? 0)}
+                      </option>
                     ))}
                   </select>
                 </label>
                 <label>{t(lang, "Receipt No.", "收据号")}
-                  <input name="receiptNo" placeholder={t(lang, "Leave blank to auto-generate: InvoiceNo-RC", "留空自动生成：InvoiceNo-RC")} pattern="^$|^RGT-[0-9]{6}-[0-9]{4}-RC$" title="RGT-yyyymm-xxxx-RC" style={{ width: "100%" }} />
-                  <div style={{ fontSize: 12, color: "#666" }}>{t(lang, 'Must match selected invoice number + "-RC"', '必须与选中发票号加上 "-RC" 一致')}</div>
+                  <input name="receiptNo" placeholder={selectedCreateInvoiceSummary ? `${t(lang, "Leave blank to auto-generate", "留空自动生成")}：${selectedCreateInvoiceSummary.nextReceiptNo}` : t(lang, "Leave blank to auto-generate receipt no", "留空自动生成收据号")} pattern="^$|^RGT-[0-9]{6}-[0-9]{4}-RC(?:[2-9][0-9]*)?$" title="RGT-yyyymm-xxxx-RC or RGT-yyyymm-xxxx-RC2" style={{ width: "100%" }} />
+                  <div style={{ fontSize: 12, color: "#666" }}>{selectedCreateInvoiceSummary ? `${t(lang, "Must match selected invoice receipt number", "必须与选中发票当前应开收据号一致")}：${selectedCreateInvoiceSummary.nextReceiptNo}` : t(lang, 'Must match selected invoice receipt number', '必须与选中发票当前应开收据号一致')}</div>
                 </label>
                 <label>{t(lang, "Receipt Date", "收据日期")}<input name="receiptDate" type="date" defaultValue={defaultReceiptDate} style={{ width: "100%" }} /></label>
                 <label>{t(lang, "Received From", "收款对象")} *<input name="receivedFrom" required defaultValue={defaultReceivedFrom} placeholder={t(lang, "Please enter payer name", "请输入付款方名称")} style={{ width: "100%" }} /></label>
@@ -2725,19 +2798,34 @@ export async function ReceiptsApprovalsPageContent({
                   <select
                     name="paymentRecordId"
                     defaultValue={selectedCreatePaymentRecord?.id ?? ""}
-                    required={selectedBilling.paymentRecords.length > 0}
+                    required={availableCreatePaymentRecords.length > 0}
                     style={{ width: "100%" }}
                   >
                     <option value="">
-                      {selectedBilling.paymentRecords.length > 0
+                      {availableCreatePaymentRecords.length > 0
                         ? t(lang, "Please select a payment record", "请选择付款记录")
                         : t(lang, "(none)", "（无）")}
                     </option>
-                    {selectedBilling.paymentRecords.map((r) => (
-                      <option key={r.id} value={r.id}>{formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}</option>
-                    ))}
+                    {selectedBilling.paymentRecords.map((r) => {
+                      const alreadyLinked = linkedPaymentRecordIdSet.has(r.id);
+                      return (
+                        <option key={r.id} value={r.id} disabled={alreadyLinked}>
+                          {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
+                {selectedCreateInvoiceSummary ? (
+                  <>
+                    <label>{t(lang, "Already Receipted", "已开收据金额")}
+                      <input readOnly value={money(selectedCreateInvoiceSummary.receiptedAmount)} style={{ width: "100%", color: "#666", background: "#f9fafb" }} />
+                    </label>
+                    <label>{t(lang, "Remaining to Receipt", "剩余待开收据金额")}
+                      <input readOnly value={money(selectedCreateInvoiceSummary.remainingAmount)} style={{ width: "100%", color: "#666", background: "#f9fafb" }} />
+                    </label>
+                  </>
+                ) : null}
                 <label style={{ gridColumn: "1 / -1" }}>{t(lang, "Description", "描述")}
                   <input
                     value={selectedCreateInvoice ? `${t(lang, "For Invoice no.", "对应发票号")} ${selectedCreateInvoice.invoiceNo}` : t(lang, "Auto generated from linked invoice number", "由关联发票号自动生成")}
@@ -2759,14 +2847,14 @@ export async function ReceiptsApprovalsPageContent({
                   <input name="note" style={{ width: "100%" }} />
                 </label>
               </div>
-              {amountDiffVsInvoice > 0.01 ? (
+              {amountOverRemaining > 0.01 ? (
                 <div style={{ marginTop: 8, color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "6px 8px", fontSize: 12 }}>
-                  {t(lang, "Warning: amount received differs from invoice total.", "警告：实收金额与发票总额存在差异。")}
+                  {t(lang, "Warning: amount received exceeds the invoice remaining receipt balance.", "警告：实收金额超过该发票剩余可开收据金额。")}
                   {" "}
                   {t(lang, "Please double-check before create.", "请创建前再次确认。")}
                 </div>
               ) : null}
-              {selectedBilling && selectedBilling.paymentRecords.length > 0 && !selectedCreatePaymentRecord ? (
+              {selectedBilling && availableCreatePaymentRecords.length > 0 && !selectedCreatePaymentRecord ? (
                 <div style={{ marginTop: 8, color: "#991b1b", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "6px 8px", fontSize: 12 }}>
                   {t(lang, "No usable payment record selected. Please select one to keep proof image linked to receipt.", "当前未选择可用付款记录。请选择一条，确保收据能关联缴费图片。")}
                 </div>
@@ -2777,7 +2865,7 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ marginTop: 8 }}>
                 <button type="submit" disabled={availableInvoices.length === 0}>{t(lang, "Create Receipt", "创建收据")}</button>
                 {availableInvoices.length === 0 ? (
-                  <span style={{ marginLeft: 8, color: "#92400e" }}>{t(lang, "All invoices already have linked receipts.", "所有发票都已关联收据。")}</span>
+                  <span style={{ marginLeft: 8, color: "#92400e" }}>{t(lang, "All invoices are already fully receipted.", "所有发票都已全部开完收据。")}</span>
                 ) : null}
               </div>
             </form>
@@ -3195,10 +3283,12 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Invoice total", "发票总额")}</div>
                 <div style={{ fontWeight: 800, marginTop: 4, color: "#0f172a" }}>{money(selectedRow.invoiceTotalAmount)}</div>
-                <div style={{ fontSize: 12, color: selectedRowAmountDiff > 0.01 ? "#b45309" : "#166534", marginTop: 2 }}>
-                  {selectedRowAmountDiff > 0.01
-                    ? t(lang, "Amount mismatch", "金额不一致")
-                    : t(lang, "Matches receipt", "与收据一致")}
+                <div style={{ fontSize: 12, color: selectedRowInvoiceOverReceived > 0.01 ? "#b91c1c" : selectedRow.type === "PARENT" && selectedRow.invoiceRemainingAmount > 0.01 ? "#b45309" : "#166534", marginTop: 2 }}>
+                  {selectedRowInvoiceOverReceived > 0.01
+                    ? t(lang, "Over receipted", "累计收据超额")
+                    : selectedRow.type === "PARENT" && selectedRow.invoiceRemainingAmount > 0.01
+                      ? t(lang, "Partially receipted", "部分已开收据")
+                      : t(lang, "Fully receipted", "已全部开收据")}
                 </div>
               </div>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
@@ -3231,6 +3321,14 @@ export async function ReceiptsApprovalsPageContent({
                 <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
               )}
             </div>
+            {selectedRow.type === "PARENT" ? (
+              <div style={{ marginBottom: 10 }}>
+                <b>{t(lang, "Invoice receipt progress", "该发票收据进度")}:</b>{" "}
+                {selectedRow.receiptCountForInvoice} {t(lang, "receipt(s)", "张收据")} ·
+                {" "}{t(lang, "receipted", "已开")}: {money(selectedRow.invoiceReceiptedAmount)} ·
+                {" "}{t(lang, "remaining", "剩余")}: {money(selectedRow.invoiceRemainingAmount)}
+              </div>
+            ) : null}
             <div style={{ marginBottom: 10, border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fafafa" }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{bilingualLabel("Timeline", "时间线")}</div>
               <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
