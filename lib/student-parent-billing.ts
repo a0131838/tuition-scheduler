@@ -34,6 +34,7 @@ export type ParentPaymentRecordItem = {
   studentId: string;
   paymentDate: string | null;
   paymentMethod: string | null;
+  paymentAmount: number | null;
   referenceNo: string | null;
   uploadedBy: string;
   uploadedAt: string;
@@ -165,6 +166,10 @@ function sanitizeStore(input: unknown): ParentBillingStore {
       studentId,
       paymentDate: normalizeNullableDateOnly(x.paymentDate as string | Date | null | undefined),
       paymentMethod: String(x.paymentMethod ?? "").trim() || null,
+      paymentAmount:
+        x.paymentAmount == null || String(x.paymentAmount).trim() === ""
+          ? null
+          : roundMoney(parseNumber(x.paymentAmount, 0)),
       referenceNo: String(x.referenceNo ?? "").trim() || null,
       uploadedBy: normalizeEmail(String(x.uploadedBy ?? "")),
       uploadedAt: String(x.uploadedAt ?? "").trim() || new Date().toISOString(),
@@ -408,6 +413,7 @@ export async function addParentPaymentRecord(input: {
   studentId: string;
   paymentDate?: string | null;
   paymentMethod?: string | null;
+  paymentAmount?: number | null;
   referenceNo?: string | null;
   originalFileName: string;
   storedFileName: string;
@@ -421,6 +427,7 @@ export async function addParentPaymentRecord(input: {
     studentId: input.studentId,
     paymentDate: normalizeNullableDateOnly(input.paymentDate),
     paymentMethod: input.paymentMethod?.trim() || null,
+    paymentAmount: input.paymentAmount == null ? null : roundMoney(input.paymentAmount),
     referenceNo: input.referenceNo?.trim() || null,
     uploadedBy: normalizeEmail(input.uploadedBy),
     uploadedAt: new Date().toISOString(),
@@ -458,6 +465,7 @@ export async function replaceParentPaymentRecord(input: {
   packageId: string;
   paymentDate?: string | null;
   paymentMethod?: string | null;
+  paymentAmount?: number | null;
   referenceNo?: string | null;
   originalFileName: string;
   storedFileName: string;
@@ -482,6 +490,7 @@ export async function replaceParentPaymentRecord(input: {
         ...oldItem,
         paymentDate: normalizeNullableDateOnly(input.paymentDate),
         paymentMethod: input.paymentMethod?.trim() || null,
+        paymentAmount: input.paymentAmount == null ? null : roundMoney(input.paymentAmount),
         referenceNo: input.referenceNo?.trim() || null,
         originalFileName: input.originalFileName.trim(),
         storedFileName: input.storedFileName.trim(),

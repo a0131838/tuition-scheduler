@@ -23,11 +23,13 @@ export default function ReceiptAmountReceivedField({
   defaultValue,
   remainingAmount,
   suggestedProofLabel,
+  suggestedProofAmount,
 }: {
   lang: Lang;
   defaultValue: number;
   remainingAmount: number;
   suggestedProofLabel?: string | null;
+  suggestedProofAmount?: number | null;
 }) {
   const [value, setValue] = useState(String(defaultValue));
   const numericValue = Number(value);
@@ -73,6 +75,32 @@ export default function ReceiptAmountReceivedField({
       : hint.tone === "warn"
         ? { color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d" }
         : { color: "#166534", background: "#ecfdf5", border: "1px solid #86efac" };
+  const proofDelta =
+    suggestedProofAmount == null || !isValidNumber
+      ? null
+      : roundMoney(numericValue - suggestedProofAmount);
+  const proofHint =
+    proofDelta == null
+      ? null
+      : Math.abs(proofDelta) <= 0.01
+        ? choose(lang, "Entered amount matches the selected payment proof amount.", "输入金额与所选付款凭证金额一致。")
+        : proofDelta > 0
+          ? choose(
+              lang,
+              `Entered amount is SGD ${money(proofDelta)} above the selected proof amount.`,
+              `输入金额比所选付款凭证金额高 SGD ${money(proofDelta)}。`
+            )
+          : choose(
+              lang,
+              `Entered amount is SGD ${money(Math.abs(proofDelta))} below the selected proof amount.`,
+              `输入金额比所选付款凭证金额低 SGD ${money(Math.abs(proofDelta))}。`
+            );
+  const proofHintStyle =
+    proofDelta == null
+      ? null
+      : Math.abs(proofDelta) <= 0.01
+        ? { color: "#166534", background: "#ecfdf5", border: "1px solid #86efac" }
+        : { color: "#92400e", background: "#fffbeb", border: "1px solid #fcd34d" };
 
   return (
     <label>
@@ -93,6 +121,11 @@ export default function ReceiptAmountReceivedField({
       {suggestedProofLabel ? (
         <div style={{ marginTop: 4, fontSize: 12, color: "#475569" }}>
           {choose(lang, "Suggested proof", "推荐凭证")}: {suggestedProofLabel}
+        </div>
+      ) : null}
+      {proofHint && proofHintStyle ? (
+        <div style={{ marginTop: 4, fontSize: 12, borderRadius: 8, padding: "6px 8px", ...proofHintStyle }}>
+          {proofHint}
         </div>
       ) : null}
     </label>

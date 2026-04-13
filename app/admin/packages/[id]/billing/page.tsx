@@ -329,7 +329,7 @@ export default async function PackageBillingPage({
           <div style={{ marginBottom: 8, color: "#1e40af", fontSize: 12 }}>
             {t(lang, "Only one unlinked payment proof is currently available, so the next-receipt shortcut will carry it automatically.", "当前只有一条未绑定付款凭证，下一张收据快捷入口会自动带上它。")}
             {" "}
-            {soleSuggestedPaymentRecord.originalFileName}
+            {soleSuggestedPaymentRecord.originalFileName} {soleSuggestedPaymentRecord.paymentAmount == null ? "" : `(${money(soleSuggestedPaymentRecord.paymentAmount)})`}
           </div>
         ) : null}
         <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}`}>
@@ -411,7 +411,7 @@ export default async function PackageBillingPage({
                         </div>
                         {soleSuggestedPaymentRecord ? (
                           <div>
-                            {t(lang, "Suggested proof", "推荐凭证")}: {soleSuggestedPaymentRecord.originalFileName}
+                            {t(lang, "Suggested proof", "推荐凭证")}: {soleSuggestedPaymentRecord.originalFileName} {soleSuggestedPaymentRecord.paymentAmount == null ? "" : `(${money(soleSuggestedPaymentRecord.paymentAmount)})`}
                           </div>
                         ) : null}
                       </div>

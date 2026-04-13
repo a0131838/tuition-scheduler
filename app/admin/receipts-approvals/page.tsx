@@ -123,6 +123,13 @@ function parseNum(v: FormDataEntryValue | null, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function parseOptionalNum(v: FormDataEntryValue | null) {
+  const raw = String(v ?? "").trim();
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
@@ -594,6 +601,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
   });
   const paymentDate = String(formData.get("paymentDate") ?? "").trim() || null;
   const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
+  const paymentAmount = parseOptionalNum(formData.get("paymentAmount"));
   const referenceNo = String(formData.get("referenceNo") ?? "").trim() || null;
   const paymentNote = String(formData.get("paymentNote") ?? "").trim() || null;
   const replaceRecordId = String(formData.get("replacePaymentRecordId") ?? "").trim();
@@ -605,6 +613,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
         packageId,
         paymentDate,
         paymentMethod,
+        paymentAmount,
         referenceNo,
         originalFileName: file.name || "payment-proof",
         storedFileName: stored.storedFileName,
@@ -627,6 +636,7 @@ async function uploadPaymentRecordAction(formData: FormData) {
     studentId: pkg.studentId,
     paymentDate,
     paymentMethod,
+    paymentAmount,
     referenceNo,
     originalFileName: file.name || "payment-proof",
     storedFileName: stored.storedFileName,
@@ -1191,7 +1201,7 @@ export async function ReceiptsApprovalsPageContent({
     ? Math.max(0, roundMoney(selectedCreateInvoiceSummary.remainingAmount - (Number(defaultAmountReceived) || 0)))
     : 0;
   const suggestedCreatePaymentRecordLabel = selectedCreatePaymentRecord
-    ? `${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"}`
+    ? `${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"} | ${t(lang, "amount", "金额")} ${selectedCreatePaymentRecord.paymentAmount == null ? "-" : money(selectedCreatePaymentRecord.paymentAmount)}`
     : null;
   const missingPaymentFileCount = selectedBilling
     ? selectedBilling.paymentRecords.filter((r) => !(paymentRecordFileMap.get(r.id) ?? false)).length
@@ -1344,7 +1354,7 @@ export async function ReceiptsApprovalsPageContent({
       nextReceiptNo: inv?.invoiceNo ? buildParentReceiptNo(inv.invoiceNo, nextReceiptOrdinal) : null,
       approval,
       status,
-      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate } : null,
+      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: parentPaymentRecordFileHref(pay.id), date: pay.paymentDate, amount: pay.paymentAmount } : null,
       paymentFileMissing,
       riskCount,
       packageId: r.packageId,
@@ -1388,7 +1398,7 @@ export async function ReceiptsApprovalsPageContent({
       receiptCountForInvoice: 1,
       approval,
       status,
-      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate } : null,
+      paymentRecord: pay ? { id: pay.id, name: pay.originalFileName, path: pay.relativePath, date: pay.paymentDate, amount: null } : null,
       paymentFileMissing: false,
       riskCount,
       packageId: "",
@@ -2655,13 +2665,16 @@ export async function ReceiptsApprovalsPageContent({
                       <option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option>
                     </select>
                   </label>
+                  <label>{t(lang, "Payment Amount", "付款金额")}
+                    <input name="paymentAmount" type="number" min={0} step="0.01" placeholder="2000.00" style={{ width: "100%" }} />
+                  </label>
                   <label>{t(lang, "Reference No.", "参考号")}<input name="referenceNo" placeholder="UTR / Txn Id" style={{ width: "100%" }} /></label>
                   <label>{t(lang, "Replace Existing", "替换现有记录")}
                     <select name="replacePaymentRecordId" defaultValue="" style={{ width: "100%" }}>
                       <option value="">{t(lang, "(new record)", "（新记录）")}</option>
                       {selectedBilling.paymentRecords.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}
+                          {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName} {r.paymentAmount == null ? "" : `(${money(r.paymentAmount)})`}
                         </option>
                       ))}
                     </select>
@@ -2690,6 +2703,7 @@ export async function ReceiptsApprovalsPageContent({
                         <th align="left">{t(lang, "Time", "时间")}</th>
                         <th align="left">{t(lang, "Payment Date", "付款日期")}</th>
                         <th align="left">{t(lang, "Method", "方式")}</th>
+                        <th align="left">{t(lang, "Amount", "金额")}</th>
                         <th align="left">{t(lang, "Reference", "参考号")}</th>
                         <th align="left">{t(lang, "File", "文件")}</th>
                         <th align="left">{t(lang, "Preview", "预览")}</th>
@@ -2708,6 +2722,7 @@ export async function ReceiptsApprovalsPageContent({
                             <td>{formatBusinessDateTime(new Date(r.uploadedAt))}</td>
                             <td>{r.paymentDate ? normalizeDateOnly(r.paymentDate) ?? "-" : "-"}</td>
                             <td>{r.paymentMethod || "-"}</td>
+                            <td>{r.paymentAmount == null ? "-" : money(r.paymentAmount)}</td>
                             <td>{r.referenceNo || "-"}</td>
                             <td>
                               {fileExists ? (
@@ -2806,7 +2821,7 @@ export async function ReceiptsApprovalsPageContent({
                   </div>
                   <div style={{ color: "#475569", fontSize: 13 }}>
                     {selectedCreatePaymentRecord
-                      ? `${t(lang, "Suggested proof", "推荐凭证")}: ${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"}`
+                      ? `${t(lang, "Suggested proof", "推荐凭证")}: ${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"} | ${t(lang, "amount", "金额")} ${selectedCreatePaymentRecord.paymentAmount == null ? "-" : money(selectedCreatePaymentRecord.paymentAmount)}`
                       : t(lang, "No proof is auto-selected yet. Choose one before creating the receipt.", "当前还没有自动选中的凭证，创建收据前请先选一条。")}
                   </div>
                   {selectedCreatePaymentRecordReason ? (
@@ -2867,7 +2882,7 @@ export async function ReceiptsApprovalsPageContent({
                         const alreadyLinked = linkedPaymentRecordIdSet.has(r.id);
                         return (
                           <option key={r.id} value={r.id} disabled={alreadyLinked}>
-                            {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
+                            {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName} / {t(lang, "amount", "金额")} {r.paymentAmount == null ? "-" : money(r.paymentAmount)}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
                           </option>
                         );
                       })}
@@ -2914,6 +2929,7 @@ export async function ReceiptsApprovalsPageContent({
                   defaultValue={defaultAmountReceived}
                   remainingAmount={selectedCreateInvoiceSummary?.remainingAmount ?? 0}
                   suggestedProofLabel={suggestedCreatePaymentRecordLabel}
+                  suggestedProofAmount={selectedCreatePaymentRecord?.paymentAmount ?? null}
                 />
                 <label>{t(lang, "Payment Record", "付款记录")}
                   <select
@@ -2931,7 +2947,7 @@ export async function ReceiptsApprovalsPageContent({
                       const alreadyLinked = linkedPaymentRecordIdSet.has(r.id);
                       return (
                         <option key={r.id} value={r.id} disabled={alreadyLinked}>
-                          {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
+                          {formatBusinessDateOnly(new Date(r.uploadedAt))} - {r.originalFileName} / {t(lang, "amount", "金额")} {r.paymentAmount == null ? "-" : money(r.paymentAmount)}{alreadyLinked ? ` (${t(lang, "already linked", "已绑定")})` : ""}
                         </option>
                       );
                     })}
@@ -2958,7 +2974,7 @@ export async function ReceiptsApprovalsPageContent({
                   <label style={{ gridColumn: "1 / -1" }}>
                     {t(lang, "Selected payment record", "已选择付款记录")}
                     <input
-                      value={`${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"}`}
+                      value={`${selectedCreatePaymentRecord.originalFileName} | ${normalizeDateOnly(selectedCreatePaymentRecord.paymentDate) ?? "-"} | ${selectedCreatePaymentRecord.paymentMethod ?? "-"} | ${t(lang, "amount", "金额")} ${selectedCreatePaymentRecord.paymentAmount == null ? "-" : money(selectedCreatePaymentRecord.paymentAmount)}`}
                       readOnly
                       style={{ width: "100%", color: "#666", background: "#f9fafb" }}
                     />
@@ -3445,7 +3461,10 @@ export async function ReceiptsApprovalsPageContent({
             <div style={{ marginBottom: 10 }}>
               <b>{t(lang, "Payment Record", "缴费记录")}:</b>{" "}
               {selectedRow.paymentRecord ? (
-                <a href={selectedRow.paymentRecord.path} target="_blank" rel="noreferrer">{selectedRow.paymentRecord.name}</a>
+                <>
+                  <a href={selectedRow.paymentRecord.path} target="_blank" rel="noreferrer">{selectedRow.paymentRecord.name}</a>
+                  {selectedRow.paymentRecord.amount == null ? null : ` · ${t(lang, "amount", "金额")} ${money(selectedRow.paymentRecord.amount)}`}
+                </>
               ) : (
                 <span style={{ color: "#6b7280" }}>{t(lang, "(none)", "（无）")}</span>
               )}

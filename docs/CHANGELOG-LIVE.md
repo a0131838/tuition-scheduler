@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-13-r51
+
+- Release ID: `2026-04-13-r51`
+- Date/Time (Asia/Shanghai): `2026-04-13`
+- Deployment status: `READY`
+- Scope: add an optional amount field to parent payment-proof records so finance can compare selected proof amounts against invoice remaining balance and entered receipt amounts with real data instead of guesswork.
+- Key files:
+  - `lib/student-parent-billing.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/_components/ReceiptAmountReceivedField.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260413-parent-payment-proof-amount.md`
+- Risk impact (if any): Low. This release adds an optional payment-proof amount field for parent billing and uses it for finance-side comparison hints only. It does not change receipt numbering, remaining-balance caps, payment-record uniqueness, approval logic, statement math, partner billing, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - payment-proof upload and replacement should allow entering an optional amount
+  - existing payment-record tables and selectors should show stored proof amounts when available
+  - receipt create form should compare entered amount against both invoice remaining balance and selected proof amount when that proof amount exists
+- Rollback point: previous production commit before `2026-04-13-r51`.
+
 ## 2026-04-13-r50
 
 - Release ID: `2026-04-13-r50`
