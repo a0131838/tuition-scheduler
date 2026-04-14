@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin, getCurrentUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { formatBusinessDateTime } from "@/lib/date-only";
@@ -95,23 +96,27 @@ export default async function AdminApprovalsPage({
 
       <section style={{ border: "1px solid #e5e7eb", borderRadius: 14, background: "#fff", padding: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a href="/admin/approvals" style={filterChip(focus === "ALL")}>{t(lang, "All", "全部")}</a>
+          <Link href="/admin/approvals" scroll={false} style={filterChip(focus === "ALL")}>
+            {t(lang, "All", "全部")}
+          </Link>
           {inbox.visibility.manager ? (
-            <a href="/admin/approvals?focus=manager" style={filterChip(focus === "MANAGER")}>
+            <Link href="/admin/approvals?focus=manager" scroll={false} style={filterChip(focus === "MANAGER")}>
               {t(lang, "Needs manager", "待管理审批")}
-            </a>
+            </Link>
           ) : null}
           {inbox.visibility.finance ? (
-            <a href="/admin/approvals?focus=finance" style={filterChip(focus === "FINANCE")}>
+            <Link href="/admin/approvals?focus=finance" scroll={false} style={filterChip(focus === "FINANCE")}>
               {t(lang, "Needs finance", "待财务审批")}
-            </a>
+            </Link>
           ) : null}
           {inbox.visibility.expense ? (
-            <a href="/admin/approvals?focus=expense" style={filterChip(focus === "EXPENSE")}>
+            <Link href="/admin/approvals?focus=expense" scroll={false} style={filterChip(focus === "EXPENSE")}>
               {t(lang, "Expense", "报销")}
-            </a>
+            </Link>
           ) : null}
-          <a href="/admin/approvals?focus=overdue" style={filterChip(focus === "OVERDUE")}>{t(lang, "Overdue", "超时")}</a>
+          <Link href="/admin/approvals?focus=overdue" scroll={false} style={filterChip(focus === "OVERDUE")}>
+            {t(lang, "Overdue", "超时")}
+          </Link>
         </div>
       </section>
 
@@ -161,9 +166,9 @@ export default async function AdminApprovalsPage({
                 {item.riskText ? ` · ${t(lang, "Risk", "风险")}: ${item.riskText}` : ""}
               </div>
               <div>
-                <a href={item.href} style={{ color: "#1d4ed8", fontWeight: 700 }}>
+                <Link href={item.href} style={{ color: "#1d4ed8", fontWeight: 700 }}>
                   {t(lang, "Open now", "立即处理")}
-                </a>
+                </Link>
               </div>
             </article>
           ))}

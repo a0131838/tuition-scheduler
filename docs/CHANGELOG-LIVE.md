@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r55
+
+- Release ID: `2026-04-14-r55`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: stop the approval-inbox filter chips and item links from using full-page anchor navigation, so switching filters inside `/admin/approvals` no longer hard-refreshes the shared left sidebar.
+- Key files:
+  - `app/admin/approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-approval-inbox-client-navigation.md`
+- Risk impact (if any): Low. This release only swaps approval-inbox links from full-document anchors to Next.js client navigation inside the existing admin layout. It does not change approval data, counts, filters, receipt logic, expense logic, or sidebar contents.
+- Verification:
+  - `npm run build`
+  - switching between `/admin/approvals` filters should no longer hard-refresh the left admin sidebar
+  - opening approval items from the inbox should use the same client-side navigation behavior where applicable
+- Rollback point: previous production commit before `2026-04-14-r55`.
+
 ## 2026-04-14-r54
 
 - Release ID: `2026-04-14-r54`
