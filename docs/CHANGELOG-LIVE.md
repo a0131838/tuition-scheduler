@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r57
+
+- Release ID: `2026-04-14-r57`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: ship the second UX-efficiency batch by tightening the receipt-approval queue into a clearer processing workbench, pushing expense-approval config below the live queues, and finally making the dedicated student coordination page behave like a true light-shell workspace instead of still carrying the rest of the long student detail flow.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch2-receipts-expense-coordination.md`
+- Risk impact (if any): Low. This release only changes layout emphasis, information density, and workspace shell behavior on existing admin pages. It does not change receipt math, approval rules, expense-claim decisions, student data, scheduling logic, or package behavior.
+- Verification:
+  - `npm run build`
+  - receipt approvals should show a stronger current-work-focus strip and queue-display controls with visible counts
+  - expense claims should keep approval config below the live queues instead of taking first-screen space
+  - `/admin/students/[id]/coordination` should no longer render the long calendar, packages, attendance, quick-schedule, and edit sections underneath the coordination workspace
+- Rollback point: previous production commit before `2026-04-14-r57`.
+
 ## 2026-04-14-r56
 
 - Release ID: `2026-04-14-r56`

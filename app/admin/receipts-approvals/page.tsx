@@ -1476,7 +1476,33 @@ export async function ReceiptsApprovalsPageContent({
     };
   });
 
-  let unifiedQueue = viewMode === "PARENT" ? parentQueue : viewMode === "PARTNER" ? partnerQueue : [...parentQueue, ...partnerQueue];
+  const queueBaseRows =
+    viewMode === "PARENT" ? parentQueue : viewMode === "PARTNER" ? partnerQueue : [...parentQueue, ...partnerQueue];
+  const queueScopeBaseRows = implicitRepairBlockerMode
+    ? queueBaseRows.filter(
+        (x) =>
+          x.status === "REJECTED" ||
+          !x.paymentRecord ||
+          Boolean(x.paymentFileMissing) ||
+          (x.riskCount ?? 0) > 0
+      )
+    : queueBaseRows;
+  const queueFilterCounts = {
+    ALL: queueScopeBaseRows.length,
+    PENDING: queueScopeBaseRows.filter((x) => x.status === "PENDING").length,
+    REJECTED: queueScopeBaseRows.filter((x) => x.status === "REJECTED").length,
+    COMPLETED: queueScopeBaseRows.filter((x) => x.status === "COMPLETED").length,
+    NO_PAYMENT_RECORD: queueScopeBaseRows.filter((x) => !x.paymentRecord).length,
+    FILE_ISSUE: queueScopeBaseRows.filter((x) => !x.paymentRecord || Boolean(x.paymentFileMissing)).length,
+    TODAY_MINE: queueScopeBaseRows.filter((x: any) => {
+      const todayPrefix = `${today} `;
+      const createdBy = String(x.createdBy ?? "").trim().toLowerCase();
+      const createdAt = String(x.createdAt ?? "");
+      return createdBy === String(actorEmail).trim().toLowerCase() || createdAt.startsWith(todayPrefix) || createdAt.startsWith(today);
+    }).length,
+  };
+
+  let unifiedQueue = queueBaseRows;
   if (queueFilter === "PENDING") unifiedQueue = unifiedQueue.filter((x) => x.status === "PENDING");
   if (queueFilter === "REJECTED") unifiedQueue = unifiedQueue.filter((x) => x.status === "REJECTED");
   if (queueFilter === "COMPLETED") unifiedQueue = unifiedQueue.filter((x) => x.status === "COMPLETED");
@@ -2193,6 +2219,68 @@ export async function ReceiptsApprovalsPageContent({
             )}
           </div>
           <a href={defaultQueueHref}>{t(lang, "Back to default queue", "回到默认队列")}</a>
+        </div>
+      ) : null}
+
+      {!isPackageScreen ? (
+        <div
+          style={{
+            marginBottom: 12,
+            border: "1px solid #dbeafe",
+            borderRadius: 12,
+            background: "#f8fbff",
+            padding: "12px 14px",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Queue work focus", "当前队列工作焦点")}</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>
+                {t(
+                  lang,
+                  "Use this strip to confirm the live queue scope before you open filters or jump into the next receipt.",
+                  "先通过这条摘要确认当前队列范围，再决定是否展开筛选或直接进入下一张收据。"
+                )}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {resumedRememberedQueue ? <a href={defaultQueueHref}>{t(lang, "Reset to default queue", "恢复默认队列")}</a> : null}
+              {nextBestQueueRow ? <a href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)}>{t(lang, "Open next best item", "打开下一条最该处理")}</a> : null}
+              {queueFileIssueCount > 0 ? <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open repair blockers", "查看修复阻塞项")}</a> : null}
+            </div>
+          </div>
+          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Working in", "当前模式")}</div>
+              <div style={{ fontWeight: 800, marginTop: 4 }}>{screenEyebrow}</div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>{screenDescription}</div>
+            </div>
+            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Queue scope", "当前范围")}</div>
+              <div style={{ fontWeight: 800, marginTop: 4 }}>{queueScopeLabel}</div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                {t(lang, "Open work", "待处理")}: {mineQueue.length + otherQueue.length} · {t(lang, "History", "历史")}: {completedQueue.length}
+              </div>
+            </div>
+            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Repair blockers", "修复阻塞项")}</div>
+              <div style={{ fontWeight: 800, marginTop: 4, color: queueFileIssueCount > 0 ? "#b91c1c" : "#166534" }}>{queueFileIssueCount}</div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                {t(lang, "Missing proof or missing files still slowing approval.", "缺付款记录或缺文件仍会拖慢审批。")}
+              </div>
+            </div>
+            <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next best item", "下一条最该处理")}</div>
+              <div style={{ fontWeight: 800, marginTop: 4 }}>
+                {nextBestQueueRow ? nextBestQueueRow.receiptNo : t(lang, "No active item", "暂无")}
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                {nextBestQueueRow ? nextBestQueueRow.partyName : t(lang, "Clear filters or switch mode to see more rows.", "可清空筛选或切换模式查看更多。")}
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -3314,7 +3402,13 @@ export async function ReceiptsApprovalsPageContent({
                     textDecoration: "none",
                   }}
                 >
-                  {label}
+                  {bucket === "ALL"
+                    ? `${label} (${unifiedQueue.length})`
+                    : bucket === "MINE"
+                      ? `${label} (${mineQueue.length})`
+                      : bucket === "OPEN"
+                        ? `${label} (${actionableQueue.length})`
+                        : `${label} (${completedQueue.length})`}
                 </a>
               ))}
               </div>
@@ -3335,7 +3429,9 @@ export async function ReceiptsApprovalsPageContent({
                     textDecoration: "none",
                   }}
                 >
-                  {label}
+                  {filter in queueFilterCounts
+                    ? `${label} (${queueFilterCounts[filter as keyof typeof queueFilterCounts]})`
+                    : label}
                 </a>
               ))}
             </div>

@@ -2228,174 +2228,238 @@ export default async function StudentDetailPage({
       {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
 
       <div style={{ display: "grid", gap: 16 }}>
-        <div
-          id="student-workbench-bar"
-          style={{
-            ...workbenchInfoBarStyle,
-            position: "sticky",
-            top: 12,
-            zIndex: 5,
-            boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作条")}</div>
-            <div style={{ color: "#475569", fontSize: 13 }}>
-              {packageRiskCount > 0
-                ? t(lang, "Package risk is active. Start with packages, then return here to jump into attendance or upcoming sessions.", "当前有课包风险，建议先看课包，再从这里回到点名或即将上课。")
-                : unpaidPackageCount > 0
-                  ? t(lang, "Billing follow-up is active. Check packages first, then move into planning or attendance.", "当前有账务跟进，建议先看课包，再进入排课或点名。")
-                  : t(lang, "No urgent billing risk detected. Use this bar to move between profile, schedule, packages, attendance, and edit actions without rescanning the page.", "当前没有紧急账务风险，可通过这里在档案、排课、课包、点名和编辑操作间快速切换。")}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href={coordinationOnly ? studentDetailHomeHref : studentCoordinationHref}>
-              {coordinationOnly
-                ? t(lang, "Close coordination workspace", "关闭排课协调工作台")
-                : t(lang, "Scheduling coordination", "排课协调")}
-            </a>
-            <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
-            <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
-            <a href="#packages">{tl(lang, "Packages")}</a>
-            <a href="#attendance">{tl(lang, "Attendance")}</a>
-            <a href="#enrollments">{tl(lang, "Enrollments")}</a>
-            <a href="#edit-student">{tl(lang, "Edit Student")}</a>
-            <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.15fr)", gap: 14 }}>
-          <div
-            style={{
-              display: "grid",
-              gap: 12,
-              padding: 14,
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              background: "#ffffff",
-            }}
-          >
-            <div style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontWeight: 800 }}>{t(lang, "Profile snapshot", "档案概览")}</div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>
-                {t(lang, "Use this card to confirm identity and background before touching schedules or billing.", "先在这里确认学生身份和背景，再进入排课或账务操作。")}
-              </div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "School")}</div>
-                <div style={{ fontWeight: 700 }}>{student.school ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Grade")}</div>
-                <div style={{ fontWeight: 700 }}>{student.grade ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Source")}</div>
-                <div style={{ fontWeight: 700 }}>{student.sourceChannel?.name ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Type")}</div>
-                <div style={{ fontWeight: 700 }}>{student.studentType?.name ?? "-"}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Enrollments")}</div>
-                <div style={{ fontWeight: 700 }}>{enrollCount}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Packages")}</div>
-                <div style={{ fontWeight: 700 }}>{packageCount}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
-                <div style={{ fontWeight: 700 }}>{excusedCount}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Recent Attendance")}</div>
-                <div style={{ fontWeight: 700 }}>{attendances.length}</div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              padding: 14,
-              background: "#f8fafc",
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            <div style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontWeight: 800 }}>{t(lang, "Next actions", "下一步操作")}</div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>
-                {packageRiskCount > 0
-                  ? t(lang, "This profile has package risk. Check packages first, then schedule changes.", "这个学生当前有课包风险，建议先看课包，再处理排课。")
-                  : unpaidPackageCount > 0
-                    ? t(lang, "This profile has unpaid packages. Confirm billing follow-up before making more changes.", "这个学生当前有未付款课包，建议先确认账务跟进。")
-                    : t(lang, "No urgent package issue detected. Start from the next lesson or the planning tools below.", "当前未发现紧急课包问题，可先从下一节课或下方排课工具开始。")}
-              </div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Unpaid packages")}</div>
-                <div style={{ fontWeight: 800, fontSize: 20, color: unpaidPackageCount > 0 ? "#be123c" : "#166534" }}>{unpaidPackageCount}</div>
-              </div>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Alert")}</div>
-                <div style={{ fontWeight: 800, fontSize: 20, color: packageRiskCount > 0 ? "#c2410c" : "#166534" }}>{packageRiskCount}</div>
-              </div>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Upcoming Sessions")}</div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>
-                  {nextUpcomingSession ? fmtHHMM(new Date(nextUpcomingSession.startAt)) : "-"}
-                </div>
-                <div style={{ fontSize: 12, color: "#475569" }}>
-                  {nextUpcomingSession ? formatBusinessDateOnly(new Date(nextUpcomingSession.startAt)) : tl(lang, "No upcoming sessions.")}
+        {!coordinationOnly ? (
+          <>
+            <div
+              id="student-workbench-bar"
+              style={{
+                ...workbenchInfoBarStyle,
+                position: "sticky",
+                top: 12,
+                zIndex: 5,
+                boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作条")}</div>
+                <div style={{ color: "#475569", fontSize: 13 }}>
+                  {packageRiskCount > 0
+                    ? t(lang, "Package risk is active. Start with packages, then return here to jump into attendance or upcoming sessions.", "当前有课包风险，建议先看课包，再从这里回到点名或即将上课。")
+                    : unpaidPackageCount > 0
+                      ? t(lang, "Billing follow-up is active. Check packages first, then move into planning or attendance.", "当前有账务跟进，建议先看课包，再进入排课或点名。")
+                      : t(lang, "No urgent billing risk detected. Use this bar to move between profile, schedule, packages, attendance, and edit actions without rescanning the page.", "当前没有紧急账务风险，可通过这里在档案、排课、课包、点名和编辑操作间快速切换。")}
                 </div>
               </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href={studentCoordinationHref}>{t(lang, "Scheduling coordination", "排课协调")}</a>
+                <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
+                <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
+                <a href="#packages">{tl(lang, "Packages")}</a>
+                <a href="#attendance">{tl(lang, "Attendance")}</a>
+                <a href="#enrollments">{tl(lang, "Enrollments")}</a>
+                <a href="#edit-student">{tl(lang, "Edit Student")}</a>
+                <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
-              <a
-                href={studentCoordinationHref}
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.15fr)", gap: 14 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 12,
+                  padding: 14,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  background: "#ffffff",
+                }}
               >
-                {t(lang, "Scheduling coordination", "排课协调")}
-              </a>
-              <a
-                href="#quick-schedule"
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                <div style={{ display: "grid", gap: 4 }}>
+                  <div style={{ fontWeight: 800 }}>{t(lang, "Profile snapshot", "档案概览")}</div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>
+                    {t(lang, "Use this card to confirm identity and background before touching schedules or billing.", "先在这里确认学生身份和背景，再进入排课或账务操作。")}
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "School")}</div>
+                    <div style={{ fontWeight: 700 }}>{student.school ?? "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Grade")}</div>
+                    <div style={{ fontWeight: 700 }}>{student.grade ?? "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Source")}</div>
+                    <div style={{ fontWeight: 700 }}>{student.sourceChannel?.name ?? "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Type")}</div>
+                    <div style={{ fontWeight: 700 }}>{student.studentType?.name ?? "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Enrollments")}</div>
+                    <div style={{ fontWeight: 700 }}>{enrollCount}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Packages")}</div>
+                    <div style={{ fontWeight: 700 }}>{packageCount}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Excused Count")}</div>
+                    <div style={{ fontWeight: 700 }}>{excusedCount}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#666" }}>{tl(lang, "Recent Attendance")}</div>
+                    <div style={{ fontWeight: 700 }}>{attendances.length}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: 14,
+                  background: "#f8fafc",
+                  display: "grid",
+                  gap: 12,
+                }}
               >
-                {tl(lang, "Quick Schedule")}
-              </a>
-              <a
-                href="#upcoming-sessions"
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
-              >
-                {tl(lang, "Upcoming Sessions")}
-              </a>
-              <a
-                href="#packages"
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
-              >
-                {tl(lang, "Packages")}
-              </a>
-              <a
-                href="#attendance"
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
-              >
-                {tl(lang, "Attendance")}
-              </a>
-              <a
-                href="#edit-student"
-                style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
-              >
-                {tl(lang, "Edit Student")}
-              </a>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <div style={{ fontWeight: 800 }}>{t(lang, "Next actions", "下一步操作")}</div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>
+                    {packageRiskCount > 0
+                      ? t(lang, "This profile has package risk. Check packages first, then schedule changes.", "这个学生当前有课包风险，建议先看课包，再处理排课。")
+                      : unpaidPackageCount > 0
+                        ? t(lang, "This profile has unpaid packages. Confirm billing follow-up before making more changes.", "这个学生当前有未付款课包，建议先确认账务跟进。")
+                        : t(lang, "No urgent package issue detected. Start from the next lesson or the planning tools below.", "当前未发现紧急课包问题，可先从下一节课或下方排课工具开始。")}
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Unpaid packages")}</div>
+                    <div style={{ fontWeight: 800, fontSize: 20, color: unpaidPackageCount > 0 ? "#be123c" : "#166534" }}>{unpaidPackageCount}</div>
+                  </div>
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Alert")}</div>
+                    <div style={{ fontWeight: 800, fontSize: 20, color: packageRiskCount > 0 ? "#c2410c" : "#166534" }}>{packageRiskCount}</div>
+                  </div>
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{tl(lang, "Upcoming Sessions")}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {nextUpcomingSession ? fmtHHMM(new Date(nextUpcomingSession.startAt)) : "-"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#475569" }}>
+                      {nextUpcomingSession ? formatBusinessDateOnly(new Date(nextUpcomingSession.startAt)) : tl(lang, "No upcoming sessions.")}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <a
+                    href={studentCoordinationHref}
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {t(lang, "Scheduling coordination", "排课协调")}
+                  </a>
+                  <a
+                    href="#quick-schedule"
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {tl(lang, "Quick Schedule")}
+                  </a>
+                  <a
+                    href="#upcoming-sessions"
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {tl(lang, "Upcoming Sessions")}
+                  </a>
+                  <a
+                    href="#packages"
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {tl(lang, "Packages")}
+                  </a>
+                  <a
+                    href="#attendance"
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {tl(lang, "Attendance")}
+                  </a>
+                  <a
+                    href="#edit-student"
+                    style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
+                  >
+                    {tl(lang, "Edit Student")}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div
+            id="student-workbench-bar"
+            style={{
+              ...workbenchInfoBarStyle,
+              border: "1px solid #fcd34d",
+              background: "#fffbeb",
+              boxShadow: "0 8px 20px rgba(146, 64, 14, 0.06)",
+            }}
+          >
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Coordination workspace", "排课协调工作台")}</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>
+                {t(lang, "This page now hides the long student detail sections so you can stay on parent timing, candidate slots, special requests, and follow-up only.", "当前页面已收起学生长页的其余区块，只保留家长时间、候选时间、特殊时间检查和跟进动作。")}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ borderRadius: 999, padding: "4px 10px", fontSize: 12, background: "#ffffff", border: "1px solid #cbd5e1", color: "#475569" }}>
+                  {student.school ?? "-"} | {student.grade ?? "-"}
+                </span>
+                <span
+                  style={{
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    background: openSchedulingTickets.length > 0 ? "#fff7ed" : "#ffffff",
+                    border: openSchedulingTickets.length > 0 ? "1px solid #fdba74" : "1px solid #cbd5e1",
+                    color: openSchedulingTickets.length > 0 ? "#9a3412" : "#475569",
+                  }}
+                >
+                  {t(lang, "Open lanes", "打开中的协调分道")}: {openSchedulingTickets.length}
+                </span>
+                <span
+                  style={{
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    background: activeSchedulingTicket ? "#f0fdf4" : "#ffffff",
+                    border: activeSchedulingTicket ? "1px solid #86efac" : "1px solid #cbd5e1",
+                    color: activeSchedulingTicket ? "#166534" : "#475569",
+                  }}
+                >
+                  {t(lang, "Current phase", "当前阶段")}: {schedulingCoordinationPhase?.title ?? t(lang, "No active ticket", "暂无活跃工单")}
+                </span>
+                <span
+                  style={{
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    background: parentAvailabilityRequest?.submittedAt ? "#f0fdf4" : "#ffffff",
+                    border: parentAvailabilityRequest?.submittedAt ? "1px solid #86efac" : "1px solid #cbd5e1",
+                    color: parentAvailabilityRequest?.submittedAt ? "#166534" : "#475569",
+                  }}
+                >
+                  {t(lang, "Latest parent submission", "最近家长提交")}: {parentAvailabilityRequest?.submittedAt ? formatBusinessDateTime(parentAvailabilityRequest.submittedAt) : t(lang, "None yet", "暂无")}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a href={studentDetailHomeHref}>{t(lang, "Close coordination workspace", "关闭排课协调工作台")}</a>
+              <a href={`/admin/students/${studentId}`}>{t(lang, "Open full student detail", "打开完整学生详情")}</a>
+              {activeSchedulingTicket && schedulingTicketHref ? <a href={schedulingTicketHref}>{t(lang, "Open active ticket", "打开当前工单")}</a> : null}
+              <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
             </div>
           </div>
-        </div>
+        )}
 
         {coordinationOnly ? (
         <div
@@ -3159,6 +3223,8 @@ export default async function StudentDetailPage({
           </div>
         )}
 
+        {!coordinationOnly ? (
+        <>
         <details id="calendar-tools" open={Boolean(quickOpen || calendarOpen)} style={{ marginBottom: 14 }}>
             <summary style={{ fontWeight: 700 }}>{t(lang, "Planning tools & calendar", "排课工具与日历")}</summary>
             <div
@@ -3933,6 +3999,8 @@ export default async function StudentDetailPage({
           returnHash="#edit-student"
         />
       </div>
+      </>
+      ) : null}
       </div>
     </div>
   );

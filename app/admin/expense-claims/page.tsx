@@ -799,38 +799,6 @@ export default async function AdminExpenseClaimsPage({
         </div>
       ) : null}
 
-      <details style={{ ...workbenchFilterPanelStyle, padding: 16 }} open={canEditApprovalConfig}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
-          {t(lang, 'Expense approval config', '报销审批配置')}
-        </summary>
-        <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
-          {t(lang, 'Approved expense claims are controlled by this approver list.', '报销单的批准权限由这组审批人控制。')}
-        </div>
-        {canEditApprovalConfig ? (
-          <form action={saveApprovalConfigAction} style={{ display: 'grid', gap: 8, maxWidth: 980, marginTop: 12 }}>
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span>{t(lang, 'Expense approver emails (comma-separated)', '报销审批人邮箱（逗号分隔）')}</span>
-              <textarea
-                name="approverEmails"
-                rows={3}
-                defaultValue={approvalCfg.approverEmails.join(', ')}
-                placeholder="approver1@example.com, approver2@example.com"
-              />
-            </label>
-            <div style={{ color: '#64748b', fontSize: 13 }}>
-              {t(lang, 'If left empty, the system falls back to the manager approver list.', '如果留空，系统将回退到通用经理审批人列表。')}
-            </div>
-            <div>
-              <button type="submit" style={secondaryButtonStyle}>{t(lang, 'Save approval config', '保存审批配置')}</button>
-            </div>
-          </form>
-        ) : (
-          <div style={{ color: '#334155', fontSize: 14, marginTop: 12 }}>
-            {approvalCfg.approverEmails.length ? approvalCfg.approverEmails.join(', ') : '-'}
-          </div>
-        )}
-      </details>
-
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div style={{ ...workbenchMetricCardStyle('blue'), background: '#f8fbff' }}>
           <div style={workbenchMetricLabelStyle('slate')}>{t(lang, 'Submitted', '待审批')}</div>
@@ -1355,6 +1323,42 @@ export default async function AdminExpenseClaimsPage({
           </div>
         </details>
       ) : null}
+
+      <details style={{ ...workbenchFilterPanelStyle, padding: 16 }} open={false}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+          {t(lang, 'Expense approval config', '报销审批配置')}
+        </summary>
+        <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
+          {t(
+            lang,
+            'Keep this config below the live queues so daily approvers can stay focused on submitted items first.',
+            '把这个配置区放在实时队列后面，避免日常审批人一进页面就被低频设置打断。'
+          )}
+        </div>
+        {canEditApprovalConfig ? (
+          <form action={saveApprovalConfigAction} style={{ display: 'grid', gap: 8, maxWidth: 980, marginTop: 12 }}>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span>{t(lang, 'Expense approver emails (comma-separated)', '报销审批人邮箱（逗号分隔）')}</span>
+              <textarea
+                name="approverEmails"
+                rows={3}
+                defaultValue={approvalCfg.approverEmails.join(', ')}
+                placeholder="approver1@example.com, approver2@example.com"
+              />
+            </label>
+            <div style={{ color: '#64748b', fontSize: 13 }}>
+              {t(lang, 'If left empty, the system falls back to the manager approver list.', '如果留空，系统将回退到通用经理审批人列表。')}
+            </div>
+            <div>
+              <button type="submit" style={secondaryButtonStyle}>{t(lang, 'Save approval config', '保存审批配置')}</button>
+            </div>
+          </form>
+        ) : (
+          <div style={{ color: '#334155', fontSize: 14, marginTop: 12 }}>
+            {approvalCfg.approverEmails.length ? approvalCfg.approverEmails.join(', ') : '-'}
+          </div>
+        )}
+      </details>
 
       <details
         open={hasAdvancedFilters}
