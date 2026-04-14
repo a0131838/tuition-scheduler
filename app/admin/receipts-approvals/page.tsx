@@ -426,6 +426,24 @@ function queuePrimaryActionLabel(
   return t(lang, "Open approval action", "打开审批操作");
 }
 
+function queueCompactProgressLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
+  approval: { managerApprovedBy: string[]; financeApprovedBy: string[] }
+) {
+  const managerTotal = roleCfg.managerApproverEmails.length;
+  const financeTotal = roleCfg.financeApproverEmails.length;
+  const managerPart =
+    managerTotal > 0
+      ? `${t(lang, "Mgr", "管理")} ${approval.managerApprovedBy.length}/${managerTotal}`
+      : t(lang, "Mgr n/a", "管理未配");
+  const financePart =
+    financeTotal > 0
+      ? `${t(lang, "Fin", "财务")} ${approval.financeApprovedBy.length}/${financeTotal}`
+      : t(lang, "Fin n/a", "财务未配");
+  return `${managerPart} · ${financePart}`;
+}
+
 function renderQueueCards(
   rows: Array<{
     id: string;
@@ -486,16 +504,14 @@ function renderQueueCards(
           {queueRiskBadgeLabel(lang, x)}
         </span>
       </div>
-      <div style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
-        <div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#475569" }}>
+        <span>
           <b>{t(lang, "Invoice", "发票")}</b>: {x.invoiceNo}
-        </div>
-        <div>
-          <b>{t(lang, "Progress", "进度")}</b>: {queueReviewProgressLabel(lang, roleCfg, x.approval)}
-        </div>
-        <div>
-          <b>{t(lang, "Risk", "风险")}</b>: {queueRiskAssistLabel(lang, x)}
-        </div>
+        </span>
+        <span>·</span>
+        <span>{queueCompactProgressLabel(lang, roleCfg, x.approval)}</span>
+        <span>·</span>
+        <span>{queueRiskAssistLabel(lang, x)}</span>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {opts?.compactRepairActions && x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
@@ -1650,13 +1666,28 @@ export async function ReceiptsApprovalsPageContent({
   const selectedRowIndex = selectedRow
     ? activeQueueForNavigation.findIndex((x) => x.type === selectedRow.type && x.id === selectedRow.id)
     : -1;
+  const previousQueueRow =
+    selectedRowIndex > 0
+      ? activeQueueForNavigation[selectedRowIndex - 1] ?? null
+      : null;
   const nextQueueRow =
     selectedRowIndex >= 0
       ? activeQueueForNavigation[selectedRowIndex + 1] ?? activeQueueForNavigation[selectedRowIndex - 1] ?? null
       : activeQueueForNavigation[0] ?? null;
+  const selectedPrevHref = previousQueueRow ? openHref(previousQueueRow.type, previousQueueRow.id) : "";
+  const selectedNextHref =
+    selectedRowIndex >= 0 && selectedRowIndex + 1 < activeQueueForNavigation.length
+      ? openHref(activeQueueForNavigation[selectedRowIndex + 1]!.type, activeQueueForNavigation[selectedRowIndex + 1]!.id)
+      : "";
   const selectedActionNextHref = nextQueueRow
     ? openHref(nextQueueRow.type, nextQueueRow.id)
     : `${receiptScreenBasePath("queue")}?clearQueue=1&queueDone=1`;
+  const selectedQueuePositionLabel =
+    selectedRowIndex >= 0
+      ? `${selectedRowIndex + 1} / ${activeQueueForNavigation.length}`
+      : activeQueueForNavigation.length > 0
+        ? `1 / ${activeQueueForNavigation.length}`
+        : "0 / 0";
   const hasExplicitSelection = Boolean(selectedType && selectedId);
   const actionMovedToNext =
     Boolean(msg) &&
@@ -3611,23 +3642,60 @@ export async function ReceiptsApprovalsPageContent({
         style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}
       >
         <div className="receipt-mobile-header">
-          <div style={{ fontWeight: 800, color: "#0f172a" }}>
-            {selectedRow
-              ? t(lang, "Receipt detail drawer", "收据详情浮层")
-              : t(lang, "Receipt detail", "收据详情")}
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#0f172a" }}>
+              {selectedRow
+                ? t(lang, "Receipt detail drawer", "收据详情浮层")
+                : t(lang, "Receipt detail", "收据详情")}
+            </div>
+            {selectedRow ? (
+              <div style={{ fontSize: 12, color: "#64748b" }}>
+                {t(lang, "Queue position", "队列位置")}: <b>{selectedQueuePositionLabel}</b>
+              </div>
+            ) : null}
           </div>
-          <a
-            href={currentScreenListHref}
-            style={{
-              ...secondaryButtonStyle,
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 12px",
-            }}
-          >
-            {t(lang, "Back to list", "返回列表")}
-          </a>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {selectedPrevHref ? (
+              <a
+                href={selectedPrevHref}
+                style={{
+                  ...secondaryButtonStyle,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                }}
+              >
+                {t(lang, "Previous", "上一条")}
+              </a>
+            ) : null}
+            {selectedNextHref ? (
+              <a
+                href={selectedNextHref}
+                style={{
+                  ...secondaryButtonStyle,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                }}
+              >
+                {t(lang, "Next", "下一条")}
+              </a>
+            ) : null}
+            <a
+              href={currentScreenListHref}
+              style={{
+                ...secondaryButtonStyle,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 12px",
+              }}
+            >
+              {t(lang, "Back to list", "返回列表")}
+            </a>
+          </div>
         </div>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>
         {!selectedRow ? (
@@ -3641,8 +3709,35 @@ export async function ReceiptsApprovalsPageContent({
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: 10, color: "#475569", fontSize: 13 }}>
-              {bilingualLabel("Action focus", "当前操作焦点")}: <b>{currentRoleFocus}</b>
+            <div
+              style={{
+                marginBottom: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #e5e7eb",
+                background: "#fafafa",
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                  {selectedRow.receiptNo} | {selectedRow.partyName}
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  {t(lang, "Queue position", "队列位置")}: <b>{selectedQueuePositionLabel}</b>
+                  {" · "}
+                  {t(lang, "Action focus", "当前操作焦点")}: <b>{currentRoleFocus}</b>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {selectedPrevHref ? <a href={selectedPrevHref}>{t(lang, "Open previous", "打开上一条")}</a> : null}
+                {selectedNextHref ? <a href={selectedNextHref}>{t(lang, "Open next", "打开下一条")}</a> : null}
+                <a href={currentScreenListHref}>{t(lang, "Back to queue", "返回队列")}</a>
+              </div>
             </div>
             <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff" }}>
               <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 4 }}>
@@ -3745,12 +3840,8 @@ export async function ReceiptsApprovalsPageContent({
                 <div style={{ fontWeight: 700, marginTop: 4, color: selectedRiskMessages.length > 0 ? "#b45309" : "#166534" }}>
                   {selectedRiskMessages.length}
                 </div>
-                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{currentRoleFocus}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{selectedQueuePositionLabel}</div>
               </div>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <b>{t(lang, "Type", "类型")}:</b> {queueTypeLabel(lang, selectedRow.type)} |{" "}
-              <b>{t(lang, "Receipt No.", "收据号")}:</b> {selectedRow.receiptNo} | <b>{t(lang, "Invoice No.", "发票号")}:</b> {selectedRow.invoiceNo}
             </div>
             <div style={{ marginBottom: 10 }}>
               <b>{t(lang, "Payment Record", "缴费记录")}:</b>{" "}

@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r59
+
+- Release ID: `2026-04-14-r59`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: tighten the receipt-approval workbench one more step by compressing queue cards into faster-scan metadata rows and turning the detail drawer into a clearer processing cockpit with queue position plus previous/next navigation.
+- Key files:
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch4-receipt-queue-density-and-drawer-navigation.md`
+- Risk impact (if any): Low. This release only changes layout density, summary duplication, and intra-queue navigation inside the existing receipt approval workbench. It does not change receipt approvals, payment-proof repair rules, billing math, or audit behavior.
+- Verification:
+  - `npm run build`
+  - receipt queue cards should show a shorter inline metadata row instead of three stacked detail lines
+  - selected receipt drawer should show queue position and explicit previous/next navigation
+  - receipt detail should no longer repeat the same receipt/type/invoice summary in multiple stacked blocks
+- Rollback point: previous production commit before `2026-04-14-r59`.
+
 ## 2026-04-14-r58
 
 - Release ID: `2026-04-14-r58`
