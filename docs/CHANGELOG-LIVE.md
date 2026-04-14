@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r61
+
+- Release ID: `2026-04-14-r61`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: hotfix the expense-claims dual-queue layout so the selected detail panels keep their own content height instead of stretching to match a long left queue.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-expense-queue-panel-height-hotfix.md`
+- Risk impact (if any): Low. This release only changes the grid alignment and selected-panel sizing inside Expense Claims. It does not change approval rules, queue data, payment logic, or navigation flow.
+- Verification:
+  - `npm run build`
+  - submitted review queue should no longer stretch the selected panel to the same height when the left list is long
+  - finance queue should no longer stretch the selected payout group panel to the same height when the left list is long
+- Rollback point: previous production commit before `2026-04-14-r61`.
+
 ## 2026-04-14-r60
 
 - Release ID: `2026-04-14-r60`

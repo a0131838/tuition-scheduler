@@ -949,7 +949,14 @@ export default async function AdminExpenseClaimsPage({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)' }}>
+        <div
+          style={{
+            display: 'grid',
+            gap: 16,
+            gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)',
+            alignItems: 'start',
+          }}
+        >
           <section style={{ border: '1px solid #bfdbfe', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
             <div style={{ padding: '12px 14px', borderBottom: '1px solid #dbeafe', fontWeight: 700 }}>
               {t(lang, 'Submitted queue', '待审批队列')}
@@ -1009,7 +1016,17 @@ export default async function AdminExpenseClaimsPage({
             )}
           </section>
 
-          <section style={{ border: '1px solid #bfdbfe', borderRadius: 12, background: '#fff', padding: 16, display: 'grid', gap: 12 }}>
+          <section
+            style={{
+              border: '1px solid #bfdbfe',
+              borderRadius: 12,
+              background: '#fff',
+              padding: 16,
+              display: 'grid',
+              gap: 12,
+              alignSelf: 'start',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontWeight: 700 }}>{t(lang, 'Selected claim', '当前处理项')}</div>
@@ -1205,7 +1222,14 @@ export default async function AdminExpenseClaimsPage({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)' }}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 16,
+              gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)',
+              alignItems: 'start',
+            }}
+          >
             <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: '1px solid #fde68a', fontWeight: 700 }}>
                 {t(lang, 'Approved unpaid groups', '已批未付分组')}
@@ -1269,7 +1293,17 @@ export default async function AdminExpenseClaimsPage({
               )}
             </section>
 
-            <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', padding: 16, display: 'grid', gap: 12 }}>
+            <section
+              style={{
+                border: '1px solid #fcd34d',
+                borderRadius: 12,
+                background: '#fff',
+                padding: 16,
+                display: 'grid',
+                gap: 12,
+                alignSelf: 'start',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 700 }}>{t(lang, 'Selected payout group', '当前付款分组')}</div>
