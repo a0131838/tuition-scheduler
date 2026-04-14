@@ -262,6 +262,13 @@ export default async function StudentsPage({
   const activeFilterCount = [q, resolvedSourceChannelId, resolvedStudentTypeId].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0 || view !== "today";
   const showEmptyQueueCta = filteredCount === 0 && !q && !resolvedSourceChannelId && !resolvedStudentTypeId && view !== "all";
+  const hasNarrowScope = view !== "all" || activeFilterCount > 0;
+  const scopeSummary =
+    view === "all"
+      ? t(lang, "Showing the full student list.", "当前显示的是完整学生列表。")
+      : view === "today_partner"
+        ? t(lang, "Showing only today's partner-intake students.", "当前只显示今天的合作方录入学生。")
+        : t(lang, "Showing only today's newly added students.", "当前只显示今天新增的学生。");
   const emptyQueueMessage =
     view === "today_partner"
       ? t(
@@ -306,6 +313,70 @@ export default async function StudentsPage({
           <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12 }}>
             {t(lang, "Active filters", "生效筛选")}: <b>{activeFilterCount}</b>
           </span>
+          {hasNarrowScope ? (
+            <a
+              href="/admin/students?view=all&clearDesk=1"
+              style={{
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                color: "#1d4ed8",
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              {t(lang, "Show full list", "查看完整列表")}
+            </a>
+          ) : null}
+        </div>
+      </div>
+
+      <div
+        style={{
+          ...workbenchInfoBarStyle,
+          marginTop: 10,
+          marginBottom: 12,
+          borderColor: resumedRememberedDesk ? "#f59e0b" : "#bfdbfe",
+          background: resumedRememberedDesk ? "#fffbeb" : "#eff6ff",
+          color: resumedRememberedDesk ? "#92400e" : "#1e3a8a",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 700 }}>
+            {resumedRememberedDesk
+              ? t(lang, "Restored your last student desk", "已恢复你上次使用的学生工作台")
+              : t(lang, "Current dataset scope", "当前数据范围")}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.45 }}>
+            {resumedRememberedDesk
+              ? t(
+                  lang,
+                  `You returned without explicit filters, so the desk reopened ${rememberedViewLabel} with your last search context. Double-check the scope before assuming this is the full list.`,
+                  `你这次没有显式指定筛选，所以系统恢复到了 ${rememberedViewLabel} 和你上次的搜索范围。请先确认当前范围，再判断这是不是完整列表。`
+                )
+              : scopeSummary}
+          </div>
+          <div style={{ fontSize: 13 }}>
+            {t(lang, "Showing", "显示")} <b>{filteredCount}</b> / <b>{allStudentsCount}</b>{" "}
+            {t(lang, "students in the system", "名系统内学生")}
+            {activeFilterCount > 0
+              ? ` · ${t(lang, "Search filters are active", "当前仍有搜索筛选生效")}`
+              : ""}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {hasNarrowScope ? (
+            <a href="/admin/students?view=all&clearDesk=1" style={{ fontWeight: 700 }}>
+              {t(lang, "Open full student list", "打开完整学生列表")}
+            </a>
+          ) : null}
+          {resumedRememberedDesk || activeFilterCount > 0 ? (
+            <a href="/admin/students?clearDesk=1" style={{ fontWeight: 700 }}>
+              {t(lang, "Clear restored filters", "清除恢复筛选")}
+            </a>
+          ) : null}
         </div>
       </div>
 
@@ -434,33 +505,6 @@ export default async function StudentsPage({
           </a>
         </div>
       </div>
-
-      {resumedRememberedDesk ? (
-        <div
-          style={{
-            ...workbenchInfoBarStyle,
-            marginTop: 10,
-            marginBottom: 10,
-            borderColor: "#c7d2fe",
-            background: "#eef2ff",
-            color: "#3730a3",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last student desk", "已恢复你上次使用的学生工作台")}</div>
-            <div style={{ fontSize: 13 }}>
-              {t(
-                lang,
-                `You came back without an explicit queue or filter, so this desk reopened ${rememberedViewLabel} with your last search context.`,
-                `你这次没有显式指定队列或筛选，所以工作台自动恢复到了 ${rememberedViewLabel} 以及你上次的搜索范围。`
-              )}
-            </div>
-          </div>
-          <a href="/admin/students?clearDesk=1" style={{ fontWeight: 700 }}>
-            {t(lang, "Back to default desk", "回到默认工作台")}
-          </a>
-        </div>
-      ) : null}
 
       {showEmptyQueueCta ? (
         <div

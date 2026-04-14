@@ -25,6 +25,12 @@ export default async function AdminHome() {
     border: "1px solid #dbeafe",
     background: "#f8fafc",
   } as const;
+  const compactMetricStyle = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+  } as const;
 
   if (isFinance) {
     return (
@@ -41,35 +47,55 @@ export default async function AdminHome() {
           <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>
             {t(lang, "Finance workbench", "财务工作台")}
           </div>
-          <div style={{ marginTop: 8, color: "#475569", lineHeight: 1.5, maxWidth: 760 }}>
+          <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.45, maxWidth: 760 }}>
             {t(
               lang,
-              "Use this page like a queue router: open the next blocked approval, clear the current payout step, then move to invoice and audit follow-up.",
-              "把这里当成队列路由页来用：先打开下一条被阻塞的审批，再清掉当前发薪/结算动作，最后再处理发票和审计跟进。"
+              "Open the next blocked approval first, then use the lower links only when you need deeper finance follow-up.",
+              "先打开下一条被阻塞的审批；只有需要更深的财务跟进时，再进入下方次级入口。"
             )}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <div style={compactMetricStyle}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Approvals", "待审批")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{approvalInbox.summary.total}</div>
+            </div>
+            <div style={compactMetricStyle}>
+              <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Overdue", "超时")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#92400e" }}>{approvalInbox.summary.overdue}</div>
+            </div>
+            <div style={compactMetricStyle}>
+              <div style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Finance lane", "财务审批")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#9a3412" }}>{approvalInbox.summary.finance}</div>
+            </div>
           </div>
         </section>
 
-        <section style={{ ...cardStyle, background: "#f8fafc" }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
-            {t(lang, "Main Queues", "主队列")}
+      <section style={{ ...cardStyle, background: "#f8fafc" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
+              {t(lang, "Immediate queues", "优先队列")}
+            </div>
+            <a href="/admin/approvals" style={{ fontWeight: 800, color: "#1d4ed8" }}>
+              {t(lang, "Open approval inbox", "打开审批提醒中心")}
+            </a>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
-            <a href="/admin/finance/workbench" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
+            <a href="/admin/approvals?focus=finance" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Finance approvals", "财务审批")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#9a3412" }}>{approvalInbox.summary.finance}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Direct entry into items waiting on finance.", "直接进入当前等待财务处理的项目。")}</div>
+            </a>
+            <a href="/admin/finance/workbench" style={{ ...tileStyle, background: "#eff6ff", borderColor: "#93c5fd" }}>
               <div style={{ fontWeight: 800 }}>{t(lang, "Finance Workbench", "财务工作台")}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent and partner billing exceptions.", "家长和合作方账单异常。")}</div>
             </a>
-            <a href="/admin/reports/teacher-payroll" style={{ ...tileStyle, background: "#eff6ff", borderColor: "#93c5fd" }}>
-              <div style={{ fontWeight: 800 }}>{t(lang, "Teacher Payroll", "老师工资单")}</div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Queue-first payroll approvals and payout.", "队列优先的工资审批和发薪。")}</div>
+            <a href="/admin/receipts-approvals/queue" style={{ ...tileStyle, background: "#fffbeb", borderColor: "#fde68a" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Receipt Queue", "收据审批队列")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Create, review, and repair receipt items.", "创建、审核和修复收据项。")}</div>
             </a>
             <a href="/admin/reports/partner-settlement" style={{ ...tileStyle, background: "#eef2ff", borderColor: "#c7d2fe" }}>
               <div style={{ fontWeight: 800 }}>{t(lang, "Partner Settlement", "合作方结算")}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Review settlement totals and close outstanding partner items.", "核对结算总额并关闭合作方待处理项。")}</div>
-            </a>
-            <a href="/admin/receipts-approvals/queue" style={{ ...tileStyle, background: "#fffbeb", borderColor: "#fde68a" }}>
-              <div style={{ fontWeight: 800 }}>{t(lang, "Receipt Approvals", "收据审批")}</div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Create, review, and repair receipt items.", "创建、审核和修复收据项。")}</div>
             </a>
           </div>
         </section>
@@ -105,7 +131,7 @@ export default async function AdminHome() {
 
         <section style={{ ...cardStyle, background: "#fafafa" }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
-            {t(lang, "Reference Tools", "辅助入口")}
+            {t(lang, "Secondary tools", "次级入口")}
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <a href="/admin/finance/student-package-invoices">{t(lang, "Student Package Invoices", "学生课时包发票")}</a>
@@ -132,23 +158,51 @@ export default async function AdminHome() {
         <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>
           {t(lang, "Admin workbench", "管理工作台")}
         </div>
-        <div style={{ marginTop: 8, color: "#475569", lineHeight: 1.5, maxWidth: 760 }}>
+        <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.45, maxWidth: 760 }}>
           {t(
             lang,
-            "Use the admin home as a daily router: start from the todo queue, jump into schedule or alerts when something is blocked, and keep lower-frequency setup work out of the first screen.",
-            "把管理首页当成日常路由页来用：先从待办队列开始，有阻塞就跳到课表或告警页，把低频配置工作留在首屏之后。"
+            "Use this page as a daily router: clear today’s blockers first, then move into student, schedule, and finance workflows only when needed.",
+            "把这里当成日常路由页：先清掉今天的阻塞项，再进入学生、排课和财务流程。"
           )}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+          <div style={compactMetricStyle}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Approvals", "待审批")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{approvalInbox.summary.total}</div>
+          </div>
+          <div style={compactMetricStyle}>
+            <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Overdue", "超时")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#92400e" }}>{approvalInbox.summary.overdue}</div>
+          </div>
+          <div style={compactMetricStyle}>
+            <div style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Finance", "财务审批")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#9a3412" }}>{approvalInbox.summary.finance}</div>
+          </div>
+          <div style={compactMetricStyle}>
+            <div style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Expense", "报销审批")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#166534" }}>{approvalInbox.summary.expense}</div>
+          </div>
         </div>
       </section>
 
       <section style={{ ...cardStyle, background: "#f8fafc" }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
-          {t(lang, "Run The Day", "日常主线")}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
+            {t(lang, "Immediate work", "优先工作")}
+          </div>
+          <a href="/admin/approvals" style={{ fontWeight: 800, color: "#1d4ed8" }}>
+            {t(lang, "Open approval inbox", "打开审批提醒中心")}
+          </a>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
           <a href="/admin/todos" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Todo Center", "待办中心")}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Attendance, follow-up, renewal, and repair work.", "点名、跟进、续费和修复事项。")}</div>
+          </a>
+          <a href="/admin/approvals" style={{ ...tileStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "Approval Inbox", "审批提醒中心")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#1d4ed8" }}>{approvalInbox.summary.total}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Start here when a manager or finance decision is blocking work.", "当管理或财务审批阻塞工作时，先从这里开始。")}</div>
           </a>
           <a href="/admin/schedule" style={{ ...tileStyle, background: "#eff6ff", borderColor: "#93c5fd" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Weekly Schedule", "周课表")}</div>
@@ -157,10 +211,6 @@ export default async function AdminHome() {
           <a href="/admin/alerts" style={{ ...tileStyle, background: "#fff1f2", borderColor: "#fda4af" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Sign-in Alerts", "签到警告")}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "High-risk items that need attention now.", "需要立刻关注的高风险事项。")}</div>
-          </a>
-          <a href="/admin/reports/teacher-payroll" style={{ ...tileStyle, background: "#eef2ff", borderColor: "#c7d2fe" }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "Teacher Payroll", "老师工资单")}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Queue-first salary review and payout flow.", "队列优先的工资审核和发薪流程。")}</div>
           </a>
         </div>
       </section>
@@ -200,7 +250,7 @@ export default async function AdminHome() {
 
       <section style={cardStyle}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
-          {t(lang, "Common Workflows", "常用流程")}
+          {t(lang, "Core workflows", "核心流程")}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
           <a href="/admin/students" style={tileStyle}>
@@ -225,7 +275,7 @@ export default async function AdminHome() {
       <section style={{ ...cardStyle, background: "#fafafa" }}>
         <details>
           <summary style={{ cursor: "pointer", fontWeight: 800 }}>
-            {t(lang, "Setup Guide (Lower Frequency)", "基础搭建指南（低频使用）")}
+            {t(lang, "Lower-frequency setup guide", "低频配置与搭建指南")}
           </summary>
           <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
             {[

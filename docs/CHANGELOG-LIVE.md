@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r56
+
+- Release ID: `2026-04-14-r56`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: start the first UX-efficiency batch from the 2026-04-14 review by compressing the admin dashboard first screen, turning approval inbox into a denser action-oriented review list, and making student-list dataset scope plus restored-filter state much harder to misread.
+- Key files:
+  - `app/admin/page.tsx`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch1-dashboard-approvals-students.md`
+- Risk impact (if any): Low. This release only changes presentation density, layout emphasis, current-scope messaging, and navigation affordances on existing admin pages. It does not change approval rules, receipt math, billing state, scheduling logic, student data, or package behavior.
+- Verification:
+  - `npm run build`
+  - admin dashboard should show a tighter first screen with priority work and compact operational metrics
+  - approval inbox should show filter counts and a denser review list instead of only large action cards
+  - student list should clearly show current dataset scope and warn users when the system restored a previous desk or filter context
+- Rollback point: previous production commit before `2026-04-14-r56`.
+
 ## 2026-04-14-r55
 
 - Release ID: `2026-04-14-r55`
