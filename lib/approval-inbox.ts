@@ -146,7 +146,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
         createdAt: receipt.createdAt,
         href: `/admin/receipts-approvals/queue?selectedType=PARENT&selectedId=${encodeURIComponent(receipt.id)}`,
-        statusText: lane === "MANAGER" ? "Waiting for manager approval" : "Waiting for finance approval",
+        statusText: lane === "MANAGER" ? "Manager action needed" : "Finance action needed",
         riskText: receipt.paymentRecordId ? null : "Missing linked payment proof",
       });
     }
@@ -179,7 +179,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
         createdAt: receipt.createdAt,
         href: `/admin/receipts-approvals/queue?view=PARTNER&selectedType=PARTNER&selectedId=${encodeURIComponent(receipt.id)}`,
-        statusText: lane === "MANAGER" ? "Waiting for manager approval" : "Waiting for finance approval",
+        statusText: lane === "MANAGER" ? "Manager action needed" : "Finance action needed",
         riskText: receipt.paymentRecordId ? null : "Missing linked payment proof",
       });
     }
@@ -201,7 +201,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
         createdAt: claim.createdAt.toISOString(),
         href: `/admin/expense-claims?claimId=${encodeURIComponent(claim.id)}`,
-        statusText: "Waiting for expense approval",
+        statusText: "Approval action needed",
         riskText: null,
       });
     }

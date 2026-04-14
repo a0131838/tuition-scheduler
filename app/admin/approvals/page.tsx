@@ -53,6 +53,14 @@ function filterChip(active: boolean) {
   } as const;
 }
 
+function withApprovalSource(href: string, focus: Focus) {
+  const url = new URL(href, "https://sgtmanage.com");
+  url.searchParams.set("source", "approvals");
+  if (focus === "ALL") url.searchParams.delete("sourceFocus");
+  else url.searchParams.set("sourceFocus", focus.toLowerCase());
+  return `${url.pathname}${url.search}`;
+}
+
 export default async function AdminApprovalsPage({
   searchParams,
 }: {
@@ -241,7 +249,7 @@ export default async function AdminApprovalsPage({
               </div>
               <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>{money(item.amount, item.currency)}</div>
               <div style={{ textAlign: "right" }}>
-                <Link href={item.href} style={{ color: "#1d4ed8", fontWeight: 700 }}>
+                <Link href={withApprovalSource(item.href, focus)} style={{ color: "#1d4ed8", fontWeight: 700 }}>
                   {t(lang, "Open now", "立即处理")}
                 </Link>
               </div>

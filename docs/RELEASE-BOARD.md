@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-14-r57` (second UX-efficiency batch now adds a live queue-focus strip to receipt approvals, pushes expense approval config below the active queues, and turns the dedicated student coordination page into a true light-shell workspace), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-14-r58` (third UX-efficiency batch now makes approval and queue status language more action-first, adds visible return-to-inbox context inside receipt approvals and expense claims, and preserves that source workflow across linked review actions), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 

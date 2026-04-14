@@ -88,6 +88,8 @@ export type ReceiptsApprovalSearchParams = {
   queueBucket?: string;
   paymentRecordId?: string;
   invoiceId?: string;
+  source?: string;
+  sourceFocus?: string;
 };
 
 const primaryButtonStyle = {
@@ -169,10 +171,22 @@ function tagStyle(kind: "ok" | "warn" | "err" | "muted") {
 function queueStatusLabel(
   lang: "BILINGUAL" | "ZH" | "EN",
   status: "COMPLETED" | "REJECTED" | "PENDING",
+  approval?: { managerApprovedBy: string[]; financeApprovedBy: string[] },
+  roleCfg?: { managerApproverEmails: string[]; financeApproverEmails: string[] },
 ) {
-  if (status === "COMPLETED") return t(lang, "Completed, ready to archive", "已完成，可归档");
-  if (status === "REJECTED") return t(lang, "Rejected, needs fix", "已驳回，需修复");
-  return t(lang, "Pending, waiting for review", "待审批，等待审核");
+  if (status === "COMPLETED") return t(lang, "Fully approved, ready to archive", "已完成审批，可归档");
+  if (status === "REJECTED") return t(lang, "Fix needed before review", "修复后再审核");
+  if (approval && roleCfg) {
+    const managerNeeded =
+      roleCfg.managerApproverEmails.length > 0 &&
+      approval.managerApprovedBy.length < roleCfg.managerApproverEmails.length;
+    const financeNeeded =
+      roleCfg.financeApproverEmails.length > 0 &&
+      approval.financeApprovedBy.length < roleCfg.financeApproverEmails.length;
+    if (managerNeeded) return t(lang, "Manager action needed", "等待管理处理");
+    if (financeNeeded) return t(lang, "Finance action needed", "等待财务处理");
+  }
+  return t(lang, "Approval action needed", "等待审批处理");
 }
 
 function queueStatusKind(status: "COMPLETED" | "REJECTED" | "PENDING") {
@@ -384,22 +398,32 @@ function queueReviewProgressLabel(
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
   approval: { managerApprovedBy: string[]; financeApprovedBy: string[] }
 ) {
-  const managerSummary = roleCfg.managerApproverEmails.length === 0
-    ? t(lang, "Manager no config", "管理未配置")
-    : `${t(lang, "Manager", "管理")}: ${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`;
-  const financeSummary = roleCfg.financeApproverEmails.length === 0
-    ? t(lang, "Finance no config", "财务未配置")
-    : `${t(lang, "Finance", "财务")}: ${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`;
-  return `${managerSummary} · ${financeSummary}`;
+  const managerConfigured = roleCfg.managerApproverEmails.length > 0;
+  const financeConfigured = roleCfg.financeApproverEmails.length > 0;
+  const managerDone = !managerConfigured || approval.managerApprovedBy.length >= roleCfg.managerApproverEmails.length;
+  const financeDone = !financeConfigured || approval.financeApprovedBy.length >= roleCfg.financeApproverEmails.length;
+  const managerSummary = managerConfigured
+    ? `${t(lang, "Manager", "管理")}: ${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`
+    : t(lang, "Manager no config", "管理未配置");
+  const financeSummary = financeConfigured
+    ? `${t(lang, "Finance", "财务")}: ${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`
+    : t(lang, "Finance no config", "财务未配置");
+  if (!managerDone) {
+    return `${t(lang, "Manager action needed", "等待管理处理")} · ${managerSummary} · ${financeSummary}`;
+  }
+  if (!financeDone) {
+    return `${t(lang, "Manager done, finance action needed", "管理已完成，等待财务处理")} · ${managerSummary} · ${financeSummary}`;
+  }
+  return `${t(lang, "Fully approved", "审批已完成")} · ${managerSummary} · ${financeSummary}`;
 }
 
 function queuePrimaryActionLabel(
   lang: "BILINGUAL" | "ZH" | "EN",
   status: "COMPLETED" | "REJECTED" | "PENDING"
 ) {
-  if (status === "COMPLETED") return t(lang, "Review completed item", "查看已完成项目");
-  if (status === "REJECTED") return t(lang, "Open and fix", "打开并修复");
-  return t(lang, "Open for review", "打开审核");
+  if (status === "COMPLETED") return t(lang, "Open completed record", "打开已完成记录");
+  if (status === "REJECTED") return t(lang, "Open fix path", "打开修复路径");
+  return t(lang, "Open approval action", "打开审批操作");
 }
 
 function renderQueueCards(
@@ -456,7 +480,7 @@ function renderQueueCards(
           {queueTypeLabel(lang, x.type)}
         </span>
         <span style={{ ...tagStyle(queueStatusKind(x.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
-          {queueStatusLabel(lang, x.status)}
+          {queueStatusLabel(lang, x.status, x.approval, roleCfg)}
         </span>
         <span style={{ ...tagStyle(queueRiskBadgeKind(x)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
           {queueRiskBadgeLabel(lang, x)}
@@ -1036,6 +1060,17 @@ export async function ReceiptsApprovalsPageContent({
   const selectedId = String(sp?.selectedId ?? "").trim();
   const preferredPaymentRecordId = String(sp?.paymentRecordId ?? "").trim();
   const preferredInvoiceId = String(sp?.invoiceId ?? "").trim();
+  const source = String(sp?.source ?? "").trim().toLowerCase();
+  const sourceFocusRaw = String(sp?.sourceFocus ?? "").trim().toLowerCase();
+  const sourceWorkflow = source === "approvals" ? "approvals" : "";
+  const sourceFocus =
+    sourceFocusRaw === "manager" ||
+    sourceFocusRaw === "finance" ||
+    sourceFocusRaw === "expense" ||
+    sourceFocusRaw === "overdue" ||
+    sourceFocusRaw === "all"
+      ? sourceFocusRaw
+      : "";
   const canResumeRememberedQueue =
     !clearQueue &&
     !packageIdFilter &&
@@ -1050,7 +1085,9 @@ export async function ReceiptsApprovalsPageContent({
     !selectedId &&
     !preferredPaymentRecordId &&
     !preferredInvoiceId &&
-    !historySearchTerm;
+    !historySearchTerm &&
+    !sourceWorkflow &&
+    !sourceFocus;
   const cookieStore = await cookies();
   const rememberedQueue = canResumeRememberedQueue
     ? parseRememberedReceiptsQueue(cookieStore.get(RECEIPTS_QUEUE_COOKIE)?.value ?? "")
@@ -1295,6 +1332,22 @@ export async function ReceiptsApprovalsPageContent({
   const isRepairsScreen = screenMode === "repairs";
   const isHistoryScreen = screenMode === "history";
   const screenBasePath = receiptScreenBasePath(screenMode);
+  const approvalInboxReturnHref =
+    sourceWorkflow === "approvals"
+      ? sourceFocus && sourceFocus !== "all"
+        ? `/admin/approvals?focus=${encodeURIComponent(sourceFocus)}`
+        : "/admin/approvals"
+      : "";
+  const approvalInboxFocusLabel =
+    sourceFocus === "manager"
+      ? t(lang, "Manager approvals", "管理审批")
+      : sourceFocus === "finance"
+        ? t(lang, "Finance approvals", "财务审批")
+        : sourceFocus === "expense"
+          ? t(lang, "Expense approvals", "报销审批")
+          : sourceFocus === "overdue"
+            ? t(lang, "Overdue approvals", "超时审批")
+            : t(lang, "All open approvals", "全部待处理审批");
 
   const baseQuery = new URLSearchParams();
   if (packageIdFilter) baseQuery.set("packageId", packageIdFilter);
@@ -1308,6 +1361,8 @@ export async function ReceiptsApprovalsPageContent({
   if (queueBucket !== "ALL") baseQuery.set("queueBucket", queueBucket);
   if (preferredPaymentRecordId) baseQuery.set("paymentRecordId", preferredPaymentRecordId);
   if (preferredInvoiceId) baseQuery.set("invoiceId", preferredInvoiceId);
+  if (sourceWorkflow) baseQuery.set("source", sourceWorkflow);
+  if (sourceFocus) baseQuery.set("sourceFocus", sourceFocus);
   if (screenMode === "queue" && packageIdFilter) {
     redirect(`${receiptScreenBasePath("package")}?${baseQuery.toString()}`);
   }
@@ -1339,6 +1394,16 @@ export async function ReceiptsApprovalsPageContent({
     else q.delete("invoiceId");
     if (paymentRecordId) q.set("paymentRecordId", paymentRecordId);
     else q.delete("paymentRecordId");
+    return `${receiptScreenBasePath("package")}?${q.toString()}`;
+  };
+  const buildPackageFixHref = (packageId: string, type: "PARENT" | "PARTNER", id: string) => {
+    const q = new URLSearchParams(baseQuery.toString());
+    q.set("packageId", packageId);
+    q.set("step", "create");
+    q.set("selectedType", type);
+    q.set("selectedId", id);
+    q.delete("paymentRecordId");
+    q.delete("invoiceId");
     return `${receiptScreenBasePath("package")}?${q.toString()}`;
   };
   const recommendedCreateHref = buildCreateReceiptHref(
@@ -1652,7 +1717,7 @@ export async function ReceiptsApprovalsPageContent({
     selectedRow && selectedRow.status !== "COMPLETED" ? `${selectedReviewHref}#receipt-primary-actions` : "";
   const selectedFixToolsHref =
     selectedRow && selectedRow.type === "PARENT"
-      ? `${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=${encodeURIComponent(selectedRow.type)}&selectedId=${encodeURIComponent(selectedRow.id)}`
+      ? buildPackageFixHref(selectedRow.packageId, selectedRow.type, selectedRow.id)
       : "";
   const selectedNextReceiptHref =
     selectedRow &&
@@ -2219,6 +2284,43 @@ export async function ReceiptsApprovalsPageContent({
             )}
           </div>
           <a href={defaultQueueHref}>{t(lang, "Back to default queue", "回到默认队列")}</a>
+        </div>
+      ) : null}
+
+      {sourceWorkflow === "approvals" ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #c7d2fe",
+            background: "#eef2ff",
+            color: "#3730a3",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "From Approval Inbox", "来自审批提醒中心")}</div>
+            <div style={{ fontSize: 13, color: "#4338ca" }}>
+              {t(
+                lang,
+                "You entered this review flow from the approval triage desk. Finish the current receipt here, then jump back when you want the next approval item.",
+                "你是从审批分诊台进入这条审核流程的。先在这里处理当前收据，处理完后再回审批中心拿下一条。"
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #c7d2fe", color: "#4338ca", fontSize: 12, fontWeight: 700 }}>
+              {t(lang, "Inbox focus", "来源筛选")}: {approvalInboxFocusLabel}
+            </span>
+            <a href={approvalInboxReturnHref || "/admin/approvals"} style={{ fontWeight: 700 }}>
+              {t(lang, "Back to Approval Inbox", "返回审批提醒中心")}
+            </a>
+          </div>
         </div>
       ) : null}
 
@@ -3339,7 +3441,7 @@ export async function ReceiptsApprovalsPageContent({
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <span style={{ ...tagStyle(queueStatusKind(nextBestQueueRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
-                  {queueStatusLabel(lang, nextBestQueueRow.status)}
+                  {queueStatusLabel(lang, nextBestQueueRow.status, nextBestQueueRow.approval, roleCfg)}
                 </span>
                 <span style={{ ...tagStyle(queueRiskBadgeKind(nextBestQueueRow)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
                   {queueRiskBadgeLabel(lang, nextBestQueueRow)}
@@ -3364,7 +3466,7 @@ export async function ReceiptsApprovalsPageContent({
               </a>
               {nextBestQueueRow.type === "PARENT" && (nextBestQueueRow.status === "REJECTED" || !nextBestQueueRow.paymentRecord || nextBestQueueRow.paymentFileMissing) ? (
                 <a
-                  href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(nextBestQueueRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(nextBestQueueRow.id)}`}
+                  href={buildPackageFixHref(nextBestQueueRow.packageId, "PARENT", nextBestQueueRow.id)}
                 >
                   {t(lang, "Open fix tools first", "先打开修复工具")}
                 </a>
@@ -3587,7 +3689,7 @@ export async function ReceiptsApprovalsPageContent({
                   <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
                   {selectedRow.type === "PARENT" ? (
                     <>
-                      <a href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                      <a href={buildPackageFixHref(selectedRow.packageId, "PARENT", selectedRow.id)}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
                       <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
@@ -3603,7 +3705,7 @@ export async function ReceiptsApprovalsPageContent({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipt status", "收据状态")}</div>
                 <div style={{ marginTop: 4 }}>
                   <span style={{ ...tagStyle(queueStatusKind(selectedRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                    {queueStatusLabel(lang, selectedRow.status)}
+                    {queueStatusLabel(lang, selectedRow.status, selectedRow.approval, roleCfg)}
                   </span>
                 </div>
               </div>
@@ -3808,7 +3910,7 @@ export async function ReceiptsApprovalsPageContent({
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                   {selectedRow.type === "PARENT" ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(selectedRow.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(selectedRow.id)}`}>
+                      <a href={buildPackageFixHref(selectedRow.packageId, "PARENT", selectedRow.id)}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
                       {selectedNextReceiptHref ? (

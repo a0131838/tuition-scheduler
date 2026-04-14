@@ -98,11 +98,11 @@ function shiftMonth(base: Date, delta: number) {
 function formatClaimStatusLabel(lang: Lang, status: ExpenseClaimStatus) {
   switch (status) {
     case ExpenseClaimStatus.SUBMITTED:
-      return t(lang, 'Waiting for approval', '待审批');
+      return t(lang, 'Approval action needed', '等待审批处理');
     case ExpenseClaimStatus.APPROVED:
-      return t(lang, 'Approved, waiting payment', '已批准，待付款');
+      return t(lang, 'Finance payment needed', '等待财务付款');
     case ExpenseClaimStatus.REJECTED:
-      return t(lang, 'Rejected, needs update', '已驳回，待补充');
+      return t(lang, 'Submitter update needed', '等待提交人补充');
     case ExpenseClaimStatus.PAID:
       return t(lang, 'Paid', '已付款');
     case ExpenseClaimStatus.WITHDRAWN:
@@ -218,6 +218,17 @@ export default async function AdminExpenseClaimsPage({
   const submitterQueryParam = hasSubmitterQueryParam ? String(params.q ?? '') : '';
   const selectedClaimIdParam = typeof params.claimId === 'string' ? params.claimId : '';
   const selectedFinanceGroupKeyParam = typeof params.financeGroup === 'string' ? params.financeGroup : '';
+  const source = typeof params.source === 'string' ? String(params.source).trim().toLowerCase() : '';
+  const sourceFocusRaw = typeof params.sourceFocus === 'string' ? String(params.sourceFocus).trim().toLowerCase() : '';
+  const sourceWorkflow = source === 'approvals' ? 'approvals' : '';
+  const sourceFocus =
+    sourceFocusRaw === 'manager' ||
+    sourceFocusRaw === 'finance' ||
+    sourceFocusRaw === 'expense' ||
+    sourceFocusRaw === 'overdue' ||
+    sourceFocusRaw === 'all'
+      ? sourceFocusRaw
+      : '';
   const repairReturnMode =
     typeof params.repairReturnMode === 'string' && (params.repairReturnMode === 'review' || params.repairReturnMode === 'finance')
       ? params.repairReturnMode
@@ -244,6 +255,8 @@ export default async function AdminExpenseClaimsPage({
     !repairReturnMode &&
     !repairReturnClaimId &&
     !repairReturnFinanceGroup &&
+    !sourceWorkflow &&
+    !sourceFocus &&
     !msg &&
     !err;
   const cookieStore = await cookies();
@@ -288,6 +301,27 @@ export default async function AdminExpenseClaimsPage({
     archived: archivedOnly ? '1' : '',
     attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   });
+  const workflowQuery = buildFilterQuery({
+    ...Object.fromEntries(new URLSearchParams(filterQuery)),
+    source: sourceWorkflow,
+    sourceFocus,
+  });
+  const approvalInboxReturnHref =
+    sourceWorkflow === 'approvals'
+      ? sourceFocus && sourceFocus !== 'all'
+        ? `/admin/approvals?focus=${encodeURIComponent(sourceFocus)}`
+        : '/admin/approvals'
+      : '';
+  const approvalInboxFocusLabel =
+    sourceFocus === 'manager'
+      ? t(lang, 'Manager approvals', '管理审批')
+      : sourceFocus === 'finance'
+        ? t(lang, 'Finance approvals', '财务审批')
+        : sourceFocus === 'expense'
+          ? t(lang, 'Expense approvals', '报销审批')
+          : sourceFocus === 'overdue'
+            ? t(lang, 'Overdue approvals', '超时审批')
+            : t(lang, 'All open approvals', '全部待处理审批');
   const currentMonth = formatMonthKey(new Date());
   const previousMonth = shiftMonth(new Date(), -1);
   const quickExpenseThisMonthHref = `/admin/expense-claims?${buildFilterQuery({
@@ -362,34 +396,34 @@ export default async function AdminExpenseClaimsPage({
     'use server';
     const actor = await requireAdmin();
     if (!(await canApproveExpense(actor))) {
-      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Not allowed' })}`);
+      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Not allowed' })}`);
     }
     const claimId = String(formData.get('claimId') ?? '').trim();
     const nextClaimId = String(formData.get('nextClaimId') ?? '').trim();
-    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Missing claim id' })}`);
+    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Missing claim id' })}`);
     await approveExpenseClaim({ claimId, approver: actor });
-    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), claimId: nextClaimId, msg: nextClaimId ? 'Expense claim approved. Moved to next claim.' : 'Expense claim approved' })}`);
+    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), claimId: nextClaimId, msg: nextClaimId ? 'Expense claim approved. Moved to next claim.' : 'Expense claim approved' })}`);
   }
 
   async function rejectAction(formData: FormData) {
     'use server';
     const actor = await requireAdmin();
     if (!(await canApproveExpense(actor))) {
-      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Not allowed' })}`);
+      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Not allowed' })}`);
     }
     const claimId = String(formData.get('claimId') ?? '').trim();
     const nextClaimId = String(formData.get('nextClaimId') ?? '').trim();
     const reason = String(formData.get('reason') ?? '').trim();
-    if (!claimId || !reason) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Reject reason is required' })}`);
+    if (!claimId || !reason) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Reject reason is required' })}`);
     await rejectExpenseClaim({ claimId, reason, approver: actor });
-    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), claimId: nextClaimId, msg: nextClaimId ? 'Expense claim rejected. Moved to next claim.' : 'Expense claim rejected' })}`);
+    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), claimId: nextClaimId, msg: nextClaimId ? 'Expense claim rejected. Moved to next claim.' : 'Expense claim rejected' })}`);
   }
 
   async function markPaidAction(formData: FormData) {
     'use server';
     const actor = await requireAdmin();
     if (!canFinanceOperateExpense(actor)) {
-      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Only finance can mark paid' })}`);
+      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Only finance can mark paid' })}`);
     }
     const claimId = String(formData.get('claimId') ?? '').trim();
     const nextClaimId = String(formData.get('nextClaimId') ?? '').trim();
@@ -397,7 +431,7 @@ export default async function AdminExpenseClaimsPage({
     const financeRemarks = String(formData.get('financeRemarks') ?? '').trim();
     const paymentMethod = String(formData.get('paymentMethod') ?? '').trim();
     const paymentReference = String(formData.get('paymentReference') ?? '').trim();
-    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Missing claim id' })}`);
+    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Missing claim id' })}`);
     await markExpenseClaimPaid({
       claimId,
       paymentBatchMonth: paymentBatchMonth || null,
@@ -407,7 +441,7 @@ export default async function AdminExpenseClaimsPage({
       paidBy: actor,
     });
     redirect(`/admin/expense-claims?${buildFilterQuery({
-      ...Object.fromEntries(new URLSearchParams(filterQuery)),
+      ...Object.fromEntries(new URLSearchParams(workflowQuery)),
       approvedUnpaidOnly: '1',
       claimId: nextClaimId,
       msg: nextClaimId ? 'Expense claim marked paid. Moved to next payout item.' : 'Expense claim marked paid',
@@ -418,7 +452,7 @@ export default async function AdminExpenseClaimsPage({
     'use server';
     const actor = await requireAdmin();
     if (!canFinanceOperateExpense(actor)) {
-      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Only finance can mark paid' })}`);
+      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Only finance can mark paid' })}`);
     }
     const claimIds = formData.getAll('claimIds').map((value) => String(value ?? '').trim()).filter(Boolean);
     const financeGroup = String(formData.get('financeGroup') ?? '').trim();
@@ -428,7 +462,7 @@ export default async function AdminExpenseClaimsPage({
     const paymentReference = String(formData.get('paymentReference') ?? '').trim();
     if (!claimIds.length) {
       redirect(`/admin/expense-claims?${buildFilterQuery({
-        ...Object.fromEntries(new URLSearchParams(filterQuery)),
+        ...Object.fromEntries(new URLSearchParams(workflowQuery)),
         approvedUnpaidOnly: '1',
         financeGroup,
         err: 'Select at least one approved unpaid claim',
@@ -445,7 +479,7 @@ export default async function AdminExpenseClaimsPage({
       });
     }
     redirect(`/admin/expense-claims?${buildFilterQuery({
-      ...Object.fromEntries(new URLSearchParams(filterQuery)),
+      ...Object.fromEntries(new URLSearchParams(workflowQuery)),
       approvedUnpaidOnly: '1',
       financeGroup,
       msg: `${claimIds.length} expense claim(s) marked paid`,
@@ -456,22 +490,22 @@ export default async function AdminExpenseClaimsPage({
     'use server';
     const actor = await requireAdmin();
     if (!canEditExpenseApprovalConfig(actor.email)) {
-      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Not allowed to edit expense approver config' })}`);
+      redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Not allowed to edit expense approver config' })}`);
     }
     const approverEmailsRaw = String(formData.get('approverEmails') ?? '');
     await saveExpenseApprovalConfig({ approverEmailsRaw });
     revalidatePath('/admin/expense-claims');
-    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), msg: 'Expense approver config updated' })}`);
+    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), msg: 'Expense approver config updated' })}`);
   }
 
   async function archiveAction(formData: FormData) {
     'use server';
     const actor = await requireAdmin();
     const claimId = String(formData.get('claimId') ?? '').trim();
-    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), err: 'Missing claim id' })}`);
+    if (!claimId) redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), err: 'Missing claim id' })}`);
     await archiveExpenseClaim({ claimId, actor });
     revalidatePath('/admin/expense-claims');
-    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(filterQuery)), msg: 'Expense claim archived' })}`);
+    redirect(`/admin/expense-claims?${buildFilterQuery({ ...Object.fromEntries(new URLSearchParams(workflowQuery)), msg: 'Expense claim archived' })}`);
   }
 
   const claims = await listExpenseClaims({
@@ -748,6 +782,40 @@ export default async function AdminExpenseClaimsPage({
         </div>
       ) : null}
 
+      {sourceWorkflow === 'approvals' ? (
+        <div
+          style={{
+            padding: 10,
+            borderRadius: 10,
+            border: '1px solid #c7d2fe',
+            background: '#eef2ff',
+            color: '#3730a3',
+            display: 'flex',
+            gap: 10,
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ display: 'grid', gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, 'From Approval Inbox', '来自审批提醒中心')}</div>
+            <div style={{ fontSize: 13, color: '#4338ca' }}>
+              {t(
+                lang,
+                'You opened this expense workflow from the approval triage desk. Finish the current claim here, then jump back when you are ready for the next approval item.',
+                '你是从审批分诊台进入这条报销流程的。先在这里处理当前报销单，处理完后再回审批中心拿下一条。'
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 12, fontWeight: 700 }}>
+              {t(lang, 'Inbox focus', '来源筛选')}: {approvalInboxFocusLabel}
+            </span>
+            <a href={approvalInboxReturnHref || '/admin/approvals'}>{t(lang, 'Back to Approval Inbox', '返回审批提醒中心')}</a>
+          </div>
+        </div>
+      ) : null}
+
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
       {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
       {showRepairLoopCard ? (
@@ -880,7 +948,7 @@ export default async function AdminExpenseClaimsPage({
                   return (
                     <a
                       key={claim.id}
-                      href={focusClaimHref(filterQuery, claim.id)}
+                      href={focusClaimHref(workflowQuery, claim.id)}
                       style={{
                         display: 'grid',
                         gap: 8,
@@ -1106,7 +1174,7 @@ export default async function AdminExpenseClaimsPage({
                       <a
                         key={group.key}
                         href={`/admin/expense-claims?${buildFilterQuery({
-                          ...Object.fromEntries(new URLSearchParams(filterQuery)),
+                          ...Object.fromEntries(new URLSearchParams(workflowQuery)),
                           approvedUnpaidOnly: '1',
                           financeGroup: group.key,
                         })}`}

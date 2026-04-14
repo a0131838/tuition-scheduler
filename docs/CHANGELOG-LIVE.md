@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r58
+
+- Release ID: `2026-04-14-r58`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: ship the third UX-efficiency batch by making approval and queue status language more action-first, keeping a visible “from Approval Inbox” return path inside receipt approvals and expense claims, and preserving that source workflow when users keep moving through the linked review actions.
+- Key files:
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `lib/approval-inbox.ts`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch3-approval-language-and-return-paths.md`
+- Risk impact (if any): Low. This release only changes navigation continuity, status wording, and workflow context banners on existing approval-driven admin pages. It does not change receipt approval rules, expense approval permissions, billing math, or data mutation rules.
+- Verification:
+  - `npm run build`
+  - opening an item from `/admin/approvals` should carry `source=approvals` into receipt approvals or expense claims
+  - receipt approvals and expense claims should show a visible “From Approval Inbox” return banner when entered from that workflow
+  - pending statuses should read as action-oriented next steps instead of only passive state labels
+- Rollback point: previous production commit before `2026-04-14-r58`.
+
 ## 2026-04-14-r57
 
 - Release ID: `2026-04-14-r57`
