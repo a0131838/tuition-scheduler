@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r62
+
+- Release ID: `2026-04-14-r62`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: extend the workflow-continuity UX batch by preserving “where you came from” between Students, Student Detail, Coordination, Receipt Queue, and Package Billing, while also tightening Package Billing into a more compact first-screen workspace with action-first receipt states.
+- Key files:
+  - `app/admin/students/AdminStudentsClient.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch6-workflow-continuity-and-package-billing.md`
+- Risk impact (if any): Low. This release only changes navigation continuity, first-screen information grouping, and action-first status wording on existing admin pages. It does not change billing rules, receipt approval rules, student data, or scheduling behavior.
+- Verification:
+  - `npm run build`
+  - student links opened from the list should carry a return path into student detail and coordination
+  - package billing opened from receipt approvals should show a visible return path back to the same receipt queue
+  - package billing first screen should show summary context first and keep create-invoice behind an expandable section
+  - package receipt progress and approval states should read more action-first
+- Rollback point: previous production commit before `2026-04-14-r62`.
+
 ## 2026-04-14-r61
 
 - Release ID: `2026-04-14-r61`

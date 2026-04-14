@@ -301,6 +301,13 @@ function withQuery(base: string, packageId?: string) {
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
 }
 
+function buildPackageBillingWorkflowHref(packageId: string, receiptsBack?: string) {
+  const params = new URLSearchParams();
+  params.set("source", "receipts");
+  if (receiptsBack) params.set("receiptsBack", receiptsBack);
+  return `/admin/packages/${encodeURIComponent(packageId)}/billing?${params.toString()}`;
+}
+
 function isNextRedirectError(err: unknown) {
   const digest = (err as { digest?: unknown } | null)?.digest;
   return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
@@ -467,7 +474,7 @@ function renderQueueCards(
   selectedRow: { type: "PARENT" | "PARTNER"; id: string } | null,
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
   openHref: (type: "PARENT" | "PARTNER", id: string) => string,
-  opts?: { compactRepairActions?: boolean }
+  opts?: { compactRepairActions?: boolean; packageBillingHref?: (packageId: string) => string }
 ) {
   return rows.map((x) => (
     <article
@@ -530,7 +537,7 @@ function renderQueueCards(
                 <a href={openHref(x.type, x.id)} style={{ fontSize: 12 }}>
                   {queuePrimaryActionLabel(lang, x.status)}
                 </a>
-                <a href={`/admin/packages/${encodeURIComponent(x.packageId)}/billing`} style={{ fontSize: 12 }}>
+                <a href={opts?.packageBillingHref ? opts.packageBillingHref(x.packageId) : `/admin/packages/${encodeURIComponent(x.packageId)}/billing`} style={{ fontSize: 12 }}>
                   {t(lang, "Open package billing", "打开课包账单页")}
                 </a>
               </div>
@@ -584,6 +591,7 @@ function renderQueueSection(
     roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] };
     openHref: (type: "PARENT" | "PARTNER", id: string) => string;
     compactRepairActions?: boolean;
+    packageBillingHref?: (packageId: string) => string;
   }
 ) {
   if (rows.length === 0) return null;
@@ -595,6 +603,7 @@ function renderQueueSection(
       <div style={{ display: "grid", gap: 10 }}>
         {renderQueueCards(rows, opts.lang, opts.selectedRow, opts.roleCfg, opts.openHref, {
           compactRepairActions: opts.compactRepairActions,
+          packageBillingHref: opts.packageBillingHref,
         })}
       </div>
     </section>
@@ -1807,6 +1816,8 @@ export async function ReceiptsApprovalsPageContent({
     const targetBase = receiptScreenBasePath(screenMode);
     return q.toString() ? `${targetBase}?${q.toString()}` : targetBase;
   })();
+  const packageBillingWorkflowHref = (targetPackageId: string) =>
+    buildPackageBillingWorkflowHref(targetPackageId, currentScreenListHref);
   const clearHistorySearchHref = (() => {
     const q = new URLSearchParams(baseQuery.toString());
     q.delete("historySearch");
@@ -3605,6 +3616,7 @@ export async function ReceiptsApprovalsPageContent({
               roleCfg,
               openHref,
               compactRepairActions: isRepairsScreen,
+              packageBillingHref: packageBillingWorkflowHref,
             })}
             {renderQueueSection(visibleOtherQueue, {
               heading: bilingualLabel("Other open items", "其他待处理项"),
@@ -3615,6 +3627,7 @@ export async function ReceiptsApprovalsPageContent({
               roleCfg,
               openHref,
               compactRepairActions: isRepairsScreen,
+              packageBillingHref: packageBillingWorkflowHref,
             })}
             {visibleCompletedQueue.length > 0 ? (
               <details open={queueBucket === "HISTORY"}>
@@ -3787,7 +3800,7 @@ export async function ReceiptsApprovalsPageContent({
                       <a href={buildPackageFixHref(selectedRow.packageId, "PARENT", selectedRow.id)}>
                         {t(lang, "Open fix tools", "打开修复工具")}
                       </a>
-                      <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                      <a href={packageBillingWorkflowHref(selectedRow.packageId)}>
                         {t(lang, "Open package billing", "打开课包账单页")}
                       </a>
                     </>
@@ -3877,7 +3890,7 @@ export async function ReceiptsApprovalsPageContent({
                   <a href={selectedNextReceiptHref}>
                     {t(lang, `Create ${selectedNextReceiptLabel}`, `创建 ${selectedNextReceiptLabel}`)}
                   </a>
-                  <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                  <a href={packageBillingWorkflowHref(selectedRow.packageId)}>
                     {t(lang, "Open package billing", "打开课包账单页")}
                   </a>
                 </div>
@@ -4009,7 +4022,7 @@ export async function ReceiptsApprovalsPageContent({
                           {t(lang, `Create ${selectedNextReceiptLabel}`, `创建 ${selectedNextReceiptLabel}`)}
                         </a>
                       ) : null}
-                      <a href={`/admin/packages/${encodeURIComponent(selectedRow.packageId)}/billing`}>
+                      <a href={packageBillingWorkflowHref(selectedRow.packageId)}>
                         {t(lang, "Open package billing", "打开课包账单页")}
                       </a>
                     </div>

@@ -437,6 +437,12 @@ function sanitizeStudentDetailBack(studentId: string, raw: string | null | undef
   return value.slice(0, 2000);
 }
 
+function sanitizeStudentsBack(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim();
+  if (!value.startsWith("/admin/students")) return "/admin/students";
+  return value.slice(0, 2000);
+}
+
 function appendStudentDetailQuery(path: string, params: Record<string, string>) {
   const url = new URL(path, "https://local.invalid");
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
@@ -1441,6 +1447,8 @@ export default async function StudentDetailPage({
   const attendanceMonthParam = sp?.attendanceMonth ?? "";
   const quickOpen = sp?.quickOpen === "1";
   const focus = sp?.focus ?? "";
+  const source = String(sp?.source ?? "").trim().toLowerCase();
+  const studentsBack = sanitizeStudentsBack(sp?.studentsBack);
   const coordDate = sp?.coordDate ?? fmtDateInput(new Date());
   const coordTeacherId = sp?.coordTeacherId ?? "";
   const coordTicketId = sp?.coordTicketId ?? "";
@@ -1449,6 +1457,7 @@ export default async function StudentDetailPage({
   const coordSpecialDurationMinRaw = Math.max(15, toInt(sp?.coordSpecialDurationMin, 45));
   const coordCheckSpecial = sp?.coordCheckSpecial === "1";
   const coordinationOnly = focus === "scheduling-coordination";
+  const sourceWorkflow = source === "students" ? "students" : "";
   const calendarOpen = sp?.calendarOpen === "1" || focus === "calendar-tools";
   const attendanceOpen = focus === "attendance";
   const enrollmentsOpen = focus === "enrollments";
@@ -1632,11 +1641,23 @@ export default async function StudentDetailPage({
         url: `https://sgtmanage.com${parentAvailabilityHref}`,
       })
     : "";
-  const studentCoordinationHref = buildStudentCoordinationHref(studentId);
-  const studentDetailHomeHref = buildStudentDetailHref(studentId);
+  const studentWorkflowParams = new URLSearchParams();
+  if (sourceWorkflow === "students") {
+    studentWorkflowParams.set("source", "students");
+    studentWorkflowParams.set("studentsBack", studentsBack);
+  }
+  const studentCoordinationHref = buildStudentCoordinationHref(
+    studentId,
+    studentWorkflowParams.size > 0 ? studentWorkflowParams : null
+  );
+  const studentDetailHomeHref = buildStudentDetailHref(
+    studentId,
+    studentWorkflowParams.size > 0 ? studentWorkflowParams : null
+  );
+  const studentsReturnHref = sourceWorkflow === "students" ? studentsBack : "/admin/students";
   const schedulingTicketHref = activeSchedulingTicket
     ? `/admin/tickets/${activeSchedulingTicket.id}?back=${encodeURIComponent(
-        buildStudentCoordinationHref(studentId)
+        studentCoordinationHref
       )}`
     : null;
   const openSchedulingCourseKeySet = new Set(
@@ -2168,7 +2189,7 @@ export default async function StudentDetailPage({
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", color: "#64748b", flexWrap: "wrap" }}>
-              <a href="/admin/students" style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 999, background: "#fff", textDecoration: "none" }}>
+              <a href={studentsReturnHref} style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 999, background: "#fff", textDecoration: "none" }}>
                 &lt;&lt; {tl(lang, "Back to Students")}
               </a>
               <span style={{ fontSize: 11 }} title={student.id}>
@@ -2223,6 +2244,49 @@ export default async function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      {sourceWorkflow === "students" ? (
+        <div
+          style={{
+            ...workbenchInfoBarStyle,
+            marginBottom: 12,
+            borderColor: "#bfdbfe",
+            background: "#eff6ff",
+            color: "#1e3a8a",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "From Student List", "来自学生列表")}</div>
+            <div style={{ fontSize: 13 }}>
+              {coordinationOnly
+                ? t(
+                    lang,
+                    "You opened the coordination workspace from a student-list flow. Finish the current scheduling work here, then jump back to the same filtered list when you are ready for the next student.",
+                    "你是从学生列表流程进入排课协调工作台的。先在这里完成当前排课处理，处理完后可直接回到原来的筛选列表继续下一位学生。"
+                  )
+                : t(
+                    lang,
+                    "You opened this profile from a filtered student list. Keep using the quick workbench here, then jump back to the same list when you want the next profile.",
+                    "你是从一个筛选后的学生列表进入当前档案的。可以先在这里继续工作，处理完再回到同一个列表继续下一位学生。"
+                  )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <a href={studentsReturnHref} style={{ fontWeight: 700 }}>
+              {t(lang, "Back to Student List", "返回学生列表")}
+            </a>
+            {!coordinationOnly ? (
+              <a href={studentCoordinationHref} style={{ fontWeight: 700 }}>
+                {t(lang, "Open Coordination Workspace", "打开排课协调工作台")}
+              </a>
+            ) : (
+              <a href={studentDetailHomeHref} style={{ fontWeight: 700 }}>
+                {t(lang, "Open Full Student Detail", "打开完整学生详情")}
+              </a>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {err ? <NoticeBanner type="error" title={tl(lang, "Error")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
@@ -2454,7 +2518,7 @@ export default async function StudentDetailPage({
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <a href={studentDetailHomeHref}>{t(lang, "Close coordination workspace", "关闭排课协调工作台")}</a>
-              <a href={`/admin/students/${studentId}`}>{t(lang, "Open full student detail", "打开完整学生详情")}</a>
+              <a href={studentDetailHomeHref}>{t(lang, "Open full student detail", "打开完整学生详情")}</a>
               {activeSchedulingTicket && schedulingTicketHref ? <a href={schedulingTicketHref}>{t(lang, "Open active ticket", "打开当前工单")}</a> : null}
               <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
             </div>

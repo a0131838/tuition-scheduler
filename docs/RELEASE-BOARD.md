@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-14-r61` (expense-claims queue hotfix keeps the selected review and payout panels at their own natural height instead of stretching with a long left queue), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-14-r62` (workflow-continuity batch now carries return paths between Students, Coordination, Receipt Queue, and Package Billing, while making Package Billing more compact and action-first on the first screen), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 

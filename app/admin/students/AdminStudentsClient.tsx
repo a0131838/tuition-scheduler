@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
 import { formatBusinessDateOnly } from "@/lib/date-only";
@@ -74,6 +74,8 @@ export default function AdminStudentsClient({
   };
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [students, setStudents] = useState<StudentRow[]>(initialStudents);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -86,6 +88,19 @@ export default function AdminStudentsClient({
   const formatId = useMemo(
     () => (prefix: string, id: string) => `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}...${id.slice(-4)}` : id}`,
     []
+  );
+  const currentListHref = useMemo(() => {
+    const query = searchParams?.toString() ?? "";
+    return `${pathname}${query ? `?${query}` : ""}`;
+  }, [pathname, searchParams]);
+  const buildStudentWorkflowHref = useMemo(
+    () => (studentId: string) => {
+      const params = new URLSearchParams();
+      params.set("source", "students");
+      params.set("studentsBack", currentListHref);
+      return `/admin/students/${studentId}?${params.toString()}`;
+    },
+    [currentListHref]
   );
 
   async function createStudent(close: () => void, payload: any) {
@@ -269,7 +284,7 @@ export default function AdminStudentsClient({
                 <tr key={s.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
                   <td>
                     <div style={{ display: "grid", gap: 4 }}>
-                      <a href={`/admin/students/${s.id}`} style={{ fontWeight: 700 }}>{s.name}</a>
+                      <a href={buildStudentWorkflowHref(s.id)} style={{ fontWeight: 700 }}>{s.name}</a>
                       <div style={{ color: "#64748b", fontSize: 12 }}>
                         {labels.created}: {formatBusinessDateOnly(new Date(s.createdAt))}
                       </div>
@@ -299,7 +314,7 @@ export default function AdminStudentsClient({
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a href={`/admin/students/${s.id}`}>{labels.edit}</a>
+                      <a href={buildStudentWorkflowHref(s.id)}>{labels.edit}</a>
                       <button type="button" onClick={() => deleteStudent(s.id)}>
                         {labels.delete}
                       </button>

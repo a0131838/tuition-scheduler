@@ -75,10 +75,82 @@ function displayCreator(
   return user.email;
 }
 
+function normalizePackageBillingSource(value: string | null | undefined) {
+  return String(value ?? "").trim().toLowerCase() === "receipts" ? "receipts" : "";
+}
+
+function sanitizeReceiptsBack(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized.startsWith("/admin/receipts-approvals")) return "/admin/receipts-approvals";
+  return normalized.slice(0, 2000);
+}
+
+function buildPackageBillingHref(
+  packageId: string,
+  options?: {
+    sourceWorkflow?: string;
+    receiptsBack?: string;
+    msg?: string;
+    err?: string;
+  }
+) {
+  const params = new URLSearchParams();
+  if (options?.sourceWorkflow === "receipts") {
+    params.set("source", "receipts");
+    params.set("receiptsBack", sanitizeReceiptsBack(options.receiptsBack));
+  }
+  if (options?.msg) params.set("msg", options.msg);
+  if (options?.err) params.set("err", options.err);
+  const query = params.toString();
+  return `/admin/packages/${encodeURIComponent(packageId)}/billing${query ? `?${query}` : ""}`;
+}
+
+function buildReceiptsCenterHref(
+  packageId: string,
+  options?: {
+    sourceWorkflow?: string;
+    receiptsBack?: string;
+    step?: string;
+    invoiceId?: string;
+    paymentRecordId?: string;
+  }
+) {
+  const params = new URLSearchParams();
+  params.set("packageId", packageId);
+  if (options?.step) params.set("step", options.step);
+  if (options?.invoiceId) params.set("invoiceId", options.invoiceId);
+  if (options?.paymentRecordId) params.set("paymentRecordId", options.paymentRecordId);
+  if (options?.sourceWorkflow === "receipts") {
+    params.set("source", "receipts");
+    params.set("receiptsBack", sanitizeReceiptsBack(options.receiptsBack));
+  }
+  return `/admin/receipts-approvals?${params.toString()}`;
+}
+
+function packageReceiptApprovalStateLabel(
+  lang: "BILINGUAL" | "ZH" | "EN",
+  approval: {
+    managerApprovedBy: string[];
+    financeApprovedBy: string[];
+    managerRejectReason?: string | null;
+    financeRejectReason?: string | null;
+  },
+  roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] }
+) {
+  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
+  const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
+  if (approval.managerRejectReason || approval.financeRejectReason) return t(lang, "Rejected", "已驳回");
+  if (!managerReady) return t(lang, "Manager action needed", "等待管理处理");
+  if (!financeReady) return t(lang, "Finance action needed", "等待财务处理");
+  return t(lang, "Fully approved", "已全部批准");
+}
+
 async function createInvoiceAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   if (!packageId) redirect("/admin/packages?err=Missing+package+id");
   const pkg = await prisma.coursePackage.findUnique({
     where: { id: packageId },
@@ -98,7 +170,7 @@ async function createInvoiceAction(formData: FormData) {
     await assertGlobalInvoiceNoAvailable(invoiceNo);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Invoice No. already exists";
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
 
   try {
@@ -124,10 +196,10 @@ async function createInvoiceAction(formData: FormData) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create invoice failed";
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
 
-  redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?msg=Invoice+created`);
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Invoice created" }));
 }
 
 
@@ -136,8 +208,10 @@ async function deleteInvoiceAction(formData: FormData) {
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   if (!packageId || !invoiceId) {
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=Missing+invoice+id`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing invoice id" }));
   }
   try {
     const existing = await getParentInvoiceById(invoiceId);
@@ -148,9 +222,9 @@ async function deleteInvoiceAction(formData: FormData) {
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete invoice failed";
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
-  redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?msg=Invoice+deleted`);
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Invoice deleted" }));
 }
 
 async function deleteReceiptAction(formData: FormData) {
@@ -158,17 +232,19 @@ async function deleteReceiptAction(formData: FormData) {
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   if (!packageId || !receiptId) {
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=Missing+receipt+id`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing receipt id" }));
   }
   try {
     await deleteParentReceipt({ receiptId, actorEmail: admin.email });
     await deleteParentReceiptApproval(receiptId);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete receipt failed";
-    redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?err=${encodeURIComponent(msg)}`);
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
-  redirect(`/admin/packages/${encodeURIComponent(packageId)}/billing?msg=Receipt+deleted`);
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Receipt deleted" }));
 }
 
 export default async function PackageBillingPage({
@@ -176,13 +252,15 @@ export default async function PackageBillingPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; source?: string; receiptsBack?: string }>;
 }) {
   await requireAdmin();
   const { id: packageId } = await params;
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const sourceWorkflow = normalizePackageBillingSource(sp?.source);
+  const receiptsBack = sanitizeReceiptsBack(sp?.receiptsBack);
   const lang = await getLang();
 
   const [pkg, data, roleCfg] = await Promise.all([
@@ -202,6 +280,8 @@ export default async function PackageBillingPage({
     .filter((record) => !linkedPaymentRecordIdSet.has(record.id))
     .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
   const soleSuggestedPaymentRecord = unlinkedPaymentRecords.length === 1 ? unlinkedPaymentRecords[0] : null;
+  const totalInvoiceAmount = roundMoney(data.invoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount || 0), 0));
+  const totalReceiptedAmount = roundMoney(data.receipts.reduce((sum, receipt) => sum + Number(receipt.amountReceived || 0), 0));
   const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
@@ -243,13 +323,19 @@ export default async function PackageBillingPage({
           nextReceiptNo: nextParentReceiptNo(invoice.invoiceNo, linkedReceipts.map((receipt) => receipt.receiptNo)),
           status:
             linkedReceipts.length === 0
-              ? t(lang, "No receipts yet", "还没有收据")
+              ? t(lang, "Receipt action needed", "待创建收据")
               : remainingAmount > 0.01
-                ? t(lang, "Partially receipted", "部分已开收据")
-                : t(lang, "Fully receipted", "已全部开收据"),
+                ? t(lang, "Receipting in progress", "收据处理中")
+                : t(lang, "Receipting complete", "收据已完成"),
         },
       ] as const;
     })
+  );
+  const totalRemainingAmount = roundMoney(
+    Array.from(receiptProgressMap.values()).reduce((sum, progress) => sum + Number(progress.remainingAmount || 0), 0)
+  );
+  const totalPendingApprovalAmount = roundMoney(
+    Array.from(receiptProgressMap.values()).reduce((sum, progress) => sum + Number(progress.pendingAmount || 0), 0)
   );
   const creatorEmails = Array.from(
     new Set(
@@ -268,57 +354,144 @@ export default async function PackageBillingPage({
         ).map((user) => [user.email.trim().toLowerCase(), { name: user.name, email: user.email }] as const)
       )
     : new Map<string, { name: string | null; email: string }>();
+  const receiptsCenterHref = buildReceiptsCenterHref(packageId, { sourceWorkflow, receiptsBack });
 
   return (
     <div>
       <h2>{t(lang, "Package Billing", "课包账单")}</h2>
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <a href="/admin/packages">← {t(lang, "Back to Packages", "返回课包列表")}</a>
+        {sourceWorkflow === "receipts" ? (
+          <>
+            <span style={{ color: "#94a3b8" }}>·</span>
+            <a href={receiptsBack} style={{ fontWeight: 700 }}>
+              {t(lang, "Back to Receipt Queue", "返回收据审批队列")}
+            </a>
+          </>
+        ) : null}
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 14 }}>
-        <div><b>{t(lang, "Student", "学生")}:</b> {pkg.student.name}</div>
-        <div><b>{t(lang, "Course", "课程")}:</b> {pkg.course.name}</div>
-        <div><b>{t(lang, "Package Id", "课包ID")}:</b> {pkg.id}</div>
-        <div><b>{t(lang, "Paid", "已付款")}:</b> {pkg.paid ? t(lang, "Yes", "是") : t(lang, "No", "否")} / {money(pkg.paidAmount)}</div>
-        <div style={{ marginTop: 8 }}>
-          <a href={`/api/exports/parent-statement/${encodeURIComponent(packageId)}`}>
-            {t(lang, "Export Statement of Account PDF", "导出对账单 PDF")}
-          </a>
+      {sourceWorkflow === "receipts" ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1e3a8a",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "From Receipt Queue", "来自收据审批队列")}</div>
+            <div style={{ fontSize: 13 }}>
+              {t(
+                lang,
+                "You opened this package from the receipt queue to inspect billing context. Review the invoice and receipt progress here, then jump back to the same queue when you are ready for the next item.",
+                "你是从收据审批队列进入当前课包账单页的。可以先在这里核对发票和收据进度，处理完再回到原来的队列继续下一条。"
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href={receiptsBack} style={{ fontWeight: 700 }}>
+              {t(lang, "Back to Receipt Queue", "返回收据审批队列")}
+            </a>
+            <a href={receiptsCenterHref} style={{ fontWeight: 700 }}>
+              {t(lang, "Open this package in Receipt Center", "在收据中心打开当前课包")}
+            </a>
+          </div>
+        </div>
+      ) : null}
+
+      <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 14, marginBottom: 14, background: "#f8fbff", display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Package billing workspace", "课包账单工作台")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(
+                lang,
+                "Keep the top strip for billing context and receipt progress. Open the invoice form only when you need to create a new invoice.",
+                "首屏先看账单上下文和收据进度；只有需要新建发票时，再展开下方发票表单。"
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href={`/api/exports/parent-statement/${encodeURIComponent(packageId)}`}>
+              {t(lang, "Export Statement of Account PDF", "导出对账单 PDF")}
+            </a>
+            <a href={receiptsCenterHref}>
+              {t(lang, "Open Receipt Center", "打开收据中心")}
+            </a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Package", "课包")}</div>
+            <div style={{ fontWeight: 800, marginTop: 4 }}>{pkg.student.name}</div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{pkg.course.name}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Invoice total", "发票总额")}</div>
+            <div style={{ fontWeight: 800, marginTop: 4 }}>{money(totalInvoiceAmount)}</div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{data.invoices.length} {t(lang, "invoice(s)", "张发票")}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipted", "已开收据")}</div>
+            <div style={{ fontWeight: 800, marginTop: 4 }}>{money(totalReceiptedAmount)}</div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{data.receipts.length} {t(lang, "receipt(s)", "张收据")}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", padding: "10px 12px" }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Still waiting", "仍待处理")}</div>
+            <div style={{ fontWeight: 800, marginTop: 4, color: totalRemainingAmount > 0.01 ? "#b45309" : "#166534" }}>{money(totalRemainingAmount)}</div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
+              {t(lang, "Approval action needed", "等待审批处理")}: {money(totalPendingApprovalAmount)}
+            </div>
+          </div>
         </div>
       </div>
 
-      <h3>{t(lang, "Create Invoice", "创建 Invoice")}</h3>
-      <form action={createInvoiceAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
-        <input type="hidden" name="packageId" value={packageId} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
-          <label>Invoice No.
-            <input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} />
-            <div style={{ fontSize: 12, color: "#666" }}>Format: RGT-yyyymm-xxxx (editable)</div>
-          </label>
-          <label>Issue Date<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-          <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
-          <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
-          <label>Course Start<input name="courseStartDate" type="date" style={{ width: "100%" }} /></label>
-          <label>Course End<input name="courseEndDate" type="date" style={{ width: "100%" }} /></label>
-          <label>Quantity<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
-          <label>Bill To<input name="billTo" defaultValue={pkg.student.name} style={{ width: "100%" }} /></label>
-          <label>Amount<input name="amount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
-          <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={0} style={{ width: "100%" }} /></label>
-          <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
-          <label style={{ gridColumn: "span 4" }}>Description
-            <input name="description" defaultValue={`Course Fees for ${pkg.student.name}`} style={{ width: "100%" }} />
-          </label>
-          <label style={{ gridColumn: "span 4" }}>Note
-            <input name="note" style={{ width: "100%" }} />
-          </label>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <button type="submit">{t(lang, "Create Invoice", "创建 Invoice")}</button>
-        </div>
-      </form>
+      <details open={data.invoices.length === 0} style={{ marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
+        <summary style={{ cursor: "pointer", listStyle: "none", padding: "12px 14px", fontWeight: 800 }}>
+          {t(lang, "Create Invoice", "创建 Invoice")}
+        </summary>
+        <form action={createInvoiceAction} style={{ borderTop: "1px solid #e5e7eb", padding: 12 }}>
+          <input type="hidden" name="packageId" value={packageId} />
+          <input type="hidden" name="source" value={sourceWorkflow} />
+          <input type="hidden" name="receiptsBack" value={receiptsBack} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+            <label>Invoice No.
+              <input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} />
+              <div style={{ fontSize: 12, color: "#666" }}>Format: RGT-yyyymm-xxxx (editable)</div>
+            </label>
+            <label>Issue Date<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+            <label>Due Date<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
+            <label>Payment Terms<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
+            <label>Course Start<input name="courseStartDate" type="date" style={{ width: "100%" }} /></label>
+            <label>Course End<input name="courseEndDate" type="date" style={{ width: "100%" }} /></label>
+            <label>Quantity<input name="quantity" type="number" min={1} defaultValue={1} style={{ width: "100%" }} /></label>
+            <label>Bill To<input name="billTo" defaultValue={pkg.student.name} style={{ width: "100%" }} /></label>
+            <label>Amount<input name="amount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
+            <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={0} style={{ width: "100%" }} /></label>
+            <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
+            <label style={{ gridColumn: "span 4" }}>Description
+              <input name="description" defaultValue={`Course Fees for ${pkg.student.name}`} style={{ width: "100%" }} />
+            </label>
+            <label style={{ gridColumn: "span 4" }}>Note
+              <input name="note" style={{ width: "100%" }} />
+            </label>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <button type="submit">{t(lang, "Create Invoice", "创建 Invoice")}</button>
+          </div>
+        </form>
+      </details>
 
       <h3>{t(lang, "Receipt Finance Processing", "收据财务处理")}</h3>
       <div style={{ marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa" }}>
@@ -332,7 +505,7 @@ export default async function PackageBillingPage({
             {soleSuggestedPaymentRecord.originalFileName} {soleSuggestedPaymentRecord.paymentAmount == null ? "" : `(${money(soleSuggestedPaymentRecord.paymentAmount)})`}
           </div>
         ) : null}
-        <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}`}>
+        <a href={receiptsCenterHref}>
           Open Finance Receipt Center
         </a>
       </div>
@@ -366,7 +539,7 @@ export default async function PackageBillingPage({
                 rejectedAmount: 0,
                 remainingAmount: roundMoney(r.totalAmount),
                 nextReceiptNo: `${r.invoiceNo}-RC`,
-                status: t(lang, "No receipts yet", "还没有收据"),
+                status: t(lang, "Receipt action needed", "待创建收据"),
               };
               const nextReceiptLabel = progress.nextReceiptNo.split("-").pop() ?? progress.nextReceiptNo;
               return (
@@ -386,20 +559,28 @@ export default async function PackageBillingPage({
                   </td>
                   <td>
                     <div style={{ fontSize: 12, color: "#334155" }}>
-                      {t(lang, "approved", "已批")}: {money(progress.approvedAmount)}
+                      {t(lang, "Approved", "已批准")}: {money(progress.approvedAmount)}
                     </div>
                     <div style={{ fontSize: 12, color: progress.pendingAmount > 0.01 ? "#92400e" : "#64748b" }}>
-                      {t(lang, "pending", "待批")}: {money(progress.pendingAmount)}
+                      {t(lang, "Approval action needed", "等待审批处理")}: {money(progress.pendingAmount)}
                     </div>
                     {progress.rejectedAmount > 0.01 ? (
                       <div style={{ fontSize: 12, color: "#b91c1c" }}>
-                        {t(lang, "rejected", "已驳回")}: {money(progress.rejectedAmount)}
+                        {t(lang, "Rejected", "已驳回")}: {money(progress.rejectedAmount)}
                       </div>
                     ) : null}
                   </td>
                   <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
                   <td>
-                    <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}&step=create&invoiceId=${encodeURIComponent(r.id)}${soleSuggestedPaymentRecord && progress.remainingAmount > 0.01 ? `&paymentRecordId=${encodeURIComponent(soleSuggestedPaymentRecord.id)}` : ""}`}>
+                    <a
+                      href={buildReceiptsCenterHref(packageId, {
+                        sourceWorkflow,
+                        receiptsBack,
+                        step: "create",
+                        invoiceId: r.id,
+                        paymentRecordId: soleSuggestedPaymentRecord && progress.remainingAmount > 0.01 ? soleSuggestedPaymentRecord.id : "",
+                      })}
+                    >
                       {progress.remainingAmount > 0.01
                         ? t(lang, `Create ${nextReceiptLabel}`, `创建 ${nextReceiptLabel}`)
                         : t(lang, "Review receipts", "查看收据")}
@@ -422,6 +603,8 @@ export default async function PackageBillingPage({
                     <form action={deleteInvoiceAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="invoiceId" value={r.id} />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit">Delete</button>
                     </form>
                   </td>
@@ -434,7 +617,7 @@ export default async function PackageBillingPage({
 
       <h3>{t(lang, "Receipts", "收据")}</h3>
       <div style={{ marginBottom: 8 }}>
-        <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}`}>
+        <a href={receiptsCenterHref}>
           {t(lang, "Open Receipt Approval Center", "打开收据审批中心")}
         </a>
       </div>
@@ -504,7 +687,12 @@ export default async function PackageBillingPage({
                     {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
                   </td>
                   <td>
-                    <a href={`/admin/receipts-approvals?packageId=${encodeURIComponent(packageId)}`}>Go to Approval</a>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
+                        {packageReceiptApprovalStateLabel(lang, approval, roleCfg)}
+                      </div>
+                      <a href={receiptsCenterHref}>Go to Approval</a>
+                    </div>
                   </td>
                   <td>
                     {exportReady ? (
@@ -519,6 +707,8 @@ export default async function PackageBillingPage({
                     <form action={deleteReceiptAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="receiptId" value={r.id} />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit">Delete</button>
                     </form>
                   </td>
