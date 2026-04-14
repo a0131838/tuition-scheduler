@@ -61,6 +61,12 @@ function withApprovalSource(href: string, focus: Focus) {
   return `${url.pathname}${url.search}`;
 }
 
+function compactSubtitle(value: string) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  return normalized.length > 88 ? `${normalized.slice(0, 85)}...` : normalized;
+}
+
 export default async function AdminApprovalsPage({
   searchParams,
 }: {
@@ -210,7 +216,7 @@ export default async function AdminApprovalsPage({
                 border: "1px solid #e5e7eb",
                 borderRadius: 14,
                 background: "#fff",
-                padding: 14,
+                padding: 12,
                 display: "grid",
                 gridTemplateColumns: "minmax(260px, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr) auto",
                 gap: 12,
@@ -218,17 +224,17 @@ export default async function AdminApprovalsPage({
               }}
             >
               <div style={{ display: "grid", gap: 6 }}>
-                <div>
+                <div style={{ display: "grid", gap: 4 }}>
                   <div style={{ fontWeight: 800, color: "#0f172a" }}>{item.title}</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 1.45 }}>{item.subtitle}</div>
+                  {item.subtitle ? (
+                    <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>{compactSubtitle(item.subtitle)}</div>
+                  ) : null}
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 12 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#475569" }}>
                   <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155", fontWeight: 700 }}>
                     {typeLabel(lang, item.type)}
                   </span>
-                  <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", color: "#475569", fontWeight: 600 }}>
-                    {t(lang, "Submitted", "提交")}: {formatBusinessDateTime(new Date(item.createdAt))}
-                  </span>
+                  <span>{t(lang, "Submitted", "提交")}: {formatBusinessDateTime(new Date(item.createdAt))}</span>
                 </div>
               </div>
               <div style={{ display: "grid", gap: 6 }}>

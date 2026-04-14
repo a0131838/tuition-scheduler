@@ -127,6 +127,13 @@ function buildFinanceGroupKey(submitterUserId: string, currencyCode: string) {
   return `${submitterUserId}::${currencyCode}`;
 }
 
+function focusFinanceGroupHref(baseQuery: string, financeGroup: string) {
+  const params = new URLSearchParams(baseQuery);
+  params.set('approvedUnpaidOnly', '1');
+  params.set('financeGroup', financeGroup);
+  return `/admin/expense-claims?${params.toString()}`;
+}
+
 function withExpenseRepairReturn(
   input: Record<string, string | null | undefined>,
   repairReturnMode: 'review' | 'finance' | '',
@@ -533,6 +540,7 @@ export default async function AdminExpenseClaimsPage({
   const reviewQueue = visibleClaims.filter((claim) => claim.status === ExpenseClaimStatus.SUBMITTED);
   const selectedReviewClaim = reviewQueue.find((claim) => claim.id === selectedClaimIdParam) ?? reviewQueue[0] ?? null;
   const selectedReviewIndex = selectedReviewClaim ? reviewQueue.findIndex((claim) => claim.id === selectedReviewClaim.id) : -1;
+  const previousReviewClaimId = selectedReviewIndex > 0 ? reviewQueue[selectedReviewIndex - 1]?.id ?? '' : '';
   const nextReviewClaimId = selectedReviewIndex >= 0 && selectedReviewIndex + 1 < reviewQueue.length ? reviewQueue[selectedReviewIndex + 1]?.id ?? '' : '';
   const financeQueue = visibleClaims.filter((claim) => claim.status === ExpenseClaimStatus.APPROVED);
   const financeGroups = Array.from(
@@ -571,6 +579,11 @@ export default async function AdminExpenseClaimsPage({
     financeGroups[0] ??
     null;
   const selectedFinanceGroupIndex = selectedFinanceGroup ? financeGroups.findIndex((group) => group.key === selectedFinanceGroup.key) : -1;
+  const previousFinanceGroupKey = selectedFinanceGroupIndex > 0 ? financeGroups[selectedFinanceGroupIndex - 1]?.key ?? '' : '';
+  const nextFinanceGroupKey =
+    selectedFinanceGroupIndex >= 0 && selectedFinanceGroupIndex + 1 < financeGroups.length
+      ? financeGroups[selectedFinanceGroupIndex + 1]?.key ?? ''
+      : '';
   const activeFilterCount = [
     statusFilter !== 'ALL',
     Boolean(monthFilter),
@@ -969,15 +982,17 @@ export default async function AdminExpenseClaimsPage({
                         <span>{claim.submitterName}</span>
                         <span>{formatExpenseMoney(claim.amountCents + (claim.gstAmountCents ?? 0), claim.currencyCode)}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: '#475569', fontSize: 13 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#475569', fontSize: 12 }}>
                         <span>{formatUTCDateOnly(claim.expenseDate)}</span>
+                        <span>·</span>
                         <span>{getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode}</span>
+                        {claim.studentName ? (
+                          <>
+                            <span>·</span>
+                            <span>{t(lang, 'Student', '学生')}: {claim.studentName}</span>
+                          </>
+                        ) : null}
                       </div>
-                      {claim.studentName ? (
-                        <div style={{ color: '#334155', fontSize: 12 }}>
-                          {t(lang, 'Student', '学生')}: {claim.studentName}
-                        </div>
-                      ) : null}
                     </a>
                   );
                 })}
@@ -1004,16 +1019,47 @@ export default async function AdminExpenseClaimsPage({
                     : t(lang, 'Pick one submitted claim from the queue to review it here.', '从左侧待审批队列选择一条后，在这里集中处理。')}
                 </div>
               </div>
-              {selectedReviewClaim ? (
-                <div style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 13 }}>
-                  {t(lang, 'Queue position', '队列位置')} {selectedReviewIndex + 1} / {reviewQueue.length}
-                  {reviewAttachmentIssueCount ? ` · ${t(lang, 'Attachment issues', '附件异常')}: ${reviewAttachmentIssueCount}` : ''}
-                </div>
-              ) : null}
-            </div>
+                {selectedReviewClaim ? (
+                  <div style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 13 }}>
+                    {t(lang, 'Queue position', '队列位置')} {selectedReviewIndex + 1} / {reviewQueue.length}
+                    {reviewAttachmentIssueCount ? ` · ${t(lang, 'Attachment issues', '附件异常')}: ${reviewAttachmentIssueCount}` : ''}
+                  </div>
+                ) : null}
+              </div>
 
             {selectedReviewClaim ? (
               <>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #dbeafe',
+                    background: '#f8fbff',
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                      {selectedReviewClaim.claimRefNo} · {selectedReviewClaim.submitterName}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#475569' }}>
+                      {t(lang, 'Queue position', '队列位置')}: <b>{selectedReviewIndex + 1} / {reviewQueue.length}</b>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {previousReviewClaimId ? (
+                      <a href={focusClaimHref(workflowQuery, previousReviewClaimId)}>{t(lang, 'Open previous', '打开上一条')}</a>
+                    ) : null}
+                    {nextReviewClaimId ? (
+                      <a href={focusClaimHref(workflowQuery, nextReviewClaimId)}>{t(lang, 'Open next', '打开下一条')}</a>
+                    ) : null}
+                    <a href={quickSubmittedHref}>{t(lang, 'Back to review queue', '返回待审批队列')}</a>
+                  </div>
+                </div>
                 <div style={{ display: 'grid', gap: 8 }}>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedReviewClaim.claimRefNo}</div>
                   <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
@@ -1198,12 +1244,14 @@ export default async function AdminExpenseClaimsPage({
                           <span>{group.submitterName}</span>
                           <span>{formatExpenseMoney(group.totalCents, group.currencyCode)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: '#475569', fontSize: 13 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#475569', fontSize: 12 }}>
                           <span>{group.claims.length} {t(lang, 'claims', '条报销单')}</span>
+                          <span>·</span>
+                          <span>{financeTypeLabel}</span>
+                          <span>·</span>
+                          <span>{group.currencyCode}</span>
+                          <span>·</span>
                           <span>{firstClaim.approverEmail || t(lang, 'Approved', '已批准')}</span>
-                        </div>
-                        <div style={{ color: '#334155', fontSize: 12 }}>
-                          {t(lang, 'Primary type / currency', '主要类型 / 币种')}: {financeTypeLabel} · {group.currencyCode}
                         </div>
                       </a>
                     );
@@ -1241,6 +1289,37 @@ export default async function AdminExpenseClaimsPage({
 
               {selectedFinanceGroup ? (
                 <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #fde68a',
+                      background: '#fffdf5',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        {selectedFinanceGroup.submitterName} · {selectedFinanceGroup.currencyCode}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#475569' }}>
+                        {t(lang, 'Queue position', '队列位置')}: <b>{selectedFinanceGroupIndex + 1} / {financeGroups.length}</b>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {previousFinanceGroupKey ? (
+                        <a href={focusFinanceGroupHref(workflowQuery, previousFinanceGroupKey)}>{t(lang, 'Open previous', '打开上一条')}</a>
+                      ) : null}
+                      {nextFinanceGroupKey ? (
+                        <a href={focusFinanceGroupHref(workflowQuery, nextFinanceGroupKey)}>{t(lang, 'Open next', '打开下一条')}</a>
+                      ) : null}
+                      <a href={quickApprovedUnpaidHref}>{t(lang, 'Back to finance queue', '返回财务队列')}</a>
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gap: 8 }}>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedFinanceGroup.submitterName} · {selectedFinanceGroup.currencyCode}</div>
                     <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>

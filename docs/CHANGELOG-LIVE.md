@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r60
+
+- Release ID: `2026-04-14-r60`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: extend the tighter queue-workbench pattern into Approval Inbox and Expense Claims by compressing approval-row scan density, making expense review and finance groups easier to compare, and adding previous/next navigation inside the selected expense panels.
+- Key files:
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-ux-batch5-approval-and-expense-density-navigation.md`
+- Risk impact (if any): Low. This release only changes approval-list density, queue-navigation affordances, and selected-panel guidance on existing approval pages. It does not change expense approval rules, payment rules, or receipt logic.
+- Verification:
+  - `npm run build`
+  - approval inbox rows should read more compactly without losing key metadata
+  - expense review should show previous/next navigation for submitted claims
+  - finance queue should show previous/next navigation for approved-unpaid groups
+- Rollback point: previous production commit before `2026-04-14-r60`.
+
 ## 2026-04-14-r59
 
 - Release ID: `2026-04-14-r59`
