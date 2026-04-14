@@ -1,11 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
+import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { workbenchHeroStyle } from "./_components/workbenchStyles";
 
 export default async function AdminHome() {
   const lang = await getLang();
   const user = await getCurrentUser();
   const isFinance = user?.role === "FINANCE";
+  const approvalInbox = await getApprovalInboxData(user?.email, user?.role);
   const cardStyle = {
     padding: "16px 18px",
     borderRadius: 16,
@@ -72,6 +74,35 @@ export default async function AdminHome() {
           </div>
         </section>
 
+        <section style={{ ...cardStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.3 }}>
+            {t(lang, "Pending approvals", "待审批提醒")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 12 }}>
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Needs action", "待处理")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>{approvalInbox.summary.total}</div>
+            </div>
+            <div style={{ border: "1px solid #fde68a", borderRadius: 12, background: "#fff", padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Overdue", "超时")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#92400e" }}>{approvalInbox.summary.overdue}</div>
+            </div>
+            <div style={{ border: "1px solid #c7d2fe", borderRadius: 12, background: "#fff", padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Manager", "管理")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#3730a3" }}>{approvalInbox.summary.manager}</div>
+            </div>
+            <div style={{ border: "1px solid #fdba74", borderRadius: 12, background: "#fff", padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Finance", "财务")}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#9a3412" }}>{approvalInbox.summary.finance}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <a href="/admin/approvals" style={{ fontWeight: 800 }}>
+              {t(lang, "Open Approval Inbox", "打开审批提醒中心")}
+            </a>
+          </div>
+        </section>
+
         <section style={{ ...cardStyle, background: "#fafafa" }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
             {t(lang, "Reference Tools", "辅助入口")}
@@ -130,6 +161,39 @@ export default async function AdminHome() {
           <a href="/admin/reports/teacher-payroll" style={{ ...tileStyle, background: "#eef2ff", borderColor: "#c7d2fe" }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Teacher Payroll", "老师工资单")}</div>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Queue-first salary review and payout flow.", "队列优先的工资审核和发薪流程。")}</div>
+          </a>
+        </div>
+      </section>
+
+      <section style={{ ...cardStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.3 }}>
+          {t(lang, "Pending approvals", "待审批提醒")}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 12 }}>
+          <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Needs action", "待处理")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>{approvalInbox.summary.total}</div>
+          </div>
+          <div style={{ border: "1px solid #fde68a", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Overdue", "超时")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#92400e" }}>{approvalInbox.summary.overdue}</div>
+          </div>
+          <div style={{ border: "1px solid #c7d2fe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Manager", "管理")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#3730a3" }}>{approvalInbox.summary.manager}</div>
+          </div>
+          <div style={{ border: "1px solid #fdba74", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Finance", "财务")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#9a3412" }}>{approvalInbox.summary.finance}</div>
+          </div>
+          <div style={{ border: "1px solid #86efac", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Expense", "报销")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#166534" }}>{approvalInbox.summary.expense}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <a href="/admin/approvals" style={{ fontWeight: 800 }}>
+            {t(lang, "Open Approval Inbox", "打开审批提醒中心")}
           </a>
         </div>
       </section>

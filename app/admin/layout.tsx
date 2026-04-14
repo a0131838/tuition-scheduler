@@ -1,6 +1,7 @@
 import { isManagerUser, requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
+import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -50,6 +51,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/schedule")) return t(lang, "Schedule Operations", "排课操作区");
   if (matchesPath(pathname, "/admin/reports/teacher-payroll")) return t(lang, "Payroll Review", "工资处理");
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
+  if (matchesPath(pathname, "/admin/approvals")) return t(lang, "Approval Inbox", "审批提醒中心");
   if (matchesPath(pathname, "/admin/receipts-approvals/queue")) return t(lang, "Receipt Queue", "收据审批队列");
   if (matchesPath(pathname, "/admin/receipts-approvals/package")) return t(lang, "Package Finance Workspace", "课包财务工作区");
   if (matchesPath(pathname, "/admin/receipts-approvals/repairs")) return t(lang, "Proof Repair Desk", "凭证修复台");
@@ -67,6 +69,13 @@ function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFina
       lang,
       "Keep queue work narrow: pick the next payable or blocked item, then clear the current row before scanning history.",
       "尽量缩窄财务处理视角：先处理下一条可付款或被阻塞的事项，再回头看历史。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/approvals")) {
+    return t(
+      lang,
+      "Use this inbox as the single starting point for pending approvals, then jump into the matching workflow only after you pick the item.",
+      "把这里当成统一审批起点，先选中项目，再跳进对应工作流。"
     );
   }
   if (matchesPath(pathname, "/admin/todos")) {
@@ -112,9 +121,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     select: { value: true },
   });
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
+  const approvalInbox = await getApprovalInboxData(user.email, user.role);
+  const approvalInboxLabel =
+    approvalInbox.summary.total > 0
+      ? `${t(lang, "Approval Inbox", "审批提醒")} (${approvalInbox.summary.total})`
+      : t(lang, "Approval Inbox", "审批提醒");
 
   const financeAllowedPath =
     pathname === "/admin" ||
+    pathname === "/admin/approvals" ||
     pathname === "/admin/finance/workbench" ||
     pathname === "/admin/finance/student-package-invoices" ||
     pathname === "/admin/finance/student-package-balances" ||
@@ -188,6 +203,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Finance & Review", "财务与审核"),
       summary: t(lang, "Approval queues, settlement, and repair desks.", "审批队列、结算和修复工作台。"),
       items: [
+        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
         { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
@@ -255,6 +271,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Approval Queues", "审核队列"),
       summary: t(lang, "Process one approval stream at a time.", "一次处理一条审批流。"),
       items: [
+        { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
         { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },

@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r54
+
+- Release ID: `2026-04-14-r54`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: add a first unified `Approval Inbox / 审批提醒中心` that consolidates pending parent receipt, partner receipt, and expense-claim approvals into one admin page, while also surfacing the same pending counts in the sidebar and admin home summary cards.
+- Key files:
+  - `lib/approval-inbox.ts`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-approval-inbox-v1.md`
+- Risk impact (if any): Low. This release adds a read-only cross-workspace approval summary and new navigation entry points for manager, finance, and super-admin users. It does not change the underlying approval rules, approval order, receipt math, expense-claim decisions, billing data, scheduling, sessions, or package behavior.
+- Verification:
+  - `npm run build`
+  - `/admin/approvals` should show pending parent receipt, partner receipt, and expense-claim items relevant to the current user
+  - sidebar navigation should expose `Approval Inbox / 审批提醒` with a live pending count for admin and finance users
+  - admin home summary should show the new pending-approvals card and link into `/admin/approvals`
+- Rollback point: previous production commit before `2026-04-14-r54`.
+
 ## 2026-04-14-r53
 
 - Release ID: `2026-04-14-r53`
