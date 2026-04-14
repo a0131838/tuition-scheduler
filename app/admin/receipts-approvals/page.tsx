@@ -17,10 +17,12 @@ import {
   deleteParentPaymentRecord,
   getParentInvoiceById,
   getParentPaymentRecordById,
+  getParentReceiptById,
   listAllParentBilling,
   listParentBillingForPackage,
   replaceParentPaymentRecord,
   updateParentPaymentRecordAmount,
+  updateParentReceiptDirect,
 } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import {
@@ -347,6 +349,7 @@ function describeReceiptActionResult(
   if (normalized === "Payment record uploaded") return `${t(lang, "Payment record uploaded", "缴费记录已上传")} · ${withMove}`;
   if (normalized === "Payment record replaced") return `${t(lang, "Payment record replaced", "缴费记录已替换")} · ${withMove}`;
   if (normalized === "Payment record deleted") return `${t(lang, "Payment record deleted", "缴费记录已删除")} · ${withMove}`;
+  if (normalized === "Receipt updated in place") return `${t(lang, "Receipt updated in place", "收据已原地修正")} · ${withMove}`;
   if (normalized === "Receipt created") return `${t(lang, "Receipt created", "收据已创建")} · ${withMove}`;
   return normalized;
 }
@@ -698,6 +701,42 @@ async function updatePaymentRecordAmountAction(formData: FormData) {
     redirect(appendResultParam(actionHref, "err", msg));
   }
   redirect(appendResultParam(actionHref, "msg", "Payment record amount updated"));
+}
+
+async function directEditParentReceiptAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const current = await getCurrentUser();
+  const actorEmail = (current?.email ?? admin.email).trim().toLowerCase();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const receiptId = String(formData.get("receiptId") ?? "").trim();
+  const fallbackHref = withQuery("/admin/receipts-approvals", packageId);
+  const actionHref = resolveActionHref(formData, fallbackHref);
+  if (actorEmail !== SUPER_ADMIN_EMAIL) {
+    redirect(appendResultParam(actionHref, "err", "Not allowed"));
+  }
+  if (!packageId || !receiptId) {
+    redirect(appendResultParam(actionHref, "err", "Missing receipt id"));
+  }
+  try {
+    await updateParentReceiptDirect({
+      packageId,
+      receiptId,
+      receiptDate: String(formData.get("receiptDate") ?? "").trim(),
+      receivedFrom: String(formData.get("receivedFrom") ?? "").trim(),
+      paidBy: String(formData.get("paidBy") ?? "").trim(),
+      amount: Number(formData.get("amount") ?? 0) || 0,
+      gstAmount: Number(formData.get("gstAmount") ?? 0) || 0,
+      totalAmount: Number(formData.get("totalAmount") ?? 0) || 0,
+      amountReceived: Number(formData.get("amountReceived") ?? 0) || 0,
+      note: String(formData.get("note") ?? "").trim() || null,
+      actorEmail,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Direct edit receipt failed";
+    redirect(appendResultParam(actionHref, "err", msg));
+  }
+  redirect(appendResultParam(actionHref, "msg", "Receipt updated in place"));
 }
 
 async function createReceiptAction(formData: FormData) {
@@ -1509,6 +1548,10 @@ export async function ReceiptsApprovalsPageContent({
     (!isHistoryScreen ? unifiedQueue.find((x) => x.type === selectedType && x.id === selectedId) : null) ??
     defaultVisibleQueue[0] ??
     null;
+  const selectedParentReceipt =
+    selectedRow?.type === "PARENT"
+      ? await getParentReceiptById(selectedRow.id)
+      : null;
   const activeQueueForNavigation =
     selectedRow?.status === "COMPLETED"
       ? visibleCompletedQueue
@@ -3681,6 +3724,60 @@ export async function ReceiptsApprovalsPageContent({
                         {t(lang, "Open package billing", "打开课包账单页")}
                       </a>
                     </div>
+                  ) : null}
+                  {canSuperRevoke && selectedRow.type === "PARENT" && selectedParentReceipt ? (
+                    <form
+                      action={directEditParentReceiptAction}
+                      style={{
+                        display: "grid",
+                        gap: 8,
+                        border: "1px solid #bfdbfe",
+                        borderRadius: 10,
+                        background: "#eff6ff",
+                        padding: 12,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
+                        {t(lang, "Direct super-admin correction", "超管直接修正")}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#334155" }}>
+                        {t(lang, "This updates the approved parent receipt in place and keeps existing approvals valid. Every change is still written into the audit log.", "这个入口会直接原地修改已审批的家长收据，并保留现有审批有效。每次修改仍会写入审计日志。")}
+                      </div>
+                      <input type="hidden" name="packageId" value={selectedRow.packageId} />
+                      <input type="hidden" name="receiptId" value={selectedRow.id} />
+                      <input type="hidden" name="nextHref" value={selectedReviewHref} />
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+                        <label>{t(lang, "Receipt Date", "收据日期")}
+                          <input name="receiptDate" type="date" defaultValue={normalizeDateOnly(selectedParentReceipt.receiptDate) ?? ""} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "Received From", "收款对象")}
+                          <input name="receivedFrom" defaultValue={selectedParentReceipt.receivedFrom} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "Paid By", "付款方式")}
+                          <input name="paidBy" defaultValue={selectedParentReceipt.paidBy} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "Amount", "金额")}
+                          <input name="amount" type="number" min={0} step="0.01" defaultValue={selectedParentReceipt.amount} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "GST", "消费税")}
+                          <input name="gstAmount" type="number" min={0} step="0.01" defaultValue={selectedParentReceipt.gstAmount} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "Total", "合计")}
+                          <input name="totalAmount" type="number" min={0} step="0.01" defaultValue={selectedParentReceipt.totalAmount} style={{ width: "100%" }} />
+                        </label>
+                        <label>{t(lang, "Amount Received", "实收金额")}
+                          <input name="amountReceived" type="number" min={0} step="0.01" defaultValue={selectedParentReceipt.amountReceived} style={{ width: "100%" }} />
+                        </label>
+                        <label style={{ gridColumn: "1 / -1" }}>{t(lang, "Note", "备注")}
+                          <input name="note" defaultValue={selectedParentReceipt.note ?? ""} style={{ width: "100%" }} />
+                        </label>
+                      </div>
+                      <div>
+                        <button type="submit" style={secondaryButtonStyle}>
+                          {t(lang, "Save direct correction", "保存直接修正")}
+                        </button>
+                      </div>
+                    </form>
                   ) : null}
                   {canSuperRevoke && selectedRow.type === "PARENT" ? (
                     <form action={revokeParentReceiptForRedoAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>

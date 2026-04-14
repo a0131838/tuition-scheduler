@@ -673,6 +673,104 @@ export async function createParentReceipt(input: {
   return item!;
 }
 
+export async function updateParentReceiptDirect(input: {
+  receiptId: string;
+  packageId: string;
+  receiptDate: string;
+  receivedFrom: string;
+  paidBy: string;
+  amount: number;
+  gstAmount: number;
+  totalAmount: number;
+  amountReceived: number;
+  note?: string | null;
+  actorEmail: string;
+}) {
+  let before: ParentReceiptItem | null = null;
+  let after: ParentReceiptItem | null = null;
+  await mutateJsonAppSetting({
+    key: PARENT_BILLING_KEY,
+    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    sanitize: sanitizeStore,
+    mutate(store) {
+      const receiptId = String(input.receiptId ?? "").trim();
+      const packageId = String(input.packageId ?? "").trim();
+      const idx = store.receipts.findIndex((x) => x.id === receiptId);
+      if (idx < 0) throw new Error("Receipt not found");
+      const current = store.receipts[idx];
+      if (current.packageId !== packageId) {
+        throw new Error("Receipt does not belong to this package");
+      }
+
+      const normalizedAmountReceived = roundMoney(Number(input.amountReceived) || 0);
+      if (current.invoiceId) {
+        const invoice = store.invoices.find((x) => x.id === current.invoiceId);
+        if (!invoice) throw new Error("Linked invoice not found");
+        const otherReceiptsTotal = roundMoney(
+          store.receipts
+            .filter((x) => x.invoiceId === current.invoiceId && x.id !== current.id)
+            .reduce((sum, receipt) => sum + (Number(receipt.amountReceived) || 0), 0),
+        );
+        const invoiceTotal = roundMoney(Number(invoice.totalAmount) || 0);
+        if (roundMoney(otherReceiptsTotal + normalizedAmountReceived) > invoiceTotal + 0.01) {
+          const remainingAmount = Math.max(0, roundMoney(invoiceTotal - otherReceiptsTotal));
+          throw new Error(`Amount Received exceeds invoice remaining balance: ${remainingAmount.toFixed(2)}`);
+        }
+      }
+
+      before = { ...current };
+      after = {
+        ...current,
+        receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
+        receivedFrom: String(input.receivedFrom ?? "").trim(),
+        paidBy: String(input.paidBy ?? "").trim() || current.paidBy,
+        amount: roundMoney(Number(input.amount) || 0),
+        gstAmount: roundMoney(Number(input.gstAmount) || 0),
+        totalAmount: roundMoney(Number(input.totalAmount) || 0),
+        amountReceived: normalizedAmountReceived,
+        note: String(input.note ?? "").trim() || null,
+        updatedAt: new Date().toISOString(),
+      };
+      if (!after.receivedFrom) throw new Error("Received From is required");
+      store.receipts[idx] = after;
+    },
+  });
+  await logAudit({
+    actor: { email: input.actorEmail, role: "ADMIN" },
+    module: "PARENT_BILLING",
+    action: "DIRECT_EDIT_RECEIPT",
+    entityType: "ParentReceipt",
+    entityId: input.receiptId.trim(),
+    meta: {
+      packageId: after!.packageId,
+      studentId: after!.studentId,
+      receiptNo: after!.receiptNo,
+      approvalsPreserved: true,
+      before: {
+        receiptDate: before!.receiptDate,
+        receivedFrom: before!.receivedFrom,
+        paidBy: before!.paidBy,
+        amount: before!.amount,
+        gstAmount: before!.gstAmount,
+        totalAmount: before!.totalAmount,
+        amountReceived: before!.amountReceived,
+        note: before!.note,
+      },
+      after: {
+        receiptDate: after!.receiptDate,
+        receivedFrom: after!.receivedFrom,
+        paidBy: after!.paidBy,
+        amount: after!.amount,
+        gstAmount: after!.gstAmount,
+        totalAmount: after!.totalAmount,
+        amountReceived: after!.amountReceived,
+        note: after!.note,
+      },
+    },
+  });
+  return { before: before!, after: after! };
+}
+
 export async function buildParentReceiptNoForInvoice(invoiceId: string) {
   const store = await loadStore();
   const invoice = store.invoices.find((x) => x.id === invoiceId.trim());

@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-14-r53
+
+- Release ID: `2026-04-14-r53`
+- Date/Time (Asia/Shanghai): `2026-04-14`
+- Deployment status: `READY`
+- Scope: allow strict super-admin `zhao hongwei` to directly correct approved parent receipts in place from the receipt detail drawer without forcing a revoke-and-redo loop, while preserving existing approvals and writing every change into the audit log.
+- Key files:
+  - `lib/student-parent-billing.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260414-super-admin-direct-parent-receipt-correction.md`
+- Risk impact (if any): Medium. This release intentionally lets one strict super-admin edit approved parent receipt fields in place and keep prior approvals valid. The scope is limited to parent receipts, still writes audit logs, and still blocks cumulative amountReceived from exceeding the linked invoice total.
+- Verification:
+  - `npm run build`
+  - only `zhao hongwei` should see the direct correction form on parent receipt details
+  - direct correction should allow updating receipt date, received from, paid by, amount, gst, total, amount received, and note
+  - existing approvals should remain intact after a direct correction
+  - direct correction should still reject amountReceived values that would push the linked invoice above its total
+- Rollback point: previous production commit before `2026-04-14-r53`.
+
 ## 2026-04-14-r52
 
 - Release ID: `2026-04-14-r52`
