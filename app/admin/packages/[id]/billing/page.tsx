@@ -24,6 +24,7 @@ import {
   getApprovalRoleConfig,
 } from "@/lib/approval-flow";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
+import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 
 function parseNum(v: FormDataEntryValue | null, fallback = 0) {
   const n = Number(String(v ?? "").trim());
@@ -374,40 +375,22 @@ export default async function PackageBillingPage({
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
       {sourceWorkflow === "receipts" ? (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1e3a8a",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "From Receipt Queue", "来自收据审批队列")}</div>
-            <div style={{ fontSize: 13 }}>
-              {t(
-                lang,
-                "You opened this package from the receipt queue to inspect billing context. Review the invoice and receipt progress here, then jump back to the same queue when you are ready for the next item.",
-                "你是从收据审批队列进入当前课包账单页的。可以先在这里核对发票和收据进度，处理完再回到原来的队列继续下一条。"
-              )}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href={receiptsBack} style={{ fontWeight: 700 }}>
-              {t(lang, "Back to Receipt Queue", "返回收据审批队列")}
-            </a>
+        <WorkflowSourceBanner
+          tone="blue"
+          title={t(lang, "From Receipt Queue", "来自收据审批队列")}
+          description={t(
+            lang,
+            "You opened this package from the receipt queue to inspect billing context. Review the invoice and receipt progress here, then jump back to the same queue when you are ready for the next item.",
+            "你是从收据审批队列进入当前课包账单页的。可以先在这里核对发票和收据进度，处理完再回到原来的队列继续下一条。"
+          )}
+          primaryHref={receiptsBack}
+          primaryLabel={t(lang, "Back to Receipt Queue", "返回收据审批队列")}
+          secondaryActions={
             <a href={receiptsCenterHref} style={{ fontWeight: 700 }}>
               {t(lang, "Open this package in Receipt Center", "在收据中心打开当前课包")}
             </a>
-          </div>
-        </div>
+          }
+        />
       ) : null}
 
       <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 14, marginBottom: 14, background: "#f8fbff", display: "grid", gap: 12 }}>
@@ -465,7 +448,7 @@ export default async function PackageBillingPage({
           <input type="hidden" name="packageId" value={packageId} />
           <input type="hidden" name="source" value={sourceWorkflow} />
           <input type="hidden" name="receiptsBack" value={receiptsBack} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
             <label>Invoice No.
               <input name="invoiceNo" defaultValue={defaultInvoiceNo} style={{ width: "100%" }} />
               <div style={{ fontSize: 12, color: "#666" }}>Format: RGT-yyyymm-xxxx (editable)</div>
@@ -480,10 +463,10 @@ export default async function PackageBillingPage({
             <label>Amount<input name="amount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
             <label>GST<input name="gstAmount" type="number" step="0.01" defaultValue={0} style={{ width: "100%" }} /></label>
             <label>Total<input name="totalAmount" type="number" step="0.01" defaultValue={pkg.paidAmount ?? ""} style={{ width: "100%" }} /></label>
-            <label style={{ gridColumn: "span 4" }}>Description
+            <label style={{ gridColumn: "1 / -1" }}>Description
               <input name="description" defaultValue={`Course Fees for ${pkg.student.name}`} style={{ width: "100%" }} />
             </label>
-            <label style={{ gridColumn: "span 4" }}>Note
+            <label style={{ gridColumn: "1 / -1" }}>Note
               <input name="note" style={{ width: "100%" }} />
             </label>
           </div>
@@ -512,7 +495,12 @@ export default async function PackageBillingPage({
 
       <h3>{t(lang, "Invoices", "Invoices")}</h3>
       {data.invoices.length === 0 ? (
-        <div style={{ color: "#666", marginBottom: 16 }}>{t(lang, "No invoices yet.", "暂无 Invoice")}</div>
+        <div style={{ marginBottom: 16, border: "1px solid #fde68a", borderRadius: 12, padding: "10px 12px", background: "#fffbeb", color: "#92400e", display: "grid", gap: 6 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "No invoice has been created for this package yet", "这个课包还没有创建发票")}</div>
+          <div style={{ fontSize: 13 }}>
+            {t(lang, "Open the Create Invoice section above when finance is ready to issue the first invoice.", "财务准备开第一张发票时，展开上方创建发票区块即可。")}
+          </div>
+        </div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
           <thead>
@@ -622,7 +610,14 @@ export default async function PackageBillingPage({
         </a>
       </div>
       {data.receipts.length === 0 ? (
-        <div style={{ color: "#666" }}>{t(lang, "No receipts yet.", "暂无 Receipt")}</div>
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: "10px 12px", background: "#f8fbff", color: "#1d4ed8", display: "grid", gap: 6 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "No receipt has been created yet", "还没有创建收据")}</div>
+          <div style={{ fontSize: 13 }}>
+            {data.invoices.length === 0
+              ? t(lang, "Create an invoice first, then return here or the receipt center to create the receipt.", "请先创建发票，然后回到这里或收据中心创建收据。")
+              : t(lang, "Use the invoice action above or open the receipt center to create the first receipt.", "可使用上方发票操作，或打开收据中心创建第一张收据。")}
+          </div>
+        </div>
       ) : (
         <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>

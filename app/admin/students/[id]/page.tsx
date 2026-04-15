@@ -10,6 +10,7 @@ import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
 import NoticeBanner from "../../_components/NoticeBanner";
+import WorkflowSourceBanner from "../../_components/WorkflowSourceBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { courseEnrollmentConflictMessage } from "@/lib/enrollment-conflict";
 import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient";
@@ -2246,36 +2247,26 @@ export default async function StudentDetailPage({
       </div>
 
       {sourceWorkflow === "students" ? (
-        <div
-          style={{
-            ...workbenchInfoBarStyle,
-            marginBottom: 12,
-            borderColor: "#bfdbfe",
-            background: "#eff6ff",
-            color: "#1e3a8a",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "From Student List", "来自学生列表")}</div>
-            <div style={{ fontSize: 13 }}>
-              {coordinationOnly
-                ? t(
-                    lang,
-                    "You opened the coordination workspace from a student-list flow. Finish the current scheduling work here, then jump back to the same filtered list when you are ready for the next student.",
-                    "你是从学生列表流程进入排课协调工作台的。先在这里完成当前排课处理，处理完后可直接回到原来的筛选列表继续下一位学生。"
-                  )
-                : t(
-                    lang,
-                    "You opened this profile from a filtered student list. Keep using the quick workbench here, then jump back to the same list when you want the next profile.",
-                    "你是从一个筛选后的学生列表进入当前档案的。可以先在这里继续工作，处理完再回到同一个列表继续下一位学生。"
-                  )}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <a href={studentsReturnHref} style={{ fontWeight: 700 }}>
-              {t(lang, "Back to Student List", "返回学生列表")}
-            </a>
-            {!coordinationOnly ? (
+        <WorkflowSourceBanner
+          tone="blue"
+          title={t(lang, "From Student List", "来自学生列表")}
+          description={
+            coordinationOnly
+              ? t(
+                  lang,
+                  "You opened the coordination workspace from a student-list flow. Finish the current scheduling work here, then jump back to the same filtered list when you are ready for the next student.",
+                  "你是从学生列表流程进入排课协调工作台的。先在这里完成当前排课处理，处理完后可直接回到原来的筛选列表继续下一位学生。"
+                )
+              : t(
+                  lang,
+                  "You opened this profile from a filtered student list. Keep using the quick workbench here, then jump back to the same list when you want the next profile.",
+                  "你是从一个筛选后的学生列表进入当前档案的。可以先在这里继续工作，处理完再回到同一个列表继续下一位学生。"
+                )
+          }
+          primaryHref={studentsReturnHref}
+          primaryLabel={t(lang, "Back to Student List", "返回学生列表")}
+          secondaryActions={
+            !coordinationOnly ? (
               <a href={studentCoordinationHref} style={{ fontWeight: 700 }}>
                 {t(lang, "Open Coordination Workspace", "打开排课协调工作台")}
               </a>
@@ -2283,9 +2274,9 @@ export default async function StudentDetailPage({
               <a href={studentDetailHomeHref} style={{ fontWeight: 700 }}>
                 {t(lang, "Open Full Student Detail", "打开完整学生详情")}
               </a>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
       ) : null}
 
       {err ? <NoticeBanner type="error" title={tl(lang, "Error")} message={err} /> : null}
@@ -2326,9 +2317,10 @@ export default async function StudentDetailPage({
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.15fr)", gap: 14 }}>
-              <div
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, alignItems: "start" }}>
+              <details
                 style={{
+                  order: 2,
                   display: "grid",
                   gap: 12,
                   padding: 14,
@@ -2337,10 +2329,10 @@ export default async function StudentDetailPage({
                   background: "#ffffff",
                 }}
               >
-                <div style={{ display: "grid", gap: 4 }}>
-                  <div style={{ fontWeight: 800 }}>{t(lang, "Profile snapshot", "档案概览")}</div>
+                <summary style={{ cursor: "pointer", fontWeight: 800 }}>{t(lang, "Profile snapshot", "档案概览")}</summary>
+                <div style={{ display: "grid", gap: 4, marginTop: 12 }}>
                   <div style={{ color: "#64748b", fontSize: 12 }}>
-                    {t(lang, "Use this card to confirm identity and background before touching schedules or billing.", "先在这里确认学生身份和背景，再进入排课或账务操作。")}
+                    {t(lang, "Open this only when you need background details. The next-action panel stays first for daily work.", "只有需要背景资料时再展开这里；日常处理先看右侧下一步操作。")}
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
@@ -2377,10 +2369,11 @@ export default async function StudentDetailPage({
                     <div style={{ fontWeight: 700 }}>{attendances.length}</div>
                   </div>
                 </div>
-              </div>
+              </details>
 
               <div
                 style={{
+                  order: 1,
                   border: "1px solid #e2e8f0",
                   borderRadius: 12,
                   padding: 14,

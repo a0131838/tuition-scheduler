@@ -31,6 +31,7 @@ import { existsSync } from "fs";
 import { BUSINESS_UPLOAD_PREFIX, resolveStoredBusinessFilePath } from "@/lib/business-file-storage";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
+import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
   buildParentAvailabilityExpiresAt,
@@ -122,7 +123,13 @@ function toDateTimeLocalValue(v: Date | null | undefined) {
 
 function sanitizeAdminBack(raw: string | null | undefined, fallback: string) {
   const value = String(raw ?? "").trim();
-  if (!value.startsWith("/admin/tickets")) return fallback;
+  if (!value.startsWith("/admin/tickets") && !value.startsWith("/admin/todos")) return fallback;
+  return value.slice(0, 1000);
+}
+
+function sanitizeTodoBack(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim();
+  if (!value.startsWith("/admin/todos")) return "/admin/todos";
   return value.slice(0, 1000);
 }
 
@@ -539,17 +546,25 @@ export default async function AdminTicketDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string }>;
+  searchParams?: Promise<{ back?: string; err?: string; ok?: string; fields?: string; source?: string; todoBack?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const route = await params;
   const sp = await searchParams;
   const id = String(route.id ?? "").trim();
-  const listBack = sanitizeAdminBack(sp?.back, "/admin/tickets");
+  const sourceWorkflow = String(sp?.source ?? "").trim().toLowerCase() === "todo" || String(sp?.back ?? "").startsWith("/admin/todos") ? "todo" : "";
+  const todoBack = sanitizeTodoBack(sp?.todoBack ?? sp?.back);
+  const listBack = sanitizeAdminBack(sp?.back ?? (sourceWorkflow === "todo" ? todoBack : ""), "/admin/tickets");
+  const selfHrefParams: Record<string, string> = {};
+  if (listBack !== "/admin/tickets") selfHrefParams.back = listBack;
+  if (sourceWorkflow === "todo") {
+    selfHrefParams.source = "todo";
+    selfHrefParams.todoBack = todoBack;
+  }
   const selfHref =
-    listBack === "/admin/tickets"
-      ? `/admin/tickets/${id}`
-      : appendQuery(`/admin/tickets/${id}`, { back: listBack });
+    Object.keys(selfHrefParams).length > 0
+      ? appendQuery(`/admin/tickets/${id}`, selfHrefParams)
+      : `/admin/tickets/${id}`;
   const statusSectionHref = `${selfHref}#status-action`;
   const coordinationConsoleHref = `${selfHref}#coordination-console`;
   const ticketEditHref = `${selfHref}#ticket-edit`;
@@ -720,6 +735,21 @@ export default async function AdminTicketDetailPage({
           ) : null}
         </div>
       </div>
+
+      {sourceWorkflow === "todo" ? (
+        <WorkflowSourceBanner
+          tone="amber"
+          title="From Todo Center / 来自待办中心"
+          description="This ticket was opened from today's work queue. Finish the follow-up here, then return to the same todo section when you are ready for the next item. / 这条工单是从今日待办进入的；处理完当前跟进后，可直接回到同一个待办区块继续下一条。"
+          primaryHref={todoBack}
+          primaryLabel="Back to Todo Center / 返回待办中心"
+          secondaryActions={
+            <Link scroll={false} href="/admin/tickets" style={{ fontWeight: 700 }}>
+              Ticket Center / 工单中心
+            </Link>
+          }
+        />
+      ) : null}
 
       {err ? (
         <div style={{ color: "#b91c1c", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 10, padding: 10 }}>

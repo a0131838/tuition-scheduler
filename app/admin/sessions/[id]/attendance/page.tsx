@@ -3,6 +3,7 @@ import { AttendanceStatus, PackageStatus } from "@prisma/client";
 import { AttendanceRow } from "./AttendanceEditor";
 import { getLang, t } from "@/lib/i18n";
 import NoticeBanner from "../../../_components/NoticeBanner";
+import WorkflowSourceBanner from "../../../_components/WorkflowSourceBanner";
 import { packageModeFromNote, packageModePriority, packageModeSupportsClass } from "@/lib/package-mode";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminSessionAttendanceClient from "./AdminSessionAttendanceClient";
@@ -18,18 +19,26 @@ function durationMinutes(startAt: Date, endAt: Date) {
   return Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
 }
 
+function sanitizeTodoBack(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim();
+  if (!value.startsWith("/admin/todos")) return "/admin/todos";
+  return value.slice(0, 1000);
+}
+
 export default async function AttendancePage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; source?: string; todoBack?: string }>;
 }) {
   const lang = await getLang();
   const { id: sessionId } = await params;
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const sourceWorkflow = String(sp?.source ?? "").trim().toLowerCase() === "todo" ? "todo" : "";
+  const todoBack = sanitizeTodoBack(sp?.todoBack);
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -139,6 +148,25 @@ export default async function AttendancePage({
           <a href={`/admin/classes/${session.classId}`}>→ {t(lang, "Back to Class Detail", "返回班级详情")}</a>
         </div>
       </div>
+
+      {sourceWorkflow === "todo" ? (
+        <WorkflowSourceBanner
+          tone="amber"
+          title={t(lang, "From Todo Center", "来自待办中心")}
+          description={t(
+            lang,
+            "You opened attendance from the daily work queue. Save or review this session, then return to the same todo section instead of rebuilding the queue.",
+            "你是从今日待办队列进入点名页的。保存或核对完这节课后，可以直接回到原来的待办区块，不用重新找。"
+          )}
+          primaryHref={todoBack}
+          primaryLabel={t(lang, "Back to Todo Center", "返回待办中心")}
+          secondaryActions={
+            <a href={`/admin/classes/${session.classId}/sessions`} style={{ fontWeight: 700 }}>
+              {t(lang, "Open class sessions", "打开班级课次")}
+            </a>
+          }
+        />
+      ) : null}
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}

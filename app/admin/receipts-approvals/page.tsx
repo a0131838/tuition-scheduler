@@ -48,6 +48,7 @@ import {
 } from "@/lib/approval-flow";
 import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkflowSourceBanner from "../_components/WorkflowSourceBanner";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
   workbenchFilterPanelStyle,
@@ -2330,40 +2331,22 @@ export async function ReceiptsApprovalsPageContent({
       ) : null}
 
       {sourceWorkflow === "approvals" ? (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #c7d2fe",
-            background: "#eef2ff",
-            color: "#3730a3",
-            display: "flex",
-            gap: 10,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "From Approval Inbox", "来自审批提醒中心")}</div>
-            <div style={{ fontSize: 13, color: "#4338ca" }}>
-              {t(
-                lang,
-                "You entered this review flow from the approval triage desk. Finish the current receipt here, then jump back when you want the next approval item.",
-                "你是从审批分诊台进入这条审核流程的。先在这里处理当前收据，处理完后再回审批中心拿下一条。"
-              )}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <WorkflowSourceBanner
+          tone="indigo"
+          title={t(lang, "From Approval Inbox", "来自审批提醒中心")}
+          description={t(
+            lang,
+            "You entered this review flow from the approval triage desk. Finish the current receipt here, then jump back when you want the next approval item.",
+            "你是从审批分诊台进入这条审核流程的。先在这里处理当前收据，处理完后再回审批中心拿下一条。"
+          )}
+          primaryHref={approvalInboxReturnHref || "/admin/approvals"}
+          primaryLabel={t(lang, "Back to Approval Inbox", "返回审批提醒中心")}
+          meta={
             <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #c7d2fe", color: "#4338ca", fontSize: 12, fontWeight: 700 }}>
               {t(lang, "Inbox focus", "来源筛选")}: {approvalInboxFocusLabel}
             </span>
-            <a href={approvalInboxReturnHref || "/admin/approvals"} style={{ fontWeight: 700 }}>
-              {t(lang, "Back to Approval Inbox", "返回审批提醒中心")}
-            </a>
-          </div>
-        </div>
+          }
+        />
       ) : null}
 
       {!isPackageScreen ? (

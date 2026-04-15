@@ -110,6 +110,36 @@ function listWithLimit(items: string[], limit = MAX_LIST_ITEMS) {
   return `${shown}; +${items.length - limit} more`;
 }
 
+function todoReturnHref(anchor: string) {
+  return `/admin/todos${anchor}`;
+}
+
+function attendanceFromTodoHref(sessionId: string, anchor: string) {
+  const params = new URLSearchParams();
+  params.set("source", "todo");
+  params.set("todoBack", todoReturnHref(anchor));
+  return `/admin/sessions/${encodeURIComponent(sessionId)}/attendance?${params.toString()}`;
+}
+
+function ticketFromTodoHref(ticketId: string, anchor: string) {
+  const back = todoReturnHref(anchor);
+  const params = new URLSearchParams();
+  params.set("back", back);
+  params.set("source", "todo");
+  params.set("todoBack", back);
+  return `/admin/tickets/${encodeURIComponent(ticketId)}?${params.toString()}`;
+}
+
+function todoTicketStatusLabel(lang: Awaited<ReturnType<typeof getLang>>, status: string) {
+  if (status === "Need Info") return t(lang, "Information action needed", "待补信息");
+  if (status === "Waiting Teacher") return t(lang, "Teacher action needed", "等待老师处理");
+  if (status === "Waiting Parent") return t(lang, "Parent action needed", "等待家长处理");
+  if (status === "Confirmed") return t(lang, "Ready to schedule", "可继续排课");
+  if (status === "Completed") return t(lang, "Completed", "已完成");
+  if (status === "Cancelled") return t(lang, "Cancelled", "已取消");
+  return status || "-";
+}
+
 function toDateOnly(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
@@ -1282,8 +1312,15 @@ export default async function AdminTodosPage({
         </div>
 
         {sessionsToday.length === 0 ? (
-          <div style={{ marginTop: 10, color: "#b45309" }}>
-            {t(lang, "No unmarked sessions today.", "今天没有未点名课次。")}
+          <div style={{ marginTop: 10, color: "#92400e", border: "1px solid #fde68a", borderRadius: 10, background: "#fffbeb", padding: 10, display: "grid", gap: 6 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "Today's attendance queue is clear", "今天的点名队列已清空")}</div>
+            <div style={{ fontSize: 13 }}>
+              {t(lang, "Next, check overdue follow-up or reminder desk only if you still have operations time.", "接下来只有在还有运营处理时间时，再看超时跟进或提醒台。")}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="#todo-overdue-follow-up">{t(lang, "Check overdue follow-up", "查看超时跟进")}</a>
+              <a href="#todo-reminder-desk">{t(lang, "Open reminder desk", "打开提醒台")}</a>
+            </div>
           </div>
         ) : (
           <div style={{ marginTop: 10 }}>
@@ -1323,7 +1360,7 @@ export default async function AdminTodosPage({
                       <span style={{ color: "#b00", fontWeight: 700 }}>{unmarkedMap.get(s.id) ?? 0}</span>
                     </td>
                     <td>
-                      <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                      <a href={attendanceFromTodoHref(s.id, "#todo-today-focus")}>{t(lang, "Go Attendance", "去点名")}</a>
                     </td>
                   </tr>
                 ))}
@@ -1344,7 +1381,12 @@ export default async function AdminTodosPage({
           </span>
         </div>
         {overdueUnmarkedGroups.length === 0 ? (
-          <div style={{ color: "#166534" }}>{t(lang, "No overdue unmarked sessions.", "当前无超时未点名课次。")}</div>
+          <div style={{ color: "#166534", border: "1px solid #bbf7d0", borderRadius: 10, background: "#f0fdf4", padding: 10 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "No overdue attendance follow-up", "当前没有超时点名催办")}</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              {t(lang, "This means the delayed-attendance lane is clear. Continue with scheduling coordination or reminders if needed.", "说明延迟点名这一条线已经清空；如有需要再继续看排课协调或提醒台。")}
+            </div>
+          </div>
         ) : (
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
             {overdueUnmarkedGroups.map((group) => (
@@ -1364,7 +1406,7 @@ export default async function AdminTodosPage({
                       <div style={detailLineStyle}>{item.courseLabel}</div>
                       <div style={detailLineStyle}>{t(lang, "Students", "学生")}: {listWithLimit(item.studentNames, 3)}</div>
                       <div style={detailLineStyle}>{t(lang, "Unmarked", "未点名")}: {item.unmarkedCount}</div>
-                      <a href={item.attendanceHref}>{t(lang, "Go Attendance", "去点名")}</a>
+                      <a href={attendanceFromTodoHref(item.id, "#todo-overdue-follow-up")}>{t(lang, "Go Attendance", "去点名")}</a>
                     </div>
                   ))}
                 </div>
@@ -1385,8 +1427,11 @@ export default async function AdminTodosPage({
           </span>
         </div>
         {schedulingCoordinationRows.length === 0 ? (
-          <div style={{ color: "#166534" }}>
-            {t(lang, "No coordination tickets need follow-up in the next 48 hours.", "未来48小时内没有需要跟进的排课协调工单。")}
+          <div style={{ color: "#166534", border: "1px solid #bbf7d0", borderRadius: 10, background: "#f0fdf4", padding: 10 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "No scheduling coordination follow-up is due soon", "近期没有到期的排课协调跟进")}</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              {t(lang, "Nothing in this 48-hour lane needs action. Use the parent-submission lane below only when a new form arrives.", "48 小时窗口内没有需要处理的项；只有家长新提交表单时，再看下面的提交队列。")}
+            </div>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
@@ -1408,13 +1453,13 @@ export default async function AdminTodosPage({
                   </div>
                   <div style={detailLineStyle}>{t(lang, "Student", "学生")}: {row.studentName}</div>
                   <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.owner ?? t(lang, "Unassigned", "未分配")}</div>
-                  <div style={detailLineStyle}>{t(lang, "Status", "状态")}: {row.status}</div>
+                  <div style={detailLineStyle}>{t(lang, "Status", "状态")}: {todoTicketStatusLabel(lang, row.status)}</div>
                   <div style={detailLineStyle}>{t(lang, "Phase", "协调阶段")}: {phase.title}</div>
                   <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.nextAction ?? "-"}</div>
                   <div style={detailLineStyle}>
                     {t(lang, "Due", "截止")}: {row.nextActionDue ? formatBusinessDateTime(row.nextActionDue) : "-"}
                   </div>
-                  <a href={`/admin/tickets/${row.id}?back=${encodeURIComponent("/admin/todos#todo-scheduling-coordination")}`}>
+                  <a href={ticketFromTodoHref(row.id, "#todo-scheduling-coordination")}>
                     {t(lang, "Open ticket", "打开工单")}
                   </a>
                 </div>
@@ -1435,8 +1480,11 @@ export default async function AdminTodosPage({
           </span>
         </div>
         {submittedParentAvailabilityRows.length === 0 ? (
-          <div style={{ color: "#166534" }}>
-            {t(lang, "No newly submitted parent availability forms are waiting right now.", "当前没有新提交、待处理的家长时间表单。")}
+          <div style={{ color: "#166534", border: "1px solid #bbf7d0", borderRadius: 10, background: "#f0fdf4", padding: 10 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "No new parent availability submission is waiting", "当前没有新的家长时间表单待处理")}</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              {t(lang, "If a parent says they submitted but it is not here, open the related ticket and check the parent-form timestamp.", "如果家长说已经提交但这里没出现，请打开相关工单检查家长表单提交时间。")}
+            </div>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
@@ -1460,9 +1508,10 @@ export default async function AdminTodosPage({
                     <div style={detailLineStyle}>{t(lang, "Course", "课程")}: {row.courseLabel || "-"}</div>
                     <div style={detailLineStyle}>{t(lang, "Owner", "负责人")}: {row.ticket.owner ?? t(lang, "Unassigned", "未分配")}</div>
                     <div style={detailLineStyle}>{t(lang, "Submitted at", "提交时间")}: {row.submittedAt ? formatBusinessDateTime(row.submittedAt) : "-"}</div>
+                    <div style={detailLineStyle}>{t(lang, "Status", "状态")}: {todoTicketStatusLabel(lang, row.ticket.status ?? "Need Info")}</div>
                     <div style={detailLineStyle}>{t(lang, "Phase", "协调阶段")}: {phase.title}</div>
                     <div style={detailLineStyle}>{t(lang, "Next step", "下一步")}: {row.ticket.nextAction ?? "-"}</div>
-                    <a href={`/admin/tickets/${row.ticketId}?back=${encodeURIComponent("/admin/todos#todo-parent-availability-submitted")}`}>
+                    <a href={ticketFromTodoHref(row.ticketId, "#todo-parent-availability-submitted")}>
                       {t(lang, "Open ticket", "打开工单")}
                     </a>
                   </div>
@@ -1524,7 +1573,7 @@ export default async function AdminTodosPage({
                     <span style={{ color: "#b00", fontWeight: 700 }}>{unmarkedYesterdayMap.get(s.id) ?? 0}</span>
                   </td>
                   <td>
-                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                    <a href={attendanceFromTodoHref(s.id, "#todo-reminder-desk")}>{t(lang, "Go Attendance", "去点名")}</a>
                   </td>
                 </tr>
               ))}
@@ -1704,7 +1753,7 @@ export default async function AdminTodosPage({
                     {s.class.room ? ` / ${s.class.room.name}` : ""}
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                    <a href={attendanceFromTodoHref(s.id, "#todo-reminder-desk")}>{t(lang, "Go Attendance", "去点名")}</a>
                     <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>
                       {t(lang, "Unmarked", "未点名")}: {unmarkedMap.get(s.id) ?? 0}
                     </span>
@@ -1848,7 +1897,7 @@ export default async function AdminTodosPage({
                     <span style={{ color: "#b00", fontWeight: 700 }}>{pastUnmarkedMap.get(s.id) ?? 0}</span>
                   </td>
                   <td>
-                    <a href={`/admin/sessions/${s.id}/attendance`}>{t(lang, "Go Attendance", "去点名")}</a>
+                    <a href={attendanceFromTodoHref(s.id, "#todo-reminder-desk")}>{t(lang, "Go Attendance", "去点名")}</a>
                   </td>
                 </tr>
               ))}

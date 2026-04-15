@@ -15,6 +15,36 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-15-r63
+
+- Release ID: `2026-04-15-r63`
+- Date/Time (Asia/Shanghai): `2026-04-15`
+- Deployment status: `READY`
+- Scope: ship the next UX-continuity batch by extending Todo Center return paths into ticket and attendance flows, standardizing source-return banners, tightening student-detail first-screen weight, improving queue empty states, and stabilizing remaining two-column workbench layouts.
+- Key files:
+  - `app/admin/_components/WorkflowSourceBanner.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/tickets/[id]/page.tsx`
+  - `app/admin/sessions/[id]/attendance/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/UX-REVIEW-20260414.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260415-ux-batch7-todo-continuity-status-empty-states.md`
+- Risk impact (if any): Low. This release changes navigation continuity, status wording, empty-state guidance, first-screen grouping, and layout sizing only. It does not change approval rules, receipt math, attendance deduction rules, ticket status permissions, scheduling logic, or student/package data.
+- Verification:
+  - `npm run build`
+  - Todo Center attendance and ticket links should carry a visible return path back to the original todo section
+  - ticket detail and attendance pages should show a `From Todo Center / 来自待办中心` banner when opened from Todo Center
+  - source banners for approval, receipt, package, and student-list workflows should use the same layout pattern
+  - student detail should put next actions first and keep the profile snapshot collapsed until needed
+  - package billing and todo empty states should explain what is empty and where to go next
+  - expense claim split queues should keep their right-side detail panels aligned to their own content height
+- Rollback point: previous production commit before `2026-04-15-r63`.
+
 ## 2026-04-14-r62
 
 - Release ID: `2026-04-14-r62`

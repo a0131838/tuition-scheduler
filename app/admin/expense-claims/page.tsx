@@ -31,6 +31,7 @@ import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-on
 import path from 'path';
 import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
 import RememberedWorkbenchQueryClient from '../_components/RememberedWorkbenchQueryClient';
+import WorkflowSourceBanner from '../_components/WorkflowSourceBanner';
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -796,37 +797,22 @@ export default async function AdminExpenseClaimsPage({
       ) : null}
 
       {sourceWorkflow === 'approvals' ? (
-        <div
-          style={{
-            padding: 10,
-            borderRadius: 10,
-            border: '1px solid #c7d2fe',
-            background: '#eef2ff',
-            color: '#3730a3',
-            display: 'flex',
-            gap: 10,
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'grid', gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, 'From Approval Inbox', '来自审批提醒中心')}</div>
-            <div style={{ fontSize: 13, color: '#4338ca' }}>
-              {t(
-                lang,
-                'You opened this expense workflow from the approval triage desk. Finish the current claim here, then jump back when you are ready for the next approval item.',
-                '你是从审批分诊台进入这条报销流程的。先在这里处理当前报销单，处理完后再回审批中心拿下一条。'
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <WorkflowSourceBanner
+          tone="indigo"
+          title={t(lang, 'From Approval Inbox', '来自审批提醒中心')}
+          description={t(
+            lang,
+            'You opened this expense workflow from the approval triage desk. Finish the current claim here, then jump back when you are ready for the next approval item.',
+            '你是从审批分诊台进入这条报销流程的。先在这里处理当前报销单，处理完后再回审批中心拿下一条。'
+          )}
+          primaryHref={approvalInboxReturnHref || '/admin/approvals'}
+          primaryLabel={t(lang, 'Back to Approval Inbox', '返回审批提醒中心')}
+          meta={
             <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 12, fontWeight: 700 }}>
               {t(lang, 'Inbox focus', '来源筛选')}: {approvalInboxFocusLabel}
             </span>
-            <a href={approvalInboxReturnHref || '/admin/approvals'}>{t(lang, 'Back to Approval Inbox', '返回审批提醒中心')}</a>
-          </div>
-        </div>
+          }
+        />
       ) : null}
 
       {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
@@ -953,7 +939,7 @@ export default async function AdminExpenseClaimsPage({
           style={{
             display: 'grid',
             gap: 16,
-            gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)',
+            gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
             alignItems: 'start',
           }}
         >
@@ -1195,7 +1181,7 @@ export default async function AdminExpenseClaimsPage({
                 )}
               </>
             ) : (
-              <div style={{ padding: '12px 0', color: '#64748b', display: 'grid', gap: 8 }}>
+              <div style={{ padding: '12px 0', color: '#64748b', display: 'grid', gap: 8, alignSelf: 'start' }}>
                 <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No submitted claim is selected', '当前没有选中的待审批报销单')}</div>
                 <div>{t(lang, 'Choose one item from the left review queue. If the queue is empty, clear filters or move to history.', '请先从左侧待审批队列选择一条；如果队列为空，可清空筛选或切换到历史列表。')}</div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1226,7 +1212,7 @@ export default async function AdminExpenseClaimsPage({
             style={{
               display: 'grid',
               gap: 16,
-              gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(360px, 1fr)',
+              gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
               alignItems: 'start',
             }}
           >
