@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-15-r63` (workflow-continuity batch now extends Todo Center return paths into ticket and attendance flows, standardizes source-return banners, tightens student detail first-screen weight, improves empty states, and stabilizes queue split layouts), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-15-r64` (Approval Inbox now includes teacher payroll reminders for manager and finance action stages), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-15-r64 Ready
+
+- Scope: add teacher payroll approval reminders into the unified Approval Inbox.
+- Business impact:
+  - management can now see teacher payroll records that teachers have confirmed but managers have not fully approved
+  - finance can now see teacher payroll records that are manager-approved but still need finance confirmation or payout recording
+  - payroll approval rows open the existing Teacher Payroll page with the teacher focused and a return banner back to Approval Inbox
+- Validation:
+  - `npm run build`
+  - teacher-confirmed payroll awaiting management approval should appear under `Needs manager / 待管理审批`
+  - manager-approved payroll awaiting finance confirmation or payout recording should appear under `Needs finance / 待财务审批`
+  - teacher payroll calculations and approval server actions should remain unchanged
 
 ## 2026-04-11-r40 Ready
 

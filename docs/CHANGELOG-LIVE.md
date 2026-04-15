@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-15-r64
+
+- Release ID: `2026-04-15-r64`
+- Date/Time (Asia/Shanghai): `2026-04-15`
+- Deployment status: `READY`
+- Scope: add teacher payroll approval reminders into the unified Approval Inbox so management and finance can see payroll items that need their action.
+- Key files:
+  - `lib/teacher-payroll.ts`
+  - `lib/approval-inbox.ts`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260415-approval-inbox-teacher-payroll.md`
+- Risk impact (if any): Low. This release only adds teacher payroll records to the existing approval reminder aggregation and adds a return banner from payroll back to the inbox. It does not change teacher payroll calculation, manager approval rules, finance confirmation rules, finance rejection rules, or payout logic.
+- Verification:
+  - `npm run build`
+  - teacher payroll records that are teacher-confirmed but not manager-approved should appear in the manager approval lane
+  - teacher payroll records that are manager-approved but not finance-confirmed or not paid should appear in the finance approval lane
+  - Approval Inbox should show `Teacher payroll / 老师工资` rows with payroll totals when available
+  - opening a teacher payroll reminder should focus the teacher payroll page and show a return banner back to Approval Inbox
+- Rollback point: previous production commit before `2026-04-15-r64`.
+
 ## 2026-04-15-r63
 
 - Release ID: `2026-04-15-r63`

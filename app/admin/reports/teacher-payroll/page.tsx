@@ -1,6 +1,7 @@
 ﻿import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { areAllApproversConfirmed, getApprovalRoleConfig, isRoleApprover, saveApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, t } from "@/lib/i18n";
+import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 import RestoreRateConfigScroll from "@/app/admin/reports/teacher-payroll/RestoreRateConfigScroll";
 import {
   financeConfirmTeacherPayroll,
@@ -307,6 +308,8 @@ export default async function TeacherPayrollPage({
     unsentOnly?: string;
     rateMissingOnly?: string;
     focusTeacherId?: string;
+    source?: string;
+    sourceFocus?: string;
     savedTeacherId?: string;
     savedCourseId?: string;
     savedSubjectId?: string;
@@ -329,6 +332,24 @@ export default async function TeacherPayrollPage({
   const unsentOnly = sp?.unsentOnly === "1";
   const rateMissingOnly = sp?.rateMissingOnly === "1";
   const focusTeacherId = String(sp?.focusTeacherId ?? "").trim();
+  const sourceWorkflow = String(sp?.source ?? "").trim().toLowerCase() === "approvals" ? "approvals" : "";
+  const sourceFocus = String(sp?.sourceFocus ?? "").trim().toLowerCase();
+  const approvalInboxReturnHref =
+    sourceWorkflow === "approvals"
+      ? sourceFocus && sourceFocus !== "all"
+        ? `/admin/approvals?focus=${encodeURIComponent(sourceFocus)}`
+        : "/admin/approvals"
+      : "";
+  const approvalInboxFocusLabel =
+    sourceFocus === "manager"
+      ? t(lang, "Manager approvals", "管理审批")
+      : sourceFocus === "finance"
+        ? t(lang, "Finance approvals", "财务审批")
+        : sourceFocus === "expense"
+          ? t(lang, "Expense approvals", "报销审批")
+          : sourceFocus === "overdue"
+            ? t(lang, "Overdue approvals", "超时审批")
+            : t(lang, "Approval inbox", "审批提醒中心");
   const savedTeacherId = String(sp?.savedTeacherId ?? "");
   const savedCourseId = String(sp?.savedCourseId ?? "");
   const savedSubjectId = typeof sp?.savedSubjectId === "string" ? sp.savedSubjectId : "";
@@ -458,6 +479,8 @@ export default async function TeacherPayrollPage({
     if (pendingOnly) params.set("pendingOnly", "1");
     if (unsentOnly) params.set("unsentOnly", "1");
     if (rateMissingOnly) params.set("rateMissingOnly", "1");
+    if (sourceWorkflow) params.set("source", sourceWorkflow);
+    if (sourceFocus) params.set("sourceFocus", sourceFocus);
     if (teacherId) params.set("focusTeacherId", teacherId);
     return `/admin/reports/teacher-payroll?${params.toString()}`;
   };
@@ -670,6 +693,8 @@ export default async function TeacherPayrollPage({
         }}
       >
         <form method="GET" style={{ display: "grid", gap: 10 }}>
+          {sourceWorkflow ? <input type="hidden" name="source" value={sourceWorkflow} /> : null}
+          {sourceFocus ? <input type="hidden" name="sourceFocus" value={sourceFocus} /> : null}
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <label>
               {t(lang, "Payroll Month", "工资月份")}:
@@ -714,6 +739,24 @@ export default async function TeacherPayrollPage({
           </details>
         </form>
       </div>
+      {sourceWorkflow === "approvals" ? (
+        <WorkflowSourceBanner
+          tone="indigo"
+          title={t(lang, "Opened from Approval Inbox", "来自审批提醒中心")}
+          description={t(
+            lang,
+            "Handle this teacher payroll item here, then return to the approval list to continue triage.",
+            "在这里处理这条老师工资审批，然后回到审批提醒中心继续处理其他待办。"
+          )}
+          primaryHref={approvalInboxReturnHref || "/admin/approvals"}
+          primaryLabel={t(lang, "Back to approval inbox", "返回审批提醒中心")}
+          meta={
+            <span>
+              {t(lang, "Previous filter", "原筛选")}: {approvalInboxFocusLabel}
+            </span>
+          }
+        />
+      ) : null}
       {data.usingRateFallback ? (
         <div style={{ marginBottom: 12, color: "#92400e" }}>
           {t(

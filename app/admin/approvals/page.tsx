@@ -37,6 +37,7 @@ function laneLabel(lang: Lang, lane: ApprovalInboxItem["lane"]) {
 function typeLabel(lang: Lang, type: ApprovalInboxItem["type"]) {
   if (type === "PARENT_RECEIPT") return t(lang, "Parent receipt", "家长收据");
   if (type === "PARTNER_RECEIPT") return t(lang, "Partner receipt", "合作方收据");
+  if (type === "TEACHER_PAYROLL") return t(lang, "Teacher payroll", "老师工资");
   return t(lang, "Expense claim", "报销单");
 }
 
@@ -253,7 +254,9 @@ export default async function AdminApprovalsPage({
               <div style={{ fontSize: 13, color: item.riskText ? "#9f1239" : "#64748b" }}>
                 {item.riskText ? item.riskText : t(lang, "No risk", "无风险")}
               </div>
-              <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>{money(item.amount, item.currency)}</div>
+              <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>
+                {item.amountText ?? money(item.amount, item.currency)}
+              </div>
               <div style={{ textAlign: "right" }}>
                 <Link href={withApprovalSource(item.href, focus)} style={{ color: "#1d4ed8", fontWeight: 700 }}>
                   {t(lang, "Open now", "立即处理")}

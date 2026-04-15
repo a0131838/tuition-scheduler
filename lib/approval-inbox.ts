@@ -7,12 +7,18 @@ import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { listAllParentBilling } from "@/lib/student-parent-billing";
+import {
+  formatCurrencyTotals,
+  listTeacherPayrollPublishItems,
+  loadTeacherPayroll,
+  type PayrollScope,
+} from "@/lib/teacher-payroll";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const APPROVAL_OVERDUE_HOURS = 24;
 
 export type ApprovalInboxLane = "MANAGER" | "FINANCE" | "EXPENSE";
-export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM";
+export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM" | "TEACHER_PAYROLL";
 
 export type ApprovalInboxItem = {
   id: string;
@@ -23,6 +29,7 @@ export type ApprovalInboxItem = {
   subtitle: string;
   amount: number;
   currency: string;
+  amountText?: string;
   waitingHours: number;
   overdue: boolean;
   createdAt: string;
@@ -74,7 +81,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
   const actorRole = String(actorRoleRaw ?? "").trim().toUpperCase();
   const isSuperAdmin = actorEmail === SUPER_ADMIN_EMAIL;
 
-  const [roleCfg, expenseCfg, parentAll, partnerAll, expenseClaims] = await Promise.all([
+  const [roleCfg, expenseCfg, parentAll, partnerAll, expenseClaims, teacherPayrollPublishItems] = await Promise.all([
     getApprovalRoleConfig(),
     getExpenseApprovalConfig(),
     listAllParentBilling(),
@@ -92,6 +99,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         createdAt: true,
       },
     }),
+    listTeacherPayrollPublishItems(),
   ]);
 
   const canSeeManager = isSuperAdmin || isRoleApprover(actorEmail, roleCfg.managerApproverEmails);
@@ -117,6 +125,91 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
   const items: ApprovalInboxItem[] = [];
 
   if (canSeeManager || canSeeFinance) {
+    const teacherPayrollCandidates = teacherPayrollPublishItems
+      .map((publish) => {
+        const managerDone = areAllApproversConfirmed(publish.managerApprovedBy, roleCfg.managerApproverEmails);
+        const lane: ApprovalInboxLane | null = !publish.confirmedAt
+          ? null
+          : !managerDone
+            ? "MANAGER"
+            : !publish.financeConfirmedAt || !publish.financePaidAt
+              ? "FINANCE"
+              : null;
+        if (!lane) return null;
+        if (lane === "MANAGER" && !canSeeManager) return null;
+        if (lane === "FINANCE" && !canSeeFinance) return null;
+        const waitingSince =
+          lane === "MANAGER"
+            ? publish.confirmedAt
+            : publish.financeConfirmedAt
+              ? publish.financeConfirmedAt
+              : publish.managerApprovedAt;
+        if (!waitingSince) return null;
+        return { publish, lane, managerDone, waitingSince };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    const payrollGroupKeys = Array.from(
+      new Set(
+        teacherPayrollCandidates.map((item) => `${item.publish.month}__${item.publish.scope}`)
+      )
+    );
+    const payrollGroupRows = await Promise.all(
+      payrollGroupKeys.map(async (key) => {
+        const [month, scopeRaw] = key.split("__");
+        const scope: PayrollScope = scopeRaw === "completed" ? "completed" : "all";
+        const data = await loadTeacherPayroll(month, scope);
+        return { month, scope, data };
+      })
+    );
+    const payrollSummaryMap = new Map(
+      payrollGroupRows.flatMap(({ month: groupMonth, scope: groupScope, data }) =>
+        (data?.summaryRows ?? []).map((row) => [
+          `${groupMonth}__${groupScope}__${row.teacherId}`,
+          row,
+        ] as const)
+      )
+    );
+
+    for (const item of teacherPayrollCandidates) {
+      const { publish, lane, waitingSince } = item;
+      const summaryRow = payrollSummaryMap.get(`${publish.month}__${publish.scope}__${publish.teacherId}`);
+      const primaryTotal = summaryRow?.currencyTotals[0] ?? null;
+      const waitingHours = hoursSince(waitingSince);
+      const isFinancePayoutStep = lane === "FINANCE" && Boolean(publish.financeConfirmedAt) && !publish.financePaidAt;
+      const riskParts = [
+        summaryRow ? "" : "Payroll summary not found",
+        (summaryRow?.pendingSessions ?? 0) > 0 ? `${summaryRow?.pendingSessions ?? 0} pending sessions` : "",
+        publish.financeRejectReason ? `Finance rejected: ${publish.financeRejectReason}` : "",
+      ].filter(Boolean);
+
+      items.push({
+        id: `${publish.teacherId}:${publish.month}:${publish.scope}`,
+        key: `teacher-payroll-${publish.teacherId}-${publish.month}-${publish.scope}`,
+        type: "TEACHER_PAYROLL",
+        lane,
+        title: `${summaryRow?.teacherName ?? "Teacher"} | ${publish.month}`,
+        subtitle:
+          publish.scope === "completed"
+            ? "Teacher payroll | Completed sessions only"
+            : "Teacher payroll | All scheduled sessions",
+        amount: primaryTotal ? primaryTotal.amountCents / 100 : 0,
+        currency: primaryTotal?.currencyCode ?? "SGD",
+        amountText: summaryRow ? formatCurrencyTotals(summaryRow.currencyTotals) : undefined,
+        waitingHours,
+        overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
+        createdAt: waitingSince,
+        href: `/admin/reports/teacher-payroll?month=${encodeURIComponent(publish.month)}&scope=${encodeURIComponent(publish.scope)}&focusTeacherId=${encodeURIComponent(publish.teacherId)}`,
+        statusText:
+          lane === "MANAGER"
+            ? "Manager payroll approval needed"
+            : isFinancePayoutStep
+              ? "Finance payout record needed"
+              : "Finance payroll confirmation needed",
+        riskText: riskParts.length ? riskParts.join(" · ") : null,
+      });
+    }
+
     for (const receipt of parentAll.receipts) {
       const approval = parentApprovalMap.get(receipt.id) ?? {
         managerApprovedBy: [],

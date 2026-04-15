@@ -396,6 +396,10 @@ async function loadPayrollPublishItems() {
   return parsePayrollPublishItems(row?.value ?? null);
 }
 
+export async function listTeacherPayrollPublishItems() {
+  return loadPayrollPublishItems();
+}
+
 async function savePayrollPublishItems(items: PayrollPublishItem[]) {
   await prisma.appSetting.upsert({
     where: { key: PAYROLL_PUBLISH_FALLBACK_KEY },
