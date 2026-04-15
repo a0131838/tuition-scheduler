@@ -97,6 +97,29 @@ export default async function AdminApprovalsPage({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <style>{`
+        @media (max-width: 720px) {
+          .approval-inbox-grid-header {
+            display: none !important;
+          }
+          .approval-inbox-row {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .approval-inbox-action {
+            text-align: left !important;
+          }
+          .approval-inbox-action a {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 8px 12px;
+            background: #eff6ff;
+          }
+        }
+      `}</style>
       <section
         style={{
           border: "1px solid #dbeafe",
@@ -192,6 +215,7 @@ export default async function AdminApprovalsPage({
       ) : (
         <section style={{ display: "grid", gap: 12 }}>
           <div
+            className="approval-inbox-grid-header"
             style={{
               display: "grid",
               gridTemplateColumns: "minmax(260px, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr) auto",
@@ -213,6 +237,7 @@ export default async function AdminApprovalsPage({
           {visibleItems.map((item) => (
             <article
               key={item.key}
+              className="approval-inbox-row"
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: 14,
@@ -257,7 +282,7 @@ export default async function AdminApprovalsPage({
               <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>
                 {item.amountText ?? money(item.amount, item.currency)}
               </div>
-              <div style={{ textAlign: "right" }}>
+              <div className="approval-inbox-action" style={{ textAlign: "right" }}>
                 <Link href={withApprovalSource(item.href, focus)} style={{ color: "#1d4ed8", fontWeight: 700 }}>
                   {t(lang, "Open now", "立即处理")}
                 </Link>

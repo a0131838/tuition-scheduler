@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-15-r65` (receipt approval is now finance-only while teacher payroll, partner settlement, and expense approval rules remain unchanged), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-15-r66` (approval/receipt UX polish after the finance-only receipt approval change), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-15-r66 Ready
+
+- Scope: polish approval inbox and receipt approval UX after finance-only receipt approval.
+- Business impact:
+  - Approval Inbox rows stack more cleanly on narrow screens instead of forcing a desktop table layout
+  - receipt detail now explicitly explains legacy manager entries as audit history only
+  - super-admin direct correction copy now says it updates the selected parent receipt, avoiding confusion on rejected receipts
+  - unused receipt manager approve/reject page actions were removed from the receipt approval page; receipt approval remains finance-only
+  - teacher payroll, partner settlement, and expense manager approval workflows remain unchanged
+- Validation:
+  - `npm run build`
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `/admin/approvals` should still show teacher payroll manager/finance reminders and expense reminders
+  - `/admin/receipts-approvals/queue` should still show finance-only receipt state and explain legacy manager entries when present
 
 ## 2026-04-15-r65 Ready
 

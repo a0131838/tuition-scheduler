@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-15-r66
+
+- Release ID: `2026-04-15-r66`
+- Date/Time (Asia/Shanghai): `2026-04-15`
+- Deployment status: `READY`
+- Scope: polish the approval and receipt UX after the finance-only receipt approval change.
+- Key files:
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260415-approval-receipt-ux-polish.md`
+- Risk impact (if any): Low. This is a UI/copy cleanup plus removal of no-longer-used receipt manager approval page actions. Teacher payroll manager approval, partner settlement manager approval, expense approval, receipt finance approval, receipt creation, export gates, and super-admin correction behavior stay unchanged.
+- Verification:
+  - `npm run build`
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - narrow Approval Inbox rows should stack more cleanly instead of forcing a table-like horizontal layout
+  - receipt detail should explain legacy manager entries as audit history only
+  - super-admin correction copy should refer to the selected parent receipt instead of implying every selected receipt is already approved
+  - receipt manager approve/reject page actions should no longer be present in the receipt approval page
+- Rollback point: previous production commit before `2026-04-15-r66`.
+
 ## 2026-04-15-r65
 
 - Release ID: `2026-04-15-r65`

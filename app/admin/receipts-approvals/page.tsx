@@ -29,16 +29,12 @@ import {
   financeApproveParentReceipt,
   financeRejectParentReceipt,
   getParentReceiptApprovalMap,
-  managerApproveParentReceipt,
-  managerRejectParentReceipt,
   revokeParentReceiptApprovalForRedo,
 } from "@/lib/parent-receipt-approval";
 import {
   financeApprovePartnerReceipt,
   financeRejectPartnerReceipt,
   getPartnerReceiptApprovalMap,
-  managerApprovePartnerReceipt,
-  managerRejectPartnerReceipt,
   revokePartnerReceiptApprovalForRedo,
 } from "@/lib/partner-receipt-approval";
 import {
@@ -863,37 +859,6 @@ async function createReceiptAction(formData: FormData) {
   redirect(appendResultParam(actionHref, "msg", "Receipt created"));
 }
 
-async function managerApproveReceiptAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const current = await getCurrentUser();
-  const actorEmail = current?.email ?? admin.email;
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const packageId = String(formData.get("packageId") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Not allowed"));
-  }
-  await managerApproveParentReceipt(receiptId, actorEmail);
-  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Manager approved"));
-}
-
-async function managerRejectReceiptAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const current = await getCurrentUser();
-  const actorEmail = current?.email ?? admin.email;
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const packageId = String(formData.get("packageId") ?? "").trim();
-  const reason = extractRejectReason(formData);
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Reject reason required"));
-  }
-  await managerRejectParentReceipt(receiptId, actorEmail, reason);
-  redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Manager rejected"));
-}
-
 async function financeApproveReceiptAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
@@ -938,35 +903,6 @@ async function revokeParentReceiptForRedoAction(formData: FormData) {
   }
   await revokeParentReceiptApprovalForRedo(receiptId, actorEmail, reason || "Super admin revoke to redo");
   redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Receipt reopened for redo"));
-}
-
-async function managerApprovePartnerReceiptAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const current = await getCurrentUser();
-  const actorEmail = current?.email ?? admin.email;
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
-  }
-  await managerApprovePartnerReceipt(receiptId, actorEmail);
-  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner manager approved"));
-}
-
-async function managerRejectPartnerReceiptAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const current = await getCurrentUser();
-  const actorEmail = current?.email ?? admin.email;
-  const receiptId = String(formData.get("receiptId") ?? "").trim();
-  const reason = extractRejectReason(formData);
-  const cfg = await getApprovalRoleConfig();
-  if (!receiptId || !reason || !isRoleApprover(actorEmail, cfg.managerApproverEmails)) {
-    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Partner reject reason required"));
-  }
-  await managerRejectPartnerReceipt(receiptId, actorEmail, reason);
-  redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner manager rejected"));
 }
 
 async function financeApprovePartnerReceiptAction(formData: FormData) {
@@ -3864,6 +3800,17 @@ export async function ReceiptsApprovalsPageContent({
                 ) : null}
               </div>
             </div>
+            {selectedRow.approval.managerApprovedBy.length > 0 ||
+            ("managerRejectedAt" in selectedRow.approval && selectedRow.approval.managerRejectedAt) ||
+            selectedRow.approval.managerRejectReason ? (
+              <div style={{ marginBottom: 10, border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 10px", background: "#eff6ff", color: "#1e3a8a", fontSize: 13 }}>
+                {t(
+                  lang,
+                  "Legacy manager entries are audit history only. Receipts now require finance approval only.",
+                  "历史管理记录仅作为审计历史保留。现在收据只需要财务审批。"
+                )}
+              </div>
+            ) : null}
             {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Legacy manager rejected:", "历史管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
             <div id="receipt-primary-actions" className="receipt-primary-actions">
@@ -3949,7 +3896,11 @@ export async function ReceiptsApprovalsPageContent({
                         {t(lang, "Direct super-admin correction", "超管直接修正")}
                       </div>
                       <div style={{ fontSize: 13, color: "#334155" }}>
-                        {t(lang, "This updates the approved parent receipt in place and keeps existing approvals valid. Every change is still written into the audit log.", "这个入口会直接原地修改已审批的家长收据，并保留现有审批有效。每次修改仍会写入审计日志。")}
+                        {t(
+                          lang,
+                          "This updates the selected parent receipt in place. Existing finance approval stays valid when present, and every change is written into the audit log.",
+                          "这个入口会直接原地修改当前选中的家长收据；如已有财务审批，会继续保持有效。每次修改都会写入审计日志。"
+                        )}
                       </div>
                       <input type="hidden" name="packageId" value={selectedRow.packageId} />
                       <input type="hidden" name="receiptId" value={selectedRow.id} />
