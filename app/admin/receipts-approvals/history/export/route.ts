@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getLang, type Lang } from "@/lib/i18n";
 import { formatDateOnly, formatBusinessDateTime, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
@@ -7,6 +7,7 @@ import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import { listAllParentBilling } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { prisma } from "@/lib/prisma";
+import { getReceiptApprovalStatus, type ReceiptApprovalLike } from "@/lib/receipt-approval-policy";
 
 function choose(lang: Lang, en: string, zh: string) {
   if (lang === "EN") return en;
@@ -44,19 +45,8 @@ function matchesSearchTerm(term: string, values: Array<string | null | undefined
   return values.some((value) => String(value ?? "").toLowerCase().includes(normalizedTerm));
 }
 
-function statusLabel(
-  managerApprovedBy: string[],
-  financeApprovedBy: string[],
-  managerNeeded: string[],
-  financeNeeded: string[],
-  managerRejectReason: string | null,
-  financeRejectReason: string | null
-) {
-  const managerReady = areAllApproversConfirmed(managerApprovedBy, managerNeeded);
-  const financeReady = areAllApproversConfirmed(financeApprovedBy, financeNeeded);
-  if (managerReady && financeReady) return "COMPLETED";
-  if (managerRejectReason || financeRejectReason) return "REJECTED";
-  return "PENDING";
+function statusLabel(approval: ReceiptApprovalLike, roleCfg: { financeApproverEmails: string[] }) {
+  return getReceiptApprovalStatus(approval, roleCfg);
 }
 
 export async function GET(req: Request) {
@@ -102,14 +92,7 @@ export async function GET(req: Request) {
           managerRejectReason: null,
           financeRejectReason: null,
         };
-        const status = statusLabel(
-          approval.managerApprovedBy,
-          approval.financeApprovedBy,
-          roleCfg.managerApproverEmails,
-          roleCfg.financeApproverEmails,
-          approval.managerRejectReason,
-          approval.financeRejectReason
-        );
+        const status = statusLabel(approval, roleCfg);
         if (status === "PENDING") {
           pendingAmount += Number(receipt.amountReceived || 0);
         }
@@ -174,14 +157,7 @@ export async function GET(req: Request) {
           managerRejectReason: null,
           financeRejectReason: null,
         };
-        const status = statusLabel(
-          approval.managerApprovedBy,
-          approval.financeApprovedBy,
-          roleCfg.managerApproverEmails,
-          roleCfg.financeApproverEmails,
-          approval.managerRejectReason,
-          approval.financeRejectReason
-        );
+        const status = statusLabel(approval, roleCfg);
         const invoiceSummary = inv
           ? parentInvoiceReceiptSummaryMap.get(inv.id) ?? {
               invoiceTotal: roundMoney(inv.totalAmount || 0),
@@ -233,14 +209,7 @@ export async function GET(req: Request) {
           managerRejectReason: null,
           financeRejectReason: null,
         };
-        const status = statusLabel(
-          approval.managerApprovedBy,
-          approval.financeApprovedBy,
-          roleCfg.managerApproverEmails,
-          roleCfg.financeApproverEmails,
-          approval.managerRejectReason,
-          approval.financeRejectReason
-        );
+        const status = statusLabel(approval, roleCfg);
         return {
           view: "PARTNER",
           receiptNo: row.receiptNo,

@@ -1,4 +1,4 @@
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import {
   applyParentInvoiceNumberAssignments,
   listAllParentBilling,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/partner-billing";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
+import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { monthKeyFromDateOnly } from "@/lib/date-only";
 
 type InvoiceOwner = "PARENT" | "PARTNER";
@@ -54,10 +55,6 @@ async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
     getPartnerReceiptApprovalMap(Array.from(partnerReceiptByInvoice.values())),
   ]);
 
-  const isFinalApproved = (managerApprovedBy: string[], financeApprovedBy: string[]) =>
-    areAllApproversConfirmed(managerApprovedBy, cfg.managerApproverEmails) &&
-    areAllApproversConfirmed(financeApprovedBy, cfg.financeApproverEmails);
-
   const out: GlobalInvoiceRow[] = [];
   for (const inv of parent.invoices) {
     const receiptId = parentReceiptByInvoice.get(inv.id);
@@ -68,7 +65,7 @@ async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
       invoiceNo: inv.invoiceNo,
       createdAt: inv.createdAt,
       fixed: Boolean(
-        approval && isFinalApproved(approval.managerApprovedBy ?? [], approval.financeApprovedBy ?? []),
+        approval && isReceiptFinanceApproved(approval, cfg),
       ),
     });
   }
@@ -81,7 +78,7 @@ async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
       invoiceNo: inv.invoiceNo,
       createdAt: inv.createdAt,
       fixed: Boolean(
-        approval && isFinalApproved(approval.managerApprovedBy ?? [], approval.financeApprovedBy ?? []),
+        approval && isReceiptFinanceApproved(approval, cfg),
       ),
     });
   }

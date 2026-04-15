@@ -13,6 +13,7 @@ import {
   loadTeacherPayroll,
   type PayrollScope,
 } from "@/lib/teacher-payroll";
+import { isReceiptFinanceApproved, isReceiptRejected } from "@/lib/receipt-approval-policy";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const APPROVAL_OVERDUE_HOURS = 24;
@@ -217,11 +218,10 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         managerRejectReason: null,
         financeRejectReason: null,
       };
-      const managerDone = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-      const financeDone = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-      const lane: ApprovalInboxLane | null = !managerDone ? "MANAGER" : !financeDone ? "FINANCE" : null;
+      if (isReceiptRejected(approval)) continue;
+      const financeDone = isReceiptFinanceApproved(approval, roleCfg);
+      const lane: ApprovalInboxLane | null = !financeDone ? "FINANCE" : null;
       if (!lane) continue;
-      if (lane === "MANAGER" && !canSeeManager) continue;
       if (lane === "FINANCE" && !canSeeFinance) continue;
       const invoice = receipt.invoiceId ? parentInvoiceMap.get(receipt.invoiceId) : null;
       const pkg = packageMap.get(receipt.packageId);
@@ -239,7 +239,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
         createdAt: receipt.createdAt,
         href: `/admin/receipts-approvals/queue?selectedType=PARENT&selectedId=${encodeURIComponent(receipt.id)}`,
-        statusText: lane === "MANAGER" ? "Manager action needed" : "Finance action needed",
+        statusText: "Finance action needed",
         riskText: receipt.paymentRecordId ? null : "Missing linked payment proof",
       });
     }
@@ -251,11 +251,10 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         managerRejectReason: null,
         financeRejectReason: null,
       };
-      const managerDone = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-      const financeDone = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-      const lane: ApprovalInboxLane | null = !managerDone ? "MANAGER" : !financeDone ? "FINANCE" : null;
+      if (isReceiptRejected(approval)) continue;
+      const financeDone = isReceiptFinanceApproved(approval, roleCfg);
+      const lane: ApprovalInboxLane | null = !financeDone ? "FINANCE" : null;
       if (!lane) continue;
-      if (lane === "MANAGER" && !canSeeManager) continue;
       if (lane === "FINANCE" && !canSeeFinance) continue;
       const invoice = partnerInvoiceMap.get(receipt.invoiceId);
       const waitingHours = hoursSince(receipt.createdAt);
@@ -272,7 +271,7 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
         overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
         createdAt: receipt.createdAt,
         href: `/admin/receipts-approvals/queue?view=PARTNER&selectedType=PARTNER&selectedId=${encodeURIComponent(receipt.id)}`,
-        statusText: lane === "MANAGER" ? "Manager action needed" : "Finance action needed",
+        statusText: "Finance action needed",
         riskText: receipt.paymentRecordId ? null : "Missing linked payment proof",
       });
     }

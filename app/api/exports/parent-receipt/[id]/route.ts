@@ -5,8 +5,9 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import path from "path";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
+import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { normalizeDateOnly } from "@/lib/date-only";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
@@ -154,10 +155,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     managerApprovedBy: [],
     financeApprovedBy: [],
   };
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
-  const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, cfg.financeApproverEmails);
-  if (!(managerReady && financeReady)) {
-    return new Response("Receipt export requires manager and finance approvals", { status: 403 });
+  const financeReady = isReceiptFinanceApproved(approval, cfg);
+  if (!financeReady) {
+    return new Response("Receipt export requires finance approval", { status: 403 });
   }
 
   const pkg = await prisma.coursePackage.findUnique({

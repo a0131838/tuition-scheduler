@@ -6,8 +6,9 @@ import { PassThrough } from "stream";
 import path from "path";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
+import { getReceiptApprovalStatus } from "@/lib/receipt-approval-policy";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -137,14 +138,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           financeRejectReason: null,
         };
         const amount = roundMoney(receipt.amountReceived || 0);
-        if (approval.managerRejectReason || approval.financeRejectReason) {
+        const status = getReceiptApprovalStatus(approval, roleCfg);
+        if (status === "REJECTED") {
           rejectedAmount += amount;
           continue;
         }
-        if (
-          areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails) &&
-          areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
-        ) {
+        if (status === "COMPLETED") {
           approvedAmount += amount;
         } else {
           pendingAmount += amount;
@@ -168,10 +167,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       managerApprovedBy: [],
       financeApprovedBy: [],
     };
-    return (
-      areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails) &&
-      areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
-    );
+    return getReceiptApprovalStatus(approval, roleCfg) === "COMPLETED";
   });
   const unapprovedReceipts = billing.receipts.filter((receipt) => !approvedReceipts.some((x) => x.id === receipt.id));
   const invoiceById = new Map(billing.invoices.map((x) => [x.id, x]));
@@ -441,9 +437,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     for (const receipt of unapprovedReceipts) {
       ensureSpace(20);
       const approval = approvalMap.get(receipt.id);
-      const status = approval?.managerRejectReason || approval?.financeRejectReason
+      const status = getReceiptApprovalStatus(approval, roleCfg) === "REJECTED"
         ? "Rejected / 已驳回"
-        : "Pending approval / 等待审批";
+        : "Pending finance approval / 等待财务审批";
       doc.roundedRect(32, y - 2, printableWidth, 18, 6).fillAndStroke("#fffaf0", "#fed7aa");
       drawText(
         doc,

@@ -20,9 +20,13 @@ import {
   getParentReceiptApprovalMap,
 } from "@/lib/parent-receipt-approval";
 import {
-  areAllApproversConfirmed,
   getApprovalRoleConfig,
 } from "@/lib/approval-flow";
+import {
+  getReceiptApprovalStatus,
+  isReceiptFinanceApproved,
+  isReceiptRejected,
+} from "@/lib/receipt-approval-policy";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 
@@ -138,12 +142,10 @@ function packageReceiptApprovalStateLabel(
   },
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] }
 ) {
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-  const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-  if (approval.managerRejectReason || approval.financeRejectReason) return t(lang, "Rejected", "已驳回");
-  if (!managerReady) return t(lang, "Manager action needed", "等待管理处理");
+  const financeReady = isReceiptFinanceApproved(approval, roleCfg);
+  if (isReceiptRejected(approval)) return t(lang, "Rejected", "已驳回");
   if (!financeReady) return t(lang, "Finance action needed", "等待财务处理");
-  return t(lang, "Fully approved", "已全部批准");
+  return t(lang, "Finance approved", "财务已审批");
 }
 
 async function createInvoiceAction(formData: FormData) {
@@ -300,11 +302,10 @@ export default async function PackageBillingPage({
           financeRejectReason: null,
         };
         const amount = roundMoney(receipt.amountReceived);
-        const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-        const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-        if (approval.managerRejectReason || approval.financeRejectReason) {
+        const status = getReceiptApprovalStatus(approval, roleCfg);
+        if (status === "REJECTED") {
           rejectedAmount += amount;
-        } else if (managerReady && financeReady) {
+        } else if (status === "COMPLETED") {
           approvedAmount += amount;
         } else {
           pendingAmount += amount;
@@ -628,7 +629,6 @@ export default async function PackageBillingPage({
               <th align="left">Received From</th>
               <th align="left">Amount Received</th>
               <th align="left">{t(lang, "Invoice progress", "发票进度")}</th>
-              <th align="left">Manager</th>
               <th align="left">Finance</th>
               <th align="left">Approval</th>
               <th align="left">PDF</th>
@@ -643,9 +643,7 @@ export default async function PackageBillingPage({
                 managerRejectReason: null,
                 financeRejectReason: null,
               };
-              const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-              const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-              const exportReady = managerReady && financeReady;
+              const exportReady = isReceiptFinanceApproved(approval, roleCfg);
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.receiptNo}</td>
@@ -670,16 +668,11 @@ export default async function PackageBillingPage({
                     })() : "-"}
                   </td>
                   <td>
-                    {roleCfg.managerApproverEmails.length === 0
-                      ? "No approver config"
-                      : `${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}
-                    {approval.managerRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.managerRejectReason}</div> : null}
-                  </td>
-                  <td>
                     {roleCfg.financeApproverEmails.length === 0
                       ? "No approver config"
                       : `${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}
                     {approval.financeRejectReason ? <div style={{ color: "#b00" }}>Rejected: {approval.financeRejectReason}</div> : null}
+                    {approval.managerRejectReason ? <div style={{ color: "#b00" }}>Legacy manager rejected: {approval.managerRejectReason}</div> : null}
                   </td>
                   <td>
                     <div style={{ display: "grid", gap: 4 }}>
@@ -694,7 +687,7 @@ export default async function PackageBillingPage({
                       <a href={`/api/exports/parent-receipt/${encodeURIComponent(r.id)}`}>Export PDF</a>
                     ) : (
                       <span style={{ color: "#b45309" }}>
-                        {t(lang, "Receipt PDF available after manager and finance approval", "收据 PDF 需经理和财务审批完成后导出")}
+                        {t(lang, "Receipt PDF available after finance approval", "收据 PDF 需财务审批完成后导出")}
                       </span>
                     )}
                   </td>

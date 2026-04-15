@@ -27,7 +27,8 @@ import {
   deletePartnerReceiptApproval,
   getPartnerReceiptApprovalMap,
 } from "@/lib/partner-receipt-approval";
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
+import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
@@ -739,7 +740,7 @@ export default async function PartnerBillingPage({
         </a>
       </div>
       <div style={{ overflowX: "auto" }}>
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
+      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
         <thead>
           <tr style={{ background: "#f3f4f6" }}>
             <th align="left" style={thCell}>{t(lang, "Receipt No.", "收据号")}</th>
@@ -747,7 +748,6 @@ export default async function PartnerBillingPage({
             <th align="left" style={thCell}>{t(lang, "Invoice No.", "发票号")}</th>
             <th align="left" style={thCell}>{t(lang, "Payment Record", "付款记录")}</th>
             <th align="left" style={thCell}>{t(lang, "Amount", "金额")}</th>
-            <th align="left" style={thCell}>{t(lang, "Manager", "管理")}</th>
             <th align="left" style={thCell}>{t(lang, "Finance", "财务")}</th>
             <th align="left" style={thCell}>{t(lang, "Actions", "操作")}</th>
             <th align="left" style={thCell}>PDF</th>
@@ -759,9 +759,7 @@ export default async function PartnerBillingPage({
             const inv = invoiceMap.get(r.invoiceId);
             const paymentRecord = r.paymentRecordId ? paymentRecordMap.get(r.paymentRecordId) : null;
             const approval = approvalMap.get(r.id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-            const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-            const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-            const exportReady = managerReady && financeReady;
+            const exportReady = isReceiptFinanceApproved(approval, roleCfg);
             return (
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td>{r.receiptNo}</td>
@@ -780,7 +778,6 @@ export default async function PartnerBillingPage({
                   )}
                 </td>
                 <td>{money(r.amountReceived)}</td>
-                <td>{`${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`}</td>
                 <td>{`${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`}</td>
                 <td>
                   {exportReady ? <span style={completedPill}>{t(lang, "Completed", "已完成")}</span> : <span style={pendingPill}>{t(lang, "Go to Approval Center", "前往审批中心")}</span>}

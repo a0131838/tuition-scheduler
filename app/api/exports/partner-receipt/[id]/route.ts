@@ -1,6 +1,7 @@
 ﻿import { requireAdmin } from "@/lib/auth";
 import { getPartnerInvoiceById, getPartnerReceiptById } from "@/lib/partner-billing";
-import { areAllApproversConfirmed, getApprovalRoleConfig } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
+import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
@@ -51,10 +52,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     getPartnerReceiptApprovalMap([id]),
   ]);
   const approval = approvalMap.get(id) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
-  const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, cfg.financeApproverEmails);
-  if (!(managerReady && financeReady)) {
-    return new Response("Receipt export requires manager and finance approvals", { status: 403 });
+  const financeReady = isReceiptFinanceApproved(approval, cfg);
+  if (!financeReady) {
+    return new Response("Receipt export requires finance approval", { status: 403 });
   }
 
   const invoice = await getPartnerInvoiceById(receipt.invoiceId);

@@ -2,9 +2,14 @@ import { requireAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { getApprovalRoleConfig, areAllApproversConfirmed } from "@/lib/approval-flow";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
+import {
+  getReceiptApprovalStatus,
+  isReceiptFinanceApproved,
+  isReceiptRejected,
+} from "@/lib/receipt-approval-policy";
 import { listAllParentBilling } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
@@ -206,30 +211,18 @@ export default async function FinanceWorkbenchPage({
     const rejectedReceipt =
       receipts.find((receipt) => {
         const approval = parentApprovalMap.get(receipt.id);
-        return Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
+        return isReceiptRejected(approval);
       }) ?? null;
     const pendingReceipt =
       receipts.find((receipt) => {
         const approval = parentApprovalMap.get(receipt.id);
-        const managerReady = approval
-          ? areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails)
-          : false;
-        const financeReady = approval
-          ? areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
-          : false;
-        const hasReject = Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
-        return !hasReject && !(managerReady && financeReady);
+        const financeReady = approval ? isReceiptFinanceApproved(approval, roleCfg) : false;
+        return !isReceiptRejected(approval) && !financeReady;
       }) ?? null;
     const latestReceipt = receipts[0] ?? null;
     const reviewReceipt = rejectedReceipt ?? pendingReceipt ?? latestReceipt;
     const approval = reviewReceipt ? parentApprovalMap.get(reviewReceipt.id) : null;
-    const managerReady = approval
-      ? areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails)
-      : false;
-    const financeReady = approval
-      ? areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
-      : false;
-    const hasReject = Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
+    const approvalStatus = getReceiptApprovalStatus(approval, roleCfg);
 
     let status: WorkbenchStatus = "PENDING_RECEIPT";
     let nextAction = t(lang, "Create receipt in Receipt Approvals", "去收据审批页创建收据");
@@ -237,18 +230,16 @@ export default async function FinanceWorkbenchPage({
     let openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&step=create&invoiceId=${encodeURIComponent(inv.id)}`;
 
     if (reviewReceipt) {
-      approvalText = roleCfg.managerApproverEmails.length && roleCfg.financeApproverEmails.length
-        ? `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · M ${approval?.managerApprovedBy.length ?? 0}/${roleCfg.managerApproverEmails.length} · F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
+      approvalText = roleCfg.financeApproverEmails.length
+        ? `${receipts.length} ${t(lang, "receipt(s)", "张收据")} · ${money(receiptedAmount)}/${money(inv.totalAmount)} · F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
         : t(lang, "Approver config missing", "审批人配置缺失");
       openHref = `/admin/receipts-approvals?packageId=${encodeURIComponent(inv.packageId)}&selectedType=PARENT&selectedId=${encodeURIComponent(reviewReceipt.id)}`;
-      if (hasReject) {
+      if (approvalStatus === "REJECTED") {
         status = "REJECTED";
         nextAction = t(lang, "Fix and resubmit in Receipt Approvals", "去收据审批页修复并重提");
-      } else if (!(managerReady && financeReady)) {
+      } else if (approvalStatus !== "COMPLETED") {
         status = "PENDING_APPROVAL";
-        nextAction = !managerReady
-          ? t(lang, "Awaiting manager approval", "等待经理审批")
-          : t(lang, "Awaiting finance approval", "等待财务审批");
+        nextAction = t(lang, "Awaiting finance approval", "等待财务审批");
       } else if (remainingAmount > 0.01) {
         status = "PARTIALLY_RECEIPTED";
         nextAction = t(
@@ -275,7 +266,7 @@ export default async function FinanceWorkbenchPage({
     }
     if (
       status === "PENDING_APPROVAL" &&
-      (!roleCfg.managerApproverEmails.length || !roleCfg.financeApproverEmails.length)
+      !roleCfg.financeApproverEmails.length
     ) {
       exceptionReasons.push("APPROVER_CONFIG_MISSING");
     }
@@ -306,13 +297,7 @@ export default async function FinanceWorkbenchPage({
     if (monthFilter && monthKeyFromDateOnly(inv.issueDate) !== monthFilter) continue;
     const receipt = partnerReceiptByInvoiceId.get(inv.id) ?? null;
     const approval = receipt ? partnerApprovalMap.get(receipt.id) : null;
-    const managerReady = approval
-      ? areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails)
-      : false;
-    const financeReady = approval
-      ? areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails)
-      : false;
-    const hasReject = Boolean(approval?.managerRejectReason || approval?.financeRejectReason);
+    const approvalStatus = getReceiptApprovalStatus(approval, roleCfg);
 
     const month = inv.monthKey || monthKeyFromDateOnly(inv.issueDate);
     let status: WorkbenchStatus = "PENDING_RECEIPT";
@@ -321,21 +306,19 @@ export default async function FinanceWorkbenchPage({
     let openHref = `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(inv.mode)}&month=${encodeURIComponent(month)}&tab=receipt`;
 
     if (receipt) {
-      approvalText = roleCfg.managerApproverEmails.length && roleCfg.financeApproverEmails.length
-        ? `M ${approval?.managerApprovedBy.length ?? 0}/${roleCfg.managerApproverEmails.length} · F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
+      approvalText = roleCfg.financeApproverEmails.length
+        ? `F ${approval?.financeApprovedBy.length ?? 0}/${roleCfg.financeApproverEmails.length}`
         : t(lang, "Approver config missing", "审批人配置缺失");
       openHref = `/admin/receipts-approvals?selectedType=PARTNER&selectedId=${encodeURIComponent(receipt.id)}`;
-      if (hasReject) {
+      if (approvalStatus === "REJECTED") {
         status = "REJECTED";
         nextAction = t(lang, "Fix and resubmit in Receipt Approvals", "去收据审批页修复并重提");
-      } else if (managerReady && financeReady) {
+      } else if (approvalStatus === "COMPLETED") {
         status = "COMPLETED";
         nextAction = t(lang, "Export receipt/invoice", "导出收据/发票");
       } else {
         status = "PENDING_APPROVAL";
-        nextAction = !managerReady
-          ? t(lang, "Awaiting manager approval", "等待经理审批")
-          : t(lang, "Awaiting finance approval", "等待财务审批");
+        nextAction = t(lang, "Awaiting finance approval", "等待财务审批");
       }
     }
 
@@ -347,7 +330,7 @@ export default async function FinanceWorkbenchPage({
     }
     if (
       status === "PENDING_APPROVAL" &&
-      (!roleCfg.managerApproverEmails.length || !roleCfg.financeApproverEmails.length)
+      !roleCfg.financeApproverEmails.length
     ) {
       exceptionReasons.push("APPROVER_CONFIG_MISSING");
     }

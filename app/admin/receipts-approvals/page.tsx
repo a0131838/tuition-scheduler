@@ -42,10 +42,12 @@ import {
   revokePartnerReceiptApprovalForRedo,
 } from "@/lib/partner-receipt-approval";
 import {
-  areAllApproversConfirmed,
   getApprovalRoleConfig,
   isRoleApprover,
 } from "@/lib/approval-flow";
+import {
+  getReceiptApprovalStatus,
+} from "@/lib/receipt-approval-policy";
 import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkflowSourceBanner from "../_components/WorkflowSourceBanner";
@@ -175,16 +177,12 @@ function queueStatusLabel(
   approval?: { managerApprovedBy: string[]; financeApprovedBy: string[] },
   roleCfg?: { managerApproverEmails: string[]; financeApproverEmails: string[] },
 ) {
-  if (status === "COMPLETED") return t(lang, "Fully approved, ready to archive", "已完成审批，可归档");
+  if (status === "COMPLETED") return t(lang, "Finance approved, ready to archive", "财务已审批，可归档");
   if (status === "REJECTED") return t(lang, "Fix needed before review", "修复后再审核");
   if (approval && roleCfg) {
-    const managerNeeded =
-      roleCfg.managerApproverEmails.length > 0 &&
-      approval.managerApprovedBy.length < roleCfg.managerApproverEmails.length;
     const financeNeeded =
       roleCfg.financeApproverEmails.length > 0 &&
       approval.financeApprovedBy.length < roleCfg.financeApproverEmails.length;
-    if (managerNeeded) return t(lang, "Manager action needed", "等待管理处理");
     if (financeNeeded) return t(lang, "Finance action needed", "等待财务处理");
   }
   return t(lang, "Approval action needed", "等待审批处理");
@@ -406,23 +404,15 @@ function queueReviewProgressLabel(
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
   approval: { managerApprovedBy: string[]; financeApprovedBy: string[] }
 ) {
-  const managerConfigured = roleCfg.managerApproverEmails.length > 0;
   const financeConfigured = roleCfg.financeApproverEmails.length > 0;
-  const managerDone = !managerConfigured || approval.managerApprovedBy.length >= roleCfg.managerApproverEmails.length;
   const financeDone = !financeConfigured || approval.financeApprovedBy.length >= roleCfg.financeApproverEmails.length;
-  const managerSummary = managerConfigured
-    ? `${t(lang, "Manager", "管理")}: ${approval.managerApprovedBy.length}/${roleCfg.managerApproverEmails.length}`
-    : t(lang, "Manager no config", "管理未配置");
   const financeSummary = financeConfigured
     ? `${t(lang, "Finance", "财务")}: ${approval.financeApprovedBy.length}/${roleCfg.financeApproverEmails.length}`
     : t(lang, "Finance no config", "财务未配置");
-  if (!managerDone) {
-    return `${t(lang, "Manager action needed", "等待管理处理")} · ${managerSummary} · ${financeSummary}`;
-  }
   if (!financeDone) {
-    return `${t(lang, "Manager done, finance action needed", "管理已完成，等待财务处理")} · ${managerSummary} · ${financeSummary}`;
+    return `${t(lang, "Finance action needed", "等待财务处理")} · ${financeSummary}`;
   }
-  return `${t(lang, "Fully approved", "审批已完成")} · ${managerSummary} · ${financeSummary}`;
+  return `${t(lang, "Finance approved", "财务已审批")} · ${financeSummary}`;
 }
 
 function queuePrimaryActionLabel(
@@ -439,17 +429,12 @@ function queueCompactProgressLabel(
   roleCfg: { managerApproverEmails: string[]; financeApproverEmails: string[] },
   approval: { managerApprovedBy: string[]; financeApprovedBy: string[] }
 ) {
-  const managerTotal = roleCfg.managerApproverEmails.length;
   const financeTotal = roleCfg.financeApproverEmails.length;
-  const managerPart =
-    managerTotal > 0
-      ? `${t(lang, "Mgr", "管理")} ${approval.managerApprovedBy.length}/${managerTotal}`
-      : t(lang, "Mgr n/a", "管理未配");
   const financePart =
     financeTotal > 0
       ? `${t(lang, "Fin", "财务")} ${approval.financeApprovedBy.length}/${financeTotal}`
       : t(lang, "Fin n/a", "财务未配");
-  return `${managerPart} · ${financePart}`;
+  return financePart;
 }
 
 function renderQueueCards(
@@ -920,12 +905,6 @@ async function financeApproveReceiptAction(formData: FormData) {
   if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
     redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Not allowed"));
   }
-  const approvalMap = await getParentReceiptApprovalMap([receiptId]);
-  const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
-  if (!managerReady) {
-    redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "err", "Manager approval is required first"));
-  }
   await financeApproveParentReceipt(receiptId, actorEmail);
   redirect(appendResultParam(resolveActionHref(formData, withQuery("/admin/receipts-approvals", packageId)), "msg", "Finance approved"));
 }
@@ -999,12 +978,6 @@ async function financeApprovePartnerReceiptAction(formData: FormData) {
   const cfg = await getApprovalRoleConfig();
   if (!receiptId || !isRoleApprover(actorEmail, cfg.financeApproverEmails)) {
     redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Not allowed"));
-  }
-  const approvalMap = await getPartnerReceiptApprovalMap([receiptId]);
-  const approval = approvalMap.get(receiptId) ?? { managerApprovedBy: [], financeApprovedBy: [] };
-  const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, cfg.managerApproverEmails);
-  if (!managerReady) {
-    redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "err", "Partner manager approval is required first"));
   }
   await financeApprovePartnerReceipt(receiptId, actorEmail);
   redirect(appendResultParam(resolveActionHref(formData, "/admin/receipts-approvals"), "msg", "Partner finance approved"));
@@ -1154,7 +1127,6 @@ export async function ReceiptsApprovalsPageContent({
   const actorEmail = current?.email ?? "";
   const canSuperRevoke = actorEmail.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
   const financeOpsEnabled = canFinanceOperate(actorEmail, current?.role ?? "");
-  const isManagerApprover = isRoleApprover(actorEmail, roleCfg.managerApproverEmails);
   const isFinanceApprover = isRoleApprover(actorEmail, roleCfg.financeApproverEmails);
   const today = formatDateOnly(new Date());
 
@@ -1477,13 +1449,7 @@ export async function ReceiptsApprovalsPageContent({
       managerRejectReason: null,
       financeRejectReason: null,
     };
-    const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-    const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-    const status: "COMPLETED" | "REJECTED" | "PENDING" = managerReady && financeReady
-      ? "COMPLETED"
-      : approval.managerRejectReason || approval.financeRejectReason
-        ? "REJECTED"
-        : "PENDING";
+    const status = getReceiptApprovalStatus(approval, roleCfg);
     const paymentFileMissing = Boolean(pay && !(paymentRecordFileMap.get(pay.id) ?? false));
     const invoiceTotalAmount = Number(inv?.totalAmount ?? 0) || 0;
     const invoiceReceiptedAmount = roundMoney(
@@ -1532,13 +1498,7 @@ export async function ReceiptsApprovalsPageContent({
       managerRejectReason: null,
       financeRejectReason: null,
     };
-    const managerReady = areAllApproversConfirmed(approval.managerApprovedBy, roleCfg.managerApproverEmails);
-    const financeReady = areAllApproversConfirmed(approval.financeApprovedBy, roleCfg.financeApproverEmails);
-    const status: "COMPLETED" | "REJECTED" | "PENDING" = managerReady && financeReady
-      ? "COMPLETED"
-      : approval.managerRejectReason || approval.financeRejectReason
-        ? "REJECTED"
-        : "PENDING";
+    const status = getReceiptApprovalStatus(approval, roleCfg);
     const amountDiff = Math.abs((Number(r.amountReceived) || 0) - (Number(inv?.totalAmount ?? 0) || 0));
     const riskCount = (pay ? 0 : 1) + (amountDiff > 0.01 ? 1 : 0);
     return {
@@ -1639,9 +1599,8 @@ export async function ReceiptsApprovalsPageContent({
       )
     : completedQueue;
   const mineQueue = actionableQueue.filter((x) => {
-    const managerTodo = isManagerApprover && x.approval.managerApprovedBy.length < roleCfg.managerApproverEmails.length;
     const financeTodo = isFinanceApprover && x.approval.financeApprovedBy.length < roleCfg.financeApproverEmails.length;
-    return managerTodo || financeTodo;
+    return financeTodo;
   });
   const otherQueue = actionableQueue.filter((x) => !mineQueue.some((mine) => mine.type === x.type && mine.id === x.id));
   const visibleMineQueue = queueBucket === "OPEN" || queueBucket === "HISTORY" ? [] : mineQueue;
@@ -1707,9 +1666,7 @@ export async function ReceiptsApprovalsPageContent({
   const actionFinishedQueue = Boolean(msg) && queueDone;
   const currentRoleFocus = isFinanceApprover
     ? t(lang, "Finance actions", "财务操作")
-    : isManagerApprover
-      ? t(lang, "Manager actions", "管理操作")
-      : t(lang, "View only", "仅查看");
+    : t(lang, "View only", "仅查看");
   const selectedRowInvoiceOverReceived =
     selectedRow ? Math.max(0, Number(selectedRow.invoiceOverReceivedAmount ?? 0) || 0) : 0;
   const selectedRiskMessages: string[] = [];
@@ -2149,17 +2106,17 @@ export async function ReceiptsApprovalsPageContent({
                   `创建 ${selectedCreateInvoiceSummary.nextReceiptNo.split("-").pop() ?? selectedCreateInvoiceSummary.nextReceiptNo}`
                 )
               : t(lang, "Create the next receipt", "创建下一张收据"),
-            note: selectedCreateInvoiceSummary
-              ? `${selectedCreateInvoice?.invoiceNo ?? "-"} · ${selectedCreateInvoiceSummary.nextReceiptNo} · ${t(lang, "remaining", "剩余")} ${money(selectedCreateInvoiceSummary.remainingAmount)}`
-              : t(lang, "This package already has usable proof and invoiced amount waiting to become a receipt.", "这个课包已经有可用凭证，而且还有已开票金额等待生成收据。"),
-            href: recommendedCreateHref,
-          }
-        : packagePendingApprovalCount > 0
-          ? {
-              label: t(lang, "Return to approval queue", "回到审批队列"),
-              note: t(lang, "Receipts are already created for this package and now need finance or manager approval.", "这个课包的收据已经创建完，当前重点是继续做财务或管理审批。"),
-              href: stepHref("review"),
+              note: selectedCreateInvoiceSummary
+                ? `${selectedCreateInvoice?.invoiceNo ?? "-"} · ${selectedCreateInvoiceSummary.nextReceiptNo} · ${t(lang, "remaining", "剩余")} ${money(selectedCreateInvoiceSummary.remainingAmount)}`
+                : t(lang, "This package already has usable proof and invoiced amount waiting to become a receipt.", "这个课包已经有可用凭证，而且还有已开票金额等待生成收据。"),
+              href: recommendedCreateHref,
             }
+          : packagePendingApprovalCount > 0
+            ? {
+                label: t(lang, "Return to approval queue", "回到审批队列"),
+                note: t(lang, "Receipts are already created for this package and now need finance approval.", "这个课包的收据已经创建完，当前重点是继续做财务审批。"),
+                href: stepHref("review"),
+              }
           : {
               label: t(lang, "Package flow is clear", "当前课包流程已清完"),
               note: t(lang, "This package already has completed receipts and no pending finance step is blocking it right now.", "这个课包当前已经有完成收据，也没有挂着的财务步骤。"),
@@ -3887,7 +3844,7 @@ export async function ReceiptsApprovalsPageContent({
                 </div>
                 {selectedRow.approval.managerApprovedBy.length > 0 ? (
                   <div>
-                    {t(lang, "Manager approved by", "管理已批准")}: {selectedRow.approval.managerApprovedBy.join(", ")}
+                    {t(lang, "Legacy manager approved by", "历史管理已批准")}: {selectedRow.approval.managerApprovedBy.join(", ")}
                   </div>
                 ) : null}
                 {"managerRejectedAt" in selectedRow.approval && selectedRow.approval.managerRejectedAt ? (
@@ -3907,27 +3864,9 @@ export async function ReceiptsApprovalsPageContent({
                 ) : null}
               </div>
             </div>
-            {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Manager Rejected:", "管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
+            {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Legacy manager rejected:", "历史管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
             <div id="receipt-primary-actions" className="receipt-primary-actions">
-              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isManagerApprover ? (
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review", "管理审核")}</div>
-                  <form action={managerApproveReceiptAction}>
-                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
-                    <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
-                  </form>
-                  <form action={managerRejectReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <input type="hidden" name="packageId" value={selectedRow.packageId} />
-                    <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    {renderRejectReasonFields(lang, `parent-manager-${selectedRow.id}`)}
-                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
-                  </form>
-                </div>
-              ) : null}
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isFinanceApprover ? (
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Finance review", "财务审核")}</div>
@@ -3942,22 +3881,6 @@ export async function ReceiptsApprovalsPageContent({
                     <input type="hidden" name="receiptId" value={selectedRow.id} />
                     <input type="hidden" name="nextHref" value={selectedActionNextHref} />
                     {renderRejectReasonFields(lang, `parent-finance-${selectedRow.id}`)}
-                    <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
-                  </form>
-                </div>
-              ) : null}
-              {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARTNER" && isManagerApprover ? (
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Manager review", "管理审核")}</div>
-                  <form action={managerApprovePartnerReceiptAction}>
-                    <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    <button type="submit" style={primaryButtonStyle}>{approveAndNextLabel}</button>
-                  </form>
-                  <form action={managerRejectPartnerReceiptAction} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <input type="hidden" name="receiptId" value={selectedRow.id} />
-                    <input type="hidden" name="nextHref" value={selectedActionNextHref} />
-                    {renderRejectReasonFields(lang, `partner-manager-${selectedRow.id}`)}
                     <button type="submit" style={dangerButtonStyle}>{rejectAndNextLabel}</button>
                   </form>
                 </div>
@@ -3985,7 +3908,7 @@ export async function ReceiptsApprovalsPageContent({
                   <a href={selectedRow.exportHref}>{t(lang, "Export PDF", "导出PDF")}</a>
                 ) : (
                   <span style={{ color: "#b45309" }}>
-                    {t(lang, "Formal receipt PDF is available after manager and finance approval", "正式收据 PDF 需经理和财务审批完成后导出")}
+                    {t(lang, "Formal receipt PDF is available after finance approval", "正式收据 PDF 需财务审批完成后导出")}
                   </span>
                 )}
               </div>

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-15-r64` (Approval Inbox now includes teacher payroll reminders for manager and finance action stages), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-15-r65` (receipt approval is now finance-only while teacher payroll, partner settlement, and expense approval rules remain unchanged), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-15-r65 Ready
+
+- Scope: simplify parent and partner receipt approval to finance-only approval.
+- Business impact:
+  - receipt reminders still appear in Approval Inbox, but only in the finance lane
+  - finance can approve parent and partner receipts without waiting for manager approval
+  - formal receipt PDFs, parent statements, finance workbench, package billing, partner billing, history export, and invoice resequencing now treat finance approval as the receipt completion gate
+  - legacy manager receipt approval/rejection data is preserved as audit history, but it is no longer part of the active receipt flow
+- Validation:
+  - `npm run build`
+  - newly generated receipts should show as `Needs finance / 待财务审批`, not `Needs manager / 待管理审批`
+  - finance approval should unlock receipt PDF export
+  - teacher payroll, partner settlement, and expense approval manager flows should remain unchanged
 
 ## 2026-04-15-r64 Ready
 

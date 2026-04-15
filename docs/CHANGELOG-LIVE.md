@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-15-r65
+
+- Release ID: `2026-04-15-r65`
+- Date/Time (Asia/Shanghai): `2026-04-15`
+- Deployment status: `READY`
+- Scope: simplify parent and partner receipt approval so generated receipts require finance approval only, while keeping unrelated manager-approval workflows unchanged.
+- Key files:
+  - `lib/receipt-approval-policy.ts`
+  - `lib/approval-inbox.ts`
+  - `lib/global-invoice-sequence.ts`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/receipts-approvals/history/export/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/api/exports/parent-receipt/[id]/route.ts`
+  - `app/api/exports/partner-receipt/[id]/route.ts`
+  - `app/api/exports/parent-statement/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260415-receipt-finance-only-approval.md`
+- Risk impact (if any): Medium-low. This intentionally changes only the receipt approval policy from manager+finance to finance-only. It does not change teacher payroll manager approval, partner settlement approval, expense approval, receipt creation, payment proof linking, invoice math, package balance math, or super-admin correction rules.
+- Verification:
+  - `npm run build`
+  - receipt reminders should still appear in Approval Inbox, but only under `Finance approval / 财务审批`
+  - receipt manager approve/reject controls should no longer appear in the receipt approval center
+  - finance should be able to approve a parent or partner receipt without prior manager approval
+  - formal parent and partner receipt PDF exports should unlock after finance approval
+  - finance workbench, package billing, parent statement, partner billing, and receipt history export should classify receipts using finance-only approval status
+- Rollback point: previous production commit before `2026-04-15-r65`.
+
 ## 2026-04-15-r64
 
 - Release ID: `2026-04-15-r64`
