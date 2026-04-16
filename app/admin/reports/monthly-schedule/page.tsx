@@ -106,7 +106,43 @@ export default async function MonthlyScheduleReportPage({
 
   return (
     <div>
-      <h2>{choose(lang, "Monthly Schedule Calendar", "月课表总览")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Monthly Schedule / 月课表总览</div>
+          <h2>{choose(lang, "Monthly Schedule Calendar", "月课表总览")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {choose(
+              lang,
+              "Pick the month and optional teacher/campus first, then use the calendar for scan-and-compare work.",
+              "先选月份和可选的老师/校区，再用月历做整体扫读和对比。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{choose(lang, "Sessions", "课次数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{visibleSessionCount}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{choose(lang, "Teachers", "老师数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{teacherSet.size}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{choose(lang, "Students", "学生数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{studentSet.size}</div>
+          </div>
+        </div>
+      </div>
       <div style={{ marginBottom: 10, color: "#666" }}>
         {choose(
           lang,
@@ -115,7 +151,27 @@ export default async function MonthlyScheduleReportPage({
         )}
       </div>
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 10 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#monthly-schedule-filters">{choose(lang, "Filters", "筛选")}</a>
+        <a href="#monthly-schedule-calendar">{choose(lang, "Calendar", "月历")}</a>
+      </div>
+
+      <div id="monthly-schedule-filters" style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 10, scrollMarginTop: 96 }}>
         <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label>
             {choose(lang, "Month", "月份")}:
@@ -164,7 +220,7 @@ export default async function MonthlyScheduleReportPage({
         {choose(lang, "Students", "学生数")}: <b>{studentSet.size}</b>
       </div>
 
-      <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <table id="monthly-schedule-calendar" cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", scrollMarginTop: 96 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             {WEEKDAYS.map((wd) => (

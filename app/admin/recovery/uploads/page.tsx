@@ -187,6 +187,33 @@ function sourceWorkflowLabel(lang: Awaited<ReturnType<typeof getLang>>, source: 
   }
 }
 
+function recoverySummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function recoverySectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
+
 async function recoverUploadsAction(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -260,6 +287,71 @@ export default async function AdminRecoveryUploadsPage({
     { source: "partner_payment" as const, count: byType.partnerPayment.length },
   ].sort((a, b) => b.count - a.count)[0];
   const filterHref = (value: SourceFilter) => (value === "ALL" ? "/admin/recovery/uploads" : `/admin/recovery/uploads?source=${encodeURIComponent(value)}`);
+  const recoveryFocusTitle =
+    missing.length === 0
+      ? t(lang, "Attachment health desk is clear", "附件异常工作台当前已清空")
+      : sourceFilter === "ALL"
+        ? t(lang, "Start with the largest anomaly source", "先处理当前最大异常来源")
+        : t(lang, "This source is now your repair lane", "当前来源就是你的修复队列");
+  const recoveryFocusDetail =
+    missing.length === 0
+      ? t(lang, "No missing file is currently blocking tickets, expenses, or finance proof flows.", "当前没有缺失附件在阻塞工单、报销或财务凭证流程。")
+      : sourceFilter === "ALL"
+        ? t(lang, `The largest bucket is ${sourceLabel(lang, dominantSource.source)}. Narrow to one source before bulk repair so the next workflow jump stays clear.`, `当前最大来源是${sourceLabel(lang, dominantSource.source)}。建议先切单一来源，再做批量修复，这样回原流程更清楚。`)
+        : t(lang, `You are only viewing ${sourceLabel(lang, sourceFilter)}. Repair here, then jump back to that workflow instead of searching again.`, `当前只看${sourceLabel(lang, sourceFilter)}。在这里修复后，直接回对应工作流继续，不用重新找。`);
+  const recoverySummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: recoveryFocusTitle,
+      detail: recoveryFocusDetail,
+      background: missing.length > 0 ? "#fff7ed" : "#f0fdf4",
+      border: missing.length > 0 ? "#fdba74" : "#86efac",
+    },
+    {
+      title: t(lang, "Current scope", "当前范围"),
+      value: sourceFilter === "ALL" ? t(lang, "All anomaly sources", "全部异常来源") : sourceLabel(lang, sourceFilter),
+      detail: t(lang, `${filteredMissing.length} visible row(s) in this scope.`, `当前范围里有 ${filteredMissing.length} 条可见记录。`),
+      background: "#f8fafc",
+      border: "#dbe4f0",
+    },
+    {
+      title: t(lang, "Main pressure points", "当前主要压力点"),
+      value: t(lang, `${financeIssueCount} finance-linked · ${byType.ticket.length} ticket-linked`, `${financeIssueCount} 条财务相关 · ${byType.ticket.length} 条工单相关`),
+      detail: t(lang, `${missing.length} total missing file row(s).`, `总共有 ${missing.length} 条缺失附件记录。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+  ];
+  const recoverySectionLinks = [
+    {
+      href: "#recovery-filters",
+      label: t(lang, "Source filters", "来源筛选"),
+      detail: t(lang, "Narrow the anomaly source before repairing", "先缩小来源，再开始修复"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#recovery-upload",
+      label: t(lang, "Bulk restore", "批量回填"),
+      detail: t(lang, "Upload recovered files back to original paths", "把找回的文件批量写回原路径"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#recovery-source-guide",
+      label: t(lang, "Workflow guide", "工作流指引"),
+      detail: t(lang, "Jump back to the right source page after repair", "修复后回到正确业务页"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#recovery-detail",
+      label: t(lang, "Missing detail", "缺失明细"),
+      detail: t(lang, `${Math.min(filteredMissing.length, 80)} visible row(s)`, `当前显示 ${Math.min(filteredMissing.length, 80)} 条`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -302,6 +394,43 @@ export default async function AdminRecoveryUploadsPage({
         </div>
       </section>
 
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {recoverySummaryCards.map((card) => (
+          <div key={card.title} style={recoverySummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
+      <section
+        style={{
+          ...workbenchInfoBarStyle,
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          alignItems: "flex-start",
+          background: "#ffffffee",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 700 }}>{t(lang, "Attachment repair map", "附件修复地图")}</div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {t(lang, "Use this strip to switch source scope, restore files, and jump back to the right workflow without rescanning the full page.", "通过这条导航快速切来源、做回填、回主流程，不用每次重新扫整页。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {recoverySectionLinks.map((link) => (
+            <a key={link.label} href={link.href} style={recoverySectionLinkStyle(link.background, link.border)}>
+              <div style={{ fontWeight: 700 }}>{link.label}</div>
+              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45 }}>{link.detail}</div>
+            </a>
+          ))}
+        </div>
+      </section>
+
       <div style={workbenchInfoBarStyle}>
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, "Next step shortcuts", "下一步快捷入口")}</div>
@@ -319,7 +448,7 @@ export default async function AdminRecoveryUploadsPage({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div id="recovery-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {([
           { key: "ALL", label: t(lang, "All anomalies", "全部异常"), count: missing.length },
           { key: "expense", label: t(lang, "Expense", "报销"), count: byType.expense.length },
@@ -355,7 +484,7 @@ export default async function AdminRecoveryUploadsPage({
       ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(280px, 0.8fr)", gap: 14 }}>
-        <form action={recoverUploadsAction} encType="multipart/form-data" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
+        <form id="recovery-upload" action={recoverUploadsAction} encType="multipart/form-data" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, "Bulk re-upload", "批量补回附件")}</div>
           <div style={{ color: "#475569", fontSize: 12 }}>
             {t(lang, "Files are matched by the original filename in the missing list and written back to the original path. Use this after you recover files from chat history, email, or a local backup.", "按缺失清单里的原文件名自动匹配并写回原路径。适合已经从聊天记录、邮箱或本地备份中找回文件后，一次性回填。")}
@@ -364,7 +493,7 @@ export default async function AdminRecoveryUploadsPage({
           <button type="submit" style={{ width: 220 }}>{t(lang, "Upload and restore", "上传并回填")}</button>
         </form>
 
-        <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
+        <div id="recovery-source-guide" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, "Source workflow guide", "来源工作流指引")}</div>
           <div style={{ color: "#475569", fontSize: 13 }}>{t(lang, "Different sources need different repair pages. Check the source first, then use the matching shortcut.", "不同来源的异常需要回到不同的业务页处理。先看来源，再用右侧快捷入口跳回去。")}</div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -383,7 +512,7 @@ export default async function AdminRecoveryUploadsPage({
         </div>
       </div>
 
-      <div style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12 }}>
+      <div id="recovery-detail" style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 12, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontWeight: 700 }}>
             {t(lang, "Missing file detail", "缺失明细")}

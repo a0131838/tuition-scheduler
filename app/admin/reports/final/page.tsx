@@ -569,13 +569,68 @@ export default async function AdminFinalReportCenterPage({
 
   return (
     <div>
-      <h2 style={{ marginBottom: 4 }}>{t(lang, "Final Report Center", "结课报告中心")}</h2>
-      <div style={{ color: "#666", marginBottom: 10 }}>
-        {t(
-          lang,
-          "Detect completed hour packages, assign one final report per package, and track teacher submission, parent delivery, and read-only share links in one desk.",
-          "系统会识别已完成的课时包，教务可按课包推送结课报告，并在同一工作台里跟踪老师提交、家长交付和只读分享链接。"
-        )}
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Final Report Desk / 结课报告工作台</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Final Report Center", "结课报告中心")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Detect completed hour packages, assign one final report per package, and track teacher submission, parent delivery, and read-only share links in one desk.",
+              "系统会识别已完成的课时包，教务可按课包推送结课报告，并在同一工作台里跟踪老师提交、家长交付和只读分享链接。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Candidates", "候选课包")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{candidates.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Active reports", "当前报告")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{stats.active}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Pending delivery", "待交付")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{stats.pendingDelivery}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Active share links", "生效分享链接")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{stats.shared}</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#final-report-stats">{t(lang, "Stats", "统计")}</a>
+        <a href="#final-report-filters">{t(lang, "Views", "视图")}</a>
+        <a href="#final-report-candidates">{t(lang, "Candidates", "候选课包")}</a>
+        <a href="#final-report-records">{t(lang, "Records", "报告记录")}</a>
       </div>
 
       {ok === "assigned" ? (
@@ -623,6 +678,7 @@ export default async function AdminFinalReportCenterPage({
       ) : null}
 
       <div
+        id="final-report-stats"
         style={{
           border: "1px solid #dbeafe",
           background: "#f8fbff",
@@ -632,6 +688,7 @@ export default async function AdminFinalReportCenterPage({
           display: "grid",
           gap: 10,
           gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          scrollMarginTop: 96,
         }}
       >
         <div><b>{t(lang, "Active reports", "当前报告")}</b><div style={{ fontSize: 24, fontWeight: 800 }}>{stats.active}</div></div>
@@ -643,7 +700,7 @@ export default async function AdminFinalReportCenterPage({
         <div><b>{t(lang, "Archived", "已归档")}</b><div style={{ fontSize: 24, fontWeight: 800, color: "#475569" }}>{stats.archived}</div></div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+      <div id="final-report-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, scrollMarginTop: 96 }}>
         {filterLinks.map((link) => {
           const active = view === link.key;
           return (
@@ -671,7 +728,7 @@ export default async function AdminFinalReportCenterPage({
         })}
       </div>
 
-      <div style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+      <div id="final-report-candidates" style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 16, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 800, color: "#92400e", marginBottom: 8 }}>{t(lang, "Completed Packages Ready To Assign", "可推送结课报告的已完成课包")}</div>
         {candidates.length === 0 ? (
           <div style={{ color: "#999" }}>{t(lang, "No candidates for now.", "当前没有候选课包。")}</div>
@@ -762,7 +819,7 @@ export default async function AdminFinalReportCenterPage({
         )}
       </div>
 
-      <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
+      <div id="final-report-records" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Final Report Records", "结课报告记录")}</div>
         {filteredReports.length === 0 ? (
           <div style={{ color: "#999" }}>

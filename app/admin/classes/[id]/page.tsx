@@ -8,6 +8,28 @@ import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/
 import ClassEnrollmentsClient from "./ClassEnrollmentsClient";
 import DeleteClassClient from "./DeleteClassClient";
 import ClassEditClient from "./ClassEditClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function classSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function canTeachSubject(teacher: { subjectCourseId?: string | null; subjects?: Array<{ id: string }> }, subjectId?: string | null) {
   if (!subjectId) return true;
@@ -211,21 +233,89 @@ export default async function ClassDetailPage({
 
   return (
     <div>
-      <h2>{t(lang, "Class Detail", "班级详情")}</h2>
-      <p>
-        <a
-          href="/admin/classes"
-          style={{ padding: "4px 8px", border: "1px solid #ddd", borderRadius: 6 }}
-        >
-          ← {t(lang, "Back to Classes", "返回班级列表")}
-        </a>{" "}
-        <span style={{ color: "#999" }}>(classId {cls.id})</span>
-      </p>
+      <section style={workbenchHeroStyle("indigo")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#4338ca" }}>{t(lang, "Class workbench", "班级工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Class Detail", "班级详情")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this page to confirm the class setup, update teacher or room if needed, and manage enrollments without jumping between separate screens.",
+              "这里先确认班级设定，再决定是否修改老师/教室，并在同一页处理报名，不用来回切多个页面。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <a href="/admin/classes">{t(lang, "Back to Classes", "返回班级列表")}</a>
+            <a href={`/admin/classes/${classId}/sessions`}>{t(lang, "Open Sessions", "打开课次页")}</a>
+            <span style={{ color: "#999" }}>(classId {cls.id})</span>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Capacity", "容量")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{cls.capacity}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("blue"), background: "#eff6ff" }}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Enrolled", "已报名")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{enrollments.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Can add now", "当前可报名")}</div>
+            <div style={workbenchMetricValueStyle("emerald")}>{availableStudents.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Teacher", "老师")}</div>
+            <div style={{ ...workbenchMetricValueStyle("slate"), fontSize: 18 }}>{cls.teacher.name}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Class work map", "班级工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Start with the summary, then edit the class setup, and finally manage enrollments or jump to the sessions page.", "建议先看班级摘要，再改班级设定，最后处理报名，或直接跳去课次页。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#class-summary" style={classSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Summary", "班级摘要")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Check teacher, campus, room, and enrollment load", "先确认老师、校区、教室和报名量")}</span>
+          </a>
+          <a href="#class-edit" style={classSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Edit setup", "编辑设定")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Update course, teacher, campus, room, or capacity", "修改课程、老师、校区、教室或容量")}</span>
+          </a>
+          <a href="#class-enrollments" style={classSectionLinkStyle("#f0fdf4", "#86efac")}>
+            <strong>{t(lang, "Enrollments", "报名管理")}</strong>
+            <span style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Add or remove students with valid packages", "增减有可用课包的学生")}</span>
+          </a>
+          <a href={`/admin/classes/${classId}/sessions`} style={classSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Sessions page", "课次页面")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Go to session creation and schedule actions", "进入课次创建和排课操作")}</span>
+          </a>
+        </div>
+      </section>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 10, marginBottom: 16, background: "#fafafa" }}>
+      <div id="class-summary" style={{ padding: 12, border: "1px solid #eee", borderRadius: 10, marginBottom: 16, background: "#fafafa" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <b>{t(lang, "Course", "课程")}:</b>
           <ClassTypeBadge capacity={cls.capacity} compact />
@@ -249,7 +339,7 @@ export default async function ClassDetailPage({
         </div>
       </div>
 
-      <h3>{t(lang, "Edit Class", "编辑班级")}</h3>
+      <h3 id="class-edit">{t(lang, "Edit Class", "编辑班级")}</h3>
       <ClassEditClient
         classId={classId}
         courses={subjects.length ? Array.from(new Map(subjects.map((s) => [s.courseId, s.course]))).map(([id, c]) => ({ id, name: c.name })) : []}
@@ -310,6 +400,7 @@ export default async function ClassDetailPage({
         labels={{ ok: t(lang, "OK", "成功"), error: t(lang, "Error", "错误") }}
       />
 
+      <div id="class-enrollments">
       <ClassEnrollmentsClient
         classId={classId}
         initialStudents={students.map((s) => ({
@@ -334,6 +425,7 @@ export default async function ClassDetailPage({
           error: t(lang, "Error", "错误"),
         }}
       />
+      </div>
     </div>
   );
 }

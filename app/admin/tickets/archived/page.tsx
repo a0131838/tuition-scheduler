@@ -133,14 +133,70 @@ export default async function AdminArchivedTicketsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Archived Tickets", "已归档工单")}</h2>
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          background: "linear-gradient(135deg, #f8fafc 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+            Archive Desk / 归档工单区
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Archived Tickets", "已归档工单")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Use this page for historical lookup, recovery checks, and permanent deletion by the super admin.",
+              "这里主要用于历史回看、恢复排查，以及超管执行永久删除。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Matched archived tickets", "当前匹配工单")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{rows.length}</div>
+          </div>
+          <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Delete permission", "删除权限")}</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>
+              {canHardDeleteTickets ? t(lang, "Enabled", "已开启") : t(lang, "View only", "仅查看")}
+            </div>
+          </div>
+        </div>
+      </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Ticket Center", "返回工单中心")}</Link>
       </div>
       {err ? <div style={{ color: "#b91c1c", marginBottom: 8 }}>{err === "delete-forbidden" ? t(lang, "Only Zhao Hongwei can permanently delete tickets.", "只有 Zhao Hongwei 可以永久删除工单。") : err === "need-closed-delete" ? t(lang, "Only completed, cancelled, or archived tickets can be permanently deleted.", "只有已完成、已取消或已归档工单可以永久删除。") : ""}</div> : null}
       {ok === "deleted" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket deleted permanently.", "工单已永久删除。")}</div> : null}
 
-      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #e2e8f0",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#archived-ticket-filters">{t(lang, "Filters", "筛选")}</a>
+        <a href="#archived-ticket-list">{t(lang, "Archived list", "归档列表")}</a>
+      </div>
+
+      <form id="archived-ticket-filters" method="GET" className="ts-filter-bar" style={{ marginBottom: 12, scrollMarginTop: 96 }}>
         <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
         <select name="status" defaultValue={status}>
           <option value="">{t(lang, "All Status", "全部状态")}</option>
@@ -170,7 +226,7 @@ export default async function AdminArchivedTicketsPage({
         <Link scroll={false} href="/admin/tickets/archived">{t(lang, "Clear", "清空")}</Link>
       </form>
 
-      <div id="archived-ticket-list" className="table-scroll">
+      <div id="archived-ticket-list" className="table-scroll" style={{ scrollMarginTop: 96 }}>
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>

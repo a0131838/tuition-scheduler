@@ -72,14 +72,68 @@ export default async function TicketSopPage() {
   const lang = await getLang();
   return (
     <div>
-      <h2>{t(lang, "Ticket SOP One Pager", "工单SOP一页纸")}</h2>
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          background: "linear-gradient(135deg, #f8fafc 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>Ticket SOP / 工单一页纸</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Ticket SOP One Pager", "工单SOP一页纸")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Read this page when onboarding, then go to handover or the live ticket center to execute the real workflow.",
+              "这页适合培训和统一口径；真正执行时，再回到交接页或工单中心。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "SOP blocks", "规则模块")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{SOP_BLOCKS.length}</div>
+          </div>
+        </div>
+      </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Tickets", "返回工单中心")}</Link>
         <Link scroll={false} href="/admin/tickets/handover">{t(lang, "Daily Handover", "每日交接")}</Link>
       </div>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #e2e8f0",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        {SOP_BLOCKS.map((block) => (
+          <a key={block.titleEn} href={`#sop-${block.titleEn.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+            {block.titleZh}
+          </a>
+        ))}
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
         {SOP_BLOCKS.map((b) => (
-          <section key={b.titleEn} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff" }}>
+          <section
+            id={`sop-${b.titleEn.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+            key={b.titleEn}
+            style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#fff", scrollMarginTop: 96 }}
+          >
             <h3 style={{ margin: "0 0 6px" }}>
               {b.titleZh} / {b.titleEn}
             </h3>

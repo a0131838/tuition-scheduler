@@ -7,6 +7,28 @@ import {
   monthKey,
   parseMonth,
 } from "@/lib/teacher-payroll";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../../_components/workbenchStyles";
+
+function payrollDetailSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Shanghai",
@@ -99,15 +121,82 @@ export default async function TeacherPayrollDetailPage({
 
   return (
     <div>
-      <div style={{ marginBottom: 12 }}>
-        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back to payroll desk", "返回工资工作台")}</a>
-      </div>
+      <section style={workbenchHeroStyle("indigo")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#4338ca" }}>{t(lang, "Teacher payroll detail", "老师工资明细")}</div>
+          <h2 style={{ margin: 0 }}>
+            {t(lang, "Teacher Payroll Detail", "老师工资明细")} - {data.teacher.name}
+          </h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this page to verify one teacher's payroll period, then inspect combo-level totals and session-level exceptions before returning to the main payroll desk.",
+              "这里用于核对单个老师的工资周期，再查看组合汇总和课次异常，确认后再回到工资工作台。"
+            )}
+          </div>
+          <div>
+            <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Back to payroll desk", "返回工资工作台")}</a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Sessions", "课次数")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{data.totalSessions}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("blue"), background: "#eff6ff" }}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Total hours", "总课时")}</div>
+            <div style={{ ...workbenchMetricValueStyle("blue"), fontSize: 18 }}>{data.totalHours}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(pendingCount > 0 ? "amber" : "emerald"), background: pendingCount > 0 ? "#fff7ed" : "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle(pendingCount > 0 ? "amber" : "emerald")}>{t(lang, "Pending", "未完成")}</div>
+            <div style={workbenchMetricValueStyle(pendingCount > 0 ? "amber" : "emerald")}>{pendingCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle(fallbackCount > 0 ? "rose" : "slate")}>
+            <div style={workbenchMetricLabelStyle(fallbackCount > 0 ? "rose" : "slate")}>{t(lang, "Fallback-rate rows", "费率回退")}</div>
+            <div style={workbenchMetricValueStyle(fallbackCount > 0 ? "rose" : "slate")}>{fallbackCount}</div>
+          </div>
+        </div>
+      </section>
 
-      <h2>
-        {t(lang, "Teacher Payroll Detail", "老师工资明细")} - {data.teacher.name}
-      </h2>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Payroll detail map", "工资明细地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Start with the month and detail filters, then scan combo summary before opening session-level rows.", "建议先切月份和明细筛选，再看组合汇总，最后深入到逐课次明细。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#payroll-detail-filters" style={payrollDetailSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Filters", "筛选区")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Change month, scope, and detail toggles", "切月份、口径和明细开关")}</span>
+          </a>
+          <a href="#payroll-detail-combos" style={payrollDetailSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Combo summary", "组合汇总")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Review hourly-rate combinations first", "先看组合层汇总")}</span>
+          </a>
+          <a href="#payroll-detail-sessions" style={payrollDetailSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Session rows", "课次明细")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Inspect pending, fallback, or charged exceptions", "查看未完成、费率回退或计薪异常")}</span>
+          </a>
+        </div>
+      </section>
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+      <form id="payroll-detail-filters" method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
         <label>
           {t(lang, "Payroll Month", "工资月份")}:
           <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
@@ -224,7 +313,7 @@ export default async function TeacherPayrollDetailPage({
         </div>
       </div>
 
-      <h3>{t(lang, "Combo Summary", "课程组合汇总")}</h3>
+      <h3 id="payroll-detail-combos">{t(lang, "Combo Summary", "课程组合汇总")}</h3>
       {filteredComboRows.length === 0 ? (
         <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No data in this period.", "当前周期无数据。")}</div>
       ) : (
@@ -261,7 +350,7 @@ export default async function TeacherPayrollDetailPage({
         </table>
       )}
 
-      <h3>{t(lang, "Session Details", "逐课次明细")}</h3>
+      <h3 id="payroll-detail-sessions">{t(lang, "Session Details", "逐课次明细")}</h3>
       {filteredSessionRows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No session rows.", "暂无课次明细。")}</div>
       ) : (

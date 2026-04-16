@@ -13,6 +13,13 @@ import {
 import { listAllParentBilling } from "@/lib/student-parent-billing";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "@/app/admin/_components/workbenchStyles";
 
 type WorkbenchStatus = "PENDING_RECEIPT" | "PARTIALLY_RECEIPTED" | "PENDING_APPROVAL" | "REJECTED" | "COMPLETED";
 type ExceptionReason = "REJECTED_BY_APPROVER" | "OVERDUE_PENDING_RECEIPT" | "APPROVER_CONFIG_MISSING";
@@ -96,6 +103,33 @@ function reminderToneLabel(lang: Lang, tone: ReminderTone) {
 function csvCell(v: string | number) {
   const s = String(v ?? "");
   return `"${s.replace(/"/g, "\"\"")}"`;
+}
+
+function financeWorkbenchSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function financeWorkbenchSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 180,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
 }
 
 export default async function FinanceWorkbenchPage({
@@ -616,29 +650,195 @@ export default async function FinanceWorkbenchPage({
       reminderTone !== "NORMAL" ||
       reminderTarget !== "ALL",
   );
+  const activeFilterCount = [
+    Boolean(monthFilter),
+    Boolean(statusFilter),
+    Boolean(channelFilter),
+    Boolean(q),
+    exceptionOnly !== "",
+    Boolean(exceptionReasonFilter),
+    reminderTone !== "NORMAL",
+    reminderTarget !== "ALL",
+  ].filter(Boolean).length;
+  const currentViewLabel =
+    viewMode === "EXCEPTIONS"
+      ? t(lang, "Exception desk", "异常处理")
+      : viewMode === "REMINDERS"
+        ? t(lang, "Reminder tasks", "催收任务")
+        : viewMode === "CLOSING"
+          ? t(lang, "Month-end close", "月结检查")
+          : t(lang, "Overview", "总览");
+  const financeWorkbenchFocusTitle =
+    viewMode === "EXCEPTIONS"
+      ? t(lang, "Start with exception rows", "先清异常项")
+      : viewMode === "REMINDERS"
+        ? t(lang, "Reminder candidates are the current focus", "当前重点是催收对象")
+        : viewMode === "CLOSING"
+          ? checklistReady
+            ? t(lang, "Month-end view looks ready to close", "月结视图看起来可收口")
+            : t(lang, "Month-end blockers still need attention", "月结阻塞项仍需处理")
+          : partialQueueRows.length > 0
+            ? t(lang, "Partial receipt follow-up should come first", "应优先处理部分收据跟进")
+            : exceptionRows.length > 0
+              ? t(lang, "Exception cleanup is the next likely stop", "下一步适合先清异常")
+              : t(lang, "Finance overview is relatively stable", "财务总览当前相对稳定");
+  const financeWorkbenchFocusDetail =
+    viewMode === "EXCEPTIONS"
+      ? t(lang, "This view is already narrowed to invoices with exception reasons, so it is the fastest place to clear blockers.", "当前视图已经缩到有异常原因的发票，是清阻塞项最快的位置。")
+      : viewMode === "REMINDERS"
+        ? t(lang, "Use this view only to review who needs a reminder and export the task list. It still stays read-only.", "这个视图只用来判断谁需要催收并导出任务，仍然保持只读。")
+        : viewMode === "CLOSING"
+          ? t(lang, "Use month-end mode to confirm there are no open receipt, approval, or rejection gaps before closing the month.", "月结模式主要用来确认当月是否还有待收据、待审批或驳回缺口。")
+          : t(lang, "Overview is best for scanning the whole desk, then jumping into partial receipts, exceptions, or closing checks.", "总览适合先扫全局，再决定跳去部分收据、异常处理或月结检查。");
+  const financeWorkbenchSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: financeWorkbenchFocusTitle,
+      detail: financeWorkbenchFocusDetail,
+      background: viewMode === "EXCEPTIONS" ? "#fff7f7" : viewMode === "REMINDERS" ? "#eff6ff" : "#f8fafc",
+      border: viewMode === "EXCEPTIONS" ? "#fecaca" : viewMode === "REMINDERS" ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      title: t(lang, "Current scope", "当前范围"),
+      value: currentViewLabel,
+      detail: t(lang, `${tableRows.length} visible row(s) with ${activeFilterCount} active filter(s).`, `当前共有 ${tableRows.length} 条可见记录，生效筛选 ${activeFilterCount} 个。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+    {
+      title: t(lang, "Key pressure points", "当前主要压力点"),
+      value: t(lang, `${partialQueueRows.length} partial · ${exceptionRows.length} exception`, `${partialQueueRows.length} 条部分收据 · ${exceptionRows.length} 条异常`),
+      detail: t(lang, `${dueSoonPending} due soon and ${rejectedOpen} rejected open.`, `${dueSoonPending} 条即将到期，${rejectedOpen} 条驳回未处理。`),
+      background: deltaAlertLevel === "HIGH" ? "#fff7f7" : checklistReady ? "#f0fdf4" : "#f8fbff",
+      border: deltaAlertLevel === "HIGH" ? "#fecaca" : checklistReady ? "#86efac" : "#bfdbfe",
+    },
+  ];
+  const financeWorkbenchSectionLinks = [
+    {
+      href: "#finance-workbench-filters",
+      label: t(lang, "Filters", "筛选区"),
+      detail: t(lang, "Change scope before reading the desk", "先调范围，再看列表"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#finance-workbench-partials",
+      label: t(lang, "Partial receipts", "部分收据"),
+      detail: t(lang, `${partialQueueRows.length} row(s)`, `${partialQueueRows.length} 条`),
+      background: partialQueueRows.length > 0 ? "#fff7ed" : "#ffffff",
+      border: partialQueueRows.length > 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#finance-workbench-exceptions",
+      label: t(lang, "Exceptions", "异常处理"),
+      detail: t(lang, `${exceptionRows.length} row(s)`, `${exceptionRows.length} 条`),
+      background: exceptionRows.length > 0 ? "#fff7f7" : "#ffffff",
+      border: exceptionRows.length > 0 ? "#fecaca" : "#dbe4f0",
+    },
+    {
+      href: "#finance-workbench-table",
+      label: t(lang, "Main table", "主列表"),
+      detail: t(lang, `${tableRows.length} visible row(s)`, `${tableRows.length} 条当前可见`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Finance Workbench (Read-only MVP)", "财务工作台（只读MVP）")}</h2>
-      <div style={{ color: "#64748b", fontSize: 12 }}>
-        {t(
-          lang,
-          "This page is read-only and does not perform write operations. Use links to operate in existing pages.",
-          "此页面仅做只读聚合，不执行任何写入。实际操作请点击跳转到现有页面。",
-        )}
-      </div>
+    <div style={{ display: "grid", gap: 16 }}>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.4 }}>
+            {t(lang, "Finance Workbench", "财务工作台")}
+          </div>
+          <h1 style={{ margin: 0 }}>{t(lang, "Finance Workbench (Read-only MVP)", "财务工作台（只读MVP）")}</h1>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {t(
+              lang,
+              "This desk stays read-only and helps you scan invoice receipt progress, exception items, reminder candidates, and month-end readiness without writing data here.",
+              "这个工作台保持只读，用来统一查看发票收据进度、异常项、催收对象和月结状态，本页本身不直接写入数据。",
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Current view", "当前视图")}: <b>{currentViewLabel}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Active filters", "生效筛选")}: <b>{activeFilterCount}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", color: "#334155", fontSize: 12 }}>
+            {t(lang, "Month scope", "月份范围")}: <b>{checklistMonth}</b>
+          </span>
+          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", color: deltaAlertLevel === "HIGH" ? "#b91c1c" : deltaAlertLevel === "MEDIUM" ? "#92400e" : "#166534", fontSize: 12 }}>
+            {t(lang, "Delta alert", "差异预警")}: <b>{deltaAlertLevel}</b>
+          </span>
+        </div>
+      </section>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <a href={partialQueueHref} style={{ fontSize: 12 }}>
-          {t(lang, "Open partial-receipt queue", "打开部分收据跟进队列")}
-        </a>
-        <a
-          href={invoiceProgressCsvHref}
-          download={`finance-invoice-progress-${monthFilter || "all"}.csv`}
-          style={{ fontSize: 12 }}
-        >
-          {t(lang, "Export invoice receipt progress (CSV)", "导出发票收据进度表（CSV）")}
-        </a>
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {financeWorkbenchSummaryCards.map((card) => (
+          <div key={card.title} style={financeWorkbenchSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          display: "grid",
+          gap: 12,
+          background: "#ffffffee",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Finance work map", "财务工作地图")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(lang, "Use this strip to move between filters, partial receipts, exception cleanup, and the main table without rescanning the whole page.", "先通过这条工作地图切到筛选、部分收据、异常处理或主列表，不用每次都重新扫整页。")}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href={partialQueueHref}>{t(lang, "Open partial queue", "打开部分收据队列")}</a>
+            <a href={invoiceProgressCsvHref} download={`finance-invoice-progress-${monthFilter || "all"}.csv`}>
+              {t(lang, "Export invoice progress", "导出发票进度")}
+            </a>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {financeWorkbenchSectionLinks.map((link) => (
+            <a key={link.label} href={link.href} style={financeWorkbenchSectionLinkStyle(link.background, link.border)}>
+              <div style={{ fontWeight: 700 }}>{link.label}</div>
+              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45 }}>{link.detail}</div>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div style={{ ...workbenchMetricCardStyle("blue"), background: "#f8fbff" }}>
+          <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible rows", "当前可见")}</div>
+          <div style={workbenchMetricValueStyle("blue")}>{tableRows.length}</div>
+        </div>
+        <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fffbeb" }}>
+          <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Partial receipts", "部分收据")}</div>
+          <div style={workbenchMetricValueStyle("amber")}>{partialQueueRows.length}</div>
+        </div>
+        <div style={{ ...workbenchMetricCardStyle("rose"), background: "#fff7f7" }}>
+          <div style={workbenchMetricLabelStyle("rose")}>{t(lang, "Exception rows", "异常项")}</div>
+          <div style={workbenchMetricValueStyle("rose")}>{exceptionRows.length}</div>
+        </div>
+        <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+          <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Completed", "已完成")}</div>
+          <div style={workbenchMetricValueStyle("emerald")}>{counts.completed}</div>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -669,7 +869,7 @@ export default async function FinanceWorkbenchPage({
       </div>
 
       {(viewMode === "OVERVIEW" || viewMode === "CLOSING") && (
-      <div style={{ border: "1px solid #fdba74", borderRadius: 8, padding: 10, background: "#fff7ed" }}>
+      <div id="finance-workbench-partials" style={{ border: "1px solid #fdba74", borderRadius: 8, padding: 10, background: "#fff7ed" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <div style={{ fontWeight: 700, color: "#c2410c" }}>
             {t(lang, "Partial Receipt Follow-up Queue", "部分收据跟进队列")} ({partialQueueRows.length})
@@ -782,7 +982,7 @@ export default async function FinanceWorkbenchPage({
       </div>
       )}
 
-      <form method="get" style={{ display: "grid", gap: 8, border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+      <form id="finance-workbench-filters" method="get" style={{ ...workbenchFilterPanelStyle, display: "grid", gap: 8 }}>
         <input type="hidden" name="view" value={viewMode} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <label>
@@ -891,7 +1091,7 @@ export default async function FinanceWorkbenchPage({
       </div>
 
       {viewMode === "EXCEPTIONS" && (
-      <div style={{ border: "1px solid #fecaca", borderRadius: 8, padding: 10, background: "#fef2f2" }}>
+      <div id="finance-workbench-exceptions" style={{ border: "1px solid #fecaca", borderRadius: 8, padding: 10, background: "#fef2f2" }}>
         <div style={{ fontWeight: 700, color: "#991b1b", marginBottom: 6 }}>
           {t(lang, "Exception Box", "异常箱")} ({exceptionRows.length})
         </div>
@@ -921,7 +1121,7 @@ export default async function FinanceWorkbenchPage({
       )}
 
       {viewMode === "REMINDERS" && (
-      <div style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 10, background: "#eff6ff" }}>
+      <div id="finance-workbench-reminders" style={{ border: "1px solid #bfdbfe", borderRadius: 8, padding: 10, background: "#eff6ff" }}>
         <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 6 }}>
           {t(lang, "Batch Reminder Preview (Read-only)", "批量催收模板预览（只读）")} ({reminderRows.length})
         </div>
@@ -966,7 +1166,7 @@ export default async function FinanceWorkbenchPage({
       {tableRows.length === 0 ? (
         <div style={{ color: "#6b7280" }}>{tableEmptyText}</div>
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <div id="finance-workbench-table" style={{ overflowX: "auto" }}>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
             <thead>
               <tr style={{ background: "#f3f4f6" }}>

@@ -51,6 +51,17 @@ export const workbenchInfoBarStyle: CSSProperties = {
   justifyContent: "space-between",
 };
 
+export function workbenchStickyPanelStyle(zIndex = 5, top = 12): CSSProperties {
+  return {
+    position: "sticky",
+    top,
+    zIndex,
+    background: "#ffffffee",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+  };
+}
+
 export function workbenchMetricCardStyle(tone: MetricTone): CSSProperties {
   const config = metricTones[tone];
   return {

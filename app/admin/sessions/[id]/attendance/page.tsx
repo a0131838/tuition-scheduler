@@ -8,6 +8,28 @@ import { packageModeFromNote, packageModePriority, packageModeSupportsClass } fr
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminSessionAttendanceClient from "./AdminSessionAttendanceClient";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../../_components/workbenchStyles";
+
+function attendanceSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function fmtRange(startAt: Date, endAt: Date) {
   const start = formatBusinessDateTime(new Date(startAt));
@@ -137,17 +159,77 @@ export default async function AttendancePage({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ marginBottom: 6 }}>{t(lang, "Attendance", "点名")}</h2>
-          <div style={{ color: "#666" }}>{fmtRange(session.startAt, session.endAt)}</div>
-          <div style={{ color: "#999", fontSize: 12 }}>(sessionId {session.id})</div>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Attendance workbench", "点名工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Attendance", "点名")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this page to finish attendance for one session end-to-end: confirm the lesson context first, then edit attendance rows and deductions below.",
+              "这里用于把一节课的点名一次处理完：先确认课次上下文，再在下方编辑点名和扣包。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <a href={`/admin/classes/${session.classId}/sessions`}>{t(lang, "Back to Sessions", "返回课次")}</a>
+            <a href={`/admin/classes/${session.classId}`}>{t(lang, "Back to Class Detail", "返回班级详情")}</a>
+            <span style={{ color: "#666" }}>{fmtRange(session.startAt, session.endAt)}</span>
+            <span style={{ color: "#999", fontSize: 12 }}>(sessionId {session.id})</span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <a href={`/admin/classes/${session.classId}/sessions`}>→ {t(lang, "Back to Sessions", "返回课次")}</a>
-          <a href={`/admin/classes/${session.classId}`}>→ {t(lang, "Back to Class Detail", "返回班级详情")}</a>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Students to mark", "待点名人数")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{attendanceEnrollments.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Duration", "课时长度")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{sessionDuration}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Course", "课程")}</div>
+            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>{session.class.course.name}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Teacher", "老师")}</div>
+            <div style={{ ...workbenchMetricValueStyle("slate"), fontSize: 18 }}>{session.teacher?.name ?? session.class.teacher.name}</div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 0,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Attendance map", "点名工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Confirm the session summary first, then edit rows below. If the lesson came from Todo Center, use that shortcut to go back after saving.", "建议先看课次摘要，再往下编辑点名行；如果来自待办中心，保存后可直接用快捷入口返回。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#attendance-summary" style={attendanceSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Session summary", "课次摘要")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Check lesson context before editing", "编辑前先核对课程上下文")}</span>
+          </a>
+          <a href="#attendance-editor" style={attendanceSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Attendance editor", "点名编辑器")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Mark status, package, and waive options", "处理状态、课包和免扣选项")}</span>
+          </a>
+        </div>
+      </section>
 
       {sourceWorkflow === "todo" ? (
         <WorkflowSourceBanner
@@ -171,7 +253,7 @@ export default async function AttendancePage({
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+      <div id="attendance-summary" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
           <div style={{ color: "#666", fontSize: 12 }}>{t(lang, "Course", "课程")}</div>
           <div style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -203,7 +285,7 @@ export default async function AttendancePage({
         </div>
       )}
 
-      <div style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
+      <div id="attendance-editor" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, background: "#fff" }}>
         {attendanceEnrollments.length === 0 ? (
           <div style={{ color: "#999" }}>
             {t(lang, "No enrolled students in this class yet.", "本班暂无报名学生。")}{" "}

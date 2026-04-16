@@ -9,6 +9,28 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import RememberedWorkbenchQueryClient from "../../_components/RememberedWorkbenchQueryClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function settlementSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const PARTNER_SOURCE_NAME = "\u65b0\u4e1c\u65b9\u5b66\u751f";
@@ -1116,14 +1138,85 @@ export default async function PartnerSettlementPage({
         storageKey="adminPartnerSettlementPreferredView"
         value={rememberedViewValue}
       />
-      <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
-      <div style={{ marginBottom: 10, color: "#666" }}>
-        {t(
-          lang,
-          `Only students with source channel = ${PARTNER_SOURCE_NAME} are included.`,
-          `仅纳入来源为${PARTNER_SOURCE_NAME}的学生。`
-        )}
-      </div>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Partner settlement workbench", "合作方结算工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
+          <div style={{ color: "#666" }}>
+            {t(
+              lang,
+              `Only students with source channel = ${PARTNER_SOURCE_NAME} are included.`,
+              `仅纳入来源为${PARTNER_SOURCE_NAME}的学生。`
+            )}
+          </div>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Use this page to move settlements from online and offline candidates into billing-ready records, then review history and setup without leaving the workflow.",
+              "这里用于把线上/线下候选项推进成待开票记录，再继续查看历史或设置，不用离开当前流程。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Online pending", "线上待结算")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{onlinePending.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Offline pending", "线下待结算")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{offlinePending.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Pending records", "待开票记录")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{recentPendingSettlements.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(offlineWarnings.length > 0 ? "rose" : "emerald"), background: offlineWarnings.length > 0 ? "#fff7f7" : "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle(offlineWarnings.length > 0 ? "rose" : "emerald")}>{t(lang, "Warnings", "预警")}</div>
+            <div style={workbenchMetricValueStyle(offlineWarnings.length > 0 ? "rose" : "emerald")}>{offlineWarnings.length}</div>
+          </div>
+        </div>
+      </section>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 6,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Settlement map", "结算工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Start from overview and action queues, then drop into warnings, history, or setup only when needed.", "建议先看概览和待处理队列，再按需要进入异常、历史或设置。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#overview" style={settlementSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Overview", "待结算概览")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Check month-level workload first", "先看当月工作量")}</span>
+          </a>
+          <a href="#action-queue" style={settlementSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Action queue", "待处理队列")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Work from records, online, then offline", "优先处理待开票、线上、再到线下")}</span>
+          </a>
+          <a href="#integrity-workbench" style={settlementSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Warnings", "异常工作台")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Fix attendance or settlement gaps first", "先修点名和结算异常")}</span>
+          </a>
+          <a href="#billing-history" style={settlementSectionLinkStyle("#f0fdf4", "#86efac")}>
+            <strong>{t(lang, "History", "开票历史")}</strong>
+            <span style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Confirm what has already been billed", "确认已经处理过的记录")}</span>
+          </a>
+        </div>
+      </section>
       {resumedRememberedView ? (
         <div
           style={{
@@ -1201,7 +1294,7 @@ export default async function PartnerSettlementPage({
         </div>
       ) : null}
 
-      <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
+      <div style={{ ...cardStyle, position: "sticky", top: 118, zIndex: 5 }}>
         <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label>
             {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />

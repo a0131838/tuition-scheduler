@@ -10,6 +10,28 @@ import ScheduleDeleteEventClient from "./_components/ScheduleDeleteEventClient";
 import ScheduleReplaceTeacherClient from "./_components/ScheduleReplaceTeacherClient";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
+
+function scheduleSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 type ViewMode = "teacher" | "room" | "campus";
 
@@ -471,6 +493,15 @@ export default async function SchedulePage({
   const prevWeek = ymd(addDays(weekStart, -7));
   const nextWeek = ymd(addDays(weekStart, 7));
   const thisWeek = ymd(startOfWeekMonday(new Date()));
+  const currentScopeLabel =
+    view === "teacher"
+      ? teachers.find((item) => item.id === teacherId)?.name ?? t(lang, "Teacher", "老师")
+      : view === "room"
+      ? (() => {
+          const room = rooms.find((item) => item.id === roomId);
+          return room ? `${room.name} / ${room.campus.name}` : t(lang, "Room", "教室");
+        })()
+      : campuses.find((item) => item.id === campusId)?.name ?? t(lang, "Campus", "校区");
 
   const paramsBase: Record<string, string> = { view, weekStart: ymd(weekStart) };
   if (view === "teacher") paramsBase.teacherId = teacherId;
@@ -486,10 +517,79 @@ export default async function SchedulePage({
 
   return (
     <div>
-      <h2>{t(lang, "Schedule (Week View)", "周课表")}</h2>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Weekly scheduling desk", "周排课工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Schedule (Week View)", "周课表")}</h2>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Use this page as the main weekly planning board. Switch teacher, room, or campus, then handle conflicts, low-balance warnings, and replacement actions in one place.",
+              "这里是每周排课主工作台。先切老师、教室或校区视图，再在同一页处理冲突、低余额提醒和换老师动作。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Scope", "当前视图")}</div>
+            <div style={{ ...workbenchMetricValueStyle("blue"), fontSize: 18 }}>{currentScopeLabel}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Total events", "总事件")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{filteredEvents.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(conflictSet.size > 0 ? "rose" : "emerald"), background: conflictSet.size > 0 ? "#fff7f7" : "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle(conflictSet.size > 0 ? "rose" : "emerald")}>{t(lang, "Conflicts", "冲突事件")}</div>
+            <div style={workbenchMetricValueStyle(conflictSet.size > 0 ? "rose" : "emerald")}>{conflictSet.size}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(lowBalanceMap.size > 0 ? "amber" : "slate"), background: lowBalanceMap.size > 0 ? "#fff7ed" : "#fff" }}>
+            <div style={workbenchMetricLabelStyle(lowBalanceMap.size > 0 ? "amber" : "slate")}>{t(lang, "Low balance", "低余额事件")}</div>
+            <div style={workbenchMetricValueStyle(lowBalanceMap.size > 0 ? "amber" : "slate")}>{lowBalanceMap.size}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Schedule work map", "排课工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Start from the weekly controls, then move into the day list below. Use conflicts and low-balance markers to decide where to intervene first.", "建议先设好周视图和筛选，再往下看每天列表；优先处理冲突和低余额标记。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#schedule-controls" style={scheduleSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Week controls", "周视图控制")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Switch week, view mode, and filters", "切周、切视图和筛选")}</span>
+          </a>
+          <a href="#schedule-summary" style={scheduleSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Summary", "摘要")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "See totals, conflicts, and low-balance counts", "先看总量、冲突和低余额计数")}</span>
+          </a>
+          <a href="#schedule-days" style={scheduleSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Daily board", "每日看板")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Work through each day's events directly below", "直接在下方逐日处理事件")}</span>
+          </a>
+        </div>
+      </section>
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
       <div
+        id="schedule-controls"
         style={{
           border: "1px solid #eee",
           borderRadius: 10,
@@ -651,7 +751,7 @@ export default async function SchedulePage({
         </form>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div id="schedule-summary" style={{ marginBottom: 12 }}>
         <b>{t(lang, "Total events", "总事件")}:</b> {filteredEvents.length}{" "}
         <span style={{ marginLeft: 12 }}>
           <b>{t(lang, "Conflict events", "冲突事件")}:</b> {conflictSet.size}
@@ -661,6 +761,7 @@ export default async function SchedulePage({
         </span>
       </div>
 
+      <div id="schedule-days">
       {grouped.map(({ day, items }) => (
         <div key={day.toISOString()} style={{ marginBottom: 18 }}>
           <h3 style={{ marginBottom: 8 }}>{fmtDate(day)}</h3>
@@ -864,6 +965,7 @@ export default async function SchedulePage({
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }

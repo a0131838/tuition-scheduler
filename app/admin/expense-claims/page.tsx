@@ -3,6 +3,7 @@ import { getLang, t } from '@/lib/i18n';
 import type { Lang } from '@/lib/i18n';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { ExpenseClaimStatus } from '@prisma/client';
 import ExpenseClaimForm from '@/app/_components/ExpenseClaimForm';
 import {
@@ -31,6 +32,8 @@ import { formatDateOnly, formatMonthKey, formatUTCDateOnly } from '@/lib/date-on
 import path from 'path';
 import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
 import RememberedWorkbenchQueryClient from '../_components/RememberedWorkbenchQueryClient';
+import WorkbenchActionBanner from '../_components/WorkbenchActionBanner';
+import WorkbenchScrollMemoryClient from '../_components/WorkbenchScrollMemoryClient';
 import WorkflowSourceBanner from '../_components/WorkflowSourceBanner';
 import {
   workbenchFilterPanelStyle,
@@ -38,6 +41,7 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
+  workbenchStickyPanelStyle,
 } from '../_components/workbenchStyles';
 
 const EXPENSE_FILTER_COOKIE = 'adminExpenseClaimsPreferredFilters';
@@ -68,6 +72,48 @@ const dangerButtonStyle = {
   padding: '10px 14px',
   fontWeight: 700,
 } as const;
+
+function expenseSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: 'grid',
+    gap: 6,
+    alignContent: 'start',
+  } as const;
+}
+
+function expenseSectionLinkStyle(background: string, border: string) {
+  return {
+    display: 'grid',
+    gap: 4,
+    minWidth: 170,
+    padding: '10px 12px',
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: 'none',
+    color: 'inherit',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+  } as const;
+}
+
+function renderExpenseSectionAnchor(href: string, label: string, detail: string, background: string, border: string) {
+  const style = expenseSectionLinkStyle(background, border);
+  return href.startsWith('#') ? (
+    <a key={label} href={href} style={style}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div style={{ color: '#475569', fontSize: 12, lineHeight: 1.45 }}>{detail}</div>
+    </a>
+  ) : (
+    <Link key={label} href={href} scroll={false} style={style}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div style={{ color: '#475569', fontSize: 12, lineHeight: 1.45 }}>{detail}</div>
+    </Link>
+  );
+}
 
 function isPreviewableImage(name: string | null | undefined) {
   const ext = path.extname(String(name ?? '')).toLowerCase();
@@ -732,6 +778,83 @@ export default async function AdminExpenseClaimsPage({
       : statusFilter !== 'ALL'
         ? formatClaimStatusLabel(lang, statusFilter as ExpenseClaimStatus)
         : t(lang, 'All working states', '全部工作状态');
+  const expenseFocusTitle = selectedReviewClaim
+    ? t(lang, 'Review the selected submitted claim first', '先处理当前选中的待审批报销单')
+    : selectedFinanceGroup
+      ? t(lang, 'Finance payout group is ready for payment follow-up', '当前付款分组已就绪，可继续付款登记')
+      : attachmentIssueOnly
+        ? t(lang, 'Attachment blockers are the current focus', '当前应先清附件阻塞项')
+        : approvedUnpaidOnly
+          ? t(lang, 'Approved unpaid queue is the current focus', '当前应先清已批未付队列')
+          : reviewQueue.length > 0
+            ? t(lang, 'Submitted review queue is the current focus', '当前应先清待审批队列')
+            : financeQueue.length > 0
+              ? t(lang, 'Payout follow-up is the next useful stop', '下一步适合转去付款跟进')
+              : t(lang, 'Expense desk is relatively clear', '报销工作台目前相对干净');
+  const expenseFocusDetail = selectedReviewClaim
+    ? t(lang, 'The review panel below already has the selected claim, attachments, and next action together.', '下方审批面板已经把当前报销单、附件和下一步动作放在一起。')
+    : selectedFinanceGroup
+      ? t(lang, 'The finance panel below is scoped to one submitter and one currency so payment details stay consistent.', '下方财务面板已经收拢到同一提交人和同一币种，付款信息更容易保持一致。')
+      : attachmentIssueOnly
+        ? t(lang, 'This dataset is narrowed to proof problems, so use repair shortcuts before returning to normal approval flow.', '当前数据集只看附件问题，建议先走修复入口，再回到正常审批流。')
+        : reviewQueue.length > 0
+          ? t(lang, 'There are still submitted claims waiting, so clear those before spending time in history or self-submission.', '还有待审批报销单时，优先清队列，再去看历史或自助提交。')
+          : t(lang, 'When no urgent queue is waiting, use history and filters as the secondary workspace for follow-up.', '当没有紧急队列时，再把历史列表和筛选区作为次级工作区。');
+  const expenseSummaryCards = [
+    {
+      title: t(lang, 'Current focus', '当前建议起点'),
+      value: expenseFocusTitle,
+      detail: expenseFocusDetail,
+      background: selectedReviewClaim ? '#eff6ff' : selectedFinanceGroup ? '#fff7ed' : '#f8fafc',
+      border: selectedReviewClaim ? '#bfdbfe' : selectedFinanceGroup ? '#fdba74' : '#dbe4f0',
+    },
+    {
+      title: t(lang, 'Visible dataset', '当前可见数据集'),
+      value: currentDatasetLabel,
+      detail: t(lang, `${visibleClaims.length} visible claim(s) with ${activeFilterCount} active filter(s).`, `当前共有 ${visibleClaims.length} 条可见记录，生效筛选 ${activeFilterCount} 个。`),
+      background: '#fffaf0',
+      border: '#fde68a',
+    },
+    {
+      title: t(lang, 'Main pressure points', '当前主要压力点'),
+      value: t(lang, `${reviewQueue.length} review · ${financeQueue.length} payout groups`, `${reviewQueue.length} 条审批 · ${financeQueue.length} 个付款分组`),
+      detail: t(lang, `${attachmentIssueCount} attachment issue(s) and ${reminderCount} follow-up reminder(s).`, `${attachmentIssueCount} 条附件异常，${reminderCount} 条跟进提醒。`),
+      background: attachmentIssueCount > 0 ? '#fff7f7' : '#f0fdf4',
+      border: attachmentIssueCount > 0 ? '#fecaca' : '#bbf7d0',
+    },
+  ];
+  const expenseSectionLinks = [
+    {
+      href: '#expense-filters',
+      label: t(lang, 'Quick filters', '快速筛选'),
+      detail: t(lang, 'Switch the dataset before opening rows', '先切数据集，再进入具体条目'),
+      background: '#ffffff',
+      border: '#dbe4f0',
+    },
+    {
+      href: '#expense-review-queue',
+      label: t(lang, 'Review queue', '审批队列'),
+      detail: t(lang, `${reviewQueue.length} waiting now`, `当前 ${reviewQueue.length} 条待审批`),
+      background: selectedReviewClaim ? '#eff6ff' : '#ffffff',
+      border: selectedReviewClaim ? '#bfdbfe' : '#dbe4f0',
+    },
+    {
+      href: canFinance ? '#expense-finance-queue' : '#expense-history',
+      label: canFinance ? t(lang, 'Finance queue', '财务队列') : t(lang, 'History list', '历史列表'),
+      detail: canFinance
+        ? t(lang, `${financeQueue.length} approved unpaid groups`, `${financeQueue.length} 个已批未付分组`)
+        : t(lang, `${claims.length} visible rows`, `${claims.length} 条当前可见`),
+      background: canFinance && selectedFinanceGroup ? '#fff7ed' : '#ffffff',
+      border: canFinance && selectedFinanceGroup ? '#fdba74' : '#dbe4f0',
+    },
+    {
+      href: '#expense-history',
+      label: t(lang, 'History list', '历史列表'),
+      detail: t(lang, `${claims.length} visible rows`, `${claims.length} 条当前可见`),
+      background: '#ffffff',
+      border: '#dbe4f0',
+    },
+  ];
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -740,6 +863,7 @@ export default async function AdminExpenseClaimsPage({
         storageKey="adminExpenseClaimsPreferredFilters"
         value={filterQuery}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminExpenseClaimsScroll" />
       <section style={workbenchHeroStyle('amber')}>
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#a16207', letterSpacing: 0.4 }}>
@@ -771,29 +895,16 @@ export default async function AdminExpenseClaimsPage({
       </section>
 
       {resumedRememberedFilters ? (
-        <div
-          style={{
-            padding: 10,
-            borderRadius: 10,
-            border: '1px solid #fde68a',
-            background: '#fffbeb',
-            color: '#92400e',
-            display: 'flex',
-            gap: 10,
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>
-            {t(
-              lang,
-              'Resumed your last expense filter set. Use clear filters if you want to return to the default desk.',
-              '已恢复你上次的报销筛选；如果要回到默认工作台，可直接清空筛选。'
-            )}
-          </div>
-          <a href={quickClearHref}>{t(lang, 'Back to default desk', '回到默认工作台')}</a>
-        </div>
+        <WorkbenchActionBanner
+          tone="warn"
+          title={t(lang, 'Resumed your last expense filter set.', '已恢复你上次的报销筛选。')}
+          description={t(
+            lang,
+            'Use clear filters if you want to return to the default desk.',
+            '如果要回到默认工作台，可直接清空筛选。'
+          )}
+          actions={[{ href: quickClearHref, label: t(lang, 'Back to default desk', '回到默认工作台') }]}
+        />
       ) : null}
 
       {sourceWorkflow === 'approvals' ? (
@@ -815,56 +926,103 @@ export default async function AdminExpenseClaimsPage({
         />
       ) : null}
 
-      {msg ? <div style={{ padding: 10, borderRadius: 8, background: '#ecfdf5', color: '#166534' }}>{msg}</div> : null}
-      {err ? <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', color: '#b91c1c' }}>{err}</div> : null}
+      {msg ? (
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, 'Action saved', '操作已完成')}
+          description={msg}
+          actions={[
+            selectedReviewClaim
+              ? { href: '#expense-review-actions', label: t(lang, 'Jump to review actions', '跳到审批操作') }
+              : selectedFinanceGroup
+                ? { href: '#expense-payment-details', label: t(lang, 'Jump to payment details', '跳到付款信息') }
+                : { href: quickSubmittedHref, label: t(lang, 'Open submitted review queue', '打开待审批队列') },
+          ]}
+        />
+      ) : null}
+      {err ? (
+        <WorkbenchActionBanner
+          tone="error"
+          title={t(lang, 'Action blocked', '操作未完成')}
+          description={err}
+          actions={[{ href: quickClearHref, label: t(lang, 'Back to default desk', '回到默认工作台') }]}
+        />
+      ) : null}
       {showRepairLoopCard ? (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 10,
-            border: `1px solid ${repairReturnResolved ? '#86efac' : '#bfdbfe'}`,
-            background: repairReturnResolved ? '#f0fdf4' : '#eff6ff',
-            color: repairReturnResolved ? '#166534' : '#1d4ed8',
-            display: 'grid',
-            gap: 8,
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>
-            {repairReturnMode === 'review'
+        <WorkbenchActionBanner
+          tone={repairReturnResolved ? 'success' : 'info'}
+          title={
+            repairReturnMode === 'review'
               ? repairReturnResolved
                 ? t(lang, 'Repair loop complete. Resume this review item.', '修复回流已完成，回到当前审核项继续处理。')
                 : t(lang, 'Repair loop: come back to this review item', '修复回流：处理完后回到这条审核项')
               : repairReturnResolved
                 ? t(lang, 'Repair loop complete. Resume this payout group.', '修复回流已完成，回到当前付款分组继续处理。')
-                : t(lang, 'Repair loop: come back to this payout group', '修复回流：处理完后回到这个付款分组')}
-          </div>
-          <div style={{ fontSize: 14 }}>
-            {repairReturnMode === 'review'
+                : t(lang, 'Repair loop: come back to this payout group', '修复回流：处理完后回到这个付款分组')
+          }
+          description={
+            repairReturnMode === 'review'
               ? repairReturnResolved
                 ? t(lang, 'The attachment is available again, so the selected claim can continue through approval below.', '附件已恢复可用，所以下方这条报销单可以继续走审批。')
                 : t(lang, 'Use the links below for history or attachment cleanup, then return directly to the same selected claim instead of searching for it again.', '你可以先去附件异常或历史视图处理，再直接回到同一条报销单，不用重新搜索。')
               : repairReturnResolved
                 ? t(lang, 'The selected payout group no longer shows missing attachments, so finance can focus on payment details again.', '当前付款分组已经没有附件缺失，财务可以重新聚焦付款登记。')
-                : t(lang, 'Use the links below for attachment cleanup or history, then return directly to the same payout group instead of rebuilding the queue context.', '你可以先去附件异常或历史视图处理，再直接回到同一个付款分组，不用重新找上下文。')}
+                : t(lang, 'Use the links below for attachment cleanup or history, then return directly to the same payout group instead of rebuilding the queue context.', '你可以先去附件异常或历史视图处理，再直接回到同一个付款分组，不用重新找上下文。')
+          }
+          actions={[
+            repairReturnMode === 'review' && reviewRepairReturnHref
+              ? { href: reviewRepairReturnHref, label: t(lang, 'Back to selected claim', '返回当前报销单'), emphasis: 'primary' as const }
+              : null,
+            repairReturnMode === 'finance' && financeRepairReturnHref
+              ? { href: financeRepairReturnHref, label: t(lang, 'Back to selected payout group', '返回当前付款分组'), emphasis: 'primary' as const }
+              : null,
+            repairReturnResolved && repairReturnMode === 'review' && reviewRepairNextStepHref
+              ? { href: reviewRepairNextStepHref, label: t(lang, 'Jump to review actions', '跳到审批操作') }
+              : null,
+            repairReturnResolved && repairReturnMode === 'finance' && financeRepairNextStepHref
+              ? { href: financeRepairNextStepHref, label: t(lang, 'Jump to payment details', '跳到付款信息') }
+              : null,
+            { href: quickAttachmentIssueHref, label: t(lang, 'Open all attachment issues', '查看全部附件异常') },
+            { href: attachmentHealthDeskHref, label: t(lang, 'Open attachment health desk', '打开附件异常总览') },
+          ]}
+        />
+      ) : null}
+
+      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        {expenseSummaryCards.map((card) => (
+          <div key={card.title} style={expenseSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{card.value}</div>
+            <div style={{ color: '#475569', fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {repairReturnMode === 'review' && reviewRepairReturnHref ? (
-              <a href={reviewRepairReturnHref}>{t(lang, 'Back to selected claim', '返回当前报销单')}</a>
-            ) : null}
-            {repairReturnMode === 'finance' && financeRepairReturnHref ? (
-              <a href={financeRepairReturnHref}>{t(lang, 'Back to selected payout group', '返回当前付款分组')}</a>
-            ) : null}
-            {repairReturnResolved && repairReturnMode === 'review' && reviewRepairNextStepHref ? (
-              <a href={reviewRepairNextStepHref}>{t(lang, 'Jump to review actions', '跳到审批操作')}</a>
-            ) : null}
-            {repairReturnResolved && repairReturnMode === 'finance' && financeRepairNextStepHref ? (
-              <a href={financeRepairNextStepHref}>{t(lang, 'Jump to payment details', '跳到付款信息')}</a>
-            ) : null}
-            <a href={quickAttachmentIssueHref}>{t(lang, 'Open all attachment issues', '查看全部附件异常')}</a>
-            <a href={attachmentHealthDeskHref}>{t(lang, 'Open attachment health desk', '打开附件异常总览')}</a>
+        ))}
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          ...workbenchStickyPanelStyle(),
+          display: 'grid',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gap: 4 }}>
+            <div style={{ fontWeight: 800, color: '#0f172a' }}>{t(lang, 'Expense work map', '报销工作地图')}</div>
+            <div style={{ color: '#475569', fontSize: 13 }}>
+              {t(lang, 'Use this strip to confirm where you are, then jump to the right queue or history section without rescanning the full page.', '先用这条工作地图确认当前位置，再直接跳到正确队列或历史区，不用重新扫整页。')}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link href={quickClearHref} scroll={false}>{t(lang, 'Default desk', '默认工作台')}</Link>
+            {selectedReviewClaim ? <a href="#expense-review-actions">{t(lang, 'Review actions', '审批操作')}</a> : null}
+            {selectedFinanceGroup ? <a href="#expense-payment-details">{t(lang, 'Payment details', '付款信息')}</a> : null}
           </div>
         </div>
-      ) : null}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {expenseSectionLinks.map((link) => renderExpenseSectionAnchor(link.href, link.label, link.detail, link.background, link.border))}
+        </div>
+      </section>
 
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div style={{ ...workbenchMetricCardStyle('blue'), background: '#f8fbff' }}>
@@ -900,7 +1058,7 @@ export default async function AdminExpenseClaimsPage({
         </div>
       </section>
 
-      <section style={{ ...workbenchFilterPanelStyle, padding: 16, display: 'grid', gap: 12, background: '#f8fafc' }}>
+      <section id="expense-filters" style={{ ...workbenchFilterPanelStyle, padding: 16, display: 'grid', gap: 12, background: '#f8fafc', scrollMarginTop: 104 }}>
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, 'Quick work filters', '工作流快速筛选')}</div>
           <div style={{ color: '#475569', fontSize: 14 }}>
@@ -912,7 +1070,7 @@ export default async function AdminExpenseClaimsPage({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href={quickSubmittedHref}>{t(lang, 'Submitted review queue', '待审批队列')}</a>
+          <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Submitted review queue', '待审批队列')}</Link>
           <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
           <a href={quickAttachmentIssueHref}>{t(lang, 'Attachment issues', '附件异常')}</a>
           <a href={attachmentHealthDeskHref}>{t(lang, 'Attachment health desk', '附件异常总览')}</a>
@@ -922,7 +1080,7 @@ export default async function AdminExpenseClaimsPage({
         </div>
       </section>
 
-      <section style={{ border: '1px solid #dbeafe', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#f8fbff' }}>
+      <section id="expense-review-queue" style={{ border: '1px solid #dbeafe', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#f8fbff', scrollMarginTop: 104 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 700 }}>{t(lang, 'My review queue', '我的审批队列')}</div>
@@ -952,9 +1110,10 @@ export default async function AdminExpenseClaimsPage({
                 {reviewQueue.map((claim) => {
                   const isSelected = claim.id === selectedReviewClaim?.id;
                   return (
-                    <a
+                    <Link
                       key={claim.id}
                       href={focusClaimHref(workflowQuery, claim.id)}
+                      scroll={false}
                       style={{
                         display: 'grid',
                         gap: 8,
@@ -986,7 +1145,7 @@ export default async function AdminExpenseClaimsPage({
                           </>
                         ) : null}
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
@@ -1055,12 +1214,12 @@ export default async function AdminExpenseClaimsPage({
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {previousReviewClaimId ? (
-                      <a href={focusClaimHref(workflowQuery, previousReviewClaimId)}>{t(lang, 'Open previous', '打开上一条')}</a>
+                      <Link href={focusClaimHref(workflowQuery, previousReviewClaimId)} scroll={false}>{t(lang, 'Open previous', '打开上一条')}</Link>
                     ) : null}
                     {nextReviewClaimId ? (
-                      <a href={focusClaimHref(workflowQuery, nextReviewClaimId)}>{t(lang, 'Open next', '打开下一条')}</a>
+                      <Link href={focusClaimHref(workflowQuery, nextReviewClaimId)} scroll={false}>{t(lang, 'Open next', '打开下一条')}</Link>
                     ) : null}
-                    <a href={quickSubmittedHref}>{t(lang, 'Back to review queue', '返回待审批队列')}</a>
+                    <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Back to review queue', '返回待审批队列')}</Link>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gap: 8 }}>
@@ -1146,7 +1305,7 @@ export default async function AdminExpenseClaimsPage({
                 ) : null}
 
                 {canApprove ? (
-                  <div id="expense-review-actions" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff' }}>
+                  <div id="expense-review-actions" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff', scrollMarginTop: 104 }}>
                     <div style={{ fontWeight: 700 }}>{t(lang, 'Quick review flow', '快速审批流')}</div>
                     <div style={{ color: '#475569', fontSize: 14 }}>
                       {nextReviewClaimId
@@ -1195,7 +1354,7 @@ export default async function AdminExpenseClaimsPage({
       </section>
 
       {canFinance ? (
-        <section style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#fffbeb' }}>
+        <section id="expense-finance-queue" style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 16, display: 'grid', gap: 16, background: '#fffbeb', scrollMarginTop: 104 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 700 }}>{t(lang, 'Finance queue', '财务待处理队列')}</div>
@@ -1273,7 +1432,7 @@ export default async function AdminExpenseClaimsPage({
                   <div>{t(lang, 'Try clearing filters, opening another batch month, or switching back to the submitted review queue.', '可以尝试清空筛选、切换其他付款批次月份，或回到待审批队列。')}</div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
-                    <a href={quickSubmittedHref}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</a>
+                    <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</Link>
                   </div>
                 </div>
               )}
@@ -1332,10 +1491,10 @@ export default async function AdminExpenseClaimsPage({
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {previousFinanceGroupKey ? (
-                        <a href={focusFinanceGroupHref(workflowQuery, previousFinanceGroupKey)}>{t(lang, 'Open previous', '打开上一条')}</a>
+                        <Link href={focusFinanceGroupHref(workflowQuery, previousFinanceGroupKey)} scroll={false}>{t(lang, 'Open previous', '打开上一条')}</Link>
                       ) : null}
                       {nextFinanceGroupKey ? (
-                        <a href={focusFinanceGroupHref(workflowQuery, nextFinanceGroupKey)}>{t(lang, 'Open next', '打开下一条')}</a>
+                        <Link href={focusFinanceGroupHref(workflowQuery, nextFinanceGroupKey)} scroll={false}>{t(lang, 'Open next', '打开下一条')}</Link>
                       ) : null}
                       <a href={quickApprovedUnpaidHref}>{t(lang, 'Back to finance queue', '返回财务队列')}</a>
                     </div>
@@ -1405,7 +1564,7 @@ export default async function AdminExpenseClaimsPage({
                       ))}
                     </div>
 
-                    <div id="expense-payment-details" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fde68a', background: '#fffdf5' }}>
+                    <div id="expense-payment-details" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #fde68a', background: '#fffdf5', scrollMarginTop: 104 }}>
                       <div style={{ fontWeight: 700 }}>{t(lang, 'Batch payment details', '批量付款信息')}</div>
                       <div style={{ color: '#475569', fontSize: 14 }}>
                         {t(lang, 'Fill once for the selected claims in this teacher-and-currency group.', '对这一组同老师同币种的选中报销单，只需填写一次付款信息。')}
@@ -1442,7 +1601,7 @@ export default async function AdminExpenseClaimsPage({
                   <div>{t(lang, 'Choose one finance group from the left queue. If nothing is waiting, clear filters or switch back to submitted review work.', '请先从左侧财务队列选择一组；如果当前没有待处理项，可清空筛选或回到待审批工作流。')}</div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
-                    <a href={quickSubmittedHref}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</a>
+                    <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</Link>
                   </div>
                 </div>
               )}
@@ -1626,7 +1785,7 @@ export default async function AdminExpenseClaimsPage({
         </form>
       </details>
 
-      <details>
+      <details id="expense-history" style={{ scrollMarginTop: 104 }}>
         <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
           {t(lang, 'Full claim list and history', '完整报销列表与历史')} ({claims.length})
         </summary>
@@ -1773,7 +1932,7 @@ export default async function AdminExpenseClaimsPage({
         </div>
       </details>
 
-      <details>
+      <details id="expense-self-submit">
         <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#475569' }}>
           {t(lang, 'Submit a claim for myself', '为自己提交报销')}
         </summary>

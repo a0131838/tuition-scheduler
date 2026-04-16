@@ -19,7 +19,31 @@ export default async function CoursesPage({
 
   return (
     <div>
-      <h2>{t(lang, "Courses", "课程")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Course Setup / 课程结构设置</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Courses", "课程")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Maintain the course > subject > level tree here before creating classes or teacher mappings.", "先维护课程 > 科目 > 级别结构，再继续创建班级和老师能力映射。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Course categories", "课程大类")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{courses.length}</div>
+          </div>
+        </div>
+      </div>
       {err ? (
         <NoticeBanner
           type="error"
@@ -34,7 +58,28 @@ export default async function CoursesPage({
         />
         ) : null}
 
-      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 16 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#courses-editor">{t(lang, "Course editor", "课程编辑")}</a>
+        <a href="#courses-search">{t(lang, "Search", "搜索")}</a>
+        <a href="#courses-notes">{t(lang, "Rules", "规则")}</a>
+      </div>
+
+      <div id="courses-editor" style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 16, scrollMarginTop: 96 }}>
         <AdminCoursesClient
           initialCourses={courses.map((c) => ({
             id: c.id,
@@ -62,7 +107,7 @@ export default async function CoursesPage({
             errLevelHasClasses: t(lang, "Level has classes. Please delete classes first.", "级别已被班级使用，请先删除班级。"),
           }}
         />
-        <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+        <form id="courses-search" method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8, scrollMarginTop: 96 }}>
           <input
             name="q"
             defaultValue={sp?.q ?? ""}
@@ -80,7 +125,7 @@ export default async function CoursesPage({
 
       {/* Courses list is rendered client-side to avoid full refresh on create/delete */}
 
-      <p style={{ color: "#666", marginTop: 12 }}>
+      <p id="courses-notes" style={{ color: "#666", marginTop: 12, scrollMarginTop: 96 }}>
         {t(lang, "* If a course/subject/level is used by classes, deletion is blocked.", "* 如果课程/科目/级别已被班级使用，将阻止删除。")}
       </p>
     </div>

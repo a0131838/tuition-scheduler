@@ -351,13 +351,67 @@ export default async function AdminMidtermReportCenterPage({
 
   return (
     <div>
-      <h2 style={{ marginBottom: 4 }}>{t(lang, "Midterm Report Center", "中期报告中心")}</h2>
-      <div style={{ color: "#666", marginBottom: 10 }}>
-        {t(
-          lang,
-          "Detect students near half-package progress and assign report writing to the subject teacher.",
-          "系统会识别接近课时包中点的学生，教务可按任课老师分别推送中期报告。"
-        )}
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Midterm Report Desk / 中期报告工作台</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Midterm Report Center", "中期报告中心")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Detect students near half-package progress and assign report writing to the subject teacher.",
+              "系统会识别接近课时包中点的学生，教务可按任课老师分别推送中期报告。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Candidates", "候选学生")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{candidates.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Active reports", "当前报告")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{activeCount}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Exempt", "无需报告")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{exemptCount}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Archived", "已归档")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{archivedCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#midterm-report-candidates">{t(lang, "Candidates", "候选学生")}</a>
+        <a href="#midterm-report-filters">{t(lang, "Views", "视图")}</a>
+        <a href="#midterm-report-records">{t(lang, "Records", "报告记录")}</a>
       </div>
 
       {ok === "assigned" ? (
@@ -393,12 +447,14 @@ export default async function AdminMidtermReportCenterPage({
       ) : null}
 
       <div
+        id="midterm-report-candidates"
         style={{
           border: "1px solid #fecaca",
           background: "#fff7ed",
           borderRadius: 10,
           padding: 12,
           marginBottom: 16,
+          scrollMarginTop: 96,
         }}
       >
         <div style={{ fontWeight: 800, color: "#9a3412", marginBottom: 8 }}>{t(lang, "Candidates Near Midpoint", "接近中期报告节点")}</div>
@@ -487,7 +543,7 @@ export default async function AdminMidtermReportCenterPage({
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      <div id="midterm-report-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, scrollMarginTop: 96 }}>
         <a
           href="/admin/reports/midterm"
           style={{
@@ -547,7 +603,7 @@ export default async function AdminMidtermReportCenterPage({
         </a>
       </div>
 
-      <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12 }}>
+      <div id="midterm-report-records" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 10, padding: 12, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 800, color: "#1d4ed8", marginBottom: 8 }}>{t(lang, "Midterm Report Records", "中期报告记录")}</div>
         {filteredReports.length === 0 ? (
           <div style={{ color: "#999" }}>

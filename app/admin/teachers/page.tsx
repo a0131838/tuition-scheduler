@@ -8,6 +8,28 @@ import TeacherCardExportForm from "../_components/TeacherCardExportForm";
 import TeacherFilterForm from "../_components/TeacherFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
 import DeleteTeacherButtonClient from "./DeleteTeacherButtonClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
+
+function teachersSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function languageLabel(lang: string, v?: string | null, other?: string | null) {
   if (v === TeachingLanguage.CHINESE) return lang === "EN" ? "Chinese" : "中文";
@@ -159,6 +181,8 @@ export default async function TeachersPage({
       return a.name.localeCompare(b.name);
     });
   const filteredTotal = groupBy ? sortedTeachers.length : totalCountRaw;
+  const linkedTeacherCount = sortedTeachers.filter((tch) => !!tch.users[0]?.email).length;
+  const offlineTeacherCount = sortedTeachers.filter((tch) => !!tch.offlineShanghai || !!tch.offlineSingapore).length;
   const buildPageHref = (targetPage: number, targetPageSize = pageSize) => {
     const params = new URLSearchParams();
     if (filterQ) params.set("q", filterQ);
@@ -176,11 +200,81 @@ export default async function TeachersPage({
 
   return (
     <div>
-      <h2>{t(lang, "Teachers", "老师")}</h2>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Teachers workbench", "老师工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Teachers", "老师")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this page to add teachers, export cards, filter by capability, and jump directly into availability or account-link work without rescanning the list.",
+              "这里用于新增老师、导出名片、按能力筛选，并快速进入可用时间或账号绑定，不用反复扫整张列表。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible teachers", "当前结果")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{filteredTotal}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Linked", "已绑定")}</div>
+            <div style={workbenchMetricValueStyle("emerald")}>{linkedTeacherCount}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Offline capable", "可线下授课")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{offlineTeacherCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle(groupBy ? "indigo" : "slate")}>
+            <div style={workbenchMetricLabelStyle(groupBy ? "indigo" : "slate")}>{t(lang, "Grouping", "分组方式")}</div>
+            <div style={{ ...workbenchMetricValueStyle(groupBy ? "indigo" : "slate"), fontSize: 18 }}>
+              {groupBy || t(lang, "None", "无")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Teachers work map", "老师工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Use the top shortcuts first, then narrow with filters, and only then work through the teacher table row by row.", "建议先用顶部快捷入口，再缩小筛选范围，最后逐行处理老师列表。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#teachers-actions" style={teachersSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Create and export", "新增与导出")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Add new teacher or export cards", "新增老师或导出名片")}</span>
+          </a>
+          <a href="#teachers-filters" style={teachersSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Filters", "筛选区")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Search by subject, language, offline mode, or link state", "按科目、语言、线下能力或绑定状态过滤")}</span>
+          </a>
+          <a href="#teachers-table" style={teachersSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Teacher list", "老师列表")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Open availability, manage link, or edit directly from the row", "从列表直接进入可用时间、绑定或编辑")}</span>
+          </a>
+        </div>
+      </section>
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={decodeURIComponent(err)} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={decodeURIComponent(msg)} /> : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      <div id="teachers-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Add Teacher", "新增老师")} title={t(lang, "Add Teacher", "新增老师")} closeOnSubmit>
           <TeacherCreateForm
             courses={courses.map((c) => ({ id: c.id, name: c.name }))}
@@ -248,7 +342,7 @@ export default async function TeachersPage({
         </SimpleModal>
       </div>
 
-      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
+      <div id="teachers-filters" style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
         <TeacherFilterForm
           courses={courses.map((c) => ({ id: c.id, name: c.name }))}
           subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
@@ -330,7 +424,7 @@ export default async function TeachersPage({
         </div>
       </div>
 
-      <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <table id="teachers-table" cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             <th align="left">{t(lang, "Name", "姓名")}</th>

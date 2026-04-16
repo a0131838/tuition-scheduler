@@ -4,6 +4,28 @@ import SimpleModal from "../_components/SimpleModal";
 import ClassCreateForm from "../_components/ClassCreateForm";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import NoticeBanner from "../_components/NoticeBanner";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
+
+function classesSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 export default async function ClassesPage({
   searchParams,
@@ -64,6 +86,13 @@ export default async function ClassesPage({
     take: pageSize,
   });
   const totalClasses = oneOnOneClasses.length + groupTotal;
+  const totalOneOnOneStudents = Array.from(
+    new Set(
+      oneOnOneClasses.flatMap((c) =>
+        c.oneOnOneStudent?.id ? [c.oneOnOneStudent.id] : c.enrollments.map((e) => e.studentId)
+      )
+    )
+  ).length;
   const buildPageHref = (targetPage: number, targetPageSize = pageSize) => {
     const params = new URLSearchParams();
     params.set("pageSize", String(targetPageSize));
@@ -74,11 +103,79 @@ export default async function ClassesPage({
 
   return (
     <div>
-      <h2>{t(lang, "Classes", "班级")}</h2>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Classes workbench", "班级工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Classes", "班级")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Review class load, jump into enrollments, and open the exact class or sessions page you need without rescanning the full list.",
+              "这里先看班级负载，再快速进入报名、班级详情或课次页，不用每次把整页重新扫一遍。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Total classes", "班级总数")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{totalClasses}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "1-on-1 templates", "一对一模板")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{oneOnOneClasses.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "1-on-1 students", "一对一学生")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{totalOneOnOneStudents}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Group classes", "班课")}</div>
+            <div style={workbenchMetricValueStyle("emerald")}>{groupTotal}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Classes work map", "班级工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Create a class, scan the 1-on-1 student view, then move to group classes or enrollments management.", "建议先新建班级，再看一对一按学生视图，最后处理班课区或报名管理。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#classes-actions" style={classesSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Create and shortcuts", "创建与快捷入口")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "New class and enrollments shortcut", "新建班级和报名快捷入口")}</span>
+          </a>
+          <a href="#classes-one-on-one" style={classesSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "1-on-1 view", "一对一视图")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Find the student or template you need first", "先找到对应学生或模板")}</span>
+          </a>
+          <a href="#classes-group" style={classesSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Group classes", "班课区")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Review class size, sessions, and open the next class", "查看班级人数、课次并打开下一班")}</span>
+          </a>
+        </div>
+      </section>
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+      <div id="classes-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
         <div style={{ color: "#666" }}>
         {t(
           lang,
@@ -146,15 +243,6 @@ export default async function ClassesPage({
       ) : (
         <>
           {(() => {
-            const totalOneOnOneStudents = Array.from(
-              new Set(
-                oneOnOneClasses.flatMap((c) =>
-                  c.oneOnOneStudent?.id
-                    ? [c.oneOnOneStudent.id]
-                    : c.enrollments.map((e) => e.studentId)
-                )
-              )
-            ).length;
             const grouped = new Map<
               string,
               {
@@ -236,7 +324,7 @@ export default async function ClassesPage({
             return (
               <>
                 {grouped.size > 0 && (
-                  <div style={{ marginBottom: 18 }}>
+                  <div id="classes-one-on-one" style={{ marginBottom: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
                       <h3 style={{ marginBottom: 0 }}>{t(lang, "1-on-1 by Student", "一对一按学生")}</h3>
                       <div style={{ color: "#666", fontSize: 12 }}>
@@ -313,6 +401,7 @@ export default async function ClassesPage({
                 )}
 
                 {groupClasses.length > 0 && (
+                  <div id="classes-group">
                   <>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
                     <span style={{ color: "#666", fontSize: 12 }}>
@@ -381,6 +470,7 @@ export default async function ClassesPage({
                     ))}
                   </div>
                   </>
+                  </div>
                 )}
               </>
             );
@@ -390,6 +480,5 @@ export default async function ClassesPage({
     </div>
   );
 }
-
 
 

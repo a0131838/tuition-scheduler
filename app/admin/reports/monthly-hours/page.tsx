@@ -79,9 +79,57 @@ export default async function MonthlyHoursReportPage({
 
   return (
     <div>
-      <h2>{t(lang, "Monthly Hours Report", "月度课时明细")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Monthly Hours / 月度课时明细</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Monthly Hours Report", "月度课时明细")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Filter the month and source first, then export or review attendance-based hour deductions in one pass.", "先按月份和来源筛选，再统一检查或导出按点名归属的课时数据。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Rows", "记录数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{rows.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Source options", "来源选项")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{sources.length}</div>
+          </div>
+        </div>
+      </div>
 
-      <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#monthly-hours-filters">{t(lang, "Filters", "筛选")}</a>
+        <a href="#monthly-hours-list">{t(lang, "Rows", "记录")}</a>
+      </div>
+
+      <form id="monthly-hours-filters" method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, scrollMarginTop: 96 }}>
         <label>
           {t(lang, "Month", "月份")}:
           <input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} />
@@ -112,7 +160,7 @@ export default async function MonthlyHoursReportPage({
       {rows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No data for this month.", "本月暂无数据")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <table id="monthly-hours-list" cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", scrollMarginTop: 96 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Updated At", "更新时间")}</th>

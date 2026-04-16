@@ -6,6 +6,28 @@ import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import PackageSelectAutoSubmit from "./_components/PackageSelectAutoSubmit";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function packageInvoiceSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function parseNum(v: string | null | undefined, fallback = 0) {
   const n = Number(String(v ?? "").trim());
@@ -184,17 +206,78 @@ export default async function FinanceStudentPackageInvoicePage({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Package Invoice Workbench", "学生课时包发票工作台")}</h2>
-      <div style={{ color: "#64748b", fontSize: 12 }}>
-        {t(
-          lang,
-          "Preview the invoice draft first, then confirm issuance. This page does not change package deduction, receipt, or approval logic.",
-          "先预览发票草稿，再确认开票。此页面不会改动扣课、收据或审批逻辑。",
-        )}
-      </div>
-      <div style={{ fontSize: 12 }}>
-        <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
-      </div>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Student package invoicing", "学生课时包开票")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Student Package Invoice Workbench", "学生课时包发票工作台")}</h2>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {t(
+              lang,
+              "Preview the invoice draft first, then confirm issuance. This page does not change package deduction, receipt, or approval logic.",
+              "先预览发票草稿，再确认开票。此页面不会改动扣课、收据或审批逻辑。",
+            )}
+          </div>
+          <div style={{ fontSize: 12 }}>
+            <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Selected package", "当前课包")}</div>
+            <div style={{ ...workbenchMetricValueStyle("amber"), fontSize: 18 }}>{selectedPackage ? selectedPackage.student.name : t(lang, "None", "未选择")}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("blue"), background: "#eff6ff" }}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Paid amount", "已缴费")}</div>
+            <div style={{ ...workbenchMetricValueStyle("blue"), fontSize: 18 }}>SGD {money(packagePaidAmount)}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Invoiced", "已开票")}</div>
+            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>SGD {money(invoicedAmount)}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(pendingToInvoice > 0 ? "emerald" : "slate"), background: pendingToInvoice > 0 ? "#f0fdf4" : "#fff" }}>
+            <div style={workbenchMetricLabelStyle(pendingToInvoice > 0 ? "emerald" : "slate")}>{t(lang, "Pending invoice", "待开票")}</div>
+            <div style={{ ...workbenchMetricValueStyle(pendingToInvoice > 0 ? "emerald" : "slate"), fontSize: 18 }}>SGD {money(pendingToInvoice)}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 0,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Invoice work map", "开票工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Choose the package first, review paid vs invoiced amounts, then complete the draft form and compare against invoice history below.", "建议先选课包，核对已缴费和已开票金额，再填写草稿表单，并对照下方历史。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#package-invoice-summary" style={packageInvoiceSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Summary", "摘要")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Check payment and invoicing totals", "先核对缴费和开票总额")}</span>
+          </a>
+          <a href="#package-invoice-selector" style={packageInvoiceSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Package selection", "课包选择")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Load the package you want to invoice", "加载要开票的课包")}</span>
+          </a>
+          <a href="#package-invoice-form" style={packageInvoiceSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Invoice form", "开票表单")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Complete the invoice draft here", "在这里完成发票草稿")}</span>
+          </a>
+        </div>
+      </section>
 
       <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
         <div style={{ fontWeight: 700 }}>
@@ -219,7 +302,7 @@ export default async function FinanceStudentPackageInvoicePage({
 
       {err ? <div style={{ color: "#b91c1c" }}>{err}</div> : null}
       {msg ? <div style={{ color: "#166534" }}>{msg}</div> : null}
-      <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
+      <div id="package-invoice-summary" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
         <div style={{ fontWeight: 700 }}>
           {t(lang, "Payment and invoice summary", "缴费与开票摘要")}
         </div>
@@ -250,7 +333,7 @@ export default async function FinanceStudentPackageInvoicePage({
         )}
       </div>
 
-      <form method="get" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, display: "grid", gap: 8 }}>
+      <form id="package-invoice-selector" method="get" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, display: "grid", gap: 8 }}>
         <label>
           {t(lang, "Package", "课时包")}{" "}
           <PackageSelectAutoSubmit
@@ -286,7 +369,7 @@ export default async function FinanceStudentPackageInvoicePage({
       </form>
 
       {selectedPackage ? (
-        <div style={{ border: "1px solid #dbeafe", borderRadius: 8, padding: 12, background: "#eff6ff", display: "grid", gap: 8 }}>
+        <div id="package-invoice-form" style={{ border: "1px solid #dbeafe", borderRadius: 8, padding: 12, background: "#eff6ff", display: "grid", gap: 8 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, "Invoice preview", "发票预览")}</div>
           <div style={{ fontSize: 12 }}>
             {t(lang, "Invoice No. (suggested)", "建议发票号")}: <b>{previewInvoiceNo}</b>
@@ -333,7 +416,7 @@ export default async function FinanceStudentPackageInvoicePage({
       ) : null}
 
       {selectedPackage && selectedBilling ? (
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+        <div id="package-invoice-history" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>
             {t(lang, "Latest invoices for selected package", "该课包最近发票")}
           </div>

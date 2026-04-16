@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r67` (teacher feedback late-deadline clarity and shared timing helper), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r68` (admin workbench UI consistency, queue continuity, and anchor-scroll fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,24 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-16-r68 Ready
+
+- Scope: finish the current admin workbench UI consistency pass and fix same-page anchor scrolling inside the admin scroll container.
+- Business impact:
+  - high-frequency admin workbenches now use a shared result banner pattern for success, failure, resumed context, and “next step” guidance instead of each page inventing its own feedback block
+  - approvals, todos, tickets, expense claims, feedback desk, and receipts approval now share a more consistent sticky work-map treatment, so users can keep context while moving through long pages
+  - the admin ticket center now also remembers scroll position, reducing the “back to top” problem when reopening the list after actions
+  - same-page work-map anchors inside the admin app now scroll the actual `.app-main` container instead of only changing the hash, which fixes the “clicked jump link but nothing moved” problem on long pages
+  - key anchor targets now include top offset spacing so sticky bars do not cover the destination heading after jump navigation
+  - local narrow-width QA confirmed the main admin queue pages no longer show obvious horizontal overflow in the tested layouts
+  - no approval rules, finance rules, receipt rules, ticket rules, scheduling rules, or feedback business logic changed
+- Validation:
+  - `npm run build`
+  - local browser QA on `/admin/approvals`, `/admin/todos`, `/admin/tickets`, `/admin/expense-claims`, `/admin/feedbacks`, and `/admin/receipts-approvals`
+  - verify work-map anchor links now move to the target section inside the admin scroll container
+  - verify the main tested pages do not show obvious horizontal overflow at narrow widths
+  - verify shared result banners appear on approvals/todos/tickets/expense/feedback/receipt workbenches where applicable
 
 ## 2026-04-15-r66 Ready
 

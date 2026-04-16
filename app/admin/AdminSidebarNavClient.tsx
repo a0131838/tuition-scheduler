@@ -26,8 +26,8 @@ function groupStyles(title: string, isActiveGroup: boolean) {
   }
   if (title.includes("Core") || title.includes("核心")) {
     return isActiveGroup
-      ? { background: "#effcf7", borderColor: "#6ee7b7", accent: "#0f766e", summary: "#0f766e" }
-      : { background: "#f6fffb", borderColor: "#b7f3dd", accent: "#0f766e", summary: "#64748b" };
+      ? { background: "#ecfdf5", borderColor: "#34d399", accent: "#0f766e", summary: "#0f766e" }
+      : { background: "#f3fdf8", borderColor: "#a7f3d0", accent: "#0f766e", summary: "#64748b" };
   }
   if (title.includes("Finance") || title.includes("财务")) {
     return isActiveGroup
@@ -41,8 +41,8 @@ function groupStyles(title: string, isActiveGroup: boolean) {
   }
   if (title.includes("Reports") || title.includes("报表")) {
     return isActiveGroup
-      ? { background: "#f6f8fb", borderColor: "#c5cedb", accent: "#475569", summary: "#64748b" }
-      : { background: "#fbfcfe", borderColor: "#dde5ef", accent: "#64748b", summary: "#94a3b8" };
+      ? { background: "#f3f6fa", borderColor: "#b8c4d4", accent: "#475569", summary: "#64748b" }
+      : { background: "#f9fbfd", borderColor: "#d5dee9", accent: "#64748b", summary: "#94a3b8" };
   }
   return isActiveGroup
     ? { background: "#ffffff", borderColor: "#bfdbfe", accent: "#1d4ed8", summary: "#475569" }
@@ -108,7 +108,7 @@ export default function AdminSidebarNavClient({
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: 4,
+                width: isActiveGroup ? 6 : 4,
                 background: isActiveGroup ? groupTone.accent : "transparent",
               }}
             />

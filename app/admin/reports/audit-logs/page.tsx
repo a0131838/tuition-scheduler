@@ -64,12 +64,60 @@ export default async function AuditLogsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Audit Logs", "操作审计日志")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Audit Logs / 操作审计</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Audit Logs", "操作审计日志")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Filter by actor, module, and time window first, then inspect the raw change detail.", "先按操作人、模块和时间范围缩小，再看原始操作细节。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Rows", "记录数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{rows.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Window", "时间窗")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{days}</div>
+          </div>
+        </div>
+      </div>
       <div style={{ color: "#666", marginBottom: 10 }}>
         {t(lang, "Track who did what and when in key business flows.", "用于查看关键流程中谁在什么时间做了什么操作。")}
       </div>
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#audit-log-filters">{t(lang, "Filters", "筛选")}</a>
+        <a href="#audit-log-list">{t(lang, "Rows", "记录")}</a>
+      </div>
+
+      <form id="audit-log-filters" method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12, scrollMarginTop: 96 }}>
         <label>
           {t(lang, "Actor Email", "操作人邮箱")}:
           <input name="actor" defaultValue={actor} style={{ marginLeft: 6 }} />
@@ -100,7 +148,7 @@ export default async function AuditLogsPage({
       {rows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No logs found.", "未找到日志记录。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <table id="audit-log-list" cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", scrollMarginTop: 96 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Time", "时间")}</th>

@@ -84,11 +84,69 @@ export default async function AdminBookingLinksPage({
 
   return (
     <div>
-      <h2>{t(lang, "Student Booking Links", "学生选课链接")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>
+            Booking Workspace / 约课链接工作台
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Student Booking Links", "学生选课链接")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Create a booking link first, then return here to copy it or continue follow-up from the recent list.",
+              "先创建家长可用时间链接，再回到最近链接列表继续复制、追踪和管理。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Recent links", "最近链接")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a" }}>{links.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Students ready", "可创建学生")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a" }}>{studentOptions.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Teacher pool", "老师候选池")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a" }}>{teacherOptions.length}</div>
+          </div>
+        </div>
+      </div>
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#booking-links-actions">{t(lang, "Create link", "创建链接")}</a>
+        <a href="#booking-links-list">{t(lang, "Recent links", "最近链接")}</a>
+      </div>
+
+      <div id="booking-links-actions" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, scrollMarginTop: 96 }}>
         <SimpleModal buttonLabel={t(lang, "Create Link", "创建链接")} title={t(lang, "Create Link", "创建链接")} closeOnSubmit>
           <BookingLinkCreateForm
             students={studentOptions}
@@ -131,7 +189,7 @@ export default async function AdminBookingLinksPage({
         </SimpleModal>
       </div>
 
-      <h3>{t(lang, "Recent Links", "最近链接")}</h3>
+      <h3 id="booking-links-list" style={{ scrollMarginTop: 96 }}>{t(lang, "Recent Links", "最近链接")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>

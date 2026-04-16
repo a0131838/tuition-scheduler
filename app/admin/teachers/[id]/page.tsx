@@ -12,6 +12,10 @@ import DeleteTemplateButtonClient from "./DeleteTemplateButtonClient";
 import GenerateSessionsButtonClient from "./GenerateSessionsButtonClient";
 import DeleteTeacherNavigateClient from "./DeleteTeacherNavigateClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+} from "../../_components/workbenchStyles";
 
 const WEEKDAYS = [
   "Sun / 日",
@@ -54,6 +58,33 @@ function addDays(d: Date, n: number) {
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && bStart < aEnd;
+}
+
+function teacherSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function teacherSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
 }
 
 type Occurrence = {
@@ -246,22 +277,148 @@ export default async function TeacherDetailPage({
   const preview = sp?.preview === "1";
 
   const plan = preview && startDate && endDate ? await computeGenerationPlan(teacherId, startDate, endDate) : null;
+  const teacherFocusTitle = plan
+    ? plan.toCreate.length > 0
+      ? t(lang, "Preview looks ready to generate sessions", "当前预览结果可继续生成课次")
+      : t(lang, "Preview found only conflicts or no sessions", "当前预览只有冲突或没有可生成课次")
+    : templates.length === 0
+      ? t(lang, "Set up templates before generation", "先补一对一模版，再生成课次")
+      : linkedUser
+        ? t(lang, "Teacher profile is mostly ready", "老师档案当前已基本就绪")
+        : t(lang, "Teacher account link is the next likely step", "下一步大概率先做老师账号绑定");
+  const teacherFocusDetail = plan
+    ? t(lang, `${plan.toCreate.length} session(s) can be created and ${plan.conflicts.length} conflict(s) will be skipped.`, `可生成 ${plan.toCreate.length} 节课，冲突 ${plan.conflicts.length} 条会被跳过。`)
+    : templates.length === 0
+      ? t(lang, "Without templates, the generation area below is only a shell. Start by building the teacher's weekly teaching pattern.", "如果没有模版，下方生成区基本还用不起来；先把老师的固定教学节奏建起来。")
+      : linkedUser
+        ? t(lang, "The main next steps are usually template upkeep, availability edits, or session generation preview.", "接下来更常见的动作是维护模版、调整 availability 或做课次生成预览。")
+        : t(lang, "The profile exists, but login linkage is still missing if this teacher needs direct system access.", "老师资料已经建好，但如果老师需要直接登录系统，账号绑定仍然缺一步。");
+  const teacherSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: teacherFocusTitle,
+      detail: teacherFocusDetail,
+      background: plan ? "#eff6ff" : linkedUser ? "#f0fdf4" : "#fff7ed",
+      border: plan ? "#bfdbfe" : linkedUser ? "#86efac" : "#fdba74",
+    },
+    {
+      title: t(lang, "Template coverage", "模版情况"),
+      value: t(lang, `${templates.length} template row(s)`, `${templates.length} 条模版`),
+      detail: t(lang, `${templates.length > 0 ? "Ready for preview and generation." : "Templates still missing."}`, templates.length > 0 ? "已经可以做预览和生成。" : "当前还没有模版。"),
+      background: templates.length > 0 ? "#f0fdf4" : "#fff7ed",
+      border: templates.length > 0 ? "#86efac" : "#fdba74",
+    },
+    {
+      title: t(lang, "Account link", "账号绑定"),
+      value: linkedUser ? t(lang, "Linked", "已绑定") : t(lang, "Not linked", "未绑定"),
+      detail: linkedUser
+        ? `${linkedUser.name} (${linkedUser.email})`
+        : t(lang, "Create or rebind when this teacher needs login access.", "只有老师需要登录系统时，再创建或重绑账号。"),
+      background: linkedUser ? "#eff6ff" : "#f8fafc",
+      border: linkedUser ? "#bfdbfe" : "#dbe4f0",
+    },
+  ];
+  const teacherSectionLinks = [
+    {
+      href: "#teacher-profile-edit",
+      label: t(lang, "Profile edit", "资料编辑"),
+      detail: t(lang, "Basic teacher profile and delete action", "老师基础资料和删除入口"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#teacher-account-link",
+      label: t(lang, "Account link", "账号绑定"),
+      detail: linkedUser ? t(lang, "Current account already linked", "当前账号已绑定") : t(lang, "Create or rebind login access", "创建或重绑登录账号"),
+      background: linkedUser ? "#eff6ff" : "#ffffff",
+      border: linkedUser ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      href: "#teacher-templates",
+      label: t(lang, "1-1 templates", "一对一模版"),
+      detail: t(lang, `${templates.length} row(s)`, `${templates.length} 条模版`),
+      background: templates.length > 0 ? "#f0fdf4" : "#ffffff",
+      border: templates.length > 0 ? "#86efac" : "#dbe4f0",
+    },
+    {
+      href: "#teacher-generate",
+      label: t(lang, "Generate sessions", "生成课次"),
+      detail: t(lang, "Preview conflicts before creating sessions", "先预览冲突，再生成课次"),
+      background: plan ? "#eff6ff" : "#ffffff",
+      border: plan ? "#bfdbfe" : "#dbe4f0",
+    },
+  ];
 
   return (
-    <div>
-      <h2>{t(lang, "Teacher Detail", "老师详情")}</h2>
-      <p style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <a href="/admin/teachers">← {t(lang, "Back to Teachers", "返回老师列表")}</a>
-        <span style={{ color: "#999" }}>(TCH-{teacher.id.slice(0, 4)}…{teacher.id.slice(-4)})</span>
-      </p>
-      <p style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <a href={`/admin/teachers/${teacherId}/availability`}>{t(lang, "Availability", "可用时间")}</a>
-        <a href={`/admin/teachers/${teacherId}/calendar`}>{t(lang, "Month Calendar", "月表")}</a>
-      </p>
+    <div style={{ display: "grid", gap: 16 }}>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.4 }}>
+            {t(lang, "Teacher Workspace", "老师工作台")}
+          </div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Teacher Detail", "老师详情")}</h2>
+          <div style={{ color: "#475569", lineHeight: 1.5 }}>
+            {teacher.name} <span style={{ color: "#94a3b8" }}>(TCH-{teacher.id.slice(0, 4)}…{teacher.id.slice(-4)})</span>
+          </div>
+          <div style={{ color: "#475569", fontSize: 14 }}>
+            {t(lang, "Use this page to maintain the profile, bind login access, keep 1-1 templates healthy, and preview session generation before writing real sessions.", "这个页面用来维护老师资料、绑定登录账号、维护一对一模版，以及在真正生成课次前先做预览。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <a href="/admin/teachers">{t(lang, "Back to teachers", "返回老师列表")}</a>
+          <a href={`/admin/teachers/${teacherId}/availability`}>{t(lang, "Availability", "可用时间")}</a>
+          <a href={`/admin/teachers/${teacherId}/calendar`}>{t(lang, "Month Calendar", "月表")}</a>
+        </div>
+      </section>
+
+      <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {teacherSummaryCards.map((card) => (
+          <div key={card.title} style={teacherSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          display: "grid",
+          gap: 12,
+          background: "#ffffffee",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Teacher work map", "老师工作地图")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(lang, "Use this strip to jump between profile, account, templates, and generation instead of rescanning the whole page.", "通过这条导航在资料、账号、模版和生成区之间快速切换，不用每次重新扫整页。")}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href={`/admin/teachers/${teacherId}/availability`}>{t(lang, "Open availability", "打开可用时间")}</a>
+            <a href={`/admin/teachers/${teacherId}/calendar`}>{t(lang, "Open month calendar", "打开月表")}</a>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {teacherSectionLinks.map((item) => (
+            <a key={item.href} href={item.href} style={teacherSectionLinkStyle(item.background, item.border)}>
+              <div style={{ fontWeight: 700 }}>{item.label}</div>
+              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45 }}>{item.detail}</div>
+            </a>
+          ))}
+        </div>
+      </section>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
+      <div id="teacher-profile-edit">
       <h3>{t(lang, "Edit Teacher", "编辑老师")}</h3>
       <p>
         <a href={`/admin/teachers/${teacherId}/card`} target="_blank" rel="noreferrer">
@@ -323,7 +480,9 @@ export default async function TeacherDetailPage({
           confirmMessage={t(lang, "Delete teacher? This also deletes availability/classes/appointments.", "删除老师？将删除可用时间/班级/预约。")}
         />
       </div>
+      </div>
 
+      <div id="teacher-account-link">
       <h3>{t(lang, "Teacher Account Link", "老师账号绑定")}</h3>
       <div style={{ marginBottom: 8, color: "#666" }}>
         {linkedUser
@@ -364,7 +523,9 @@ export default async function TeacherDetailPage({
       ) : (
         <div style={{ marginBottom: 24 }} />
       )}
+      </div>
 
+      <div id="teacher-templates">
       <h3>{t(lang, "1-1 Templates", "一对一模版")}</h3>
       <OneOnOneTemplateForm
         teacherId={teacherId}
@@ -448,7 +609,9 @@ export default async function TeacherDetailPage({
           </table>
         )}
       </div>
+      </div>
 
+      <div id="teacher-generate">
       <h3 style={{ marginTop: 24 }}>{t(lang, "Generate Sessions", "批量生成课次")}</h3>
       <form method="get" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input type="hidden" name="preview" value="1" />
@@ -517,10 +680,9 @@ export default async function TeacherDetailPage({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
-
-
 
 

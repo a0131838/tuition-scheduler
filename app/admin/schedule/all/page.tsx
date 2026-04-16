@@ -2,6 +2,28 @@
 import { getLang, t } from "@/lib/i18n";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function scheduleAllSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function startOfWeekMonday(d: Date) {
   const x = new Date(d);
@@ -74,25 +96,78 @@ export default async function ScheduleAllPage({
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <h2>{t(lang, "All Schedule (Week)", "全周总览")}</h2>
-        <a
-          href={`/admin/schedule?weekStart=${ymd(weekStart)}`}
-          style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6 }}
-        >
-          {t(lang, "Back to Week View", "返回周课表")}
-        </a>
-      </div>
-      <p style={{ color: "#666" }}>
-        {t(lang, "Week", "周")}: <b>{ymd(weekStart)}</b> ~ <b>{ymd(addDays(weekStart, 6))}</b>
-      </p>
+      <section style={workbenchHeroStyle("indigo")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#4338ca" }}>{t(lang, "Weekly overview", "全周总览")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "All Schedule (Week)", "全周总览")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this page when you want a fast read-only scan across the whole week before jumping back into the interactive weekly schedule.",
+              "当你需要快速只读扫一遍整周情况时，用这个页面先看全局，再回到可操作的周课表。"
+            )}
+          </div>
+          <div>
+            <a href={`/admin/schedule?weekStart=${ymd(weekStart)}`}>{t(lang, "Back to Week View", "返回周课表")}</a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Week start", "周开始")}</div>
+            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>{ymd(weekStart)}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("blue"), background: "#eff6ff" }}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Total sessions", "总课次")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{sessions.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Days in view", "展示天数")}</div>
+            <div style={workbenchMetricValueStyle("slate")}>{grouped.length}</div>
+          </div>
+        </div>
+      </section>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Overview map", "总览地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Switch week first, then scroll day by day. Use this as a scan page, and go back to week view when you need actions.", "先切周，再按天往下看。这一页适合快速巡检，需要操作时再回到周课表。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#schedule-all-nav" style={scheduleAllSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Week switch", "切周入口")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Jump between previous, current, and next week", "切到上一周、本周或下一周")}</span>
+          </a>
+          <a href="#schedule-all-days" style={scheduleAllSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Daily overview", "每日概览")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Scroll through each day’s sessions", "逐天查看课次")}</span>
+          </a>
+        </div>
+      </section>
+
+      <div id="schedule-all-nav" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
         <a href={`/admin/schedule/all?weekStart=${prevWeek}`}>← {t(lang, "Prev", "上一周")}</a>
         <a href={`/admin/schedule/all?weekStart=${thisWeek}`}>{t(lang, "Today", "本周")}</a>
         <a href={`/admin/schedule/all?weekStart=${nextWeek}`}>{t(lang, "Next", "下一周")} →</a>
       </div>
 
+      <div id="schedule-all-days">
       {grouped.map(({ day, items }) => (
         <div key={day.toISOString()} style={{ marginBottom: 18 }}>
           <h3 style={{ marginBottom: 8 }}>{fmtDate(day)}</h3>
@@ -128,6 +203,7 @@ export default async function ScheduleAllPage({
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }

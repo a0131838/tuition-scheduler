@@ -6,6 +6,28 @@ import { hasSchedulablePackage } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import AdminClassSessionsClient from "./AdminClassSessionsClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../../_components/workbenchStyles";
+
+function classSessionsSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function ymd(d: Date) {
   const y = d.getFullYear();
@@ -632,23 +654,91 @@ export default async function ClassSessionsPage({
   const defaultStartDate = ymd(today);
   const jsDay = today.getDay();
   const weekdayDefault = jsDay === 0 ? 7 : jsDay;
+  const upcomingSessionCount = sessions.filter((session) => session.endAt >= today).length;
+  const assignedStudentSessionCount = sessions.filter((session) => session.studentId).length;
 
   return (
     <div>
-      <h2>{t(lang, "Sessions", "课次")}</h2>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Class sessions workbench", "班级课次工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Sessions", "课次")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Create one-off sessions, generate recurring sessions, and manage the existing schedule for this class from one place.",
+              "这里集中处理这一个班级的单次建课、批量生成和已有课次管理，不用在多个页面之间来回切换。"
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <a href="/admin/classes">{t(lang, "Back to Classes", "返回班级列表")}</a>
+            <a href={`/admin/classes/${classId}`}>{t(lang, "Back to Class Detail", "返回班级详情")}</a>
+            <a href={`/admin/schedule/new?tab=session&classId=${classId}`}>+ {t(lang, "New Session (Schedule/New)", "新建课次")}</a>
+            <span style={{ color: "#999" }}>(CLS-{cls.id.slice(0, 4)}…{cls.id.slice(-4)})</span>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Total sessions", "总课次")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{sessions.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Upcoming", "未来课次")}</div>
+            <div style={workbenchMetricValueStyle("emerald")}>{upcomingSessionCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Assigned student sessions", "已分配学生")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{assignedStudentSessionCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Eligible teachers", "可排老师")}</div>
+            <div style={workbenchMetricValueStyle("slate")}>{eligibleTeachers.length}</div>
+          </div>
+        </div>
+      </section>
 
-      <p style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <a href="/admin/classes">← {t(lang, "Back to Classes", "返回班级列表")}</a>
-        <a href={`/admin/classes/${classId}`}>← {t(lang, "Back to Class Detail", "返回班级详情")}</a>
-        <a href={`/admin/schedule/new?tab=session&classId=${classId}`}>
-          + {t(lang, "New Session (Schedule/New)", "新建课次")}
-        </a>
-        <span style={{ color: "#999" }}>(CLS-{cls.id.slice(0, 4)}…{cls.id.slice(-4)})</span>
-      </p>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Sessions work map", "课次工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Jump into create-one, generate-weekly, or existing-session management directly below. This keeps the class detail page focused while this page becomes the scheduling desk.", "下方直接进入单次建课、批量生成或已有课次管理。这会让班级详情页更清爽，而这里专注排课工作。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#class-sessions-workbench" style={classSessionsSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Session actions", "课次操作")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Create, generate, replace, and reschedule in one work area", "在一个工作区完成建课、批量生成、换老师和改时间")}</span>
+          </a>
+          <a href={`/admin/classes/${classId}`} style={classSessionsSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Class setup", "班级设定")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Return to teacher, room, or enrollment settings", "返回班级设定、教室或报名管理")}</span>
+          </a>
+          <a href={`/admin/schedule/new?tab=session&classId=${classId}`} style={classSessionsSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Open schedule/new", "打开快速建课")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Use the broader scheduling page if you need another workflow", "如果需要另一种建课入口，可去总排课页")}</span>
+          </a>
+        </div>
+      </section>
 
       {err ? <NoticeBanner type="error" title={t(lang, "Rejected", "已拒绝")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
+      <div id="class-sessions-workbench">
       <AdminClassSessionsClient
         classId={classId}
         classCourseId={cls.courseId}
@@ -713,8 +803,8 @@ export default async function ClassSessionsPage({
           replacedTag: t(lang, "Replaced", "替换老师"),
         }}
       />
+      </div>
     </div>
   );
 }
-
 

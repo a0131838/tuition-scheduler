@@ -15,6 +15,36 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r68
+
+- Release ID: `2026-04-16-r68`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: finish the current admin workbench UI consistency pass and fix same-page anchor scrolling inside the admin scroll container.
+- Key files:
+  - `app/_components/ScrollManager.tsx`
+  - `app/admin/_components/WorkbenchActionBanner.tsx`
+  - `app/admin/_components/WorkbenchScrollMemoryClient.tsx`
+  - `app/admin/_components/workbenchStyles.ts`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/feedbacks/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260416-admin-workbench-ui-consistency-and-anchor-scroll.md`
+- Risk impact (if any): Low to medium. This release is a broad admin UI/interaction polish pass across high-frequency pages. It does not change business rules, but it does touch shared navigation behavior and queue-page continuity, so the main watchpoint is making sure same-path stateful navigation still preserves context while same-page anchor jumps now correctly move the admin scroll container.
+- Verification:
+  - `npm run build`
+  - local browser QA on `/admin/approvals`, `/admin/todos`, `/admin/tickets`, `/admin/expense-claims`, `/admin/feedbacks`, and `/admin/receipts-approvals`
+  - shared workbench result banners should now explain success/failure/next-step outcomes more consistently on the main queue pages
+  - the tested pages should not show obvious narrow-width horizontal overflow in the local QA pass
+  - clicking work-map anchor links should now move to the target section inside the admin `.app-main` scroll container
+  - target sections should not hide under the sticky workbench bar after anchor navigation
+- Rollback point: previous production commit before `2026-04-16-r68`.
+
 ## 2026-04-16-r67
 
 - Release ID: `2026-04-16-r67`

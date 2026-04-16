@@ -231,6 +231,33 @@ function sectionReturnBar(
   );
 }
 
+function studentSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function studentSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 160,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
+
 const GRADE_OPTIONS = [
   "G1",
   "G2",
@@ -2171,6 +2198,125 @@ export default async function StudentDetailPage({
     null;
   const nextUpcomingAttendance = nextUpcomingSession ? upcomingAttendanceMap.get(nextUpcomingSession.id) ?? null : null;
   const nextUpcomingCancelled = nextUpcomingAttendance?.status === "EXCUSED";
+  const currentFocusTitle =
+    packageRiskCount > 0
+      ? t(lang, "Start with packages", "先看课包")
+      : unpaidPackageCount > 0
+      ? t(lang, "Billing follow-up first", "先处理账务")
+      : nextUpcomingSession
+      ? t(lang, "Next real lesson is ready", "先看下一节课")
+      : t(lang, "Planning tools are clear", "可以直接排课");
+  const currentFocusDetail =
+    packageRiskCount > 0
+      ? t(lang, "Low-balance package risk is active, so package review should come before schedule changes.", "当前有低余额课包风险，建议先确认课包，再改排课。")
+      : unpaidPackageCount > 0
+      ? t(lang, "There are unpaid packages on this profile. Confirm billing state before more lesson changes.", "这个学生还有未付款课包，建议先确认账务状态再继续改课。")
+      : nextUpcomingSession
+      ? t(lang, "No urgent billing blocker is active. You can move straight into the next lesson or schedule tools.", "当前没有紧急账务阻塞，可以直接处理下一节课或排课工具。")
+      : t(lang, "No next lesson is locked yet, so use quick schedule or coordination to move this profile forward.", "当前还没有明确的下一节课，可直接用快速排课或排课协调推进。");
+  const nextLessonLabel = nextUpcomingSession
+    ? `${formatBusinessDateOnly(new Date(nextUpcomingSession.startAt))} ${fmtHHMM(new Date(nextUpcomingSession.startAt))}${
+        nextUpcomingCancelled ? ` · ${tl(lang, "Cancelled")}` : ""
+      }`
+    : tl(lang, "No upcoming sessions.");
+  const coordinationLaneLabel = activeSchedulingTicket
+    ? `${activeSchedulingTicket.ticketNo} · ${schedulingCoordinationPhase?.title ?? activeSchedulingTicket.status}`
+    : t(lang, "No open coordination lane", "当前没有打开中的协调分道");
+  const studentSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: currentFocusTitle,
+      detail: currentFocusDetail,
+      background: packageRiskCount > 0 ? "#fff7ed" : unpaidPackageCount > 0 ? "#fff1f2" : "#eff6ff",
+      border: packageRiskCount > 0 ? "#fdba74" : unpaidPackageCount > 0 ? "#fda4af" : "#bfdbfe",
+    },
+    {
+      title: t(lang, "Next lesson", "下一节课"),
+      value: nextLessonLabel,
+      detail: nextUpcomingSession
+        ? `${nextUpcomingSession.class.course.name}${nextUpcomingSession.class.subject ? ` / ${nextUpcomingSession.class.subject.name}` : ""}`
+        : t(lang, "Use quick schedule or coordination to create the next concrete lesson.", "可从快速排课或排课协调开始安排下一节课。"),
+      background: "#f8fafc",
+      border: "#dbe4f0",
+    },
+    {
+      title: t(lang, "Billing snapshot", "账务概览"),
+      value: t(
+        lang,
+        `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`,
+        `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`
+      ),
+      detail: t(lang, `${activePackageCount} active packages on this profile.`, `当前共有 ${activePackageCount} 个有效课包。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+    {
+      title: t(lang, "Coordination lane", "协调分道"),
+      value: coordinationLaneLabel,
+      detail: activeSchedulingTicket
+        ? t(lang, "Open the coordination workspace when parent timing or exception handling is driving the next step.", "如果当前下一步取决于家长时间或特殊时间检查，就进入排课协调工作台。")
+        : t(lang, "No active coordination ticket is blocking this profile right now.", "当前没有活跃的排课协调工单阻塞这个学生。"),
+      background: activeSchedulingTicket ? "#fffaf0" : "#f8fafc",
+      border: activeSchedulingTicket ? "#fdba74" : "#dbe4f0",
+    },
+  ];
+  const studentSectionLinks = [
+    {
+      href: studentCoordinationHref,
+      label: t(lang, "Scheduling coordination", "排课协调"),
+      detail: activeSchedulingTicket
+        ? `${activeSchedulingTicket.ticketNo} · ${schedulingCoordinationPhase?.title ?? activeSchedulingTicket.status}`
+        : t(lang, "Open when parent timing drives the next step", "当家长时间决定下一步时进入"),
+      background: activeSchedulingTicket ? "#fff7ed" : "#ffffff",
+      border: activeSchedulingTicket ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#quick-schedule",
+      label: tl(lang, "Quick Schedule"),
+      detail: quickRescheduleSessionOptions.length > 0
+        ? t(lang, `${quickRescheduleSessionOptions.length} session targets ready`, `${quickRescheduleSessionOptions.length} 个课次可直接调整`)
+        : t(lang, "Use for new or replacement lesson planning", "用于新排课或替换课次"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#upcoming-sessions",
+      label: tl(lang, "Upcoming Sessions"),
+      detail: nextUpcomingSession
+        ? nextLessonLabel
+        : t(lang, "No concrete lesson yet", "还没有明确下一节课"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#packages",
+      label: tl(lang, "Packages"),
+      detail: t(lang, `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`, `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`),
+      background: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fffaf0" : "#ffffff",
+      border: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fde68a" : "#dbe4f0",
+    },
+    {
+      href: "#attendance",
+      label: tl(lang, "Attendance"),
+      detail: t(lang, `${attendances.length} recent records`, `${attendances.length} 条近期记录`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#enrollments",
+      label: tl(lang, "Enrollments"),
+      detail: t(lang, `${enrollments.length} active teaching containers`, `${enrollments.length} 个当前报名容器`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#edit-student",
+      label: tl(lang, "Edit Student"),
+      detail: t(lang, "Use after queue-style work is settled", "更适合在队列型工作完成后进入"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
   return (
     <div>
       <StudentDetailHashStateClient />
@@ -2286,6 +2432,22 @@ export default async function StudentDetailPage({
         {!coordinationOnly ? (
           <>
             <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {studentSummaryCards.map((card) => (
+                <div key={card.title} style={studentSummaryCardStyle(card.background, card.border)}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.2 }}>{card.title}</div>
+                  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.35 }}>{card.value}</div>
+                  <div style={{ fontSize: 12, color: "#475569" }}>{card.detail}</div>
+                </div>
+              ))}
+            </div>
+
+            <div
               id="student-workbench-bar"
               style={{
                 ...workbenchInfoBarStyle,
@@ -2305,15 +2467,27 @@ export default async function StudentDetailPage({
                       : t(lang, "No urgent billing risk detected. Use this bar to move between profile, schedule, packages, attendance, and edit actions without rescanning the page.", "当前没有紧急账务风险，可通过这里在档案、排课、课包、点名和编辑操作间快速切换。")}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href={studentCoordinationHref}>{t(lang, "Scheduling coordination", "排课协调")}</a>
-                <a href="#quick-schedule">{tl(lang, "Quick Schedule")}</a>
-                <a href="#upcoming-sessions">{tl(lang, "Upcoming Sessions")}</a>
-                <a href="#packages">{tl(lang, "Packages")}</a>
-                <a href="#attendance">{tl(lang, "Attendance")}</a>
-                <a href="#enrollments">{tl(lang, "Enrollments")}</a>
-                <a href="#edit-student">{tl(lang, "Edit Student")}</a>
-                <a href={`/api/exports/student-detail/${studentId}`}>{tl(lang, "Export Student Report")}</a>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", letterSpacing: 0.2 }}>
+                  {t(lang, "Jump by section", "按区块跳转")}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+                  {studentSectionLinks.map((link) => (
+                    <a key={link.href} href={link.href} style={studentSectionLinkStyle(link.background, link.border)}>
+                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{link.label}</span>
+                      <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{link.detail}</span>
+                    </a>
+                  ))}
+                  <a
+                    href={`/api/exports/student-detail/${studentId}`}
+                    style={studentSectionLinkStyle("#ffffff", "#dbe4f0")}
+                  >
+                    <span style={{ fontWeight: 700, color: "#0f172a" }}>{tl(lang, "Export Student Report")}</span>
+                    <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>
+                      {t(lang, "Open the outward-facing summary without losing your place on this page.", "不离开当前页面也可以直接导出学生报告。")}
+                    </span>
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -4015,7 +4189,7 @@ export default async function StudentDetailPage({
         />
       </details>
 
-      <div id="edit-student-section" style={{ display: "grid", gap: 8 }}>
+      <div id="edit-student" style={{ display: "grid", gap: 8 }}>
         {sectionReturnBar(lang, {
           hint: t(lang, "Use student editing after you finish queue work, then jump back to packages or attendance if needed.", "建议在队列型工作处理完后再编辑学生资料，改完可直接回课包或点名。"),
           links: [

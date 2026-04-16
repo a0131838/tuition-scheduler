@@ -122,9 +122,61 @@ export default async function CancelledSessionsReportPage({
 
   return (
     <div>
-      <h2>{t(lang, "Cancelled Sessions Report", "已取消课次报表")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Cancelled Sessions / 已取消课次</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Cancelled Sessions Report", "已取消课次报表")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Use date, teacher, student, and charge filters together so finance and operations can review the same cancellation set.", "把日期、老师、学生和扣费条件一起筛好，财务和教务就能对齐同一批取消记录。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Rows", "记录数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{rows.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Charged", "已扣费")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{chargedCount}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Uncharged", "未扣费")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{unchargedCount}</div>
+          </div>
+        </div>
+      </div>
 
-      <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#cancelled-session-filters">{t(lang, "Filters", "筛选")}</a>
+        <a href="#cancelled-session-list">{t(lang, "Rows", "记录")}</a>
+      </div>
+
+      <form id="cancelled-session-filters" method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, scrollMarginTop: 96 }}>
         <label>
           {t(lang, "From", "从")}:
           <input type="date" name="from" defaultValue={ymd(from)} style={{ marginLeft: 6 }} />
@@ -197,7 +249,7 @@ export default async function CancelledSessionsReportPage({
       {rows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No cancelled records in selected range.", "当前筛选范围没有已取消记录。")}</div>
       ) : (
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <table id="cancelled-session-list" cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", scrollMarginTop: 96 }}>
           <thead>
             <tr style={{ background: "#f5f5f5" }}>
               <th align="left">{t(lang, "Session Time", "课次时间")}</th>

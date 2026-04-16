@@ -6,6 +6,28 @@ import NoticeBanner from "../_components/NoticeBanner";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import ConflictsAppointmentActionsClient from "./_components/ConflictsAppointmentActionsClient";
 import ConflictsSessionActionsClient from "./_components/ConflictsSessionActionsClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
+
+function conflictSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function parseDateOnly(s: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
@@ -231,6 +253,9 @@ export default async function ConflictsPage({
     return true;
   });
   const totalConflicts = filteredConflicts.length;
+  const teacherConflictCount = filteredConflicts.filter((s) => (teacherConflicts.get(s.id)?.size ?? 0) > 0).length;
+  const roomConflictCount = filteredConflicts.filter((s) => (roomConflicts.get(s.id)?.size ?? 0) > 0).length;
+  const appointmentConflictCount = filteredConflicts.filter((s) => (teacherAppointmentConflicts.get(s.id)?.length ?? 0) > 0).length;
   const totalPages = Math.max(1, Math.ceil(totalConflicts / pageSize));
   const currentPage = Math.min(requestedPage, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
@@ -255,9 +280,79 @@ export default async function ConflictsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Conflict Center", "冲突处理中心")}</h2>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Scheduling conflict desk", "排课冲突工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Conflict Center", "冲突处理中心")}</h2>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Review teacher, room, and appointment conflicts together. Filter the time range first, then resolve one session at a time with the action panels below.",
+              "这里把老师、教室和约课冲突放到一起处理。先缩小日期范围，再逐条在下方动作区解决，不用来回切页。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Conflicts in range", "范围内冲突")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{totalConflicts}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Teacher conflicts", "老师冲突")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{teacherConflictCount}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("rose"), background: "#fff7f7" }}>
+            <div style={workbenchMetricLabelStyle("rose")}>{t(lang, "Room conflicts", "教室冲突")}</div>
+            <div style={workbenchMetricValueStyle("rose")}>{roomConflictCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Appointment conflicts", "约课冲突")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{appointmentConflictCount}</div>
+          </div>
+        </div>
+      </section>
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Conflict work map", "冲突工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {totalConflicts === 0
+              ? t(lang, "The selected range is clear. Adjust filters if you want to inspect another time window.", "当前范围没有冲突，如需继续排查可调整日期范围。")
+              : t(lang, "Start with filters, then work through the conflict cards. Use page navigation only after finishing the visible set.", "建议先看筛选，再逐条处理当前页冲突卡，处理完这页再翻页。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#conflict-filters" style={conflictSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Filters", "筛选区")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Set date range, course, subject, and page size", "先设置日期、课程、科目和分页大小")}</span>
+          </a>
+          <a href="#conflict-results" style={conflictSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "Conflict cards", "冲突卡片")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Resolve teacher, room, and appointment issues in place", "在同一区域处理老师、教室和约课问题")}</span>
+          </a>
+          <a href="#conflict-pagination" style={conflictSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Page switch", "分页切换")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Move to the next batch only after finishing this page", "当前页处理完再切下一批")}</span>
+          </a>
+        </div>
+      </section>
+
+      <div id="conflict-filters" style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
         <form method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label>
             {t(lang, "From", "从")}:
@@ -304,7 +399,7 @@ export default async function ConflictsPage({
         <div style={{ color: "#999" }}>{t(lang, "No conflicts found in selected range.", "所选范围内暂无冲突。")}</div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+          <div id="conflict-results" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
             {pagedConflicts.map((s) => {
             const teacherId = effectiveTeacherId(s);
             const cls = s.class;
@@ -459,7 +554,7 @@ export default async function ConflictsPage({
             );
             })}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+          <div id="conflict-pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
             <a
               href={prevHref}
               style={{

@@ -237,10 +237,72 @@ export default async function SharedDocsPage({
       docs: docs.filter((doc) => doc.categoryId === category.id),
     }))
     .filter((group) => group.docs.length > 0);
+  const activeDocsCount = docs.filter((doc) => doc.status === "ACTIVE").length;
+  const archivedDocsCount = docs.filter((doc) => doc.status === "ARCHIVED").length;
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <h1 style={{ margin: 0 }}>{t(lang, 'Shared Document Library', '共享文档库')}</h1>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Shared Docs / 共享文档库</div>
+          <h1 style={{ margin: 0 }}>{t(lang, 'Shared Document Library', '共享文档库')}</h1>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Upload first, then use filters and category folders to keep long-term reference documents easy to find.",
+              "先上传，再通过筛选和分类文件夹管理长期共享资料，避免文档越来越多后难查找。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Categories", "分类数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{categories.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Loaded documents", "当前文档")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{docs.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Active", "在用")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{activeDocsCount}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Archived", "归档")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{archivedDocsCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: 'sticky',
+          top: 12,
+          zIndex: 5,
+          border: '1px solid #dbeafe',
+          background: 'rgba(255,255,255,0.96)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: 14,
+          padding: 10,
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
+      >
+        <a href="#shared-doc-upload">{t(lang, 'Upload', '上传')}</a>
+        <a href="#shared-doc-categories">{t(lang, 'Categories', '分类')}</a>
+        <a href="#shared-doc-filters">{t(lang, 'Filters', '筛选')}</a>
+        <a href="#shared-doc-list">{t(lang, 'Folders', '文档文件夹')}</a>
+      </div>
 
       {sp?.msg ? (
         <div style={{ padding: 10, borderRadius: 10, border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}>
@@ -253,7 +315,7 @@ export default async function SharedDocsPage({
         </div>
       ) : null}
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10 }}>
+      <section id="shared-doc-upload" style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Upload a shared document', '上传共享文档')}</div>
         <div
           style={{
@@ -297,7 +359,7 @@ export default async function SharedDocsPage({
         </form>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10 }}>
+      <section id="shared-doc-categories" style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Manage categories', '管理分类')}</div>
         <form action={addCategoryAction} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input name="name" placeholder={t(lang, 'New category name', '新分类名称')} maxLength={40} required />
@@ -305,7 +367,7 @@ export default async function SharedDocsPage({
         </form>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10 }}>
+      <section id="shared-doc-filters" style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, display: 'grid', gap: 10, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 700 }}>{t(lang, 'Filter documents', '筛选文档')}</div>
         <form method="get" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input name="q" defaultValue={q} placeholder={t(lang, 'Search title / filename / remarks', '搜索标题 / 文件名 / 备注')} />
@@ -327,7 +389,7 @@ export default async function SharedDocsPage({
         </form>
       </section>
 
-      <section style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12 }}>
+      <section id="shared-doc-list" style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 12, scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>
           {t(lang, 'Document folders', '文档文件夹')} ({docs.length})
         </div>

@@ -8,6 +8,27 @@ function keyForPath(pathname: string) {
   return `tuition-scheduler:scroll:${pathname || "/"}`;
 }
 
+function scrollToHashTarget(hash: string) {
+  const raw = String(hash || "").replace(/^#/, "");
+  if (!raw) return false;
+
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+
+  const byId = document.getElementById(decoded);
+  const escaped = typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(decoded) : decoded;
+  const byName = document.querySelector(`[name="${escaped}"]`) as HTMLElement | null;
+  const target = byId ?? byName;
+  if (!target) return false;
+
+  target.scrollIntoView({ block: "start", inline: "nearest" });
+  return true;
+}
+
 export default function ScrollManager() {
   const pathname = usePathname();
   const router = useRouter();
@@ -56,6 +77,9 @@ export default function ScrollManager() {
 
   useLayoutEffect(() => {
     try {
+      if (window.location.hash && scrollToHashTarget(window.location.hash)) {
+        return;
+      }
       const key = keyForPath(pathname);
       const raw = sessionStorage.getItem(key);
       sessionStorage.removeItem(key);
@@ -177,6 +201,14 @@ export default function ScrollManager() {
         const dest = new URL(a.href, window.location.href);
         if (dest.origin !== window.location.origin) return;
         destPath = dest.pathname;
+        if (dest.hash && dest.pathname === pathname) {
+          e.preventDefault();
+          window.history.replaceState(window.history.state, "", `${dest.pathname}${dest.search}${dest.hash}`);
+          requestAnimationFrame(() => {
+            scrollToHashTarget(dest.hash);
+          });
+          return;
+        }
       } catch {
         return;
       }

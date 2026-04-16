@@ -20,6 +20,31 @@ import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
 import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+  workbenchStickyPanelStyle,
+} from "../_components/workbenchStyles";
+
+function ticketSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function trimValue(formData: FormData, key: string, max = 400) {
   const v = String(formData.get(key) ?? "").trim();
@@ -252,39 +277,144 @@ export default async function AdminTicketsPage({
   const activeToken = tokens.find((x) => x.isActive && (!x.expiresAt || x.expiresAt.getTime() > Date.now()));
   const intakeLink = activeToken ? `/tickets/intake/${activeToken.token}` : "";
   const backHref = `/admin/tickets?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}&owner=${encodeURIComponent(owner)}&type=${encodeURIComponent(type)}&focus=${encodeURIComponent(focus)}`;
+  const overdueTicketCount = overdueGroups.reduce((sum, group) => sum + group.count, 0);
+  const activeTicketCount = rows.filter((row) => !["Completed", "Cancelled"].includes(row.status)).length;
+  const ticketErrorMessage =
+    err === "status-flow" ? t(lang, "Invalid status transition.", "状态流转不允许。")
+    : err === "need-note" ? t(lang, "Completion note is required when marking completed.", "标记完成时必须填写完成说明。")
+    : err === "completed-locked" ? t(lang, "Completed ticket is locked. Use archive instead.", "已完成工单不可修改，请改用归档。")
+    : err === "archived-locked" ? t(lang, "Archived ticket is locked.", "已归档工单不可修改。")
+    : err === "need-closed-archive" ? t(lang, "Only completed or cancelled tickets can be archived.", "仅已完成或已取消工单可归档。")
+    : err === "edit-required" ? t(lang, "Could not save edits. Student, source, type, priority, and owner are required.", "保存编辑失败：学生、来源、类型、优先级和负责人为必填项。")
+    : err === "edit-package-required" ? t(lang, "Could not save edits. Grade and course are required for new-student package purchases.", "保存编辑失败：新学生购买课时包时必须填写年级和课程。")
+    : err === "edit-type-required"
+      ? t(
+          lang,
+          `Could not save edits. Required fields are missing for this ticket type${fields ? `: ${decodeURIComponent(fields)}` : ""}.`,
+          `保存编辑失败：该工单类型缺少必填字段${fields ? `：${decodeURIComponent(fields)}` : "。"}`
+        )
+    : err === "edit-situation" ? t(lang, "Could not save edits. All situation fields are required.", "保存编辑失败：情况说明相关字段必须全部填写。")
+    : err === "delete-forbidden" ? t(lang, "Only Zhao Hongwei can permanently delete tickets.", "只有 Zhao Hongwei 可以永久删除工单。")
+    : err === "need-closed-delete" ? t(lang, "Only completed, cancelled, or archived tickets can be permanently deleted.", "只有已完成、已取消或已归档工单可以永久删除。")
+    : "";
 
   return (
     <div>
-      <h2>{t(lang, "Ticket Center", "工单中心")}</h2>
-      {err ? (
-        <div style={{ color: "#b91c1c", marginBottom: 8 }}>
-          {err === "status-flow" && t(lang, "Invalid status transition.", "状态流转不允许。")}
-          {err === "need-note" && t(lang, "Completion note is required when marking completed.", "标记完成时必须填写完成说明。")}
-          {err === "completed-locked" && t(lang, "Completed ticket is locked. Use archive instead.", "已完成工单不可修改，请改用归档。")}
-          {err === "archived-locked" && t(lang, "Archived ticket is locked.", "已归档工单不可修改。")}
-          {err === "need-closed-archive" && t(lang, "Only completed or cancelled tickets can be archived.", "仅已完成或已取消工单可归档。")}
-          {err === "edit-required" && t(lang, "Could not save edits. Student, source, type, priority, and owner are required.", "保存编辑失败：学生、来源、类型、优先级和负责人为必填项。")}
-          {err === "edit-package-required" && t(lang, "Could not save edits. Grade and course are required for new-student package purchases.", "保存编辑失败：新学生购买课时包时必须填写年级和课程。")}
-          {err === "edit-type-required" &&
-            t(
+      <WorkbenchScrollMemoryClient storageKey="adminTicketsScroll" />
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Operations ticket desk", "运营工单工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Ticket Center", "工单中心")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
               lang,
-              `Could not save edits. Required fields are missing for this ticket type${fields ? `: ${decodeURIComponent(fields)}` : ""}.`,
-              `保存编辑失败：该工单类型缺少必填字段${fields ? `：${decodeURIComponent(fields)}` : "。"}`
+              "Start here for open work, overdue follow-up, and intake links. Use the work map below to jump directly to the next section instead of rescanning the whole page.",
+              "这里集中处理待办工单、超时催办和录入链接。先看摘要，再通过下方工作地图直接跳到下一步，不用每次从头扫整页。"
             )}
-          {err === "edit-situation" && t(lang, "Could not save edits. All situation fields are required.", "保存编辑失败：情况说明相关字段必须全部填写。")}
-          {err === "delete-forbidden" && t(lang, "Only Zhao Hongwei can permanently delete tickets.", "只有 Zhao Hongwei 可以永久删除工单。")}
-          {err === "need-closed-delete" && t(lang, "Only completed, cancelled, or archived tickets can be permanently deleted.", "只有已完成、已取消或已归档工单可以永久删除。")}
+          </div>
         </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible tickets", "当前列表")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{rows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Still open", "未结束")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{activeTicketCount}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(overdueTicketCount > 0 ? "rose" : "emerald"), background: overdueTicketCount > 0 ? "#fff7f7" : "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle(overdueTicketCount > 0 ? "rose" : "emerald")}>{t(lang, "Overdue follow-up", "超时催办")}</div>
+            <div style={workbenchMetricValueStyle(overdueTicketCount > 0 ? "rose" : "emerald")}>{overdueTicketCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Intake link", "录入链接")}</div>
+            <div style={{ ...workbenchMetricValueStyle(activeToken ? "slate" : "amber"), fontSize: 18 }}>
+              {activeToken ? t(lang, "Active", "可用") : t(lang, "None", "暂无")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          ...workbenchStickyPanelStyle(5, 8),
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Ticket work map", "工单工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {focus === "mgmt"
+              ? t(lang, "Management focus is on, so overdue and exception work should be cleared first.", "当前已切到管理介入视图，建议先处理超时和异常。")
+              : t(lang, "Clear overdue items first, then update intake links or move to the filtered list.", "建议先清超时催办，再维护录入链接或进入筛选列表。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#ticket-overdue-follow-up" style={ticketSectionLinkStyle("#fff1f2", "#fecaca")}>
+            <strong>{t(lang, "Overdue queue", "超时催办")}</strong>
+            <span style={{ fontSize: 12, color: "#7f1d1d" }}>{overdueTicketCount > 0 ? t(lang, "Escalate stalled tickets first", "先催办卡住的工单") : t(lang, "No urgent follow-up right now", "当前没有急催办")}</span>
+          </a>
+          <a href="#intake-link-management" style={ticketSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Intake links", "录入链接")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{activeToken ? t(lang, "Keep the current intake owner link healthy", "维护当前录入链接可用性") : t(lang, "Create a new active intake link", "补一个新的可用录入链接")}</span>
+          </a>
+          <a href="#ticket-filters" style={ticketSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Filters", "筛选条件")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Jump to search, owner, status, and focus shortcuts", "快速定位搜索、负责人、状态和管理介入筛选")}</span>
+          </a>
+          <a href="#ticket-list" style={ticketSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Ticket list", "工单列表")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Work one ticket at a time without rescanning the page", "一条条处理，不用反复从顶部找入口")}</span>
+          </a>
+        </div>
+      </section>
+      {ticketErrorMessage ? (
+        <WorkbenchActionBanner
+          tone="error"
+          title={t(lang, "Action blocked", "操作未完成")}
+          description={ticketErrorMessage}
+          actions={[{ href: backHref || "/admin/tickets", label: t(lang, "Back to current list", "返回当前列表") }]}
+        />
       ) : null}
-      {ok === "edited" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket updated.", "工单已更新。")}</div> : null}
-      {tokenSaved ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Intake link updated.", "录入链接已更新。")}</div> : null}
-      {ok === "deleted" ? <div style={{ color: "#166534", marginBottom: 8 }}>{t(lang, "Ticket deleted permanently.", "工单已永久删除。")}</div> : null}
+      {ok === "edited" ? (
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, "Ticket updated.", "工单已更新。")}
+          description={t(lang, "You can continue in the current filtered list without searching for the row again.", "你可以直接回到当前筛选列表继续处理，不用重新搜索。")}
+          actions={[{ href: backHref || "/admin/tickets", label: t(lang, "Back to current list", "返回当前列表") }]}
+        />
+      ) : null}
+      {tokenSaved ? (
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, "Intake link updated.", "录入链接已更新。")}
+          description={t(lang, "The intake link section below already reflects the latest active token state.", "下方录入链接区已经显示最新的可用状态。")}
+          actions={[{ href: "#intake-link-management", label: t(lang, "Jump to intake links", "跳到录入链接"), emphasis: "primary" }]}
+        />
+      ) : null}
+      {ok === "deleted" ? (
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, "Ticket deleted permanently.", "工单已永久删除。")}
+          description={t(lang, "You are back in the filtered worklist, so you can continue with the next ticket immediately.", "现在已经回到筛选后的工作列表，可以直接继续处理下一张工单。")}
+          actions={[{ href: backHref || "/admin/tickets", label: t(lang, "Continue in list", "继续看列表"), emphasis: "primary" }]}
+        />
+      ) : null}
       {focus === "mgmt" ? (
-        <div style={{ color: "#7c2d12", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: 8, marginBottom: 8 }}>
-          {t(lang, "Management focus: exception, urgent, and overdue unfinished tickets.", "管理介入视图：异常、紧急和逾期未完成工单。")}
-        </div>
+        <WorkbenchActionBanner
+          tone="warn"
+          title={t(lang, "Management focus is active", "当前已开启管理介入视图")}
+          description={t(lang, "This view narrows the desk to exception, urgent, and overdue unfinished tickets.", "这个视图会把工作台收窄到异常、紧急和逾期未完成工单。")}
+          actions={[{ href: "/admin/tickets", label: t(lang, "Back to all tickets", "回到全部工单") }]}
+        />
       ) : null}
-      <div style={{ border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <div id="ticket-overdue-follow-up" style={{ border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 10, padding: 10, marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           <div style={{ fontWeight: 700 }}>{t(lang, "Overdue follow-up queue", "超时催办清单")}</div>
           <div style={{ fontSize: 12, color: "#7f1d1d" }}>
@@ -417,7 +547,7 @@ export default async function AdminTicketsPage({
         </div>
       </div>
 
-      <form method="GET" className="ts-filter-bar" style={{ marginBottom: 12 }}>
+      <form id="ticket-filters" method="GET" className="ts-filter-bar" style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
         <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
         <select name="status" defaultValue={status}>
           <option value="">{t(lang, "All Status", "全部状态")}</option>

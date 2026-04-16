@@ -2,11 +2,14 @@
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminTodosRemindersClient from "./AdminTodosRemindersClient";
 import AdminTodosOpsClient from "./AdminTodosOpsClient";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import {
   autoResolveTeacherConflicts,
   getLatestAutoFixResult,
@@ -23,6 +26,7 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
+  workbenchStickyPanelStyle,
 } from "../_components/workbenchStyles";
 import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination";
@@ -119,6 +123,32 @@ function attendanceFromTodoHref(sessionId: string, anchor: string) {
   params.set("source", "todo");
   params.set("todoBack", todoReturnHref(anchor));
   return `/admin/sessions/${encodeURIComponent(sessionId)}/attendance?${params.toString()}`;
+}
+
+function todoWorkMapAnchor(href: string, label: string, detail: string, background: string, border: string) {
+  const style = {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+  return href.startsWith("#") ? (
+    <a key={href} href={href} style={style}>
+      <span style={{ fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>{detail}</span>
+    </a>
+  ) : (
+    <Link key={href} href={href} scroll={false} style={style}>
+      <span style={{ fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>{detail}</span>
+    </Link>
+  );
 }
 
 function ticketFromTodoHref(ticketId: string, anchor: string) {
@@ -970,6 +1000,19 @@ export default async function AdminTodosPage({
     gap: 4,
     boxShadow: "0 4px 14px rgba(15, 23, 42, 0.04)",
   } as const;
+  const todoSectionLinkStyle = (background: string, border: string) =>
+    ({
+      display: "grid",
+      gap: 4,
+      minWidth: 170,
+      padding: "10px 12px",
+      borderRadius: 12,
+      border: `1px solid ${border}`,
+      background,
+      textDecoration: "none",
+      color: "inherit",
+      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    }) as const;
   const pageWrapStyle = {
     display: "grid",
     gap: 16,
@@ -1037,6 +1080,61 @@ export default async function AdminTodosPage({
       detail: string;
     } => Boolean(item)
   );
+  const todoFocusTitle =
+    sessionsToday.length > 0
+      ? t(lang, "Start with today's attendance queue", "先清今天的点名队列")
+      : overdueUnmarkedSessionCount > 0
+        ? t(lang, "Overdue follow-up is now the first stop", "当前应先处理超时跟进")
+        : systemRiskCount > 0
+          ? t(lang, "System checks are the next useful stop", "下一步适合先看系统巡检")
+          : reminderPendingCount > 0
+            ? t(lang, "Reminder desk is the next useful stop", "下一步适合先看提醒台")
+            : t(lang, "Todo center is relatively clear", "待办中心目前相对清爽");
+  const todoFocusDetail =
+    sessionsToday.length > 0
+      ? t(lang, "The top attendance queue still has unmarked sessions, so finish that before secondary work.", "顶部点名队列还有未处理课次，建议先清这一条，再做次级工作。")
+      : overdueUnmarkedSessionCount > 0
+        ? t(lang, "Today is clear, but older attendance gaps still need escalation and follow-up.", "今天的点名已经清掉，但历史未点名还需要催办。")
+        : systemRiskCount > 0
+          ? t(lang, "Only after the live queues are clear should you spend time on ledger, conflict, or deduction repair.", "只有实时队列清掉后，才建议把时间花在对账、冲突和减扣修复上。")
+          : t(lang, "Nothing urgent is blocking operations right now, so you can use reminders and renewals as cleanup lanes.", "当前没有紧急阻塞项，可以把提醒和续费预警当作清尾工作。");
+  const todoWorkMapLinks = [
+    {
+      href: "#todo-today-focus",
+      label: t(lang, "Today queue", "今日队列"),
+      detail: t(lang, `${sessionsToday.length} need attendance`, `${sessionsToday.length} 条待点名`),
+      background: sessionsToday.length > 0 ? "#fff7ed" : "#ffffff",
+      border: sessionsToday.length > 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#todo-overdue-follow-up",
+      label: t(lang, "Overdue follow-up", "超时跟进"),
+      detail: t(lang, `${overdueUnmarkedSessionCount} overdue session(s)`, `${overdueUnmarkedSessionCount} 条超时课次`),
+      background: overdueUnmarkedSessionCount > 0 ? "#fff7ed" : "#ffffff",
+      border: overdueUnmarkedSessionCount > 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#todo-scheduling-coordination",
+      label: t(lang, "Scheduling follow-up", "排课跟进"),
+      detail: t(lang, `${schedulingCoordinationRows.length} coordination row(s)`, `${schedulingCoordinationRows.length} 条协调跟进`),
+      background: schedulingCoordinationRows.length > 0 ? "#eff6ff" : "#ffffff",
+      border: schedulingCoordinationRows.length > 0 ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      href: "#todo-reminder-desk",
+      label: t(lang, "Reminder desk", "提醒台"),
+      detail: t(lang, `${reminderPendingCount} reminder(s) pending`, `${reminderPendingCount} 项提醒待确认`),
+      background: reminderPendingCount > 0 ? "#eff6ff" : "#ffffff",
+      border: reminderPendingCount > 0 ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      href: "#todo-system-checks",
+      label: t(lang, "System checks", "系统巡检"),
+      detail: t(lang, `${systemRiskCount} risk item(s)`, `${systemRiskCount} 项系统风险`),
+      background: systemRiskCount > 0 ? "#fff7f7" : "#ffffff",
+      border: systemRiskCount > 0 ? "#fecaca" : "#dbe4f0",
+    },
+  ];
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -1045,6 +1143,7 @@ export default async function AdminTodosPage({
         storageKey="adminTodosDesk"
         value={rememberedDeskValue}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminTodosScroll" />
       <div
         style={{
           ...workbenchHeroStyle("amber"),
@@ -1094,72 +1193,55 @@ export default async function AdminTodosPage({
         </div>
       </div>
 
-      {resumedRememberedDesk ? (
-        <div
-          style={{
-            ...workbenchInfoBarStyle,
-            marginBottom: 0,
-            borderColor: "#fdba74",
-            background: "#fffbeb",
-            color: "#92400e",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 700 }}>{t(lang, "Resumed your last todo desk", "已恢复你上次使用的待办工作台")}</div>
-            <div style={{ fontSize: 13 }}>
-              {t(
-                lang,
-                "This page reopened with your last reminder thresholds and desk toggles because you came back without explicit filters.",
-                "你这次没有显式指定筛选，所以系统自动恢复了你上次使用的提醒阈值和工作台开关。"
-              )}
-            </div>
+      <section
+        style={{
+          ...workbenchInfoBarStyle,
+          marginBottom: 0,
+          ...workbenchStickyPanelStyle(),
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>{t(lang, "Todo work map", "待办工作地图")}</div>
+          <div style={{ fontSize: 13, color: "#475569" }}>
+            <b>{todoFocusTitle}</b> {todoFocusDetail}
           </div>
-          <a href="/admin/todos?clearDesk=1" style={{ fontWeight: 700 }}>
-            {t(lang, "Back to default desk", "回到默认工作台")}
-          </a>
         </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {todoWorkMapLinks.map((item) => todoWorkMapAnchor(item.href, item.label, item.detail, item.background, item.border))}
+        </div>
+      </section>
+
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="warn"
+          title={t(lang, "Resumed your last todo desk", "已恢复你上次使用的待办工作台")}
+          description={t(
+            lang,
+            "This page reopened with your last reminder thresholds and desk toggles because you came back without explicit filters.",
+            "你这次没有显式指定筛选，所以系统自动恢复了你上次使用的提醒阈值和工作台开关。"
+          )}
+          actions={[{ href: "/admin/todos?clearDesk=1", label: t(lang, "Back to default desk", "回到默认工作台") }]}
+        />
       ) : null}
 
       {quickJumpItems.length > 0 ? (
-        <div style={{ ...workbenchInfoBarStyle, marginBottom: 0, alignItems: "flex-start" }}>
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 700, color: "#0f172a" }}>{t(lang, "Next step shortcuts", "下一步快捷入口")}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              {t(
-                lang,
-                "Jump straight back to the section that most likely needs your next click.",
-                "直接跳回最可能需要你下一步处理的区块。"
-              )}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {quickJumpItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: "grid",
-                  gap: 2,
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #dbeafe",
-                  background: "#f8fafc",
-                  color: "#0f172a",
-                  textDecoration: "none",
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>{item.label}</span>
-                <span style={{ fontSize: 12, color: "#64748b" }}>{item.detail}</span>
-              </a>
-            ))}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Next step shortcuts", "下一步快捷入口")}
+          description={t(
+            lang,
+            "Jump straight back to the section that most likely needs your next click.",
+            "直接跳回最可能需要你下一步处理的区块。"
+          )}
+          actions={quickJumpItems.map((item) => ({ href: item.href, label: item.label }))}
+        />
       ) : null}
 
       <details
         id="todo-system-checks"
         open={Boolean((ledgerAlert?.totalIssueCount ?? 0) > 0 || dailyConflictAudit.totalIssues > 0)}
-        style={{ ...sectionStyle, marginBottom: 0, background: "#fcfcfd" }}
+        style={{ ...sectionStyle, marginBottom: 0, background: "#fcfcfd", scrollMarginTop: 104 }}
       >
         <summary style={{ cursor: "pointer", fontWeight: 800 }}>
           {t(lang, "System Checks & Risks", "系统巡检与风险")}
@@ -1298,7 +1380,7 @@ export default async function AdminTodosPage({
         </div>
       </details>
 
-      <div id="todo-today-focus" style={heroStyle}>
+      <div id="todo-today-focus" style={{ ...heroStyle, scrollMarginTop: 104 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700 }}>{t(lang, "Today Focus", "今日重点")}</div>
@@ -1372,7 +1454,7 @@ export default async function AdminTodosPage({
 
       <div
         id="todo-overdue-follow-up"
-        style={{ ...sectionStyle, borderColor: "#fdba74", background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)" }}
+        style={{ ...sectionStyle, borderColor: "#fdba74", background: "linear-gradient(180deg, #fff7ed 0%, #fff 100%)", scrollMarginTop: 104 }}
       >
         <div style={sectionHeaderStyle}>
           <h3 style={{ margin: 0 }}>{t(lang, "Overdue Unmarked Follow-up", "超时未点名催办")}</h3>
@@ -1418,7 +1500,7 @@ export default async function AdminTodosPage({
 
       <div
         id="todo-scheduling-coordination"
-        style={{ ...sectionStyle, borderColor: "#93c5fd", background: "linear-gradient(180deg, #eff6ff 0%, #fff 100%)" }}
+        style={{ ...sectionStyle, borderColor: "#93c5fd", background: "linear-gradient(180deg, #eff6ff 0%, #fff 100%)", scrollMarginTop: 104 }}
       >
         <div style={sectionHeaderStyle}>
           <h3 style={{ margin: 0 }}>{t(lang, "Scheduling Coordination Follow-up", "排课协调跟进")}</h3>
@@ -1522,7 +1604,7 @@ export default async function AdminTodosPage({
         )}
       </div>
 
-      <details id="todo-reminder-desk" style={{ ...sectionStyle, marginBottom: 0 }}>
+      <details id="todo-reminder-desk" style={{ ...sectionStyle, marginBottom: 0, scrollMarginTop: 104 }}>
         <summary style={{ cursor: "pointer", fontWeight: 800 }}>
           {t(lang, "Reminder Desk & Supporting Views", "提醒台与辅助视图")}
         </summary>

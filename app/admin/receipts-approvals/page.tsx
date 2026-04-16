@@ -46,6 +46,8 @@ import {
 } from "@/lib/receipt-approval-policy";
 import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import WorkflowSourceBanner from "../_components/WorkflowSourceBanner";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
@@ -53,6 +55,7 @@ import {
   workbenchHeroStyle,
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
+  workbenchStickyPanelStyle,
 } from "../_components/workbenchStyles";
 import PackageWorkspacePickerClient from "./_components/PackageWorkspacePickerClient";
 import ReceiptAmountReceivedField from "./_components/ReceiptAmountReceivedField";
@@ -117,6 +120,48 @@ const dangerButtonStyle = {
   padding: "10px 14px",
   fontWeight: 700,
 } as const;
+
+function receiptsSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function receiptsSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
+
+function renderReceiptsSectionAnchor(href: string, label: string, detail: string, background: string, border: string) {
+  const style = receiptsSectionLinkStyle(background, border);
+  return href.startsWith("#") ? (
+    <a key={label} href={href} style={style}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45 }}>{detail}</div>
+    </a>
+  ) : (
+    <Link key={label} href={href} scroll={false} style={style}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45 }}>{detail}</div>
+    </Link>
+  );
+}
 
 function canFinanceOperate(email: string, role: string) {
   const e = String(email ?? "").trim().toLowerCase();
@@ -505,38 +550,40 @@ function renderQueueCards(
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {opts?.compactRepairActions && x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
           <>
-            <a
+            <Link
               href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+              scroll={false}
               style={{ fontWeight: 700, color: "#b45309" }}
             >
               {t(lang, "Open fix flow", "打开修复流程")}
-            </a>
+            </Link>
             <details>
               <summary style={{ cursor: "pointer", fontSize: 12, color: "#64748b", fontWeight: 700 }}>
                 {t(lang, "More actions", "更多操作")}
               </summary>
               <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href={openHref(x.type, x.id)} style={{ fontSize: 12 }}>
+                <Link href={openHref(x.type, x.id)} scroll={false} style={{ fontSize: 12 }}>
                   {queuePrimaryActionLabel(lang, x.status)}
-                </a>
-                <a href={opts?.packageBillingHref ? opts.packageBillingHref(x.packageId) : `/admin/packages/${encodeURIComponent(x.packageId)}/billing`} style={{ fontSize: 12 }}>
+                </Link>
+                <Link href={opts?.packageBillingHref ? opts.packageBillingHref(x.packageId) : `/admin/packages/${encodeURIComponent(x.packageId)}/billing`} scroll={false} style={{ fontSize: 12 }}>
                   {t(lang, "Open package billing", "打开课包账单页")}
-                </a>
+                </Link>
               </div>
             </details>
           </>
         ) : (
           <>
-            <a href={openHref(x.type, x.id)} style={{ fontWeight: 600 }}>
+            <Link href={openHref(x.type, x.id)} scroll={false} style={{ fontWeight: 600 }}>
               {queuePrimaryActionLabel(lang, x.status)}
-            </a>
+            </Link>
             {x.type === "PARENT" && (x.status === "REJECTED" || !x.paymentRecord || x.paymentFileMissing) ? (
-              <a
+              <Link
                 href={`${receiptScreenBasePath("package")}?packageId=${encodeURIComponent(x.packageId)}&step=create&selectedType=PARENT&selectedId=${encodeURIComponent(x.id)}`}
+                scroll={false}
                 style={{ fontSize: 12, color: "#b45309" }}
               >
                 {t(lang, "Fix payment proof", "修复缴费凭证")}
-              </a>
+              </Link>
             ) : null}
           </>
         )}
@@ -2058,71 +2105,135 @@ export async function ReceiptsApprovalsPageContent({
               note: t(lang, "This package already has completed receipts and no pending finance step is blocking it right now.", "这个课包当前已经有完成收据，也没有挂着的财务步骤。"),
               href: globalQueueHref,
             };
+  const receiptsFocusTitle = packageWorkspaceMode
+    ? packageNextStep?.label ?? t(lang, "Continue the package workspace flow", "继续当前课包工作区流程")
+    : isRepairsScreen
+      ? t(lang, "Repair blockers should come first", "当前应先清修复阻塞项")
+      : isHistoryScreen
+        ? t(lang, "History is for follow-up and audit lookup", "历史页主要用于跟进和审计查找")
+        : selectedRow
+          ? t(lang, "Current receipt is ready for review", "当前收据已就绪，可直接审核")
+          : nextBestQueueRow
+            ? t(lang, "Open the next best queue item", "优先打开下一条最该处理的收据")
+            : t(lang, "Receipt queue is relatively clear", "收据队列目前相对清爽");
+  const receiptsFocusDetail = packageWorkspaceMode
+    ? packageNextStep?.note ?? t(lang, "Stay inside this package until proof upload, receipt creation, and review are reasonably clear.", "建议先在当前课包里把上传、创建和审核流程走顺，再返回统一队列。")
+    : isRepairsScreen
+      ? t(lang, "This screen is already narrowed to proof problems, so it is the fastest place to repair missing records and missing files.", "这个页面已经缩到凭证问题，是补付款记录和补文件最快的入口。")
+      : isHistoryScreen
+        ? t(lang, "Search and export here, but jump back to queue or package mode when a real action is needed.", "这里适合搜索和导出；需要真实处理时，再跳回队列或课包模式。")
+        : t(lang, "Use the queue focus strip and the review panel below to avoid reopening filters every time.", "配合下方的队列焦点条和审核面板，可以少反复展开筛选。");
+  const receiptsSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: receiptsFocusTitle,
+      detail: receiptsFocusDetail,
+      background: packageWorkspaceMode ? "#eff6ff" : isRepairsScreen ? "#fff7f7" : "#f8fafc",
+      border: packageWorkspaceMode ? "#bfdbfe" : isRepairsScreen ? "#fecaca" : "#dbe4f0",
+    },
+    {
+      title: t(lang, "Queue scope", "当前范围"),
+      value: packageWorkspaceMode ? t(lang, "Single package workspace", "单个课包工作区") : queueScopeLabel,
+      detail: packageWorkspaceMode
+        ? t(lang, `${selectedBilling?.receipts.length ?? 0} receipt(s), ${usablePaymentRecordCount} usable proof file(s).`, `当前有 ${selectedBilling?.receipts.length ?? 0} 张收据，${usablePaymentRecordCount} 个可用凭证。`)
+        : t(lang, `${mineQueue.length + otherQueue.length} open item(s), ${completedQueue.length} completed history row(s).`, `当前有 ${mineQueue.length + otherQueue.length} 条未完成，${completedQueue.length} 条完成历史。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+    {
+      title: t(lang, "Main blockers", "当前主要阻塞"),
+      value: t(lang, `${queueBlockerCount} blocker(s)`, `${queueBlockerCount} 条阻塞`),
+      detail: t(lang, `${queueMissingProofCount} missing proof and ${queueMissingFileCount} missing file issue(s).`, `${queueMissingProofCount} 条缺凭证，${queueMissingFileCount} 条缺文件。`),
+      background: queueBlockerCount > 0 ? "#fff7f7" : "#f0fdf4",
+      border: queueBlockerCount > 0 ? "#fecaca" : "#86efac",
+    },
+  ];
+  const receiptsSectionLinks = [
+    {
+      href: !isPackageScreen ? "#receipts-controls" : "#receipts-package-workspace",
+      label: packageWorkspaceMode ? t(lang, "Package controls", "课包控制区") : t(lang, "Queue controls", "队列控制区"),
+      detail: packageWorkspaceMode ? t(lang, "Switch step or return to the global queue", "切步骤或返回统一队列") : t(lang, "Change mode, month, and queue scope", "切模式、月份和队列范围"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: packageWorkspaceMode ? "#receipts-package-workspace" : "#receipts-queue-focus",
+      label: packageWorkspaceMode ? t(lang, "Package workspace", "课包工作区") : t(lang, "Queue focus", "队列焦点"),
+      detail: packageWorkspaceMode
+        ? t(lang, "Upload proof, check records, and create receipts here", "在这里上传凭证、看记录、创建收据")
+        : t(lang, "See current scope before diving into a row", "先确认当前队列范围，再进入具体收据"),
+      background: packageWorkspaceMode ? "#eff6ff" : "#ffffff",
+      border: packageWorkspaceMode ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      href: isHistoryScreen ? "#receipts-history" : "#receipts-review",
+      label: isHistoryScreen ? t(lang, "History search", "历史搜索") : t(lang, "Review panel", "审核面板"),
+      detail: isHistoryScreen
+        ? t(lang, "Search completed receipts and recent actions", "查已完成收据和最近动作")
+        : t(lang, selectedRow ? "Continue the selected receipt below" : "Open one queue row and process it below", selectedRow ? "继续处理下方当前收据" : "先打开一条队列收据，再在下方处理"),
+      background: selectedRow && !isHistoryScreen ? "#eff6ff" : "#ffffff",
+      border: selectedRow && !isHistoryScreen ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      href: isRepairsScreen ? "#receipts-repair-summary" : "#receipt-primary-actions",
+      label: isRepairsScreen ? t(lang, "Repair summary", "修复摘要") : t(lang, "Primary actions", "主操作"),
+      detail: isRepairsScreen ? t(lang, "Jump to the current blocker overview", "跳到当前阻塞项总览") : t(lang, "Jump directly to approve or reject controls", "直接跳到批准或驳回操作"),
+      background: queueBlockerCount > 0 ? "#fff7f7" : "#ffffff",
+      border: queueBlockerCount > 0 ? "#fecaca" : "#dbe4f0",
+    },
+  ];
 
   return (
     <div>
       {!packageWorkspaceMode ? (
-        <RememberedWorkbenchQueryClient
-          cookieKey={RECEIPTS_QUEUE_COOKIE}
-          storageKey="adminReceiptsPreferredQueue"
-          value={rememberedQueueValue}
-        />
+        <>
+          <RememberedWorkbenchQueryClient
+            cookieKey={RECEIPTS_QUEUE_COOKIE}
+            storageKey="adminReceiptsPreferredQueue"
+            value={rememberedQueueValue}
+          />
+          <WorkbenchScrollMemoryClient storageKey="adminReceiptsQueueScroll" />
+        </>
       ) : null}
       <h2>{t(lang, "Receipt Approval Center", "收据审批中心")}</h2>
       {err ? (
-        <div style={{ marginBottom: 12, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 10px" }}>
-          {t(lang, "Error", "错误")}: {err}
-        </div>
+        <WorkbenchActionBanner
+          tone="error"
+          title={t(lang, "Action blocked", "操作未完成")}
+          description={err}
+          actions={[{ href: currentScreenListHref, label: t(lang, "Back to queue", "返回队列") }]}
+        />
       ) : null}
       {msg ? (
-        <div style={{ marginBottom: 12, color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "8px 10px" }}>
-          {t(lang, "Success", "成功")}: {describeReceiptActionResult(lang, msg, actionMovedToNext, actionFinishedQueue)}
-        </div>
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, "Action saved", "操作已完成")}
+          description={describeReceiptActionResult(lang, msg, actionMovedToNext, actionFinishedQueue)}
+          actions={[
+            actionMovedToNext && selectedReviewHref
+              ? { href: selectedReviewHref, label: t(lang, "Keep processing", "继续处理"), emphasis: "primary" as const }
+              : { href: currentScreenListHref, label: t(lang, "Back to queue", "返回队列") },
+          ]}
+        />
       ) : null}
       {actionMovedToNext && selectedRow ? (
-        <div
-          style={{
-            marginBottom: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            borderRadius: 10,
-            padding: "10px 12px",
-          }}
-        >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Now reviewing the next item", "现在已切到下一条")}</div>
-            <div style={{ color: "#334155", fontSize: 13 }}>
-              {selectedRow.receiptNo} | {selectedRow.partyName}
-            </div>
-          </div>
-          <a href={selectedReviewHref} style={{ ...primaryButtonStyle, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
-            {t(lang, "Keep processing", "继续处理")}
-          </a>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Now reviewing the next item", "现在已切到下一条")}
+          description={`${selectedRow.receiptNo} | ${selectedRow.partyName}`}
+          actions={[{ href: selectedReviewHref, label: t(lang, "Keep processing", "继续处理"), emphasis: "primary" }]}
+        />
       ) : null}
       {actionFinishedQueue ? (
-        <div
-          style={{
-            marginBottom: 12,
-            display: "grid",
-            gap: 6,
-            border: "1px solid #bfdbfe",
-            background: "#f8fbff",
-            borderRadius: 10,
-            padding: "10px 12px",
-            color: "#1d4ed8",
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>{t(lang, "This queue section is clear for now", "当前这一组已经清完了")}</div>
-          <div style={{ color: "#475569", fontSize: 13 }}>
-            {t(lang, "No next receipt was waiting in this lane, so you were returned to the default queue. You can switch buckets or move into another finance screen from here.", "当前这个处理分组里已经没有下一条，所以系统把你带回了默认队列；你可以继续切换分组，或进入其他财务页面。")}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "This queue section is clear for now", "当前这一组已经清完了")}
+          description={t(lang, "No next receipt was waiting in this lane, so you were returned to the default queue. You can switch buckets or move into another finance screen from here.", "当前这个处理分组里已经没有下一条，所以系统把你带回了默认队列；你可以继续切换分组，或进入其他财务页面。")}
+          actions={[
+            { href: currentScreenListHref, label: t(lang, "Back to queue", "返回队列"), emphasis: "primary" },
+            packageWorkspaceMode ? { href: globalQueueHref, label: t(lang, "Global queue", "统一队列") } : null,
+          ]}
+        />
       ) : null}
       <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
         {([
@@ -2196,6 +2307,16 @@ export async function ReceiptsApprovalsPageContent({
         </div>
       </div>
 
+      <section style={{ marginBottom: 12, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {receiptsSummaryCards.map((card) => (
+          <div key={card.title} style={receiptsSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{card.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{card.value}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.45 }}>{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
       {!packageWorkspaceMode && resumedRememberedQueue ? (
         <div
           style={{
@@ -2242,11 +2363,40 @@ export async function ReceiptsApprovalsPageContent({
         />
       ) : null}
 
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          marginBottom: 12,
+          ...workbenchStickyPanelStyle(),
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Receipt work map", "收据工作地图")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(lang, "Use this strip to jump between queue controls, package workspace, review, and repair areas without losing context.", "通过这条工作地图在队列控制区、课包工作区、审核区和修复区之间来回切换，不容易丢上下文。")}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {nextBestQueueRow && !packageWorkspaceMode ? <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false}>{t(lang, "Open next best item", "打开下一条最该处理")}</Link> : null}
+            {queueFileIssueCount > 0 ? <Link href={queueFilterHref("FILE_ISSUE")} scroll={false}>{t(lang, "Open blockers", "查看阻塞项")}</Link> : null}
+            {packageWorkspaceMode ? <Link href={globalQueueHref} scroll={false}>{t(lang, "Global queue", "统一队列")}</Link> : null}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {receiptsSectionLinks.map((link) => renderReceiptsSectionAnchor(link.href, link.label, link.detail, link.background, link.border))}
+        </div>
+      </section>
+
       {!isPackageScreen ? (
         <div
-          style={{
-            marginBottom: 12,
-            border: "1px solid #dbeafe",
+        id="receipts-queue-focus"
+        style={{
+          marginBottom: 12,
+          scrollMarginTop: 104,
+          border: "1px solid #dbeafe",
             borderRadius: 12,
             background: "#f8fbff",
             padding: "12px 14px",
@@ -2266,9 +2416,9 @@ export async function ReceiptsApprovalsPageContent({
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {resumedRememberedQueue ? <a href={defaultQueueHref}>{t(lang, "Reset to default queue", "恢复默认队列")}</a> : null}
-              {nextBestQueueRow ? <a href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)}>{t(lang, "Open next best item", "打开下一条最该处理")}</a> : null}
-              {queueFileIssueCount > 0 ? <a href={queueFilterHref("FILE_ISSUE")}>{t(lang, "Open repair blockers", "查看修复阻塞项")}</a> : null}
+              {resumedRememberedQueue ? <Link href={defaultQueueHref} scroll={false}>{t(lang, "Reset to default queue", "恢复默认队列")}</Link> : null}
+              {nextBestQueueRow ? <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false}>{t(lang, "Open next best item", "打开下一条最该处理")}</Link> : null}
+              {queueFileIssueCount > 0 ? <Link href={queueFilterHref("FILE_ISSUE")} scroll={false}>{t(lang, "Open repair blockers", "查看修复阻塞项")}</Link> : null}
             </div>
           </div>
           <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -2333,8 +2483,10 @@ export async function ReceiptsApprovalsPageContent({
 
       {isRepairsScreen ? (
       <div
+        id="receipts-repair-summary"
         style={{
           marginBottom: 12,
+          scrollMarginTop: 104,
           padding: "10px 12px",
           borderRadius: 12,
           border: `1px solid ${queueFileIssueCount > 0 ? "#fecaca" : "#e2e8f0"}`,
@@ -2380,10 +2532,10 @@ export async function ReceiptsApprovalsPageContent({
           </div>
           <div style={{ display: "grid", gap: 6 }}>
             {repairMissingPaymentRows.slice(0, 4).map((row) => (
-              <a key={`missing-proof-${row.type}-${row.id}`} href={openHref(row.type, row.id)} style={{ textDecoration: "none", color: "#9a3412", border: "1px solid #fdba74", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
+              <Link key={`missing-proof-${row.type}-${row.id}`} href={openHref(row.type, row.id)} scroll={false} style={{ textDecoration: "none", color: "#9a3412", border: "1px solid #fdba74", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
                 <div style={{ fontWeight: 700 }}>{row.receiptNo}</div>
                 <div style={{ fontSize: 13 }}>{row.partyName}</div>
-              </a>
+              </Link>
             ))}
             {repairMissingPaymentRows.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No receipts are waiting for proof linking right now.", "当前没有等待补付款记录的收据。")}</div> : null}
           </div>
@@ -2400,10 +2552,10 @@ export async function ReceiptsApprovalsPageContent({
           </div>
           <div style={{ display: "grid", gap: 6 }}>
             {repairMissingFileRows.slice(0, 4).map((row) => (
-              <a key={`missing-file-${row.type}-${row.id}`} href={openHref(row.type, row.id)} style={{ textDecoration: "none", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
+              <Link key={`missing-file-${row.type}-${row.id}`} href={openHref(row.type, row.id)} scroll={false} style={{ textDecoration: "none", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: 10, background: "#fff", padding: "8px 10px", display: "grid", gap: 2 }}>
                 <div style={{ fontWeight: 700 }}>{row.receiptNo}</div>
                 <div style={{ fontSize: 13 }}>{row.partyName}</div>
-              </a>
+              </Link>
             ))}
             {repairMissingFileRows.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No receipts are waiting for file re-upload right now.", "当前没有等待补文件的收据。")}</div> : null}
           </div>
@@ -2412,7 +2564,7 @@ export async function ReceiptsApprovalsPageContent({
       ) : null}
 
       {!isPackageScreen ? (
-      <details open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
+      <details id="receipts-controls" open={controlsOpen} style={{ ...workbenchFilterPanelStyle, marginBottom: 12, scrollMarginTop: 104 }}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Queue filters & mode controls", "队列筛选与模式控制")}
         </summary>
@@ -2524,7 +2676,7 @@ export async function ReceiptsApprovalsPageContent({
         </div>
       ) : null}
       {isPackageScreen && packageWorkspaceMode && selectedPackage ? (
-        <div style={{ marginBottom: 12, display: "grid", gap: 8, border: "1px solid #bfdbfe", background: "#f8fbff", borderRadius: 12, padding: "12px 14px" }}>
+        <div id="receipts-package-workspace" style={{ marginBottom: 12, display: "grid", gap: 8, border: "1px solid #bfdbfe", background: "#f8fbff", borderRadius: 12, padding: "12px 14px", scrollMarginTop: 104 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
@@ -2653,7 +2805,7 @@ export async function ReceiptsApprovalsPageContent({
         </div>
       ) : null}
       {isHistoryScreen ? (
-      <form method="get" style={{ ...workbenchFilterPanelStyle, marginBottom: 12, display: "grid", gap: 10 }}>
+      <form id="receipts-history" method="get" style={{ ...workbenchFilterPanelStyle, marginBottom: 12, display: "grid", gap: 10, scrollMarginTop: 104 }}>
         <input type="hidden" name="queueBucket" value="HISTORY" />
         <div style={{ fontWeight: 700 }}>{t(lang, "History search", "历史搜索")}</div>
         <div style={{ color: "#64748b", fontSize: 12 }}>
@@ -2753,7 +2905,7 @@ export async function ReceiptsApprovalsPageContent({
       ) : null}
 
       {isPackageScreen ? (
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
+      <div id="receipts-package-operations" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Finance Receipt Operations", "财务收据操作")}</h3>
         {!packageIdFilter ? (
           <div style={{ color: "#666" }}>
@@ -3368,8 +3520,9 @@ export async function ReceiptsApprovalsPageContent({
             </div>
             <div style={{ color: "#475569", fontSize: 13 }}>{nextBestQueueReason}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <a
+              <Link
                 href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)}
+                scroll={false}
                 style={{
                   ...primaryButtonStyle,
                   textDecoration: "none",
@@ -3378,10 +3531,10 @@ export async function ReceiptsApprovalsPageContent({
                 }}
               >
                 {t(lang, "Open next item", "打开下一条")}
-              </a>
-              <a href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} style={{ fontWeight: 700 }}>
+              </Link>
+              <Link href={openHref(nextBestQueueRow.type, nextBestQueueRow.id)} scroll={false} style={{ fontWeight: 700 }}>
                 {queuePrimaryActionLabel(lang, nextBestQueueRow.status)}
-              </a>
+              </Link>
               {nextBestQueueRow.type === "PARENT" && (nextBestQueueRow.status === "REJECTED" || !nextBestQueueRow.paymentRecord || nextBestQueueRow.paymentFileMissing) ? (
                 <a
                   href={buildPackageFixHref(nextBestQueueRow.packageId, "PARENT", nextBestQueueRow.id)}
@@ -3520,15 +3673,17 @@ export async function ReceiptsApprovalsPageContent({
       </details>
 
       {selectedRow && hasExplicitSelection ? (
-        <a
+        <Link
           href={currentScreenListHref}
+          scroll={false}
           className="receipt-detail-backdrop"
           aria-label={t(lang, "Close receipt details", "关闭收据详情")}
         />
       ) : null}
       <div
+        id="receipts-review"
         className={`receipt-actions${selectedRow && hasExplicitSelection ? " receipt-actions-mobile-open" : selectedRow ? " receipt-actions-mobile-hidden" : " receipt-actions-empty"}`}
-        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}
+        style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, scrollMarginTop: 104 }}
       >
         <div className="receipt-mobile-header">
           <div style={{ display: "grid", gap: 4 }}>
@@ -3545,8 +3700,9 @@ export async function ReceiptsApprovalsPageContent({
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {selectedPrevHref ? (
-              <a
+              <Link
                 href={selectedPrevHref}
+                scroll={false}
                 style={{
                   ...secondaryButtonStyle,
                   textDecoration: "none",
@@ -3556,11 +3712,12 @@ export async function ReceiptsApprovalsPageContent({
                 }}
               >
                 {t(lang, "Previous", "上一条")}
-              </a>
+              </Link>
             ) : null}
             {selectedNextHref ? (
-              <a
+              <Link
                 href={selectedNextHref}
+                scroll={false}
                 style={{
                   ...secondaryButtonStyle,
                   textDecoration: "none",
@@ -3570,10 +3727,11 @@ export async function ReceiptsApprovalsPageContent({
                 }}
               >
                 {t(lang, "Next", "下一条")}
-              </a>
+              </Link>
             ) : null}
-            <a
+            <Link
               href={currentScreenListHref}
+              scroll={false}
               style={{
                 ...secondaryButtonStyle,
                 textDecoration: "none",
@@ -3583,7 +3741,7 @@ export async function ReceiptsApprovalsPageContent({
               }}
             >
               {t(lang, "Back to list", "返回列表")}
-            </a>
+            </Link>
           </div>
         </div>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Selected Receipt Details & Actions", "选中收据详情与审批操作")}</h3>
@@ -3592,8 +3750,8 @@ export async function ReceiptsApprovalsPageContent({
             <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No receipt is selected yet", "当前还没有选中收据")}</div>
             <div>{t(lang, "Choose one item from the queue above to review it here. If the queue is empty, switch filters or open the repair workspace.", "请先从上方队列选择一条；如果队列为空，可切换筛选或打开修复工作区。")}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <a href={queueFilterHref("ALL")}>{t(lang, "Back to all queue items", "返回全部队列")}</a>
-              <a href="/admin/recovery/uploads?source=package_payment">{t(lang, "Open attachment health desk", "打开附件异常总览")}</a>
+              <Link href={queueFilterHref("ALL")} scroll={false}>{t(lang, "Back to all queue items", "返回全部队列")}</Link>
+              <Link href="/admin/recovery/uploads?source=package_payment" scroll={false}>{t(lang, "Open attachment health desk", "打开附件异常总览")}</Link>
             </div>
           </div>
         ) : (
@@ -3623,9 +3781,9 @@ export async function ReceiptsApprovalsPageContent({
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {selectedPrevHref ? <a href={selectedPrevHref}>{t(lang, "Open previous", "打开上一条")}</a> : null}
-                {selectedNextHref ? <a href={selectedNextHref}>{t(lang, "Open next", "打开下一条")}</a> : null}
-                <a href={currentScreenListHref}>{t(lang, "Back to queue", "返回队列")}</a>
+                {selectedPrevHref ? <Link href={selectedPrevHref} scroll={false}>{t(lang, "Open previous", "打开上一条")}</Link> : null}
+                {selectedNextHref ? <Link href={selectedNextHref} scroll={false}>{t(lang, "Open next", "打开下一条")}</Link> : null}
+                <Link href={currentScreenListHref} scroll={false}>{t(lang, "Back to queue", "返回队列")}</Link>
               </div>
             </div>
             <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #dbeafe", background: "#f8fbff" }}>
@@ -3813,7 +3971,7 @@ export async function ReceiptsApprovalsPageContent({
             ) : null}
             {selectedRow.approval.managerRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Legacy manager rejected:", "历史管理驳回：")} {selectedRow.approval.managerRejectReason}</div> : null}
             {selectedRow.approval.financeRejectReason ? <div style={{ color: "#b00", marginBottom: 6 }}>{t(lang, "Finance Rejected:", "财务驳回：")} {selectedRow.approval.financeRejectReason}</div> : null}
-            <div id="receipt-primary-actions" className="receipt-primary-actions">
+            <div id="receipt-primary-actions" className="receipt-primary-actions" style={{ scrollMarginTop: 104 }}>
               {selectedRow.status !== "COMPLETED" && selectedRow.type === "PARENT" && isFinanceApprover ? (
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Finance review", "财务审核")}</div>

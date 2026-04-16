@@ -3,13 +3,36 @@ import { requireAdmin, getCurrentUser } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getApprovalInboxData, type ApprovalInboxItem } from "@/lib/approval-inbox";
+import { cookies } from "next/headers";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import { workbenchStickyPanelStyle } from "../_components/workbenchStyles";
 
 type Focus = "ALL" | "MANAGER" | "FINANCE" | "EXPENSE" | "OVERDUE";
+const APPROVAL_FOCUS_COOKIE = "adminApprovalInboxFocus";
 
 function normalizeFocus(raw: string | undefined): Focus {
   const value = String(raw ?? "").trim().toUpperCase();
   if (value === "MANAGER" || value === "FINANCE" || value === "EXPENSE" || value === "OVERDUE") return value;
   return "ALL";
+}
+
+function parseRememberedApprovalFocus(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const focus = normalizeFocus(String(params.get("focus") ?? "").trim());
+  const normalized = new URLSearchParams();
+  if (focus !== "ALL") normalized.set("focus", focus.toLowerCase());
+  return {
+    focus,
+    value: normalized.toString(),
+  };
 }
 
 function money(amount: number, currency: string) {
@@ -54,6 +77,33 @@ function filterChip(active: boolean) {
   } as const;
 }
 
+function approvalSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function approvalSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
+
 function withApprovalSource(href: string, focus: Focus) {
   const url = new URL(href, "https://sgtmanage.com");
   url.searchParams.set("source", "approvals");
@@ -76,7 +126,13 @@ export default async function AdminApprovalsPage({
   await requireAdmin();
   const lang = await getLang();
   const current = await getCurrentUser();
-  const focus = normalizeFocus((await searchParams)?.focus);
+  const sp = await searchParams;
+  const hasFocusParam = typeof sp?.focus === "string";
+  const cookieStore = await cookies();
+  const rememberedFocus = hasFocusParam
+    ? { focus: "ALL" as Focus, value: "" }
+    : parseRememberedApprovalFocus(cookieStore.get(APPROVAL_FOCUS_COOKIE)?.value ?? "");
+  const focus = hasFocusParam ? normalizeFocus(sp?.focus) : rememberedFocus.focus;
   const inbox = await getApprovalInboxData(current?.email, current?.role);
   const visibleItems = filterItems(inbox.items, focus);
   const allCount = getFocusCount(inbox.items, "ALL");
@@ -94,9 +150,100 @@ export default async function AdminApprovalsPage({
           : focus === "OVERDUE"
             ? t(lang, "Overdue items only", "仅超时项目")
             : t(lang, "All open approvals", "全部待处理审批");
+  const approvalFocusTitle =
+    overdueCount > 0 && focus === "ALL"
+      ? t(lang, "Start with overdue items", "先处理超时项")
+      : focus === "MANAGER"
+      ? t(lang, "Manager queue in progress", "当前正在处理管理审批")
+      : focus === "FINANCE"
+      ? t(lang, "Finance queue in progress", "当前正在处理财务审批")
+      : focus === "EXPENSE"
+      ? t(lang, "Expense queue in progress", "当前正在处理报销审批")
+      : focus === "OVERDUE"
+      ? t(lang, "Overdue queue in progress", "当前正在处理超时队列")
+      : managerCount > 0
+      ? t(lang, "Manager queue is the next likely stop", "下一步大概率先看管理审批")
+      : financeCount > 0
+      ? t(lang, "Finance queue is the next likely stop", "下一步大概率先看财务审批")
+      : expenseCount > 0
+      ? t(lang, "Expense queue is the next likely stop", "下一步大概率先看报销审批")
+      : t(lang, "Approval desk is clear", "审批桌面当前很干净");
+  const approvalFocusDetail =
+    overdueCount > 0 && focus === "ALL"
+      ? t(lang, "There are overdue items mixed into the full inbox, so clear those first before working normal waiting items.", "全部队列里已经混入超时项，建议先把超时的清掉，再处理普通等待项。")
+      : focus === "OVERDUE"
+      ? t(lang, "This view is for the most time-sensitive approvals. Once it is clear, go back to the lane queues.", "这个视图只看最着急的审批；清掉后再回到各条审批道。")
+      : focus === "ALL"
+      ? t(lang, "Use All only as the overview. Pick a lane after you know what is actually blocking progress.", "全部视图更适合总览；看清阻塞点后，最好切回具体审批道处理。")
+      : t(lang, "Stay in one lane until it is reasonably clear, then come back here for the next lane.", "建议一次专注清一条审批道，差不多清掉之后再回来切下一条。");
+  const approvalSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: approvalFocusTitle,
+      detail: approvalFocusDetail,
+      background: overdueCount > 0 ? "#fff7ed" : "#eff6ff",
+      border: overdueCount > 0 ? "#fdba74" : "#bfdbfe",
+    },
+    {
+      title: t(lang, "Current scope", "当前范围"),
+      value: currentScopeLabel,
+      detail: t(lang, `${visibleItems.length} visible item(s) in this view.`, `当前视图里有 ${visibleItems.length} 条可见项目。`),
+      background: "#f8fafc",
+      border: "#dbe4f0",
+    },
+    {
+      title: t(lang, "Queue balance", "队列分布"),
+      value: t(lang, `${managerCount} manager · ${financeCount} finance · ${expenseCount} expense`, `${managerCount} 管理 · ${financeCount} 财务 · ${expenseCount} 报销`),
+      detail: t(lang, `${overdueCount} item(s) are already overdue.`, `已有 ${overdueCount} 条进入超时。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+  ];
+  const approvalSectionLinks = [
+    {
+      href: "/admin/approvals?focus=overdue",
+      label: t(lang, "Overdue queue", "超时队列"),
+      detail: t(lang, `${overdueCount} overdue`, `${overdueCount} 条超时`),
+      background: overdueCount > 0 ? "#fff7ed" : "#ffffff",
+      border: overdueCount > 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#approval-focus-filters",
+      label: t(lang, "Queue filters", "队列筛选"),
+      detail: t(lang, "Switch lanes and narrow the inbox before diving into rows", "先切审批道，再下钻到具体条目"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#approval-items",
+      label: t(lang, "Approval rows", "审批条目"),
+      detail: t(lang, `${visibleItems.length} visible rows`, `${visibleItems.length} 条当前可见`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "/admin",
+      label: t(lang, "Dashboard", "返回总览"),
+      detail: t(lang, "Back out after you clear the blocking lane", "清掉阻塞审批道后回到总览"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
+  const rememberedFocusValue = (() => {
+    const params = new URLSearchParams();
+    if (focus !== "ALL") params.set("focus", focus.toLowerCase());
+    return params.toString();
+  })();
+  const resumedRememberedFocus = !hasFocusParam && Boolean(rememberedFocus.value);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <RememberedWorkbenchQueryClient
+        cookieKey={APPROVAL_FOCUS_COOKIE}
+        storageKey="adminApprovalInboxFocus"
+        value={rememberedFocusValue}
+      />
+      <WorkbenchScrollMemoryClient storageKey="adminApprovalInboxScroll" />
       <style>{`
         @media (max-width: 720px) {
           .approval-inbox-grid-header {
@@ -174,7 +321,39 @@ export default async function AdminApprovalsPage({
         </div>
       </section>
 
-      <section style={{ border: "1px solid #e5e7eb", borderRadius: 14, background: "#fff", padding: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {approvalSummaryCards.map((card) => (
+          <div key={card.title} style={approvalSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.2 }}>{card.title}</div>
+            <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.35 }}>{card.value}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{card.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      {resumedRememberedFocus ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last approval lane.", "已恢复你上次查看的审批道。")}
+          description={t(lang, "Use the action on the right to return to the full inbox.", "如果要回到全部收件箱，可直接用右侧入口。")}
+          actions={[{ href: "/admin/approvals", label: t(lang, "Back to full inbox", "回到全部审批") }]}
+        />
+      ) : null}
+
+      <section id="approval-focus-filters" style={{ border: "1px solid #e5e7eb", borderRadius: 14, background: "#fff", padding: 14, scrollMarginTop: 104, ...workbenchStickyPanelStyle(4) }}>
+        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", letterSpacing: 0.2 }}>
+            {t(lang, "Jump by section", "按区块跳转")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            {approvalSectionLinks.map((link) => (
+              <a key={link.href + link.label} href={link.href} style={approvalSectionLinkStyle(link.background, link.border)}>
+                <span style={{ fontWeight: 700, color: "#0f172a" }}>{link.label}</span>
+                <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{link.detail}</span>
+              </a>
+            ))}
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link href="/admin/approvals" scroll={false} style={filterChip(focus === "ALL")}>
             {t(lang, "All", "全部")} ({allCount})
@@ -201,19 +380,19 @@ export default async function AdminApprovalsPage({
       </section>
 
       {visibleItems.length === 0 ? (
-        <section style={{ border: "1px solid #e5e7eb", borderRadius: 14, background: "#fff", padding: 18, color: "#64748b", display: "grid", gap: 10 }}>
-          <div>{t(lang, "No approval items match the current filter.", "当前筛选下没有待审批项目。")}</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/admin/approvals" scroll={false} style={{ color: "#1d4ed8", fontWeight: 700 }}>
-              {t(lang, "Show all approvals", "查看全部审批")}
-            </Link>
-            <Link href="/admin" style={{ color: "#475569", fontWeight: 700 }}>
-              {t(lang, "Back to dashboard", "返回总览")}
-            </Link>
-          </div>
+        <section id="approval-empty-state">
+          <WorkbenchActionBanner
+            tone="info"
+            title={t(lang, "No approval items match the current filter.", "当前筛选下没有待审批项目。")}
+            description={t(lang, "Widen the inbox first, then jump back into the matching workflow only after you pick the next real blocking item.", "建议先放宽收件箱范围，再从真正阻塞的那一项跳回对应工作流。")}
+            actions={[
+              { href: "/admin/approvals", label: t(lang, "Show all approvals", "查看全部审批"), emphasis: "primary" },
+              { href: "/admin", label: t(lang, "Back to dashboard", "返回总览") },
+            ]}
+          />
         </section>
       ) : (
-        <section style={{ display: "grid", gap: 12 }}>
+        <section id="approval-items" style={{ display: "grid", gap: 12, scrollMarginTop: 104 }}>
           <div
             className="approval-inbox-grid-header"
             style={{
@@ -283,7 +462,7 @@ export default async function AdminApprovalsPage({
                 {item.amountText ?? money(item.amount, item.currency)}
               </div>
               <div className="approval-inbox-action" style={{ textAlign: "right" }}>
-                <Link href={withApprovalSource(item.href, focus)} style={{ color: "#1d4ed8", fontWeight: 700 }}>
+                <Link href={withApprovalSource(item.href, focus)} scroll={false} style={{ color: "#1d4ed8", fontWeight: 700 }}>
                   {t(lang, "Open now", "立即处理")}
                 </Link>
               </div>

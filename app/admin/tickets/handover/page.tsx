@@ -246,11 +246,74 @@ export default async function TicketHandoverPage({
     background: "#fff",
     padding: 12,
   };
+  const abnormalHistoryCount = rows.filter(isAbnormalHandoverRow).length;
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ ...box, display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0 }}>{t(lang, "Daily Handover", "每日交接")}</h2>
+      <div
+        style={{
+          border: "1px solid #fde68a",
+          borderRadius: 16,
+          background: "linear-gradient(135deg, #fffbeb 0%, #fff 100%)",
+          padding: 16,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#b45309", marginBottom: 4 }}>Daily Handover / 每日交接</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Daily Handover", "每日交接")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Fill today's summary first, then capture unresolved items and the owner/deadline handover for the next shift.",
+              "先写今日汇总，再补未闭环事项和责任人/截止时间，方便下一班直接接手。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ ...box, padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Selected day", "当前日期")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{selectedDay}</div>
+          </div>
+          <div style={{ ...box, padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Open issue cards", "未闭环卡片")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{unresolvedCards.length}</div>
+          </div>
+          <div style={{ ...box, padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Mgmt escalations", "管理介入")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{mgmtCards.length}</div>
+          </div>
+          <div style={{ ...box, padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Abnormal history days", "异常历史日")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{abnormalHistoryCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #fde68a",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#handover-filters">{t(lang, "Scope", "范围")}</a>
+        <a href="#handover-summary-cards">{t(lang, "Summary cards", "摘要卡")}</a>
+        <a href="#handover-open-cards">Open cards / 未闭环</a>
+        <a href="#handover-form">{t(lang, "Handover form", "交接表单")}</a>
+        <a href="#handover-history">{t(lang, "History", "历史")}</a>
+      </div>
+
+      <div id="handover-filters" style={{ ...box, display: "grid", gap: 10, scrollMarginTop: 96 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link scroll={false} href="/admin/tickets">{t(lang, "Back to Tickets", "返回工单中心")}</Link>
           <Link scroll={false} href="/admin/tickets/sop">{t(lang, "SOP One Pager", "SOP一页纸")}</Link>
@@ -291,7 +354,7 @@ export default async function TicketHandoverPage({
         </form>
       </div>
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+      <div id="handover-summary-cards" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", scrollMarginTop: 96 }}>
         <div style={{ ...box, borderColor: "#cbd5e1", background: "#f8fafc" }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Summary", "自动汇总")}</div>
           <div>New tickets / 新增工单: {createdToday}</div>
@@ -332,7 +395,7 @@ export default async function TicketHandoverPage({
         </div>
       </div>
 
-      <div style={{ ...box, borderColor: "#fbcfe8", background: "#fdf2f8" }}>
+      <div id="handover-open-cards" style={{ ...box, borderColor: "#fbcfe8", background: "#fdf2f8", scrollMarginTop: 96 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>Open Ticket Cards / 未闭环卡片</div>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
           {cardGroups.map((g) => (
@@ -354,7 +417,7 @@ export default async function TicketHandoverPage({
         </div>
       </div>
 
-      <form action={saveHandoverAction} style={{ ...box, display: "grid", gap: 12 }}>
+      <form id="handover-form" action={saveHandoverAction} style={{ ...box, display: "grid", gap: 12, scrollMarginTop: 96 }}>
         <input type="hidden" name="handoverDate" value={selectedDay} />
 
         <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 10, fontSize: 13 }}>
@@ -480,7 +543,7 @@ export default async function TicketHandoverPage({
         </div>
       </form>
 
-      <div style={box} className="table-scroll">
+      <div id="handover-history" style={box} className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>

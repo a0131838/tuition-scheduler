@@ -89,11 +89,74 @@ export default async function AdminBookingLinkDetailPage({
   return (
     <div>
       <p><a href="/admin/booking-links">← {t(lang, "Back to links", "返回链接列表")}</a></p>
-      <h2>{link.title || t(lang, "Student Booking Link", "学生选课链接")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>
+            Booking Link Detail / 选课链接详情
+          </div>
+          <h2 style={{ margin: 0 }}>{link.title || t(lang, "Student Booking Link", "学生选课链接")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(
+              lang,
+              "Review the link summary first, then decide whether to adjust visible slots or process parent requests.",
+              "先看链接摘要，再决定是调整可见时段，还是处理家长已提交的请求。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Teachers on link", "链接老师数")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{link.teachers.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Selected slots", "已选时段")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{link.selectedSlots.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent requests", "家长请求")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{link.requests.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Generated slots", "当月生成时段")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{slots.length}</div>
+          </div>
+        </div>
+      </div>
       {err ? <div style={{ color: "#b00", marginBottom: 8 }}>{err}</div> : null}
       {msg ? <div style={{ color: "#087", marginBottom: 8 }}>{msg}</div> : null}
 
-      <div style={{ marginBottom: 10 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#booking-link-summary">{t(lang, "Summary", "摘要")}</a>
+        <a href="#booking-link-calendar">{t(lang, "Monthly slots", "月历时段")}</a>
+        <a href="#booking-link-requests">{t(lang, "Parent requests", "家长请求")}</a>
+      </div>
+
+      <div id="booking-link-summary" style={{ marginBottom: 10, scrollMarginTop: 96 }}>
         <div><b>{t(lang, "Student", "学生")}:</b> {link.student.name}</div>
         <div><b>{t(lang, "Teachers", "老师")}:</b> {link.teachers.map((x) => x.teacher.name).join(", ")}</div>
         <div><b>{t(lang, "Window", "范围")}:</b> {formatBusinessDateOnly(new Date(link.startDate))} - {formatBusinessDateOnly(new Date(link.endDate))}</div>
@@ -121,7 +184,7 @@ export default async function AdminBookingLinkDetailPage({
         />
       </div>
 
-      <h3>{t(lang, "Monthly Availability", "月历可选时段")}</h3>
+      <h3 id="booking-link-calendar" style={{ scrollMarginTop: 96 }}>{t(lang, "Monthly Availability", "月历可选时段")}</h3>
       <div style={{ display: "flex", gap: 12, marginBottom: 8, fontSize: 12 }}>
         <span style={{ background: "#effcf3", border: "1px solid #98d8b5", borderRadius: 4, padding: "2px 6px", color: "#157347" }}>
           {t(lang, "Visible to student", "学生可见")}
@@ -177,7 +240,7 @@ export default async function AdminBookingLinkDetailPage({
         </tbody>
       </table>
 
-      <h3>{t(lang, "Student Requests", "学生提交请求")}</h3>
+      <h3 id="booking-link-requests" style={{ scrollMarginTop: 96 }}>{t(lang, "Student Requests", "学生提交请求")}</h3>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
@@ -225,4 +288,3 @@ export default async function AdminBookingLinkDetailPage({
     </div>
   );
 }
-

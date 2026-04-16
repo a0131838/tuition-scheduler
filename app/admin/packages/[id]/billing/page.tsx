@@ -30,6 +30,33 @@ import {
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 
+function billingSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function billingSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
+
 function parseNum(v: FormDataEntryValue | null, fallback = 0) {
   const n = Number(String(v ?? "").trim());
   return Number.isFinite(n) ? n : fallback;
@@ -357,6 +384,93 @@ export default async function PackageBillingPage({
       )
     : new Map<string, { name: string | null; email: string }>();
   const receiptsCenterHref = buildReceiptsCenterHref(packageId, { sourceWorkflow, receiptsBack });
+  const currentBillingFocusTitle =
+    data.invoices.length === 0
+      ? t(lang, "Create the first invoice", "先创建第一张发票")
+      : totalRemainingAmount > 0.01
+      ? t(lang, "Continue receipting", "继续处理收据")
+      : totalPendingApprovalAmount > 0.01
+      ? t(lang, "Wait for finance approval", "等待财务审批")
+      : t(lang, "Billing is balanced", "账务已平衡");
+  const currentBillingFocusDetail =
+    data.invoices.length === 0
+      ? t(lang, "This package has no invoice yet, so the invoice form is the first action that unlocks the rest of the workflow.", "这个课包还没有发票，所以第一步应该先开票，后面的收据流转才有入口。")
+      : totalRemainingAmount > 0.01
+      ? t(lang, "There is still invoice value not covered by created receipts. Stay on receipt progress first.", "当前还有发票金额未被已创建收据覆盖，建议先处理收据进度。")
+      : totalPendingApprovalAmount > 0.01
+      ? t(lang, "Receipts are already created, but some value is still waiting in finance approval.", "收据已经创建，但仍有一部分金额卡在财务审批中。")
+      : t(lang, "Invoices and receipts are aligned. Use this page mainly for confirmation, exports, or cleanup.", "当前发票和收据已经基本对齐，这一页主要用于确认、导出或收尾处理。");
+  const billingSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: currentBillingFocusTitle,
+      detail: currentBillingFocusDetail,
+      background: data.invoices.length === 0 ? "#fff7ed" : totalRemainingAmount > 0.01 ? "#fffbeb" : "#f0fdf4",
+      border: data.invoices.length === 0 ? "#fdba74" : totalRemainingAmount > 0.01 ? "#fde68a" : "#86efac",
+    },
+    {
+      title: t(lang, "Package", "当前课包"),
+      value: `${pkg.student.name} · ${pkg.course.name}`,
+      detail: t(lang, `${data.invoices.length} invoice(s) and ${data.receipts.length} receipt(s) are already on this package.`, `当前已有 ${data.invoices.length} 张发票和 ${data.receipts.length} 张收据。`),
+      background: "#eff6ff",
+      border: "#bfdbfe",
+    },
+    {
+      title: t(lang, "Receipting gap", "收据缺口"),
+      value: money(totalRemainingAmount),
+      detail: t(lang, `Still waiting for finance action: ${money(totalPendingApprovalAmount)}`, `仍待财务处理：${money(totalPendingApprovalAmount)}`),
+      background: totalRemainingAmount > 0.01 || totalPendingApprovalAmount > 0.01 ? "#fffaf0" : "#f8fafc",
+      border: totalRemainingAmount > 0.01 || totalPendingApprovalAmount > 0.01 ? "#fde68a" : "#dbe4f0",
+    },
+    {
+      title: t(lang, "Receipt proof shortcut", "收据快捷入口"),
+      value: soleSuggestedPaymentRecord
+        ? soleSuggestedPaymentRecord.originalFileName
+        : t(lang, "No single suggested proof", "当前没有唯一推荐凭证"),
+      detail: soleSuggestedPaymentRecord
+        ? t(lang, "The next receipt shortcut can carry this proof automatically.", "下一张收据快捷入口可以直接自动带上这条凭证。")
+        : t(lang, "Open the receipt center when you need proof repair, queue work, or a manual receipt choice.", "如果要修补凭证、处理审批队列或手动选收据，请打开收据中心。"),
+      background: soleSuggestedPaymentRecord ? "#eff6ff" : "#f8fafc",
+      border: soleSuggestedPaymentRecord ? "#bfdbfe" : "#dbe4f0",
+    },
+  ];
+  const billingSectionLinks = [
+    {
+      href: "#create-invoice",
+      label: t(lang, "Create invoice", "创建发票"),
+      detail: data.invoices.length === 0 ? t(lang, "Recommended first step now", "当前最推荐的第一步") : t(lang, "Open only when a new invoice is needed", "只在需要新发票时打开"),
+      background: data.invoices.length === 0 ? "#fff7ed" : "#ffffff",
+      border: data.invoices.length === 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#receipt-finance-processing",
+      label: t(lang, "Receipt finance", "收据财务处理"),
+      detail: t(lang, "Use this to jump into the finance receipt center", "从这里进入收据中心继续处理"),
+      background: totalRemainingAmount > 0.01 ? "#fffbeb" : "#ffffff",
+      border: totalRemainingAmount > 0.01 ? "#fde68a" : "#dbe4f0",
+    },
+    {
+      href: "#invoices",
+      label: t(lang, "Invoices", "发票"),
+      detail: t(lang, `${data.invoices.length} invoice(s)`, `${data.invoices.length} 张发票`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#receipts",
+      label: t(lang, "Receipts", "收据"),
+      detail: t(lang, `${data.receipts.length} receipt(s)`, `${data.receipts.length} 张收据`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: receiptsCenterHref,
+      label: t(lang, "Receipt center", "收据中心"),
+      detail: t(lang, "Approval queue, proof repair, and receipt creation", "审批队列、凭证修补和收据创建都在这里"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
 
   return (
     <div>
@@ -394,7 +508,17 @@ export default async function PackageBillingPage({
         />
       ) : null}
 
-      <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 14, marginBottom: 14, background: "#f8fbff", display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 14 }}>
+        {billingSummaryCards.map((card) => (
+          <div key={card.title} style={billingSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.2 }}>{card.title}</div>
+            <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.35 }}>{card.value}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{card.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ border: "1px solid #dbeafe", borderRadius: 12, padding: 14, marginBottom: 14, background: "#f8fbff", display: "grid", gap: 12, position: "sticky", top: 12, zIndex: 4, boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4 }}>
             <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Package billing workspace", "课包账单工作台")}</div>
@@ -413,6 +537,19 @@ export default async function PackageBillingPage({
             <a href={receiptsCenterHref}>
               {t(lang, "Open Receipt Center", "打开收据中心")}
             </a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", letterSpacing: 0.2 }}>
+            {t(lang, "Jump by section", "按区块跳转")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            {billingSectionLinks.map((link) => (
+              <a key={link.href + link.label} href={link.href} style={billingSectionLinkStyle(link.background, link.border)}>
+                <span style={{ fontWeight: 700, color: "#0f172a" }}>{link.label}</span>
+                <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{link.detail}</span>
+              </a>
+            ))}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -441,7 +578,7 @@ export default async function PackageBillingPage({
         </div>
       </div>
 
-      <details open={data.invoices.length === 0} style={{ marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
+      <details id="create-invoice" open={data.invoices.length === 0} style={{ marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
         <summary style={{ cursor: "pointer", listStyle: "none", padding: "12px 14px", fontWeight: 800 }}>
           {t(lang, "Create Invoice", "创建 Invoice")}
         </summary>
@@ -477,7 +614,7 @@ export default async function PackageBillingPage({
         </form>
       </details>
 
-      <h3>{t(lang, "Receipt Finance Processing", "收据财务处理")}</h3>
+      <h3 id="receipt-finance-processing">{t(lang, "Receipt Finance Processing", "收据财务处理")}</h3>
       <div style={{ marginBottom: 16, border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#fafafa" }}>
         <div style={{ marginBottom: 8, color: "#374151" }}>
           Payment records and receipt creation are handled in the finance center with receipt approvals.
@@ -494,7 +631,7 @@ export default async function PackageBillingPage({
         </a>
       </div>
 
-      <h3>{t(lang, "Invoices", "Invoices")}</h3>
+      <h3 id="invoices">{t(lang, "Invoices", "Invoices")}</h3>
       {data.invoices.length === 0 ? (
         <div style={{ marginBottom: 16, border: "1px solid #fde68a", borderRadius: 12, padding: "10px 12px", background: "#fffbeb", color: "#92400e", display: "grid", gap: 6 }}>
           <div style={{ fontWeight: 800 }}>{t(lang, "No invoice has been created for this package yet", "这个课包还没有创建发票")}</div>
@@ -604,7 +741,7 @@ export default async function PackageBillingPage({
         </table>
       )}
 
-      <h3>{t(lang, "Receipts", "收据")}</h3>
+      <h3 id="receipts">{t(lang, "Receipts", "收据")}</h3>
       <div style={{ marginBottom: 8 }}>
         <a href={receiptsCenterHref}>
           {t(lang, "Open Receipt Approval Center", "打开收据审批中心")}

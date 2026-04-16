@@ -8,7 +8,51 @@ export default async function CampusesPage() {
 
   return (
     <div>
-      <h2>{t(lang, "Campuses", "校区")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Campus Setup / 校区设置</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Campuses", "校区")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Maintain campus basics here before adding rooms, classes, or offline schedules.", "先维护校区基础信息，再继续配置教室、班级和线下排课。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Campus count", "校区数量")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{campuses.length}</div>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#campus-editor">{t(lang, "Campus editor", "校区编辑")}</a>
+        <a href="#campus-notes">{t(lang, "Notes", "说明")}</a>
+      </div>
+      <div id="campus-editor" style={{ scrollMarginTop: 96 }}>
       <CampusesClient
         initialCampuses={campuses.map((c) => ({ id: c.id, name: c.name, isOnline: c.isOnline, requiresRoom: c.requiresRoom }))}
         labels={{
@@ -32,8 +76,9 @@ export default async function CampusesPage() {
           errorPrefix: t(lang, "Error", "错误"),
         }}
       />
+      </div>
 
-      <p style={{ color: "#666", marginTop: 12 }}>
+      <p id="campus-notes" style={{ color: "#666", marginTop: 12, scrollMarginTop: 96 }}>
         {t(
           lang,
           "* Deleting a campus cascades classes, sessions, enrollments, and rooms.",

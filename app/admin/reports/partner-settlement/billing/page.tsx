@@ -30,6 +30,13 @@ import {
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../../_components/workbenchStyles";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const PARTNER_SOURCE_NAME = "新东方学生";
@@ -88,6 +95,21 @@ const dangerBtn = {
 const thCell = { position: "sticky", top: 0, background: "#f3f4f6", zIndex: 1 } as const;
 const completedPill = { color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
 const pendingPill = { color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px", fontWeight: 700, display: "inline-block" };
+
+function billingSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null) {
   const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
@@ -473,8 +495,93 @@ export default async function PartnerBillingPage({
 
   return (
     <div>
-      <h2>{t(lang, "Partner Settlement Billing", "合作方结算账单中心")}</h2>
-      <div style={{ marginBottom: 10 }}><a href="/admin/reports/partner-settlement">{t(lang, "Back to Settlement Center", "返回合作方结算中心")}</a></div>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Partner billing workbench", "合作方账单工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Partner Settlement Billing", "合作方结算账单中心")}</h2>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Keep monthly settlement, invoice creation, payment records, and receipt follow-up in one place. Use the work map to jump directly to the stage you are handling now.",
+              "这里集中处理待结算项目、开票、付款记录和收据跟进。先看摘要，再从工作地图直接跳到当前步骤。"
+            )}
+          </div>
+          <div><a href="/admin/reports/partner-settlement">{t(lang, "Back to Settlement Center", "返回合作方结算中心")}</a></div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Pending settlement", "待结算项目")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{candidates.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Pending amount", "待结算金额")}</div>
+            <div style={{ ...workbenchMetricValueStyle("amber"), fontSize: 20 }}>{money(candidatesAmount)}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Active tab", "当前步骤")}</div>
+            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>{activeTab}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(availableInvoices.length === 0 ? "rose" : "emerald"), background: availableInvoices.length === 0 ? "#fff7f7" : "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle(availableInvoices.length === 0 ? "rose" : "emerald")}>{t(lang, "Receiptable invoices", "可开收据发票")}</div>
+            <div style={workbenchMetricValueStyle(availableInvoices.length === 0 ? "rose" : "emerald")}>{availableInvoices.length}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 6,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Billing work map", "账单工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {activeTab === "payments"
+              ? t(lang, "You are in the payment proof stage now. Upload or replace evidence here before creating receipts.", "你当前在付款记录阶段，先补齐或替换付款凭证，再去创建收据。")
+              : activeTab === "receipt"
+              ? t(lang, "You are at the receipt step. Double-check invoice, amount received, and linked payment record.", "你当前在收据步骤，重点检查来源发票、实收金额和关联付款记录。")
+              : t(lang, "Use this map to switch between settlement prep, evidence, and receipt history without rescanning the page.", "通过这张地图在待结算、付款凭证和收据历史之间跳转，不用反复扫整页。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#partner-billing-controls" style={billingSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Mode and tabs", "模式与页签")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Switch month, mode, and current work stage", "切换月份、模式和当前工作阶段")}</span>
+          </a>
+          <a href="#partner-billing-pending" style={billingSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Pending summary", "待结算摘要")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Review volume before opening invoices", "先看本期待结算规模，再决定开票")}</span>
+          </a>
+          <a
+            href={
+              activeTab === "payments"
+                ? "#partner-billing-payments"
+                : activeTab === "receipt"
+                ? "#partner-billing-receipt-create"
+                : activeTab === "invoices"
+                ? "#partner-billing-invoices"
+                : activeTab === "receipts"
+                ? "#partner-billing-receipts"
+                : "#partner-billing-invoice-create"
+            }
+            style={billingSectionLinkStyle("#eef2ff", "#c7d2fe")}
+          >
+            <strong>{t(lang, "Current stage", "当前步骤")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Jump directly to the tab content you are working on", "直接跳到当前页签的工作区")}</span>
+          </a>
+        </div>
+      </section>
       {err ? (
         <div style={{ marginBottom: 12, color: "#b00" }}>
           {err === "choose-settlement-items"
@@ -484,7 +591,7 @@ export default async function PartnerBillingPage({
       ) : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
-      <div style={{ ...cardStyle, position: "sticky", top: 8, zIndex: 5 }}>
+      <div id="partner-billing-controls" style={{ ...cardStyle, position: "sticky", top: 124, zIndex: 5 }}>
         <form method="get" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <label>{t(lang, "Mode", "模式")}<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "线上：课包结束")}</option><option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "线下：按月")}</option></select></label>
           <label>{t(lang, "Month", "月份")}<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
@@ -500,7 +607,7 @@ export default async function PartnerBillingPage({
         </div>
       </div>
 
-      <div style={{ ...cardStyle, background: "#f8fafc" }}>
+      <div id="partner-billing-pending" style={{ ...cardStyle, background: "#f8fafc" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Pending Settlement Items", "待结算项目")} ({mode === "ONLINE_PACKAGE_END" ? t(lang, "Online", "线上") : `${t(lang, "Offline", "线下")} ${month}`})</h3>
         <div style={{ color: "#374151" }}>
           {t(lang, "Items", "项目数")}: {candidates.length} | {t(lang, "Total", "合计")}: {money(candidatesAmount)}
@@ -509,7 +616,7 @@ export default async function PartnerBillingPage({
       </div>
 
       {activeTab === "invoice" ? (
-      <div style={cardStyle}>
+      <div id="partner-billing-invoice-create" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create partner invoice batch", "创建合作方批量发票")}</h3>
       <form action={createPartnerInvoiceAction}>
         <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
@@ -584,7 +691,7 @@ export default async function PartnerBillingPage({
       ) : null}
 
       {activeTab === "payments" ? (
-      <div style={cardStyle}>
+      <div id="partner-billing-payments" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Payment records", "付款记录")}</h3>
       {financeOpsEnabled ? (
         <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
@@ -649,7 +756,7 @@ export default async function PartnerBillingPage({
       ) : null}
 
       {activeTab === "receipt" ? (
-      <div style={cardStyle}>
+      <div id="partner-billing-receipt-create" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create Receipt", "创建收据")}</h3>
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
@@ -675,7 +782,7 @@ export default async function PartnerBillingPage({
       ) : null}
 
       {activeTab === "invoices" ? (
-      <div style={cardStyle}>
+      <div id="partner-billing-invoices" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Invoices", "合作方发票")}</h3>
       <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 980 }}>
@@ -732,7 +839,7 @@ export default async function PartnerBillingPage({
       ) : null}
 
       {activeTab === "receipts" ? (
-      <div style={cardStyle}>
+      <div id="partner-billing-receipts" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Receipts", "合作方收据")}</h3>
       <div style={{ marginBottom: 10 }}>
         <a href="/admin/receipts-approvals" style={{ fontWeight: 700 }}>

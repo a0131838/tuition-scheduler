@@ -185,15 +185,63 @@ export default async function TeacherCalendarPage({
 
   return (
     <div>
-      <h2>
-        {t(lang, "Teacher Month Calendar", "老师月历")} - {teacher.name}
-      </h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Teacher Calendar / 老师月历</div>
+          <h2 style={{ margin: 0 }}>
+            {t(lang, "Teacher Month Calendar", "老师月历")} - {teacher.name}
+          </h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Scan one month of scheduled sessions and remaining free time in the same calendar cell.", "把老师本月已排和剩余可排时段放在同一个格子里，方便快速扫读。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Visible sessions", "显示课次")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{sessions.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Availability rows", "可排记录")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{dateAvails.length}</div>
+          </div>
+        </div>
+      </div>
       <div style={{ marginBottom: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <a href={`/admin/teachers/${teacherId}`}>{"<-"} {t(lang, "Back to Teacher Detail", "返回老师详情")}</a>
         <a href={`/admin/teachers/${teacherId}/availability`}>{t(lang, "Edit Availability", "编辑可排时间")}</a>
       </div>
 
-      <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#teacher-calendar-controls">{t(lang, "Month controls", "月份控制")}</a>
+        <a href="#teacher-calendar-grid">{t(lang, "Calendar", "月历")}</a>
+      </div>
+
+      <div id="teacher-calendar-controls" style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", scrollMarginTop: 96 }}>
         <a href={`/admin/teachers/${teacherId}/calendar?month=${encodeURIComponent(prevMonth)}`}>{t(lang, "Prev", "上个月")}</a>
         <div style={{ fontWeight: 700 }}>{month}</div>
         <a href={`/admin/teachers/${teacherId}/calendar?month=${encodeURIComponent(nextMonth)}`}>{t(lang, "Next", "下个月")}</a>
@@ -203,7 +251,7 @@ export default async function TeacherCalendarPage({
         {t(lang, "Each day shows scheduled sessions and remaining available slots.", "每天同格展示已排课次和剩余可排时段。")}
       </div>
 
-      <table cellPadding={6} style={{ borderCollapse: "separate", borderSpacing: 4, width: "100%" }}>
+      <table id="teacher-calendar-grid" cellPadding={6} style={{ borderCollapse: "separate", borderSpacing: 4, width: "100%", scrollMarginTop: 96 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             {WEEKDAYS.map((w) => (

@@ -2,9 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
@@ -14,6 +17,7 @@ import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
   workbenchInfoBarStyle,
+  workbenchStickyPanelStyle,
 } from "../_components/workbenchStyles";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
@@ -37,6 +41,33 @@ const secondaryButtonStyle = {
   padding: "10px 14px",
   fontWeight: 700,
 } as const;
+
+function feedbackSummaryCardStyle(background: string, border: string) {
+  return {
+    border: `1px solid ${border}`,
+    borderRadius: 14,
+    padding: 14,
+    background,
+    display: "grid",
+    gap: 6,
+    alignContent: "start",
+  } as const;
+}
+
+function feedbackSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function normalizeFeedbackQueueStatus(value: string) {
   return FEEDBACK_QUEUE_OPTIONS.includes(value as (typeof FEEDBACK_QUEUE_OPTIONS)[number])
@@ -352,10 +383,6 @@ export default async function AdminFeedbacksPage({
             ].filter((item): item is { href: string; label: string } => Boolean(item)),
           }
         : null;
-  const flowCardStyle =
-    flowCard?.tone === "green"
-      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
-      : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
   const defaultDeskHref = "/admin/feedbacks?status=missing";
   const clearStudentFilterHref = `/admin/feedbacks?status=${encodeURIComponent(status)}&studentId=&clearStudentFilter=1`;
   const emptyFeedbackState =
@@ -423,6 +450,86 @@ export default async function AdminFeedbacksPage({
             { href: clearStudentFilterHref, label: t(lang, "Clear student filter", "清空学生筛选") },
           ],
         };
+  const feedbackFocusTitle =
+    status === "missing"
+      ? t(lang, "Start with overdue missing feedbacks", "先处理超时缺失反馈")
+      : status === "proxy"
+      ? t(lang, "Finish proxy drafts", "先处理代填草稿")
+      : status === "pending"
+      ? t(lang, "Forward completed feedbacks next", "下一步先转发已完成反馈")
+      : status === "forwarded"
+      ? t(lang, "Forwarded history only", "当前是已转发确认区")
+      : t(lang, "Final history only", "当前是完整历史区");
+  const feedbackFocusDetail =
+    status === "missing"
+      ? t(lang, "This is the highest-friction queue because the class has already ended and no final teacher feedback exists yet.", "这是最需要先清的队列，因为课已经结束且还没有正式老师反馈。")
+      : status === "proxy"
+      ? t(lang, "These sessions already have a proxy draft, so the goal is to finish or hand them back clearly.", "这些课次已经有代填草稿，目标是尽快补全或明确交回。")
+      : status === "pending"
+      ? t(lang, "The feedback itself is already done; this queue is just about copying and marking the send-out.", "反馈内容本身已经完成；这一列主要是复制并标记外发。")
+      : t(lang, "Use this view for confirmation and lookup after the main queue work is already clear.", "这个视图主要用于主队列清理后的确认和查询。");
+  const feedbackSummaryCards = [
+    {
+      title: t(lang, "Current focus", "当前建议起点"),
+      value: feedbackFocusTitle,
+      detail: feedbackFocusDetail,
+      background: isOverdueTab ? "#fff7ed" : status === "pending" ? "#eff6ff" : "#f8fafc",
+      border: isOverdueTab ? "#fdba74" : status === "pending" ? "#bfdbfe" : "#dbe4f0",
+    },
+    {
+      title: t(lang, "Queue scope", "当前队列范围"),
+      value: currentQueueLabel,
+      detail: t(lang, `${isOverdueTab ? shownOverdueRows.length : rows.length} work item(s) are visible now.`, `当前可见 ${isOverdueTab ? shownOverdueRows.length : rows.length} 条工作项。`),
+      background: "#eff6ff",
+      border: "#bfdbfe",
+    },
+    {
+      title: t(lang, "Student filter", "学生筛选"),
+      value: selectedStudentName ?? t(lang, "All students", "全部学生"),
+      detail: selectedStudentName
+        ? t(lang, "You are narrowed to one student trail right now.", "当前只看一位学生的反馈轨迹。")
+        : t(lang, "Leave this broad for normal queue processing.", "正常处理队列时，建议保持全学生范围。"),
+      background: selectedStudentName ? "#fffaf0" : "#f8fafc",
+      border: selectedStudentName ? "#fde68a" : "#dbe4f0",
+    },
+    {
+      title: t(lang, "Queue balance", "队列分布"),
+      value: t(lang, `${missingCount} missing · ${proxyCount} proxy · ${pendingCount} pending`, `${missingCount} 缺失 · ${proxyCount} 代填 · ${pendingCount} 待转发`),
+      detail: t(lang, `${forwardedCount} forwarded and ${allCount} final records are available for lookup.`, `还有 ${forwardedCount} 条已转发和 ${allCount} 条正式记录可供查询。`),
+      background: "#fffaf0",
+      border: "#fde68a",
+    },
+  ];
+  const feedbackSectionLinks = [
+    {
+      href: "#feedback-student-scope",
+      label: t(lang, "Student scope", "学生范围筛选"),
+      detail: selectedStudentName ?? t(lang, "All students", "全部学生"),
+      background: selectedStudentName ? "#fffaf0" : "#ffffff",
+      border: selectedStudentName ? "#fde68a" : "#dbe4f0",
+    },
+    {
+      href: "#feedback-queue-tabs",
+      label: t(lang, "Queue tabs", "队列切换"),
+      detail: t(lang, "Switch between overdue, proxy, pending, and history lanes", "在超时、代填、待转发和历史间切换"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "#feedback-work-items",
+      label: t(lang, "Work items", "当前工作项"),
+      detail: t(lang, `${isOverdueTab ? shownOverdueRows.length : rows.length} visible`, `${isOverdueTab ? shownOverdueRows.length : rows.length} 条当前可见`),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
+      href: "/admin",
+      label: t(lang, "Dashboard", "返回总览"),
+      detail: t(lang, "Leave this desk after the urgent queue is clear", "清掉紧急队列后回到总览"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -431,6 +538,7 @@ export default async function AdminFeedbacksPage({
         storageKey="adminFeedbacksPreferredQueue"
         value={rememberedQueueValue}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminFeedbacksScroll" />
       <div style={workbenchHeroStyle("indigo")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
@@ -457,56 +565,59 @@ export default async function AdminFeedbacksPage({
           </span>
         </div>
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {feedbackSummaryCards.map((card) => (
+          <div key={card.title} style={feedbackSummaryCardStyle(card.background, card.border)}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.2 }}>{card.title}</div>
+            <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.35 }}>{card.value}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>{card.detail}</div>
+          </div>
+        ))}
+      </div>
       {resumedRememberedQueue ? (
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1d4ed8",
-            display: "flex",
-            gap: 10,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>
-            {t(
-              lang,
-              "Resumed your last feedback queue. Use the shortcut on the right if you want to return to the default desk.",
-              "已恢复你上次的反馈队列；如果要回到默认工作台，可直接使用右侧快捷入口。"
-            )}
-          </div>
-          <a href="/admin/feedbacks?status=missing">{t(lang, "Back to default desk", "回到默认工作台")}</a>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last feedback queue.", "已恢复你上次的反馈队列。")}
+          description={t(
+            lang,
+            "Use the shortcut on the right if you want to return to the default desk.",
+            "如果要回到默认工作台，可直接使用右侧快捷入口。"
+          )}
+          actions={[{ href: "/admin/feedbacks?status=missing", label: t(lang, "Back to default desk", "回到默认工作台") }]}
+        />
       ) : null}
-      {err && <div style={{ color: "#b00", marginBottom: 10 }}>{err}</div>}
-      {msg && <div style={{ color: "#087", marginBottom: 10 }}>{msg}</div>}
+      {err ? (
+        <WorkbenchActionBanner
+          tone="error"
+          title={t(lang, "Action blocked", "操作未完成")}
+          description={err}
+          actions={[{ href: tabHref(status), label: t(lang, "Back to current queue", "返回当前队列") }]}
+        />
+      ) : null}
+      {msg ? (
+        <WorkbenchActionBanner
+          tone="success"
+          title={t(lang, "Action saved", "操作已完成")}
+          description={msg}
+          actions={[
+            focusFeedbackId
+              ? { href: `${tabHref(status)}#feedback-card-${focusFeedbackId}`, label: t(lang, "Jump to current feedback", "跳到当前反馈") }
+              : focusSessionId
+                ? { href: `${tabHref(status)}#overdue-card-${focusSessionId}`, label: t(lang, "Jump to current session", "跳到当前课次") }
+                : { href: tabHref(status), label: t(lang, "Back to current queue", "返回当前队列") },
+          ]}
+        />
+      ) : null}
       {flowCard ? (
-        <div
-          style={{
-            ...flowCardStyle,
-            borderRadius: 12,
-            padding: 12,
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
-          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {flowCard.links.map((link) => (
-              <a key={link.href + link.label} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone={flowCard.tone === "green" ? "success" : "warn"}
+          title={flowCard.title}
+          description={flowCard.detail}
+          actions={flowCard.links.map((link) => ({ href: link.href, label: link.label }))}
+        />
       ) : null}
 
-      <details open={activeStudentFilterCount > 0} style={workbenchFilterPanelStyle}>
+      <details id="feedback-student-scope" open={activeStudentFilterCount > 0} style={workbenchFilterPanelStyle}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
           {t(lang, "Student scope filter", "学生范围筛选")} ({activeStudentFilterCount})
         </summary>
@@ -524,7 +635,7 @@ export default async function AdminFeedbacksPage({
             ))}
           </select>
           <button type="submit" data-apply-submit="1" style={primaryButtonStyle}>{t(lang, "Apply", "应用")}</button>
-          <a href={tabHref(status)} style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>{t(lang, "Clear", "清除")}</a>
+          <Link href={tabHref(status)} scroll={false} style={{ ...secondaryButtonStyle, textDecoration: "none", display: "inline-block" }}>{t(lang, "Clear", "清除")}</Link>
           {selectedStudentName ? (
             <span style={{ color: "#334155", fontSize: 13 }}>
               {t(lang, "Current student", "当前学生")}: {selectedStudentName}
@@ -533,9 +644,39 @@ export default async function AdminFeedbacksPage({
         </form>
       </details>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <a
+      <div style={{ ...workbenchInfoBarStyle, ...workbenchStickyPanelStyle(4) }}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{currentQueueLabel}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {isOverdueTab
+              ? t(lang, "Handle one overdue session at a time: either create/update the proxy draft or move it out of the overdue queue.", "一次处理一条超时课次：创建/更新代填草稿，或把它移出超时队列。")
+              : status === "pending"
+                ? t(lang, "Copy and mark one feedback at a time, then move on to the next item waiting to be forwarded.", "一次复制并标记一条待转发反馈，再继续下一条。")
+                : t(lang, "This view is mainly for confirmation and lookup after the main queue work is done.", "这个视图主要用于主队列处理完成后的确认和查询。")}
+          </div>
+        </div>
+        <div style={{ color: "#475569", fontSize: 13 }}>
+          {t(lang, "Showing", "显示")} {isOverdueTab ? shownOverdueRows.length : rows.length}
+        </div>
+        <div style={{ display: "grid", gap: 10, width: "100%" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", letterSpacing: 0.2 }}>
+            {t(lang, "Jump by section", "按区块跳转")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            {feedbackSectionLinks.map((link) => (
+              <Link key={link.href + link.label} href={link.href} scroll={false} style={feedbackSectionLinkStyle(link.background, link.border)}>
+                <span style={{ fontWeight: 700, color: "#0f172a" }}>{link.label}</span>
+                <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{link.detail}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div id="feedback-queue-tabs" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <Link
           href={tabHref("missing")}
+          scroll={false}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -544,9 +685,10 @@ export default async function AdminFeedbacksPage({
           }}
         >
           {t(lang, "Missing > 12h", "超过12小时未反馈")} ({missingCount})
-        </a>
-        <a
+        </Link>
+        <Link
           href={tabHref("proxy")}
+          scroll={false}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -555,9 +697,10 @@ export default async function AdminFeedbacksPage({
           }}
         >
           {t(lang, "Proxy draft pending teacher", "代填草稿待老师补全")} ({proxyCount})
-        </a>
-        <a
+        </Link>
+        <Link
           href={tabHref("pending")}
+          scroll={false}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -566,9 +709,10 @@ export default async function AdminFeedbacksPage({
           }}
         >
           {t(lang, "Pending Forward", "待转发")} ({pendingCount})
-        </a>
-        <a
+        </Link>
+        <Link
           href={tabHref("forwarded")}
+          scroll={false}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -577,9 +721,10 @@ export default async function AdminFeedbacksPage({
           }}
         >
           {t(lang, "Forwarded", "已转发")} ({forwardedCount})
-        </a>
-        <a
+        </Link>
+        <Link
           href={tabHref("all")}
+          scroll={false}
           style={{
             padding: "6px 10px",
             borderRadius: 999,
@@ -588,7 +733,7 @@ export default async function AdminFeedbacksPage({
           }}
         >
           {t(lang, "All Final Feedback", "全部正式反馈")} ({allCount})
-        </a>
+        </Link>
       </div>
 
       <div
@@ -616,25 +761,10 @@ export default async function AdminFeedbacksPage({
         </div>
       </div>
 
-      <div style={workbenchInfoBarStyle}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 800 }}>{currentQueueLabel}</div>
-          <div style={{ color: "#64748b", fontSize: 12 }}>
-            {isOverdueTab
-              ? t(lang, "Handle one overdue session at a time: either create/update the proxy draft or move it out of the overdue queue.", "一次处理一条超时课次：创建/更新代填草稿，或把它移出超时队列。")
-              : status === "pending"
-                ? t(lang, "Copy and mark one feedback at a time, then move on to the next item waiting to be forwarded.", "一次复制并标记一条待转发反馈，再继续下一条。")
-                : t(lang, "This view is mainly for confirmation and lookup after the main queue work is done.", "这个视图主要用于主队列处理完成后的确认和查询。")}
-          </div>
-        </div>
-        <div style={{ color: "#475569", fontSize: 13 }}>
-          {t(lang, "Showing", "显示")} {isOverdueTab ? shownOverdueRows.length : rows.length}
-        </div>
-      </div>
-
       {isOverdueTab ? (
         shownOverdueRows.length === 0 ? (
           <div
+            id="feedback-work-items"
             style={{
               color: "#64748b",
               display: "grid",
@@ -656,7 +786,7 @@ export default async function AdminFeedbacksPage({
             </div>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div id="feedback-work-items" style={{ display: "grid", gap: 10 }}>
             <BulkMarkOverdueForwardedClient
               filterStudentId={studentId}
               labels={{
@@ -734,7 +864,7 @@ export default async function AdminFeedbacksPage({
                     </div>
 
                     <div style={{ display: "grid", gap: 6 }}>
-                      <a href={`/teacher/sessions/${r.session.id}`}>{t(lang, "Open teacher page", "打开老师页面")}</a>
+                      <Link href={`/teacher/sessions/${r.session.id}`} scroll={false}>{t(lang, "Open teacher page", "打开老师页面")}</Link>
                       <ProxyDraftFormClient
                         sessionId={r.session.id}
                         teacherId={r.teacherId}
@@ -759,6 +889,7 @@ export default async function AdminFeedbacksPage({
         )
       ) : rows.length === 0 ? (
         <div
+          id="feedback-work-items"
           style={{
             color: "#64748b",
             display: "grid",
@@ -773,14 +904,14 @@ export default async function AdminFeedbacksPage({
           <div>{emptyFeedbackState.detail}</div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {emptyFeedbackState.links.map((link) => (
-              <a key={link.href + link.label} href={link.href}>
+              <Link key={link.href + link.label} href={link.href} scroll={false}>
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
+        <div id="feedback-work-items" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
           {rows.map((r) => {
             const studentNames = getStudentNames(r.session);
             return (

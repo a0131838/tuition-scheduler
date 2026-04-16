@@ -10,8 +10,57 @@ export default async function StudentTypesPage() {
 
   return (
     <div>
-      <h2>{t(lang, "Student Types", "学生类型")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Student Type Setup / 学生类型设置</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Student Types", "学生类型")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Keep the student lifecycle labels consistent here so dashboards and reports stay readable.", "统一维护学生类型标签，让仪表盘和报表里的学生状态更容易理解。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Type options", "类型选项")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{types.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Active options", "启用项")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{types.filter((item) => item.isActive).length}</div>
+          </div>
+        </div>
+      </div>
 
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#student-type-editor">{t(lang, "Type editor", "类型编辑")}</a>
+        <a href="#student-type-rules">{t(lang, "Rules", "规则")}</a>
+      </div>
+
+      <div id="student-type-editor" style={{ scrollMarginTop: 96 }}>
       <StudentTypesClient
         initialTypes={types.map((x) => ({ id: x.id, name: x.name, isActive: x.isActive }))}
         labels={{
@@ -36,8 +85,9 @@ export default async function StudentTypesPage() {
           errorPrefix: t(lang, "Error", "错误"),
         }}
       />
+      </div>
 
-      <p style={{ color: "#666", marginTop: 12 }}>
+      <p id="student-type-rules" style={{ color: "#666", marginTop: 12, scrollMarginTop: 96 }}>
         {t(lang, "* Types used by students cannot be deleted; you can disable them.", "* 已被学生使用的类型无法删除，只能禁用。")}
       </p>
     </div>

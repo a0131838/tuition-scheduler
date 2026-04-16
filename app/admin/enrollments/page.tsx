@@ -14,6 +14,28 @@ import {
   findStudentCourseEnrollment,
   formatEnrollmentConflict,
 } from "@/lib/enrollment-conflict";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../_components/workbenchStyles";
+
+function enrollmentsSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function classLabel(cls: {
   course: { name: string };
@@ -295,7 +317,81 @@ export default async function AdminEnrollmentsPage({
 
   return (
     <div>
-      <h2>{t(lang, "Enrollments", "报名管理")}</h2>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Enrollments workbench", "报名工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Enrollments", "报名管理")}</h2>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Use this page to add enrollments, filter the roster, and separate 1-on-1 templates from group classes so you can act on the right structure quickly.",
+              "这里用于新增报名、筛选报名结构，并把一对一模板和班课区分开来，便于更快处理正确的对象。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible rows", "当前结果")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{oneOnOneRows.length + groupRows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "1-on-1 rows", "一对一")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{oneOnOneRows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Group rows", "班课")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{groupRows.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle(isFiltered ? "rose" : "slate")}>
+            <div style={workbenchMetricLabelStyle(isFiltered ? "rose" : "slate")}>{t(lang, "Filters active", "筛选状态")}</div>
+            <div style={{ ...workbenchMetricValueStyle(isFiltered ? "rose" : "slate"), fontSize: 18 }}>
+              {isFiltered ? t(lang, "Filtered", "已筛选") : t(lang, "All", "全部")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Enrollments work map", "报名工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Add a new enrollment first if needed, then narrow the list with filters, and finally work through 1-on-1 templates or group classes separately.", "如果需要先新增报名，再用筛选缩小范围，最后分别处理一对一模板或班课。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#enrollments-actions" style={enrollmentsSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Add enrollment", "新增报名")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Open the add dialog or return to schedule", "打开新增弹窗或回到周课表")}</span>
+          </a>
+          <a href="#enrollments-filters" style={enrollmentsSectionLinkStyle("#eff6ff", "#93c5fd")}>
+            <strong>{t(lang, "Filters", "筛选区")}</strong>
+            <span style={{ fontSize: 12, color: "#1d4ed8" }}>{t(lang, "Filter by class structure, teacher, campus, or student query", "按班型、老师、校区或学生搜索过滤")}</span>
+          </a>
+          <a href="#enrollments-one-on-one" style={enrollmentsSectionLinkStyle("#fff7ed", "#fdba74")}>
+            <strong>{t(lang, "1-on-1 templates", "一对一模板")}</strong>
+            <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Review private templates and remove or inspect rows", "处理一对一模板、查看或取消报名")}</span>
+          </a>
+          <a href="#enrollments-group" style={enrollmentsSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Group classes", "班课区")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Handle grouped enrollments separately", "单独处理班课报名区")}</span>
+          </a>
+        </div>
+      </section>
 
       <p>
         <a
@@ -337,7 +433,7 @@ export default async function AdminEnrollmentsPage({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+      <div id="enrollments-actions" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <SimpleModal buttonLabel={t(lang, "Add Enrollment", "新增报名")} title={t(lang, "Add Enrollment", "新增报名")}>
           <EnrollmentCreateForm
             classes={classes.map((c) => ({
@@ -376,7 +472,7 @@ export default async function AdminEnrollmentsPage({
       </div>
 
       <h3>{t(lang, "Enrollment List", "报名列表")}</h3>
-      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
+      <div id="enrollments-filters" style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, background: "#fafafa", marginBottom: 12 }}>
         <EnrollmentFilterForm
           courses={courseOptions}
           subjects={subjectOptions}
@@ -434,7 +530,7 @@ export default async function AdminEnrollmentsPage({
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
           {oneOnOneRows.length > 0 && (
-            <div>
+            <div id="enrollments-one-on-one">
               <h3 style={{ marginBottom: 8 }}>{t(lang, "1-on-1 Templates", "一对一模板")}</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
                 {Array.from(
@@ -510,7 +606,7 @@ export default async function AdminEnrollmentsPage({
           )}
 
           {groupRows.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            <div id="enrollments-group" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
               {Array.from(
                 groupRows.reduce((map, e) => {
                   const key = e.classId;
@@ -574,4 +670,3 @@ export default async function AdminEnrollmentsPage({
     </div>
   );
 }
-

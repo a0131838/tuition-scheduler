@@ -244,7 +244,35 @@ export default async function PackageSharingAuditPage({
 
   return (
     <div>
-      <h2>{t(lang, "Package Sharing Audit", "共享课包审计")}</h2>
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb", marginBottom: 4 }}>Package Sharing Audit / 共享课包审计</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Package Sharing Audit", "共享课包审计")}</h2>
+          <div style={{ color: "#475569", marginTop: 6 }}>
+            {t(lang, "Use this desk to inspect abnormal bindings first, then repair one-by-one or in batch from the current list.", "先在这里确认异常绑定，再按当前列表逐条或批量修复。")}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Loaded anomalies", "当前异常")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{anomalies.length}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Limit", "数量上限")}</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{limit}</div>
+          </div>
+        </div>
+      </div>
       <div style={{ color: "#666", marginBottom: 8 }}>
         {t(
           lang,
@@ -253,7 +281,27 @@ export default async function PackageSharingAuditPage({
         )}
       </div>
 
-      <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          marginBottom: 14,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#package-sharing-filters">{t(lang, "Filters", "筛选")}</a>
+        <a href="#package-sharing-list">{t(lang, "Anomalies", "异常列表")}</a>
+      </div>
+
+      <form id="package-sharing-filters" method="GET" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, scrollMarginTop: 96 }}>
         <label>
           {t(lang, "Limit", "数量上限")}:
           <input name="limit" type="number" min={10} max={1000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
@@ -279,7 +327,7 @@ export default async function PackageSharingAuditPage({
             <button type="submit">{t(lang, "Repair All Listed", "修复当前列表全部")}</button>
           </form>
 
-          <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+          <table id="package-sharing-list" cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", scrollMarginTop: 96 }}>
             <thead>
               <tr style={{ background: "#f5f5f5" }}>
                 <th align="left">{t(lang, "Time", "时间")}</th>

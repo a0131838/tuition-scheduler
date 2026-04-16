@@ -709,6 +709,7 @@ export default async function AdminTicketDetailPage({
     { key: "Exception", label: "异常升级", caption: "Exception" },
     { key: "Cancelled", label: "已取消", caption: "Cancelled" },
   ];
+  const nextActionLabel = row.nextAction?.trim() || (row.status === "Completed" ? "Closed / 已闭环" : "Need manual follow-up / 需要人工跟进");
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -719,21 +720,75 @@ export default async function AdminTicketDetailPage({
         }
       `}</style>
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <div>
-          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>后台工单详情 / Ticket Detail</div>
-          <h2 style={{ margin: 0 }}>{row.ticketNo}</h2>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link scroll={false} href={listBack} style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 8 }}>
-            返回工单中心 / Back
-          </Link>
-          {!row.isArchived ? (
-            <Link scroll={false} href="/admin/tickets/archived" style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 8 }}>
-              已归档工单 / Archived
+      <div
+        style={{
+          border: "1px solid #dbeafe",
+          background: "linear-gradient(135deg, #eff6ff 0%, #fff 100%)",
+          borderRadius: 16,
+          padding: 16,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700, marginBottom: 4 }}>后台工单详情 / Ticket Detail</div>
+            <h2 style={{ margin: 0 }}>{row.ticketNo}</h2>
+            <div style={{ color: "#475569", marginTop: 6 }}>
+              当前先看摘要和流程，再直接跳去状态动作、排课控制台或工单编辑区。
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link scroll={false} href={listBack} style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 8 }}>
+              返回工单中心 / Back
             </Link>
-          ) : null}
+            {!row.isArchived ? (
+              <Link scroll={false} href="/admin/tickets/archived" style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 8 }}>
+                已归档工单 / Archived
+              </Link>
+            ) : null}
+          </div>
         </div>
+        <div id="ticket-overview" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", scrollMarginTop: 96 }}>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>Student / 学生</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>{row.studentName}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>Status / 当前状态</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>{row.status}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>Owner / 负责人</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>{asText(row.owner)}</div>
+          </div>
+          <div style={{ border: "1px solid #bfdbfe", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>Next action / 下一步</div>
+            <div style={{ fontWeight: 800, marginTop: 8 }}>{nextActionLabel}</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "sticky",
+          top: 12,
+          zIndex: 5,
+          border: "1px solid #dbeafe",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 14,
+          padding: 10,
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="#ticket-overview">Overview / 概览</a>
+        <a href="#ticket-workflow">Workflow / 流程</a>
+        <a href="#status-action">Status action / 状态动作</a>
+        <a href="#coordination-console">Coordination / 排课控制台</a>
+        <a href="#ticket-edit">Edit / 编辑</a>
       </div>
 
       {sourceWorkflow === "todo" ? (
@@ -830,7 +885,7 @@ export default async function AdminTicketDetailPage({
         </div>
       </div>
 
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff" }}>
+      <div id="ticket-workflow" style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#fff", scrollMarginTop: 96 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           <div style={{ fontWeight: 700 }}>流程图 / Workflow</div>
           <div style={{ fontSize: 12, color: "#64748b" }}>

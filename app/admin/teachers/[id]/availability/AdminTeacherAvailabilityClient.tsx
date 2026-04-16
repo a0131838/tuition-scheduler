@@ -165,7 +165,7 @@ export default function AdminTeacherAvailabilityClient(props: {
         {labels.title} - {teacherName}
       </h2>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div id="teacher-availability-controls" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button type="button" onClick={() => loadMonth(prevMonth)} disabled={loading}>
           {labels.prev}
         </button>
@@ -179,7 +179,7 @@ export default function AdminTeacherAvailabilityClient(props: {
       {error ? <div style={{ marginTop: 10, color: "#b00", fontSize: 12 }}>{error}</div> : null}
       {msg ? <div style={{ marginTop: 10, color: "#166534", fontSize: 12 }}>{msg}</div> : null}
 
-      <h3 style={{ marginTop: 18 }}>{labels.monthlyTitle}</h3>
+      <h3 id="teacher-availability-monthly" style={{ marginTop: 18 }}>{labels.monthlyTitle}</h3>
       <div style={{ marginBottom: 8, color: "#475569", fontSize: 12 }}>{labels.monthlyHelp}</div>
 
       <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -286,7 +286,7 @@ export default function AdminTeacherAvailabilityClient(props: {
         </tbody>
       </table>
 
-      <h3 style={{ marginTop: 24 }}>{labels.weeklyTitle}</h3>
+      <h3 id="teacher-availability-weekly" style={{ marginTop: 24 }}>{labels.weeklyTitle}</h3>
       <div style={{ marginBottom: 8, color: "#666", fontSize: 12 }}>{labels.weeklyAutoSyncNote}</div>
       <form
         onSubmit={async (e) => {

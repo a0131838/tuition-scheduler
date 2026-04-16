@@ -6,6 +6,28 @@ import {
   monthEndDateOnlyFromMonth,
   parseMonthInput,
 } from "@/lib/student-package-month-end-balance";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function balanceReportSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
@@ -88,20 +110,77 @@ export default async function FinanceStudentPackageBalancesPage({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <h2 style={{ marginBottom: 0 }}>{t(lang, "Student Package Balance Report", "学生课时包余额报表")}</h2>
-      <div style={{ color: "#64748b", fontSize: 12 }}>
-        {t(
-          lang,
-          "Use this page only for month-end package balance reporting. It does not issue invoices or change any package, billing, or approval logic.",
-          "此页面仅用于月末课时包余额报表，不会开票，也不会改动课包、账单或审批逻辑。",
-        )}
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
-        <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
-        <a href="/admin/finance/student-package-invoices">{t(lang, "Open student package invoices", "打开学生课时包发票")}</a>
-      </div>
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Month-end balance report", "月末余额报表")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Student Package Balance Report", "学生课时包余额报表")}</h2>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {t(
+              lang,
+              "Use this page only for month-end package balance reporting. It does not issue invoices or change any package, billing, or approval logic.",
+              "此页面仅用于月末课时包余额报表，不会开票，也不会改动课包、账单或审批逻辑。",
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
+            <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
+            <a href="/admin/finance/student-package-invoices">{t(lang, "Open student package invoices", "打开学生课时包发票")}</a>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Packages", "课包数")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{summary.packageCount}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("indigo"), background: "#eef2ff" }}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Remaining hours", "剩余总课时")}</div>
+            <div style={{ ...workbenchMetricValueStyle("indigo"), fontSize: 18 }}>{summary.remainingHours.toFixed(2)}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("emerald"), background: "#f0fdf4" }}>
+            <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Remaining amount", "估算剩余金额")}</div>
+            <div style={{ ...workbenchMetricValueStyle("emerald"), fontSize: 18 }}>SGD {money(summary.remainingAmount)}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Report month", "报表月份")}</div>
+            <div style={{ ...workbenchMetricValueStyle("slate"), fontSize: 18 }}>{month}</div>
+          </div>
+        </div>
+      </section>
 
-      <div style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 0,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Balance report map", "余额报表地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Load the report month first, then review the summary and basis labels, and finally scan the preview table or export the full CSV.", "建议先切报表月份，再看摘要和金额基数标签，最后浏览预览表或导出完整 CSV。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#balance-report-controls" style={balanceReportSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Report controls", "报表控制")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Change month and export CSV", "切月份并导出 CSV")}</span>
+          </a>
+          <a href="#balance-report-preview" style={balanceReportSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Preview table", "预览表")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Scan the first rows before exporting", "导出前先看前几行")}</span>
+          </a>
+        </div>
+      </section>
+
+      <div id="balance-report-controls" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
         <div style={{ fontWeight: 700 }}>
           {t(lang, "Month-end balance report", "月末余额报表")}
         </div>
@@ -163,7 +242,7 @@ export default async function FinanceStudentPackageBalancesPage({
             )}
           </div>
         ) : (
-          <div style={{ border: "1px solid #dbeafe", borderRadius: 8, background: "#fff", overflowX: "auto" }}>
+          <div id="balance-report-preview" style={{ border: "1px solid #dbeafe", borderRadius: 8, background: "#fff", overflowX: "auto" }}>
             <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 920 }}>
               <thead>
                 <tr style={{ background: "#eff6ff" }}>

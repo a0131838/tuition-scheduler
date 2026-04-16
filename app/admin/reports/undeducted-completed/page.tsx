@@ -8,6 +8,13 @@ import { formatBusinessDateTime } from "@/lib/date-only";
 import { PackageStatus, PackageType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
 
 const DEDUCT_STATUSES = new Set(["PRESENT", "LATE", "ABSENT"]);
 
@@ -42,6 +49,21 @@ type BatchFailureDetail = {
   sessionAt: string;
   reason: string;
 };
+
+function undeductedSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 
 function isCompletedSession(x: {
   session: {
@@ -602,10 +624,83 @@ export default async function UndeductedCompletedReportPage({
 
   return (
     <div>
-      <h2>{t(lang, "Completed But Undeducted", "已完成但未减扣")}</h2>
-      <div style={{ marginBottom: 12, color: "#64748b" }}>
-        {t(lang, "Count", "数量")}: <b>{rows.length}</b>
-      </div>
+      <section style={workbenchHeroStyle("amber")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Deduction repair desk", "减扣修复台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Completed But Undeducted", "已完成但未减扣")}</h2>
+          <div style={{ color: "#475569", maxWidth: 920 }}>
+            {t(
+              lang,
+              "Use this report to preview automatic deduction repairs, understand blockers, and only then confirm a single row or a controlled batch.",
+              "这里用于先预览自动补扣、看清阻塞原因，再决定单条修复还是批量修复，避免直接盲操作。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible anomalies", "异常记录")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{rows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Selected in batch", "批量已选")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{selectedSet.size}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle(batchReadyItems.length > 0 ? "emerald" : "rose"), background: batchReadyItems.length > 0 ? "#f0fdf4" : "#fff7f7" }}>
+            <div style={workbenchMetricLabelStyle(batchReadyItems.length > 0 ? "emerald" : "rose")}>{t(lang, "Batch ready", "批量可执行")}</div>
+            <div style={workbenchMetricValueStyle(batchReadyItems.length > 0 ? "emerald" : "rose")}>{batchReadyItems.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle(failDetails.length > 0 ? "rose" : "slate")}>
+            <div style={workbenchMetricLabelStyle(failDetails.length > 0 ? "rose" : "slate")}>{t(lang, "Recent failures", "最近失败")}</div>
+            <div style={workbenchMetricValueStyle(failDetails.length > 0 ? "rose" : "slate")}>{failDetails.length}</div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...workbenchFilterPanelStyle,
+          position: "sticky",
+          top: 8,
+          zIndex: 5,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Repair work map", "修复工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {previewItem
+              ? t(lang, "You are in single-row preview. Check package match, balance movement, and note before confirming.", "你当前在单条预览模式，确认前先看课包匹配、余额变化和流水备注。")
+              : isBatchPreview
+              ? t(lang, "You are in batch preview. Clear blocked rows before running the second confirmation.", "你当前在批量预览模式，先处理阻塞项，再进入二次确认。")
+              : t(lang, "Start with filters, then preview one row or a batch instead of applying repairs blindly.", "先设筛选，再看单条或批量预览，不要直接盲目补扣。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#undeducted-filters" style={undeductedSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Filters", "筛选条件")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Adjust row volume before review", "先控制本次查看的数据量")}</span>
+          </a>
+          <a href="#undeducted-preview" style={undeductedSectionLinkStyle("#fffbeb", "#fcd34d")}>
+            <strong>{t(lang, "Single preview", "单条预览")}</strong>
+            <span style={{ fontSize: 12, color: "#92400e" }}>{t(lang, "Review one auto-fix before applying it", "先确认单条补扣逻辑再执行")}</span>
+          </a>
+          <a href="#undeducted-batch-preview" style={undeductedSectionLinkStyle("#f5f3ff", "#c4b5fd")}>
+            <strong>{t(lang, "Batch preview", "批量预览")}</strong>
+            <span style={{ fontSize: 12, color: "#6d28d9" }}>{t(lang, "Check ready vs blocked rows and second confirmation", "检查可执行/阻塞并完成二次确认")}</span>
+          </a>
+          <a href="#undeducted-table" style={undeductedSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Anomaly table", "异常列表")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Return to the table to choose the next row", "回到主表继续挑下一条")}</span>
+          </a>
+        </div>
+      </section>
       {sp?.msg === "auto-fixed" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Auto fix applied.", "已自动补扣。")}</div> : null}
       {sp?.msg === "waived" ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Waive marked.", "已标记免扣。")}</div> : null}
       {sp?.msg === "batch-fixed" ? (
@@ -648,7 +743,7 @@ export default async function UndeductedCompletedReportPage({
       ) : null}
       {sp?.err ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Error", "错误")}: {sp.err}</div> : null}
 
-      <form method="GET" style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <form id="undeducted-filters" method="GET" style={{ ...workbenchFilterPanelStyle, marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <label>
           {t(lang, "Limit", "数量上限")}:
           <input name="limit" type="number" min={50} max={2000} defaultValue={String(limit)} style={{ marginLeft: 6, width: 90 }} />
@@ -657,7 +752,7 @@ export default async function UndeductedCompletedReportPage({
       </form>
 
       {previewItem ? (
-        <div style={{ marginBottom: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", padding: 10 }}>
+        <div id="undeducted-preview" style={{ marginBottom: 12, border: "1px solid #f59e0b", borderRadius: 8, background: "#fffbeb", padding: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Auto Deduct Preview", "自动补扣预览")}</div>
           <div style={{ marginBottom: 4 }}>
             {t(lang, "Student", "学生")}: <b>{previewItem.studentName}</b> | {t(lang, "Session", "课次")}: {formatBusinessDateTime(new Date(previewItem.sessionAt))}
@@ -683,7 +778,7 @@ export default async function UndeductedCompletedReportPage({
       ) : null}
 
       {isBatchPreview ? (
-        <div style={{ marginBottom: 12, border: "1px solid #7c3aed", borderRadius: 8, background: "#f5f3ff", padding: 10 }}>
+        <div id="undeducted-batch-preview" style={{ marginBottom: 12, border: "1px solid #7c3aed", borderRadius: 8, background: "#f5f3ff", padding: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Batch Auto Deduct Preview", "批量自动补扣预览")}</div>
           <div style={{ marginBottom: 6, color: "#1e293b" }}>
             {t(lang, "Selected", "已选")}: <b>{batchPreviewItems.length}</b> | {t(lang, "Ready", "可执行")}: <b>{batchReadyItems.length}</b> | {t(lang, "Blocked", "阻塞")}: <b>{batchBlockedItems.length}</b> | {t(lang, "Total Units", "总扣减")}: <b>{batchNeedTotal}</b>
@@ -752,7 +847,7 @@ export default async function UndeductedCompletedReportPage({
       {rows.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No anomaly rows.", "暂无异常记录。")}</div>
       ) : (
-        <div>
+        <div id="undeducted-table">
           <form id="batchPreviewForm" method="GET">
             <input type="hidden" name="limit" value={String(limit)} />
           </form>

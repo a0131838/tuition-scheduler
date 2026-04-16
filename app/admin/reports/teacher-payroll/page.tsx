@@ -26,6 +26,28 @@ import {
 } from "@/lib/teacher-payroll";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  workbenchFilterPanelStyle,
+  workbenchHeroStyle,
+  workbenchMetricCardStyle,
+  workbenchMetricLabelStyle,
+  workbenchMetricValueStyle,
+} from "../../_components/workbenchStyles";
+
+function payrollSectionLinkStyle(background: string, border: string) {
+  return {
+    display: "grid",
+    gap: 4,
+    minWidth: 170,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: `1px solid ${border}`,
+    background,
+    textDecoration: "none",
+    color: "inherit",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  } as const;
+}
 const PERIOD_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Shanghai",
   day: "2-digit",
@@ -678,11 +700,87 @@ export default async function TeacherPayrollPage({
   return (
     <div>
       <RestoreRateConfigScroll targetId={savedRateRowKey} />
-      <h2>{t(lang, "Teacher Payroll", "老师工资单")}</h2>
-      <div
+      <section style={workbenchHeroStyle("blue")}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Teacher payroll desk", "老师工资工作台")}</div>
+          <h2 style={{ margin: 0 }}>{t(lang, "Teacher Payroll", "老师工资单")}</h2>
+          <div style={{ color: "#475569", maxWidth: 940 }}>
+            {t(
+              lang,
+              "Use this page to move payroll from sending to approvals to payout. Start with the work queue, then review rate gaps and approval roles below.",
+              "这里用于把老师工资从发送、审批推进到发薪。建议先看待处理队列，再检查费率缺口和审批角色。"
+            )}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          <div style={workbenchMetricCardStyle("blue")}>
+            <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Visible teachers", "当前老师数")}</div>
+            <div style={workbenchMetricValueStyle("blue")}>{payrollRows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("amber"), background: "#fff7ed" }}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Queue items", "待处理队列")}</div>
+            <div style={workbenchMetricValueStyle("amber")}>{myQueueRows.length}</div>
+          </div>
+          <div style={{ ...workbenchMetricCardStyle("rose"), background: "#fff7f7" }}>
+            <div style={workbenchMetricLabelStyle("rose")}>{t(lang, "Rate gaps", "费率缺口")}</div>
+            <div style={workbenchMetricValueStyle("rose")}>{unconfiguredRateCount}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("indigo")}>
+            <div style={workbenchMetricLabelStyle("indigo")}>{t(lang, "Pending sessions", "未完成课次")}</div>
+            <div style={workbenchMetricValueStyle("indigo")}>{shownPending}</div>
+          </div>
+        </div>
+      </section>
+      <section
         style={{
+          ...workbenchFilterPanelStyle,
           position: "sticky",
           top: 8,
+          zIndex: 20,
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Payroll map", "工资工作地图")}</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {t(lang, "Set the payroll month first, then work through the queue, salary slips, rate table, and approval config in that order.", "建议先设工资月份，再依次处理待办队列、工资单、费率表和审批配置。")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="#payroll-controls" style={payrollSectionLinkStyle("#f8fafc", "#cbd5e1")}>
+            <strong>{t(lang, "Month controls", "月份控制")}</strong>
+            <span style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Switch period and top-level filters", "切计薪周期和顶层筛选")}</span>
+          </a>
+          <a href="#salary-slips" style={payrollSectionLinkStyle("#eef2ff", "#c7d2fe")}>
+            <strong>{t(lang, "Payroll queue", "工资单队列")}</strong>
+            <span style={{ fontSize: 12, color: "#3730a3" }}>{t(lang, "Process the next teacher in line", "处理下一位老师")}</span>
+          </a>
+          {!isFinanceOnlyUser ? (
+            <a href="#rate-config" style={payrollSectionLinkStyle("#fff7ed", "#fdba74")}>
+              <strong>{t(lang, "Rate config", "费率配置")}</strong>
+              <span style={{ fontSize: 12, color: "#9a3412" }}>{t(lang, "Fill missing rate rows", "补齐缺失费率")}</span>
+            </a>
+          ) : null}
+          {!isFinanceOnlyUser ? (
+            <a href="#approval-config" style={payrollSectionLinkStyle("#f0fdf4", "#86efac")}>
+              <strong>{t(lang, "Approval roles", "审批角色")}</strong>
+              <span style={{ fontSize: 12, color: "#166534" }}>{t(lang, "Check manager and finance approvers", "核对管理和财务审批人")}</span>
+            </a>
+          ) : null}
+        </div>
+      </section>
+      <div
+        id="payroll-controls"
+        style={{
+          position: "sticky",
+          top: 118,
           zIndex: 20,
           border: "1px solid #e2e8f0",
           borderRadius: 10,
