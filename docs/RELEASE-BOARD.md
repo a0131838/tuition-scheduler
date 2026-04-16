@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-09`
+- Last checked: `2026-04-16`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-15-r66` (approval/receipt UX polish after the finance-only receipt approval change), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r67` (teacher feedback late-deadline clarity and shared timing helper), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -60,6 +60,22 @@
   - `npx tsx --test tests/billing-optimistic-lock.test.ts`
   - `/admin/approvals` should still show teacher payroll manager/finance reminders and expense reminders
   - `/admin/receipts-approvals/queue` should still show finance-only receipt state and explain legacy manager entries when present
+
+## 2026-04-16-r67 Ready
+
+- Scope: unify teacher feedback deadline timing and explain the late rule more clearly on teacher pages.
+- Business impact:
+  - teacher session detail now shows the exact time when late starts, instead of only a generic overdue warning
+  - teacher feedback save success now tells the teacher whether that submission still counts as on time or is already late
+  - teacher session list, teacher submit API, admin alerts, admin feedback overdue queue, and proxy/manual admin feedback flows now all use the same shared 12-hour deadline helper
+  - the actual rule did not change: after-class feedback still becomes late only 12 hours after class end
+- Validation:
+  - `npx tsx --test tests/feedback-timing.test.ts`
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npm run build`
+  - teacher session detail should clearly show `请在 ... 前提交；超过这个时间才算迟交`
+  - teacher feedback submit success should clearly show whether the submission is on time or late
+  - admin alerts and admin feedback overdue handling should still follow the same 12-hour cutoff
 
 ## 2026-04-15-r65 Ready
 

@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r67
+
+- Release ID: `2026-04-16-r67`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: unify the teacher after-class feedback late-deadline logic and make the late rule visible on the teacher session pages.
+- Key files:
+  - `lib/feedback-timing.ts`
+  - `app/api/teacher/sessions/[id]/feedback/route.ts`
+  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `app/teacher/sessions/page.tsx`
+  - `lib/signin-alerts.ts`
+  - `app/admin/alerts/page.tsx`
+  - `app/admin/feedbacks/page.tsx`
+  - `app/api/admin/feedbacks/bulk-forward-overdue/route.ts`
+  - `app/api/admin/feedbacks/proxy-draft/route.ts`
+  - `tests/feedback-timing.test.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260416-feedback-deadline-clarity.md`
+- Risk impact (if any): Low. This release does not change the business rule itself; feedback still becomes late only 12 hours after class end. The change centralizes that rule into one helper and makes the same deadline clearer across teacher pages, teacher submit responses, admin alerts, and admin feedback handling.
+- Verification:
+  - `npx tsx --test tests/feedback-timing.test.ts`
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npm run build`
+  - teacher session detail should explicitly show when late starts instead of only saying “overdue”
+  - teacher feedback submit success should say whether the save is still on time or already late
+  - teacher session list, admin alerts, and admin feedback overdue workbench should still follow the same 12-hour deadline
+- Rollback point: previous production commit before `2026-04-16-r67`.
+
 ## 2026-04-15-r66
 
 - Release ID: `2026-04-15-r66`
