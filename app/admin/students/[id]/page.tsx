@@ -243,18 +243,36 @@ function studentSummaryCardStyle(background: string, border: string) {
   } as const;
 }
 
-function studentSectionLinkStyle(background: string, border: string) {
+function studentPrimaryActionStyle(background: string, border: string) {
   return {
     display: "grid",
-    gap: 4,
-    minWidth: 160,
-    padding: "10px 12px",
-    borderRadius: 12,
+    gap: 8,
+    alignContent: "start",
+    minWidth: 0,
+    padding: "14px 16px",
+    borderRadius: 16,
     border: `1px solid ${border}`,
     background,
     textDecoration: "none",
     color: "inherit",
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05)",
+  } as const;
+}
+
+function studentSecondaryActionStyle() {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 32,
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid #dbe4f0",
+    background: "#ffffff",
+    textDecoration: "none",
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
   } as const;
 }
 
@@ -2317,6 +2335,24 @@ export default async function StudentDetailPage({
       border: "#dbe4f0",
     },
   ];
+  const studentPrimaryLinks = [
+    studentSectionLinks[0],
+    studentSectionLinks[1],
+    studentSectionLinks[3],
+  ].filter(Boolean);
+  const studentSecondaryLinks = [
+    studentSectionLinks[2],
+    studentSectionLinks[4],
+    studentSectionLinks[5],
+    studentSectionLinks[6],
+    {
+      href: `/api/exports/student-detail/${studentId}`,
+      label: tl(lang, "Export Student Report"),
+      detail: t(lang, "Open the outward-facing summary without leaving this page.", "不离开当前页面也可以直接导出学生报告。"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+  ];
   return (
     <div>
       <StudentDetailHashStateClient />
@@ -2457,36 +2493,43 @@ export default async function StudentDetailPage({
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
               }}
             >
-              <div style={{ display: "grid", gap: 4 }}>
-                <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作条")}</div>
-                <div style={{ color: "#475569", fontSize: 13 }}>
-                  {packageRiskCount > 0
-                    ? t(lang, "Package risk is active. Start with packages, then return here to jump into attendance or upcoming sessions.", "当前有课包风险，建议先看课包，再从这里回到点名或即将上课。")
-                    : unpaidPackageCount > 0
-                      ? t(lang, "Billing follow-up is active. Check packages first, then move into planning or attendance.", "当前有账务跟进，建议先看课包，再进入排课或点名。")
-                      : t(lang, "No urgent billing risk detected. Use this bar to move between profile, schedule, packages, attendance, and edit actions without rescanning the page.", "当前没有紧急账务风险，可通过这里在档案、排课、课包、点名和编辑操作间快速切换。")}
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作台")}</div>
+                    <div style={{ color: "#475569", fontSize: 13, maxWidth: 920 }}>
+                      {packageRiskCount > 0
+                        ? t(lang, "Package risk is active. Start with packages, then use the quick actions below for scheduling or attendance follow-up.", "当前有课包风险，建议先看课包，再用下面的快捷操作进入排课或点名跟进。")
+                        : unpaidPackageCount > 0
+                          ? t(lang, "Billing follow-up is active. Start with packages, then continue into scheduling or attendance only if needed.", "当前有账务跟进，建议先看课包；只有需要时再进入排课或点名。")
+                          : t(lang, "Start with one of the main actions below. Secondary links stay available without turning this block into another dashboard.", "先从下面的主操作进入；次级入口也保留，但不会再把这里做成第二个大面板。")}
+                    </div>
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+                    <span>{t(lang, "Main actions first", "先看主操作")}</span>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", letterSpacing: 0.2 }}>
-                  {t(lang, "Jump by section", "按区块跳转")}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-                  {studentSectionLinks.map((link) => (
-                    <a key={link.href} href={link.href} style={studentSectionLinkStyle(link.background, link.border)}>
-                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{link.label}</span>
-                      <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{link.detail}</span>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                  {studentPrimaryLinks.map((link) => (
+                    <a key={link.href} href={link.href} style={studentPrimaryActionStyle(link.background, link.border)}>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{link.label}</span>
+                      <span style={{ fontSize: 13, color: "#475569", lineHeight: 1.45 }}>{link.detail}</span>
                     </a>
                   ))}
-                  <a
-                    href={`/api/exports/student-detail/${studentId}`}
-                    style={studentSectionLinkStyle("#ffffff", "#dbe4f0")}
-                  >
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>{tl(lang, "Export Student Report")}</span>
-                    <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>
-                      {t(lang, "Open the outward-facing summary without losing your place on this page.", "不离开当前页面也可以直接导出学生报告。")}
-                    </span>
-                  </a>
+                </div>
+
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b", letterSpacing: 0.2 }}>
+                    {t(lang, "More sections", "更多区块")}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {studentSecondaryLinks.map((link) => (
+                      <a key={link.href} href={link.href} style={studentSecondaryActionStyle()}>
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

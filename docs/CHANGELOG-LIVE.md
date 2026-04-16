@@ -15,6 +15,23 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r77
+
+- Release ID: `2026-04-16-r77`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: simplify the student detail workbench block so it no longer reads like a second dense dashboard under the new sticky shortcut row.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260416-student-workbench-density-reset.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is UI-only on the student detail page. The student workbench now emphasizes a few primary actions and lighter secondary links, but all destinations, anchors, and workflow logic stay the same.
+- Verification:
+  - `npm run build`
+  - production browser check confirms the student detail workbench no longer shows the old equal-weight card wall and still works with the compact sticky shortcut row above it
+- Rollback point: previous production commit before `2026-04-16-r77`.
+
 ## 2026-04-16-r76
 
 - Release ID: `2026-04-16-r76`
