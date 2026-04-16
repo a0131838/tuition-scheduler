@@ -7,7 +7,8 @@ import { cookies } from "next/headers";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
-import { workbenchStickyPanelStyle } from "../_components/workbenchStyles";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
+import { workbenchStickyPanelStyle, workbenchTableHeaderCellStyle, workbenchTableCellSecondaryStyle } from "../_components/workbenchStyles";
 
 type Focus = "ALL" | "MANAGER" | "FINANCE" | "EXPENSE" | "OVERDUE";
 const APPROVAL_FOCUS_COOKIE = "adminApprovalInboxFocus";
@@ -400,18 +401,15 @@ export default async function AdminApprovalsPage({
               gridTemplateColumns: "minmax(260px, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr) auto",
               gap: 12,
               padding: "0 12px",
-              fontSize: 12,
-              color: "#64748b",
-              fontWeight: 700,
               alignItems: "center",
             }}
           >
-            <div>{t(lang, "Item", "项目")}</div>
-            <div>{t(lang, "Lane", "审批道")}</div>
-            <div>{t(lang, "Waiting", "等待")}</div>
-            <div>{t(lang, "Risk", "风险")}</div>
-            <div>{t(lang, "Amount", "金额")}</div>
-            <div>{t(lang, "Action", "操作")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Item", "项目")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Lane", "审批道")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Waiting", "等待")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Risk", "风险")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Amount", "金额")}</div>
+            <div style={workbenchTableHeaderCellStyle}>{t(lang, "Action", "操作")}</div>
           </div>
           {visibleItems.map((item) => (
             <article
@@ -432,31 +430,31 @@ export default async function AdminApprovalsPage({
                 <div style={{ display: "grid", gap: 4 }}>
                   <div style={{ fontWeight: 800, color: "#0f172a" }}>{item.title}</div>
                   {item.subtitle ? (
-                    <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>{compactSubtitle(item.subtitle)}</div>
+                    <div style={{ ...workbenchTableCellSecondaryStyle, fontSize: 13 }}>{compactSubtitle(item.subtitle)}</div>
                   ) : null}
                 </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#475569" }}>
-                  <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155", fontWeight: 700 }}>
-                    {typeLabel(lang, item.type)}
-                  </span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <WorkbenchStatusChip label={typeLabel(lang, item.type)} tone="neutral" />
                   <span>{t(lang, "Submitted", "提交")}: {formatBusinessDateTime(new Date(item.createdAt))}</span>
                 </div>
               </div>
               <div style={{ display: "grid", gap: 6 }}>
-                <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1d4ed8", fontWeight: 700, fontSize: 12, width: "fit-content" }}>
-                  {laneLabel(lang, item.lane)}
-                </span>
-                <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", color: "#475569", fontWeight: 600, fontSize: 12, width: "fit-content" }}>
-                  {item.statusText}
-                </span>
+                <WorkbenchStatusChip label={laneLabel(lang, item.lane)} tone={item.lane === "MANAGER" ? "accent" : item.lane === "FINANCE" ? "warn" : "success"} strong />
+                <WorkbenchStatusChip label={item.statusText} tone="neutral" />
               </div>
-              <div style={{ fontSize: 13, color: item.overdue ? "#b45309" : "#475569", fontWeight: item.overdue ? 700 : 600 }}>
-                {item.overdue
-                  ? `${t(lang, "Overdue", "超时")} · ${item.waitingHours}h`
-                  : `${t(lang, "Waiting", "等待")} · ${item.waitingHours}h`}
+              <div>
+                <WorkbenchStatusChip
+                  label={item.overdue ? t(lang, "Overdue", "超时") : t(lang, "Waiting", "等待")}
+                  detail={`${item.waitingHours}h`}
+                  tone={item.overdue ? "warn" : "neutral"}
+                />
               </div>
               <div style={{ fontSize: 13, color: item.riskText ? "#9f1239" : "#64748b" }}>
-                {item.riskText ? item.riskText : t(lang, "No risk", "无风险")}
+                {item.riskText ? (
+                  <WorkbenchStatusChip label={item.riskText} tone="error" />
+                ) : (
+                  <WorkbenchStatusChip label={t(lang, "No risk", "无风险")} tone="success" />
+                )}
               </div>
               <div style={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>
                 {item.amountText ?? money(item.amount, item.currency)}

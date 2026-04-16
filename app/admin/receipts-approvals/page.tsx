@@ -48,6 +48,7 @@ import ImagePreviewWithFallback from "../_components/ImagePreviewWithFallback";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
 import WorkflowSourceBanner from "../_components/WorkflowSourceBanner";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
@@ -3480,15 +3481,9 @@ export async function ReceiptsApprovalsPageContent({
             : t(lang, "Choose one receipt from the queue, then complete the main review action on the right.", "先从队列中选择一张收据，再在右侧完成主要审核动作。")}
         </div>
         <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ ...tagStyle(mineQueue.length > 0 ? "ok" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {bilingualLabel("My next actions", "我待处理的")}: {mineQueue.length}
-          </span>
-          <span style={{ ...tagStyle(otherQueue.length > 0 ? "warn" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {bilingualLabel("Other open items", "其他待处理项")}: {otherQueue.length}
-          </span>
-          <span style={{ ...tagStyle(completedQueue.length > 0 ? "muted" : "muted"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-            {bilingualLabel("Completed history", "已完成历史")}: {completedQueue.length}
-          </span>
+          <WorkbenchStatusChip label={bilingualLabel("My next actions", "我待处理的")} detail={mineQueue.length} tone={mineQueue.length > 0 ? "success" : "neutral"} />
+          <WorkbenchStatusChip label={bilingualLabel("Other open items", "其他待处理项")} detail={otherQueue.length} tone={otherQueue.length > 0 ? "warn" : "neutral"} />
+          <WorkbenchStatusChip label={bilingualLabel("Completed history", "已完成历史")} detail={completedQueue.length} tone="neutral" />
         </div>
         {!isHistoryScreen && nextBestQueueRow ? (
           <div
@@ -3510,12 +3505,15 @@ export async function ReceiptsApprovalsPageContent({
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ ...tagStyle(queueStatusKind(nextBestQueueRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>
-                  {queueStatusLabel(lang, nextBestQueueRow.status, nextBestQueueRow.approval, roleCfg)}
-                </span>
-                <span style={{ ...tagStyle(queueRiskBadgeKind(nextBestQueueRow)), borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 600 }}>
-                  {queueRiskBadgeLabel(lang, nextBestQueueRow)}
-                </span>
+                <WorkbenchStatusChip
+                  label={queueStatusLabel(lang, nextBestQueueRow.status, nextBestQueueRow.approval, roleCfg)}
+                  tone={queueStatusKind(nextBestQueueRow.status) === "ok" ? "success" : queueStatusKind(nextBestQueueRow.status) === "warn" ? "warn" : queueStatusKind(nextBestQueueRow.status) === "err" ? "error" : "neutral"}
+                  strong
+                />
+                <WorkbenchStatusChip
+                  label={queueRiskBadgeLabel(lang, nextBestQueueRow)}
+                  tone={queueRiskBadgeKind(nextBestQueueRow) === "ok" ? "success" : queueRiskBadgeKind(nextBestQueueRow) === "warn" ? "warn" : queueRiskBadgeKind(nextBestQueueRow) === "err" ? "error" : "neutral"}
+                />
               </div>
             </div>
             <div style={{ color: "#475569", fontSize: 13 }}>{nextBestQueueReason}</div>
@@ -3846,9 +3844,10 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Receipt status", "收据状态")}</div>
                 <div style={{ marginTop: 4 }}>
-                  <span style={{ ...tagStyle(queueStatusKind(selectedRow.status)), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                    {queueStatusLabel(lang, selectedRow.status, selectedRow.approval, roleCfg)}
-                  </span>
+                  <WorkbenchStatusChip
+                    label={queueStatusLabel(lang, selectedRow.status, selectedRow.approval, roleCfg)}
+                    tone={queueStatusKind(selectedRow.status) === "ok" ? "success" : queueStatusKind(selectedRow.status) === "warn" ? "warn" : queueStatusKind(selectedRow.status) === "err" ? "error" : "neutral"}
+                  />
                 </div>
               </div>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
@@ -3875,11 +3874,14 @@ export async function ReceiptsApprovalsPageContent({
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Proof status", "凭证状态")}</div>
                 <div style={{ marginTop: 4 }}>
-                  <span style={{ ...tagStyle(selectedRow.paymentRecord && !selectedRow.paymentFileMissing ? "ok" : "err"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                    {selectedRow.paymentRecord && !selectedRow.paymentFileMissing
-                      ? t(lang, "Linked and usable", "已关联且可用")
-                      : t(lang, "Need proof fix", "需要修复凭证")}
-                  </span>
+                  <WorkbenchStatusChip
+                    label={
+                      selectedRow.paymentRecord && !selectedRow.paymentFileMissing
+                        ? t(lang, "Linked and usable", "已关联且可用")
+                        : t(lang, "Need proof fix", "需要修复凭证")
+                    }
+                    tone={selectedRow.paymentRecord && !selectedRow.paymentFileMissing ? "success" : "error"}
+                  />
                 </div>
               </div>
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, background: "#fff" }}>

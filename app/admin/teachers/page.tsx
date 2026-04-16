@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { TeachingLanguage } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import { Fragment } from "react";
 import SimpleModal from "../_components/SimpleModal";
 import TeacherCreateForm from "../_components/TeacherCreateForm";
 import TeacherCardExportForm from "../_components/TeacherCardExportForm";
 import TeacherFilterForm from "../_components/TeacherFilterForm";
 import NoticeBanner from "../_components/NoticeBanner";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
 import DeleteTeacherButtonClient from "./DeleteTeacherButtonClient";
 import {
   workbenchFilterPanelStyle,
@@ -15,6 +20,8 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
+
+const TEACHERS_FILTER_COOKIE = "adminTeachersPreferredFilters";
 
 function teachersSectionLinkStyle(background: string, border: string) {
   return {
@@ -56,6 +63,34 @@ function formatAlmaMater(text?: string | null) {
   return parts.length ? parts.join("\n") : "-";
 }
 
+function parseRememberedTeachersDesk(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const q = String(params.get("q") ?? "").trim();
+  const courseId = String(params.get("courseId") ?? "").trim();
+  const subjectId = String(params.get("subjectId") ?? "").trim();
+  const teachingLanguage = String(params.get("teachingLanguage") ?? "").trim();
+  const offlineMode = String(params.get("offlineMode") ?? "").trim();
+  const linked = String(params.get("linked") ?? "").trim();
+  const groupBy = String(params.get("groupBy") ?? "").trim();
+  const pageSize = String(params.get("pageSize") ?? "").trim() || "20";
+  const normalized = new URLSearchParams();
+  if (q) normalized.set("q", q);
+  if (courseId) normalized.set("courseId", courseId);
+  if (subjectId) normalized.set("subjectId", subjectId);
+  if (teachingLanguage) normalized.set("teachingLanguage", teachingLanguage);
+  if (offlineMode) normalized.set("offlineMode", offlineMode);
+  if (linked) normalized.set("linked", linked);
+  if (groupBy) normalized.set("groupBy", groupBy);
+  if (pageSize !== "20") normalized.set("pageSize", pageSize);
+  return { q, courseId, subjectId, teachingLanguage, offlineMode, linked, groupBy, pageSize, value: normalized.toString() };
+}
+
 export default async function TeachersPage({
   searchParams,
 }: {
@@ -67,18 +102,57 @@ export default async function TeachersPage({
     const v = sp?.[k];
     return Array.isArray(v) ? v[0] ?? "" : v ?? "";
   };
-  const filterQ = getParam("q");
-  const filterCourseId = getParam("courseId");
-  const filterSubjectId = getParam("subjectId");
-  const filterLanguage = getParam("teachingLanguage");
-  const filterOffline = getParam("offlineMode");
-  const filterLinked = getParam("linked");
-  const groupBy = getParam("groupBy");
-  const requestedPage = Math.max(1, Number.parseInt(getParam("page") || "1", 10) || 1);
-  const pageSizeRaw = Number.parseInt(getParam("pageSize") || "20", 10);
-  const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
+  const clearDesk = getParam("clearDesk") === "1";
   const msg = getParam("msg");
   const err = getParam("err");
+  const hasQParam = getParam("q") !== "";
+  const hasCourseIdParam = getParam("courseId") !== "";
+  const hasSubjectIdParam = getParam("subjectId") !== "";
+  const hasLanguageParam = getParam("teachingLanguage") !== "";
+  const hasOfflineParam = getParam("offlineMode") !== "";
+  const hasLinkedParam = getParam("linked") !== "";
+  const hasGroupByParam = getParam("groupBy") !== "";
+  const hasPageSizeParam = getParam("pageSize") !== "";
+  const cookieStore = await cookies();
+  const canResumeRememberedDesk =
+    !clearDesk &&
+    !hasQParam &&
+    !hasCourseIdParam &&
+    !hasSubjectIdParam &&
+    !hasLanguageParam &&
+    !hasOfflineParam &&
+    !hasLinkedParam &&
+    !hasGroupByParam &&
+    !hasPageSizeParam &&
+    !msg &&
+    !err;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedTeachersDesk(cookieStore.get(TEACHERS_FILTER_COOKIE)?.value ?? "")
+    : { q: "", courseId: "", subjectId: "", teachingLanguage: "", offlineMode: "", linked: "", groupBy: "", pageSize: "20", value: "" };
+  const filterQ = hasQParam ? getParam("q") : rememberedDesk.q;
+  const filterCourseId = hasCourseIdParam ? getParam("courseId") : rememberedDesk.courseId;
+  const filterSubjectId = hasSubjectIdParam ? getParam("subjectId") : rememberedDesk.subjectId;
+  const filterLanguage = hasLanguageParam ? getParam("teachingLanguage") : rememberedDesk.teachingLanguage;
+  const filterOffline = hasOfflineParam ? getParam("offlineMode") : rememberedDesk.offlineMode;
+  const filterLinked = hasLinkedParam ? getParam("linked") : rememberedDesk.linked;
+  const groupBy = hasGroupByParam ? getParam("groupBy") : rememberedDesk.groupBy;
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (filterQ) params.set("q", filterQ);
+    if (filterCourseId) params.set("courseId", filterCourseId);
+    if (filterSubjectId) params.set("subjectId", filterSubjectId);
+    if (filterLanguage) params.set("teachingLanguage", filterLanguage);
+    if (filterOffline) params.set("offlineMode", filterOffline);
+    if (filterLinked) params.set("linked", filterLinked);
+    if (groupBy) params.set("groupBy", groupBy);
+    const normalizedPageSize = hasPageSizeParam ? getParam("pageSize") : rememberedDesk.pageSize;
+    if (normalizedPageSize && normalizedPageSize !== "20") params.set("pageSize", normalizedPageSize);
+    return params.toString();
+  })();
+  const requestedPage = Math.max(1, Number.parseInt(getParam("page") || "1", 10) || 1);
+  const pageSizeRaw = Number.parseInt((hasPageSizeParam ? getParam("pageSize") : rememberedDesk.pageSize) || "20", 10);
+  const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
 
   const teacherWhere: any = {};
   const andClauses: any[] = [];
@@ -200,6 +274,12 @@ export default async function TeachersPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={TEACHERS_FILTER_COOKIE}
+        storageKey="adminTeachersPreferredFilters"
+        value={rememberedDeskValue}
+      />
+      <WorkbenchScrollMemoryClient storageKey="adminTeachersScroll" />
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Teachers workbench", "老师工作台")}</div>
@@ -271,6 +351,14 @@ export default async function TeachersPage({
           </a>
         </div>
       </section>
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last teacher filters.", "已恢复你上次的老师筛选。")}
+          description={t(lang, "Use the shortcut on the right if you want to return to the default teacher desk.", "如果你想回到默认老师工作台，可直接用右侧入口。")}
+          actions={[{ href: "/admin/teachers?clearDesk=1", label: t(lang, "Back to default desk", "回到默认工作台") }]}
+        />
+      ) : null}
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={decodeURIComponent(err)} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={decodeURIComponent(msg)} /> : null}
 
@@ -382,6 +470,7 @@ export default async function TeachersPage({
             linked: t(lang, "Linked", "已绑定"),
             unlinked: t(lang, "Not linked", "未绑定"),
           }}
+          resetHref="/admin/teachers?clearDesk=1"
         />
         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#555", marginTop: 6 }}>
           <div>
@@ -419,8 +508,10 @@ export default async function TeachersPage({
               >
                 {t(lang, "Next", "下一页")}
               </a>
+              <a href="/admin/teachers?clearDesk=1">{t(lang, "Back to default desk", "回到默认工作台")}</a>
             </>
           ) : null}
+          {groupBy ? <a href="/admin/teachers?clearDesk=1">{t(lang, "Back to default desk", "回到默认工作台")}</a> : null}
         </div>
       </div>
 
@@ -463,8 +554,15 @@ export default async function TeachersPage({
                       ? `${tch.subjectCourse.course.name}-${tch.subjectCourse.name}`
                       : "-"}
                   </td>
-                  <td>{languageLabel(lang, tch.teachingLanguage, tch.teachingLanguageOther)}</td>
-                  <td>{offlineLabel(lang, tch.offlineShanghai, tch.offlineSingapore)}</td>
+                  <td>
+                    <WorkbenchStatusChip label={languageLabel(lang, tch.teachingLanguage, tch.teachingLanguageOther)} tone="info" />
+                  </td>
+                  <td>
+                    <WorkbenchStatusChip
+                      label={offlineLabel(lang, tch.offlineShanghai, tch.offlineSingapore)}
+                      tone={tch.offlineShanghai || tch.offlineSingapore ? "warn" : "neutral"}
+                    />
+                  </td>
                   <td>{tch.yearsExperience ?? "-"}</td>
                   <td>{tch.nationality ?? "-"}</td>
                   <td style={{ whiteSpace: "pre-line" }}>{formatAlmaMater(tch.almaMater)}</td>
@@ -486,11 +584,12 @@ export default async function TeachersPage({
                   </td>
                   <td>
                     {tch.users[0]?.email ? (
-                      <span style={{ color: "#087" }}>
-                        {t(lang, "Linked", "已绑定")}: {tch.users[0].email}
-                      </span>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <WorkbenchStatusChip label={t(lang, "Linked", "已绑定")} tone="success" />
+                        <span style={{ fontSize: 12, color: "#166534", overflowWrap: "anywhere" }}>{tch.users[0].email}</span>
+                      </div>
                     ) : (
-                      <span style={{ color: "#b00" }}>{t(lang, "Not linked", "未绑定")}</span>
+                      <WorkbenchStatusChip label={t(lang, "Not linked", "未绑定")} tone="error" />
                     )}
                     <div>
                       <a

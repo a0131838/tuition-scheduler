@@ -62,6 +62,31 @@ export function workbenchStickyPanelStyle(zIndex = 5, top = 12): CSSProperties {
   };
 }
 
+export const workbenchTableHeaderCellStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#64748b",
+  fontWeight: 700,
+  letterSpacing: 0.2,
+};
+
+export const workbenchTableCellSecondaryStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#64748b",
+  lineHeight: 1.45,
+};
+
+export const workbenchListCardStyle: CSSProperties = {
+  border: "1px solid #dbe4f0",
+  borderRadius: 14,
+  background: "#ffffff",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+};
+
+export const workbenchListSectionTitleStyle: CSSProperties = {
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
 export function workbenchMetricCardStyle(tone: MetricTone): CSSProperties {
   const config = metricTones[tone];
   return {

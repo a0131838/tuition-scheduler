@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r68` (admin workbench UI consistency, queue continuity, and anchor-scroll fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r69` (admin UX patterns phase 2: remembered desks, shared status chips, steadier split workbenches), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -63,6 +63,23 @@
   - verify work-map anchor links now move to the target section inside the admin scroll container
   - verify the main tested pages do not show obvious horizontal overflow at narrow widths
   - verify shared result banners appear on approvals/todos/tickets/expense/feedback/receipt workbenches where applicable
+
+## 2026-04-16-r69 Ready
+
+- Scope: add the second layer of admin UX consistency improvements for remembered desks, shared status chips, clearer form sections, and steadier split workbenches.
+- Business impact:
+  - tickets, teachers, and classes now remember their desk filters more consistently, while explicit `Back to default desk` actions clear that remembered state instead of trapping users in stale filters
+  - students now also remember scroll position, reducing rescanning when returning to the list
+  - approvals, tickets, and receipts now use clearer shared status chips, which makes state, risk, and queue information faster to compare across pages
+  - expense claims now uses a shared split-view pattern for the review and finance workbenches, making the right-side detail area feel steadier while working through longer left-side queues
+  - ticket support links are slightly de-cluttered so the main action path is clearer and secondary reference links are easier to ignore unless needed
+  - no approval logic, finance rules, receipt logic, scheduling rules, or ticket business rules changed
+- Validation:
+  - `npm run build`
+  - verify ticket, teacher, and class desks resume remembered filters only on normal return and clear properly through the default-desk links
+  - verify approvals/tickets/receipts show the shared status-chip treatment
+  - verify expense claims split panes remain stable while moving through queue items
+  - verify students list now preserves scroll position on return
 
 ## 2026-04-15-r66 Ready
 

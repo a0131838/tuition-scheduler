@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import AdminStudentsClient from "./AdminStudentsClient";
 import {
   workbenchFilterPanelStyle,
@@ -289,6 +290,7 @@ export default async function StudentsPage({
         storageKey="adminStudentsPreferredView"
         value={rememberedDeskValue}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminStudentsScroll" />
       <div style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>

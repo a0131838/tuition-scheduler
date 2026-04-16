@@ -10,6 +10,7 @@ export default function TeacherFilterForm({
   subjects,
   initial,
   labels,
+  resetHref = "/admin/teachers",
 }: {
   courses: CourseOption[];
   subjects: SubjectOption[];
@@ -49,6 +50,7 @@ export default function TeacherFilterForm({
     linked: string;
     unlinked: string;
   };
+  resetHref?: string;
 }) {
   const [courseId, setCourseId] = useState(initial.courseId);
   const [subjectId, setSubjectId] = useState(initial.subjectId);
@@ -118,7 +120,7 @@ export default function TeacherFilterForm({
           <option value="linked">{labels.groupLinked}</option>
         </select>
         <button type="submit" data-apply-submit="1">{labels.apply}</button>
-        <a href="/admin/teachers">{labels.reset}</a>
+        <a href={resetHref}>{labels.reset}</a>
       </div>
     </form>
   );

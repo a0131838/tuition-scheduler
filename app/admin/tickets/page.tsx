@@ -16,20 +16,28 @@ import {
 import { getOverdueTicketFollowupGroups } from "@/lib/ticket-followups";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { formatSchedulingCoordinationSystemText } from "@/lib/scheduling-coordination";
 import TicketStatusSubmitButton from "@/app/admin/_components/TicketStatusSubmitButton";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchFormSection from "../_components/WorkbenchFormSection";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
+  workbenchTableCellSecondaryStyle,
+  workbenchTableHeaderCellStyle,
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
   workbenchStickyPanelStyle,
 } from "../_components/workbenchStyles";
+
+const TICKET_FILTER_COOKIE = "adminTicketsPreferredFilters";
 
 function ticketSectionLinkStyle(background: string, border: string) {
   return {
@@ -62,6 +70,51 @@ function appendQuery(path: string, params: Record<string, string>) {
     url.searchParams.set(key, value);
   }
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function parseRememberedTicketDesk(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const q = normalizeTicketString(String(params.get("q") ?? ""));
+  const status = String(params.get("status") ?? "").trim();
+  const owner = String(params.get("owner") ?? "").trim();
+  const type = String(params.get("type") ?? "").trim();
+  const focus = String(params.get("focus") ?? "").trim();
+  const normalized = new URLSearchParams();
+  if (q) normalized.set("q", q);
+  if (status) normalized.set("status", status);
+  if (owner) normalized.set("owner", owner);
+  if (type) normalized.set("type", type);
+  if (focus) normalized.set("focus", focus);
+  return {
+    q,
+    status,
+    owner,
+    type,
+    focus,
+    value: normalized.toString(),
+  };
+}
+
+function ticketStatusTone(status: string) {
+  if (status === "Completed") return "success" as const;
+  if (status === "Cancelled") return "warn" as const;
+  if (status === "Exception") return "error" as const;
+  if (status === "Resolved") return "info" as const;
+  return "neutral" as const;
+}
+
+function ticketPriorityTone(priority: string) {
+  const value = normalizeTicketPriorityValue(priority);
+  if (value.includes("紧急") || value.toLowerCase().includes("urgent")) return "error" as const;
+  if (value.includes("高") || value.toLowerCase().includes("high")) return "warn" as const;
+  if (value.includes("低") || value.toLowerCase().includes("low")) return "neutral" as const;
+  return "info" as const;
 }
 
 function proofItems(proof: string | null | undefined) {
@@ -216,20 +269,42 @@ async function deleteTokenAction(formData: FormData) {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; owner?: string; type?: string; err?: string; tok?: string; focus?: string; ok?: string; fields?: string; clearDesk?: string }>;
 }) {
   const adminUser = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
-  const q = String(sp?.q ?? "").trim();
-  const status = String(sp?.status ?? "").trim();
-  const owner = String(sp?.owner ?? "").trim();
-  const type = String(sp?.type ?? "").trim();
-  const focus = String(sp?.focus ?? "").trim();
+  const clearDesk = String(sp?.clearDesk ?? "").trim() === "1";
+  const hasQParam = typeof sp?.q === "string";
+  const hasStatusParam = typeof sp?.status === "string";
+  const hasOwnerParam = typeof sp?.owner === "string";
+  const hasTypeParam = typeof sp?.type === "string";
+  const hasFocusParam = typeof sp?.focus === "string";
   const err = String(sp?.err ?? "").trim();
   const ok = String(sp?.ok ?? "").trim();
   const fields = String(sp?.fields ?? "").trim();
   const tokenSaved = sp?.tok === "1";
+  const cookieStore = await cookies();
+  const canResumeRememberedDesk =
+    !clearDesk && !hasQParam && !hasStatusParam && !hasOwnerParam && !hasTypeParam && !hasFocusParam && !err && !ok && !tokenSaved;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedTicketDesk(cookieStore.get(TICKET_FILTER_COOKIE)?.value ?? "")
+    : { q: "", status: "", owner: "", type: "", focus: "", value: "" };
+  const q = hasQParam ? normalizeTicketString(String(sp?.q ?? "")) : rememberedDesk.q;
+  const status = hasStatusParam ? String(sp?.status ?? "").trim() : rememberedDesk.status;
+  const owner = hasOwnerParam ? String(sp?.owner ?? "").trim() : rememberedDesk.owner;
+  const type = hasTypeParam ? String(sp?.type ?? "").trim() : rememberedDesk.type;
+  const focus = hasFocusParam ? String(sp?.focus ?? "").trim() : rememberedDesk.focus;
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+    if (owner) params.set("owner", owner);
+    if (type) params.set("type", type);
+    if (focus) params.set("focus", focus);
+    return params.toString();
+  })();
   const canHardDeleteTickets = isStrictSuperAdmin(adminUser);
 
   const [rows, tokens, overdueGroups] = await Promise.all([
@@ -276,9 +351,10 @@ export default async function AdminTicketsPage({
 
   const activeToken = tokens.find((x) => x.isActive && (!x.expiresAt || x.expiresAt.getTime() > Date.now()));
   const intakeLink = activeToken ? `/tickets/intake/${activeToken.token}` : "";
-  const backHref = `/admin/tickets?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}&owner=${encodeURIComponent(owner)}&type=${encodeURIComponent(type)}&focus=${encodeURIComponent(focus)}`;
+  const backHref = `/admin/tickets?q=${encodeURIComponent(q ?? "")}&status=${encodeURIComponent(status ?? "")}&owner=${encodeURIComponent(owner ?? "")}&type=${encodeURIComponent(type ?? "")}&focus=${encodeURIComponent(focus ?? "")}`;
   const overdueTicketCount = overdueGroups.reduce((sum, group) => sum + group.count, 0);
   const activeTicketCount = rows.filter((row) => !["Completed", "Cancelled"].includes(row.status)).length;
+  const activeFilterCount = [q, status, owner, type, focus].filter(Boolean).length;
   const ticketErrorMessage =
     err === "status-flow" ? t(lang, "Invalid status transition.", "状态流转不允许。")
     : err === "need-note" ? t(lang, "Completion note is required when marking completed.", "标记完成时必须填写完成说明。")
@@ -300,6 +376,11 @@ export default async function AdminTicketsPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={TICKET_FILTER_COOKIE}
+        storageKey="adminTicketsPreferredFilters"
+        value={rememberedDeskValue}
+      />
       <WorkbenchScrollMemoryClient storageKey="adminTicketsScroll" />
       <section style={workbenchHeroStyle("amber")}>
         <div style={{ display: "grid", gap: 6 }}>
@@ -374,6 +455,14 @@ export default async function AdminTicketsPage({
           </a>
         </div>
       </section>
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last ticket filters.", "已恢复你上次的工单筛选。")}
+          description={t(lang, "Use the shortcut on the right if you want to return to the default desk.", "如果你想回到默认工单台，可直接用右侧入口。")}
+          actions={[{ href: "/admin/tickets?clearDesk=1", label: t(lang, "Back to default desk", "回到默认工作台") }]}
+        />
+      ) : null}
       {ticketErrorMessage ? (
         <WorkbenchActionBanner
           tone="error"
@@ -411,20 +500,31 @@ export default async function AdminTicketsPage({
           tone="warn"
           title={t(lang, "Management focus is active", "当前已开启管理介入视图")}
           description={t(lang, "This view narrows the desk to exception, urgent, and overdue unfinished tickets.", "这个视图会把工作台收窄到异常、紧急和逾期未完成工单。")}
-          actions={[{ href: "/admin/tickets", label: t(lang, "Back to all tickets", "回到全部工单") }]}
+          actions={[{ href: "/admin/tickets?clearDesk=1", label: t(lang, "Back to all tickets", "回到全部工单") }]}
         />
       ) : null}
-      <div id="ticket-overdue-follow-up" style={{ border: "1px solid #fecaca", background: "#fff1f2", borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <WorkbenchFormSection
+        title={t(lang, "Overdue follow-up queue", "超时催办清单")}
+        description={
+          overdueGroups.length === 0
+            ? t(lang, "No urgent follow-up is blocking the ticket desk right now.", "当前没有超时催办堵住工单工作台。")
+            : t(lang, "Start here when you need to unblock stuck owners before going back to the full ticket list.", "如果有人卡住了工单节奏，先从这里催办，再回到完整工单列表。")
+        }
+        helper={
+          overdueGroups.length === 0
+            ? t(lang, "No overdue tickets", "当前无超时工单")
+            : t(
+                lang,
+                `${overdueGroups.reduce((sum, group) => sum + group.count, 0)} overdue across ${overdueGroups.length} owners`,
+                `${overdueGroups.reduce((sum, group) => sum + group.count, 0)} 张超时工单，涉及 ${overdueGroups.length} 位负责人`
+              )
+        }
+        tone="warn"
+        style={{ marginBottom: 12 }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-          <div style={{ fontWeight: 700 }}>{t(lang, "Overdue follow-up queue", "超时催办清单")}</div>
           <div style={{ fontSize: 12, color: "#7f1d1d" }}>
-            {overdueGroups.length === 0
-              ? t(lang, "No overdue tickets.", "当前无超时工单。")
-              : t(
-                  lang,
-                  `${overdueGroups.reduce((sum, group) => sum + group.count, 0)} overdue tickets across ${overdueGroups.length} owners`,
-                  `${overdueGroups.reduce((sum, group) => sum + group.count, 0)} 张超时工单，涉及 ${overdueGroups.length} 位负责人`
-                )}
+            {t(lang, "Keep this section narrow and action-first. Once the overdue cards are handled, continue below in the filtered work list.", "这个区块只做催办；处理完超时卡片后，继续看下方筛选后的工单列表。")}
           </div>
         </div>
         {overdueGroups.length === 0 ? (
@@ -455,17 +555,21 @@ export default async function AdminTicketsPage({
             ))}
           </div>
         )}
-      </div>
+      </WorkbenchFormSection>
 
-      <div id="intake-link-management" style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 12, background: "#f8fafc" }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t(lang, "Intake link management", "录入链接管理")}</div>
-        <div style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>
-          {t(lang, "The label becomes the default intake owner for this link and is also used to filter that person's ticket board. For example, use", "标签会作为该链接默认录入人，并用于个人工单看板过滤。比如给")}
-          {" "}
-          <b>Emily</b>
-          {" "}
-          {t(lang, "when creating Emily's link.", "建链接时，标签直接填 Emily。")}
-        </div>
+      <div id="intake-link-management">
+        <WorkbenchFormSection
+          title={t(lang, "Intake link management", "录入链接管理")}
+          description={
+            <>
+              {t(lang, "The label becomes the default intake owner for this link and is also used to filter that person's ticket board. For example, use", "标签会作为该链接默认录入人，并用于个人工单看板过滤。比如给")}{" "}
+              <b>Emily</b>{" "}
+              {t(lang, "when creating Emily's link.", "建链接时，标签直接填 Emily。")}
+            </>
+          }
+          helper={activeToken ? t(lang, "One active intake link is available", "当前已有一个可用录入链接") : t(lang, "No active intake link right now", "当前没有可用录入链接")}
+          style={{ marginBottom: 12 }}
+        >
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           {intakeLink ? (
             <Link scroll={false} href={intakeLink} target="_blank">
@@ -474,22 +578,29 @@ export default async function AdminTicketsPage({
           ) : (
             <span style={{ color: "#92400e" }}>{t(lang, "No active intake link.", "暂无可用录入链接。")}</span>
           )}
-          <Link scroll={false} href="/admin/tickets/handover">
-            {t(lang, "Daily Handover", "每日交接")}
-          </Link>
-          <Link scroll={false} href="/admin/tickets/sop">
-            {t(lang, "SOP One Pager", "SOP一页纸")}
-          </Link>
-          <Link
-            scroll={false}
-            href="/admin/tickets/sop"
-            style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 8, padding: "6px 10px", fontWeight: 700 }}
-          >
-            {t(lang, "SOP for customer support", "给客服看的 SOP")}
-          </Link>
-          <Link scroll={false} href="/admin/tickets/archived">
-            {t(lang, "Archived Tickets", "已归档工单")}
-          </Link>
+          <details style={{ display: "inline-block" }}>
+            <summary style={{ cursor: "pointer", color: "#1d4ed8", fontWeight: 700 }}>
+              {t(lang, "More support links", "更多辅助入口")}
+            </summary>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <Link scroll={false} href="/admin/tickets/handover">
+                {t(lang, "Daily Handover", "每日交接")}
+              </Link>
+              <Link scroll={false} href="/admin/tickets/sop">
+                {t(lang, "SOP One Pager", "SOP一页纸")}
+              </Link>
+              <Link
+                scroll={false}
+                href="/admin/tickets/sop"
+                style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 8, padding: "6px 10px", fontWeight: 700 }}
+              >
+                {t(lang, "SOP for customer support", "给客服看的 SOP")}
+              </Link>
+              <Link scroll={false} href="/admin/tickets/archived">
+                {t(lang, "Archived Tickets", "已归档工单")}
+              </Link>
+            </div>
+          </details>
         </div>
         <form action={createIntakeTokenAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
           <input name="label" placeholder={t(lang, "Label", "标签")} />
@@ -545,38 +656,63 @@ export default async function AdminTicketsPage({
             </tbody>
           </table>
         </div>
+        </WorkbenchFormSection>
       </div>
 
-      <form id="ticket-filters" method="GET" className="ts-filter-bar" style={{ ...workbenchFilterPanelStyle, marginBottom: 12 }}>
-        <input name="q" defaultValue={q} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
-        <select name="status" defaultValue={status}>
-          <option value="">{t(lang, "All Status", "全部状态")}</option>
-          {TICKET_STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(lang, o.en, o.zh)}
-            </option>
-          ))}
-        </select>
-        <select name="owner" defaultValue={owner}>
-          <option value="">{t(lang, "All Owners", "全部负责人")}</option>
-          {TICKET_OWNER_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(lang, o.en, o.zh)}
-            </option>
-          ))}
-        </select>
-        <select name="type" defaultValue={type}>
-          <option value="">{t(lang, "All Types", "全部类型")}</option>
-          {TICKET_TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(lang, o.en, o.zh)}
-            </option>
-          ))}
-        </select>
-        <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-        <Link scroll={false} href="/admin/tickets">{t(lang, "Clear", "清空")}</Link>
-        <Link scroll={false} href="/admin/tickets?focus=mgmt">{t(lang, "Management focus", "管理介入")}</Link>
-      </form>
+      <WorkbenchFormSection
+        title={t(lang, "Ticket filters", "工单筛选")}
+        description={t(lang, "Use search and one or two filters first. Keep this area light during normal queue work so you do not over-filter yourself into an empty desk.", "建议先用搜索和一两个筛选条件，不要一次叠太多过滤，避免把工作台筛到看起来像空的。")}
+        helper={
+          activeFilterCount > 0
+            ? t(lang, `${activeFilterCount} filter(s) active`, `${activeFilterCount} 个筛选生效中`)
+            : t(lang, "Default full work list", "当前是默认完整列表")
+        }
+        tone={activeFilterCount > 0 ? "info" : "default"}
+        style={{ marginBottom: 12 }}
+      >
+        <form id="ticket-filters" method="GET" className="ts-filter-bar" style={workbenchFilterPanelStyle}>
+          <input name="q" defaultValue={q ?? ""} placeholder={t(lang, "Search ticket/student/teacher", "搜索工单号/学生/老师")} />
+          <select name="status" defaultValue={status ?? ""}>
+            <option value="">{t(lang, "All Status", "全部状态")}</option>
+            {TICKET_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(lang, o.en, o.zh)}
+              </option>
+            ))}
+          </select>
+          <select name="owner" defaultValue={owner ?? ""}>
+            <option value="">{t(lang, "All Owners", "全部负责人")}</option>
+            {TICKET_OWNER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(lang, o.en, o.zh)}
+              </option>
+            ))}
+          </select>
+          <select name="type" defaultValue={type ?? ""}>
+            <option value="">{t(lang, "All Types", "全部类型")}</option>
+            {TICKET_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(lang, o.en, o.zh)}
+              </option>
+            ))}
+          </select>
+          <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
+          <Link scroll={false} href="/admin/tickets?clearDesk=1">{t(lang, "Clear", "清空")}</Link>
+          <Link scroll={false} href="/admin/tickets?focus=mgmt">{t(lang, "Management focus", "管理介入")}</Link>
+        </form>
+      </WorkbenchFormSection>
+
+      {rows.length === 0 ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "No tickets match the current desk filters.", "当前筛选下没有工单。")}
+          description={t(lang, "Try clearing the filters first, then reopen management focus only if you still need it.", "建议先清空筛选，再按需要重新切回管理介入视图。")}
+          actions={[
+            { href: "/admin/tickets?clearDesk=1", label: t(lang, "Back to default desk", "回到默认工作台"), emphasis: "primary" },
+            { href: "/admin/tickets?focus=mgmt", label: t(lang, "Management focus", "管理介入") },
+          ]}
+        />
+      ) : null}
 
       <div id="ticket-list" className="table-scroll">
         <table cellPadding={8} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1030, tableLayout: "fixed" }}>
@@ -595,17 +731,17 @@ export default async function AdminTicketsPage({
           </colgroup>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              <th align="left">Ticket</th>
-              <th align="left">{t(lang, "Student", "学生")}</th>
-              <th align="left">{t(lang, "Source", "来源")}</th>
-              <th align="left">{t(lang, "Type", "类型")}</th>
-              <th align="left">{t(lang, "Priority", "优先级")}</th>
-              <th align="left">{t(lang, "Status", "状态")}</th>
-              <th align="left">{t(lang, "Owner", "负责人")}</th>
-              <th align="left">SLA</th>
-              <th align="left">{t(lang, "Situation", "情况")}</th>
-              <th align="left">{t(lang, "Proof", "证据")}</th>
-              <th align="left">{t(lang, "Action", "操作")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>Ticket</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Student", "学生")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Source", "来源")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Type", "类型")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Priority", "优先级")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Status", "状态")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Owner", "负责人")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>SLA</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Situation", "情况")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Proof", "证据")}</th>
+              <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Action", "操作")}</th>
             </tr>
           </thead>
           <tbody>
@@ -620,21 +756,37 @@ export default async function AdminTicketsPage({
                 </td>
                 <td>
                   <div>{r.studentName}</div>
-                  <div style={{ color: "#64748b", fontSize: 12 }}>{formatBusinessDateTime(r.createdAt)}</div>
+                  <div style={workbenchTableCellSecondaryStyle}>{formatBusinessDateTime(r.createdAt)}</div>
                 </td>
-                <td>{r.source}</td>
-                <td>{normalizeTicketTypeValue(r.type)}</td>
-                <td>{normalizeTicketPriorityValue(r.priority)}</td>
                 <td>
-                  <div>{r.status}</div>
+                  <div>{r.source}</div>
+                  <div style={workbenchTableCellSecondaryStyle}>{t(lang, "Intake source", "录入来源")}</div>
+                </td>
+                <td>
+                  <WorkbenchStatusChip label={normalizeTicketTypeValue(r.type)} tone="info" />
+                </td>
+                <td>
+                  <WorkbenchStatusChip label={normalizeTicketPriorityValue(r.priority)} tone={ticketPriorityTone(r.priority)} />
+                </td>
+                <td>
+                  <WorkbenchStatusChip label={r.status} tone={ticketStatusTone(r.status)} strong />
                   {r.completedAt ? (
-                    <div style={{ fontSize: 12, color: "#166534" }}>
+                    <div style={{ ...workbenchTableCellSecondaryStyle, color: "#166534" }}>
                       {t(lang, "Done At", "完成时间")}: {formatBusinessDateTime(r.completedAt)}
                     </div>
                   ) : null}
                 </td>
                 <td>{r.owner ?? "-"}</td>
-                <td>{r.slaDue ? formatBusinessDateTime(r.slaDue) : "-"}</td>
+                <td>
+                  {r.slaDue ? (
+                    <WorkbenchStatusChip
+                      label={formatBusinessDateTime(r.slaDue)}
+                      tone={r.slaDue.getTime() < Date.now() && !["Completed", "Cancelled"].includes(r.status) ? "error" : "neutral"}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
                 <td style={{ whiteSpace: "normal", lineHeight: 1.35 }}>
                   <div style={{ display: "grid", gap: 4 }}>
                     <div><b>{t(lang, "Current issue", "当前问题")}</b>: <span style={{ whiteSpace: "pre-wrap" }}>{situation.currentIssue}</span></div>
@@ -646,7 +798,7 @@ export default async function AdminTicketsPage({
                   {proofItems(r.proof).length === 0 ? (
                     "-"
                   ) : (
-                    <div>{t(lang, `${proofItems(r.proof).length} files`, `${proofItems(r.proof).length} 份文件`)}</div>
+                    <WorkbenchStatusChip label={t(lang, `${proofItems(r.proof).length} files`, `${proofItems(r.proof).length} 份文件`)} tone="success" />
                   )}
                 </td>
                 <td>

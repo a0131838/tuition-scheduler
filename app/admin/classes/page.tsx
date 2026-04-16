@@ -1,9 +1,13 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import SimpleModal from "../_components/SimpleModal";
 import ClassCreateForm from "../_components/ClassCreateForm";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import NoticeBanner from "../_components/NoticeBanner";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -11,6 +15,8 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
+
+const CLASSES_FILTER_COOKIE = "adminClassesPreferredFilters";
 
 function classesSectionLinkStyle(background: string, border: string) {
   return {
@@ -27,20 +33,51 @@ function classesSectionLinkStyle(background: string, border: string) {
   } as const;
 }
 
+function parseRememberedClassesDesk(raw: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const studentQ = String(params.get("studentQ") ?? "").trim();
+  const pageSize = String(params.get("pageSize") ?? "").trim() || "20";
+  const normalized = new URLSearchParams();
+  if (studentQ) normalized.set("studentQ", studentQ);
+  if (pageSize !== "20") normalized.set("pageSize", pageSize);
+  return { studentQ, pageSize, value: normalized.toString() };
+}
+
 export default async function ClassesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ msg?: string; err?: string; page?: string; pageSize?: string; studentQ?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; page?: string; pageSize?: string; studentQ?: string; clearDesk?: string }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
+  const clearDesk = sp?.clearDesk === "1";
+  const hasStudentQParam = typeof sp?.studentQ === "string";
+  const hasPageSizeParam = typeof sp?.pageSize === "string";
+  const cookieStore = await cookies();
+  const canResumeRememberedDesk = !clearDesk && !hasStudentQParam && !hasPageSizeParam && !msg && !err;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedClassesDesk(cookieStore.get(CLASSES_FILTER_COOKIE)?.value ?? "")
+    : { studentQ: "", pageSize: "20", value: "" };
   const requestedPage = Math.max(1, Number.parseInt(sp?.page ?? "1", 10) || 1);
-  const pageSizeRaw = Number.parseInt(sp?.pageSize ?? "20", 10);
+  const pageSizeRaw = Number.parseInt((hasPageSizeParam ? sp?.pageSize : rememberedDesk.pageSize) ?? "20", 10);
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
-  const studentQ = String(sp?.studentQ ?? "").trim();
+  const studentQ = String((hasStudentQParam ? sp?.studentQ : rememberedDesk.studentQ) ?? "").trim();
   const studentQNorm = studentQ.toLowerCase();
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (studentQ) params.set("studentQ", studentQ);
+    if (pageSize !== 20) params.set("pageSize", String(pageSize));
+    return params.toString();
+  })();
   const formatId = (prefix: string, id: string) =>
     `${prefix}-${id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id}`;
   const classInclude = {
@@ -103,6 +140,12 @@ export default async function ClassesPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={CLASSES_FILTER_COOKIE}
+        storageKey="adminClassesPreferredFilters"
+        value={rememberedDeskValue}
+      />
+      <WorkbenchScrollMemoryClient storageKey="adminClassesScroll" />
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Classes workbench", "班级工作台")}</div>
@@ -172,6 +215,14 @@ export default async function ClassesPage({
           </a>
         </div>
       </section>
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last classes view.", "已恢复你上次的班级视图。")}
+          description={t(lang, "Use the shortcut on the right if you want to return to the default class desk.", "如果你想回到默认班级工作台，可直接用右侧入口。")}
+          actions={[{ href: "/admin/classes?clearDesk=1", label: t(lang, "Back to default desk", "回到默认工作台") }]}
+        />
+      ) : null}
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
@@ -342,7 +393,7 @@ export default async function ClassesPage({
                         style={{ minWidth: 260 }}
                       />
                       <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-                      <a href={`/admin/classes?page=${page}&pageSize=${pageSize}`}>{t(lang, "Clear", "清除")}</a>
+                      <a href="/admin/classes?clearDesk=1">{t(lang, "Clear", "清除")}</a>
                     </form>
                     {oneOnOneRows.length === 0 ? (
                       <div style={{ color: "#999", marginBottom: 10 }}>{t(lang, "No matching students.", "没有匹配的学生。")}</div>
@@ -480,5 +531,3 @@ export default async function ClassesPage({
     </div>
   );
 }
-
-

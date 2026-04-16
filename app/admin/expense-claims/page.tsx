@@ -33,7 +33,10 @@ import path from 'path';
 import { BUSINESS_UPLOAD_PREFIX, storedBusinessFileExists } from '@/lib/business-file-storage';
 import RememberedWorkbenchQueryClient from '../_components/RememberedWorkbenchQueryClient';
 import WorkbenchActionBanner from '../_components/WorkbenchActionBanner';
+import WorkbenchFormSection from '../_components/WorkbenchFormSection';
 import WorkbenchScrollMemoryClient from '../_components/WorkbenchScrollMemoryClient';
+import WorkbenchSplitView from '../_components/WorkbenchSplitView';
+import WorkbenchStatusChip from '../_components/WorkbenchStatusChip';
 import WorkflowSourceBanner from '../_components/WorkflowSourceBanner';
 import {
   workbenchFilterPanelStyle,
@@ -1093,15 +1096,10 @@ export default async function AdminExpenseClaimsPage({
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gap: 16,
-            gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
-            alignItems: 'start',
-          }}
-        >
-          <section style={{ border: '1px solid #bfdbfe', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+        <WorkbenchSplitView
+          id="expense-review"
+          left={
+            <section style={{ border: '1px solid #bfdbfe', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
             <div style={{ padding: '12px 14px', borderBottom: '1px solid #dbeafe', fontWeight: 700 }}>
               {t(lang, 'Submitted queue', '待审批队列')}
             </div>
@@ -1157,24 +1155,24 @@ export default async function AdminExpenseClaimsPage({
                   <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
                   <a href={buildExpenseClaimsHref({ archived: '1' })}>{t(lang, 'Open history view', '打开历史视图')}</a>
                 </div>
-              </div>
-            )}
-          </section>
-
-          <section
-            style={{
-              border: '1px solid #bfdbfe',
-              borderRadius: 12,
-              background: '#fff',
-              padding: 16,
-              display: 'grid',
-              gap: 12,
-              alignSelf: 'start',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontWeight: 700 }}>{t(lang, 'Selected claim', '当前处理项')}</div>
+                </div>
+              )}
+            </section>
+          }
+          right={
+            <section
+              style={{
+                border: '1px solid #bfdbfe',
+                borderRadius: 12,
+                background: '#fff',
+                padding: 16,
+                display: 'grid',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{t(lang, 'Selected claim', '当前处理项')}</div>
                 <div style={{ color: '#475569', fontSize: 14 }}>
                   {selectedReviewClaim
                     ? t(lang, 'Review one claim at a time with the attachment and next action together.', '每次只审核一条，附件和下一步动作放在一起。')
@@ -1229,7 +1227,13 @@ export default async function AdminExpenseClaimsPage({
                     <div><strong>{t(lang, 'Date', '日期')}:</strong> {formatUTCDateOnly(selectedReviewClaim.expenseDate)}</div>
                     <div><strong>{t(lang, 'Type', '类型')}:</strong> {getExpenseTypeOption(selectedReviewClaim.expenseTypeCode)?.label ?? selectedReviewClaim.expenseTypeCode}</div>
                     <div><strong>{t(lang, 'Amount', '金额')}:</strong> {formatExpenseMoney(selectedReviewClaim.amountCents + (selectedReviewClaim.gstAmountCents ?? 0), selectedReviewClaim.currencyCode)}</div>
-                    <div><strong>{t(lang, 'Status', '状态')}:</strong> {formatClaimStatusLabel(lang, selectedReviewClaim.status)}</div>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      <strong>{t(lang, 'Status', '状态')}:</strong>
+                      <WorkbenchStatusChip
+                        label={formatClaimStatusLabel(lang, selectedReviewClaim.status)}
+                        tone={selectedReviewClaim.status === ExpenseClaimStatus.REJECTED ? 'error' : selectedReviewClaim.status === ExpenseClaimStatus.APPROVED ? 'warn' : selectedReviewClaim.status === ExpenseClaimStatus.PAID ? 'success' : 'info'}
+                      />
+                    </div>
                     {selectedReviewClaim.studentName ? <div><strong>{t(lang, 'Student', '学生')}:</strong> {selectedReviewClaim.studentName}</div> : null}
                   </div>
                 </div>
@@ -1305,13 +1309,17 @@ export default async function AdminExpenseClaimsPage({
                 ) : null}
 
                 {canApprove ? (
-                  <div id="expense-review-actions" style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff', scrollMarginTop: 104 }}>
-                    <div style={{ fontWeight: 700 }}>{t(lang, 'Quick review flow', '快速审批流')}</div>
-                    <div style={{ color: '#475569', fontSize: 14 }}>
-                      {nextReviewClaimId
+                  <WorkbenchFormSection
+                    title={t(lang, 'Quick review flow', '快速审批流')}
+                    description={
+                      nextReviewClaimId
                         ? t(lang, 'Approve or reject this claim and the panel will move to the next submitted item.', '批准或驳回后，面板会自动切到下一条待审批记录。')
-                        : t(lang, 'This is the last submitted claim in the current queue.', '这是当前待审批队列中的最后一条。')}
-                    </div>
+                        : t(lang, 'This is the last submitted claim in the current queue.', '这是当前待审批队列中的最后一条。')
+                    }
+                    helper={nextReviewClaimId ? t(lang, 'Auto-jumps to the next row after save', '保存后会自动跳到下一条') : t(lang, 'Last row in current queue', '当前队列最后一条')}
+                    tone="info"
+                    style={{ scrollMarginTop: 104 }}
+                  >
                     <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(180px, 220px) minmax(220px, 1fr)' }}>
                       <form action={approveAction}>
                         <input type="hidden" name="claimId" value={selectedReviewClaim.id} />
@@ -1334,7 +1342,7 @@ export default async function AdminExpenseClaimsPage({
                         </button>
                       </form>
                     </div>
-                  </div>
+                  </WorkbenchFormSection>
                 ) : (
                   <div style={{ color: '#64748b' }}>{t(lang, 'Read only', '只读')}</div>
                 )}
@@ -1349,8 +1357,9 @@ export default async function AdminExpenseClaimsPage({
                 </div>
               </div>
             )}
-          </section>
-        </div>
+            </section>
+          }
+        />
       </section>
 
       {canFinance ? (
@@ -1367,15 +1376,10 @@ export default async function AdminExpenseClaimsPage({
             </div>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gap: 16,
-              gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
-              alignItems: 'start',
-            }}
-          >
-            <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+          <WorkbenchSplitView
+            id="expense-finance"
+            left={
+              <section style={{ border: '1px solid #fcd34d', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: '1px solid #fde68a', fontWeight: 700 }}>
                 {t(lang, 'Approved unpaid groups', '已批未付分组')}
               </div>
@@ -1436,19 +1440,19 @@ export default async function AdminExpenseClaimsPage({
                   </div>
                 </div>
               )}
-            </section>
-
-            <section
-              style={{
-                border: '1px solid #fcd34d',
-                borderRadius: 12,
-                background: '#fff',
-                padding: 16,
-                display: 'grid',
-                gap: 12,
-                alignSelf: 'start',
-              }}
-            >
+              </section>
+            }
+            right={
+              <section
+                style={{
+                  border: '1px solid #fcd34d',
+                  borderRadius: 12,
+                  background: '#fff',
+                  padding: 16,
+                  display: 'grid',
+                  gap: 12,
+                }}
+              >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 700 }}>{t(lang, 'Selected payout group', '当前付款分组')}</div>
@@ -1599,14 +1603,15 @@ export default async function AdminExpenseClaimsPage({
                 <div style={{ padding: '12px 0', color: '#64748b', display: 'grid', gap: 8 }}>
                   <div style={{ fontWeight: 700, color: '#334155' }}>{t(lang, 'No payout group is selected', '当前没有选中的付款分组')}</div>
                   <div>{t(lang, 'Choose one finance group from the left queue. If nothing is waiting, clear filters or switch back to submitted review work.', '请先从左侧财务队列选择一组；如果当前没有待处理项，可清空筛选或回到待审批工作流。')}</div>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
-                    <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</Link>
-                  </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href={quickClearHref}>{t(lang, 'Clear filters', '清空筛选')}</a>
+                  <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Open submitted review queue', '打开待审批队列')}</Link>
                 </div>
-              )}
-            </section>
-          </div>
+              </div>
+            )}
+              </section>
+            }
+          />
         </section>
       ) : null}
 

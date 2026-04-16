@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r69
+
+- Release ID: `2026-04-16-r69`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: add the second layer of admin UX consistency improvements for remembered desks, shared status chips, clearer form sections, and steadier split workbenches.
+- Key files:
+  - `app/admin/_components/TeacherFilterForm.tsx`
+  - `app/admin/_components/WorkbenchFormSection.tsx`
+  - `app/admin/_components/WorkbenchSplitView.tsx`
+  - `app/admin/_components/WorkbenchStatusChip.tsx`
+  - `app/admin/_components/workbenchStyles.ts`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/classes/page.tsx`
+  - `app/admin/expense-claims/page.tsx`
+  - `app/admin/receipts-approvals/page.tsx`
+  - `app/admin/students/page.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/tickets/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260416-admin-ux-patterns-phase-2.md`
+- Risk impact (if any): Low to medium. This release is still UI-only, but it expands shared admin UX helpers and remembered desk behavior across multiple high-frequency pages. The main watchpoint is making sure filter memory feels helpful, not sticky, when users intentionally clear back to the default desk.
+- Verification:
+  - `npm run build`
+  - ticket, teacher, and class desks should resume remembered filters only when returning normally, and should clear cleanly with the explicit default-desk links
+  - approvals, tickets, and receipts should show clearer shared status chips instead of mixed ad-hoc badges
+  - expense claims review and finance sections should keep a steadier split-pane layout without changing workflow behavior
+  - students list should now remember scroll position like other high-frequency desks
+- Rollback point: previous production commit before `2026-04-16-r69`.
+
 ## 2026-04-16-r68
 
 - Release ID: `2026-04-16-r68`
