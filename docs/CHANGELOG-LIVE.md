@@ -15,6 +15,23 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r78
+
+- Release ID: `2026-04-17-r78`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: make the student detail workbench clearly recommend the next action, shorten the main action copy, and group the remaining links into lighter sections.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260417-student-workbench-recommendation-and-grouping.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is still student-detail UI-only. The page now chooses a recommended first action based on current state, keeps supporting actions shorter, and groups the remaining links more clearly, but all destinations and workflow logic stay the same.
+- Verification:
+  - `npm run build`
+  - production browser check confirms student detail now highlights one recommended first action, uses shorter supporting action copy, groups secondary links, and keeps the sticky shortcut row as a separate jump layer
+- Rollback point: previous production commit before `2026-04-17-r78`.
+
 ## 2026-04-16-r77
 
 - Release ID: `2026-04-16-r77`

@@ -259,6 +259,15 @@ function studentPrimaryActionStyle(background: string, border: string) {
   } as const;
 }
 
+function studentRecommendedActionStyle(background: string, border: string) {
+  return {
+    ...studentPrimaryActionStyle(background, border),
+    gap: 10,
+    padding: "16px 18px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+  } as const;
+}
+
 function studentSecondaryActionStyle() {
   return {
     display: "inline-flex",
@@ -273,6 +282,17 @@ function studentSecondaryActionStyle() {
     fontSize: 12,
     fontWeight: 700,
     whiteSpace: "nowrap",
+  } as const;
+}
+
+function studentSectionGroupStyle(background: string) {
+  return {
+    display: "grid",
+    gap: 8,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid #e2e8f0",
+    background,
   } as const;
 }
 
@@ -2280,79 +2300,138 @@ export default async function StudentDetailPage({
   ];
   const studentSectionLinks = [
     {
+      key: "coordination",
       href: studentCoordinationHref,
       label: t(lang, "Scheduling coordination", "排课协调"),
       detail: activeSchedulingTicket
         ? `${activeSchedulingTicket.ticketNo} · ${schedulingCoordinationPhase?.title ?? activeSchedulingTicket.status}`
         : t(lang, "Open when parent timing drives the next step", "当家长时间决定下一步时进入"),
+      shortDetail: activeSchedulingTicket
+        ? t(lang, "Parent timing or exceptions still need follow-up", "家长时间或特殊情况仍需跟进")
+        : t(lang, "Open only when family timing drives the next step", "只在家长时间决定下一步时进入"),
       background: activeSchedulingTicket ? "#fff7ed" : "#ffffff",
       border: activeSchedulingTicket ? "#fdba74" : "#dbe4f0",
     },
     {
+      key: "quickSchedule",
       href: "#quick-schedule",
       label: tl(lang, "Quick Schedule"),
       detail: quickRescheduleSessionOptions.length > 0
         ? t(lang, `${quickRescheduleSessionOptions.length} session targets ready`, `${quickRescheduleSessionOptions.length} 个课次可直接调整`)
         : t(lang, "Use for new or replacement lesson planning", "用于新排课或替换课次"),
+      shortDetail: quickRescheduleSessionOptions.length > 0
+        ? t(lang, "Ready for direct reschedule work", "可直接进入调课")
+        : t(lang, "Best for new or replacement lessons", "用于新排课或替换课次"),
       background: "#ffffff",
       border: "#dbe4f0",
     },
     {
+      key: "upcomingSessions",
       href: "#upcoming-sessions",
       label: tl(lang, "Upcoming Sessions"),
       detail: nextUpcomingSession
         ? nextLessonLabel
         : t(lang, "No concrete lesson yet", "还没有明确下一节课"),
+      shortDetail: nextUpcomingSession
+        ? t(lang, "Open the next concrete lesson", "直接处理下一节课")
+        : t(lang, "No next lesson is locked yet", "当前还没有明确下一节课"),
       background: "#ffffff",
       border: "#dbe4f0",
     },
     {
+      key: "packages",
       href: "#packages",
       label: tl(lang, "Packages"),
       detail: t(lang, `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`, `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`),
+      shortDetail:
+        unpaidPackageCount > 0 || packageRiskCount > 0
+          ? t(lang, "Billing or package risk needs review", "当前有账务或课包风险需要处理")
+          : t(lang, "Billing is clear right now", "当前账务状态正常"),
       background: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fffaf0" : "#ffffff",
       border: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fde68a" : "#dbe4f0",
     },
     {
+      key: "attendance",
       href: "#attendance",
       label: tl(lang, "Attendance"),
       detail: t(lang, `${attendances.length} recent records`, `${attendances.length} 条近期记录`),
+      shortDetail: t(lang, "Check recent sign-in and leave records", "查看近期点名和请假记录"),
       background: "#ffffff",
       border: "#dbe4f0",
     },
     {
+      key: "enrollments",
       href: "#enrollments",
       label: tl(lang, "Enrollments"),
       detail: t(lang, `${enrollments.length} active teaching containers`, `${enrollments.length} 个当前报名容器`),
+      shortDetail: t(lang, "Review active course containers", "查看当前报名容器"),
       background: "#ffffff",
       border: "#dbe4f0",
     },
     {
+      key: "editStudent",
       href: "#edit-student",
       label: tl(lang, "Edit Student"),
       detail: t(lang, "Use after queue-style work is settled", "更适合在队列型工作完成后进入"),
+      shortDetail: t(lang, "Profile, notes, and binding changes", "修改档案、备注和绑定"),
       background: "#ffffff",
       border: "#dbe4f0",
     },
   ];
-  const studentPrimaryLinks = [
-    studentSectionLinks[0],
-    studentSectionLinks[1],
-    studentSectionLinks[3],
-  ].filter(Boolean);
-  const studentSecondaryLinks = [
-    studentSectionLinks[2],
-    studentSectionLinks[4],
-    studentSectionLinks[5],
-    studentSectionLinks[6],
-    {
-      href: `/api/exports/student-detail/${studentId}`,
-      label: tl(lang, "Export Student Report"),
-      detail: t(lang, "Open the outward-facing summary without leaving this page.", "不离开当前页面也可以直接导出学生报告。"),
-      background: "#ffffff",
-      border: "#dbe4f0",
-    },
-  ];
+  const studentExportLink = {
+    key: "exportStudentReport",
+    href: `/api/exports/student-detail/${studentId}`,
+    label: tl(lang, "Export Student Report"),
+    detail: t(lang, "Open the outward-facing summary without leaving this page.", "不离开当前页面也可以直接导出学生报告。"),
+    shortDetail: t(lang, "Export the outward-facing student summary", "导出对外学生报告"),
+    background: "#ffffff",
+    border: "#dbe4f0",
+  };
+  const studentSectionLinkMap = new Map(studentSectionLinks.map((link) => [link.key, link]));
+  const recommendedPrimaryKey =
+    activeSchedulingTicket
+      ? "coordination"
+      : packageRiskCount > 0 || unpaidPackageCount > 0
+      ? "packages"
+      : nextUpcomingSession
+      ? "upcomingSessions"
+      : "quickSchedule";
+  const recommendedPrimaryLink = studentSectionLinkMap.get(recommendedPrimaryKey) ?? studentSectionLinks[0];
+  const studentPrimaryActionOrder =
+    recommendedPrimaryKey === "coordination"
+      ? ["coordination", "quickSchedule", "packages"]
+      : recommendedPrimaryKey === "packages"
+      ? ["packages", "coordination", "quickSchedule"]
+      : recommendedPrimaryKey === "upcomingSessions"
+      ? ["upcomingSessions", "attendance", "quickSchedule"]
+      : ["quickSchedule", "coordination", "packages"];
+  const studentPrimaryLinks = studentPrimaryActionOrder
+    .map((key) => studentSectionLinkMap.get(key))
+    .filter((link): link is NonNullable<typeof studentSectionLinks[number]> => Boolean(link));
+  const studentSupportingPrimaryLinks = studentPrimaryLinks.filter((link) => link.key !== recommendedPrimaryKey).slice(0, 2);
+  const learningSecondaryLinks = ["upcomingSessions", "attendance", "enrollments"]
+    .filter((key) => !studentPrimaryActionOrder.includes(key))
+    .map((key) => studentSectionLinkMap.get(key))
+    .filter((link): link is NonNullable<typeof studentSectionLinks[number]> => Boolean(link));
+  const profileSecondaryLinks = [studentSectionLinkMap.get("editStudent"), studentExportLink].filter(
+    (link): link is typeof studentExportLink => Boolean(link)
+  );
+  const recommendedPrimaryTitle =
+    recommendedPrimaryKey === "coordination"
+      ? t(lang, "Recommended now: coordination", "当前推荐：排课协调")
+      : recommendedPrimaryKey === "packages"
+      ? t(lang, "Recommended now: packages", "当前推荐：课包")
+      : recommendedPrimaryKey === "upcomingSessions"
+      ? t(lang, "Recommended now: next lesson", "当前推荐：下一节课")
+      : t(lang, "Recommended now: quick schedule", "当前推荐：快速排课");
+  const recommendedPrimaryReason =
+    recommendedPrimaryKey === "coordination"
+      ? t(lang, "There is an active coordination lane, so this should stay as the first stop.", "当前已有活跃协调分道，建议先从这里继续。")
+      : recommendedPrimaryKey === "packages"
+      ? t(lang, "Billing or package follow-up is active, so clear this before more lesson changes.", "当前有账务或课包跟进，建议先处理这里，再继续改课。")
+      : recommendedPrimaryKey === "upcomingSessions"
+      ? t(lang, "There is a concrete next lesson ready, so the fastest path is to work from that lesson.", "当前已经有明确下一节课，最快的路径是直接从这节课进入。")
+      : t(lang, "Nothing is blocking the profile right now, so quick schedule is the fastest way to move forward.", "当前没有阻塞项，直接快速排课是最快的推进方式。");
   return (
     <div>
       <StudentDetailHashStateClient />
@@ -2498,39 +2577,89 @@ export default async function StudentDetailPage({
                   <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                     <div style={{ fontWeight: 800 }}>{t(lang, "Student workbench", "学生工作台")}</div>
                     <div style={{ color: "#475569", fontSize: 13, maxWidth: 920 }}>
-                      {packageRiskCount > 0
-                        ? t(lang, "Package risk is active. Start with packages, then use the quick actions below for scheduling or attendance follow-up.", "当前有课包风险，建议先看课包，再用下面的快捷操作进入排课或点名跟进。")
-                        : unpaidPackageCount > 0
-                          ? t(lang, "Billing follow-up is active. Start with packages, then continue into scheduling or attendance only if needed.", "当前有账务跟进，建议先看课包；只有需要时再进入排课或点名。")
-                          : t(lang, "Start with one of the main actions below. Secondary links stay available without turning this block into another dashboard.", "先从下面的主操作进入；次级入口也保留，但不会再把这里做成第二个大面板。")}
+                      {t(lang, "Use the sticky shortcut row above to jump. Use the actions below to decide the next step.", "上方固定快捷条负责跳转；下面这块负责决定下一步先做什么。")}
                     </div>
                   </div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-                    <span>{t(lang, "Main actions first", "先看主操作")}</span>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 12, fontWeight: 700, flexWrap: "wrap" }}>
+                    <span>{t(lang, "Sticky row = jump", "上面负责跳转")}</span>
+                    <span style={{ color: "#cbd5e1" }}>•</span>
+                    <span>{t(lang, "This block = start here", "这里负责决定先做什么")}</span>
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                  {studentPrimaryLinks.map((link) => (
-                    <a key={link.href} href={link.href} style={studentPrimaryActionStyle(link.background, link.border)}>
-                      <span style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{link.label}</span>
-                      <span style={{ fontSize: 13, color: "#475569", lineHeight: 1.45 }}>{link.detail}</span>
-                    </a>
-                  ))}
-                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <a
+                    href={recommendedPrimaryLink.href}
+                    style={studentRecommendedActionStyle(
+                      recommendedPrimaryLink.background === "#ffffff" ? "#eff6ff" : recommendedPrimaryLink.background,
+                      recommendedPrimaryLink.border === "#dbe4f0" ? "#93c5fd" : recommendedPrimaryLink.border
+                    )}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: "#1d4ed8" }}>{recommendedPrimaryTitle}</span>
+                        <span style={{ fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{recommendedPrimaryLink.label}</span>
+                      </div>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 24,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: "#ffffff",
+                          border: "1px solid #bfdbfe",
+                          color: "#1d4ed8",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t(lang, "Start here", "从这里开始")}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>{recommendedPrimaryReason}</span>
+                    <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.4 }}>{recommendedPrimaryLink.shortDetail}</span>
+                  </a>
 
-                <div style={{ display: "grid", gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b", letterSpacing: 0.2 }}>
-                    {t(lang, "More sections", "更多区块")}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {studentSecondaryLinks.map((link) => (
-                      <a key={link.href} href={link.href} style={studentSecondaryActionStyle()}>
-                        {link.label}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                    {studentSupportingPrimaryLinks.map((link) => (
+                      <a key={link.href} href={link.href} style={studentPrimaryActionStyle(link.background, link.border)}>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{link.label}</span>
+                        <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.45 }}>{link.shortDetail}</span>
                       </a>
                     ))}
                   </div>
                 </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                  <div style={studentSectionGroupStyle("#f8fafc")}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b", letterSpacing: 0.2 }}>
+                      {t(lang, "Learning follow-up", "学习跟进")}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {learningSecondaryLinks.map((link) => (
+                        <a key={link.href} href={link.href} style={studentSecondaryActionStyle()}>
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={studentSectionGroupStyle("#ffffff")}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b", letterSpacing: 0.2 }}>
+                      {t(lang, "Profile and exports", "档案与导出")}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {profileSecondaryLinks.map((link) => (
+                        <a key={link.href} href={link.href} style={studentSecondaryActionStyle()}>
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
