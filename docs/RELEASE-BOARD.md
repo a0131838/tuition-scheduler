@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r71` (post-QA anchor follow-up for partner settlement and conflicts work-map jumps), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r72` (approval inbox narrow-width overflow follow-up from the next real admin QA sweep), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -58,6 +58,19 @@
   - `npm run build`
   - verify partner settlement work-map jump to `Action queue` lands visibly below the sticky bar
   - verify conflicts work-map jump to `Conflict cards` still lands on a valid target when there are zero conflicts in range
+
+## 2026-04-16-r72 Ready
+
+- Scope: fix the approval inbox narrow-width overflow found during the next real admin QA sweep.
+- Business impact:
+  - `Approval Inbox / 审批提醒中心` now uses tighter approval-row and header column minimum widths, so the page fits inside the admin content area even when the left sidebar is visible on narrower desktop windows
+  - the manager-lane narrow view no longer cuts off the right side of the summary/table area or forces unnecessary horizontal overflow
+  - neighboring high-frequency workbenches (`expense claims`, `receipts approvals`, `todos`, `tickets`) were rechecked at the same width and stayed stable
+  - no approval counts, lane routing, queue membership, or approval logic changed
+- Validation:
+  - `npm run build`
+  - verify `/admin/approvals?focus=manager` is overflow-free around `1024px` width with the sidebar visible
+  - verify `expense-claims`, `receipts-approvals`, `todos`, and `tickets` still remain overflow-free at the same width
 
 ## 2026-04-16-r70 Ready
 

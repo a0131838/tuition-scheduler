@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r72
+
+- Release ID: `2026-04-16-r72`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: fix the approval inbox narrow-width overflow found during the next real admin QA sweep.
+- Key files:
+  - `app/admin/approvals/page.tsx`
+  - `docs/tasks/TASK-20260416-admin-approval-inbox-narrow-width-followup.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a UI-only responsive follow-up that tightens the approval inbox table/grid widths so the page fits with the admin sidebar visible. No approval routing, counts, lanes, or business logic changed.
+- Verification:
+  - `npm run build`
+  - verify `/admin/approvals?focus=manager` no longer overflows horizontally around a `1024px` viewport width
+  - verify the neighboring high-frequency workbenches (`expense-claims`, `receipts-approvals`, `todos`, `tickets`) still remain overflow-free at the same width
+- Rollback point: previous production commit before `2026-04-16-r72`.
+
 ## 2026-04-16-r71
 
 - Release ID: `2026-04-16-r71`

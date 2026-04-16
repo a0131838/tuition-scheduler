@@ -398,9 +398,9 @@ export default async function AdminApprovalsPage({
             className="approval-inbox-grid-header"
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(260px, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr) auto",
+              gridTemplateColumns: "minmax(220px, 2fr) minmax(104px, 0.9fr) minmax(92px, 0.75fr) minmax(92px, 0.75fr) minmax(100px, 0.8fr) auto",
               gap: 12,
-              padding: "0 12px",
+              padding: "0 8px",
               alignItems: "center",
             }}
           >
@@ -421,7 +421,7 @@ export default async function AdminApprovalsPage({
                 background: "#fff",
                 padding: 12,
                 display: "grid",
-                gridTemplateColumns: "minmax(260px, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr) auto",
+                gridTemplateColumns: "minmax(220px, 2fr) minmax(104px, 0.9fr) minmax(92px, 0.75fr) minmax(92px, 0.75fr) minmax(100px, 0.8fr) auto",
                 gap: 12,
                 alignItems: "center",
               }}
