@@ -15,21 +15,38 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r79
+
+- Release ID: `2026-04-17-r79`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: keep quick schedule and the schedule calendar prominent on student detail while surfacing remaining lesson hours earlier.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260417-student-workbench-scheduling-priority-and-remaining-hours.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is still student-detail UI-only. The page now keeps the most-used scheduling tools prominent and shows remaining lesson hours earlier, but no package math, scheduling rules, routing behavior, or workflow logic changed.
+- Verification:
+  - `npm run build`
+  - production browser check confirms student detail keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, and still preserves the recommended-first-action pattern
+- Rollback point: previous production commit before `2026-04-17-r79`.
+
 ## 2026-04-17-r78
 
 - Release ID: `2026-04-17-r78`
 - Date/Time (Asia/Shanghai): `2026-04-17`
 - Deployment status: `READY`
-- Scope: make the student detail workbench clearly recommend the next action, shorten the main action copy, and group the remaining links into lighter sections.
+- Scope: make the student detail workbench clearly recommend the next action, keep quick schedule and calendar prominent, surface remaining lesson hours earlier, and group the remaining links into lighter sections.
 - Key files:
   - `app/admin/students/[id]/page.tsx`
   - `docs/tasks/TASK-20260417-student-workbench-recommendation-and-grouping.md`
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Low. This is still student-detail UI-only. The page now chooses a recommended first action based on current state, keeps supporting actions shorter, and groups the remaining links more clearly, but all destinations and workflow logic stay the same.
+- Risk impact (if any): Low. This is still student-detail UI-only. The page now chooses a recommended first action based on current state, keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, and groups the remaining links more clearly, but all destinations and workflow logic stay the same.
 - Verification:
   - `npm run build`
-  - production browser check confirms student detail now highlights one recommended first action, uses shorter supporting action copy, groups secondary links, and keeps the sticky shortcut row as a separate jump layer
+  - production browser check confirms student detail now highlights one recommended first action, keeps quick schedule and calendar prominent, surfaces remaining lesson hours earlier, groups secondary links, and keeps the sticky shortcut row as a separate jump layer
 - Rollback point: previous production commit before `2026-04-17-r78`.
 
 ## 2026-04-16-r77

@@ -2222,6 +2222,11 @@ export default async function StudentDetailPage({
   if (quickCampusId) baseParams.set("quickCampusId", quickCampusId);
   if (quickRoomId) baseParams.set("quickRoomId", quickRoomId);
   const activePackageCount = packages.filter((p) => p.status === "ACTIVE").length;
+  const activeHourPackageCount = packages.filter((p) => p.status === "ACTIVE" && p.type === "HOURS").length;
+  const totalRemainingMinutes = packages.reduce((sum, pkg) => {
+    if (pkg.status !== "ACTIVE" || pkg.type !== "HOURS") return sum;
+    return sum + Math.max(0, pkg.remainingMinutes ?? 0);
+  }, 0);
   const packageRiskCount = packages.filter((p) => {
     if (p.type !== "HOURS" || p.status !== "ACTIVE") return false;
     const remaining = p.remainingMinutes ?? 0;
@@ -2279,12 +2284,22 @@ export default async function StudentDetailPage({
     },
     {
       title: t(lang, "Billing snapshot", "账务概览"),
-      value: t(
-        lang,
-        `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`,
-        `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`
-      ),
-      detail: t(lang, `${activePackageCount} active packages on this profile.`, `当前共有 ${activePackageCount} 个有效课包。`),
+      value:
+        activeHourPackageCount > 0
+          ? t(lang, `${fmtMinutes(totalRemainingMinutes)} remaining`, `剩余 ${fmtMinutes(totalRemainingMinutes)}`)
+          : t(
+              lang,
+              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`,
+              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`
+            ),
+      detail:
+        activeHourPackageCount > 0
+          ? t(
+              lang,
+              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts · ${activeHourPackageCount} active hour packages`,
+              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警 · ${activeHourPackageCount} 个有效课时包`
+            )
+          : t(lang, `${activePackageCount} active packages on this profile.`, `当前共有 ${activePackageCount} 个有效课包。`),
       background: "#fffaf0",
       border: "#fde68a",
     },
@@ -2326,6 +2341,15 @@ export default async function StudentDetailPage({
       border: "#dbe4f0",
     },
     {
+      key: "calendarTools",
+      href: "#calendar-tools",
+      label: tl(lang, "Quick Schedule Calendar"),
+      detail: t(lang, "Open the visual planner to compare times before creating or changing lessons.", "用日历视图先比对时间，再安排或调整课次。"),
+      shortDetail: t(lang, "Best for visual planning and slot comparison", "适合可视化排课和比对时间"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
       key: "upcomingSessions",
       href: "#upcoming-sessions",
       label: tl(lang, "Upcoming Sessions"),
@@ -2345,7 +2369,13 @@ export default async function StudentDetailPage({
       detail: t(lang, `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`, `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`),
       shortDetail:
         unpaidPackageCount > 0 || packageRiskCount > 0
-          ? t(lang, "Billing or package risk needs review", "当前有账务或课包风险需要处理")
+          ? t(
+              lang,
+              `${fmtMinutes(totalRemainingMinutes)} remaining; billing or package risk needs review`,
+              `剩余 ${fmtMinutes(totalRemainingMinutes)}；当前有账务或课包风险需要处理`
+            )
+          : activeHourPackageCount > 0
+          ? t(lang, `${fmtMinutes(totalRemainingMinutes)} remaining across active hour packages`, `当前有效课时包合计剩余 ${fmtMinutes(totalRemainingMinutes)}`)
           : t(lang, "Billing is clear right now", "当前账务状态正常"),
       background: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fffaf0" : "#ffffff",
       border: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fde68a" : "#dbe4f0",
@@ -2393,18 +2423,14 @@ export default async function StudentDetailPage({
       ? "coordination"
       : packageRiskCount > 0 || unpaidPackageCount > 0
       ? "packages"
-      : nextUpcomingSession
-      ? "upcomingSessions"
       : "quickSchedule";
   const recommendedPrimaryLink = studentSectionLinkMap.get(recommendedPrimaryKey) ?? studentSectionLinks[0];
   const studentPrimaryActionOrder =
     recommendedPrimaryKey === "coordination"
-      ? ["coordination", "quickSchedule", "packages"]
+      ? ["coordination", "quickSchedule", "calendarTools"]
       : recommendedPrimaryKey === "packages"
-      ? ["packages", "coordination", "quickSchedule"]
-      : recommendedPrimaryKey === "upcomingSessions"
-      ? ["upcomingSessions", "attendance", "quickSchedule"]
-      : ["quickSchedule", "coordination", "packages"];
+      ? ["packages", "quickSchedule", "calendarTools"]
+      : ["quickSchedule", "calendarTools", "coordination"];
   const studentPrimaryLinks = studentPrimaryActionOrder
     .map((key) => studentSectionLinkMap.get(key))
     .filter((link): link is NonNullable<typeof studentSectionLinks[number]> => Boolean(link));
@@ -2421,17 +2447,13 @@ export default async function StudentDetailPage({
       ? t(lang, "Recommended now: coordination", "当前推荐：排课协调")
       : recommendedPrimaryKey === "packages"
       ? t(lang, "Recommended now: packages", "当前推荐：课包")
-      : recommendedPrimaryKey === "upcomingSessions"
-      ? t(lang, "Recommended now: next lesson", "当前推荐：下一节课")
       : t(lang, "Recommended now: quick schedule", "当前推荐：快速排课");
   const recommendedPrimaryReason =
     recommendedPrimaryKey === "coordination"
       ? t(lang, "There is an active coordination lane, so this should stay as the first stop.", "当前已有活跃协调分道，建议先从这里继续。")
       : recommendedPrimaryKey === "packages"
       ? t(lang, "Billing or package follow-up is active, so clear this before more lesson changes.", "当前有账务或课包跟进，建议先处理这里，再继续改课。")
-      : recommendedPrimaryKey === "upcomingSessions"
-      ? t(lang, "There is a concrete next lesson ready, so the fastest path is to work from that lesson.", "当前已经有明确下一节课，最快的路径是直接从这节课进入。")
-      : t(lang, "Nothing is blocking the profile right now, so quick schedule is the fastest way to move forward.", "当前没有阻塞项，直接快速排课是最快的推进方式。");
+      : t(lang, "Scheduling tools are the most common teaching-ops entry point, so quick schedule stays first when nothing else is blocking the profile.", "排课工具是教务最常用入口，所以当前没有阻塞项时，快速排课保持第一优先级。");
   return (
     <div>
       <StudentDetailHashStateClient />
@@ -2477,9 +2499,13 @@ export default async function StudentDetailPage({
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <div style={workbenchMetricCardStyle("indigo")}>
-            <div style={workbenchMetricLabelStyle("slate")}>{tl(lang, "Packages")}</div>
-            <div style={{ fontWeight: 800, fontSize: 22 }}>{activePackageCount}</div>
-            <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Active packages", "有效课包")}</div>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Remaining", "剩余课时")}</div>
+            <div style={{ fontWeight: 800, fontSize: 22 }}>{activeHourPackageCount > 0 ? fmtMinutes(totalRemainingMinutes) : "-"}</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              {activeHourPackageCount > 0
+                ? t(lang, `${activeHourPackageCount} active hour packages`, `${activeHourPackageCount} 个有效课时包`)
+                : t(lang, "No active hour package", "当前没有有效课时包")}
+            </div>
           </div>
           <div style={workbenchMetricCardStyle("amber")}>
             <div style={workbenchMetricLabelStyle("amber")}>{tl(lang, "Alert")}</div>
