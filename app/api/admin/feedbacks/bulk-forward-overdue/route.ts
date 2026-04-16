@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getVisibleSessionStudentNames } from "@/lib/session-students";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { getFeedbackDueAt, getFeedbackOverdueCutoff } from "@/lib/feedback-timing";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
 
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
   const channel = "WeChat";
 
   const now = new Date();
-  const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  const overdueAt = getFeedbackOverdueCutoff(now);
   const lookback = new Date(now.getTime() - FEEDBACK_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const sessions = await prisma.session.findMany({
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
     }
 
     const existing = session.feedbacks.find((f) => f.teacherId === teacherId) ?? null;
-    const dueAt = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
+    const dueAt = getFeedbackDueAt(session.endAt);
     const manualContent = buildManualContent(session, channel, note);
 
     if (existing && isFinalTeacherFeedback(existing)) {

@@ -5,6 +5,7 @@ import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { getVisibleSessionStudents, isSessionFullyCancelled } from "@/lib/session-students";
 import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only";
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
+import { isFeedbackOverdue } from "@/lib/feedback-timing";
 
 type SessionWithMeta = {
   id: string;
@@ -118,7 +119,7 @@ export default async function TeacherSessionsPage() {
   const todayKey = dayKey(now);
   const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
   const pendingFeedbackCount = sessions.filter((s) => !s.feedbacks[0]).length;
-  const overdueFeedbackCount = sessions.filter((s) => !s.feedbacks[0] && new Date() > new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000)).length;
+  const overdueFeedbackCount = sessions.filter((s) => !s.feedbacks[0] && isFeedbackOverdue(s.endAt)).length;
 
   const grouped = new Map<string, SessionWithMeta[]>();
   for (const s of sessions) {
@@ -189,7 +190,7 @@ export default async function TeacherSessionsPage() {
                   const total = students.length;
                   const marked = students.filter((st) => (statusByStudentId.get(st.id) ?? "UNMARKED") !== "UNMARKED").length;
                   const feedback = s.feedbacks[0] ?? null;
-                  const overdue = new Date() > new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000);
+                  const overdue = isFeedbackOverdue(s.endAt);
                   const att = attendancePill(marked, total);
                   const fb = feedbackMeta(feedback, overdue, lang);
 
@@ -274,4 +275,3 @@ export default async function TeacherSessionsPage() {
     </div>
   );
 }
-

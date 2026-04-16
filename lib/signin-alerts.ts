@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getFeedbackDueAt, isFeedbackOverdue } from "@/lib/feedback-timing";
 
 export const SIGNIN_THRESHOLD_KEY = "signin_alert_threshold_min";
 export const DEFAULT_SIGNIN_ALERT_THRESHOLD_MIN = 10;
@@ -182,9 +183,9 @@ export async function syncSignInAlerts(now = new Date()) {
     );
     const missingStudents = inSignInWindow ? expected.filter((sid) => !markedSet.has(sid)) : [];
     const missTeacher = inSignInWindow && !teacherSignedIn(s);
-    const feedbackDueAt = new Date(new Date(s.endAt).getTime() + 12 * 60 * 60 * 1000);
+    const feedbackDueAt = getFeedbackDueAt(s.endAt);
     const teacherFeedback = s.feedbacks.find((f) => f.teacherId === actualTeacherId) ?? null;
-    const missFeedback = now > feedbackDueAt && (!teacherFeedback || teacherFeedback.status === "PROXY_DRAFT");
+    const missFeedback = isFeedbackOverdue(s.endAt, now) && (!teacherFeedback || teacherFeedback.status === "PROXY_DRAFT");
 
     const teacherUserIds = teacherUserIdsByTeacherId.get(actualTeacherId) ?? [];
 

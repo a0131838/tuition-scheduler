@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacherProfile, getCurrentUser } from "@/lib/auth";
 import { FeedbackStatus } from "@prisma/client";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import {
+  FEEDBACK_WINDOW_HOURS,
+  getFeedbackDueAt,
+  getFeedbackSubmissionStatus,
+} from "@/lib/feedback-timing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -46,9 +51,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const allowed = session.teacherId === teacher.id || (!session.teacherId && session.class.teacherId === teacher.id);
   if (!allowed) return bad("No permission", 403);
 
-  const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
   const now = new Date();
-  const status: FeedbackStatus = now <= deadline ? "ON_TIME" : "LATE";
+  const deadline = getFeedbackDueAt(session.endAt);
+  const status: FeedbackStatus = getFeedbackSubmissionStatus(session.endAt, now);
 
   const actualStartAt = actualStartRaw ? new Date(actualStartRaw) : null;
   const actualEndAt = actualEndRaw ? new Date(actualEndRaw) : null;
@@ -116,5 +121,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     },
   });
 
-  return Response.json({ ok: true, status, submittedAt: now.toISOString() });
+  return Response.json({
+    ok: true,
+    status,
+    submittedAt: now.toISOString(),
+    dueAt: deadline.toISOString(),
+    dueAtText: formatBusinessDateTime(deadline),
+    windowHours: FEEDBACK_WINDOW_HOURS,
+  });
 }

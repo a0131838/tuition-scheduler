@@ -14,6 +14,7 @@ import {
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getVisibleSessionStudentNames, isSessionFullyCancelled } from "@/lib/session-students";
+import { getFeedbackOverdueMinutes } from "@/lib/feedback-timing";
 
 function fmtRange(startAt: Date, endAt: Date) {
   return `${formatBusinessDateTime(new Date(startAt))} - ${formatBusinessTimeOnly(new Date(endAt))}`;
@@ -25,9 +26,7 @@ function calcSignInOverdueMin(startAt: Date, thresholdMin: number) {
 }
 
 function calcFeedbackOverdueMin(endAt: Date) {
-  const feedbackDueAt = new Date(new Date(endAt).getTime() + 12 * 60 * 60 * 1000);
-  const ms = Date.now() - feedbackDueAt.getTime();
-  return Math.max(0, Math.floor(ms / 60000));
+  return getFeedbackOverdueMinutes(endAt);
 }
 
 function severityFromOverdue(overdueMin: number) {

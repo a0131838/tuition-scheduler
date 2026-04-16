@@ -9,6 +9,7 @@ import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { getFeedbackOverdueCutoff } from "@/lib/feedback-timing";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -178,7 +179,7 @@ export default async function AdminFeedbacksPage({
   })();
 
   const now = new Date();
-  const overdueAt = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  const overdueAt = getFeedbackOverdueCutoff(now);
   const lookback = new Date(now.getTime() - FEEDBACK_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const studentScopeWhere = studentId

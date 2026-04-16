@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { getFeedbackDueAt } from "@/lib/feedback-timing";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
   });
   if (!session) return bad("Session not found", 404);
 
-  const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
+  const deadline = getFeedbackDueAt(session.endAt);
   const content = [
     "[Proxy Draft / 代填草稿 - Admin / 教务]",
     `Session / 课次: ${buildSessionLine(session)}`,

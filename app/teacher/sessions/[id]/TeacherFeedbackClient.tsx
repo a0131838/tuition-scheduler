@@ -20,8 +20,11 @@ export default function TeacherFeedbackClient({
   };
   labels: {
     submit: string;
-    saved: string;
     errorPrefix: string;
+    savedOnTime: string;
+    savedLate: string;
+    deadlinePrefix: string;
+    ruleHint: string;
     requiredPerformance: string;
     requiredHomework: string;
     focusStudent: string;
@@ -45,8 +48,8 @@ export default function TeacherFeedbackClient({
   };
 }) {
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [saveResult, setSaveResult] = useState<null | { status: "ON_TIME" | "LATE"; dueAtText: string }>(null);
 
   const [focusStudentName, setFocusStudentName] = useState(initial.focusStudentName);
   const [actualStartAt, setActualStartAt] = useState(initial.actualStartAt);
@@ -58,8 +61,8 @@ export default function TeacherFeedbackClient({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
-    setMsg("");
     setErr("");
+    setSaveResult(null);
 
     if (!classPerformance.trim()) {
       setErr(labels.requiredPerformance);
@@ -86,7 +89,10 @@ export default function TeacherFeedbackClient({
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data?.ok) throw new Error(String(data?.message ?? "Submit failed"));
-      setMsg(labels.saved);
+      setSaveResult({
+        status: data?.status === "LATE" ? "LATE" : "ON_TIME",
+        dueAtText: String(data?.dueAtText ?? ""),
+      });
     } catch (e: any) {
       setErr(String(e?.message ?? "Submit failed"));
     } finally {
@@ -97,7 +103,7 @@ export default function TeacherFeedbackClient({
   return (
     <form onSubmit={onSubmit}>
       {err ? <div style={{ color: "#b00", marginBottom: 10 }}>{labels.errorPrefix}: {err}</div> : null}
-      {msg ? (
+      {saveResult ? (
         <div
           style={{
             color: "#166534",
@@ -110,7 +116,11 @@ export default function TeacherFeedbackClient({
             gap: 6,
           }}
         >
-          <div>{msg}</div>
+          <div>{saveResult.status === "LATE" ? labels.savedLate : labels.savedOnTime}</div>
+          <div style={{ fontSize: 13 }}>
+            {labels.deadlinePrefix}: {saveResult.dueAtText || "-"}
+          </div>
+          <div style={{ fontSize: 13 }}>{labels.ruleHint}</div>
           {completionGuide ? (
             <>
               <div style={{ fontWeight: 700 }}>{completionGuide.title}</div>

@@ -6,6 +6,7 @@ import { getCancelledSessionStudentIds, getVisibleSessionStudentNames } from "@/
 import TeacherAttendanceClient from "./TeacherAttendanceClient";
 import TeacherFeedbackClient from "./TeacherFeedbackClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { FEEDBACK_WINDOW_HOURS, getFeedbackDueAt, isFeedbackOverdue } from "@/lib/feedback-timing";
 
 function decode(v: string | undefined) {
   return v ? decodeURIComponent(v) : "";
@@ -79,8 +80,14 @@ export default async function TeacherSessionDetailPage({
 
   const attMap = new Map(session.attendances.map((a) => [a.studentId, a]));
   const feedback = session.feedbacks[0] ?? null;
-  const deadline = new Date(new Date(session.endAt).getTime() + 12 * 60 * 60 * 1000);
-  const feedbackOverdue = new Date() > deadline;
+  const deadline = getFeedbackDueAt(session.endAt);
+  const feedbackOverdue = isFeedbackOverdue(session.endAt);
+  const deadlineText = formatBusinessDateTime(deadline);
+  const feedbackRuleHint = t(
+    lang,
+    `Rule: feedback only becomes late ${FEEDBACK_WINDOW_HOURS} hours after class ends.`,
+    `规则：课后反馈在下课 ${FEEDBACK_WINDOW_HOURS} 小时后才算迟交。`
+  );
   const attendanceRows = visibleAttendanceEnrollments.map((e) => {
     const attendance = attMap.get(e.studentId);
     return {
@@ -284,7 +291,7 @@ export default async function TeacherSessionDetailPage({
           <div style={{ color: "#0f172a", fontSize: 13 }}>
             {feedback
               ? `${t(lang, "Last saved", "最近保存")}: ${formatBusinessDateTime(new Date(feedback.submittedAt))}`
-              : `${t(lang, "Deadline", "截止")}: ${formatBusinessDateTime(deadline)}`}
+              : `${t(lang, "Deadline", "截止")}: ${deadlineText}`}
           </div>
           <a href="#feedback">{t(lang, "Jump to feedback", "跳到反馈区")}</a>
         </div>
@@ -416,11 +423,16 @@ export default async function TeacherSessionDetailPage({
         {feedbackOverdue
           ? t(
               lang,
-              "Overdue: please submit now. This feedback will be marked as Late.",
-              "已超时：请尽快补交，提交后会标记为迟交。"
+              `Late has started since ${deadlineText}. Submit now and this feedback will be marked as Late.`,
+              `迟交已从 ${deadlineText} 开始计算。现在提交会标记为迟交。`
             )
-          : `${t(lang, "Deadline", "截止")}: ${formatBusinessDateTime(deadline)}`}
+          : t(
+              lang,
+              `Submit before ${deadlineText}. Late only starts after that time.`,
+              `请在 ${deadlineText} 前提交；超过这个时间才算迟交。`
+            )}
       </div>
+      <div style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>{feedbackRuleHint}</div>
       {feedback?.isProxyDraft ? (
         <div style={{ color: "#92400e", background: "#fff7ed", border: "1px solid #fed7aa", padding: 8, borderRadius: 6, marginBottom: 8 }}>
           {t(lang, "Admin created a temporary draft. Please complete and resubmit.", "教务已代填临时草稿，请补全后重新提交。")}
@@ -449,8 +461,11 @@ export default async function TeacherSessionDetailPage({
         }}
         labels={{
           submit: t(lang, "Submit Feedback", "提交反馈"),
-          saved: t(lang, "Saved", "已保存"),
           errorPrefix: t(lang, "Error", "错误"),
+          savedOnTime: t(lang, "Saved. This submission is still counted as on time.", "已保存，这次提交仍算准时。"),
+          savedLate: t(lang, "Saved. This submission is marked as late.", "已保存，但这次提交会标记为迟交。"),
+          deadlinePrefix: t(lang, "Late starts at", "迟交开始时间"),
+          ruleHint: feedbackRuleHint,
           requiredPerformance: t(lang, "Class performance is required", "课堂表现为必填"),
           requiredHomework: t(lang, "Homework is required", "作业为必填"),
           focusStudent: t(lang, "Focus student (optional)", "重点学生(选填)"),
