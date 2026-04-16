@@ -5,6 +5,9 @@ import PackageEditModal from "../_components/PackageEditModal";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import SimpleModal from "../_components/SimpleModal";
 import NoticeBanner from "../_components/NoticeBanner";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
 import PackageCreateFormClient from "./PackageCreateFormClient";
 import { Prisma } from "@prisma/client";
 import {
@@ -19,6 +22,8 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
+  workbenchTableCellSecondaryStyle,
+  workbenchTableHeaderCellStyle,
 } from "../_components/workbenchStyles";
 
 const LOW_MINUTES = 120;
@@ -418,12 +423,6 @@ export default async function AdminPackagesPage({
                 : [{ href: buildPageHref(), label: t(lang, "Return to package list", "返回课包列表") }],
             }
           : null;
-  const flowCardStyle =
-    flowCard?.tone === "green"
-      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
-      : flowCard?.tone === "blue"
-        ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
-        : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
   const emptyPackagesState =
     activeFilterCount > 0
       ? {
@@ -458,6 +457,7 @@ export default async function AdminPackagesPage({
         storageKey="adminPackagesPreferredFilters"
         value={rememberedFiltersValue}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminPackagesScroll" />
       <div style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
@@ -507,55 +507,33 @@ export default async function AdminPackagesPage({
         </div>
       </div>
       {resumedRememberedFilters ? (
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1d4ed8",
-            display: "flex",
-            gap: 10,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>
-            {t(
-              lang,
-              "Resumed your last package filter set. Use the shortcut on the right if you want to return to the default workbench.",
-              "已恢复你上次的课包筛选；如果要回到默认工作台，可直接使用右侧快捷入口。"
-            )}
-          </div>
-          <a href={defaultWorkbenchHref}>{t(lang, "Back to default workbench", "回到默认工作台")}</a>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last package workbench view", "已恢复你上次的课包工作台视图")}
+          description={t(
+            lang,
+            "The previous package filters are active again so you can continue where you left off. Use the shortcut on the right if you want to reopen the default desk first.",
+            "系统已经恢复上次使用的课包筛选，方便你直接续做。若想先回到默认工作台，可用右侧快捷入口。"
+          )}
+          actions={[
+            { href: defaultWorkbenchHref, label: t(lang, "Back to default workbench", "回到默认工作台"), emphasis: "primary" },
+          ]}
+        />
       ) : null}
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
       {flowCard ? (
-        <div
-          style={{
-            ...flowCardStyle,
-            borderRadius: 12,
-            padding: 12,
-            display: "grid",
-            gap: 8,
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
-          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {flowCard.links.map((link) => (
-              <a key={link.href + link.label} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone={flowCard.tone === "green" ? "success" : flowCard.tone === "blue" ? "info" : "warn"}
+          title={flowCard.title}
+          description={flowCard.detail}
+          actions={flowCard.links.map((link, index) => ({
+            href: link.href,
+            label: link.label,
+            emphasis: index === 0 ? "primary" : "secondary",
+          }))}
+        />
       ) : null}
       {loadFailed ? (
         <NoticeBanner
@@ -687,42 +665,32 @@ export default async function AdminPackagesPage({
       </div>
 
       {filteredPackages.length === 0 ? (
-        <div
-          style={{
-            color: "#64748b",
-            display: "grid",
-            gap: 8,
-            padding: 12,
-            border: "1px solid #e2e8f0",
-            borderRadius: 10,
-            background: "#f8fafc",
-          }}
-        >
-          <div style={{ fontWeight: 700, color: "#334155" }}>{emptyPackagesState.title}</div>
-          <div>{emptyPackagesState.detail}</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {emptyPackagesState.links.map((link) => (
-              <a key={link.href + link.label} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone={activeFilterCount > 0 ? "warn" : "info"}
+          title={emptyPackagesState.title}
+          description={emptyPackagesState.detail}
+          actions={emptyPackagesState.links.map((link, index) => ({
+            href: link.href,
+            label: link.label,
+            emphasis: index === 0 ? "primary" : "secondary",
+          }))}
+          style={{ marginBottom: 0 }}
+        />
       ) : (
         <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1180 }}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
-                <th align="left">{t(lang, "Student", "学生")}</th>
-                <th align="left">{t(lang, "Course", "课程")}</th>
-                <th align="left">{t(lang, "Type", "类型")}</th>
-                <th align="left">{t(lang, "Remaining", "剩余")}</th>
-                <th align="left">{t(lang, "Usage 30d", "近30天消耗")}</th>
-                <th align="left">{t(lang, "Forecast", "预计用完")}</th>
-                <th align="left">{t(lang, "Alert", "预警")}</th>
-                <th align="left">{t(lang, "Valid", "有效期")}</th>
-                <th align="left">{t(lang, "Status", "状态")}</th>
-                <th align="left">{t(lang, "Action", "操作")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Student", "学生")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Course", "课程")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Type", "类型")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Remaining", "剩余")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Usage 30d", "近30天消耗")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Forecast", "预计用完")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Alert", "预警")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Valid", "有效期")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Status", "状态")}</th>
+                <th align="left" style={workbenchTableHeaderCellStyle}>{t(lang, "Action", "操作")}</th>
               </tr>
             </thead>
             <tbody>
@@ -747,7 +715,7 @@ export default async function AdminPackagesPage({
                     <>
                       <td style={{ minWidth: 150, verticalAlign: "top" }}>
                         <div>{p.student?.name ?? "-"}</div>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                        <div style={workbenchTableCellSecondaryStyle}>
                           {t(lang, "Student Source", "学生来源")}: {p.student?.sourceChannel?.name ?? "-"}
                         </div>
                       </td>
@@ -797,28 +765,35 @@ export default async function AdminPackagesPage({
                       </td>
                       <td style={{ minWidth: 110, verticalAlign: "top" }}>
                         {p.type !== "HOURS" || p.status !== "ACTIVE" ? (
-                          "-"
+                          <WorkbenchStatusChip label={t(lang, "Not active", "未激活")} tone="neutral" />
                         ) : remaining <= 0 ? (
-                          <span style={{ color: "#b00", fontWeight: 700 }}>{t(lang, "Urgent", "紧急")}</span>
+                          <WorkbenchStatusChip label={t(lang, "Urgent", "紧急")} tone="error" strong />
                         ) : lowMinutes || lowDays ? (
-                          <span style={{ color: "#b00", fontWeight: 700 }}>
-                            {lowMinutes && lowDays
-                              ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
-                              : lowMinutes
-                              ? t(lang, "Low balance", "余额低")
-                              : t(lang, "Likely to run out soon", "即将用完")}
-                          </span>
+                          <WorkbenchStatusChip
+                            label={
+                              lowMinutes && lowDays
+                                ? `${t(lang, "Low balance", "余额低")} + ${t(lang, "Likely to run out soon", "即将用完")}`
+                                : lowMinutes
+                                  ? t(lang, "Low balance", "余额低")
+                                  : t(lang, "Likely to run out soon", "即将用完")
+                            }
+                            tone="warn"
+                            strong
+                          />
                         ) : (
-                          <span style={{ color: "#0a7" }}>{t(lang, "Normal", "正常")}</span>
+                          <WorkbenchStatusChip label={t(lang, "Normal", "正常")} tone="success" />
                         )}
                       </td>
                       <td style={{ minWidth: 150, verticalAlign: "top" }}>
                         {formatBusinessDateOnly(new Date(p.validFrom))} ~ {p.validTo ? formatBusinessDateOnly(new Date(p.validTo)) : "(open)"}
                       </td>
                       <td style={{ minWidth: 110, verticalAlign: "top" }}>
-                        <div>{p.status}</div>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>
-                          {t(lang, "Paid", "已付款")}: {p.paid ? t(lang, "Yes", "是") : t(lang, "No", "否")}
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <WorkbenchStatusChip label={p.status} tone={p.status === "ACTIVE" ? "success" : "neutral"} />
+                          <WorkbenchStatusChip
+                            label={p.paid ? t(lang, "Paid", "已付款") : t(lang, "Unpaid", "未付款")}
+                            tone={p.paid ? "success" : "warn"}
+                          />
                         </div>
                       </td>
                       <td style={{ minWidth: 240, verticalAlign: "top" }}>

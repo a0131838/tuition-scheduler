@@ -9,6 +9,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import RememberedWorkbenchQueryClient from "../../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../../_components/WorkbenchScrollMemoryClient";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -998,12 +1000,6 @@ export default async function PartnerSettlementPage({
           ],
         }
       : null;
-  const flowCardStyle =
-    flowCard?.tone === "green"
-      ? { border: "1px solid #86efac", background: "#f0fdf4", color: "#166534" }
-      : flowCard?.tone === "blue"
-      ? { border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8" }
-      : { border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e" };
   const emptySelectedState = {
     title: t(lang, "No pending item is selected yet", "当前还没有选中待处理项"),
     detail: t(
@@ -1138,6 +1134,7 @@ export default async function PartnerSettlementPage({
         storageKey="adminPartnerSettlementPreferredView"
         value={rememberedViewValue}
       />
+      <WorkbenchScrollMemoryClient storageKey="adminPartnerSettlementScroll" />
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>{t(lang, "Partner settlement workbench", "合作方结算工作台")}</div>
@@ -1218,80 +1215,68 @@ export default async function PartnerSettlementPage({
         </div>
       </section>
       {resumedRememberedView ? (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 12,
-            border: "1px solid #bfdbfe",
-            background: "#eff6ff",
-            color: "#1d4ed8",
-            display: "flex",
-            gap: 10,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontWeight: 700 }}>
-            {t(
-              lang,
-              "Resumed your last settlement view. Use the shortcut on the right if you want to return to the default workbench.",
-              "已恢复你上次的结算工作视图；如果要回到默认工作台，可直接使用右侧快捷入口。"
-            )}
-          </div>
-          <a href="/admin/reports/partner-settlement?clearView=1">{t(lang, "Back to default workbench", "回到默认工作台")}</a>
-        </div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last settlement workbench view", "已恢复你上次的结算工作台视图")}
+          description={t(
+            lang,
+            "The previous month and panel focus are active again so you can continue without rebuilding the page state.",
+            "系统已经恢复上次使用的月份和工作区焦点，方便你直接续做，不用重新整理页面。"
+          )}
+          actions={[
+            { href: "/admin/reports/partner-settlement?clearView=1", label: t(lang, "Back to default workbench", "回到默认工作台"), emphasis: "primary" },
+          ]}
+        />
       ) : null}
       {schemaNotReady || err === "schema-not-ready" ? (
-        <div
-          style={{
-            marginBottom: 10,
-            color: "#92400e",
-            border: "1px solid #f59e0b",
-            background: "#fffbeb",
-            borderRadius: 8,
-            padding: "8px 10px",
-          }}
-        >
-          {t(
+        <WorkbenchActionBanner
+          tone="warn"
+          title={t(lang, "Schema not ready", "数据库结构未就绪")}
+          description={t(
             lang,
             "Preview database migration is not ready yet. Please run migrations on this environment before using settlement actions.",
-            "Preview database migration is not ready yet. Please run migrations on this environment before using settlement actions."
+            "当前预览环境的数据库迁移还没就绪；请先完成迁移，再继续使用结算动作。"
           )}
-        </div>
+        />
       ) : null}
 
-      {translatedMsg ? <div style={{ marginBottom: 8, color: "#166534" }}>{translatedMsg}</div> : null}
-      {err ? <div style={{ marginBottom: 8, color: "#b00" }}>{err}</div> : null}
-      {err === "forbidden" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
-      {err === "invalid-settlement" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement record not found.", "未找到结算记录。")}</div> : null}
-      {err === "settlement-invoiced" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Cannot revert: this settlement is already linked to an invoice.", "不能撤回：该结算记录已关联发票。")}</div> : null}
-      {err === "manager-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter manager reject reason.", "请填写管理驳回原因。")}</div> : null}
-      {err === "finance-reject-reason" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
-      {err === "manager-approval-required" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")}</div> : null}
-      {err === "settlement-locked" ? <div style={{ marginBottom: 8, color: "#b00" }}>{t(lang, "Settlement already exported and locked.", "该结算单已导出并锁定。")}</div> : null}
+      {translatedMsg ? (
+        <WorkbenchActionBanner tone="success" title={translatedMsg} />
+      ) : null}
+      {err && !["schema-not-ready"].includes(err) ? (
+        <WorkbenchActionBanner
+          tone="error"
+          title={t(lang, "Settlement action could not be completed", "结算动作未成功完成")}
+          description={
+            err === "forbidden"
+              ? t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")
+              : err === "invalid-settlement"
+                ? t(lang, "Settlement record not found.", "未找到结算记录。")
+                : err === "settlement-invoiced"
+                  ? t(lang, "Cannot revert: this settlement is already linked to an invoice.", "不能撤回：该结算记录已关联发票。")
+                  : err === "manager-reject-reason"
+                    ? t(lang, "Please enter manager reject reason.", "请填写管理驳回原因。")
+                    : err === "finance-reject-reason"
+                      ? t(lang, "Please enter reject reason.", "请填写驳回原因。")
+                      : err === "manager-approval-required"
+                        ? t(lang, "All manager approvals are required before finance approval.", "财务审批前必须先完成全部管理审批。")
+                        : err === "settlement-locked"
+                          ? t(lang, "Settlement already exported and locked.", "该结算单已导出并锁定。")
+                          : err
+          }
+        />
+      ) : null}
       {flowCard ? (
-        <div
-          style={{
-            ...flowCardStyle,
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 12,
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>{flowCard.title}</div>
-          <div style={{ fontSize: 13 }}>{flowCard.detail}</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {flowCard.links.map((link) => (
-              <a key={link.href + link.label} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
+        <WorkbenchActionBanner
+          tone={flowCard.tone === "green" ? "success" : flowCard.tone === "blue" ? "info" : "warn"}
+          title={flowCard.title}
+          description={flowCard.detail}
+          actions={flowCard.links.map((link, index) => ({
+            href: link.href,
+            label: link.label,
+            emphasis: index === 0 ? "primary" : "secondary",
+          }))}
+        />
       ) : null}
 
       <div style={{ ...cardStyle, position: "sticky", top: 118, zIndex: 5 }}>
@@ -1477,27 +1462,17 @@ export default async function PartnerSettlementPage({
               </div>
             </>
           ) : (
-            <div
-              style={{
-                color: "#64748b",
-                display: "grid",
-                gap: 8,
-                padding: 12,
-                border: "1px solid #e2e8f0",
-                borderRadius: 10,
-                background: "#f8fafc",
-              }}
-            >
-              <div style={{ fontWeight: 700, color: "#334155" }}>{emptySelectedState.title}</div>
-              <div>{emptySelectedState.detail}</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {emptySelectedState.links.map((link) => (
-                  <a key={link.href + link.label} href={link.href}>
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </div>
+            <WorkbenchActionBanner
+              tone="info"
+              title={emptySelectedState.title}
+              description={emptySelectedState.detail}
+              actions={emptySelectedState.links.map((link, index) => ({
+                href: link.href,
+                label: link.label,
+                emphasis: index === 0 ? "primary" : "secondary",
+              }))}
+              style={{ marginBottom: 0 }}
+            />
           )}
         </div>
       </div>
@@ -1518,27 +1493,17 @@ export default async function PartnerSettlementPage({
           </button>
         </form> : null}
         {recentPendingSettlements.length === 0 ? (
-          <div
-            style={{
-              color: "#64748b",
-              display: "grid",
-              gap: 8,
-              padding: 12,
-              border: "1px solid #e2e8f0",
-              borderRadius: 10,
-              background: "#f8fafc",
-            }}
-          >
-            <div style={{ fontWeight: 700, color: "#334155" }}>{t(lang, "No pending billing records", "当前没有待开票记录")}</div>
-            <div>
-              {t(lang, "This queue is clear for the selected month. Go back to online or offline settlement candidates if you need to create the next record, or open history to confirm what was already invoiced.", "当前月份的待开票队列已经清空。若你还要继续工作，请回到线上或线下候选队列创建下一条记录，或打开历史做确认。")}
-            </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <a href="#action-queue-online">{t(lang, "Open online queue", "打开线上队列")}</a>
-              <a href="#action-queue-offline">{t(lang, "Open offline queue", "打开线下队列")}</a>
-              <a href={`${buildPageHref({ panel: "history" })}#billing-history`}>{t(lang, "Open history", "打开历史")}</a>
-            </div>
-          </div>
+          <WorkbenchActionBanner
+            tone="info"
+            title={t(lang, "No pending billing records", "当前没有待开票记录")}
+            description={t(lang, "This queue is clear for the selected month. Go back to online or offline settlement candidates if you need to create the next record, or open history to confirm what was already invoiced.", "当前月份的待开票队列已经清空。若你还要继续工作，请回到线上或线下候选队列创建下一条记录，或打开历史做确认。")}
+            actions={[
+              { href: "#action-queue-online", label: t(lang, "Open online queue", "打开线上队列"), emphasis: "primary" },
+              { href: "#action-queue-offline", label: t(lang, "Open offline queue", "打开线下队列") },
+              { href: `${buildPageHref({ panel: "history" })}#billing-history`, label: t(lang, "Open history", "打开历史") },
+            ]}
+            style={{ marginBottom: 0 }}
+          />
         ) : (
           <div style={{ overflowX: "auto" }}>
           <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>

@@ -25,6 +25,7 @@ import {
   upsertTeacherPayrollRate,
 } from "@/lib/teacher-payroll";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   workbenchFilterPanelStyle,
@@ -32,7 +33,13 @@ import {
   workbenchMetricCardStyle,
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
+  workbenchTableCellSecondaryStyle,
+  workbenchTableHeaderCellStyle,
 } from "../../_components/workbenchStyles";
+import RememberedWorkbenchQueryClient from "../../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../../_components/WorkbenchStatusChip";
 
 function payrollSectionLinkStyle(background: string, border: string) {
   return {
@@ -55,6 +62,7 @@ const PERIOD_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 const APPROVAL_CONFIG_OWNER_EMAIL = "zhaohongwei0880@gmail.com";
+const TEACHER_PAYROLL_FILTER_COOKIE = "adminTeacherPayrollPreferredFilters";
 type WorkflowChipState = "done" | "pending" | "blocked" | "rejected";
 
 function canEditApprovalRoleConfig(email: string | null | undefined) {
@@ -65,6 +73,32 @@ function normalizeOptionalId(v: FormDataEntryValue | null) {
   if (typeof v !== "string") return null;
   const trimmed = v.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseRememberedTeacherPayrollDesk(raw: string, fallbackMonth: string, fallbackScope: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const monthRaw = String(params.get("month") ?? "").trim();
+  const scopeRaw = String(params.get("scope") ?? "").trim();
+  const q = String(params.get("q") ?? "").trim();
+  const pendingOnly = String(params.get("pendingOnly") ?? "").trim() === "1";
+  const unsentOnly = String(params.get("unsentOnly") ?? "").trim() === "1";
+  const rateMissingOnly = String(params.get("rateMissingOnly") ?? "").trim() === "1";
+  const month = parseMonth(monthRaw) ? monthRaw : fallbackMonth;
+  const scope = scopeRaw === "completed" ? "completed" : fallbackScope;
+  const normalized = new URLSearchParams();
+  if (month !== fallbackMonth) normalized.set("month", month);
+  if (scope !== fallbackScope) normalized.set("scope", scope);
+  if (q) normalized.set("q", q);
+  if (pendingOnly) normalized.set("pendingOnly", "1");
+  if (unsentOnly) normalized.set("unsentOnly", "1");
+  if (rateMissingOnly) normalized.set("rateMissingOnly", "1");
+  return { month, scope, q, pendingOnly, unsentOnly, rateMissingOnly, value: normalized.toString() };
 }
 
 async function saveRateAction(formData: FormData) {
@@ -329,6 +363,7 @@ export default async function TeacherPayrollPage({
     pendingOnly?: string;
     unsentOnly?: string;
     rateMissingOnly?: string;
+    clearDesk?: string;
     focusTeacherId?: string;
     source?: string;
     sourceFocus?: string;
@@ -343,19 +378,72 @@ export default async function TeacherPayrollPage({
   const current = await getCurrentUser();
   const lang = await getLang();
   const sp = await searchParams;
-  const month = sp?.month ?? monthKey(new Date());
-  const scope = sp?.scope === "completed" ? "completed" : "all";
+  const defaultMonth = monthKey(new Date());
+  const defaultScope = "all";
+  const clearDesk = sp?.clearDesk === "1";
+  const hasMonthParam = typeof sp?.month === "string" && sp.month.trim().length > 0;
+  const hasScopeParam = typeof sp?.scope === "string" && sp.scope.trim().length > 0;
+  const hasQParam = typeof sp?.q === "string" && sp.q.trim().length > 0;
+  const hasPendingParam = typeof sp?.pendingOnly === "string";
+  const hasUnsentParam = typeof sp?.unsentOnly === "string";
+  const hasRateMissingParam = typeof sp?.rateMissingOnly === "string";
+  const hasFocusTeacherParam = typeof sp?.focusTeacherId === "string" && sp.focusTeacherId.trim().length > 0;
+  const hasFeedbackFlags =
+    sp?.saved === "1" ||
+    sp?.sent === "1" ||
+    sp?.revoked === "1" ||
+    sp?.cfg === "1" ||
+    sp?.mgr === "1" ||
+    sp?.finpaid === "1" ||
+    sp?.batchpaid === "1" ||
+    sp?.batchfail === "1" ||
+    sp?.fincfm === "1" ||
+    sp?.finrej === "1" ||
+    Boolean(sp?.error);
+  const sourceWorkflow = String(sp?.source ?? "").trim().toLowerCase() === "approvals" ? "approvals" : "";
+  const sourceFocus = String(sp?.sourceFocus ?? "").trim().toLowerCase();
+  const cookieStore = await cookies();
+  const canResumeRememberedDesk =
+    !clearDesk &&
+    !hasMonthParam &&
+    !hasScopeParam &&
+    !hasQParam &&
+    !hasPendingParam &&
+    !hasUnsentParam &&
+    !hasRateMissingParam &&
+    !hasFocusTeacherParam &&
+    !sourceWorkflow &&
+    !sourceFocus &&
+    !hasFeedbackFlags;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedTeacherPayrollDesk(
+        cookieStore.get(TEACHER_PAYROLL_FILTER_COOKIE)?.value ?? "",
+        defaultMonth,
+        defaultScope
+      )
+    : { month: defaultMonth, scope: defaultScope, q: "", pendingOnly: false, unsentOnly: false, rateMissingOnly: false, value: "" };
+  const month = hasMonthParam ? sp?.month ?? defaultMonth : rememberedDesk.month;
+  const scope = hasScopeParam ? (sp?.scope === "completed" ? "completed" : "all") : rememberedDesk.scope;
   const saved = sp?.saved === "1";
   const hasError = sp?.error === "rate";
   const sent = sp?.sent === "1";
   const revoked = sp?.revoked === "1";
-  const q = String(sp?.q ?? "").trim().toLowerCase();
-  const pendingOnly = sp?.pendingOnly === "1";
-  const unsentOnly = sp?.unsentOnly === "1";
-  const rateMissingOnly = sp?.rateMissingOnly === "1";
+  const q = String(hasQParam ? sp?.q ?? "" : rememberedDesk.q).trim().toLowerCase();
+  const pendingOnly = hasPendingParam ? sp?.pendingOnly === "1" : rememberedDesk.pendingOnly;
+  const unsentOnly = hasUnsentParam ? sp?.unsentOnly === "1" : rememberedDesk.unsentOnly;
+  const rateMissingOnly = hasRateMissingParam ? sp?.rateMissingOnly === "1" : rememberedDesk.rateMissingOnly;
   const focusTeacherId = String(sp?.focusTeacherId ?? "").trim();
-  const sourceWorkflow = String(sp?.source ?? "").trim().toLowerCase() === "approvals" ? "approvals" : "";
-  const sourceFocus = String(sp?.sourceFocus ?? "").trim().toLowerCase();
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (month !== defaultMonth) params.set("month", month);
+    if (scope !== defaultScope) params.set("scope", scope);
+    if (q) params.set("q", q);
+    if (pendingOnly) params.set("pendingOnly", "1");
+    if (unsentOnly) params.set("unsentOnly", "1");
+    if (rateMissingOnly) params.set("rateMissingOnly", "1");
+    return params.toString();
+  })();
   const approvalInboxReturnHref =
     sourceWorkflow === "approvals"
       ? sourceFocus && sourceFocus !== "all"
@@ -466,6 +554,7 @@ export default async function TeacherPayrollPage({
     ? `rate-${savedTeacherId}-${savedCourseId}-${savedSubjectId || "-"}-${savedLevelId || "-"}-${savedTeachingMode}`
     : null;
   const payrollTableHeaderCellStyle = {
+    ...workbenchTableHeaderCellStyle,
     position: "sticky" as const,
     top: 0,
     background: "#f8fafc",
@@ -487,11 +576,11 @@ export default async function TeacherPayrollPage({
     borderRight: "1px solid #f1f5f9",
     whiteSpace: "nowrap" as const,
   };
-  const workflowChipStyle = (state: WorkflowChipState) => {
-    if (state === "done") return { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" };
-    if (state === "pending") return { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" };
-    if (state === "rejected") return { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" };
-    return { background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" };
+  const workflowTone = (state: WorkflowChipState) => {
+    if (state === "done") return "success" as const;
+    if (state === "pending") return "warn" as const;
+    if (state === "rejected") return "error" as const;
+    return "neutral" as const;
   };
   const buildPayrollPageHref = (teacherId?: string | null) => {
     const params = new URLSearchParams();
@@ -699,6 +788,12 @@ export default async function TeacherPayrollPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={TEACHER_PAYROLL_FILTER_COOKIE}
+        storageKey="adminTeacherPayrollPreferredFilters"
+        value={rememberedDeskValue}
+      />
+      <WorkbenchScrollMemoryClient storageKey="adminTeacherPayrollScroll" />
       <RestoreRateConfigScroll targetId={savedRateRowKey} />
       <section style={workbenchHeroStyle("blue")}>
         <div style={{ display: "grid", gap: 6 }}>
@@ -731,6 +826,20 @@ export default async function TeacherPayrollPage({
           </div>
         </div>
       </section>
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last payroll workbench filters", "已恢复你上次的工资工作台筛选")}
+          description={t(
+            lang,
+            "The last payroll month and queue filters are active again so you can continue reviewing the same batch.",
+            "系统已经恢复上次使用的工资月份和队列筛选，方便你继续处理同一批工资单。"
+          )}
+          actions={[
+            { href: "/admin/reports/teacher-payroll?clearDesk=1", label: t(lang, "Back to default workbench", "回到默认工作台"), emphasis: "primary" },
+          ]}
+        />
+      ) : null}
       <section
         style={{
           ...workbenchFilterPanelStyle,
@@ -864,36 +973,36 @@ export default async function TeacherPayrollPage({
           )}
         </div>
       ) : null}
-
-      {saved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Rate saved.", "费率已保存。")}</div> : null}
-      {cfgSaved ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Approval role config saved.", "审批角色配置已保存。")}</div> : null}
-      {mgrDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Manager approval recorded.", "管理审批已记录。")}</div> : null}
-      {finConfirmDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance confirmation recorded.", "财务确认已记录。")}</div> : null}
-      {finPaidDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance payout recorded.", "财务发薪已记录。")}</div> : null}
+      {saved ? <WorkbenchActionBanner tone="success" title={t(lang, "Rate saved", "费率已保存")} description={t(lang, "The updated rate is ready for the current payroll cycle and the matching row remains highlighted below.", "更新后的费率已经用于当前工资周期，下面对应行也会继续保持高亮。")} /> : null}
+      {cfgSaved ? <WorkbenchActionBanner tone="success" title={t(lang, "Approval role config saved", "审批角色配置已保存")} /> : null}
+      {mgrDone ? <WorkbenchActionBanner tone="success" title={t(lang, "Manager approval recorded", "管理审批已记录")} /> : null}
+      {finConfirmDone ? <WorkbenchActionBanner tone="success" title={t(lang, "Finance confirmation recorded", "财务确认已记录")} /> : null}
+      {finPaidDone ? <WorkbenchActionBanner tone="success" title={t(lang, "Finance payout recorded", "财务发薪已记录")} /> : null}
       {Number.isFinite(batchPaidCount) && batchPaidCount > 0 ? (
-        <div style={{ marginBottom: 12, color: "#166534" }}>
-          {t(lang, "Batch payout recorded for", "已记录批量发薪")} {batchPaidCount} {t(lang, "teachers.", "位老师。")}
-          {Number.isFinite(batchFailedCount) && batchFailedCount > 0 ? ` ${t(lang, "Failed items", "失败条目")} ${batchFailedCount}.` : ""}
-        </div>
+        <WorkbenchActionBanner
+          tone="success"
+          title={`${t(lang, "Batch payout recorded for", "已记录批量发薪")} ${batchPaidCount} ${t(lang, "teachers.", "位老师。")}`}
+          description={Number.isFinite(batchFailedCount) && batchFailedCount > 0 ? `${t(lang, "Failed items", "失败条目")} ${batchFailedCount}.` : undefined}
+        />
       ) : null}
-      {finRejectedDone ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Finance rejection recorded.", "财务驳回已记录。")}</div> : null}
-      {hasError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Invalid rate input.", "费率输入无效。")}</div> : null}
-      {sent ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll sent to teacher.", "工资单已发送给老师。")}</div> : null}
-      {revoked ? <div style={{ marginBottom: 12, color: "#166534" }}>{t(lang, "Payroll send has been revoked.", "工资单发送已撤销。")}</div> : null}
-      {sendError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to send payroll.", "发送工资单失败。")}</div> : null}
-      {sp?.error === "send-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can resend a payroll that has already been paid.", "只有赵宏伟可以重新发送已经发薪的工资单。")}</div> : null}
-      {revokeError ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Failed to revoke payroll send.", "撤销发送失败。")}</div> : null}
-      {sp?.error === "revoke-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can revoke a payroll that has already been paid.", "只有赵宏伟可以撤销已经发薪的工资单。")}</div> : null}
-      {sp?.error === "mgr-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No manager approver permission.", "无管理审批权限。")}</div> : null}
-      {sp?.error === "fin-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "No finance approver permission.", "无财务审批权限。")}</div> : null}
-      {sp?.error === "mgr-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Manager approval failed.", "管理审批失败。")}</div> : null}
-      {sp?.error === "fin-approve" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance approval failed.", "财务审批失败。")}</div> : null}
-      {sp?.error === "fin-paid" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance payout failed.", "财务发薪失败。")}</div> : null}
-      {sp?.error === "fin-batch-empty" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please select at least one teacher for batch payout.", "请至少选择一位老师进行批量发薪。")}</div> : null}
-      {sp?.error === "fin-reject" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance reject failed.", "财务驳回失败。")}</div> : null}
-      {sp?.error === "fin-reason" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Please enter reject reason.", "请填写驳回原因。")}</div> : null}
-      {sp?.error === "cfg-perm" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Only Zhao Hongwei can edit the approval role settings.", "只有赵宏伟可以修改审批角色配置。")}</div> : null}
-      {sp?.error === "forbidden" ? <div style={{ marginBottom: 12, color: "#b00" }}>{t(lang, "Finance role cannot modify this data.", "财务角色不能修改此类数据。")}</div> : null}
+      {finRejectedDone ? <WorkbenchActionBanner tone="success" title={t(lang, "Finance rejection recorded", "财务驳回已记录")} /> : null}
+      {hasError ? <WorkbenchActionBanner tone="error" title={t(lang, "Invalid rate input", "费率输入无效")} /> : null}
+      {sent ? <WorkbenchActionBanner tone="success" title={t(lang, "Payroll sent to teacher", "工资单已发送给老师")} /> : null}
+      {revoked ? <WorkbenchActionBanner tone="success" title={t(lang, "Payroll send has been revoked", "工资单发送已撤销")} /> : null}
+      {sendError ? <WorkbenchActionBanner tone="error" title={t(lang, "Failed to send payroll", "发送工资单失败")} /> : null}
+      {sp?.error === "send-paid" ? <WorkbenchActionBanner tone="error" title={t(lang, "Only Zhao Hongwei can resend a payroll that has already been paid", "只有赵宏伟可以重新发送已经发薪的工资单")} /> : null}
+      {revokeError ? <WorkbenchActionBanner tone="error" title={t(lang, "Failed to revoke payroll send", "撤销发送失败")} /> : null}
+      {sp?.error === "revoke-paid" ? <WorkbenchActionBanner tone="error" title={t(lang, "Only Zhao Hongwei can revoke a payroll that has already been paid", "只有赵宏伟可以撤销已经发薪的工资单")} /> : null}
+      {sp?.error === "mgr-perm" ? <WorkbenchActionBanner tone="error" title={t(lang, "No manager approver permission", "无管理审批权限")} /> : null}
+      {sp?.error === "fin-perm" ? <WorkbenchActionBanner tone="error" title={t(lang, "No finance approver permission", "无财务审批权限")} /> : null}
+      {sp?.error === "mgr-approve" ? <WorkbenchActionBanner tone="error" title={t(lang, "Manager approval failed", "管理审批失败")} /> : null}
+      {sp?.error === "fin-approve" ? <WorkbenchActionBanner tone="error" title={t(lang, "Finance approval failed", "财务审批失败")} /> : null}
+      {sp?.error === "fin-paid" ? <WorkbenchActionBanner tone="error" title={t(lang, "Finance payout failed", "财务发薪失败")} /> : null}
+      {sp?.error === "fin-batch-empty" ? <WorkbenchActionBanner tone="error" title={t(lang, "Please select at least one teacher for batch payout", "请至少选择一位老师进行批量发薪")} /> : null}
+      {sp?.error === "fin-reject" ? <WorkbenchActionBanner tone="error" title={t(lang, "Finance reject failed", "财务驳回失败")} /> : null}
+      {sp?.error === "fin-reason" ? <WorkbenchActionBanner tone="error" title={t(lang, "Please enter reject reason", "请填写驳回原因")} /> : null}
+      {sp?.error === "cfg-perm" ? <WorkbenchActionBanner tone="error" title={t(lang, "Only Zhao Hongwei can edit the approval role settings", "只有赵宏伟可以修改审批角色配置")} /> : null}
+      {sp?.error === "forbidden" ? <WorkbenchActionBanner tone="error" title={t(lang, "Finance role cannot modify this data", "财务角色不能修改此类数据")} /> : null}
 
       <div
         style={{
@@ -1000,11 +1109,13 @@ export default async function TeacherPayrollPage({
                           {item.row.teacherName}
                         </a>
                       </div>
-                      <span style={{ ...workflowChipStyle(item.queueKey === "send" ? "pending" : item.queueKey === "done" ? "done" : "pending"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                        {item.queueLabel}
-                      </span>
+                      <WorkbenchStatusChip
+                        label={item.queueLabel}
+                        tone={item.queueKey === "done" ? "success" : "warn"}
+                        strong
+                      />
                     </div>
-                    <div style={{ fontSize: 13, color: "#475569" }}>
+                    <div style={workbenchTableCellSecondaryStyle}>
                       {t(lang, "Pending sessions", "待完成课次")}: <strong>{item.row.pendingSessions}</strong> · {t(lang, "Hours", "课时")}: <strong>{item.row.totalHours}</strong>
                     </div>
                     <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>
@@ -1082,18 +1193,22 @@ export default async function TeacherPayrollPage({
                 {renderSelectedTimeline(selectedWorkflowRow)}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                <span style={{ ...workflowChipStyle(selectedWorkflowRow.teacherState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                  {t(lang, "Teacher", "老师")}: {selectedWorkflowRow.teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}
-                </span>
-                <span style={{ ...workflowChipStyle(selectedWorkflowRow.managerState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                  {t(lang, "Manager", "管理")}: {selectedWorkflowRow.managerState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${selectedWorkflowRow.publish?.managerApprovedBy.length ?? 0}/${roleConfig.managerApproverEmails.length}`}
-                </span>
-                <span style={{ ...workflowChipStyle(selectedWorkflowRow.financeConfirmState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                  {t(lang, "Finance Confirm", "财务确认")}: {selectedWorkflowRow.financeConfirmState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
-                </span>
-                <span style={{ ...workflowChipStyle(selectedWorkflowRow.financePaidState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                  {t(lang, "Finance Paid", "财务发薪")}: {selectedWorkflowRow.financePaidState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
-                </span>
+                <WorkbenchStatusChip
+                  label={`${t(lang, "Teacher", "老师")}: ${selectedWorkflowRow.teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}`}
+                  tone={workflowTone(selectedWorkflowRow.teacherState)}
+                />
+                <WorkbenchStatusChip
+                  label={`${t(lang, "Manager", "管理")}: ${selectedWorkflowRow.managerState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${selectedWorkflowRow.publish?.managerApprovedBy.length ?? 0}/${roleConfig.managerApproverEmails.length}`}`}
+                  tone={workflowTone(selectedWorkflowRow.managerState)}
+                />
+                <WorkbenchStatusChip
+                  label={`${t(lang, "Finance Confirm", "财务确认")}: ${selectedWorkflowRow.financeConfirmState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}`}
+                  tone={workflowTone(selectedWorkflowRow.financeConfirmState)}
+                />
+                <WorkbenchStatusChip
+                  label={`${t(lang, "Finance Paid", "财务发薪")}: ${selectedWorkflowRow.financePaidState === "done" ? t(lang, "Done", "完成") : selectedWorkflowRow.financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}`}
+                  tone={workflowTone(selectedWorkflowRow.financePaidState)}
+                />
               </div>
               {renderSelectedActionArea(selectedWorkflowRow)}
             </div>
@@ -1110,7 +1225,7 @@ export default async function TeacherPayrollPage({
           type="text"
           name="q"
           placeholder={t(lang, "Teacher Search", "老师搜索")}
-          defaultValue={String(sp?.q ?? "")}
+          defaultValue={q}
           style={{ minWidth: 220 }}
         />
         <label>
@@ -1120,17 +1235,28 @@ export default async function TeacherPayrollPage({
           <input type="checkbox" name="unsentOnly" value="1" defaultChecked={unsentOnly} /> {t(lang, "Only Unsent", "仅看未发送")}
         </label>
         <button type="submit" data-apply-submit="1">{t(lang, "Apply", "应用")}</button>
-        <a href={`/admin/reports/teacher-payroll?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>{t(lang, "Clear", "清除")}</a>
+        <a href="/admin/reports/teacher-payroll?clearDesk=1">{t(lang, "Clear", "清除")}</a>
         <a href={exportCsvHref}>{t(lang, "Export CSV", "导出 CSV")}</a>
       </form>
       {payrollRows.length === 0 ? (
-        <div style={{ color: "#999", marginBottom: 16 }}>{t(lang, "No sessions in this payroll period.", "当前计薪周期没有课次。")}</div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "No sessions in this payroll period", "当前计薪周期没有课次")}
+          description={t(
+            lang,
+            "Try switching the payroll month or reopening the default desk if you want to inspect another period.",
+            "可以切换工资月份，或回到默认工作台查看其他周期。"
+          )}
+          actions={[
+            { href: "/admin/reports/teacher-payroll?clearDesk=1", label: t(lang, "Back to default workbench", "回到默认工作台"), emphasis: "primary" },
+          ]}
+        />
       ) : (
         <div style={{ overflowX: "auto", marginBottom: 20 }}>
           <table cellPadding={8} style={{ borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: 980 }}>
             <thead>
               <tr>
-                <th align="left" style={payrollTableFirstColHeaderStyle}>{t(lang, "Teacher", "老师")}</th>
+                <th align="left" style={{ ...payrollTableFirstColHeaderStyle, ...workbenchTableHeaderCellStyle }}>{t(lang, "Teacher", "老师")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Sessions", "课次数")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Cancelled+Charged", "取消但扣课时")}</th>
                 <th align="left" style={payrollTableHeaderCellStyle}>{t(lang, "Completed", "已完成")}</th>
@@ -1181,27 +1307,30 @@ export default async function TeacherPayrollPage({
                     </td>
                     <td style={{ borderTop: "1px solid #eee" }}>
                       {!publish ? (
-                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569" }}>
-                          {t(lang, "Not sent", "未发送")}
-                        </span>
+                        <WorkbenchStatusChip label={t(lang, "Not sent", "未发送")} tone="neutral" />
                       ) : (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                          <span style={{ ...workflowChipStyle(teacherState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Teacher", "老师")}: {teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}
-                          </span>
-                          <span style={{ ...workflowChipStyle(managerState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Manager", "管理")}: {managerState === "done" ? t(lang, "Done", "完成") : managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}
-                          </span>
-                          <span style={{ ...workflowChipStyle(financeConfirmState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Finance Confirm", "财务确认")}: {financeConfirmState === "done" ? t(lang, "Done", "完成") : financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
-                          </span>
-                          <span style={{ ...workflowChipStyle(financePaidState), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                            {t(lang, "Finance Paid", "财务发薪")}: {financePaidState === "done" ? t(lang, "Done", "完成") : financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}
-                          </span>
+                          <WorkbenchStatusChip
+                            label={`${t(lang, "Teacher", "老师")}: ${teacherState === "done" ? t(lang, "Done", "完成") : t(lang, "Pending", "待处理")}`}
+                            tone={workflowTone(teacherState)}
+                          />
+                          <WorkbenchStatusChip
+                            label={`${t(lang, "Manager", "管理")}: ${managerState === "done" ? t(lang, "Done", "完成") : managerState === "blocked" ? t(lang, "Blocked", "未到此步") : `${publish.managerApprovedBy.length}/${roleConfig.managerApproverEmails.length}`}`}
+                            tone={workflowTone(managerState)}
+                          />
+                          <WorkbenchStatusChip
+                            label={`${t(lang, "Finance Confirm", "财务确认")}: ${financeConfirmState === "done" ? t(lang, "Done", "完成") : financeConfirmState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}`}
+                            tone={workflowTone(financeConfirmState)}
+                          />
+                          <WorkbenchStatusChip
+                            label={`${t(lang, "Finance Paid", "财务发薪")}: ${financePaidState === "done" ? t(lang, "Done", "完成") : financePaidState === "blocked" ? t(lang, "Blocked", "未到此步") : t(lang, "Pending", "待处理")}`}
+                            tone={workflowTone(financePaidState)}
+                          />
                           {publish.financeRejectedAt ? (
-                            <span style={{ ...workflowChipStyle("rejected"), borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                              {t(lang, "Finance Rejected", "财务驳回")}: {publish.financeRejectReason ?? "-"}
-                            </span>
+                            <WorkbenchStatusChip
+                              label={`${t(lang, "Finance Rejected", "财务驳回")}: ${publish.financeRejectReason ?? "-"}`}
+                              tone="error"
+                            />
                           ) : null}
                         </div>
                       )}

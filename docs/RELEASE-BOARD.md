@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r69` (admin UX patterns phase 2: remembered desks, shared status chips, steadier split workbenches), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r70` (admin UX patterns phase 3: finance-heavy workbenches now share remembered context, banners, and clearer status signals), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-16-r70 Ready
+
+- Scope: finish the next admin UX consistency pass on packages, partner settlement, teacher payroll, and conflicts.
+- Business impact:
+  - packages now preserve list context better with scroll memory, show clearer shared risk/status chips, and use the shared action-banner pattern for resumed filters, next-step guidance, and empty states
+  - partner settlement now keeps scroll position, resumes remembered workbench context more clearly, and replaces several ad-hoc result blocks with shared action banners so finance sees more consistent next-step guidance
+  - teacher payroll now remembers the last desk filters on normal return, clears through an explicit default-desk path, and uses shared banners plus shared workflow chips in queue/detail/table areas instead of mixed plain text badges
+  - conflicts now remembers the last filter/date range on normal return, clears cleanly through a reset path, preserves scroll position, and uses shared chips/banners for conflict tags and empty results
+  - no payroll rules, settlement rules, package rules, scheduling rules, or conflict-resolution business logic changed
+- Validation:
+  - `npm run build`
+  - verify packages/partner-settlement/teacher-payroll/conflicts all keep or clear remembered context only when expected
+  - verify the new shared banners appear for resumed state, success/failure feedback, and empty states on those four pages
+  - verify payroll workflow state and conflict tags still reflect the same underlying data after the UI refactor
 
 ## 2026-04-16-r68 Ready
 

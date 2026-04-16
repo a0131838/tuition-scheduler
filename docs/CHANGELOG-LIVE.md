@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r70
+
+- Release ID: `2026-04-16-r70`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: finish the next admin UX consistency pass on packages, partner settlement, teacher payroll, and conflicts with better remembered context, clearer banners, and more consistent status signals.
+- Key files:
+  - `app/admin/packages/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/conflicts/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260416-admin-ux-patterns-phase-3.md`
+- Risk impact (if any): Low to medium. This release is still UI-only, but it expands remembered desk behavior and shared feedback/state components into more finance-heavy pages. The main watchpoints are making sure reset links clear remembered filters cleanly and that payroll/settlement status displays still mirror the same underlying workflow state as before.
+- Verification:
+  - `npm run build`
+  - packages should keep scroll position, show clearer risk/status chips, and use shared next-step banners for resumed filters, post-action focus, and empty states
+  - partner settlement should resume the last workbench view more clearly, keep scroll position, and show shared banners for schema issues, action outcomes, selected-item empty states, and empty pending-record queues
+  - teacher payroll should resume its last desk filters only on normal return, clear properly through the default-desk link, and show shared action banners plus unified workflow chips in both queue and table views
+  - conflicts should remember the last date/filter range on normal return, clear properly through the explicit reset link, preserve scroll position, and show shared chips/banners for conflict tags and empty-range states
+- Rollback point: previous production commit before `2026-04-16-r70`.
+
 ## 2026-04-16-r69
 
 - Release ID: `2026-04-16-r69`

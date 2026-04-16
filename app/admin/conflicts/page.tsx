@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import { cookies } from "next/headers";
 import ScheduleCourseFilter from "../_components/ScheduleCourseFilter";
 import NoticeBanner from "../_components/NoticeBanner";
+import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
+import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
+import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
+import WorkbenchStatusChip from "../_components/WorkbenchStatusChip";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import ConflictsAppointmentActionsClient from "./_components/ConflictsAppointmentActionsClient";
 import ConflictsSessionActionsClient from "./_components/ConflictsSessionActionsClient";
@@ -13,6 +18,8 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "../_components/workbenchStyles";
+
+const CONFLICTS_FILTER_COOKIE = "adminConflictsPreferredFilters";
 
 function conflictSectionLinkStyle(background: string, border: string) {
   return {
@@ -84,12 +91,35 @@ function canTeachClass(teacher: any, courseId?: string | null, subjectId?: strin
   return false;
 }
 
+function parseRememberedConflictsDesk(raw: string, fallbackFrom: string, fallbackTo: string) {
+  let normalizedRaw = raw;
+  try {
+    normalizedRaw = decodeURIComponent(raw);
+  } catch {
+    normalizedRaw = raw;
+  }
+  const params = new URLSearchParams(normalizedRaw);
+  const from = parseDateOnly(String(params.get("from") ?? "").trim()) ? String(params.get("from")) : fallbackFrom;
+  const to = parseDateOnly(String(params.get("to") ?? "").trim()) ? String(params.get("to")) : fallbackTo;
+  const courseId = String(params.get("courseId") ?? "").trim();
+  const subjectId = String(params.get("subjectId") ?? "").trim();
+  const pageSizeRaw = Number.parseInt(String(params.get("pageSize") ?? "").trim(), 10);
+  const pageSize = [10, 20, 30, 50, 100].includes(pageSizeRaw) ? String(pageSizeRaw) : "30";
+  const normalized = new URLSearchParams();
+  if (from !== fallbackFrom) normalized.set("from", from);
+  if (to !== fallbackTo) normalized.set("to", to);
+  if (courseId) normalized.set("courseId", courseId);
+  if (subjectId) normalized.set("subjectId", subjectId);
+  if (pageSize !== "30") normalized.set("pageSize", pageSize);
+  return { from, to, courseId, subjectId, pageSize, value: normalized.toString() };
+}
+
 // Server actions were removed; conflict resolution now uses client fetch + /api routes.
 
 export default async function ConflictsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ from?: string; to?: string; courseId?: string; subjectId?: string; page?: string; pageSize?: string; msg?: string; err?: string }>;
+  searchParams?: Promise<{ from?: string; to?: string; courseId?: string; subjectId?: string; page?: string; pageSize?: string; msg?: string; err?: string; clearDesk?: string }>;
 }) {
   const lang = await getLang();
   const today = new Date();
@@ -99,15 +129,27 @@ export default async function ConflictsPage({
   const defaultTo = ymd(toDefault);
 
   const sp = await searchParams;
-  const fromStr = (sp?.from ?? defaultFrom).trim();
-  const toStr = (sp?.to ?? defaultTo).trim();
+  const hasFromParam = typeof sp?.from === "string" && sp.from.trim().length > 0;
+  const hasToParam = typeof sp?.to === "string" && sp.to.trim().length > 0;
+  const hasCourseParam = typeof sp?.courseId === "string" && sp.courseId.trim().length > 0;
+  const hasSubjectParam = typeof sp?.subjectId === "string" && sp.subjectId.trim().length > 0;
+  const hasPageSizeParam = typeof sp?.pageSize === "string" && sp.pageSize.trim().length > 0;
+  const clearDesk = sp?.clearDesk === "1";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const filterCourseId = (sp?.courseId ?? "").trim();
-  const filterSubjectId = (sp?.subjectId ?? "").trim();
+  const cookieStore = await cookies();
+  const canResumeRememberedDesk = !clearDesk && !hasFromParam && !hasToParam && !hasCourseParam && !hasSubjectParam && !hasPageSizeParam && !msg && !err;
+  const rememberedDesk = canResumeRememberedDesk
+    ? parseRememberedConflictsDesk(cookieStore.get(CONFLICTS_FILTER_COOKIE)?.value ?? "", defaultFrom, defaultTo)
+    : { from: defaultFrom, to: defaultTo, courseId: "", subjectId: "", pageSize: "30", value: "" };
+  const fromStr = String(hasFromParam ? sp?.from ?? "" : rememberedDesk.from ?? defaultFrom).trim();
+  const toStr = String(hasToParam ? sp?.to ?? "" : rememberedDesk.to ?? defaultTo).trim();
+  const filterCourseId = String(hasCourseParam ? sp?.courseId ?? "" : rememberedDesk.courseId ?? "").trim();
+  const filterSubjectId = String(hasSubjectParam ? sp?.subjectId ?? "" : rememberedDesk.subjectId ?? "").trim();
   const requestedPage = Math.max(1, Number.parseInt((sp?.page ?? "1").trim(), 10) || 1);
-  const requestedPageSize = Number.parseInt((sp?.pageSize ?? "30").trim(), 10) || 30;
+  const requestedPageSize = Number.parseInt(String(hasPageSizeParam ? sp?.pageSize ?? "" : rememberedDesk.pageSize ?? "30").trim(), 10) || 30;
   const pageSize = Math.min(100, Math.max(10, requestedPageSize));
+  const resumedRememberedDesk = canResumeRememberedDesk && Boolean(rememberedDesk.value);
 
   const fromParsed = parseDateOnly(fromStr) ?? parseDateOnly(defaultFrom)!;
   const toParsed = parseDateOnly(toStr) ?? parseDateOnly(defaultTo)!;
@@ -115,6 +157,15 @@ export default async function ConflictsPage({
   const to = fromParsed <= toParsed ? toParsed : fromParsed;
   const fromSafeStr = ymd(from);
   const toSafeStr = ymd(to);
+  const rememberedDeskValue = (() => {
+    const params = new URLSearchParams();
+    if (fromSafeStr !== defaultFrom) params.set("from", fromSafeStr);
+    if (toSafeStr !== defaultTo) params.set("to", toSafeStr);
+    if (filterCourseId) params.set("courseId", filterCourseId);
+    if (filterSubjectId) params.set("subjectId", filterSubjectId);
+    if (pageSize !== 30) params.set("pageSize", String(pageSize));
+    return params.toString();
+  })();
   to.setHours(23, 59, 59, 999);
 
   const [sessionsRaw, appointments, teachers, rooms, courses, subjects] = await Promise.all([
@@ -280,6 +331,12 @@ export default async function ConflictsPage({
 
   return (
     <div>
+      <RememberedWorkbenchQueryClient
+        cookieKey={CONFLICTS_FILTER_COOKIE}
+        storageKey="adminConflictsPreferredFilters"
+        value={rememberedDeskValue}
+      />
+      <WorkbenchScrollMemoryClient storageKey="adminConflictsScroll" />
       <section style={workbenchHeroStyle("amber")}>
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#9a3412" }}>{t(lang, "Scheduling conflict desk", "排课冲突工作台")}</div>
@@ -311,6 +368,21 @@ export default async function ConflictsPage({
           </div>
         </div>
       </section>
+
+      {resumedRememberedDesk ? (
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "Resumed your last conflict workbench filters", "已恢复你上次的冲突工作台筛选")}
+          description={t(
+            lang,
+            "The previous date range and filter set are active again so you can continue investigating the same batch.",
+            "系统已经恢复上次使用的日期范围和筛选条件，方便你继续处理同一批冲突。"
+          )}
+          actions={[
+            { href: "/admin/conflicts?clearDesk=1", label: t(lang, "Back to default workbench", "回到默认工作台"), emphasis: "primary" },
+          ]}
+        />
+      ) : null}
 
       <section
         style={{
@@ -396,7 +468,19 @@ export default async function ConflictsPage({
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
 
       {totalConflicts === 0 ? (
-        <div style={{ color: "#999" }}>{t(lang, "No conflicts found in selected range.", "所选范围内暂无冲突。")}</div>
+        <WorkbenchActionBanner
+          tone="info"
+          title={t(lang, "No conflicts found in selected range", "所选范围内暂无冲突")}
+          description={t(
+            lang,
+            "This time window is currently clear. Broaden the date range or switch back to the live schedule if you want to inspect another batch.",
+            "当前时间范围内没有冲突。若你还想继续排查，可以放宽日期范围，或回到课表继续查看其他批次。"
+          )}
+          actions={[
+            { href: "/admin/conflicts?clearDesk=1", label: t(lang, "Reset conflict desk", "重置冲突工作台"), emphasis: "primary" },
+            { href: "/admin/schedule", label: t(lang, "Open schedule", "打开课表") },
+          ]}
+        />
       ) : (
         <>
           <div id="conflict-results" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
@@ -423,19 +507,7 @@ export default async function ConflictsPage({
                   <div style={{ fontWeight: 700 }}>{fmtRange(s.startAt, s.endAt)}</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {conflictTags.map((tag) => (
-                      <span
-                        key={tag}
-                        style={{
-                          padding: "2px 8px",
-                          borderRadius: 999,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          background: "#fef3c7",
-                          color: "#92400e",
-                        }}
-                      >
-                        {tag}
-                      </span>
+                      <WorkbenchStatusChip key={tag} label={tag} tone="warn" />
                     ))}
                   </div>
                 </div>
