@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r75
+
+- Release ID: `2026-04-16-r75`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: slim the generated admin sticky shortcut strips so they feel like lightweight navigation instead of dense mini workbenches.
+- Key files:
+  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
+  - `docs/tasks/TASK-20260416-admin-compact-sticky-density-reduction.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is still UI-only. The compact sticky row now shows only the first few links inline, moves the rest into `More / 更多`, and strips noisy count-heavy labels. No workflow rules, approval logic, routing behavior, or queue logic changed.
+- Verification:
+  - `npm run build`
+  - production browser check confirms student detail, ticket center, and expense claims now show the lighter compact sticky row with at most 3 inline links plus `More / 更多`
+  - confirm expense-claims split-view detail pane remains sticky
+- Rollback point: previous production commit before `2026-04-16-r75`.
+
 ## 2026-04-16-r74
 
 - Release ID: `2026-04-16-r74`

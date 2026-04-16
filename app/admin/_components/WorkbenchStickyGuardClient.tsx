@@ -7,6 +7,7 @@ const GUARDED_ATTR = "data-workbench-sticky-guard";
 const COMPACT_BAR_ATTR = "data-workbench-sticky-guard-compact";
 const LARGE_STICKY_MIN_HEIGHT = 120;
 const LARGE_STICKY_MAX_TOP = 140;
+const COMPACT_VISIBLE_LINKS = 3;
 
 function restoreDowngradedSticky(main: Element) {
   main.querySelectorAll<HTMLElement>(`[${COMPACT_BAR_ATTR}="generated"]`).forEach((element) => element.remove());
@@ -43,19 +44,13 @@ function normalizeText(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function getCompactTitle(element: HTMLElement) {
-  const candidates = Array.from(element.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, strong, summary, div, span"))
-    .map((node) => {
-      const text = normalizeText(node.textContent || "");
-      return {
-        text,
-        weight: Number.parseInt(window.getComputedStyle(node).fontWeight || "400", 10) || 400,
-      };
-    })
-    .filter((item) => item.text && item.text.length <= 64)
-    .sort((a, b) => b.weight - a.weight);
+function collapseCompactLabel(value: string) {
+  const normalized = normalizeText(value);
+  if (!normalized) return "";
 
-  return candidates[0]?.text || "Quick jumps";
+  const countMatch = normalized.match(/^(.+?)(?:\s+\d[\d\s/:%A-Za-z\u4e00-\u9fff-]*)$/);
+  const withoutCounts = countMatch?.[1] ? normalizeText(countMatch[1]) : normalized;
+  return withoutCounts.replace(/[|·•:：-]\s*$/, "").trim();
 }
 
 function getCompactLinks(element: HTMLElement) {
@@ -66,7 +61,7 @@ function getCompactLinks(element: HTMLElement) {
         anchor.querySelector("strong, span, b")?.textContent || ""
       );
       const fullText = normalizeText(anchor.textContent || "");
-      const label = headingLike || fullText;
+      const label = collapseCompactLabel(headingLike || fullText);
       return {
         href: anchor.getAttribute("href") || "",
         label,
@@ -83,9 +78,10 @@ function getCompactLinks(element: HTMLElement) {
 }
 
 function createCompactBar(source: HTMLElement) {
-  const compactTitle = getCompactTitle(source);
   const compactLinks = getCompactLinks(source);
   if (!compactLinks.length) return null;
+  const primaryLinks = compactLinks.slice(0, COMPACT_VISIBLE_LINKS);
+  const moreLinks = compactLinks.slice(COMPACT_VISIBLE_LINKS);
 
   const wrapper = document.createElement("div");
   wrapper.setAttribute(GUARDED_ATTR, "compact");
@@ -94,74 +90,126 @@ function createCompactBar(source: HTMLElement) {
     position: "sticky",
     top: "12px",
     zIndex: "4",
-    display: "grid",
-    gap: "8px",
-    marginTop: "8px",
-    marginBottom: "12px",
-    padding: "10px 12px",
-    border: "1px solid #dbe4f0",
-    borderRadius: "14px",
-    background: "rgba(255, 255, 255, 0.96)",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
-    backdropFilter: "blur(12px)",
-  } satisfies Partial<CSSStyleDeclaration>);
-
-  const header = document.createElement("div");
-  Object.assign(header.style, {
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
     gap: "8px",
     flexWrap: "wrap",
+    marginTop: "8px",
+    marginBottom: "12px",
+    padding: "8px 10px",
+    border: "1px solid #dbe4f0",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.96)",
+    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
+    backdropFilter: "blur(12px)",
   } satisfies Partial<CSSStyleDeclaration>);
 
-  const title = document.createElement("div");
-  title.textContent = compactTitle;
-  Object.assign(title.style, {
-    fontWeight: "800",
-    color: "#0f172a",
-    fontSize: "13px",
-  } satisfies Partial<CSSStyleDeclaration>);
-
-  const hint = document.createElement("div");
-  hint.textContent = "Quick jumps / 快捷跳转";
-  Object.assign(hint.style, {
+  const label = document.createElement("div");
+  label.textContent = "Jump / 跳转";
+  Object.assign(label.style, {
     fontSize: "11px",
     color: "#64748b",
     fontWeight: "700",
+    whiteSpace: "nowrap",
+    paddingInline: "4px",
   } satisfies Partial<CSSStyleDeclaration>);
-
-  header.append(title, hint);
 
   const linksWrap = document.createElement("div");
   Object.assign(linksWrap.style, {
     display: "flex",
     gap: "8px",
-    flexWrap: "wrap",
     alignItems: "center",
+    flexWrap: "wrap",
   } satisfies Partial<CSSStyleDeclaration>);
 
-  compactLinks.forEach((item) => {
+  primaryLinks.forEach((item) => {
     const anchor = document.createElement("a");
     anchor.href = item.href;
     anchor.textContent = item.label;
     Object.assign(anchor.style, {
       display: "inline-flex",
       alignItems: "center",
-      minHeight: "34px",
-      padding: "6px 10px",
+      minHeight: "28px",
+      padding: "4px 10px",
       borderRadius: "999px",
-      border: "1px solid #bfdbfe",
-      background: "#eff6ff",
-      color: "#1d4ed8",
+      border: "1px solid #dbe4f0",
+      background: "#f8fafc",
+      color: "#334155",
       textDecoration: "none",
       fontSize: "12px",
       fontWeight: "700",
+      whiteSpace: "nowrap",
     } satisfies Partial<CSSStyleDeclaration>);
     linksWrap.appendChild(anchor);
   });
 
-  wrapper.append(header, linksWrap);
+  if (moreLinks.length) {
+    const moreWrap = document.createElement("details");
+    Object.assign(moreWrap.style, {
+      position: "relative",
+    } satisfies Partial<CSSStyleDeclaration>);
+
+    const summary = document.createElement("summary");
+    summary.textContent = "More / 更多";
+    Object.assign(summary.style, {
+      display: "inline-flex",
+      alignItems: "center",
+      minHeight: "28px",
+      padding: "4px 10px",
+      borderRadius: "999px",
+      border: "1px dashed #cbd5e1",
+      background: "#ffffff",
+      color: "#475569",
+      fontSize: "12px",
+      fontWeight: "700",
+      cursor: "pointer",
+      listStyle: "none",
+      whiteSpace: "nowrap",
+    } satisfies Partial<CSSStyleDeclaration>);
+    summary.addEventListener("click", (event) => event.stopPropagation());
+
+    const menu = document.createElement("div");
+    Object.assign(menu.style, {
+      position: "absolute",
+      top: "calc(100% + 8px)",
+      right: "0",
+      minWidth: "200px",
+      display: "grid",
+      gap: "6px",
+      padding: "8px",
+      border: "1px solid #dbe4f0",
+      borderRadius: "14px",
+      background: "rgba(255, 255, 255, 0.98)",
+      boxShadow: "0 12px 32px rgba(15, 23, 42, 0.12)",
+    } satisfies Partial<CSSStyleDeclaration>);
+
+    moreLinks.forEach((item) => {
+      const anchor = document.createElement("a");
+      anchor.href = item.href;
+      anchor.textContent = item.label;
+      Object.assign(anchor.style, {
+        display: "flex",
+        alignItems: "center",
+        minHeight: "32px",
+        padding: "6px 10px",
+        borderRadius: "10px",
+        background: "#f8fafc",
+        color: "#334155",
+        textDecoration: "none",
+        fontSize: "12px",
+        fontWeight: "600",
+      } satisfies Partial<CSSStyleDeclaration>);
+      anchor.addEventListener("click", () => {
+        moreWrap.open = false;
+      });
+      menu.appendChild(anchor);
+    });
+
+    moreWrap.append(summary, menu);
+    linksWrap.appendChild(moreWrap);
+  }
+
+  wrapper.append(label, linksWrap);
   return wrapper;
 }
 
