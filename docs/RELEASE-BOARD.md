@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r73` (admin sticky work-map guard so large fixed bars stop covering content), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r74` (compact sticky shortcut strips for downgraded admin work maps), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -84,6 +84,20 @@
   - `npm run build`
   - production-build browser check confirms the main affected admin pages no longer keep the large work-map bar sticky
   - confirm the right-side detail pane on expense claims still remains sticky
+
+## 2026-04-16-r74 Ready
+
+- Scope: turn downgraded oversized admin work maps into compact sticky shortcut strips.
+- Business impact:
+  - the original large work map stays visible in normal flow, so the page keeps its full explanatory section
+  - a new thin sticky shortcut strip now appears for downgraded work maps, preserving quick navigation without covering the content below
+  - student detail, ticket center, expense claims, and similar workbench pages now keep a more usable sticky affordance instead of losing sticky behavior entirely
+  - narrow intentional sticky panes, such as the expense-claims right detail pane, remain sticky
+  - no approval, ticket, scheduling, attendance, teacher, package, or finance logic changed
+- Validation:
+  - `npm run build`
+  - production-build browser check confirms compact sticky shortcut strips appear on representative downgraded work-map pages
+  - confirm the expense-claims detail pane still stays sticky
 
 ## 2026-04-16-r70 Ready
 

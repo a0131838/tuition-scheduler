@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r74
+
+- Release ID: `2026-04-16-r74`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: turn the downgraded oversized admin work maps into compact sticky shortcut strips instead of removing sticky access entirely.
+- Key files:
+  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
+  - `docs/tasks/TASK-20260416-admin-compact-sticky-shortcuts.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is still UI-only. The guard now generates a compact sticky shortcut row from existing page links while the original large work map stays in normal flow. No workflow rules, queue rules, or routing logic changed.
+- Verification:
+  - `npm run build`
+  - production-build browser check confirms student detail, ticket center, expense claims, and receipts approvals now keep a thin sticky shortcut row after the large work map is downgraded
+  - confirm the expense-claims split-view detail pane remains sticky
+- Rollback point: previous production commit before `2026-04-16-r74`.
+
 ## 2026-04-16-r73
 
 - Release ID: `2026-04-16-r73`
