@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r73
+
+- Release ID: `2026-04-16-r73`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: add an admin-layout sticky guard so oversized work-map bars stop covering the content below them.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
+  - `docs/tasks/TASK-20260416-admin-sticky-workmap-guard.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a UI-only layout guard that downgrades large sticky work-map panels to normal flow blocks while leaving smaller sticky detail panes and table headers alone. No approval, ticket, scheduling, attendance, package, or finance rules changed.
+- Verification:
+  - `npm run build`
+  - production-build browser check confirms the large work-map bar no longer sticks on the main affected admin pages, including student detail, expense claims, receipts approvals, todos, tickets, partner settlement, teachers, classes, finance workbench, and attendance detail
+  - confirm split-view right detail panes still stay sticky where they are intentionally narrow
+- Rollback point: previous production commit before `2026-04-16-r73`.
+
 ## 2026-04-16-r72
 
 - Release ID: `2026-04-16-r72`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r72` (approval inbox narrow-width overflow follow-up from the next real admin QA sweep), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r73` (admin sticky work-map guard so large fixed bars stop covering content), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -71,6 +71,19 @@
   - `npm run build`
   - verify `/admin/approvals?focus=manager` is overflow-free around `1024px` width with the sidebar visible
   - verify `expense-claims`, `receipts-approvals`, `todos`, and `tickets` still remain overflow-free at the same width
+
+## 2026-04-16-r73 Ready
+
+- Scope: add an admin-layout sticky guard so oversized work-map bars stop covering the content below them.
+- Business impact:
+  - the large wide admin work-map bars now automatically downgrade from sticky to normal flow blocks when they are tall enough to cover the content below
+  - this fixes the student detail page complaint and the same pattern across the other main admin workbench pages without editing each workflow page separately
+  - narrower intentional sticky elements such as split-view detail panes and table headers remain sticky
+  - no approval rules, ticket logic, scheduling logic, attendance logic, teacher logic, package logic, or finance logic changed
+- Validation:
+  - `npm run build`
+  - production-build browser check confirms the main affected admin pages no longer keep the large work-map bar sticky
+  - confirm the right-side detail pane on expense claims still remains sticky
 
 ## 2026-04-16-r70 Ready
 

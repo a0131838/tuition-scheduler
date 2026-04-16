@@ -9,6 +9,7 @@ import Link from "next/link";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 import AdminSidebarNavClient from "./AdminSidebarNavClient";
+import WorkbenchStickyGuardClient from "./_components/WorkbenchStickyGuardClient";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -422,6 +423,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </aside>
 
         <main className="app-main">
+          <WorkbenchStickyGuardClient />
           <div
             className="app-main-head"
             style={{
