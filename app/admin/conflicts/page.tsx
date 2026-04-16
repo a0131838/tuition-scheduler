@@ -468,22 +468,24 @@ export default async function ConflictsPage({
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
 
       {totalConflicts === 0 ? (
-        <WorkbenchActionBanner
-          tone="info"
-          title={t(lang, "No conflicts found in selected range", "所选范围内暂无冲突")}
-          description={t(
-            lang,
-            "This time window is currently clear. Broaden the date range or switch back to the live schedule if you want to inspect another batch.",
-            "当前时间范围内没有冲突。若你还想继续排查，可以放宽日期范围，或回到课表继续查看其他批次。"
-          )}
-          actions={[
-            { href: "/admin/conflicts?clearDesk=1", label: t(lang, "Reset conflict desk", "重置冲突工作台"), emphasis: "primary" },
-            { href: "/admin/schedule", label: t(lang, "Open schedule", "打开课表") },
-          ]}
-        />
+        <div id="conflict-results" style={{ scrollMarginTop: 92 }}>
+          <WorkbenchActionBanner
+            tone="info"
+            title={t(lang, "No conflicts found in selected range", "所选范围内暂无冲突")}
+            description={t(
+              lang,
+              "This time window is currently clear. Broaden the date range or switch back to the live schedule if you want to inspect another batch.",
+              "当前时间范围内没有冲突。若你还想继续排查，可以放宽日期范围，或回到课表继续查看其他批次。"
+            )}
+            actions={[
+              { href: "/admin/conflicts?clearDesk=1", label: t(lang, "Reset conflict desk", "重置冲突工作台"), emphasis: "primary" },
+              { href: "/admin/schedule", label: t(lang, "Open schedule", "打开课表") },
+            ]}
+          />
+        </div>
       ) : (
         <>
-          <div id="conflict-results" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+          <div id="conflict-results" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12, scrollMarginTop: 92 }}>
             {pagedConflicts.map((s) => {
             const teacherId = effectiveTeacherId(s);
             const cls = s.class;

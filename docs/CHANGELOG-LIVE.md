@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-16-r71
+
+- Release ID: `2026-04-16-r71`
+- Date/Time (Asia/Shanghai): `2026-04-16`
+- Deployment status: `READY`
+- Scope: fix the two real admin work-map anchor issues found during post-ship QA on partner settlement and conflicts.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/conflicts/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260416-admin-ux-phase-3a-anchor-followup.md`
+- Risk impact (if any): Low. This is a narrow UI-only follow-up that only adjusts anchor targets and scroll offsets after QA. No settlement rules, conflict rules, or scheduling logic changed.
+- Verification:
+  - `npm run build`
+  - verify `Partner Settlement / 合作方结算中心` work-map jump to `Action queue / 待处理队列` no longer lands under the sticky header
+  - verify `Conflict Center / 冲突处理中心` work-map jump to `Conflict cards / 冲突卡片` still lands on a valid target even when the selected range currently has zero conflicts
+- Rollback point: previous production commit before `2026-04-16-r71`.
+
 ## 2026-04-16-r70
 
 - Release ID: `2026-04-16-r70`

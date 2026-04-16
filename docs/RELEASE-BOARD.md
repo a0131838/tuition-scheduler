@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-16-r70` (admin UX patterns phase 3: finance-heavy workbenches now share remembered context, banners, and clearer status signals), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-16-r71` (post-QA anchor follow-up for partner settlement and conflicts work-map jumps), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-16-r71 Ready
+
+- Scope: fix the two real admin work-map anchor issues found during post-ship QA on partner settlement and conflicts.
+- Business impact:
+  - `Partner Settlement / 合作方结算中心` now gives the `Action queue / 待处理队列` anchor a top offset, so jumping from the work map no longer leaves the destination pressed under the sticky control strip
+  - `Conflict Center / 冲突处理中心` now always renders a valid `#conflict-results` target, even when the current date range has zero conflicts, so the work-map jump never points into empty space
+  - conflicts results anchor now also has top-offset spacing, making the jump land in a readable place instead of hugging the sticky controls
+  - no settlement rules, conflict rules, scheduling logic, or resolution actions changed
+- Validation:
+  - `npm run build`
+  - verify partner settlement work-map jump to `Action queue` lands visibly below the sticky bar
+  - verify conflicts work-map jump to `Conflict cards` still lands on a valid target when there are zero conflicts in range
 
 ## 2026-04-16-r70 Ready
 

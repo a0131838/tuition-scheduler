@@ -1334,7 +1334,7 @@ export default async function PartnerSettlementPage({
         </div>
       </div>
 
-      <div id="action-queue" style={cardStyle}>
+      <div id="action-queue" style={{ ...cardStyle, scrollMarginTop: 92 }}>
         <h3 style={sectionTitleStyle}>{t(lang, "What needs action now", "当前待处理")}</h3>
         <div style={sectionHintStyle}>
           {t(
