@@ -57,9 +57,13 @@ function getCompactLinks(element: HTMLElement) {
   const seen = new Set<string>();
   return Array.from(element.querySelectorAll<HTMLAnchorElement>("a[href]"))
     .map((anchor) => {
-      const headingLike = normalizeText(
-        anchor.querySelector("strong, span, b")?.textContent || ""
-      );
+      const headingLike = Array.from(anchor.children)
+        .map((child) => ({
+          text: normalizeText(child.textContent || ""),
+          weight: Number.parseInt(window.getComputedStyle(child).fontWeight || "400", 10) || 400,
+        }))
+        .find((child) => child.text && child.weight >= 650)?.text
+        || normalizeText(anchor.querySelector("strong, span, b")?.textContent || "");
       const fullText = normalizeText(anchor.textContent || "");
       const label = collapseCompactLabel(headingLike || fullText);
       return {
