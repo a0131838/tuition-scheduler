@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-17-r81` (shared scroll-manager query+hash navigation follow-up), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-17-r82` (quick schedule refresh follow-up after Coco + Jasmine investigation), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-17-r82 Ready
+
+- Scope: harden the quick schedule modal so `Find Available Teachers / 查找可用老师` always refreshes the candidate snapshot instead of depending on a manual page reload.
+- Business impact:
+  - the Coco + Jasmine investigation confirmed the target lesson on `2026-04-27 17:30-19:00` already exists in the database, so this was not a broad regression in teacher, room, or package rules
+  - quick schedule candidate lookup now explicitly refreshes server-rendered results after the user clicks `Find Available Teachers / 查找可用老师`
+  - the student-detail section hash is still restored after that refresh, so ops stays anchored in the quick schedule area
+  - no teacher-availability rules, room-conflict rules, duplicate-session rules, repeat scheduling rules, or package checks changed
+- Validation:
+  - `npm run build`
+  - verify Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database
+  - verify quick schedule candidate lookup refreshes without needing a manual full-page reload
 
 ## 2026-04-17-r81 Ready
 

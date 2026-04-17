@@ -430,8 +430,11 @@ export default function QuickScheduleModal({
     if (roomId) params.set("quickRoomId", roomId);
     if (startAt) params.set("quickStartAt", startAt);
     if (durationMin) params.set("quickDurationMin", durationMin);
+    const target = `/admin/students/${studentId}?${params.toString()}`;
     startFinding(() => {
-      router.replace(`/admin/students/${studentId}?${params.toString()}`);
+      router.replace(target, { scroll: false });
+      restoreStudentDetailHashAfterRefresh(sectionHash);
+      router.refresh();
     });
   }
 

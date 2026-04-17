@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r82
+
+- Release ID: `2026-04-17-r82`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: harden the quick schedule modal so `Find Available Teachers / 查找可用老师` always refreshes the candidate snapshot instead of depending on a manual page reload.
+- Key files:
+  - `app/admin/_components/QuickScheduleModal.tsx`
+  - `docs/tasks/TASK-20260417-quick-schedule-refresh-followup.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a quick-schedule UI refresh follow-up. The Coco + Jasmine investigation showed the target `2026-04-27 17:30-19:00` lesson already existed in the database, so this release does not change scheduling rules; it only forces the modal to refresh server-rendered candidate results after the user asks for a new lookup.
+- Verification:
+  - `npm run build`
+  - data check confirms Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database
+  - browser check confirms `Find Available Teachers / 查找可用老师` now refreshes the candidate snapshot without needing a full page refresh
+- Rollback point: previous production commit before `2026-04-17-r82`.
+
 ## 2026-04-17-r81
 
 - Release ID: `2026-04-17-r81`
