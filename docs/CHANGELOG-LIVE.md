@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r80
+
+- Release ID: `2026-04-17-r80`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: fix the student-detail scheduling calendar month pager so prev/next month visibly reloads the correct month instead of only changing the URL.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/_components/StudentCalendarMonthPagerClient.tsx`
+  - `docs/tasks/TASK-20260417-student-calendar-month-pager-hard-refresh.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a narrow student-detail calendar navigation fix. The month calculation on the server was already correct; the change only forces the month pager to perform a full navigation so the visible calendar content stays aligned with the URL. No scheduling logic, package logic, or calendar data rules changed.
+- Verification:
+  - `npm run build`
+  - browser check confirms `Prev Month / 上月` and `Next Month / 下月` now visibly change the rendered month while staying on `#calendar-tools`
+- Rollback point: previous production commit before `2026-04-17-r80`.
+
 ## 2026-04-17-r79
 
 - Release ID: `2026-04-17-r79`

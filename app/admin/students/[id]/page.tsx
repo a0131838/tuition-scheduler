@@ -17,6 +17,7 @@ import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 import StudentDetailHashStateClient from "./_components/StudentDetailHashStateClient";
+import StudentCalendarMonthPagerClient from "./_components/StudentCalendarMonthPagerClient";
 import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
@@ -3685,29 +3686,23 @@ export default async function StudentDetailPage({
                 <button type="submit">{tl(lang, "Download by Date Range")}</button>
               </form>
             </div>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-        <a
-          href={buildStudentDetailHref(
-            studentId,
-            new URLSearchParams({ month: monthLabel(prevMonth), calendarOpen: "1" }),
-            "#calendar-tools",
-            "#calendar-tools"
-          )}
-        >
-          &lt;&lt; {tl(lang, "Prev Month")}
-        </a>
-        <b>{monthLabel(monthDate)}</b>
-        <a
-          href={buildStudentDetailHref(
-            studentId,
-            new URLSearchParams({ month: monthLabel(nextMonth), calendarOpen: "1" }),
-            "#calendar-tools",
-            "#calendar-tools"
-          )}
-        >
-          {tl(lang, "Next Month")} &gt;&gt;
-        </a>
-      </div>
+      <StudentCalendarMonthPagerClient
+        prevHref={buildStudentDetailHref(
+          studentId,
+          new URLSearchParams({ month: monthLabel(prevMonth), calendarOpen: "1" }),
+          "#calendar-tools",
+          "#calendar-tools"
+        )}
+        prevLabel={`<< ${tl(lang, "Prev Month")}`}
+        currentMonthLabel={monthLabel(monthDate)}
+        nextHref={buildStudentDetailHref(
+          studentId,
+          new URLSearchParams({ month: monthLabel(nextMonth), calendarOpen: "1" }),
+          "#calendar-tools",
+          "#calendar-tools"
+        )}
+        nextLabel={`${tl(lang, "Next Month")} >>`}
+      />
       <table cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
