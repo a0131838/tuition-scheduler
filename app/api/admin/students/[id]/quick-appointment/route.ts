@@ -4,7 +4,12 @@ import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
-import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import {
+  isExactSessionTimeslot,
+  pickStudentSessionConflict,
+  pickTeacherSessionConflict,
+  shouldIgnoreTeacherConflictSession,
+} from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { runRejectQuickScheduleBatch, runSkipQuickScheduleBatch } from "@/lib/quick-schedule-execution";
 import { isSessionDuplicateError } from "@/lib/session-unique";
@@ -43,6 +48,14 @@ function formatSessionConflictLabel(s: any) {
   return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
 }
 
+function formatStudentSessionConflictReason(s: any, startAt: Date, endAt: Date) {
+  const label = formatSessionConflictLabel(s);
+  if (isExactSessionTimeslot(s, startAt, endAt)) {
+    return `Session already exists at this time: ${label}`;
+  }
+  return `Student already has another session at this time: ${label}`;
+}
+
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 class QuickScheduleConflictError extends Error {
@@ -79,7 +92,49 @@ async function validateQuickScheduleRow(
   const { classId, teacherId, studentId, courseId, roomId, startAt, endAt, durationMin, bypassAvailabilityCheck } = opts;
   let reason = "";
 
-  if (!bypassAvailabilityCheck) {
+  if (!reason) {
+    const studentSessionConflicts = await db.session.findMany({
+      where: {
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+        OR: [
+          { studentId },
+          { class: { oneOnOneStudentId: studentId } },
+          { class: { enrollments: { some: { studentId } } } },
+          { attendances: { some: { studentId } } },
+        ],
+      },
+      include: {
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+        attendances: {
+          select: {
+            studentId: true,
+            status: true,
+            excusedCharge: true,
+            deductedMinutes: true,
+            deductedCount: true,
+          },
+        },
+      },
+      orderBy: { startAt: "asc" },
+    });
+    const studentSessionConflict = pickStudentSessionConflict(studentSessionConflicts, studentId);
+    if (studentSessionConflict) {
+      reason = formatStudentSessionConflictReason(studentSessionConflict, startAt, endAt);
+    }
+  }
+
+  if (!reason && !bypassAvailabilityCheck) {
     const availErr = await checkTeacherAvailability(db, teacherId, startAt, endAt);
     if (availErr) reason = availErr;
   }
@@ -93,7 +148,7 @@ async function validateQuickScheduleRow(
       },
       include: {
         class: {
-          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true },
+          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, enrollments: { select: { studentId: true } } },
         },
         attendances: {
           select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },

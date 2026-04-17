@@ -4,7 +4,12 @@ import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { hasSchedulablePackage } from "@/lib/scheduling-package";
-import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import {
+  isExactSessionTimeslot,
+  pickStudentSessionConflict,
+  pickTeacherSessionConflict,
+  shouldIgnoreTeacherConflictSession,
+} from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
@@ -114,6 +119,18 @@ class StudentQuickScheduleConflictError extends Error {
 
 async function checkTeacherAvailability(db: DbClient, teacherId: string, startAt: Date, endAt: Date) {
   return checkTeacherSchedulingAvailability(db, teacherId, startAt, endAt);
+}
+
+function formatStudentSessionConflictReason(session: any, startAt: Date, endAt: Date) {
+  const cls = session.class;
+  const classLabel = `${cls.course.name}${cls.subject ? ` / ${cls.subject.name}` : ""}${cls.level ? ` / ${cls.level.name}` : ""}`;
+  const roomLabel = cls.room?.name ?? "(none)";
+  const timeLabel = `${fmtDateInput(session.startAt)} ${fmtHHMM(session.startAt)}-${fmtHHMM(session.endAt)}`;
+  const label = `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
+  if (isExactSessionTimeslot(session, startAt, endAt)) {
+    return `Session already exists at this time: ${label}`;
+  }
+  return `Student already has another session at this time: ${label}`;
 }
 
 async function previewAttendanceStatus(payload: Record<string, unknown>) {
@@ -423,7 +440,43 @@ async function validateStudentQuickScheduleRow(
   const { classId, teacherId, studentId, courseId, roomId, startAt, endAt, durationMin, bypassAvailabilityCheck } = opts;
   let reason = "";
 
-  if (!bypassAvailabilityCheck) {
+  if (!reason) {
+    const studentSessionConflicts = await db.session.findMany({
+      where: {
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+        OR: [
+          { studentId },
+          { class: { oneOnOneStudentId: studentId } },
+          { class: { enrollments: { some: { studentId } } } },
+          { attendances: { some: { studentId } } },
+        ],
+      },
+      include: {
+        class: {
+          include: {
+            course: true,
+            subject: true,
+            level: true,
+            teacher: true,
+            campus: true,
+            room: true,
+            enrollments: { select: { studentId: true } },
+          },
+        },
+        attendances: {
+          select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true },
+        },
+      },
+      orderBy: { startAt: "asc" },
+    });
+    const studentSessionConflict = pickStudentSessionConflict(studentSessionConflicts, studentId);
+    if (studentSessionConflict) {
+      reason = formatStudentSessionConflictReason(studentSessionConflict, startAt, endAt);
+    }
+  }
+
+  if (!reason && !bypassAvailabilityCheck) {
     const availErr = await checkTeacherAvailability(db, teacherId, startAt, endAt);
     if (availErr) reason = availErr;
   }
@@ -432,7 +485,9 @@ async function validateStudentQuickScheduleRow(
     const teacherSessionConflicts = await db.session.findMany({
       where: { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }], startAt: { lt: endAt }, endAt: { gt: startAt } },
       include: {
-        class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+        class: {
+          include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true, enrollments: { select: { studentId: true } } },
+        },
         attendances: { select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true } },
       },
       orderBy: { startAt: "asc" },

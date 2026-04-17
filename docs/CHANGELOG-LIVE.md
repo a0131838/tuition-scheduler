@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r83
+
+- Release ID: `2026-04-17-r83`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: tighten shared time-input sync and make quick-schedule conflict copy prioritize the student's own existing session before generic teacher/room blockers.
+- Key files:
+  - `app/_components/BlurTimeInput.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/ops/execute/route.ts`
+  - `lib/session-conflict.ts`
+  - `tests/session-conflict.test.ts`
+  - `docs/tasks/TASK-20260417-time-input-sync-and-quick-schedule-conflict-followup.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This change touches a shared time input and shared quick-schedule conflict messaging paths, but it does not alter teacher-availability rules, room-occupancy rules, package validation, repeat scheduling writes, or the database-level duplicate-session guard.
+- Verification:
+  - `npx tsx --test tests/session-conflict.test.ts tests/availability-conflict.test.ts tests/admin-teacher-availability.test.ts tests/quick-schedule-execution.test.ts`
+  - `npm run build`
+  - data check still confirms Coco + Jasmine `2026-04-27 17:30-19:00` already exists in the database, so the new conflict copy now points ops at the real reason first
+- Rollback point: previous production commit before `2026-04-17-r83`.
+
 ## 2026-04-17-r82
 
 - Release ID: `2026-04-17-r82`

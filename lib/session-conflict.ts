@@ -10,6 +10,8 @@ type SessionConflictLite = {
   id?: string;
   classId?: string;
   studentId?: string | null;
+  startAt?: Date | null;
+  endAt?: Date | null;
   class?: {
     capacity?: number | null;
     oneOnOneStudentId?: string | null;
@@ -29,6 +31,23 @@ function isExcusedNoCharge(a: AttendanceLite) {
     isZeroOrFalse(a.deductedMinutes) &&
     isZeroOrFalse(a.deductedCount)
   );
+}
+
+export function sessionIncludesStudent(session: SessionConflictLite, schedulingStudentId?: string | null) {
+  if (!schedulingStudentId) return false;
+  if (session.studentId === schedulingStudentId) return true;
+  if (session.class?.oneOnOneStudentId === schedulingStudentId) return true;
+  if ((session.class?.enrollments ?? []).some((row) => row?.studentId === schedulingStudentId)) return true;
+  if ((session.attendances ?? []).some((row) => row.studentId === schedulingStudentId)) return true;
+  return false;
+}
+
+export function isExactSessionTimeslot(
+  session: Pick<SessionConflictLite, "startAt" | "endAt">,
+  startAt: Date,
+  endAt: Date
+) {
+  return session.startAt?.getTime() === startAt.getTime() && session.endAt?.getTime() === endAt.getTime();
 }
 
 export function shouldIgnoreTeacherConflictSession(session: SessionConflictLite, schedulingStudentId?: string | null) {
@@ -65,4 +84,14 @@ export function pickTeacherSessionConflict<T extends SessionConflictLite>(
   schedulingStudentId?: string | null
 ) {
   return sessions.find((s) => !shouldIgnoreTeacherConflictSession(s, schedulingStudentId)) ?? null;
+}
+
+export function pickStudentSessionConflict<T extends SessionConflictLite>(
+  sessions: T[],
+  schedulingStudentId?: string | null
+) {
+  if (!schedulingStudentId) return null;
+  return sessions.find(
+    (s) => sessionIncludesStudent(s, schedulingStudentId) && !shouldIgnoreTeacherConflictSession(s, schedulingStudentId)
+  ) ?? null;
 }

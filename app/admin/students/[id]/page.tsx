@@ -17,7 +17,12 @@ import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 import StudentDetailHashStateClient from "./_components/StudentDetailHashStateClient";
-import { pickTeacherSessionConflict, shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
+import {
+  isExactSessionTimeslot,
+  pickStudentSessionConflict,
+  pickTeacherSessionConflict,
+  shouldIgnoreTeacherConflictSession,
+} from "@/lib/session-conflict";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import {
@@ -388,6 +393,14 @@ function formatSessionConflictLabel(s: any) {
   const roomLabel = cls.room?.name ?? "(none)";
   const timeLabel = `${fmtDateInput(s.startAt)} ${fmtHHMM(s.startAt)}-${fmtHHMM(s.endAt)}`;
   return `${classLabel} | ${cls.teacher.name} | ${cls.campus.name} / ${roomLabel} | ${timeLabel}`;
+}
+
+function formatStudentSessionConflictReason(s: any, startAt: Date, endAt: Date) {
+  const label = formatSessionConflictLabel(s);
+  if (isExactSessionTimeslot(s, startAt, endAt)) {
+    return `Session already exists at this time: ${label}`;
+  }
+  return `Student already has another session at this time: ${label}`;
 }
 
 async function humanizeQuickScheduleError(raw: string) {
@@ -2089,6 +2102,42 @@ export default async function StudentDetailPage({
       }
     }
     if (!quickPackageWarn) {
+      const studentSessionConflicts = await prisma.session.findMany({
+        where: {
+          startAt: { lt: endAt },
+          endAt: { gt: startAt },
+          OR: [
+            { studentId },
+            { class: { oneOnOneStudentId: studentId } },
+            { class: { enrollments: { some: { studentId } } } },
+            { attendances: { some: { studentId } } },
+          ],
+        },
+        include: {
+          class: {
+            include: {
+              course: true,
+              subject: true,
+              level: true,
+              teacher: true,
+              campus: true,
+              room: true,
+              enrollments: { select: { studentId: true } },
+            },
+          },
+          attendances: {
+            select: {
+              studentId: true,
+              status: true,
+              excusedCharge: true,
+              deductedMinutes: true,
+              deductedCount: true,
+            },
+          },
+        },
+        orderBy: { startAt: "asc" },
+      });
+      const studentSessionConflict = pickStudentSessionConflict(studentSessionConflicts, studentId);
       const roomConflict = quickRoomId
         ? pickTeacherSessionConflict(
             await prisma.session.findMany({
@@ -2126,6 +2175,15 @@ export default async function StudentDetailPage({
         (tch) => tch.subjectCourseId === quickSubjectId || tch.subjects.some((s) => s.id === quickSubjectId)
       );
       for (const tch of eligible) {
+        if (studentSessionConflict) {
+          quickCandidates.push({
+            id: tch.id,
+            name: tch.name,
+            ok: false,
+            reason: formatStudentSessionConflictReason(studentSessionConflict, startAt, endAt),
+          });
+          continue;
+        }
         if (roomConflict) {
           quickCandidates.push({
             id: tch.id,

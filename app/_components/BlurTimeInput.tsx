@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, InputHTMLAttributes } from "react";
 
 type BlurTimeInputProps = InputHTMLAttributes<HTMLInputElement>;
@@ -73,6 +73,10 @@ export default function BlurTimeInput(props: BlurTimeInputProps & BlurTimeInputE
   }, [initial.hh, initial.mm, allowedTimes]);
 
   const [selectedMin, setSelectedMin] = useState<number>(initialMin);
+
+  useEffect(() => {
+    setSelectedMin(initialMin);
+  }, [initialMin]);
 
   const hourOptions = useMemo(() => {
     return Array.from(new Set(allowedTimes.map((v) => Math.floor(v / 60))));

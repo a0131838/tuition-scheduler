@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-17-r82` (quick schedule refresh follow-up after Coco + Jasmine investigation), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-17-r83` (shared time-input sync and quick-schedule conflict clarity follow-up), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,19 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-17-r83 Ready
+
+- Scope: tighten shared time-input sync and make quick-schedule conflict copy prioritize the student's own existing session before generic teacher/room blockers.
+- Business impact:
+  - `BlurTimeInput` now follows external value/default changes, so pages that programmatically reset or swap times no longer risk showing a stale hour/minute selection
+  - student quick-schedule preview now tells ops first when the student already has a session in that slot, instead of making the slot look empty until a later refresh or a generic room/teacher blocker
+  - the same student-session-first conflict wording now applies to both `/api/admin/students/[id]/quick-appointment` and `/api/admin/ops/execute`, so different scheduling entry points stop disagreeing about the primary reason
+  - no teacher-availability rules, room-occupancy rules, package checks, repeat scheduling behavior, or database duplicate guards changed
+- Validation:
+  - `npx tsx --test tests/session-conflict.test.ts tests/availability-conflict.test.ts tests/admin-teacher-availability.test.ts tests/quick-schedule-execution.test.ts`
+  - `npm run build`
+  - verify Coco + Jasmine `2026-04-27 17:30-19:00` still exists in the database and now surfaces as the first conflict reason instead of looking like a fresh availability error
 
 ## 2026-04-17-r82 Ready
 
