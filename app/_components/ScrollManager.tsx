@@ -201,7 +201,9 @@ export default function ScrollManager() {
         const dest = new URL(a.href, window.location.href);
         if (dest.origin !== window.location.origin) return;
         destPath = dest.pathname;
-        if (dest.hash && dest.pathname === pathname) {
+        const samePath = dest.pathname === pathname;
+        const sameSearch = dest.search === window.location.search;
+        if (dest.hash && samePath && sameSearch) {
           e.preventDefault();
           window.history.replaceState(window.history.state, "", `${dest.pathname}${dest.search}${dest.hash}`);
           requestAnimationFrame(() => {

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-17-r80` (student detail calendar month pager hard-refresh follow-up), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-17-r81` (shared scroll-manager query+hash navigation follow-up), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -46,7 +46,18 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-16-r71 Ready
+## 2026-04-17-r81 Ready
+
+- Scope: fix the shared scroll interception rule so same-path query+hash links can navigate normally instead of being trapped as pure anchor jumps.
+- Business impact:
+  - student detail calendar month navigation now loads the requested month normally when the link changes `month=...` and keeps `#calendar-tools`
+  - pure same-page hash jumps still keep the fast in-page scroll behavior when pathname and search do not change
+  - the student-detail month pager no longer needs a dedicated client-side workaround because the shared root cause is fixed centrally
+  - no scheduling rules, calendar calculations, package logic, or approval logic changed
+- Validation:
+  - `npm run build`
+  - verify student detail calendar visibly switches months when clicking `Prev Month / 上月` and `Next Month / 下月`
+  - verify pure same-page hash jumps still scroll correctly
 
 ## 2026-04-17-r80 Ready
 

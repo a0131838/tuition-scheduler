@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-17-r81
+
+- Release ID: `2026-04-17-r81`
+- Date/Time (Asia/Shanghai): `2026-04-17`
+- Deployment status: `READY`
+- Scope: fix the shared scroll interception rule so student-detail month paging and other same-path query+hash links can navigate normally instead of being trapped as pure anchor jumps.
+- Key files:
+  - `app/_components/ScrollManager.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260417-scroll-manager-query-hash-navigation-followup.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is still a narrow navigation-layer fix. Pure same-page hash jumps keep working, but links that also change the query string now navigate normally so the server-rendered content can update. No scheduling logic, package logic, or approval logic changed.
+- Verification:
+  - `npm run build`
+  - production browser check confirms student detail `Prev Month / 上月` and `Next Month / 下月` now visibly change the rendered month while staying on `#calendar-tools`
+  - verify pure same-page hash jumps still scroll correctly
+- Rollback point: previous production commit before `2026-04-17-r81`.
+
 ## 2026-04-17-r80
 
 - Release ID: `2026-04-17-r80`
