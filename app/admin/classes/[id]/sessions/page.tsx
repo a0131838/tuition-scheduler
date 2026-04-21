@@ -1,6 +1,6 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
@@ -277,8 +277,7 @@ async function findTeacherConflict(opts: {
 
 async function createOneSession(classId: string, formData: FormData) {
   "use server";
-  const actor = await requireAdmin();
-  const bypassPackageGate = isStrictSuperAdmin(actor);
+  await requireAdmin();
 
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
@@ -334,7 +333,7 @@ async function createOneSession(classId: string, formData: FormData) {
       at: startAt,
       requiredHoursMinutes,
     });
-    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       redirect(buildRedirect(classId, { err: packageDecision.message }));
     }
   }
@@ -345,8 +344,7 @@ async function createOneSession(classId: string, formData: FormData) {
 
 async function generateWeeklySessions(classId: string, formData: FormData) {
   "use server";
-  const actor = await requireAdmin();
-  const bypassPackageGate = isStrictSuperAdmin(actor);
+  await requireAdmin();
 
   const startDateStr = String(formData.get("startDate") ?? "");
   const weekday = Number(formData.get("weekday") ?? 1);
@@ -420,7 +418,7 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
         at: startAt,
         requiredHoursMinutes,
       });
-      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      if (!packageDecision.ok) {
         packageErr = packageDecision.message;
         break;
       }

@@ -219,7 +219,7 @@ async function validateQuickScheduleRow(
       at: packageCheckAt,
       requiredHoursMinutes: durationMin,
     });
-    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       reason = packageDecision.message;
     }
   }

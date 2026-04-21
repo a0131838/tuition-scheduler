@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 
@@ -8,8 +8,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 }
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
-  const bypassPackageGate = isStrictSuperAdmin(user);
+  await requireAdmin();
 
   let body: any;
   try {
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
     at: now,
     requiredHoursMinutes: cls.capacity === 1 ? 60 : 1,
   });
-  if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+  if (!packageDecision.ok) {
     return bad(packageDecision.message, 409, { code: packageDecision.code, packageId: packageDecision.packageId });
   }
 

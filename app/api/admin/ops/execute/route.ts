@@ -339,7 +339,6 @@ async function findConflictForClassSession(opts: {
   startAt: Date;
   endAt: Date;
   schedulingStudentId?: string | null;
-  bypassPackageGate?: boolean;
   studentId?: string | null;
   courseId?: string | null;
   durationMin?: number;
@@ -352,7 +351,6 @@ async function findConflictForClassSession(opts: {
     startAt,
     endAt,
     schedulingStudentId,
-    bypassPackageGate = false,
     studentId,
     courseId,
     durationMin,
@@ -444,7 +442,7 @@ async function findConflictForClassSession(opts: {
       at: packageCheckAt,
       requiredHoursMinutes: Number(durationMin),
     });
-    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       return packageDecision.message;
     }
   }
@@ -569,7 +567,7 @@ async function validateStudentQuickScheduleRow(
       at: packageCheckAt,
       requiredHoursMinutes: durationMin,
     });
-    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       reason = packageDecision.message;
     }
   }
@@ -585,7 +583,7 @@ async function validateStudentQuickScheduleRow(
   return reason;
 }
 
-async function previewClassSessionCreate(payload: Record<string, unknown>, bypassPackageGate: boolean) {
+async function previewClassSessionCreate(payload: Record<string, unknown>) {
   const classId = String(payload.classId ?? "").trim();
   const startAtStr = String(payload.startAt ?? "").trim();
   const durationMin = Number(payload.durationMin ?? 60);
@@ -620,7 +618,7 @@ async function previewClassSessionCreate(payload: Record<string, unknown>, bypas
       at: startAt,
       requiredHoursMinutes,
     });
-    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       return { error: packageDecision.message, status: 409 };
     }
   }
@@ -632,7 +630,6 @@ async function previewClassSessionCreate(payload: Record<string, unknown>, bypas
     startAt,
     endAt,
     schedulingStudentId: cls.capacity === 1 ? studentId : null,
-    bypassPackageGate,
     studentId: cls.capacity === 1 ? studentId : null,
     courseId: cls.courseId,
     durationMin,
@@ -661,8 +658,8 @@ async function previewClassSessionCreate(payload: Record<string, unknown>, bypas
   };
 }
 
-async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffected: number, bypassPackageGate: boolean) {
-  const preview = await previewClassSessionCreate(payload, bypassPackageGate);
+async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffected: number) {
+  const preview = await previewClassSessionCreate(payload);
   if ("error" in preview) return preview;
   if (preview.affectedCount > maxAffected) {
     return { error: `affectedCount ${preview.affectedCount} exceeds maxAffected ${maxAffected}`, status: 409 as const };
@@ -709,7 +706,7 @@ async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffe
   };
 }
 
-async function previewClassSessionReschedule(payload: Record<string, unknown>, bypassPackageGate: boolean) {
+async function previewClassSessionReschedule(payload: Record<string, unknown>) {
   const classId = String(payload.classId ?? "").trim();
   const sessionId = String(payload.sessionId ?? "").trim();
   const startAtStr = String(payload.startAt ?? "").trim();
@@ -837,7 +834,7 @@ async function previewClassSessionReschedule(payload: Record<string, unknown>, b
         at: item.startAt,
         requiredHoursMinutes,
       });
-      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      if (!packageDecision.ok) {
         return { error: packageDecision.message, status: 409 };
       }
     }
@@ -859,8 +856,8 @@ async function previewClassSessionReschedule(payload: Record<string, unknown>, b
   };
 }
 
-async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number, bypassPackageGate: boolean) {
-  const preview = await previewClassSessionReschedule(payload, bypassPackageGate);
+async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number) {
+  const preview = await previewClassSessionReschedule(payload);
   if ("error" in preview) return preview;
   if (preview.affectedCount > maxAffected) {
     return { error: `affectedCount ${preview.affectedCount} exceeds maxAffected ${maxAffected}`, status: 409 as const };
@@ -1301,9 +1298,9 @@ export async function POST(req: Request) {
         : taskType === "ticket.append_followup_note"
           ? await applyTicketAppendNote(payload, maxAffected)
           : taskType === "class_session.create_single"
-            ? await applyClassSessionCreate(payload, maxAffected, isStrictSuperAdmin(actor))
+            ? await applyClassSessionCreate(payload, maxAffected)
             : taskType === "class_session.reschedule"
-              ? await applyClassSessionReschedule(payload, maxAffected, isStrictSuperAdmin(actor))
+              ? await applyClassSessionReschedule(payload, maxAffected)
               : await applyStudentQuickSchedule(payload, maxAffected, isStrictSuperAdmin(actor));
 
     if ("error" in applyResult) {
@@ -1402,9 +1399,9 @@ export async function POST(req: Request) {
   } else if (taskType === "partner_settlement.mark_exported") {
     preview = await previewPartnerSettlementExport(payload);
   } else if (taskType === "class_session.create_single") {
-    preview = await previewClassSessionCreate(payload, isStrictSuperAdmin(actor));
+    preview = await previewClassSessionCreate(payload);
   } else if (taskType === "class_session.reschedule") {
-    preview = await previewClassSessionReschedule(payload, isStrictSuperAdmin(actor));
+    preview = await previewClassSessionReschedule(payload);
   } else if (taskType === "student.quick_schedule") {
     preview = await previewStudentQuickSchedule(payload, isStrictSuperAdmin(actor));
   } else {

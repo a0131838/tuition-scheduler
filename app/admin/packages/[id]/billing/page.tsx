@@ -633,7 +633,7 @@ export default async function PackageBillingPage({
           </div>
         ) : latestInvoiceApproval?.status === "PENDING_MANAGER" ? (
           <div style={{ fontSize: 13, color: "#92400e" }}>
-            {t(lang, "This item is waiting in the manager approval lane. A configured manager approver must approve it here before later phases start hard-blocking scheduling.", "这个项目正在等待管理审批。后续阶段正式启用硬拦截前，需要配置中的管理审批人在这里通过。")}
+            {t(lang, "This item is waiting in the manager approval lane. A configured manager approver must approve it here before scheduling can continue.", "这个项目正在等待管理审批。需要配置中的管理审批人在这里通过后，排课才能继续。")}
           </div>
         ) : null}
       </div>

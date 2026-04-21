@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { isSessionDuplicateError } from "@/lib/session-unique";
@@ -137,8 +137,7 @@ async function findConflictForSession(opts: {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireAdmin();
-  const bypassPackageGate = isStrictSuperAdmin(user);
+  await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -221,7 +220,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         at: startAt,
         requiredHoursMinutes,
       });
-      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      if (!packageDecision.ok) {
         packageErr = packageDecision.message;
         packageCode = packageDecision.code;
         break;
@@ -268,7 +267,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             at: startAt,
             requiredHoursMinutes,
           });
-          if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+          if (!packageDecision.ok) {
             return { ok: false as const, reason: packageDecision.message, code: packageDecision.code };
           }
         }
@@ -320,7 +319,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                 at: row.startAt,
                 requiredHoursMinutes,
               });
-              if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+              if (!packageDecision.ok) {
                 throw new GenerateWeeklyConflictError(`Conflict on ${ymd(row.startAt)} ${timeStr}: ${packageDecision.message}`);
               }
             }

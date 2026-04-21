@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-21-r85` (direct-billing package invoice gate Phase 1 + Phase 2), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-21-r86` (direct-billing package invoice gate Phase 3 hard block), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -26,6 +26,7 @@
 - New process risk: deploy will fail if release docs are not included in the deploy commit.
 - Historical risk confirmed: server env previously pointed to localhost DB in older backups.
 - Migration order risk: the direct-billing package invoice gate runtime depends on new `CoursePackage.financeGate*` columns and the `PackageInvoiceApproval` table, so deploy order must keep DB schema and runtime aligned.
+- Ops-flow risk: `2026-04-21-r86` removes the remaining finance-gate bypass paths, so any direct-billing chargeable package still waiting for manager invoice approval will now fail scheduling consistently until package billing is fixed.
 
 ## Process Guard (Installed)
 
@@ -80,6 +81,21 @@
   - real-flow QA on a test direct-billing package: pending before manager approval, schedulable after approval
   - confirm partner-settlement package remains `EXEMPT`
   - post-deploy: smoke-test package create, package billing approval, quick schedule warning, and partner-package exemption
+
+## 2026-04-21-r86 Ready
+
+- Scope: turn the direct-billing package invoice gate into a true hard scheduling gate by removing the remaining finance-gate bypass paths.
+- Business impact:
+  - pending or blocked direct-billing chargeable packages can no longer slip through scheduling via strict-super-admin bypasses in the main scheduling APIs
+  - quick schedule, enrollments, class session create/generate/reschedule, booking approval, teacher generate sessions, and ops execute now all honor the same hard finance gate
+  - partner-settlement packages remain outside this workflow and continue to stay `EXEMPT`
+  - receipt still remains a later finance-control step, not the first scheduling gate
+  - package billing now clearly tells users that manager approval is required before scheduling can continue, rather than describing hard blocking as a future phase
+- Validation:
+  - `npm run build`
+  - `npm run test:backend`
+  - verify no remaining runtime scheduling path bypasses `PACKAGE_FINANCE_GATE_BLOCKED`
+  - post-deploy: smoke-test a pending direct-billing package through quick schedule, enrollments, create/generate/reschedule, booking approval, teacher generate sessions, and ops execute
 
 ## 2026-04-17-r83 Ready
 

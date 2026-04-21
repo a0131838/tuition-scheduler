@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
@@ -26,8 +26,7 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireAdmin();
-  const bypassPackageGate = isStrictSuperAdmin(user);
+  await requireAdmin();
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -202,7 +201,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         at: item.startAt,
         requiredHoursMinutes,
       });
-      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      if (!packageDecision.ok) {
         return bad(packageDecision.message, 409, {
           code: packageDecision.code,
           packageId: packageDecision.packageId,

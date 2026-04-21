@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-21-r86
+
+- Release ID: `2026-04-21-r86`
+- Date/Time (Asia/Shanghai): `2026-04-21`
+- Deployment status: `READY`
+- Scope: turn the direct-billing package invoice gate into a real hard scheduling gate by removing the remaining finance-gate bypass paths from scheduling entry points.
+- Key files:
+  - `app/api/admin/enrollments/route.ts`
+  - `app/api/admin/classes/[id]/sessions/route.ts`
+  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
+  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
+  - `app/api/admin/booking-links/[id]/requests/[requestId]/approve/route.ts`
+  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/ops/execute/route.ts`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/classes/[id]/sessions/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/tasks/TASK-20260421-direct-billing-invoice-gate-phase-3-hard-block.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium to high. This release removes the remaining soft-bypass path for `PACKAGE_FINANCE_GATE_BLOCKED`, so direct-billing chargeable packages that have not passed manager invoice approval will now be blocked consistently across scheduling APIs. Partner-settlement packages remain excluded, receipt is still not the first scheduling gate, and super admins still retain unrelated availability/admin powers but no longer bypass the finance gate itself.
+- Verification:
+  - `npm run build`
+  - `npm run test:backend`
+  - confirm no remaining runtime code paths bypass `PACKAGE_FINANCE_GATE_BLOCKED`
+  - post-deploy: smoke-test quick schedule, enrollments, class session create/generate/reschedule, booking approval, teacher generate sessions, and ops execute against a pending direct-billing package
+- Rollback point: previous production commit before `2026-04-21-r86`.
+
 ## 2026-04-21-r85
 
 - Release ID: `2026-04-21-r85`

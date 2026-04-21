@@ -864,7 +864,7 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
       at: packageCheckAt,
       requiredHoursMinutes: durationMin,
     });
-    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    if (!packageDecision.ok) {
       redirect(backWithQuickParams({ err: packageDecision.message }));
     }
 
