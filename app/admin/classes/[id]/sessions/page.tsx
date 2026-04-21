@@ -1,8 +1,10 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
+import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import NoticeBanner from "../../../_components/NoticeBanner";
 import AdminClassSessionsClient from "./AdminClassSessionsClient";
@@ -96,6 +98,19 @@ function canTeachSubject(teacher: any, subjectId?: string | null) {
 function buildRedirect(classId: string, params: Record<string, string>) {
   const p = new URLSearchParams(params);
   return `/admin/classes/${classId}/sessions?${p.toString()}`;
+}
+
+function humanizeSessionsError(lang: Lang, message: string) {
+  if (message.includes("Invoice approval is pending.")) {
+    return t(lang, "Invoice approval is pending. Open package billing before scheduling.", "该课包发票待审批，请先打开课包账单处理后再排课。");
+  }
+  if (message.includes("Invoice approval is blocked.")) {
+    return t(lang, "Invoice approval is blocked. Open package billing to fix it.", "该课包发票审批被阻塞，请先打开课包账单修正后再排课。");
+  }
+  if (message.includes("No active package for this course")) {
+    return t(lang, "No active package for this course. Please create a package before scheduling.", "该课程没有可用的有效课包，请先创建课包后再排课。");
+  }
+  return message;
 }
 
 async function findConflictForSession(opts: {
@@ -262,6 +277,8 @@ async function findTeacherConflict(opts: {
 
 async function createOneSession(classId: string, formData: FormData) {
   "use server";
+  const actor = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(actor);
 
   const startAtStr = String(formData.get("startAt") ?? "");
   const durationMin = Number(formData.get("durationMin") ?? 60);
@@ -311,14 +328,14 @@ async function createOneSession(classId: string, formData: FormData) {
   const expectedStudentIds = cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
   const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
   for (const sid of expectedStudentIds) {
-    const ok = await hasSchedulablePackage(prisma, {
+    const packageDecision = await getSchedulablePackageDecision(prisma, {
       studentId: sid,
       courseId: cls.courseId,
       at: startAt,
       requiredHoursMinutes,
     });
-    if (!ok) {
-      redirect(buildRedirect(classId, { err: `Student ${sid} has no active package for this course` }));
+    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      redirect(buildRedirect(classId, { err: packageDecision.message }));
     }
   }
 
@@ -328,6 +345,8 @@ async function createOneSession(classId: string, formData: FormData) {
 
 async function generateWeeklySessions(classId: string, formData: FormData) {
   "use server";
+  const actor = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(actor);
 
   const startDateStr = String(formData.get("startDate") ?? "");
   const weekday = Number(formData.get("weekday") ?? 1);
@@ -395,14 +414,14 @@ async function generateWeeklySessions(classId: string, formData: FormData) {
 
     let packageErr: string | null = null;
     for (const sid of expectedStudentIds) {
-      const ok = await hasSchedulablePackage(prisma, {
+      const packageDecision = await getSchedulablePackageDecision(prisma, {
         studentId: sid,
         courseId: cls.courseId,
         at: startAt,
         requiredHoursMinutes,
       });
-      if (!ok) {
-        packageErr = `Student ${sid} has no active package for this course`;
+      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+        packageErr = packageDecision.message;
         break;
       }
     }
@@ -735,7 +754,7 @@ export default async function ClassSessionsPage({
         </div>
       </section>
 
-      {err ? <NoticeBanner type="error" title={t(lang, "Rejected", "已拒绝")} message={err} /> : null}
+      {err ? <NoticeBanner type="error" title={t(lang, "Rejected", "已拒绝")} message={humanizeSessionsError(lang, err)} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
 
       <div id="class-sessions-workbench">
@@ -807,4 +826,3 @@ export default async function ClassSessionsPage({
     </div>
   );
 }
-

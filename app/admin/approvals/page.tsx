@@ -59,6 +59,7 @@ function laneLabel(lang: Lang, lane: ApprovalInboxItem["lane"]) {
 }
 
 function typeLabel(lang: Lang, type: ApprovalInboxItem["type"]) {
+  if (type === "PACKAGE_INVOICE") return t(lang, "Package invoice", "课包发票");
   if (type === "PARENT_RECEIPT") return t(lang, "Parent receipt", "家长收据");
   if (type === "PARTNER_RECEIPT") return t(lang, "Partner receipt", "合作方收据");
   if (type === "TEACHER_PAYROLL") return t(lang, "Teacher payroll", "老师工资");

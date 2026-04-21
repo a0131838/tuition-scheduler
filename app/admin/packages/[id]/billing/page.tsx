@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { redirect } from "next/navigation";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/parent-receipt-approval";
 import {
   getApprovalRoleConfig,
+  isRoleApprover,
 } from "@/lib/approval-flow";
 import {
   getReceiptApprovalStatus,
@@ -29,6 +30,15 @@ import {
 } from "@/lib/receipt-approval-policy";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
+import WorkbenchStatusChip from "@/app/admin/_components/WorkbenchStatusChip";
+import {
+  approvePackageInvoiceApproval,
+  getLatestPackageInvoiceApproval,
+  packageFinanceGateLabel,
+  packageFinanceGateLabelZh,
+  packageFinanceGateTone,
+  rejectPackageInvoiceApproval,
+} from "@/lib/package-finance-gate";
 
 function billingSummaryCardStyle(background: string, border: string) {
   return {
@@ -277,6 +287,45 @@ async function deleteReceiptAction(formData: FormData) {
   redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Receipt deleted" }));
 }
 
+async function approveInvoiceGateAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const approvalId = String(formData.get("approvalId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !approvalId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing package invoice approval id" }));
+  }
+  try {
+    await approvePackageInvoiceApproval({ approvalId, actorEmail: admin.email });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Approve package invoice gate failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Package invoice approved and package is now schedulable" }));
+}
+
+async function rejectInvoiceGateAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const approvalId = String(formData.get("approvalId") ?? "").trim();
+  const rejectReason = String(formData.get("rejectReason") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !approvalId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing package invoice approval id" }));
+  }
+  try {
+    await rejectPackageInvoiceApproval({ approvalId, actorEmail: admin.email, rejectReason });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Reject package invoice gate failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Package invoice gate marked as blocked" }));
+}
+
 export default async function PackageBillingPage({
   params,
   searchParams,
@@ -292,17 +341,23 @@ export default async function PackageBillingPage({
   const sourceWorkflow = normalizePackageBillingSource(sp?.source);
   const receiptsBack = sanitizeReceiptsBack(sp?.receiptsBack);
   const lang = await getLang();
+  const currentUser = await getCurrentUser();
 
-  const [pkg, data, roleCfg] = await Promise.all([
+  const [pkg, data, roleCfg, latestInvoiceApproval] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: { student: true, course: true },
     }),
     listParentBillingForPackage(packageId),
     getApprovalRoleConfig(),
+    getLatestPackageInvoiceApproval(packageId),
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
+  const canManagerApproveInvoiceGate = isRoleApprover(currentUser?.email, roleCfg.managerApproverEmails);
+  const invoiceApprovalInvoice = latestInvoiceApproval?.invoiceId
+    ? data.invoices.find((invoice) => invoice.id === latestInvoiceApproval.invoiceId) ?? null
+    : null;
   const linkedPaymentRecordIdSet = new Set(
     data.receipts.map((receipt) => String(receipt.paymentRecordId ?? "").trim()).filter(Boolean)
   );
@@ -402,6 +457,27 @@ export default async function PackageBillingPage({
       : t(lang, "Invoices and receipts are aligned. Use this page mainly for confirmation, exports, or cleanup.", "当前发票和收据已经基本对齐，这一页主要用于确认、导出或收尾处理。");
   const billingSummaryCards = [
     {
+      title: t(lang, "Package gate", "课包闸门"),
+      value: `${packageFinanceGateLabel(pkg.financeGateStatus)} / ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`,
+      detail: pkg.financeGateReason || t(lang, "No finance gate note yet.", "当前还没有财务闸门说明。"),
+      background:
+        pkg.financeGateStatus === "BLOCKED"
+          ? "#fff1f2"
+          : pkg.financeGateStatus === "INVOICE_PENDING_MANAGER"
+          ? "#fff7ed"
+          : pkg.financeGateStatus === "SCHEDULABLE"
+          ? "#f0fdf4"
+          : "#f8fafc",
+      border:
+        pkg.financeGateStatus === "BLOCKED"
+          ? "#fda4af"
+          : pkg.financeGateStatus === "INVOICE_PENDING_MANAGER"
+          ? "#fdba74"
+          : pkg.financeGateStatus === "SCHEDULABLE"
+          ? "#86efac"
+          : "#dbe4f0",
+    },
+    {
       title: t(lang, "Current focus", "当前建议起点"),
       value: currentBillingFocusTitle,
       detail: currentBillingFocusDetail,
@@ -488,6 +564,79 @@ export default async function PackageBillingPage({
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
+
+      <div
+        style={{
+          marginBottom: 14,
+          padding: 14,
+          borderRadius: 14,
+          border:
+            pkg.financeGateStatus === "BLOCKED"
+              ? "1px solid #fda4af"
+              : pkg.financeGateStatus === "INVOICE_PENDING_MANAGER"
+              ? "1px solid #fdba74"
+              : "1px solid #dbe4f0",
+          background:
+            pkg.financeGateStatus === "BLOCKED"
+              ? "#fff1f2"
+              : pkg.financeGateStatus === "INVOICE_PENDING_MANAGER"
+              ? "#fffaf0"
+              : "#f8fafc",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Package invoice gate", "课包发票闸门")}</div>
+          <WorkbenchStatusChip
+            label={`${packageFinanceGateLabel(pkg.financeGateStatus)} / ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`}
+            tone={packageFinanceGateTone(pkg.financeGateStatus)}
+            strong={pkg.financeGateStatus === "INVOICE_PENDING_MANAGER" || pkg.financeGateStatus === "BLOCKED"}
+          />
+        </div>
+        <div style={{ color: "#475569", fontSize: 13 }}>
+          {pkg.financeGateReason || t(lang, "No finance gate note yet.", "当前还没有财务闸门说明。")}
+        </div>
+        {latestInvoiceApproval ? (
+          <div style={{ fontSize: 13, color: "#334155" }}>
+            {t(lang, "Latest approval item", "最新审批项")}:
+            {" "}
+            <strong>{latestInvoiceApproval.status}</strong>
+            {invoiceApprovalInvoice ? ` · ${invoiceApprovalInvoice.invoiceNo}` : ""}
+          </div>
+        ) : null}
+        {latestInvoiceApproval?.status === "PENDING_MANAGER" && canManagerApproveInvoiceGate ? (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <form action={approveInvoiceGateAction}>
+              <input type="hidden" name="packageId" value={packageId} />
+              <input type="hidden" name="approvalId" value={latestInvoiceApproval.id} />
+              <input type="hidden" name="source" value={sourceWorkflow} />
+              <input type="hidden" name="receiptsBack" value={receiptsBack} />
+              <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 700 }}>
+                {t(lang, "Approve invoice gate", "批准发票闸门")}
+              </button>
+            </form>
+            <form action={rejectInvoiceGateAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input type="hidden" name="packageId" value={packageId} />
+              <input type="hidden" name="approvalId" value={latestInvoiceApproval.id} />
+              <input type="hidden" name="source" value={sourceWorkflow} />
+              <input type="hidden" name="receiptsBack" value={receiptsBack} />
+              <input
+                name="rejectReason"
+                placeholder={t(lang, "Reject reason", "驳回原因")}
+                style={{ minWidth: 240, padding: "8px 10px", borderRadius: 10, border: "1px solid #fda4af" }}
+              />
+              <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #e11d48", background: "#fff1f2", color: "#be123c", fontWeight: 700 }}>
+                {t(lang, "Reject and block", "驳回并阻塞")}
+              </button>
+            </form>
+          </div>
+        ) : latestInvoiceApproval?.status === "PENDING_MANAGER" ? (
+          <div style={{ fontSize: 13, color: "#92400e" }}>
+            {t(lang, "This item is waiting in the manager approval lane. A configured manager approver must approve it here before later phases start hard-blocking scheduling.", "这个项目正在等待管理审批。后续阶段正式启用硬拦截前，需要配置中的管理审批人在这里通过。")}
+          </div>
+        ) : null}
+      </div>
 
       {sourceWorkflow === "receipts" ? (
         <WorkflowSourceBanner

@@ -20,6 +20,7 @@ import {
   workbenchMetricLabelStyle,
   workbenchMetricValueStyle,
 } from "@/app/admin/_components/workbenchStyles";
+import { packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
 
 type WorkbenchStatus = "PENDING_RECEIPT" | "PARTIALLY_RECEIPTED" | "PENDING_APPROVAL" | "REJECTED" | "COMPLETED";
 type ExceptionReason = "REJECTED_BY_APPROVER" | "OVERDUE_PENDING_RECEIPT" | "APPROVER_CONFIG_MISSING";
@@ -196,6 +197,16 @@ export default async function FinanceWorkbenchPage({
     getApprovalRoleConfig(),
   ]);
 
+  const pendingPackageApprovals = await prisma.packageInvoiceApproval.findMany({
+    where: { status: "PENDING_MANAGER" },
+    orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+    take: 8,
+    include: {
+      package: {
+        include: { student: true, course: true },
+      },
+    },
+  });
   const packageIds = Array.from(new Set(parentAll.invoices.map((x) => x.packageId)));
   const packageMap = packageIds.length
     ? new Map(
@@ -692,6 +703,15 @@ export default async function FinanceWorkbenchPage({
           : t(lang, "Overview is best for scanning the whole desk, then jumping into partial receipts, exceptions, or closing checks.", "总览适合先扫全局，再决定跳去部分收据、异常处理或月结检查。");
   const financeWorkbenchSummaryCards = [
     {
+      title: t(lang, "Package invoice gate", "课包发票闸门"),
+      value: String(pendingPackageApprovals.length),
+      detail: pendingPackageApprovals.length
+        ? t(lang, "Open package billing to approve invoice drafts before scheduling continues.", "请先打开课包账单审批发票草稿，再继续后续排课。")
+        : t(lang, "No package invoice approvals are waiting right now.", "当前没有等待中的课包发票审批。"),
+      background: pendingPackageApprovals.length ? "#fff7ed" : "#f8fafc",
+      border: pendingPackageApprovals.length ? "#fdba74" : "#dbe4f0",
+    },
+    {
       title: t(lang, "Current focus", "当前建议起点"),
       value: financeWorkbenchFocusTitle,
       detail: financeWorkbenchFocusDetail,
@@ -791,6 +811,22 @@ export default async function FinanceWorkbenchPage({
           </div>
         ))}
       </section>
+
+      {pendingPackageApprovals.length ? (
+        <section style={{ border: "1px solid #fdba74", borderRadius: 14, background: "#fffaf0", padding: 14, display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 800, color: "#92400e" }}>{t(lang, "Pending direct-billing package approvals", "等待中的直客课包审批")}</div>
+          <div style={{ fontSize: 13, color: "#475569" }}>
+            {t(lang, "Finance can monitor these packages here. Managers can approve them from the package billing page or the approval inbox.", "财务可以在这里看到这些课包；管理层可从课包账单页或审批提醒中心完成审批。")}
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {pendingPackageApprovals.map((approval) => (
+              <div key={approval.id} style={{ fontSize: 13, color: "#92400e" }}>
+                [{packageFinanceGateLabelZh(approval.package.financeGateStatus)}] {approval.package.student.name} · {approval.package.course.name} · <a href={`/admin/packages/${approval.packageId}/billing`}>{t(lang, "Open billing", "打开账单")}</a>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section
         style={{

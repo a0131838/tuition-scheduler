@@ -21,7 +21,7 @@ type EnrollmentPreview = {
   canEnroll: boolean;
   studentName: string;
   studentGrade: string | null;
-  reasonCode: "OK" | "ALREADY_ENROLLED" | "COURSE_CONFLICT" | "NO_ACTIVE_PACKAGE";
+  reasonCode: "OK" | "ALREADY_ENROLLED" | "COURSE_CONFLICT" | "NO_ACTIVE_PACKAGE" | "PACKAGE_FINANCE_GATE_BLOCKED";
   reasonText: string;
   detail: string | null;
 };
@@ -37,6 +37,9 @@ function humanizeEnrollmentError(data: any) {
   }
   if (code === "NO_ACTIVE_PACKAGE") {
     return "该学生当前没有这个课程的有效课包，暂时不能加入班级。";
+  }
+  if (code === "PACKAGE_FINANCE_GATE_BLOCKED") {
+    return "该学生课包发票待审批，请先打开课包账单处理后再加入班级。";
   }
   return String(data?.message ?? "Add enrollment failed");
 }

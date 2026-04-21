@@ -5,7 +5,7 @@ import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
 import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import StudentAttendanceFilterForm from "../../_components/StudentAttendanceFilterForm";
@@ -69,6 +69,7 @@ import {
   checkTeacherSchedulingAvailability,
   inspectTeacherSchedulingAvailability,
 } from "@/lib/teacher-scheduling-availability";
+import { packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -198,6 +199,19 @@ const zhMap: Record<string, string> = {
 
 function tl(lang: Lang, en: string) {
   return t(lang, en, zhMap[en] ?? en);
+}
+
+function humanizeSchedulingGateMessage(lang: Lang, message: string) {
+  if (message.startsWith("Invoice approval is pending.")) {
+    return t(lang, "Invoice approval is pending. Open package billing before scheduling.", "该课包发票待审批，请先打开课包账单处理后再排课。");
+  }
+  if (message.startsWith("Invoice approval is blocked.")) {
+    return t(lang, "Invoice approval is blocked. Open package billing to fix it.", "该课包发票审批被阻塞，请先打开课包账单修正后再排课。");
+  }
+  if (message === "No active package for this course") {
+    return t(lang, "No active package for this course. Please create a package before scheduling.", "该课程没有可用的有效课包，请先创建课包后再排课。");
+  }
+  return message;
 }
 
 function sectionReturnBar(
@@ -844,14 +858,14 @@ async function createQuickAppointment(studentId: string, formData: FormData) {
 
     const courseId = subject.courseId;
     const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-    const hasPackage = await hasSchedulablePackage(prisma, {
+    const packageDecision = await getSchedulablePackageDecision(prisma, {
       studentId,
       courseId,
       at: packageCheckAt,
       requiredHoursMinutes: durationMin,
     });
-    if (!hasPackage) {
-      redirect(backWithQuickParams({ err: "No active package for this course" }));
+    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      redirect(backWithQuickParams({ err: packageDecision.message }));
     }
 
     const cls = await getOrCreateOneOnOneClassForStudent({
@@ -2087,18 +2101,14 @@ export default async function StudentDetailPage({
       }
     }
     if (!quickPackageWarn) {
-      const hasPackage = await hasSchedulablePackage(prisma, {
+      const packageDecision = await getSchedulablePackageDecision(prisma, {
         studentId,
         courseId: quickSubject?.courseId ?? "",
         at: startAt,
         requiredHoursMinutes: quickDurationMin,
       });
-      if (!hasPackage) {
-        quickPackageWarn = t(
-          lang,
-          "No active package for this course. Please create a package before scheduling.",
-          "该课程没有可用的有效课包，请先创建课包后再排课。"
-        );
+      if (!packageDecision.ok) {
+        quickPackageWarn = humanizeSchedulingGateMessage(lang, packageDecision.message);
       }
     }
     if (!quickPackageWarn) {
@@ -2281,6 +2291,8 @@ export default async function StudentDetailPage({
   if (quickRoomId) baseParams.set("quickRoomId", quickRoomId);
   const activePackageCount = packages.filter((p) => p.status === "ACTIVE").length;
   const activeHourPackageCount = packages.filter((p) => p.status === "ACTIVE" && p.type === "HOURS").length;
+  const pendingInvoiceGateCount = packages.filter((p) => p.financeGateStatus === "INVOICE_PENDING_MANAGER").length;
+  const blockedInvoiceGateCount = packages.filter((p) => p.financeGateStatus === "BLOCKED").length;
   const totalRemainingMinutes = packages.reduce((sum, pkg) => {
     if (pkg.status !== "ACTIVE" || pkg.type !== "HOURS") return sum;
     return sum + Math.max(0, pkg.remainingMinutes ?? 0);
@@ -2300,7 +2312,9 @@ export default async function StudentDetailPage({
   const nextUpcomingAttendance = nextUpcomingSession ? upcomingAttendanceMap.get(nextUpcomingSession.id) ?? null : null;
   const nextUpcomingCancelled = nextUpcomingAttendance?.status === "EXCUSED";
   const currentFocusTitle =
-    packageRiskCount > 0
+    pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0
+      ? t(lang, "Invoice gate follow-up first", "先处理发票闸门")
+      : packageRiskCount > 0
       ? t(lang, "Start with packages", "先看课包")
       : unpaidPackageCount > 0
       ? t(lang, "Billing follow-up first", "先处理账务")
@@ -2308,7 +2322,9 @@ export default async function StudentDetailPage({
       ? t(lang, "Next real lesson is ready", "先看下一节课")
       : t(lang, "Planning tools are clear", "可以直接排课");
   const currentFocusDetail =
-    packageRiskCount > 0
+    pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0
+      ? t(lang, "At least one direct-billing package is still waiting for manager approval or correction, so package billing should come before more lesson changes.", "至少有一个直客课包仍在等待管理审批或修正，建议先看课包账单，再继续改课。")
+      : packageRiskCount > 0
       ? t(lang, "Low-balance package risk is active, so package review should come before schedule changes.", "当前有低余额课包风险，建议先确认课包，再改排课。")
       : unpaidPackageCount > 0
       ? t(lang, "There are unpaid packages on this profile. Confirm billing state before more lesson changes.", "这个学生还有未付款课包，建议先确认账务状态再继续改课。")
@@ -2347,17 +2363,17 @@ export default async function StudentDetailPage({
           ? t(lang, `${fmtMinutes(totalRemainingMinutes)} remaining`, `剩余 ${fmtMinutes(totalRemainingMinutes)}`)
           : t(
               lang,
-              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`,
-              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`
+              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts · ${pendingInvoiceGateCount} pending invoice gate`,
+              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警 · ${pendingInvoiceGateCount} 个待审批发票闸门`
             ),
       detail:
         activeHourPackageCount > 0
           ? t(
               lang,
-              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts · ${activeHourPackageCount} active hour packages`,
-              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警 · ${activeHourPackageCount} 个有效课时包`
+              `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts · ${pendingInvoiceGateCount} pending invoice gate · ${activeHourPackageCount} active hour packages`,
+              `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警 · ${pendingInvoiceGateCount} 个待审批发票闸门 · ${activeHourPackageCount} 个有效课时包`
             )
-          : t(lang, `${activePackageCount} active packages on this profile.`, `当前共有 ${activePackageCount} 个有效课包。`),
+          : t(lang, `${activePackageCount} active packages on this profile. ${blockedInvoiceGateCount} are blocked.`, `当前共有 ${activePackageCount} 个有效课包，其中 ${blockedInvoiceGateCount} 个处于阻塞状态。`),
       background: "#fffaf0",
       border: "#fde68a",
     },
@@ -2424,19 +2440,19 @@ export default async function StudentDetailPage({
       key: "packages",
       href: "#packages",
       label: tl(lang, "Packages"),
-      detail: t(lang, `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts`, `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警`),
+      detail: t(lang, `${unpaidPackageCount} unpaid · ${packageRiskCount} alerts · ${pendingInvoiceGateCount} pending invoice gate`, `${unpaidPackageCount} 个未付款 · ${packageRiskCount} 个预警 · ${pendingInvoiceGateCount} 个待审批发票闸门`),
       shortDetail:
-        unpaidPackageCount > 0 || packageRiskCount > 0
+        unpaidPackageCount > 0 || packageRiskCount > 0 || pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0
           ? t(
               lang,
-              `${fmtMinutes(totalRemainingMinutes)} remaining; billing or package risk needs review`,
-              `剩余 ${fmtMinutes(totalRemainingMinutes)}；当前有账务或课包风险需要处理`
+              `${fmtMinutes(totalRemainingMinutes)} remaining; billing, package risk, or invoice gate needs review`,
+              `剩余 ${fmtMinutes(totalRemainingMinutes)}；当前有账务、课包风险或发票闸门需要处理`
             )
           : activeHourPackageCount > 0
           ? t(lang, `${fmtMinutes(totalRemainingMinutes)} remaining across active hour packages`, `当前有效课时包合计剩余 ${fmtMinutes(totalRemainingMinutes)}`)
           : t(lang, "Billing is clear right now", "当前账务状态正常"),
-      background: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fffaf0" : "#ffffff",
-      border: unpaidPackageCount > 0 || packageRiskCount > 0 ? "#fde68a" : "#dbe4f0",
+      background: unpaidPackageCount > 0 || packageRiskCount > 0 || pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0 ? "#fffaf0" : "#ffffff",
+      border: unpaidPackageCount > 0 || packageRiskCount > 0 || pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0 ? "#fde68a" : "#dbe4f0",
     },
     {
       key: "attendance",
@@ -2479,7 +2495,7 @@ export default async function StudentDetailPage({
   const recommendedPrimaryKey =
     activeSchedulingTicket
       ? "coordination"
-      : packageRiskCount > 0 || unpaidPackageCount > 0
+      : packageRiskCount > 0 || unpaidPackageCount > 0 || pendingInvoiceGateCount > 0 || blockedInvoiceGateCount > 0
       ? "packages"
       : "quickSchedule";
   const recommendedPrimaryLink = studentSectionLinkMap.get(recommendedPrimaryKey) ?? studentSectionLinks[0];
@@ -2624,7 +2640,7 @@ export default async function StudentDetailPage({
         />
       ) : null}
 
-      {err ? <NoticeBanner type="error" title={tl(lang, "Error")} message={err} /> : null}
+      {err ? <NoticeBanner type="error" title={tl(lang, "Error")} message={humanizeSchedulingGateMessage(lang, err)} /> : null}
       {msg ? <NoticeBanner type="success" title={tl(lang, "OK")} message={msg} /> : null}
 
       <div style={{ display: "grid", gap: 16 }}>
@@ -4064,8 +4080,11 @@ export default async function StudentDetailPage({
                   ) : null}
                 </div>
                 <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
-                  {tl(lang, "Type")}: {p.type} | {tl(lang, "Status")}: {p.status}
+                  {tl(lang, "Type")}: {p.type} | {tl(lang, "Status")}: {p.status} | {t(lang, "Invoice gate", "发票闸门")}: {packageFinanceGateLabelZh(p.financeGateStatus)}
                 </div>
+                {p.financeGateReason ? (
+                  <div style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}>{p.financeGateReason}</div>
+                ) : null}
                 <div style={{ marginTop: 6 }}>
                   {tl(lang, "Remaining")}:{" "}
                   <span style={{ fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400, color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined }}>

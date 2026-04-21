@@ -411,6 +411,10 @@ export default async function AdminEnrollmentsPage({
               ? t(lang, "Missing class or student.", "请先选择班级和学生。")
               : err === "Class not found"
               ? t(lang, "Class not found.", "班级不存在。")
+              : err.startsWith("Invoice approval is pending.")
+              ? t(lang, "Invoice approval is pending, so this package is not schedulable yet.", "该课包发票待审批，当前暂时不能排课或报名。")
+              : err.startsWith("Invoice approval is blocked.")
+              ? t(lang, "This package is blocked until invoice approval issues are resolved.", "该课包因发票审批问题被阻塞，当前暂时不能排课或报名。")
               : err === "Student has no active package for this course"
               ? t(lang, "Student has no active package for this course.", "学生没有该课程的有效课包。")
               : err === "Already enrolled"

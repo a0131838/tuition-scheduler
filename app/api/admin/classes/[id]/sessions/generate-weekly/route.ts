@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 
@@ -137,7 +137,8 @@ async function findConflictForSession(opts: {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(user);
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -212,21 +213,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const endAt = new Date(startAt.getTime() + durationMin * 60 * 1000);
 
     let packageErr: string | null = null;
+    let packageCode: string | null = null;
     for (const sid of expectedStudentIds) {
-      const ok = await hasSchedulablePackage(prisma, {
+      const packageDecision = await getSchedulablePackageDecision(prisma, {
         studentId: sid,
         courseId: cls.courseId,
         at: startAt,
         requiredHoursMinutes,
       });
-      if (!ok) {
-        packageErr = `Student ${sid} has no active package for this course`;
+      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+        packageErr = packageDecision.message;
+        packageCode = packageDecision.code;
         break;
       }
     }
     if (packageErr) {
       if (onConflict === "reject") {
-        return bad(`Conflict on ${ymd(startAt)} ${timeStr}: ${packageErr}`, 409, { code: "NO_ACTIVE_PACKAGE" });
+        return bad(`Conflict on ${ymd(startAt)} ${timeStr}: ${packageErr}`, 409, { code: packageCode ?? "NO_ACTIVE_PACKAGE" });
       }
       skipped++;
       if (skippedSamples.length < 5) skippedSamples.push(`${ymd(startAt)} ${timeStr} - ${packageErr}`);
@@ -259,13 +262,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = await prisma.$transaction(
       async (tx) => {
         for (const sid of expectedStudentIds) {
-          const ok = await hasSchedulablePackage(tx, {
+          const packageDecision = await getSchedulablePackageDecision(tx, {
             studentId: sid,
             courseId: cls.courseId,
             at: startAt,
             requiredHoursMinutes,
           });
-          if (!ok) return { ok: false as const, reason: `Student ${sid} has no active package for this course` };
+          if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+            return { ok: false as const, reason: packageDecision.message, code: packageDecision.code };
+          }
         }
 
         const conflictNow = await findConflictForSession({
@@ -277,7 +282,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           endAt,
           schedulingStudentId: cls.capacity === 1 ? studentId : null,
         });
-        if (conflictNow) return { ok: false as const, reason: conflictNow };
+        if (conflictNow) return { ok: false as const, reason: conflictNow, code: "CONFLICT" as const };
 
         await tx.session.create({
           data: {
@@ -291,7 +296,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     ).catch((error) => {
-      if (isSessionDuplicateError(error)) return { ok: false as const, reason: "Session already exists at this time" };
+      if (isSessionDuplicateError(error)) return { ok: false as const, reason: "Session already exists at this time", code: "CONFLICT" as const };
       throw error;
     });
 
@@ -309,14 +314,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         async (tx) => {
           for (const row of plannedRows) {
             for (const sid of expectedStudentIds) {
-              const ok = await hasSchedulablePackage(tx, {
+              const packageDecision = await getSchedulablePackageDecision(tx, {
                 studentId: sid,
                 courseId: cls.courseId,
                 at: row.startAt,
                 requiredHoursMinutes,
               });
-              if (!ok) {
-                throw new GenerateWeeklyConflictError(`Conflict on ${ymd(row.startAt)} ${timeStr}: Student ${sid} has no active package for this course`);
+              if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+                throw new GenerateWeeklyConflictError(`Conflict on ${ymd(row.startAt)} ${timeStr}: ${packageDecision.message}`);
               }
             }
 
@@ -348,7 +353,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       created = plannedRows.length;
     } catch (error) {
       if (error instanceof GenerateWeeklyConflictError) {
-        const code = error.message.includes("no active package") ? "NO_ACTIVE_PACKAGE" : "CONFLICT";
+        const code =
+          error.message.includes("invoice approval") || error.message.includes("blocked")
+            ? "PACKAGE_FINANCE_GATE_BLOCKED"
+            : error.message.includes("active package")
+              ? "NO_ACTIVE_PACKAGE"
+              : "CONFLICT";
         return bad(error.message, 409, { code });
       }
       if (isSessionDuplicateError(error)) {

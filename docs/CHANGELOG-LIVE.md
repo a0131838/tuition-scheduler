@@ -15,6 +15,52 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-21-r85
+
+- Release ID: `2026-04-21-r85`
+- Date/Time (Asia/Shanghai): `2026-04-21`
+- Deployment status: `READY`
+- Scope: ship Phase 1 and Phase 2 of the direct-billing package invoice gate so new direct-billing chargeable packages auto-create invoice drafts, enter manager approval, and soft-block scheduling flows until approval is complete.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260421183000_add_package_invoice_gate_phase1/migration.sql`
+  - `lib/package-finance-gate.ts`
+  - `lib/scheduling-package.ts`
+  - `app/api/admin/packages/route.ts`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `app/api/admin/enrollments/route.ts`
+  - `app/api/admin/classes/[id]/sessions/route.ts`
+  - `app/api/admin/classes/[id]/sessions/generate-weekly/route.ts`
+  - `app/api/admin/classes/[id]/sessions/reschedule/route.ts`
+  - `app/api/admin/booking-links/[id]/requests/[requestId]/approve/route.ts`
+  - `app/api/admin/teachers/[id]/generate-sessions/route.ts`
+  - `app/api/admin/ops/execute/route.ts`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/packages/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/approvals/page.tsx`
+  - `app/admin/classes/[id]/ClassEnrollmentsClient.tsx`
+  - `app/admin/classes/[id]/sessions/page.tsx`
+  - `app/admin/enrollments/page.tsx`
+  - `docs/tasks/TASK-20260421-direct-billing-invoice-gate-phase-1-and-2-release.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This release adds a new scheduling gate for direct-billing chargeable packages and touches multiple scheduling entry points. The main guardrails are that partner-settlement packages remain excluded, receipt is still not the first scheduling gate, and strict super admins can still bypass `PACKAGE_FINANCE_GATE_BLOCKED` during the soft-block phase. Migration order matters because the new code depends on the new `CoursePackage` finance-gate columns and `PackageInvoiceApproval` table.
+- Verification:
+  - `npx prisma migrate deploy` using the direct database URL, then verify the new `CoursePackage.financeGate*` columns and `PackageInvoiceApproval` table exist
+  - `npm run build`
+  - real-flow QA:
+    - create a new direct-billing chargeable package
+    - confirm invoice draft and `PackageInvoiceApproval` are auto-created
+    - confirm package starts at `INVOICE_PENDING_MANAGER`
+    - confirm scheduling decision returns `PACKAGE_FINANCE_GATE_BLOCKED` before manager approval
+    - approve with a configured manager approver and confirm package becomes `SCHEDULABLE`
+    - confirm partner-settlement package remains `EXEMPT`
+  - UI QA artifacts captured under `tmp/qa-package-gate/`
+- Rollback point: previous production commit before `2026-04-21-r85`.
+
 ## 2026-04-21-r84
 
 - Release ID: `2026-04-21-r84`

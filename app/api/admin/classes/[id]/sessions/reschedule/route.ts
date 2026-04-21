@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -26,7 +26,8 @@ async function checkTeacherAvailability(teacherId: string, startAt: Date, endAt:
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(user);
   const { id: classId } = await params;
   if (!classId) return bad("Missing classId");
 
@@ -195,14 +196,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       s.class.capacity === 1 ? (s.studentId ? [s.studentId] : []) : Array.from(new Set(s.class.enrollments.map((e) => e.studentId).filter(Boolean)));
     const requiredHoursMinutes = s.class.capacity === 1 ? durationMin : 1;
     for (const sid of expectedStudentIds) {
-      const ok = await hasSchedulablePackage(prisma, {
+      const packageDecision = await getSchedulablePackageDecision(prisma, {
         studentId: sid,
         courseId: s.class.courseId,
         at: item.startAt,
         requiredHoursMinutes,
       });
-      if (!ok) {
-        return bad(`Student ${sid} has no active package for this course`, 409, { code: "NO_ACTIVE_PACKAGE" });
+      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+        return bad(packageDecision.message, 409, {
+          code: packageDecision.code,
+          packageId: packageDecision.packageId,
+          studentId: sid,
+        });
       }
     }
   }

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import {
   isExactSessionTimeslot,
   pickStudentSessionConflict,
@@ -339,8 +339,24 @@ async function findConflictForClassSession(opts: {
   startAt: Date;
   endAt: Date;
   schedulingStudentId?: string | null;
+  bypassPackageGate?: boolean;
+  studentId?: string | null;
+  courseId?: string | null;
+  durationMin?: number;
 }) {
-  const { db = prisma, classId, teacherId, roomId, startAt, endAt, schedulingStudentId } = opts;
+  const {
+    db = prisma,
+    classId,
+    teacherId,
+    roomId,
+    startAt,
+    endAt,
+    schedulingStudentId,
+    bypassPackageGate = false,
+    studentId,
+    courseId,
+    durationMin,
+  } = opts;
   const availErr = await checkTeacherAvailability(db, teacherId, startAt, endAt);
   if (availErr) return availErr;
 
@@ -417,6 +433,19 @@ async function findConflictForClassSession(opts: {
     const roomSessionConflict = pickTeacherSessionConflict(roomSessionConflicts);
     if (roomSessionConflict) {
       return `Room conflict with session ${roomSessionConflict.id} (class ${roomSessionConflict.classId})`;
+    }
+  }
+
+  if (studentId && courseId && Number.isFinite(durationMin) && Number(durationMin) > 0) {
+    const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
+    const packageDecision = await getSchedulablePackageDecision(db, {
+      studentId,
+      courseId,
+      at: packageCheckAt,
+      requiredHoursMinutes: Number(durationMin),
+    });
+    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      return packageDecision.message;
     }
   }
 
@@ -534,8 +563,15 @@ async function validateStudentQuickScheduleRow(
 
   if (!reason) {
     const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-    const hasPackage = await hasSchedulablePackage(db, { studentId, courseId, at: packageCheckAt, requiredHoursMinutes: durationMin });
-    if (!hasPackage) reason = "No active package for this course";
+    const packageDecision = await getSchedulablePackageDecision(db, {
+      studentId,
+      courseId,
+      at: packageCheckAt,
+      requiredHoursMinutes: durationMin,
+    });
+    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      reason = packageDecision.message;
+    }
   }
 
   if (!reason) {
@@ -549,7 +585,7 @@ async function validateStudentQuickScheduleRow(
   return reason;
 }
 
-async function previewClassSessionCreate(payload: Record<string, unknown>) {
+async function previewClassSessionCreate(payload: Record<string, unknown>, bypassPackageGate: boolean) {
   const classId = String(payload.classId ?? "").trim();
   const startAtStr = String(payload.startAt ?? "").trim();
   const durationMin = Number(payload.durationMin ?? 60);
@@ -578,13 +614,15 @@ async function previewClassSessionCreate(payload: Record<string, unknown>) {
     cls.capacity === 1 ? [studentId] : Array.from(new Set(cls.enrollments.map((e) => e.studentId).filter(Boolean)));
   const requiredHoursMinutes = cls.capacity === 1 ? durationMin : 1;
   for (const sid of expectedStudentIds) {
-    const ok = await hasSchedulablePackage(prisma, {
+    const packageDecision = await getSchedulablePackageDecision(prisma, {
       studentId: sid,
       courseId: cls.courseId,
       at: startAt,
       requiredHoursMinutes,
     });
-    if (!ok) return { error: `Student ${sid} has no active package for this course`, status: 409 };
+    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      return { error: packageDecision.message, status: 409 };
+    }
   }
 
   const conflict = await findConflictForClassSession({
@@ -594,6 +632,10 @@ async function previewClassSessionCreate(payload: Record<string, unknown>) {
     startAt,
     endAt,
     schedulingStudentId: cls.capacity === 1 ? studentId : null,
+    bypassPackageGate,
+    studentId: cls.capacity === 1 ? studentId : null,
+    courseId: cls.courseId,
+    durationMin,
   });
   if (conflict) return { error: conflict, status: 409 };
 
@@ -619,8 +661,8 @@ async function previewClassSessionCreate(payload: Record<string, unknown>) {
   };
 }
 
-async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffected: number) {
-  const preview = await previewClassSessionCreate(payload);
+async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffected: number, bypassPackageGate: boolean) {
+  const preview = await previewClassSessionCreate(payload, bypassPackageGate);
   if ("error" in preview) return preview;
   if (preview.affectedCount > maxAffected) {
     return { error: `affectedCount ${preview.affectedCount} exceeds maxAffected ${maxAffected}`, status: 409 as const };
@@ -667,7 +709,7 @@ async function applyClassSessionCreate(payload: Record<string, unknown>, maxAffe
   };
 }
 
-async function previewClassSessionReschedule(payload: Record<string, unknown>) {
+async function previewClassSessionReschedule(payload: Record<string, unknown>, bypassPackageGate: boolean) {
   const classId = String(payload.classId ?? "").trim();
   const sessionId = String(payload.sessionId ?? "").trim();
   const startAtStr = String(payload.startAt ?? "").trim();
@@ -789,8 +831,15 @@ async function previewClassSessionReschedule(payload: Record<string, unknown>) {
       s.class.capacity === 1 ? (s.studentId ? [s.studentId] : []) : Array.from(new Set(s.class.enrollments.map((e) => e.studentId).filter(Boolean)));
     const requiredHoursMinutes = s.class.capacity === 1 ? durationMin : 1;
     for (const sid of expectedStudentIds) {
-      const ok = await hasSchedulablePackage(prisma, { studentId: sid, courseId: s.class.courseId, at: item.startAt, requiredHoursMinutes });
-      if (!ok) return { error: `Student ${sid} has no active package for this course`, status: 409 };
+      const packageDecision = await getSchedulablePackageDecision(prisma, {
+        studentId: sid,
+        courseId: s.class.courseId,
+        at: item.startAt,
+        requiredHoursMinutes,
+      });
+      if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+        return { error: packageDecision.message, status: 409 };
+      }
     }
   }
 
@@ -810,8 +859,8 @@ async function previewClassSessionReschedule(payload: Record<string, unknown>) {
   };
 }
 
-async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number) {
-  const preview = await previewClassSessionReschedule(payload);
+async function applyClassSessionReschedule(payload: Record<string, unknown>, maxAffected: number, bypassPackageGate: boolean) {
+  const preview = await previewClassSessionReschedule(payload, bypassPackageGate);
   if ("error" in preview) return preview;
   if (preview.affectedCount > maxAffected) {
     return { error: `affectedCount ${preview.affectedCount} exceeds maxAffected ${maxAffected}`, status: 409 as const };
@@ -1252,9 +1301,9 @@ export async function POST(req: Request) {
         : taskType === "ticket.append_followup_note"
           ? await applyTicketAppendNote(payload, maxAffected)
           : taskType === "class_session.create_single"
-            ? await applyClassSessionCreate(payload, maxAffected)
+            ? await applyClassSessionCreate(payload, maxAffected, isStrictSuperAdmin(actor))
             : taskType === "class_session.reschedule"
-              ? await applyClassSessionReschedule(payload, maxAffected)
+              ? await applyClassSessionReschedule(payload, maxAffected, isStrictSuperAdmin(actor))
               : await applyStudentQuickSchedule(payload, maxAffected, isStrictSuperAdmin(actor));
 
     if ("error" in applyResult) {
@@ -1353,9 +1402,9 @@ export async function POST(req: Request) {
   } else if (taskType === "partner_settlement.mark_exported") {
     preview = await previewPartnerSettlementExport(payload);
   } else if (taskType === "class_session.create_single") {
-    preview = await previewClassSessionCreate(payload);
+    preview = await previewClassSessionCreate(payload, isStrictSuperAdmin(actor));
   } else if (taskType === "class_session.reschedule") {
-    preview = await previewClassSessionReschedule(payload);
+    preview = await previewClassSessionReschedule(payload, isStrictSuperAdmin(actor));
   } else if (taskType === "student.quick_schedule") {
     preview = await previewStudentQuickSchedule(payload, isStrictSuperAdmin(actor));
   } else {

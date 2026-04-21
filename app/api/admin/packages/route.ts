@@ -3,6 +3,13 @@ import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG } from "@/lib/package-mode";
 import { parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
+import { createParentInvoice, deleteParentInvoice } from "@/lib/student-parent-billing";
+import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo, parseInvoiceNoParts, resequenceGlobalInvoiceNumbersForMonth } from "@/lib/global-invoice-sequence";
+import {
+  buildPackageFinanceGateReason,
+  createPackageInvoiceApproval,
+  shouldRequirePackageInvoiceGate,
+} from "@/lib/package-finance-gate";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -12,6 +19,12 @@ function parseSettlementMode(v: unknown) {
   const x = String(v ?? "");
   if (x === "ONLINE_PACKAGE_END" || x === "OFFLINE_MONTHLY") return x;
   return null;
+}
+
+function parseMoney(raw: unknown) {
+  if (raw === "" || raw == null) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? Math.round((value + Number.EPSILON) * 100) / 100 : NaN;
 }
 
 type PackageModeKey = "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT" | "MONTHLY";
@@ -46,7 +59,7 @@ function sameModeWhere(mode: PackageModeKey) {
 }
 
 export async function POST(req: Request) {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   let body: any;
   try {
@@ -69,6 +82,9 @@ export async function POST(req: Request) {
   const paidAtStr = String(body?.paidAt ?? "");
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
+  const invoiceGateExempt = !!body?.invoiceGateExempt;
+  const invoiceAmountParsed = parseMoney(body?.invoiceAmount);
+  const invoiceGstAmountParsed = parseMoney(body?.invoiceGstAmount);
   const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
     ? (body.sharedStudentIds as any[]).map((v) => String(v)).filter(Boolean)
     : [];
@@ -121,6 +137,19 @@ export async function POST(req: Request) {
     return bad("Paid requires paidAt or paidAmount", 409);
   }
 
+  const requiresInvoiceGate = shouldRequirePackageInvoiceGate({
+    settlementMode: settlementMode as any,
+    invoiceGateExempt,
+  });
+  if (requiresInvoiceGate) {
+    if (invoiceAmountParsed == null || !Number.isFinite(invoiceAmountParsed) || invoiceAmountParsed <= 0) {
+      return bad("Direct-billing package requires a positive invoice amount", 409);
+    }
+    if (invoiceGstAmountParsed != null && !Number.isFinite(invoiceGstAmountParsed)) {
+      return bad("Invalid invoice GST amount", 409);
+    }
+  }
+
   const overlapCheckTo = validTo ?? new Date(2999, 0, 1);
   const createMode = modeKeyFromCreateType(typeRaw, type);
   // MONTHLY packages must not overlap in active period.
@@ -144,6 +173,81 @@ export async function POST(req: Request) {
     typeRaw === "GROUP_MINUTES" || typeRaw === "GROUP_COUNT" ? typeRaw : "HOURS_MINUTES",
     noteRaw
   );
+  const now = new Date();
+  const invoiceIssueDate = validFromStr || now.toISOString().slice(0, 10);
+  let createdPackageId: string | null = null;
+  let createdInvoiceId: string | null = null;
+  let createdInvoiceMonthKey: string | null = null;
+
+  const createFinanceGateData = (invoiceNo?: string | null) => ({
+    financeGateStatus: requiresInvoiceGate ? ("INVOICE_PENDING_MANAGER" as const) : ("EXEMPT" as const),
+    financeGateReason: buildPackageFinanceGateReason({
+      status: requiresInvoiceGate ? "INVOICE_PENDING_MANAGER" : "EXEMPT",
+      invoiceNo,
+      settlementMode: settlementMode as any,
+    }),
+    financeGateUpdatedAt: now,
+    financeGateUpdatedBy: admin.email,
+  });
+
+  async function finalizeDirectBillingGate(input: {
+    packageId: string;
+    studentName: string;
+    courseName: string;
+    totalMinutesForDescription?: number | null;
+  }) {
+    if (!requiresInvoiceGate) return;
+    const invoiceNo = await getNextGlobalInvoiceNo(invoiceIssueDate);
+    await assertGlobalInvoiceNoAvailable(invoiceNo);
+    const invoiceAmount = Number(invoiceAmountParsed ?? 0);
+    const invoiceGstAmount = Number(invoiceGstAmountParsed ?? 0);
+    const invoiceTotalAmount = Math.round((invoiceAmount + invoiceGstAmount + Number.EPSILON) * 100) / 100;
+    const invoice = await createParentInvoice({
+      packageId: input.packageId,
+      studentId,
+      invoiceNo,
+      issueDate: invoiceIssueDate,
+      dueDate: invoiceIssueDate,
+      courseStartDate: validFromStr || null,
+      courseEndDate: validToStr || null,
+      billTo: input.studentName,
+      quantity: 1,
+      description:
+        input.totalMinutesForDescription && input.totalMinutesForDescription > 0
+          ? `Course package invoice for ${input.studentName} (${input.courseName}, ${Math.round(input.totalMinutesForDescription / 60)} hours)`
+          : `Course package invoice for ${input.studentName} (${input.courseName})`,
+      amount: invoiceAmount,
+      gstAmount: invoiceGstAmount,
+      totalAmount: invoiceTotalAmount,
+      paymentTerms: "Immediate",
+      note: "Auto-created with package creation. Waiting for manager approval.",
+      createdBy: admin.email,
+    });
+    createdInvoiceId = invoice.id;
+    createdInvoiceMonthKey = parseInvoiceNoParts(invoice.invoiceNo)?.monthKey ?? null;
+    await prisma.coursePackage.update({
+      where: { id: input.packageId },
+      data: createFinanceGateData(invoice.invoiceNo),
+    });
+    await createPackageInvoiceApproval({
+      packageId: input.packageId,
+      invoiceId: invoice.id,
+      submittedBy: admin.email,
+    });
+  }
+
+  async function rollbackCreatedPackage() {
+    if (createdInvoiceId) {
+      await deleteParentInvoice({ invoiceId: createdInvoiceId, actorEmail: admin.email }).catch(() => null);
+      if (createdInvoiceMonthKey) {
+        await resequenceGlobalInvoiceNumbersForMonth(createdInvoiceMonthKey).catch(() => null);
+      }
+    }
+    if (createdPackageId) {
+      await prisma.packageTxn.deleteMany({ where: { packageId: createdPackageId } }).catch(() => null);
+      await prisma.coursePackage.delete({ where: { id: createdPackageId } }).catch(() => null);
+    }
+  }
 
   if (type === "HOURS") {
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return bad("HOURS package needs totalMinutes", 409);
@@ -159,15 +263,72 @@ export async function POST(req: Request) {
     }
     const effectiveTotalMinutes = sumPurchaseBatchMinutes(purchaseBatches);
 
+    try {
+      const created = await prisma.coursePackage.create({
+        data: {
+          studentId,
+          courseId,
+          type: "HOURS",
+          status: (status as any) || "PAUSED",
+          settlementMode: settlementMode as any,
+          ...createFinanceGateData(null),
+          totalMinutes: effectiveTotalMinutes,
+          remainingMinutes: effectiveTotalMinutes,
+          validFrom,
+          validTo,
+          paid,
+          paidAt,
+          paidAmount,
+          paidNote: paidNote || null,
+          note: packageNote || null,
+          sharedStudents: sharedStudentIds.length
+            ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
+            : undefined,
+          sharedCourses: sharedCourseIds.length
+            ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
+            : undefined,
+          txns: {
+            create: buildPurchaseTxnCreates({
+              batches: purchaseBatches,
+              totalAmount: paidAmount,
+              defaultNote: packageNote || null,
+              prefix: "Initial purchase",
+            }),
+          },
+        },
+        include: {
+          student: { select: { name: true } },
+          course: { select: { name: true } },
+        },
+      });
+      createdPackageId = created.id;
+      await finalizeDirectBillingGate({
+        packageId: created.id,
+        studentName: created.student.name,
+        courseName: created.course.name,
+        totalMinutesForDescription: effectiveTotalMinutes,
+      });
+      return Response.json(
+        { ok: true, id: created.id, financeGateStatus: requiresInvoiceGate ? "INVOICE_PENDING_MANAGER" : "EXEMPT" },
+        { status: 201 }
+      );
+    } catch (error) {
+      await rollbackCreatedPackage();
+      return bad(error instanceof Error ? error.message : "Create package failed", 409);
+    }
+  }
+
+  if (type !== "MONTHLY") return bad("Invalid type", 409);
+
+  try {
     const created = await prisma.coursePackage.create({
       data: {
         studentId,
         courseId,
-        type: "HOURS",
+        type: "MONTHLY",
         status: (status as any) || "PAUSED",
         settlementMode: settlementMode as any,
-        totalMinutes: effectiveTotalMinutes,
-        remainingMinutes: effectiveTotalMinutes,
+        ...createFinanceGateData(null),
         validFrom,
         validTo,
         paid,
@@ -182,51 +343,32 @@ export async function POST(req: Request) {
           ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
           : undefined,
         txns: {
-          create: buildPurchaseTxnCreates({
-            batches: purchaseBatches,
-            totalAmount: paidAmount,
-            defaultNote: packageNote || null,
-            prefix: "Initial purchase",
-          }),
+          create: {
+            kind: "PURCHASE",
+            deltaMinutes: 0,
+            deltaAmount: paidAmount,
+            note: packageNote || null,
+          },
         },
       },
-      select: { id: true },
+      include: {
+        student: { select: { name: true } },
+        course: { select: { name: true } },
+      },
     });
-    return Response.json({ ok: true, id: created.id }, { status: 201 });
+    createdPackageId = created.id;
+    await finalizeDirectBillingGate({
+      packageId: created.id,
+      studentName: created.student.name,
+      courseName: created.course.name,
+      totalMinutesForDescription: null,
+    });
+    return Response.json(
+      { ok: true, id: created.id, financeGateStatus: requiresInvoiceGate ? "INVOICE_PENDING_MANAGER" : "EXEMPT" },
+      { status: 201 }
+    );
+  } catch (error) {
+    await rollbackCreatedPackage();
+    return bad(error instanceof Error ? error.message : "Create package failed", 409);
   }
-
-  if (type !== "MONTHLY") return bad("Invalid type", 409);
-
-  const created = await prisma.coursePackage.create({
-    data: {
-      studentId,
-      courseId,
-      type: "MONTHLY",
-      status: (status as any) || "PAUSED",
-      settlementMode: settlementMode as any,
-      validFrom,
-      validTo,
-      paid,
-      paidAt,
-      paidAmount,
-      paidNote: paidNote || null,
-      note: packageNote || null,
-      sharedStudents: sharedStudentIds.length
-        ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
-        : undefined,
-      sharedCourses: sharedCourseIds.length
-        ? { createMany: { data: sharedCourseIds.map((sharedCourseId) => ({ courseId: sharedCourseId })) } }
-        : undefined,
-      txns: {
-        create: {
-          kind: "PURCHASE",
-          deltaMinutes: 0,
-          deltaAmount: paidAmount,
-          note: packageNote || null,
-        },
-      },
-    },
-    select: { id: true },
-  });
-  return Response.json({ ok: true, id: created.id }, { status: 201 });
 }

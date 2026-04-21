@@ -15,6 +15,7 @@ import {
   stripGroupPackTag,
 } from "@/lib/package-mode";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
+import { packageFinanceGateLabel, packageFinanceGateLabelZh, packageFinanceGateTone } from "@/lib/package-finance-gate";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -355,6 +356,8 @@ export default async function AdminPackagesPage({
   const alertCount = filteredPackages.filter((p) => packageRiskMap.get(p.id)?.isAlert).length;
   const unpaidCount = filteredPackages.filter((p) => !p.paid).length;
   const activeCount = filteredPackages.filter((p) => p.status === "ACTIVE").length;
+  const gatePendingCount = filteredPackages.filter((p) => p.financeGateStatus === "INVOICE_PENDING_MANAGER").length;
+  const gateBlockedCount = filteredPackages.filter((p) => p.financeGateStatus === "BLOCKED").length;
   const activeFilterCount = [q, filterCourseId, filterPaid, filterWarn].filter(Boolean).length;
   const filtersOpen = activeFilterCount > 0;
   const buildPageHref = (extras?: Record<string, string | null | undefined>) =>
@@ -492,6 +495,19 @@ export default async function AdminPackagesPage({
             <div style={workbenchMetricLabelStyle("blue")}>{t(lang, "Active", "生效中")}</div>
             <div style={workbenchMetricValueStyle("blue")}>{activeCount}</div>
             <div style={{ fontSize: 12, color: "#475569" }}>{t(lang, "Packages currently in service.", "当前正在使用中的课包。")}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("amber")}>
+            <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Invoice gate", "发票闸门")}</div>
+            <div style={{ ...workbenchMetricValueStyle("amber"), color: gateBlockedCount > 0 ? "#b91c1c" : gatePendingCount > 0 ? "#b45309" : "#166534" }}>
+              {gatePendingCount + gateBlockedCount}
+            </div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              {t(
+                lang,
+                `${gatePendingCount} pending approval · ${gateBlockedCount} blocked`,
+                `${gatePendingCount} 个待审批 · ${gateBlockedCount} 个已阻塞`
+              )}
+            </div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -794,7 +810,17 @@ export default async function AdminPackagesPage({
                             label={p.paid ? t(lang, "Paid", "已付款") : t(lang, "Unpaid", "未付款")}
                             tone={p.paid ? "success" : "warn"}
                           />
+                          <WorkbenchStatusChip
+                            label={`${packageFinanceGateLabel(p.financeGateStatus)} / ${packageFinanceGateLabelZh(p.financeGateStatus)}`}
+                            tone={packageFinanceGateTone(p.financeGateStatus)}
+                            strong={p.financeGateStatus !== "EXEMPT" && p.financeGateStatus !== "SCHEDULABLE"}
+                          />
                         </div>
+                        {p.financeGateReason ? (
+                          <div style={{ ...workbenchTableCellSecondaryStyle, marginTop: 4 }}>
+                            {p.financeGateReason}
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ minWidth: 240, verticalAlign: "top" }}>
                         <div style={{ display: "grid", gap: 8 }}>

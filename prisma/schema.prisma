@@ -32,6 +32,19 @@ enum PackageStatus {
   EXPIRED
 }
 
+enum PackageFinanceGateStatus {
+  EXEMPT
+  INVOICE_PENDING_MANAGER
+  SCHEDULABLE
+  BLOCKED
+}
+
+enum PackageInvoiceApprovalStatus {
+  PENDING_MANAGER
+  APPROVED
+  REJECTED
+}
+
 enum AttendanceStatus {
   UNMARKED
   PRESENT
@@ -943,6 +956,10 @@ model CoursePackage {
   type      PackageType
   status    PackageStatus @default(ACTIVE)
   settlementMode PartnerSettlementMode?
+  financeGateStatus    PackageFinanceGateStatus @default(EXEMPT)
+  financeGateReason    String?
+  financeGateUpdatedAt DateTime?
+  financeGateUpdatedBy String?
 
   // HOURS 用：按分钟
   totalMinutes     Int?
@@ -969,11 +986,32 @@ model CoursePackage {
   settlements    PartnerSettlement[]
   midtermReports MidtermReport[]
   finalReports   FinalReport[]
+  invoiceApprovals PackageInvoiceApproval[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
   @@index([courseId, status, validFrom, validTo])
   @@index([settlementMode, status])
+  @@index([financeGateStatus, status])
+}
+
+model PackageInvoiceApproval {
+  id                 String                       @id @default(uuid())
+  packageId          String
+  invoiceId          String
+  status             PackageInvoiceApprovalStatus @default(PENDING_MANAGER)
+  submittedBy        String
+  submittedAt        DateTime                     @default(now())
+  managerApprovedBy  String?
+  managerApprovedAt  DateTime?
+  managerRejectReason String?
+  updatedAt          DateTime                     @updatedAt
+
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId, status, submittedAt])
+  @@index([status, submittedAt])
+  @@index([invoiceId])
 }
 
 model CoursePackageSharedStudent {

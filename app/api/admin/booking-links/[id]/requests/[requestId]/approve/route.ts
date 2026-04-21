@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { coursePackageAccessibleByStudent } from "@/lib/package-sharing";
 import { pickTeacherSessionConflict } from "@/lib/session-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 
@@ -13,6 +13,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; requestId: string }> }) {
   const admin = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(admin);
   const { id: linkId, requestId } = await ctx.params;
   if (!linkId) return bad("Missing id", 409);
   if (!requestId) return bad("Missing requestId", 409);
@@ -195,20 +196,25 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; re
     if (!oneOnOneClass) return bad("Failed to load 1-on-1 class", 409);
   }
 
-  await prisma.enrollment.upsert({
-    where: { classId_studentId: { classId: oneOnOneClass.id, studentId: reqRow.studentId } },
-    update: {},
-    create: { classId: oneOnOneClass.id, studentId: reqRow.studentId },
-  });
-
   const durationMin = Math.max(1, Math.round((reqRow.endAt.getTime() - reqRow.startAt.getTime()) / 60000));
-  const hasPackage = await hasSchedulablePackage(prisma, {
+  const packageDecision = await getSchedulablePackageDecision(prisma, {
     studentId: reqRow.studentId,
     courseId: oneOnOneClass.courseId,
     at: reqRow.startAt,
     requiredHoursMinutes: durationMin,
   });
-  if (!hasPackage) return bad("No active package for this course", 409, { code: "NO_ACTIVE_PACKAGE" });
+  if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    return bad(packageDecision.message, 409, {
+      code: packageDecision.code,
+      packageId: packageDecision.packageId,
+    });
+  }
+
+  await prisma.enrollment.upsert({
+    where: { classId_studentId: { classId: oneOnOneClass.id, studentId: reqRow.studentId } },
+    update: {},
+    create: { classId: oneOnOneClass.id, studentId: reqRow.studentId },
+  });
 
   const dupSession = await prisma.session.findFirst({
     where: { classId: oneOnOneClass.id, startAt: reqRow.startAt, endAt: reqRow.endAt },

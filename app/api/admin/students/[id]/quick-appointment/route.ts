@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { getOrCreateOneOnOneClassForStudent } from "@/lib/oneOnOne";
 import { findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import {
   isExactSessionTimeslot,
   pickStudentSessionConflict,
@@ -213,13 +213,15 @@ async function validateQuickScheduleRow(
 
   if (!reason) {
     const packageCheckAt = startAt.getTime() < Date.now() ? new Date() : startAt;
-    const hasPackage = await hasSchedulablePackage(db, {
+    const packageDecision = await getSchedulablePackageDecision(db, {
       studentId,
       courseId,
       at: packageCheckAt,
       requiredHoursMinutes: durationMin,
     });
-    if (!hasPackage) reason = "No active package for this course";
+    if (!packageDecision.ok && !(bypassAvailabilityCheck && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      reason = packageDecision.message;
+    }
   }
 
   if (!reason) {

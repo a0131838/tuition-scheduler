@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-21-r84` (package finance reconciliation workbook export), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-21-r85` (direct-billing package invoice gate Phase 1 + Phase 2), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -25,6 +25,7 @@
 - Finance menu perception risk: role-based sidebar can look like "missing features" for FINANCE users.
 - New process risk: deploy will fail if release docs are not included in the deploy commit.
 - Historical risk confirmed: server env previously pointed to localhost DB in older backups.
+- Migration order risk: the direct-billing package invoice gate runtime depends on new `CoursePackage.financeGate*` columns and the `PackageInvoiceApproval` table, so deploy order must keep DB schema and runtime aligned.
 
 ## Process Guard (Installed)
 
@@ -60,6 +61,25 @@
   - verify `/api/exports/package-finance-reconciliation` appears in the compiled route list
   - verify finance workbench and student package invoice pages now show the export entry point
   - post-deploy: verify the workbook downloads successfully and that all four sheets are populated when production data exists
+
+## 2026-04-21-r85 Ready
+
+- Scope: ship Phase 1 and Phase 2 of the direct-billing package invoice gate for direct-billing chargeable packages only.
+- Business impact:
+  - creating a new direct-billing chargeable package now auto-creates a parent invoice draft and a manager approval item instead of letting finance follow-up stay completely manual
+  - those packages enter `INVOICE_PENDING_MANAGER` first and are not treated as normally schedulable until manager approval completes
+  - package list, package billing, student detail, finance workbench, and approval inbox now surface the invoice gate state so ops, finance, and managers see the same status
+  - the main scheduling entry points now soft-block on `PACKAGE_FINANCE_GATE_BLOCKED` and point users to package billing as the next action
+  - strict super admins can still bypass finance-gate blocks during this soft-block phase, but no one can bypass a true “no active package” condition
+  - partner-settlement packages remain excluded from this workflow and stay `EXEMPT`
+  - receipt remains a finance follow-up control, not the first scheduling gate
+- Validation:
+  - `npx prisma migrate deploy` for `20260421183000_add_package_invoice_gate_phase1`
+  - verify the new `CoursePackage.financeGate*` columns and `PackageInvoiceApproval` table exist
+  - `npm run build`
+  - real-flow QA on a test direct-billing package: pending before manager approval, schedulable after approval
+  - confirm partner-settlement package remains `EXEMPT`
+  - post-deploy: smoke-test package create, package billing approval, quick schedule warning, and partner-package exemption
 
 ## 2026-04-17-r83 Ready
 

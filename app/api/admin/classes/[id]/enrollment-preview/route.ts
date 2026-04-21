@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { pickPreferredActivePackage } from "@/lib/package-mode";
 import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -70,31 +69,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  const now = new Date();
-  const candidatePkgs = await prisma.coursePackage.findMany({
-    where: {
-      AND: [
-        coursePackageAccessibleByStudent(studentId),
-        coursePackageMatchesCourse(cls.courseId),
-        { status: "ACTIVE" },
-        { validFrom: { lte: now } },
-        { OR: [{ validTo: null }, { validTo: { gte: now } }] },
-      ],
-    },
-    select: { id: true, type: true, remainingMinutes: true, note: true },
+  const packageDecision = await getSchedulablePackageDecision(prisma, {
+    studentId,
+    courseId: cls.courseId,
+    at: new Date(),
+    requiredHoursMinutes: cls.capacity === 1 ? 60 : 1,
   });
 
-  const activePkg = pickPreferredActivePackage(candidatePkgs, cls.capacity !== 1);
-
-  if (!activePkg) {
+  if (!packageDecision.ok) {
     return Response.json({
       ok: true,
       preview: {
         canEnroll: false,
         studentName: student.name,
         studentGrade: student.grade ?? null,
-        reasonCode: "NO_ACTIVE_PACKAGE",
-        reasonText: "该学生当前没有这个课程的有效课包。",
+        reasonCode: packageDecision.code,
+        reasonText:
+          packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED"
+            ? "该学生课包发票待审批，请先打开课包账单处理后再加入班级。"
+            : "该学生当前没有这个课程的有效课包。",
         detail: null,
       },
     });

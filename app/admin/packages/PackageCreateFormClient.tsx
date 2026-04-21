@@ -131,8 +131,11 @@ export default function PackageCreateFormClient({
   const [validToValue, setValidToValue] = useState("");
   const [statusValue, setStatusValue] = useState("ACTIVE");
   const [settlementModeValue, setSettlementModeValue] = useState("");
+  const [invoiceGateExemptValue, setInvoiceGateExemptValue] = useState(false);
   const [paidValue, setPaidValue] = useState(false);
   const [paidAmountValue, setPaidAmountValue] = useState("");
+  const [invoiceAmountValue, setInvoiceAmountValue] = useState("");
+  const [invoiceGstAmountValue, setInvoiceGstAmountValue] = useState("0");
   const [noteValue, setNoteValue] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [usePurchaseBatches, setUsePurchaseBatches] = useState(false);
@@ -146,6 +149,8 @@ export default function PackageCreateFormClient({
   const selectedStudent = students.find((s) => s.id === selectedStudentId) ?? null;
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
   const isMonthly = typeValue === "MONTHLY";
+  const isPartnerSettlement = settlementModeValue === "ONLINE_PACKAGE_END" || settlementModeValue === "OFFLINE_MONTHLY";
+  const requiresInvoiceGate = !isPartnerSettlement && !invoiceGateExemptValue;
   const totalMinutesNumber = Number(totalMinutesValue || 0);
   const isXdfPartnerStudent = (selectedStudent?.sourceChannelName ?? "").includes("新东方");
   const sameCourseActive =
@@ -177,6 +182,11 @@ export default function PackageCreateFormClient({
     setTotalMinutesValue(String(purchaseBatchTotalMinutes));
   }, [isMonthly, purchaseBatchTotalMinutes, usePurchaseBatches]);
 
+  useEffect(() => {
+    if (invoiceAmountValue || !paidAmountValue) return;
+    setInvoiceAmountValue(paidAmountValue);
+  }, [invoiceAmountValue, paidAmountValue]);
+
   const summaryRows = useMemo(
     () => [
       { label: "Student / 学生", value: selectedStudent?.name || "Not selected / 未选择" },
@@ -203,6 +213,14 @@ export default function PackageCreateFormClient({
             : settlementNoneLabel,
       },
       {
+        label: "Invoice gate / 发票闸门",
+        value: isPartnerSettlement
+          ? "Partner flow exempt / 合作方流程豁免"
+          : invoiceGateExemptValue
+          ? "Manual exempt / 手动豁免"
+          : "Create invoice + manager approval / 创建发票并待管理审批",
+      },
+      {
         label: "Payment / 付款",
         value: paidValue
           ? `${labels.paid} · ${paidAmountValue || "Amount pending / 金额待补"}`
@@ -221,6 +239,8 @@ export default function PackageCreateFormClient({
       settlementNoneLabel,
       settlementOfflineLabel,
       settlementOnlineLabel,
+      invoiceGateExemptValue,
+      isPartnerSettlement,
       statusValue,
       totalMinutesNumber,
       typeValue,
@@ -288,6 +308,16 @@ export default function PackageCreateFormClient({
     if (index === 1 && !isMonthly && (!Number.isFinite(totalMinutesNumber) || totalMinutesNumber <= 0)) {
       return "Please enter a valid minutes/count value. / 请填写有效的分钟数或次数。";
     }
+    if (index === 1 && requiresInvoiceGate) {
+      const invoiceAmount = Number(invoiceAmountValue || 0);
+      const invoiceGstAmount = Number(invoiceGstAmountValue || 0);
+      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+        return "Direct-billing packages need a positive invoice amount. / 直客收费课包必须填写有效的发票金额。";
+      }
+      if (!Number.isFinite(invoiceGstAmount) || invoiceGstAmount < 0) {
+        return "Please enter a valid GST amount. / 请填写有效的 GST 金额。";
+      }
+    }
     if (index === 2 && !validFromValue) {
       return "Please set validFrom before continuing. / 继续前请先填写生效日期。";
     }
@@ -335,6 +365,9 @@ export default function PackageCreateFormClient({
             paidAt: String(fd.get("paidAt") ?? ""),
             paidAmount: String(fd.get("paidAmount") ?? ""),
             paidNote: String(fd.get("paidNote") ?? ""),
+            invoiceGateExempt: String(fd.get("invoiceGateExempt") ?? "") === "on",
+            invoiceAmount: String(fd.get("invoiceAmount") ?? ""),
+            invoiceGstAmount: String(fd.get("invoiceGstAmount") ?? ""),
             sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
             sharedCourseIds: fd.getAll("sharedCourseIds").map((v) => String(v)),
             note: String(fd.get("note") ?? ""),
@@ -375,7 +408,12 @@ export default function PackageCreateFormClient({
           }
           const params = new URLSearchParams(searchParams?.toString() ?? "");
           params.delete("err");
-          params.set("msg", "Package created");
+          params.set(
+            "msg",
+            data?.financeGateStatus === "INVOICE_PENDING_MANAGER"
+              ? "Package created with invoice and pending manager approval"
+              : "Package created"
+          );
           const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
           router.replace(target, { scroll: false });
           preserveRefresh(router);
@@ -639,6 +677,64 @@ export default function PackageCreateFormClient({
                     </label>
                   </div>
                 ) : null}
+
+                <div style={{ display: "grid", gap: 10, border: "1px solid #dbeafe", borderRadius: 12, padding: 12, background: "#f8fbff" }}>
+                  <div style={{ fontWeight: 700 }}>Invoice-before-scheduling gate / 先开发票后排课</div>
+                  {isPartnerSettlement ? (
+                    <div style={{ fontSize: 13, color: "#475569" }}>
+                      Partner-settlement packages stay outside this direct-billing rule. / 合作方结算课包不进入这次直客发票闸门。
+                    </div>
+                  ) : (
+                    <>
+                      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                        <input
+                          type="checkbox"
+                          name="invoiceGateExempt"
+                          checked={invoiceGateExemptValue}
+                          onChange={(e) => setInvoiceGateExemptValue(e.target.checked)}
+                        />
+                        <span>Exempt this package from invoice gate / 这个课包不进入发票闸门</span>
+                      </label>
+                      {invoiceGateExemptValue ? (
+                        <div style={{ fontSize: 13, color: "#92400e" }}>
+                          Use this only for complimentary, internal, migrated, or other approved exceptions. / 只在赠课、内部、迁移或其他获批例外场景下使用。
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 12 }}>
+                          <div style={{ fontSize: 13, color: "#1d4ed8" }}>
+                            This package will auto-create a parent invoice and open a manager approval item. / 这个课包会自动创建家长发票，并生成管理审批项。
+                          </div>
+                          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span>Invoice amount / 发票金额</span>
+                              <input
+                                name="invoiceAmount"
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={invoiceAmountValue}
+                                onChange={(e) => setInvoiceAmountValue(e.target.value)}
+                                style={{ minHeight: 40 }}
+                              />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span>Invoice GST / GST 金额</span>
+                              <input
+                                name="invoiceGstAmount"
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={invoiceGstAmountValue}
+                                onChange={(e) => setInvoiceGstAmountValue(e.target.value)}
+                                style={{ minHeight: 40 }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </section>
 

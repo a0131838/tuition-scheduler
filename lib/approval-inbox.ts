@@ -19,7 +19,7 @@ const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
 const APPROVAL_OVERDUE_HOURS = 24;
 
 export type ApprovalInboxLane = "MANAGER" | "FINANCE" | "EXPENSE";
-export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM" | "TEACHER_PAYROLL";
+export type ApprovalInboxType = "PARENT_RECEIPT" | "PARTNER_RECEIPT" | "EXPENSE_CLAIM" | "TEACHER_PAYROLL" | "PACKAGE_INVOICE";
 
 export type ApprovalInboxItem = {
   id: string;
@@ -107,8 +107,17 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
   const canSeeFinance = isSuperAdmin || actorRole === "FINANCE" || isRoleApprover(actorEmail, roleCfg.financeApproverEmails);
   const canSeeExpense = isSuperAdmin || isRoleApprover(actorEmail, expenseCfg.approverEmails);
 
+  const pendingPackageApprovals = canSeeManager
+    ? await prisma.packageInvoiceApproval.findMany({
+        where: { status: "PENDING_MANAGER" },
+        orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      })
+    : [];
   const packageIds = Array.from(
-    new Set(parentAll.receipts.map((receipt) => String(receipt.packageId || "").trim()).filter(Boolean)),
+    new Set([
+      ...parentAll.receipts.map((receipt) => String(receipt.packageId || "").trim()).filter(Boolean),
+      ...pendingPackageApprovals.map((approval) => String(approval.packageId || "").trim()).filter(Boolean),
+    ]),
   );
   const packages = packageIds.length
     ? await prisma.coursePackage.findMany({
@@ -124,6 +133,30 @@ export const getApprovalInboxData = cache(async function getApprovalInboxData(
   const partnerApprovalMap = await getPartnerReceiptApprovalMap(partnerAll.receipts.map((receipt) => receipt.id));
 
   const items: ApprovalInboxItem[] = [];
+
+  if (canSeeManager) {
+    for (const approval of pendingPackageApprovals) {
+      const pkg = packageMap.get(approval.packageId);
+      const invoice = parentInvoiceMap.get(approval.invoiceId);
+      const waitingHours = hoursSince(approval.submittedAt);
+      items.push({
+        id: approval.id,
+        key: `package-invoice-${approval.id}`,
+        type: "PACKAGE_INVOICE",
+        lane: "MANAGER",
+        title: `${pkg?.student?.name ?? "Student"} | ${invoice?.invoiceNo ?? "Package invoice"}`,
+        subtitle: `${pkg?.course?.name ?? "Package"} | invoice-before-scheduling gate`,
+        amount: Number(invoice?.totalAmount ?? pkg?.paidAmount ?? 0) || 0,
+        currency: "SGD",
+        waitingHours,
+        overdue: waitingHours >= APPROVAL_OVERDUE_HOURS,
+        createdAt: approval.submittedAt.toISOString(),
+        href: `/admin/packages/${encodeURIComponent(approval.packageId)}/billing`,
+        statusText: "Manager invoice approval needed",
+        riskText: "Open package billing to approve the invoice before scheduling can continue.",
+      });
+    }
+  }
 
   if (canSeeManager || canSeeFinance) {
     const teacherPayrollCandidates = teacherPayrollPublishItems

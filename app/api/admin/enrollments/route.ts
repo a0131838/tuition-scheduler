@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
-import { pickPreferredActivePackage } from "@/lib/package-mode";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { classTeachingMode, findStudentCourseEnrollment, formatEnrollmentConflict } from "@/lib/enrollment-conflict";
-import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
 export async function POST(req: Request) {
-  await requireAdmin();
+  const user = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(user);
 
   let body: any;
   try {
@@ -32,21 +32,15 @@ export async function POST(req: Request) {
   if (!cls) return bad("Class not found", 404);
 
   const now = new Date();
-  const candidatePkgs = await prisma.coursePackage.findMany({
-    where: {
-      AND: [
-        coursePackageAccessibleByStudent(studentId),
-        coursePackageMatchesCourse(cls.courseId),
-        { status: "ACTIVE" },
-        { validFrom: { lte: now } },
-        { OR: [{ validTo: null }, { validTo: { gte: now } }] },
-      ],
-    },
-    select: { id: true, type: true, remainingMinutes: true, note: true },
+  const packageDecision = await getSchedulablePackageDecision(prisma, {
+    studentId,
+    courseId: cls.courseId,
+    at: now,
+    requiredHoursMinutes: cls.capacity === 1 ? 60 : 1,
   });
-
-  const activePkg = pickPreferredActivePackage(candidatePkgs, cls.capacity !== 1);
-  if (!activePkg) return bad("Student has no active package for this course", 409, { code: "NO_ACTIVE_PACKAGE" });
+  if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    return bad(packageDecision.message, 409, { code: packageDecision.code, packageId: packageDecision.packageId });
+  }
 
   const exists = await prisma.enrollment.findFirst({
     where: { classId, studentId },

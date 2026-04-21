@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { shouldIgnoreTeacherConflictSession } from "@/lib/session-conflict";
-import { hasSchedulablePackage } from "@/lib/scheduling-package";
+import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
@@ -40,7 +40,7 @@ type Occurrence = {
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
-async function computeGenerationPlan(teacherId: string, startDate: string, endDate: string) {
+async function computeGenerationPlan(teacherId: string, startDate: string, endDate: string, bypassPackageGate: boolean) {
   const start = parseDateOnly(startDate);
   const end = parseDateOnly(endDate);
   if (!start || !end || start > end) {
@@ -127,14 +127,14 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   const toCreate: Occurrence[] = [];
 
   for (const occ of occurrences) {
-    const hasPackage = await hasSchedulablePackage(prisma, {
+    const packageDecision = await getSchedulablePackageDecision(prisma, {
       studentId: occ.studentId,
       courseId: occ.courseId,
       at: occ.startAt,
       requiredHoursMinutes: occ.requiredHoursMinutes,
     });
-    if (!hasPackage) {
-      conflicts.push({ occ, reason: "No active package" });
+    if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+      conflicts.push({ occ, reason: packageDecision.message });
       continue;
     }
 
@@ -179,14 +179,16 @@ async function computeGenerationPlan(teacherId: string, startDate: string, endDa
   return { toCreate, conflicts };
 }
 
-async function validateOccurrence(db: DbClient, occ: Occurrence) {
-  const hasPackage = await hasSchedulablePackage(db, {
+async function validateOccurrence(db: DbClient, occ: Occurrence, bypassPackageGate: boolean) {
+  const packageDecision = await getSchedulablePackageDecision(db, {
     studentId: occ.studentId,
     courseId: occ.courseId,
     at: occ.startAt,
     requiredHoursMinutes: occ.requiredHoursMinutes,
   });
-  if (!hasPackage) return "No active package";
+  if (!packageDecision.ok && !(bypassPackageGate && packageDecision.code === "PACKAGE_FINANCE_GATE_BLOCKED")) {
+    return packageDecision.message;
+  }
 
   const dup = await db.session.findFirst({
     where: {
@@ -250,7 +252,8 @@ async function validateOccurrence(db: DbClient, occ: Occurrence) {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
+  const bypassPackageGate = isStrictSuperAdmin(actor);
   const { id: teacherId } = await ctx.params;
   if (!teacherId) return bad("Missing teacherId", 409);
 
@@ -265,13 +268,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const endDate = String(body?.endDate ?? "");
   if (!startDate || !endDate) return bad("Missing date range", 409);
 
-  const { toCreate, conflicts } = await computeGenerationPlan(teacherId, startDate, endDate);
+  const { toCreate, conflicts } = await computeGenerationPlan(teacherId, startDate, endDate, bypassPackageGate);
   let created = 0;
   const dynamicConflicts = [...conflicts];
   for (const occ of toCreate) {
     const result = await prisma.$transaction(
       async (tx) => {
-        const reason = await validateOccurrence(tx, occ);
+        const reason = await validateOccurrence(tx, occ, bypassPackageGate);
         if (reason) return { ok: false as const, reason };
         await tx.session.create({
           data: {
