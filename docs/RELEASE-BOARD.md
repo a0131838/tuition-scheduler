@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-17`
+- Last checked: `2026-04-21`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-17-r83` (shared time-input sync and quick-schedule conflict clarity follow-up), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-21-r84` (package finance reconciliation workbook export), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -45,6 +45,21 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-21-r84 Ready
+
+- Scope: add a finance reconciliation workbook export for all packages created since the system went live.
+- Business impact:
+  - finance now has one workbook that joins package master data with invoice detail, receipt detail, and uploaded payment-proof detail instead of pulling separate partial reports
+  - the workbook uses the same package amount-basis priority already used elsewhere: purchase transactions first, then receipts, then package paid amount
+  - an exception sheet now highlights common mismatch patterns such as uninvoiced package value, invoices not fully receipted, proofs without receipts, receipts without invoices, and inactive packages with open gaps
+  - finance users can download the workbook directly from both the finance workbench and the student package invoice page
+  - no package balances, invoice creation rules, receipt numbering, approval logic, or scheduling logic changed
+- Validation:
+  - `npm run build`
+  - verify `/api/exports/package-finance-reconciliation` appears in the compiled route list
+  - verify finance workbench and student package invoice pages now show the export entry point
+  - post-deploy: verify the workbook downloads successfully and that all four sheets are populated when production data exists
 
 ## 2026-04-17-r83 Ready
 

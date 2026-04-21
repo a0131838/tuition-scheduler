@@ -773,6 +773,12 @@ export default async function FinanceWorkbenchPage({
           <span style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", color: deltaAlertLevel === "HIGH" ? "#b91c1c" : deltaAlertLevel === "MEDIUM" ? "#92400e" : "#166534", fontSize: 12 }}>
             {t(lang, "Delta alert", "差异预警")}: <b>{deltaAlertLevel}</b>
           </span>
+          <a
+            href="/api/exports/package-finance-reconciliation"
+            style={{ padding: "4px 10px", borderRadius: 999, background: "#fff", border: "1px solid #bfdbfe", color: "#1d4ed8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+          >
+            {t(lang, "Export package reconciliation workbook", "导出课包对账工作簿")}
+          </a>
         </div>
       </section>
 
@@ -809,6 +815,9 @@ export default async function FinanceWorkbenchPage({
             <a href={partialQueueHref}>{t(lang, "Open partial queue", "打开部分收据队列")}</a>
             <a href={invoiceProgressCsvHref} download={`finance-invoice-progress-${monthFilter || "all"}.csv`}>
               {t(lang, "Export invoice progress", "导出发票进度")}
+            </a>
+            <a href="/api/exports/package-finance-reconciliation">
+              {t(lang, "Export full package reconciliation", "导出完整课包对账报表")}
             </a>
           </div>
         </div>

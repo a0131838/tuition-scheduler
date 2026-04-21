@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-21-r84
+
+- Release ID: `2026-04-21-r84`
+- Date/Time (Asia/Shanghai): `2026-04-21`
+- Deployment status: `READY`
+- Scope: add a finance reconciliation workbook that lists every package created since SGT Manage went live and joins package, invoice, receipt, and payment-proof data for finance matching.
+- Key files:
+  - `lib/package-finance-reconciliation.ts`
+  - `app/api/exports/package-finance-reconciliation/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/finance/student-package-invoices/page.tsx`
+  - `docs/tasks/TASK-20260421-package-finance-reconciliation-report.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a read-only reporting export plus finance page links. It does not change package balances, package deduction, invoice numbering, receipt approval, or any scheduling workflow. The main caution is interpretation of historical mismatches, so the workbook exposes amount-basis source and exception rows instead of trying to silently normalize old data.
+- Verification:
+  - `npm run build`
+  - confirm `/api/exports/package-finance-reconciliation` is present in the compiled route list
+  - confirm finance workbench and student package invoice pages expose direct download links for the workbook
+  - server-side follow-up after deploy: verify the workbook downloads and contains populated master / invoice / receipt-proof / exception sheets when production data exists
+- Rollback point: previous production commit before `2026-04-21-r84`.
+
 ## 2026-04-17-r83
 
 - Release ID: `2026-04-17-r83`

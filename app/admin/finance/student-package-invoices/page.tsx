@@ -294,6 +294,9 @@ export default async function FinanceStudentPackageInvoicePage({
           <a href="/admin/finance/student-package-balances">
             {t(lang, "Open student package balance report", "打开学生课时包余额报表")}
           </a>
+          <a href="/api/exports/package-finance-reconciliation">
+            {t(lang, "Export full package reconciliation workbook", "导出完整课包对账工作簿")}
+          </a>
           <a href="/admin/finance/workbench">
             {t(lang, "Back to finance workbench", "返回财务工作台")}
           </a>
