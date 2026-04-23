@@ -20,30 +20,35 @@ This file is the single source of truth for what changed in production.
 - Release ID: `2026-04-23-r91`
 - Date/Time (Asia/Shanghai): `2026-04-23`
 - Deployment status: `READY`
-- Scope: rework the direct-billing student contract flow so first purchases start with a parent-info intake link, renewals skip intake, and signed contracts automatically create the matching invoice draft.
+- Scope: rework the direct-billing student contract flow so first purchases can start from a parent intake link before a student exists, renewals skip intake, and signed contracts automatically create the matching invoice draft.
 - Key files:
   - `prisma/schema.prisma`
   - `prisma/migrations/20260423154500_student_contract_flow_rework/migration.sql`
-  - `lib/student-contract-template.ts`
+  - `prisma/migrations/20260423181500_add_student_parent_intakes/migration.sql`
   - `lib/student-contract.ts`
+  - `lib/student-parent-intake.ts`
+  - `lib/student-contract-template.ts`
+  - `app/admin/students/page.tsx`
   - `app/admin/packages/[id]/billing/page.tsx`
   - `app/admin/students/[id]/page.tsx`
+  - `app/student-intake/[token]/page.tsx`
   - `app/contract-intake/[token]/page.tsx`
   - `app/contract/[token]/page.tsx`
   - `app/api/exports/student-contract/[id]/route.ts`
   - `docs/tasks/TASK-20260423-student-contract-intake-renewal-auto-invoice.md`
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
-- Risk impact (if any): Medium. This release changes student-contract status progression, adds renewal-mode branching, and auto-creates invoice drafts after signing. It does not change partner-settlement package handling, receipt rules, scheduling gates, or finance-gate rules.
+- Risk impact (if any): Medium. This release adds a new pre-student parent-intake path, changes student-contract status progression, adds renewal-mode branching, and auto-creates invoice drafts after signing. It does not change partner-settlement package handling, receipt rules, scheduling gates, or finance-gate rules.
 - Verification:
   - `npx prisma generate`
   - `npx prisma migrate deploy`
   - `npm run build`
-  - local first-purchase QA confirmed `intake submitted -> business draft -> ready to sign -> signed -> invoice created`
-  - local renewal QA confirmed `No intake needed -> ready to sign -> signed -> invoice created`
-  - verify first-purchase signing auto-created invoice `RGT-202604-0016`
-  - verify renewal signing auto-created invoice `RGT-202604-0017`
-  - verify QA cleanup removed the temporary test packages afterwards
+  - local new-student QA confirmed `intake link -> parent submit -> student created -> first package setup -> ready to sign -> signed -> invoice created`
+  - local renewal QA confirmed `renewal draft reuses parent info -> ready to sign -> signed -> invoice created`
+  - verify first-purchase signing auto-created invoice `RGT-202604-0017`
+  - verify renewal signing auto-created invoice `RGT-202604-0018`
+  - verify renewal package finance gate moved to `INVOICE_PENDING_MANAGER`
+  - verify QA cleanup removed the temporary test students, intakes, packages, contracts, approvals, and generated invoice drafts afterwards
 - Rollback point: previous production commit before `2026-04-23-r91`.
 
 ## 2026-04-23-r90

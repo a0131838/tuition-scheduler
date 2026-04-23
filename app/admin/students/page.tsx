@@ -1,14 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import AdminStudentsClient from "./AdminStudentsClient";
+import CopyTextButton from "../_components/CopyTextButton";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
   workbenchInfoBarStyle,
 } from "../_components/workbenchStyles";
+import {
+  buildStudentParentIntakeAbsoluteUrl,
+  buildStudentParentIntakePath,
+  createStudentParentIntakeLink,
+  listRecentStudentParentIntakes,
+} from "@/lib/student-parent-intake";
 
 const PARTNER_SOURCE_NAME = "新东方学生";
 const PARTNER_TYPE_NAME = "合作方学生";
@@ -116,10 +125,14 @@ export default async function StudentsPage({
     page?: string | string[];
     pageSize?: string | string[];
     view?: string | string[];
+    msg?: string | string[];
+    err?: string | string[];
   }>;
 }) {
   const lang = await getLang();
   const sp = await searchParams;
+  const msg = first(sp?.msg).trim();
+  const err = first(sp?.err).trim();
   const clearDesk = first(sp?.clearDesk).trim() === "1";
   const hasSourceChannelParam = typeof sp?.sourceChannelId !== "undefined";
   const hasStudentTypeParam = typeof sp?.studentTypeId !== "undefined";
@@ -165,9 +178,25 @@ export default async function StudentsPage({
   const pageSize = [20, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 20;
   const { start: todayStart, end: todayEnd } = getSingaporeDayBounds();
 
-  const [sources, types] = await Promise.all([
+  async function createParentIntakeAction() {
+    "use server";
+    const admin = await requireAdmin();
+    try {
+      await createStudentParentIntakeLink({
+        createdByUserId: admin.id,
+        label: `Created by ${admin.email}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Create parent intake link failed";
+      redirect(`/admin/students?err=${encodeURIComponent(message)}`);
+    }
+    redirect(`/admin/students?msg=${encodeURIComponent("Parent intake link created")}`);
+  }
+
+  const [sources, types, recentParentIntakes] = await Promise.all([
     prisma.studentSourceChannel.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.studentType.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    listRecentStudentParentIntakes(8),
   ]);
 
   const partnerSourceId = sources.find((s) => s.name === PARTNER_SOURCE_NAME)?.id ?? "";
@@ -332,6 +361,140 @@ export default async function StudentsPage({
               {t(lang, "Show full list", "查看完整列表")}
             </a>
           ) : null}
+        </div>
+      </div>
+
+      {msg ? (
+        <div style={{ ...workbenchInfoBarStyle, marginTop: 10, marginBottom: 12, borderColor: "#86efac", background: "#ecfdf3", color: "#166534" }}>
+          {msg}
+        </div>
+      ) : null}
+      {err ? (
+        <div style={{ ...workbenchInfoBarStyle, marginTop: 10, marginBottom: 12, borderColor: "#fdba74", background: "#fff7ed", color: "#9a3412" }}>
+          {err}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          marginBottom: 12,
+          padding: 14,
+          borderRadius: 14,
+          border: "1px solid #dbeafe",
+          background: "#f8fbff",
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Parent intake links", "家长资料链接")}</div>
+            <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.5 }}>
+              {t(
+                lang,
+                "Use this before a student exists in the system. The parent fills the student and guardian basics first, then ops completes the first-purchase details from the student profile.",
+                "当学生还没进系统时，从这里发送家长资料链接。家长先填学生与监护人基础资料，之后由教务在学生详情页补首购信息。"
+              )}
+            </div>
+          </div>
+          <form action={createParentIntakeAction}>
+            <button
+              type="submit"
+              style={{
+                borderRadius: 999,
+                border: "1px solid #2563eb",
+                background: "#2563eb",
+                color: "#fff",
+                padding: "8px 14px",
+                fontWeight: 800,
+              }}
+            >
+              {t(lang, "Create parent intake link", "创建家长资料链接")}
+            </button>
+          </form>
+        </div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          {recentParentIntakes.length ? (
+            recentParentIntakes.map((intake) => {
+              const intakeHref = buildStudentParentIntakePath(intake.token);
+              const intakeAbsoluteUrl = buildStudentParentIntakeAbsoluteUrl(intake.token);
+              const tone =
+                intake.status === "LINK_SENT"
+                  ? { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" }
+                  : intake.status === "SUBMITTED"
+                    ? { bg: "#fef3c7", fg: "#92400e", border: "#fde68a" }
+                    : intake.status === "CONTRACT_READY"
+                      ? { bg: "#dcfce7", fg: "#166534", border: "#86efac" }
+                      : intake.status === "SIGNED"
+                        ? { bg: "#ecfdf3", fg: "#166534", border: "#86efac" }
+                        : { bg: "#f3f4f6", fg: "#475569", border: "#d1d5db" };
+              return (
+                <div
+                  key={intake.id}
+                  style={{
+                    border: `1px solid ${tone.border}`,
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    background: "#fff",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 28,
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          background: tone.bg,
+                          color: tone.fg,
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {intake.status}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {t(lang, "Created", "创建于")} {intake.createdAt.toLocaleString("en-SG")}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <a href={intakeHref} target="_blank" rel="noreferrer">
+                        {t(lang, "Open link", "打开链接")}
+                      </a>
+                      <CopyTextButton
+                        text={intakeAbsoluteUrl}
+                        label={t(lang, "Copy link", "复制链接")}
+                        copiedLabel={t(lang, "Copied", "已复制")}
+                        style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
+                      />
+                      {intake.studentId ? (
+                        <a href={`/admin/students/${encodeURIComponent(intake.studentId)}`}>
+                          {t(lang, "Open student", "打开学生")}
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.5 }}>
+                    {intake.studentName
+                      ? `${t(lang, "Student", "学生")}: ${intake.studentName}`
+                      : t(lang, "Waiting for the parent to submit the student profile.", "正在等待家长提交学生资料。")}
+                    {intake.packageId && intake.contractId
+                      ? ` · ${t(lang, "First purchase contract ready", "首购合同已准备")}`
+                      : ""}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ fontSize: 13, color: "#475569" }}>
+              {t(lang, "No parent intake links yet. Create one above to start the new-student flow.", "还没有家长资料链接。先在上方创建一个，启动新生建档流程。")}
+            </div>
+          )}
         </div>
       </div>
 

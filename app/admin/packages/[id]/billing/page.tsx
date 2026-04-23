@@ -556,7 +556,7 @@ export default async function PackageBillingPage({
   const lang = await getLang();
   const currentUser = await getCurrentUser();
 
-  const [pkg, data, roleCfg, latestInvoiceApproval, latestContract, hasRenewalContractParentInfo] = await Promise.all([
+  const [pkg, data, roleCfg, latestInvoiceApproval, latestContract, hasRenewalContractParentInfo, latestParentIntakeForPackage] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: { student: true, course: true },
@@ -571,6 +571,10 @@ export default async function PackageBillingPage({
         select: { studentId: true },
       })
       .then((row) => (row ? hasReusableStudentContractParentInfo(row.studentId, packageId) : false)),
+    prisma.studentParentIntake.findFirst({
+      where: { packageId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
@@ -671,6 +675,8 @@ export default async function PackageBillingPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
+  const contractFromParentIntake =
+    Boolean(latestContract && latestParentIntakeForPackage && latestParentIntakeForPackage.contractId === latestContract.id);
   const currentBillingFocusTitle =
     usesStudentContractFlow && !latestContract
       ? t(lang, "Start with contract intake", "先开始合同资料流程")
@@ -971,27 +977,33 @@ export default async function PackageBillingPage({
 
                 {latestContract.flowType === "NEW_PURCHASE" ? (
                   <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent info link", "家长资料链接")}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      {contractFromParentIntake ? t(lang, "Parent intake record", "家长资料记录") : t(lang, "Parent info link", "家长资料链接")}
+                    </div>
                     <div style={{ fontWeight: 700 }}>
-                      {latestContract.intakeExpiresAt
-                        ? t(lang, `Expires ${latestContract.intakeExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.intakeExpiresAt.toLocaleString("zh-CN")}`)
-                        : t(lang, "No expiry", "无过期时间")}
+                      {contractFromParentIntake
+                        ? t(lang, "Submitted before student creation", "已在建学生前提交")
+                        : latestContract.intakeExpiresAt
+                          ? t(lang, `Expires ${latestContract.intakeExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.intakeExpiresAt.toLocaleString("zh-CN")}`)
+                          : t(lang, "No expiry", "无过期时间")}
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {contractIntakeHref ? (
-                        <>
-                          <a href={contractIntakeHref} target="_blank" rel="noreferrer">
-                            {t(lang, "Open info link", "打开资料链接")}
-                          </a>
-                          <CopyTextButton
-                            text={contractIntakeShare}
-                            label={t(lang, "Copy info link", "复制资料链接")}
-                            copiedLabel={t(lang, "Copied", "已复制")}
-                            style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
-                          />
-                        </>
-                      ) : null}
-                    </div>
+                    {!contractFromParentIntake ? (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {contractIntakeHref ? (
+                          <>
+                            <a href={contractIntakeHref} target="_blank" rel="noreferrer">
+                              {t(lang, "Open info link", "打开资料链接")}
+                            </a>
+                            <CopyTextButton
+                              text={contractIntakeShare}
+                              label={t(lang, "Copy info link", "复制资料链接")}
+                              copiedLabel={t(lang, "Copied", "已复制")}
+                              style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
+                            />
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {contractParentInfo ? (
                       <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
                         {contractParentInfo.parentFullNameEn} · {contractParentInfo.phone} · {contractParentInfo.email}
@@ -1146,7 +1158,7 @@ export default async function PackageBillingPage({
               ) : null}
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-                {latestContract.flowType === "NEW_PURCHASE" && !contractIsTerminal(latestContract.status) ? (
+                {latestContract.flowType === "NEW_PURCHASE" && !contractIsTerminal(latestContract.status) && !contractFromParentIntake ? (
                   <form action={resendContractIntakeAction}>
                     <input type="hidden" name="packageId" value={packageId} />
                     <input type="hidden" name="contractId" value={latestContract.id} />

@@ -2,17 +2,27 @@
 
 ## Goal
 
-Rework the direct-billing student contract flow so it matches the real ops process:
+Rework the direct-billing student contract flow so it matches the real ops process end to end:
 
-- first purchase sends a parent-info intake link first
-- ops completes the commercial contract details afterwards
+- before a student exists, ops can send a parent intake link
+- parent submission creates the student draft inside SGT
+- ops then completes the first-purchase package and commercial contract details
 - the school then sends the final signing link
 - signing automatically creates the matching invoice draft
 - renewals skip parent-info collection and go straight to the formal contract path
 
 ## Scope
 
-- Add business-facing contract states for:
+- Add a new pre-student parent-intake workflow:
+  - send a public parent intake link before a student exists
+  - collect only the parent/student profile fields ops actually needs up front
+  - create the student record automatically after parent submission
+- Add intake-side storage for:
+  - intake token
+  - intake status
+  - submitted parent payload
+  - linked student / package / contract ids
+- Rework direct-billing contract states so ops sees:
   - intake pending
   - intake submitted
   - contract draft
@@ -21,10 +31,10 @@ Rework the direct-billing student contract flow so it matches the real ops proce
 - Add contract flow types:
   - `NEW_PURCHASE`
   - `RENEWAL`
-- Add contract-side storage for:
-  - reusable parent profile data
-  - ops-entered business draft fields
-  - linked invoice metadata
+- Rework first-purchase flow so:
+  - parent intake happens before package creation
+  - ops finishes package/commercial details afterwards
+  - the system creates the first package and ready-to-sign contract together
 - Rework package billing contract actions so:
   - first purchase starts with `Send parent info link`
   - renewal starts with `Create renewal contract`
@@ -49,10 +59,14 @@ Rework the direct-billing student contract flow so it matches the real ops proce
 
 - `prisma/schema.prisma`
 - `prisma/migrations/20260423154500_student_contract_flow_rework/migration.sql`
+- `prisma/migrations/20260423181500_add_student_parent_intakes/migration.sql`
 - `lib/student-contract-template.ts`
 - `lib/student-contract.ts`
-- `app/admin/packages/[id]/billing/page.tsx`
+- `lib/student-parent-intake.ts`
+- `app/admin/students/page.tsx`
 - `app/admin/students/[id]/page.tsx`
+- `app/admin/packages/[id]/billing/page.tsx`
+- `app/student-intake/[token]/page.tsx`
 - `app/contract-intake/[token]/page.tsx`
 - `app/contract/[token]/page.tsx`
 - `app/api/exports/student-contract/[id]/route.ts`
@@ -62,29 +76,27 @@ Rework the direct-billing student contract flow so it matches the real ops proce
 
 ## Risks
 
-- Medium. This release changes contract status progression, adds renewal-mode behavior, and creates invoice drafts automatically after signing.
-- The biggest runtime risk is duplicate invoice creation, so the post-sign path must remain idempotent and reuse/link a matching invoice when possible.
-- Contract UI is now more selective by stage, so hidden buttons must still leave one clear next action for ops.
+- Medium. This release changes contract status progression, adds a new public intake-before-student path, adds renewal-mode behavior, and creates invoice drafts automatically after signing.
+- The biggest runtime risks are:
+  - duplicate student creation if intake submission is not guarded properly
+  - duplicate invoice creation if the post-sign path is not idempotent
+  - confusing ops UI if the wrong action is shown for the current contract stage
 
 ## Verification
 
 - `npx prisma generate`
 - `npx prisma migrate deploy`
 - `npm run build`
-- Local QA helper:
-  - create first-purchase package and contract
-  - submit parent intake
-  - save business draft
-  - prepare sign link
-  - sign contract
-  - verify status becomes `INVOICE_CREATED`
-  - verify invoice draft is linked/created automatically
+- New-student intake QA:
+  - create a parent intake link before any student exists
+  - submit parent details through the intake flow
+  - verify the student record is created automatically
+  - use ops-side first-purchase setup to create the first package and ready-to-sign contract
+  - sign the contract and verify invoice draft creation + package invoice approval creation
 - Renewal QA:
-  - create renewal package and contract
-  - verify intake link shows `No intake needed`
-  - save renewal draft
-  - prepare sign link
-  - sign contract
-  - verify invoice draft is linked/created automatically
+  - create a renewal package for an existing student with prior contract data
+  - verify renewal draft reuses the stored parent info
+  - verify the flow skips intake and goes straight to contract drafting/signing
+  - sign the renewal contract and verify invoice draft creation + package finance gate update
 - Cleanup:
-  - remove QA packages, contracts, and generated invoice drafts after validation
+  - remove QA students, intakes, packages, contracts, approvals, and generated invoice drafts after validation

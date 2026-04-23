@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { Lang } from "@/lib/i18n";
 import { getLang, t } from "@/lib/i18n";
-import { getCurrentUser, isStrictSuperAdmin } from "@/lib/auth";
+import { getCurrentUser, isStrictSuperAdmin, requireAdmin } from "@/lib/auth";
 import { coursePackageAccessibleByStudent, coursePackageMatchesCourse } from "@/lib/package-sharing";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
 import QuickScheduleModal from "../../_components/QuickScheduleModal";
@@ -58,6 +58,7 @@ import {
   coerceParentAvailabilityPayload,
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
+import { createFirstPurchasePackageAndContractFromIntake } from "@/lib/student-parent-intake";
 import CopyTextButton from "../../_components/CopyTextButton";
 import {
   workbenchHeroStyle,
@@ -1511,6 +1512,44 @@ async function markSchedulingCoordinationTeacherException(studentId: string, for
   redirect(appendStudentDetailQuery(back, { msg: "Coordination moved to waiting for teacher exception" }));
 }
 
+async function createFirstPurchaseFromIntakeAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const studentId = String(formData.get("studentId") ?? "").trim();
+  const intakeId = String(formData.get("intakeId") ?? "").trim();
+  const courseId = String(formData.get("courseId") ?? "").trim();
+  const totalMinutes = Number(String(formData.get("totalMinutes") ?? "").trim() || 0);
+  const feeAmount = Number(String(formData.get("feeAmount") ?? "").trim() || 0);
+  const billTo = String(formData.get("billTo") ?? "").trim();
+  const agreementDateIso = String(formData.get("agreementDateIso") ?? "").trim();
+  const lessonMode = String(formData.get("lessonMode") ?? "").trim();
+  const campusName = String(formData.get("campusName") ?? "").trim();
+  const back = appendStudentDetailQuery(`/admin/students/${encodeURIComponent(studentId)}#packages`, {});
+
+  if (!studentId || !intakeId || !courseId) {
+    redirect(appendStudentDetailQuery(back, { err: "Missing first-purchase setup target" }));
+  }
+
+  try {
+    await createFirstPurchasePackageAndContractFromIntake({
+      intakeId,
+      courseId,
+      totalMinutes,
+      feeAmount,
+      billTo,
+      agreementDateIso,
+      lessonMode: lessonMode || null,
+      campusName: campusName || null,
+      actorUserId: admin.id,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Create first purchase contract failed";
+    redirect(appendStudentDetailQuery(back, { err: msg }));
+  }
+
+  redirect(appendStudentDetailQuery(back, { msg: "First purchase contract is ready to sign" }));
+}
+
 export default async function StudentDetailPage({
   params,
   searchParams,
@@ -1623,6 +1662,7 @@ export default async function StudentDetailPage({
     monthAppointments,
     campuses,
     rooms,
+    latestParentIntake,
   ] = await Promise.all([
     prisma.enrollment.count({ where: { studentId } }),
     prisma.coursePackage.count({ where: { ...coursePackageAccessibleByStudent(studentId) } }),
@@ -1715,12 +1755,25 @@ export default async function StudentDetailPage({
     }),
     prisma.campus.findMany({ orderBy: { name: "asc" } }),
     prisma.room.findMany({ include: { campus: true }, orderBy: { name: "asc" } }),
+    prisma.studentParentIntake.findFirst({
+      where: { studentId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
   ]);
 
   const activeSchedulingTicket =
     openSchedulingTickets.find((ticket) => ticket.id === coordTicketId) ??
     openSchedulingTickets[0] ??
     null;
+  const latestParentIntakePayload =
+    latestParentIntake?.payloadJson && typeof latestParentIntake.payloadJson === "object" && !Array.isArray(latestParentIntake.payloadJson)
+      ? (latestParentIntake.payloadJson as Record<string, unknown>)
+      : null;
+  const showFirstPurchaseSetup =
+    Boolean(latestParentIntake) &&
+    latestParentIntake?.status === "SUBMITTED" &&
+    !latestParentIntake?.packageId &&
+    !latestParentIntake?.contractId;
   const additionalOpenSchedulingTickets = activeSchedulingTicket
     ? openSchedulingTickets.filter((ticket) => ticket.id !== activeSchedulingTicket.id)
     : [];
@@ -4011,6 +4064,102 @@ export default async function StudentDetailPage({
         </div>
       )}
       </details>
+
+      {showFirstPurchaseSetup ? (
+        <div
+          id="first-purchase-setup"
+          style={{
+            marginBottom: 14,
+            padding: 14,
+            borderRadius: 14,
+            border: "1px solid #dbeafe",
+            background: "#f8fbff",
+            display: "grid",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "First purchase setup", "首购建档")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(
+                lang,
+                "The parent has already submitted the student profile. Complete the course, hours, and fee below to create the first package and a ready-to-sign contract in one step.",
+                "家长已经提交学生资料。请在这里补课程、课时和费用，一次性生成首购课包和正式可签合同。"
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Student intake summary", "资料摘要")}</div>
+              <div style={{ fontWeight: 800 }}>{student.name}</div>
+              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                {String(latestParentIntakePayload?.parentFullNameEn ?? "-")}
+                {" · "}
+                {String(latestParentIntakePayload?.phone ?? "-")}
+                {" · "}
+                {String(latestParentIntakePayload?.email ?? "-")}
+              </div>
+              {latestParentIntakePayload?.courseInterest ? (
+                <div style={{ fontSize: 13, color: "#475569" }}>
+                  {t(lang, "Course interest", "课程意向")}: {String(latestParentIntakePayload.courseInterest)}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <form action={createFirstPurchaseFromIntakeAction} style={{ display: "grid", gap: 12 }}>
+            <input type="hidden" name="studentId" value={studentId} />
+            <input type="hidden" name="intakeId" value={latestParentIntake!.id} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Course / 课程", "Course / 课程")}</span>
+                <select name="courseId" defaultValue="" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}>
+                  <option value="">{t(lang, "Choose course", "选择课程")}</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Total minutes / 总课时分钟", "Total minutes / 总课时分钟")}</span>
+                <input name="totalMinutes" type="number" min={0} step={30} defaultValue="600" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Fee amount / 课时费用", "Fee amount / 课时费用")}</span>
+                <input name="feeAmount" type="number" min={0} step="0.01" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Bill to / 开票对象", "Bill to / 开票对象")}</span>
+                <input
+                  name="billTo"
+                  defaultValue={String(latestParentIntakePayload?.parentFullNameEn ?? student.name)}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Agreement date / 合同日期", "Agreement date / 合同日期")}</span>
+                <input name="agreementDateIso" type="date" defaultValue={fmtDateInput(new Date())} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Lesson mode / 上课方式", "Lesson mode / 上课方式")}</span>
+                <input name="lessonMode" placeholder={t(lang, "Optional", "可选")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Campus name / 校区", "Campus name / 校区")}</span>
+                <input name="campusName" placeholder={t(lang, "Optional", "可选")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+              </label>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
+                {t(lang, "Create first purchase package and contract", "创建首购课包和合同")}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       <details id="packages" open={packagesOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>

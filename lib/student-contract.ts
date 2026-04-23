@@ -22,6 +22,12 @@ import {
   generateUnsignedStudentContractPdfBuffer,
 } from "@/lib/student-contract-pdf";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
+import {
+  buildPackageFinanceGateReason,
+  createPackageInvoiceApproval,
+  getLatestPackageInvoiceApproval,
+  shouldRequirePackageInvoiceGate,
+} from "@/lib/package-finance-gate";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
@@ -535,6 +541,93 @@ export async function createStudentContractDraft(input: {
   return summarize(row);
 }
 
+export async function createReadyToSignStudentContract(input: {
+  studentId: string;
+  packageId: string;
+  parentInfo: ContractParentInfo;
+  businessInfo: Partial<ContractBusinessInfo>;
+  createdByUserId?: string | null;
+  signExpiresAt?: Date | null;
+  flowType?: StudentContractFlowType;
+}) {
+  const existing = await prisma.studentContract.findFirst({
+    where: {
+      packageId: input.packageId,
+      status: {
+        in: openStatusesForPackageReuse(),
+      },
+    },
+    include: studentContractInclude,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  if (existing) return summarize(existing);
+
+  const [pkg, template] = await Promise.all([
+    prisma.coursePackage.findUnique({
+      where: { id: input.packageId },
+      include: { student: true, course: true },
+    }),
+    ensureDefaultContractTemplate(),
+  ]);
+  if (!pkg || pkg.studentId !== input.studentId) {
+    throw new Error("Package not found for this student");
+  }
+  assertDirectBillingPackage(pkg);
+
+  const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
+  const defaultBusinessInfo = defaultBusinessInfoFromRow(
+    {
+      student: pkg.student,
+      package: pkg,
+    },
+    flowType
+  );
+  const businessInfo = normalizeBusinessInfoInput(input.businessInfo, defaultBusinessInfo);
+  const { snapshot } = buildStudentContractSnapshot({
+    studentId: pkg.studentId,
+    studentName: pkg.student.name,
+    packageId: pkg.id,
+    businessInfo,
+    parentInfo: input.parentInfo,
+    agreementDate: businessInfo.agreementDateIso,
+  });
+
+  const row = await prisma.studentContract.create({
+    data: {
+      studentId: pkg.studentId,
+      packageId: pkg.id,
+      templateId: template.id,
+      flowType,
+      status: StudentContractStatus.READY_TO_SIGN,
+      intakeToken: createStudentContractToken(),
+      signToken: createStudentContractToken(),
+      signExpiresAt: input.signExpiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+      intakeSubmittedAt: new Date(),
+      parentInfoJson: input.parentInfo as unknown as Prisma.InputJsonValue,
+      businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
+      contractSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+      createdByUserId: input.createdByUserId ?? null,
+    },
+    include: studentContractInclude,
+  });
+  await appendStudentContractEvent({
+    contractId: row.id,
+    eventType: StudentContractEventType.GENERATED,
+    actorType: input.createdByUserId ? "ADMIN" : "SYSTEM",
+    actorUserId: input.createdByUserId ?? null,
+    actorLabel: "Created ready-to-sign contract",
+    payloadJson: { flowType, source: "student-parent-intake" },
+  });
+  await appendStudentContractEvent({
+    contractId: row.id,
+    eventType: StudentContractEventType.SIGN_READY,
+    actorType: input.createdByUserId ? "ADMIN" : "SYSTEM",
+    actorUserId: input.createdByUserId ?? null,
+    actorLabel: "Prepared sign link from parent intake",
+  });
+  return summarize(row);
+}
+
 export async function refreshStudentContractIntakeLink(input: {
   contractId: string;
   actorUserId?: string | null;
@@ -919,6 +1012,43 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
   };
 }
 
+async function ensurePackageGateAfterSignedContract(input: {
+  row: StudentContractRow;
+  invoiceId: string;
+  invoiceNo: string;
+}) {
+  if (
+    !shouldRequirePackageInvoiceGate({
+      settlementMode: input.row.package.settlementMode,
+      invoiceGateExempt: false,
+    })
+  ) {
+    return;
+  }
+
+  const existingApproval = await getLatestPackageInvoiceApproval(input.row.packageId);
+  if (!existingApproval) {
+    await createPackageInvoiceApproval({
+      packageId: input.row.packageId,
+      invoiceId: input.invoiceId,
+      submittedBy: "system.contract@sgtmanage.local",
+    });
+  }
+
+  await prisma.coursePackage.update({
+    where: { id: input.row.packageId },
+    data: {
+      financeGateStatus: "INVOICE_PENDING_MANAGER",
+      financeGateReason: buildPackageFinanceGateReason({
+        status: "INVOICE_PENDING_MANAGER",
+        invoiceNo: input.invoiceNo,
+      }),
+      financeGateUpdatedAt: new Date(),
+      financeGateUpdatedBy: "system.contract@sgtmanage.local",
+    },
+  });
+}
+
 export async function signStudentContract(input: {
   token: string;
   signerName: string;
@@ -969,6 +1099,11 @@ export async function signStudentContract(input: {
   ]);
 
   const invoice = await ensureInvoiceForSignedContract(current, snapshot);
+  await ensurePackageGateAfterSignedContract({
+    row: current,
+    invoiceId: invoice.invoiceId,
+    invoiceNo: invoice.invoiceNo,
+  });
   const signedPdf = await generateSignedStudentContractPdfBuffer({
     snapshot,
     signerName,
@@ -1032,6 +1167,13 @@ export async function signStudentContract(input: {
     payloadJson: {
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,
+    },
+  });
+  await prisma.studentParentIntake.updateMany({
+    where: { contractId: current.id },
+    data: {
+      status: "SIGNED",
+      signedAt,
     },
   });
   return summarize(next);

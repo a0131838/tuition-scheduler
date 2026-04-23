@@ -80,6 +80,14 @@ enum StudentContractFlowType {
   RENEWAL
 }
 
+enum StudentParentIntakeStatus {
+  LINK_SENT
+  SUBMITTED
+  CONTRACT_READY
+  SIGNED
+  VOID
+}
+
 enum AttendanceStatus {
   UNMARKED
   PRESENT
@@ -614,6 +622,7 @@ model Student {
   tickets            Ticket[]
   parentAvailabilityRequests ParentAvailabilityRequest[]
   contracts          StudentContract[]
+  parentIntakes      StudentParentIntake[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -703,6 +712,7 @@ model User {
   sharedDocumentAudits    SharedDocumentAudit[] @relation("SharedDocumentAuditActor")
   studentContractsCreated StudentContract[]     @relation("StudentContractCreatedBy")
   studentContractEvents   StudentContractEvent[] @relation("StudentContractEventActor")
+  studentParentIntakesCreated StudentParentIntake[] @relation("StudentParentIntakeCreatedBy")
 }
 
 model ExpenseClaim {
@@ -1026,6 +1036,7 @@ model CoursePackage {
   finalReports   FinalReport[]
   invoiceApprovals PackageInvoiceApproval[]
   contracts      StudentContract[]
+  parentIntakes  StudentParentIntake[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
@@ -1106,6 +1117,7 @@ model StudentContract {
   template      ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
   createdByUser User?            @relation("StudentContractCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   events        StudentContractEvent[]
+  parentIntakes StudentParentIntake[]
 
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
@@ -1128,6 +1140,33 @@ model StudentContractEvent {
 
   @@index([contractId, createdAt])
   @@index([eventType, createdAt])
+}
+
+model StudentParentIntake {
+  id              String                    @id @default(uuid())
+  token           String                    @unique
+  status          StudentParentIntakeStatus @default(LINK_SENT)
+  label           String?
+  expiresAt       DateTime?
+  submittedAt     DateTime?
+  contractReadyAt DateTime?
+  signedAt        DateTime?
+  studentId       String?
+  packageId       String?
+  contractId      String?
+  payloadJson     Json?
+  createdByUserId String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  student       Student?         @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  package       CoursePackage?   @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  contract      StudentContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  createdByUser User?            @relation("StudentParentIntakeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([studentId, createdAt])
+  @@index([createdByUserId, createdAt])
 }
 
 model CoursePackageSharedStudent {
