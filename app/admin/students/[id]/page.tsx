@@ -70,7 +70,7 @@ import {
   inspectTeacherSchedulingAvailability,
 } from "@/lib/teacher-scheduling-availability";
 import { isPartnerSettlementPackage, packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
-import { studentContractStatusLabelZh } from "@/lib/student-contract";
+import { studentContractFlowLabelZh, studentContractStatusLabelZh } from "@/lib/student-contract";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1679,6 +1679,7 @@ export default async function StudentDetailPage({
           take: 1,
           select: {
             id: true,
+            flowType: true,
             status: true,
             signedAt: true,
           },
@@ -4104,7 +4105,7 @@ export default async function StudentDetailPage({
                   </div>
                 ) : p.contracts[0] ? (
                   <div style={{ color: "#1d4ed8", fontSize: 12, marginTop: 4 }}>
-                    {t(lang, "Contract", "合同")}: {studentContractStatusLabelZh(p.contracts[0].status)}
+                    {t(lang, "Contract", "合同")}: {studentContractFlowLabelZh(p.contracts[0].flowType)} · {studentContractStatusLabelZh(p.contracts[0].status)}
                     {p.contracts[0].signedAt ? ` · ${formatBusinessDateTime(new Date(p.contracts[0].signedAt))}` : ""}
                     {" · "}
                     <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
@@ -4116,7 +4117,7 @@ export default async function StudentDetailPage({
                     {t(lang, "Contract", "合同")}: {t(lang, "Not started", "尚未开始")}
                     {" · "}
                     <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
-                      {t(lang, "Create from package billing", "去课包账单页创建")}
+                      {t(lang, "Open contract workspace", "打开合同工作区")}
                     </a>
                   </div>
                 )}

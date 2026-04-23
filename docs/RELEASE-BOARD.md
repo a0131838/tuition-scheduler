@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-23-r88` (student contract phase 1), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-23-r91` (student contract intake + renewal + auto invoice), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -31,6 +31,7 @@
 - Contract-flow risk: `2026-04-23-r88` adds new public token pages, contract PDF generation, and `/uploads/contracts/*` storage, so deploy order must keep the migration and runtime aligned.
 - Contract-layout risk: early `2026-04-23-r88` student contract downloads could let the bilingual title block and long summary values crowd each other; `2026-04-23-r89` tightens layout using measured text heights without changing contract logic.
 - Partner-contract-ui risk: partner-settlement packages are exempt from the student contract flow, but some page-level shortcuts still looked like normal contract actions until `2026-04-23-r90` removes those misleading entry points.
+- Contract-rework risk: `2026-04-23-r91` changes the direct-billing student contract journey from a simple draft/sign flow into separate first-purchase and renewal modes, and it now auto-creates invoice drafts after signing, so deploy verification must cover both branches and confirm invoice dedupe still holds.
 
 ## Process Guard (Installed)
 
@@ -78,6 +79,25 @@
   - `npx prisma migrate deploy`
   - `npm run build`
   - library-level QA confirmed `create draft -> intake submit -> sign -> signed PDF saved`
+
+## 2026-04-23-r91 Ready
+
+- Scope: rework direct-billing student contracts so first purchases use a parent-info intake step, renewals skip intake, ops completes business details before formal signing, and signing auto-creates the matching invoice draft.
+- Business impact:
+  - package billing now starts first purchases with `Send parent info link / 发送家长资料链接` and renewals with `Create renewal contract / 创建续费合同`, instead of exposing one generic contract-draft action everywhere
+  - the intake page now collects only parent profile details and no longer asks parents to confirm hours and fee figures directly
+  - ops now completes the business-side contract draft in package billing, including hours, fee, bill-to name, and agreement date, before sending the final sign link
+  - renewal contracts reuse the most recent stored parent profile, and the old intake link now clearly says `No intake needed / 无需填写资料`
+  - signing a direct-billing contract now auto-links an existing single invoice when safe, or auto-creates a new parent invoice draft when no invoice exists yet
+  - successful signing now lands on a clearer completion page that shows the linked invoice number directly
+  - partner-settlement packages remain outside the contract flow and were not changed by this release
+- Validation:
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+  - local first-purchase QA: intake submit -> business draft -> sign -> invoice `RGT-202604-0016`
+  - local renewal QA: no-intake-needed -> sign -> invoice `RGT-202604-0017`
+  - cleanup QA script removed temporary package/contract/invoice records after validation
   - browser QA confirmed `package billing -> parent intake -> sign page -> signed success -> signed PDF download`
   - verify QA evidence in `tmp/qa-student-contract-flow-real-sign/`
 

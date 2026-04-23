@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import {
   buildStudentContractIntakePath,
-  buildStudentContractSignPath,
   getStudentContractByIntakeToken,
   markStudentContractIntakeViewed,
   submitStudentContractIntake,
@@ -58,6 +57,17 @@ export default async function ContractIntakePage({
     );
   }
 
+  if (contract.flowType === "RENEWAL") {
+    return (
+      <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
+        <h1 style={{ margin: 0 }}>No intake needed / 无需填写资料</h1>
+        <div style={{ color: "#475569" }}>
+          This renewal contract reuses the parent details already on file. Please use the formal contract link from the school team instead.
+        </div>
+      </div>
+    );
+  }
+
   if (contract.status === "EXPIRED") {
     return (
       <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
@@ -80,6 +90,17 @@ export default async function ContractIntakePage({
     );
   }
 
+  if (contract.status === "INVOICE_CREATED") {
+    return (
+      <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
+        <h1 style={{ margin: 0 }}>Contract Already Completed / 合同已完成</h1>
+        <div style={{ color: "#475569" }}>
+          This contract has already been signed and the invoice draft has been created. If you need another copy, please contact the school team.
+        </div>
+      </div>
+    );
+  }
+
   if (contract.status === "VOID") {
     return (
       <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
@@ -91,7 +112,9 @@ export default async function ContractIntakePage({
     );
   }
 
-  await markStudentContractIntakeViewed(contract.id);
+  if (contract.status === "INTAKE_PENDING" || contract.status === "INFO_PENDING") {
+    await markStudentContractIntakeViewed(contract.id);
+  }
 
   async function submitAction(formData: FormData) {
     "use server";
@@ -112,7 +135,7 @@ export default async function ContractIntakePage({
     }
 
     try {
-      const next = await submitStudentContractIntake({
+      await submitStudentContractIntake({
         token: tokenValue,
         parentInfo: {
           parentFullNameEn,
@@ -127,10 +150,7 @@ export default async function ContractIntakePage({
         },
         actorLabel: parentFullNameEn,
       });
-      if (!next.signToken) {
-        redirect(`${buildStudentContractIntakePath(tokenValue)}?err=sign`);
-      }
-      redirect(`${buildStudentContractSignPath(next.signToken)}?msg=ready`);
+      redirect(`${buildStudentContractIntakePath(tokenValue)}?msg=submitted`);
     } catch (error) {
       if (isNextRedirectError(error)) throw error;
       const message = error instanceof Error ? error.message : "submit";
@@ -139,14 +159,51 @@ export default async function ContractIntakePage({
   }
 
   const defaultInfo = contract.parentInfo;
+  const intakeAlreadySubmitted =
+    contract.status === "INTAKE_SUBMITTED" ||
+    contract.status === "INFO_SUBMITTED" ||
+    contract.status === "CONTRACT_DRAFT" ||
+    contract.status === "READY_TO_SIGN";
+
+  if (intakeAlreadySubmitted) {
+    return (
+      <div style={{ maxWidth: 960, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Parent information received / 家长资料已收到</h1>
+          <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
+            The school team is now preparing the final contract. We will send the formal signing link after checking the lesson hours and fee details.
+            / 校方正在准备正式合同，会在核对课时与费用后再发送正式签字链接。
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle("#f8fbff") }}>
+          <div style={{ fontWeight: 800, fontSize: 18 }}>Submitted details / 已提交资料</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <div>
+              <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Parent / 家长</div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{defaultInfo?.parentFullNameEn || "-"}</div>
+            </div>
+            <div>
+              <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Phone / 手机</div>
+              <div style={{ fontWeight: 700 }}>{defaultInfo?.phone || "-"}</div>
+            </div>
+            <div>
+              <div style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Email / 邮箱</div>
+              <div style={{ fontWeight: 700 }}>{defaultInfo?.email || "-"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 960, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
       <div style={{ display: "grid", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Contract Intake / 合同信息确认</h1>
         <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
-          Please confirm the parent information below so the school can generate the final tuition agreement for signature.
-          / 请先确认家长资料，系统会据此生成正式合同供签署。
+          Please confirm only the parent profile details below. The school team will prepare the lesson hours and fee information separately, then send the final contract for signature.
+          / 请先确认家长基础资料。课时和费用会由校方另行补充，之后再发送正式合同供签署。
         </div>
       </div>
 
@@ -157,7 +214,7 @@ export default async function ContractIntakePage({
       ) : null}
       {msg ? (
         <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac", color: "#166534" }}>
-          信息已保存。 / Your information has been saved.
+          家长资料已保存，校方会准备正式合同。 / Your information has been saved. The school team will prepare the final contract next.
         </div>
       ) : null}
 
@@ -241,7 +298,7 @@ export default async function ContractIntakePage({
               fontWeight: 800,
             }}
           >
-            Save and continue / 保存并进入正式合同
+            Submit profile / 提交资料
           </button>
         </div>
       </form>

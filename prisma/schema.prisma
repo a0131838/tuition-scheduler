@@ -47,10 +47,14 @@ enum PackageInvoiceApprovalStatus {
 
 enum StudentContractStatus {
   DRAFT
+  INTAKE_PENDING
+  INTAKE_SUBMITTED
+  CONTRACT_DRAFT
   INFO_PENDING
   INFO_SUBMITTED
   READY_TO_SIGN
   SIGNED
+  INVOICE_CREATED
   EXPIRED
   VOID
 }
@@ -60,12 +64,20 @@ enum StudentContractEventType {
   INTAKE_SENT
   INTAKE_VIEWED
   INTAKE_SUBMITTED
+  BUSINESS_DRAFT_SAVED
   SIGN_LINK_SENT
+  SIGN_READY
   SIGN_VIEWED
   SIGNED
+  INVOICE_CREATED
   RESENT
   EXPIRED
   VOIDED
+}
+
+enum StudentContractFlowType {
+  NEW_PURCHASE
+  RENEWAL
 }
 
 enum AttendanceStatus {
@@ -1063,6 +1075,7 @@ model StudentContract {
   studentId            String
   packageId            String
   templateId           String
+  flowType             StudentContractFlowType @default(NEW_PURCHASE)
   status               StudentContractStatus @default(DRAFT)
   intakeToken          String                @unique
   signToken            String?               @unique
@@ -1071,8 +1084,10 @@ model StudentContract {
   intakeSubmittedAt    DateTime?
   signViewedAt         DateTime?
   signedAt             DateTime?
+  invoiceCreatedAt     DateTime?
   voidedAt             DateTime?
   parentInfoJson       Json?
+  businessInfoJson     Json?
   contractSnapshotJson Json?
   signedPdfPath        String?
   signatureImagePath   String?
@@ -1080,6 +1095,8 @@ model StudentContract {
   signerEmail          String?
   signerPhone          String?
   signerIp             String?
+  invoiceId            String?
+  invoiceNo            String?
   createdByUserId      String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -1093,6 +1110,7 @@ model StudentContract {
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
   @@index([status, createdAt])
+  @@index([flowType, status, createdAt])
 }
 
 model StudentContractEvent {

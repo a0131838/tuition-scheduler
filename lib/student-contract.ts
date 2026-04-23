@@ -1,7 +1,13 @@
 import crypto from "crypto";
-import { Prisma, StudentContractEventType, StudentContractStatus } from "@prisma/client";
+import {
+  Prisma,
+  StudentContractEventType,
+  StudentContractFlowType,
+  StudentContractStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  type ContractBusinessInfo,
   type ContractParentInfo,
   type ContractSnapshot,
   buildStudentContractSnapshot,
@@ -16,8 +22,12 @@ import {
   generateUnsignedStudentContractPdfBuffer,
 } from "@/lib/student-contract-pdf";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
+import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
+import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
+import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
+const CONTRACT_INVOICE_MARKER_PREFIX = "student-contract:";
 
 const studentContractInclude = {
   template: true,
@@ -43,6 +53,7 @@ export type StudentContractSummary = {
   studentId: string;
   packageId: string;
   templateId: string;
+  flowType: StudentContractFlowType;
   status: StudentContractStatus;
   intakeToken: string;
   signToken: string | null;
@@ -51,8 +62,10 @@ export type StudentContractSummary = {
   intakeSubmittedAt: Date | null;
   signViewedAt: Date | null;
   signedAt: Date | null;
+  invoiceCreatedAt: Date | null;
   voidedAt: Date | null;
   parentInfo: ContractParentInfo | null;
+  businessInfo: ContractBusinessInfo | null;
   contractSnapshot: ContractSnapshot | null;
   signedPdfPath: string | null;
   signatureImagePath: string | null;
@@ -60,6 +73,8 @@ export type StudentContractSummary = {
   signerEmail: string | null;
   signerPhone: string | null;
   signerIp: string | null;
+  invoiceId: string | null;
+  invoiceNo: string | null;
   studentName: string;
   packageLabel: string;
   courseName: string;
@@ -84,6 +99,87 @@ function coerceString(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function toNumberOrNull(value: unknown) {
+  const normalized = Number(value ?? 0);
+  return Number.isFinite(normalized) ? normalized : null;
+}
+
+function roundMoney(value: number | null | undefined) {
+  const numeric = Number(value ?? 0);
+  return Math.round((numeric + Number.EPSILON) * 100) / 100;
+}
+
+function contractInvoiceMarker(contractId: string) {
+  return `${CONTRACT_INVOICE_MARKER_PREFIX}${contractId}`;
+}
+
+function canonicalStudentContractStatus(status: StudentContractStatus) {
+  switch (status) {
+    case StudentContractStatus.INFO_PENDING:
+      return StudentContractStatus.INTAKE_PENDING;
+    case StudentContractStatus.INFO_SUBMITTED:
+      return StudentContractStatus.INTAKE_SUBMITTED;
+    case StudentContractStatus.DRAFT:
+      return StudentContractStatus.CONTRACT_DRAFT;
+    default:
+      return status;
+  }
+}
+
+function isTerminalStatus(status: StudentContractStatus) {
+  const canonical = canonicalStudentContractStatus(status);
+  return (
+    canonical === StudentContractStatus.SIGNED ||
+    canonical === StudentContractStatus.INVOICE_CREATED ||
+    canonical === StudentContractStatus.VOID
+  );
+}
+
+function openStatusesForPackageReuse() {
+  return [
+    StudentContractStatus.DRAFT,
+    StudentContractStatus.INTAKE_PENDING,
+    StudentContractStatus.INTAKE_SUBMITTED,
+    StudentContractStatus.CONTRACT_DRAFT,
+    StudentContractStatus.INFO_PENDING,
+    StudentContractStatus.INFO_SUBMITTED,
+    StudentContractStatus.READY_TO_SIGN,
+    StudentContractStatus.SIGNED,
+    StudentContractStatus.INVOICE_CREATED,
+  ];
+}
+
+function defaultContractTypeLabel(flowType: StudentContractFlowType) {
+  return flowType === StudentContractFlowType.RENEWAL
+    ? "Renewal tuition agreement / 续费合同"
+    : "New purchase tuition agreement / 首购合同";
+}
+
+function defaultBusinessInfoFromRow(
+  row: {
+    student: { name: string };
+    package: {
+      course: { name: string };
+      type: string;
+      totalMinutes: number | null;
+      paidAmount: number | null;
+    };
+  },
+  flowType: StudentContractFlowType
+): ContractBusinessInfo {
+  return {
+    courseName: row.package.course.name,
+    packageType: row.package.type === "MONTHLY" ? "Monthly package / 月卡" : "Hours package / 课时包",
+    totalMinutes: row.package.totalMinutes ?? null,
+    feeAmount: row.package.paidAmount ?? null,
+    billTo: row.student.name,
+    agreementDateIso: formatDateOnly(new Date()),
+    lessonMode: null,
+    campusName: null,
+    contractTypeLabel: defaultContractTypeLabel(flowType),
+  };
+}
+
 export function buildStudentContractIntakePath(token: string) {
   return `/contract-intake/${encodeURIComponent(token)}`;
 }
@@ -93,15 +189,19 @@ export function buildStudentContractSignPath(token: string) {
 }
 
 export function studentContractStatusLabel(status: StudentContractStatus) {
-  switch (status) {
-    case StudentContractStatus.INFO_PENDING:
-      return "Info pending";
-    case StudentContractStatus.INFO_SUBMITTED:
-      return "Info submitted";
+  switch (canonicalStudentContractStatus(status)) {
+    case StudentContractStatus.INTAKE_PENDING:
+      return "Parent info pending";
+    case StudentContractStatus.INTAKE_SUBMITTED:
+      return "Parent info received";
+    case StudentContractStatus.CONTRACT_DRAFT:
+      return "Contract draft";
     case StudentContractStatus.READY_TO_SIGN:
       return "Ready to sign";
     case StudentContractStatus.SIGNED:
       return "Signed";
+    case StudentContractStatus.INVOICE_CREATED:
+      return "Signed and invoiced";
     case StudentContractStatus.EXPIRED:
       return "Expired";
     case StudentContractStatus.VOID:
@@ -112,15 +212,19 @@ export function studentContractStatusLabel(status: StudentContractStatus) {
 }
 
 export function studentContractStatusLabelZh(status: StudentContractStatus) {
-  switch (status) {
-    case StudentContractStatus.INFO_PENDING:
-      return "待家长填写";
-    case StudentContractStatus.INFO_SUBMITTED:
-      return "资料已提交";
+  switch (canonicalStudentContractStatus(status)) {
+    case StudentContractStatus.INTAKE_PENDING:
+      return "待家长填写资料";
+    case StudentContractStatus.INTAKE_SUBMITTED:
+      return "家长资料已提交";
+    case StudentContractStatus.CONTRACT_DRAFT:
+      return "待教务补合同信息";
     case StudentContractStatus.READY_TO_SIGN:
-      return "待正式签字";
+      return "待家长签字";
     case StudentContractStatus.SIGNED:
       return "已签署";
+    case StudentContractStatus.INVOICE_CREATED:
+      return "已签字并已开票";
     case StudentContractStatus.EXPIRED:
       return "已过期";
     case StudentContractStatus.VOID:
@@ -128,6 +232,14 @@ export function studentContractStatusLabelZh(status: StudentContractStatus) {
     default:
       return "草稿";
   }
+}
+
+export function studentContractFlowLabel(flowType: StudentContractFlowType) {
+  return flowType === StudentContractFlowType.RENEWAL ? "Renewal" : "New purchase";
+}
+
+export function studentContractFlowLabelZh(flowType: StudentContractFlowType) {
+  return flowType === StudentContractFlowType.RENEWAL ? "续费" : "首购";
 }
 
 function coerceParentInfo(raw: unknown): ContractParentInfo | null {
@@ -152,6 +264,30 @@ function coerceParentInfo(raw: unknown): ContractParentInfo | null {
   };
 }
 
+function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const row = raw as Record<string, unknown>;
+  const courseName = coerceString(row.courseName);
+  const packageType = coerceString(row.packageType);
+  const billTo = coerceString(row.billTo);
+  const agreementDateIso = normalizeDateOnly(
+    typeof row.agreementDateIso === "string" || row.agreementDateIso instanceof Date ? row.agreementDateIso : null,
+    new Date()
+  );
+  if (!courseName || !packageType || !billTo || !agreementDateIso) return null;
+  return {
+    courseName,
+    packageType,
+    totalMinutes: toNumberOrNull(row.totalMinutes),
+    feeAmount: toNumberOrNull(row.feeAmount),
+    billTo,
+    agreementDateIso,
+    lessonMode: trimOrNull(row.lessonMode),
+    campusName: trimOrNull(row.campusName),
+    contractTypeLabel: trimOrNull(row.contractTypeLabel),
+  };
+}
+
 function coerceSnapshot(raw: unknown): ContractSnapshot | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const row = raw as Record<string, unknown>;
@@ -165,7 +301,8 @@ function summarize(row: StudentContractRow): StudentContractSummary {
     studentId: row.studentId,
     packageId: row.packageId,
     templateId: row.templateId,
-    status: row.status,
+    flowType: row.flowType,
+    status: canonicalStudentContractStatus(row.status),
     intakeToken: row.intakeToken,
     signToken: row.signToken ?? null,
     intakeExpiresAt: row.intakeExpiresAt ?? null,
@@ -173,8 +310,10 @@ function summarize(row: StudentContractRow): StudentContractSummary {
     intakeSubmittedAt: row.intakeSubmittedAt ?? null,
     signViewedAt: row.signViewedAt ?? null,
     signedAt: row.signedAt ?? null,
+    invoiceCreatedAt: row.invoiceCreatedAt ?? null,
     voidedAt: row.voidedAt ?? null,
     parentInfo: coerceParentInfo(row.parentInfoJson),
+    businessInfo: coerceBusinessInfo(row.businessInfoJson),
     contractSnapshot: coerceSnapshot(row.contractSnapshotJson),
     signedPdfPath: row.signedPdfPath ?? null,
     signatureImagePath: row.signatureImagePath ?? null,
@@ -182,6 +321,8 @@ function summarize(row: StudentContractRow): StudentContractSummary {
     signerEmail: row.signerEmail ?? null,
     signerPhone: row.signerPhone ?? null,
     signerIp: row.signerIp ?? null,
+    invoiceId: row.invoiceId ?? null,
+    invoiceNo: row.invoiceNo ?? null,
     studentName: row.student.name,
     packageLabel: row.package.type,
     courseName: row.package.course.name,
@@ -191,7 +332,6 @@ function summarize(row: StudentContractRow): StudentContractSummary {
 }
 
 function assertDirectBillingPackage(pkg: {
-  id: string;
   settlementMode: Prisma.JsonValue | string | null;
 }) {
   if (isPartnerSettlementPackage((pkg.settlementMode as never) ?? null)) {
@@ -246,11 +386,10 @@ export async function appendStudentContractEvent(input: {
 }
 
 async function getContractRow(where: Prisma.StudentContractWhereUniqueInput) {
-  const row = await prisma.studentContract.findUnique({
+  return prisma.studentContract.findUnique({
     where,
     include: studentContractInclude,
   });
-  return row;
 }
 
 export async function getStudentContractById(id: string) {
@@ -277,23 +416,53 @@ export async function listStudentContractsForStudent(studentId: string) {
   return rows.map(summarize);
 }
 
+async function getLatestReusableParentInfoForStudent(studentId: string, excludePackageId?: string | null) {
+  const rows = await prisma.studentContract.findMany({
+    where: {
+      studentId,
+      packageId: excludePackageId ? { not: excludePackageId } : undefined,
+      status: {
+        in: [
+          StudentContractStatus.READY_TO_SIGN,
+          StudentContractStatus.SIGNED,
+          StudentContractStatus.INVOICE_CREATED,
+          StudentContractStatus.CONTRACT_DRAFT,
+          StudentContractStatus.INTAKE_SUBMITTED,
+          StudentContractStatus.INFO_SUBMITTED,
+        ],
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      parentInfoJson: true,
+    },
+    take: 20,
+  });
+
+  for (const row of rows) {
+    const parentInfo = coerceParentInfo(row.parentInfoJson);
+    if (parentInfo) return parentInfo;
+  }
+  return null;
+}
+
+export async function hasReusableStudentContractParentInfo(studentId: string, excludePackageId?: string | null) {
+  return Boolean(await getLatestReusableParentInfoForStudent(studentId, excludePackageId));
+}
+
 export async function createStudentContractDraft(input: {
   studentId: string;
   packageId: string;
   templateSlug?: string;
   createdByUserId?: string | null;
   intakeExpiresAt?: Date | null;
+  flowType?: StudentContractFlowType;
 }) {
   const existing = await prisma.studentContract.findFirst({
     where: {
       packageId: input.packageId,
       status: {
-        in: [
-          StudentContractStatus.INFO_PENDING,
-          StudentContractStatus.INFO_SUBMITTED,
-          StudentContractStatus.READY_TO_SIGN,
-          StudentContractStatus.SIGNED,
-        ],
+        in: openStatusesForPackageReuse(),
       },
     },
     include: studentContractInclude,
@@ -313,14 +482,41 @@ export async function createStudentContractDraft(input: {
   }
   assertDirectBillingPackage(pkg);
 
+  const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
+  const defaultBusinessInfo = defaultBusinessInfoFromRow(
+    {
+      student: pkg.student,
+      package: pkg,
+    },
+    flowType
+  );
+  const reusableParentInfo =
+    flowType === StudentContractFlowType.RENEWAL
+      ? await getLatestReusableParentInfoForStudent(input.studentId, input.packageId)
+      : null;
+  if (flowType === StudentContractFlowType.RENEWAL && !reusableParentInfo) {
+    throw new Error("Renewal contracts need an existing parent profile. Use the first-purchase info link first.");
+  }
+
   const row = await prisma.studentContract.create({
     data: {
       studentId: input.studentId,
       packageId: input.packageId,
       templateId: template.id,
-      status: StudentContractStatus.INFO_PENDING,
+      flowType,
+      status:
+        flowType === StudentContractFlowType.RENEWAL
+          ? StudentContractStatus.CONTRACT_DRAFT
+          : StudentContractStatus.INTAKE_PENDING,
       intakeToken: createStudentContractToken(),
       intakeExpiresAt: input.intakeExpiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+      parentInfoJson: reusableParentInfo
+        ? (reusableParentInfo as unknown as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
+      businessInfoJson:
+        flowType === StudentContractFlowType.RENEWAL
+          ? (defaultBusinessInfo as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
       createdByUserId: input.createdByUserId ?? null,
     },
     include: studentContractInclude,
@@ -330,7 +526,11 @@ export async function createStudentContractDraft(input: {
     eventType: StudentContractEventType.GENERATED,
     actorType: input.createdByUserId ? "ADMIN" : "SYSTEM",
     actorUserId: input.createdByUserId ?? null,
-    actorLabel: input.createdByUserId ? "Created draft" : "System generated draft",
+    actorLabel:
+      flowType === StudentContractFlowType.RENEWAL
+        ? "Created renewal contract draft"
+        : "Created first-purchase intake flow",
+    payloadJson: { flowType },
   });
   return summarize(row);
 }
@@ -343,18 +543,22 @@ export async function refreshStudentContractIntakeLink(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (row.status === StudentContractStatus.SIGNED || row.status === StudentContractStatus.VOID) {
-    throw new Error("Signed or void contracts cannot be resent for intake");
+  if (row.flowType === StudentContractFlowType.RENEWAL) {
+    throw new Error("Renewal contracts do not use the parent info link");
+  }
+  if (isTerminalStatus(row.status)) {
+    throw new Error("Signed or invoiced contracts cannot be resent for intake");
   }
   const next = await prisma.studentContract.update({
     where: { id: row.id },
     data: {
-      status:
-        row.status === StudentContractStatus.EXPIRED ? StudentContractStatus.INFO_PENDING : row.status,
+      status: StudentContractStatus.INTAKE_PENDING,
       intakeToken: createStudentContractToken(),
       intakeExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
-      signToken: row.status === StudentContractStatus.READY_TO_SIGN ? row.signToken : null,
-      signExpiresAt: row.status === StudentContractStatus.READY_TO_SIGN ? row.signExpiresAt : null,
+      signToken: null,
+      signExpiresAt: null,
+      signViewedAt: null,
+      contractSnapshotJson: Prisma.JsonNull,
     },
     include: studentContractInclude,
   });
@@ -363,7 +567,7 @@ export async function refreshStudentContractIntakeLink(input: {
     eventType: StudentContractEventType.INTAKE_SENT,
     actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
     actorUserId: input.actorUserId ?? null,
-    actorLabel: input.actorLabel ?? "Resent intake link",
+    actorLabel: input.actorLabel ?? "Sent parent info link",
   });
   return summarize(next);
 }
@@ -376,17 +580,15 @@ export async function refreshStudentContractSignLink(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (row.status === StudentContractStatus.SIGNED || row.status === StudentContractStatus.VOID) {
-    throw new Error("Signed or void contracts cannot be resent for signing");
-  }
-  if (row.status !== StudentContractStatus.READY_TO_SIGN) {
-    throw new Error("Contract must complete intake before signing");
+  if (canonicalStudentContractStatus(row.status) !== StudentContractStatus.READY_TO_SIGN) {
+    throw new Error("Contract must be prepared before the sign link can be resent");
   }
   const next = await prisma.studentContract.update({
     where: { id: row.id },
     data: {
       signToken: createStudentContractToken(),
       signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+      signViewedAt: null,
     },
     include: studentContractInclude,
   });
@@ -401,10 +603,15 @@ export async function refreshStudentContractSignLink(input: {
 }
 
 async function expireContractIfNeeded(row: StudentContractRow) {
+  const canonical = canonicalStudentContractStatus(row.status);
   const expiresAt =
-    row.status === StudentContractStatus.READY_TO_SIGN ? row.signExpiresAt : row.intakeExpiresAt;
+    canonical === StudentContractStatus.READY_TO_SIGN
+      ? row.signExpiresAt
+      : canonical === StudentContractStatus.INTAKE_PENDING
+      ? row.intakeExpiresAt
+      : null;
   if (!expiresAt || expiresAt.getTime() >= Date.now()) return row;
-  if (row.status === StudentContractStatus.SIGNED || row.status === StudentContractStatus.VOID) return row;
+  if (isTerminalStatus(row.status) || canonical === StudentContractStatus.VOID) return row;
   const next = await prisma.studentContract.update({
     where: { id: row.id },
     data: {
@@ -438,7 +645,8 @@ export async function markStudentContractIntakeViewed(contractId: string) {
     where: { id: contractId },
     select: { id: true, status: true },
   });
-  if (!row || row.status !== StudentContractStatus.INFO_PENDING) return;
+  if (!row) return;
+  if (canonicalStudentContractStatus(row.status) !== StudentContractStatus.INTAKE_PENDING) return;
   await appendStudentContractEvent({
     contractId,
     eventType: StudentContractEventType.INTAKE_VIEWED,
@@ -452,7 +660,8 @@ export async function markStudentContractSignViewed(contractId: string) {
     where: { id: contractId },
     select: { id: true, status: true, signViewedAt: true },
   });
-  if (!row || row.status !== StudentContractStatus.READY_TO_SIGN || row.signViewedAt) return;
+  if (!row) return;
+  if (canonicalStudentContractStatus(row.status) !== StudentContractStatus.READY_TO_SIGN || row.signViewedAt) return;
   await prisma.studentContract.update({
     where: { id: contractId },
     data: { signViewedAt: new Date() },
@@ -473,41 +682,30 @@ export async function submitStudentContractIntake(input: {
   const row = await getContractRow({ intakeToken: input.token });
   if (!row) throw new Error("Contract intake link not found");
   const current = await expireContractIfNeeded(row);
-  if (current.status === StudentContractStatus.EXPIRED) {
+  const canonical = canonicalStudentContractStatus(current.status);
+  if (canonical === StudentContractStatus.EXPIRED) {
     throw new Error("Contract intake link has expired");
   }
-  if (current.status === StudentContractStatus.VOID) {
+  if (canonical === StudentContractStatus.VOID) {
     throw new Error("Contract has been voided");
   }
-  if (
-    current.status !== StudentContractStatus.INFO_PENDING &&
-    current.status !== StudentContractStatus.INFO_SUBMITTED
-  ) {
+  if (current.flowType !== StudentContractFlowType.NEW_PURCHASE) {
+    throw new Error("This contract does not use the parent info step");
+  }
+  if (canonical !== StudentContractStatus.INTAKE_PENDING && canonical !== StudentContractStatus.INTAKE_SUBMITTED) {
     throw new Error("Contract intake is no longer available");
   }
-
-  const { snapshot } = buildStudentContractSnapshot({
-    studentId: current.student.id,
-    studentName: current.student.name,
-    packageId: current.package.id,
-    packageType: current.package.type,
-    totalMinutes: current.package.totalMinutes,
-    paidAmount: current.package.paidAmount,
-    financeGateStatus: current.package.financeGateStatus,
-    courseName: current.package.course.name,
-    parentInfo: input.parentInfo,
-    agreementDate: new Date(),
-  });
 
   const next = await prisma.studentContract.update({
     where: { id: current.id },
     data: {
-      status: StudentContractStatus.READY_TO_SIGN,
+      status: StudentContractStatus.INTAKE_SUBMITTED,
       parentInfoJson: input.parentInfo as unknown as Prisma.InputJsonValue,
-      contractSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
       intakeSubmittedAt: new Date(),
-      signToken: createStudentContractToken(),
-      signExpiresAt: addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+      signToken: null,
+      signExpiresAt: null,
+      signViewedAt: null,
+      contractSnapshotJson: Prisma.JsonNull,
     },
     include: studentContractInclude,
   });
@@ -516,6 +714,132 @@ export async function submitStudentContractIntake(input: {
     eventType: StudentContractEventType.INTAKE_SUBMITTED,
     actorType: "PARENT",
     actorLabel: input.actorLabel ?? input.parentInfo.parentFullNameEn,
+  });
+  return summarize(next);
+}
+
+function normalizeBusinessInfoInput(
+  input: Partial<ContractBusinessInfo>,
+  defaults: ContractBusinessInfo
+): ContractBusinessInfo {
+  const courseName = coerceString(input.courseName ?? defaults.courseName);
+  const packageType = coerceString(input.packageType ?? defaults.packageType);
+  const billTo = coerceString(input.billTo ?? defaults.billTo);
+  const agreementDateIso =
+    normalizeDateOnly(input.agreementDateIso ?? defaults.agreementDateIso, new Date()) ?? formatDateOnly(new Date());
+  if (!courseName || !packageType || !billTo) {
+    throw new Error("Course, package type, and bill-to are required");
+  }
+  const totalMinutesRaw = Number(input.totalMinutes ?? defaults.totalMinutes ?? 0);
+  const totalMinutes = Number.isFinite(totalMinutesRaw) && totalMinutesRaw > 0 ? Math.round(totalMinutesRaw) : null;
+  const feeAmountRaw = Number(input.feeAmount ?? defaults.feeAmount ?? 0);
+  const feeAmount = Number.isFinite(feeAmountRaw) && feeAmountRaw > 0 ? roundMoney(feeAmountRaw) : null;
+  return {
+    courseName,
+    packageType,
+    totalMinutes,
+    feeAmount,
+    billTo,
+    agreementDateIso,
+    lessonMode: trimOrNull(input.lessonMode ?? defaults.lessonMode),
+    campusName: trimOrNull(input.campusName ?? defaults.campusName),
+    contractTypeLabel: trimOrNull(input.contractTypeLabel ?? defaults.contractTypeLabel),
+  };
+}
+
+export async function saveStudentContractBusinessDraft(input: {
+  contractId: string;
+  actorUserId?: string | null;
+  actorLabel?: string | null;
+  businessInfo: Partial<ContractBusinessInfo>;
+}) {
+  const row = await getContractRow({ id: input.contractId });
+  if (!row) throw new Error("Contract not found");
+  const current = await expireContractIfNeeded(row);
+  const canonical = canonicalStudentContractStatus(current.status);
+  if (canonical === StudentContractStatus.VOID || canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) {
+    throw new Error("Signed or closed contracts can no longer be edited");
+  }
+  const parentInfo = coerceParentInfo(current.parentInfoJson);
+  if (current.flowType === StudentContractFlowType.NEW_PURCHASE && !parentInfo) {
+    throw new Error("Wait for the parent info form before preparing the contract draft");
+  }
+  const defaults = defaultBusinessInfoFromRow(current, current.flowType);
+  const businessInfo = normalizeBusinessInfoInput(input.businessInfo, defaults);
+
+  const next = await prisma.studentContract.update({
+    where: { id: current.id },
+    data: {
+      status: StudentContractStatus.CONTRACT_DRAFT,
+      businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
+      contractSnapshotJson: Prisma.JsonNull,
+      signToken: null,
+      signExpiresAt: null,
+      signViewedAt: null,
+    },
+    include: studentContractInclude,
+  });
+  await appendStudentContractEvent({
+    contractId: current.id,
+    eventType: StudentContractEventType.BUSINESS_DRAFT_SAVED,
+    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+    actorUserId: input.actorUserId ?? null,
+    actorLabel: input.actorLabel ?? "Saved contract draft details",
+    payloadJson: {
+      feeAmount: businessInfo.feeAmount,
+      totalMinutes: businessInfo.totalMinutes,
+      billTo: businessInfo.billTo,
+    },
+  });
+  return summarize(next);
+}
+
+export async function prepareStudentContractForSigning(input: {
+  contractId: string;
+  actorUserId?: string | null;
+  actorLabel?: string | null;
+  expiresAt?: Date | null;
+}) {
+  const row = await getContractRow({ id: input.contractId });
+  if (!row) throw new Error("Contract not found");
+  const current = await expireContractIfNeeded(row);
+  const canonical = canonicalStudentContractStatus(current.status);
+  if (canonical === StudentContractStatus.VOID || canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) {
+    throw new Error("Closed contracts cannot be reopened for signing");
+  }
+  const parentInfo = coerceParentInfo(current.parentInfoJson);
+  if (!parentInfo) {
+    throw new Error("Parent information is still missing");
+  }
+  const businessInfo =
+    coerceBusinessInfo(current.businessInfoJson) ?? defaultBusinessInfoFromRow(current, current.flowType);
+  const { snapshot } = buildStudentContractSnapshot({
+    studentId: current.student.id,
+    studentName: current.student.name,
+    packageId: current.package.id,
+    businessInfo,
+    parentInfo,
+    agreementDate: businessInfo.agreementDateIso,
+  });
+
+  const next = await prisma.studentContract.update({
+    where: { id: current.id },
+    data: {
+      status: StudentContractStatus.READY_TO_SIGN,
+      businessInfoJson: businessInfo as unknown as Prisma.InputJsonValue,
+      contractSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+      signToken: createStudentContractToken(),
+      signExpiresAt: input.expiresAt ?? addDays(new Date(), DEFAULT_TOKEN_TTL_DAYS),
+      signViewedAt: null,
+    },
+    include: studentContractInclude,
+  });
+  await appendStudentContractEvent({
+    contractId: current.id,
+    eventType: StudentContractEventType.SIGN_READY,
+    actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
+    actorUserId: input.actorUserId ?? null,
+    actorLabel: input.actorLabel ?? "Prepared sign link",
   });
   return summarize(next);
 }
@@ -531,6 +855,70 @@ function parseDataUrlImage(input: string) {
   return { buffer, ext };
 }
 
+async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot: ContractSnapshot) {
+  const billing = await listParentBillingForPackage(row.packageId);
+  const noteMarker = contractInvoiceMarker(row.id);
+  const markedInvoice =
+    row.invoiceId
+      ? billing.invoices.find((invoice) => invoice.id === row.invoiceId) ?? null
+      : billing.invoices.find((invoice) => String(invoice.note ?? "").includes(noteMarker)) ?? null;
+  if (markedInvoice) {
+    return {
+      invoiceId: markedInvoice.id,
+      invoiceNo: markedInvoice.invoiceNo,
+      invoiceCreatedAt: new Date(markedInvoice.createdAt),
+      created: false,
+    };
+  }
+
+  if (billing.invoices.length === 1) {
+    const onlyInvoice = billing.invoices[0];
+    return {
+      invoiceId: onlyInvoice.id,
+      invoiceNo: onlyInvoice.invoiceNo,
+      invoiceCreatedAt: new Date(onlyInvoice.createdAt),
+      created: false,
+    };
+  }
+
+  if (billing.invoices.length > 1) {
+    throw new Error("This package already has multiple invoices. Please review billing manually before signing.");
+  }
+
+  const agreementIssueDate =
+    normalizeDateOnly(snapshot.generatedAtIso, new Date()) ??
+    normalizeDateOnly(snapshot.agreementDateLabel, new Date()) ??
+    formatDateOnly(new Date());
+  const invoiceNo = await getNextGlobalInvoiceNo(agreementIssueDate);
+  await assertGlobalInvoiceNoAvailable(invoiceNo);
+  const amount = roundMoney(snapshot.package.feeAmount);
+  const invoice = await createParentInvoice({
+    packageId: row.packageId,
+    studentId: row.studentId,
+    invoiceNo,
+    issueDate: agreementIssueDate,
+    dueDate: agreementIssueDate,
+    courseStartDate: agreementIssueDate,
+    courseEndDate: null,
+    billTo: snapshot.package.billTo || row.student.name,
+    quantity: 1,
+    description: `Student contract invoice for ${row.student.name} (${snapshot.package.courseName}, ${snapshot.package.totalHoursLabel})`,
+    amount,
+    gstAmount: 0,
+    totalAmount: amount,
+    paymentTerms: "Immediate",
+    note: `Auto-created from signed student contract ${row.id}. ${noteMarker}`,
+    createdBy: "system.contract@sgtmanage.local",
+  });
+
+  return {
+    invoiceId: invoice.id,
+    invoiceNo: invoice.invoiceNo,
+    invoiceCreatedAt: new Date(invoice.createdAt),
+    created: true,
+  };
+}
+
 export async function signStudentContract(input: {
   token: string;
   signerName: string;
@@ -542,13 +930,17 @@ export async function signStudentContract(input: {
   const row = await getContractRow({ signToken: input.token });
   if (!row) throw new Error("Contract sign link not found");
   const current = await expireContractIfNeeded(row);
-  if (current.status === StudentContractStatus.EXPIRED) {
+  const canonical = canonicalStudentContractStatus(current.status);
+  if (canonical === StudentContractStatus.EXPIRED) {
     throw new Error("Contract sign link has expired");
   }
-  if (current.status === StudentContractStatus.VOID) {
+  if (canonical === StudentContractStatus.VOID) {
     throw new Error("Contract has been voided");
   }
-  if (current.status !== StudentContractStatus.READY_TO_SIGN) {
+  if (canonical === StudentContractStatus.INVOICE_CREATED) {
+    return summarize(current);
+  }
+  if (canonical !== StudentContractStatus.READY_TO_SIGN) {
     throw new Error("Contract is not ready for signing");
   }
   const snapshot = coerceSnapshot(current.contractSnapshotJson);
@@ -576,6 +968,7 @@ export async function signStudentContract(input: {
     Promise.resolve(new Date()),
   ]);
 
+  const invoice = await ensureInvoiceForSignedContract(current, snapshot);
   const signedPdf = await generateSignedStudentContractPdfBuffer({
     snapshot,
     signerName,
@@ -605,8 +998,9 @@ export async function signStudentContract(input: {
   const next = await prisma.studentContract.update({
     where: { id: current.id },
     data: {
-      status: StudentContractStatus.SIGNED,
+      status: StudentContractStatus.INVOICE_CREATED,
       signedAt,
+      invoiceCreatedAt: invoice.invoiceCreatedAt,
       signViewedAt: current.signViewedAt ?? signedAt,
       signatureImagePath: storedSignature?.relativePath ?? null,
       signedPdfPath: storedPdf.relativePath,
@@ -614,6 +1008,8 @@ export async function signStudentContract(input: {
       signerEmail: trimOrNull(input.signerEmail),
       signerPhone: trimOrNull(input.signerPhone),
       signerIp: trimOrNull(input.signerIp),
+      invoiceId: invoice.invoiceId,
+      invoiceNo: invoice.invoiceNo,
     },
     include: studentContractInclude,
   });
@@ -628,6 +1024,16 @@ export async function signStudentContract(input: {
       signerIp: trimOrNull(input.signerIp),
     },
   });
+  await appendStudentContractEvent({
+    contractId: current.id,
+    eventType: StudentContractEventType.INVOICE_CREATED,
+    actorType: invoice.created ? "SYSTEM" : "ADMIN",
+    actorLabel: invoice.created ? "Auto-created invoice from signed contract" : "Linked existing invoice after signature",
+    payloadJson: {
+      invoiceId: invoice.invoiceId,
+      invoiceNo: invoice.invoiceNo,
+    },
+  });
   return summarize(next);
 }
 
@@ -639,8 +1045,8 @@ export async function voidStudentContract(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (row.status === StudentContractStatus.SIGNED) {
-    throw new Error("Signed contracts cannot be voided");
+  if (isTerminalStatus(row.status)) {
+    throw new Error("Signed or invoiced contracts cannot be voided");
   }
   const next = await prisma.studentContract.update({
     where: { id: row.id },

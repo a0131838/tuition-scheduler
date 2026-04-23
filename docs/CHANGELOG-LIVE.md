@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r91
+
+- Release ID: `2026-04-23-r91`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: rework the direct-billing student contract flow so first purchases start with a parent-info intake link, renewals skip intake, and signed contracts automatically create the matching invoice draft.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260423154500_student_contract_flow_rework/migration.sql`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/contract-intake/[token]/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `docs/tasks/TASK-20260423-student-contract-intake-renewal-auto-invoice.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This release changes student-contract status progression, adds renewal-mode branching, and auto-creates invoice drafts after signing. It does not change partner-settlement package handling, receipt rules, scheduling gates, or finance-gate rules.
+- Verification:
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+  - local first-purchase QA confirmed `intake submitted -> business draft -> ready to sign -> signed -> invoice created`
+  - local renewal QA confirmed `No intake needed -> ready to sign -> signed -> invoice created`
+  - verify first-purchase signing auto-created invoice `RGT-202604-0016`
+  - verify renewal signing auto-created invoice `RGT-202604-0017`
+  - verify QA cleanup removed the temporary test packages afterwards
+- Rollback point: previous production commit before `2026-04-23-r91`.
+
 ## 2026-04-23-r90
 
 - Release ID: `2026-04-23-r90`

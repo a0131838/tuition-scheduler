@@ -41,7 +41,7 @@ export async function GET(
     .replace(/[^A-Za-z0-9._-]+/g, "_")
     .replace(/_+/g, "_");
 
-  if (contract.status === "SIGNED" && contract.signedPdfPath) {
+  if ((contract.status === "SIGNED" || contract.status === "INVOICE_CREATED") && contract.signedPdfPath) {
     return buildStoredBusinessFileResponse(req, {
       allowedPrefix: BUSINESS_UPLOAD_PREFIX.contracts,
       relativePath: contract.signedPdfPath,

@@ -15,6 +15,18 @@ export type ContractParentInfo = {
   emergencyContactPhone?: string | null;
 };
 
+export type ContractBusinessInfo = {
+  courseName: string;
+  packageType: string;
+  totalMinutes: number | null;
+  feeAmount: number | null;
+  billTo: string;
+  agreementDateIso: string;
+  lessonMode?: string | null;
+  campusName?: string | null;
+  contractTypeLabel?: string | null;
+};
+
 export type ContractSnapshot = {
   templateSlug: string;
   templateVersion: number;
@@ -36,8 +48,12 @@ export type ContractSnapshot = {
     packageType: string;
     totalMinutes: number | null;
     totalHoursLabel: string;
-    paidAmountLabel: string;
-    financeGateStatus: string;
+    feeAmount: number | null;
+    feeAmountLabel: string;
+    billTo: string;
+    lessonMode: string | null;
+    campusName: string | null;
+    contractTypeLabel: string | null;
   };
   parent: ContractParentInfo;
   agreementHtml: string;
@@ -81,8 +97,8 @@ function formatMinutesAsHoursLabel(totalMinutes: number | null | undefined) {
     : `${hours.toFixed(1)} hours / ${hours.toFixed(1)} 小时`;
 }
 
-function paidAmountLabel(paidAmount: number | null | undefined) {
-  const amount = Number(paidAmount ?? 0);
+function formatCurrencyLabel(amountValue: number | null | undefined) {
+  const amount = Number(amountValue ?? 0);
   if (!Number.isFinite(amount) || amount <= 0) return "To be confirmed / 待确认";
   return `SGD ${amount.toFixed(2)}`;
 }
@@ -103,10 +119,11 @@ export function getDefaultStudentContractTemplateInput() {
       <p>
         Applying Parent / 签约家长: <strong>{{parent_full_name_en}}</strong>{{parent_full_name_zh}}<br/>
         Student / 学生: <strong>{{student_name}}</strong><br/>
+        Contract type / 合同类型: <strong>{{contract_type_label}}</strong><br/>
         Course / 课程: <strong>{{course_name}}</strong><br/>
         Package / 课包: <strong>{{package_type}}</strong><br/>
         Package hours / 课时: <strong>{{total_hours}}</strong><br/>
-        Fee / 费用: <strong>{{paid_amount}}</strong><br/>
+        Fee / 费用: <strong>{{fee_amount}}</strong><br/>
         Agreement date / 协议日期: <strong>{{agreement_date_long}}</strong>
       </p>
       <h3>1. Contracting Party / 签约主体</h3>
@@ -158,29 +175,29 @@ export function buildStudentContractSnapshot(input: {
   studentId: string;
   studentName: string;
   packageId: string;
-  packageType: string;
-  totalMinutes: number | null | undefined;
-  paidAmount: number | null | undefined;
-  financeGateStatus: string;
-  courseName: string;
+  businessInfo: ContractBusinessInfo;
   parentInfo: ContractParentInfo;
   agreementDate?: Date | string | null;
 }) {
   const company = getStudentContractCompanyInfo();
-  const agreementDateLabel = formatLongDate(input.agreementDate ?? new Date());
+  const agreementDateLabel = formatLongDate(
+    input.agreementDate ?? input.businessInfo.agreementDateIso ?? new Date()
+  );
   const template = getDefaultStudentContractTemplateInput();
   const parentZh = input.parentInfo.parentFullNameZh?.trim()
     ? ` / ${escapeHtml(input.parentInfo.parentFullNameZh.trim())}`
     : "";
+  const contractTypeLabel = input.businessInfo.contractTypeLabel?.trim() || "Tuition agreement / 学费合同";
   const html = renderTemplatePlaceholders(template.bodyHtml, {
     company_brand: escapeHtml(company.brandName),
     parent_full_name_en: escapeHtml(input.parentInfo.parentFullNameEn.trim()),
     parent_full_name_zh: parentZh,
     student_name: escapeHtml(input.studentName.trim()),
-    course_name: escapeHtml(input.courseName.trim()),
-    package_type: escapeHtml(input.packageType.trim()),
-    total_hours: escapeHtml(formatMinutesAsHoursLabel(input.totalMinutes)),
-    paid_amount: escapeHtml(paidAmountLabel(input.paidAmount)),
+    contract_type_label: escapeHtml(contractTypeLabel),
+    course_name: escapeHtml(input.businessInfo.courseName.trim()),
+    package_type: escapeHtml(input.businessInfo.packageType.trim()),
+    total_hours: escapeHtml(formatMinutesAsHoursLabel(input.businessInfo.totalMinutes)),
+    fee_amount: escapeHtml(formatCurrencyLabel(input.businessInfo.feeAmount)),
     agreement_date_long: escapeHtml(agreementDateLabel),
     phone: escapeHtml(input.parentInfo.phone.trim()),
     email: escapeHtml(input.parentInfo.email.trim()),
@@ -202,12 +219,16 @@ export function buildStudentContractSnapshot(input: {
     },
     package: {
       id: input.packageId,
-      courseName: input.courseName,
-      packageType: input.packageType,
-      totalMinutes: input.totalMinutes ?? null,
-      totalHoursLabel: formatMinutesAsHoursLabel(input.totalMinutes),
-      paidAmountLabel: paidAmountLabel(input.paidAmount),
-      financeGateStatus: input.financeGateStatus,
+      courseName: input.businessInfo.courseName,
+      packageType: input.businessInfo.packageType,
+      totalMinutes: input.businessInfo.totalMinutes ?? null,
+      totalHoursLabel: formatMinutesAsHoursLabel(input.businessInfo.totalMinutes),
+      feeAmount: input.businessInfo.feeAmount ?? null,
+      feeAmountLabel: formatCurrencyLabel(input.businessInfo.feeAmount),
+      billTo: input.businessInfo.billTo,
+      lessonMode: input.businessInfo.lessonMode?.trim() || null,
+      campusName: input.businessInfo.campusName?.trim() || null,
+      contractTypeLabel,
     },
     parent: input.parentInfo,
     agreementHtml: html,

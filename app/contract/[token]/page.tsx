@@ -80,15 +80,16 @@ export default async function ContractSignPage({
     );
   }
 
-  if (contract.status === "SIGNED") {
+  if (contract.status === "SIGNED" || contract.status === "INVOICE_CREATED") {
     return (
       <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px", display: "grid", gap: 16 }}>
         <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac" }}>
           <h1 style={{ margin: 0 }}>Contract Signed / 合同已完成签署</h1>
           <div style={{ color: "#166534" }}>
-            Thank you. The tuition agreement has been signed successfully.
-            / 感谢您，学费协议已经签署完成。
+            Thank you. The tuition agreement has been signed successfully and the invoice draft has been prepared for the school team.
+            / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。
           </div>
+          {contract.invoiceNo ? <div style={{ color: "#166534" }}>Invoice / 发票: {contract.invoiceNo}</div> : null}
           <div>
             <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?token=${encodeURIComponent(token)}&download=1`}>
               Download signed PDF / 下载已签署合同 PDF
@@ -104,7 +105,7 @@ export default async function ContractSignPage({
       <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
         <h1 style={{ margin: 0 }}>Contract Not Ready / 合同尚未准备完成</h1>
         <div style={{ color: "#475569" }}>
-          The school is still preparing the final contract. Please wait for the signing link.
+          The school is still preparing the final contract. Please wait for the signing link after the lesson hours and fee details are confirmed.
         </div>
       </div>
     );
@@ -149,8 +150,8 @@ export default async function ContractSignPage({
       <div style={{ display: "grid", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Tuition Agreement / 学费协议</h1>
         <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
-          Please review the agreement below and sign electronically if everything is correct.
-          / 请先阅读以下正式合同，确认无误后再进行电子签字。
+          Please review the agreement below and sign electronically if everything is correct. Once signed, the system will create the matching invoice draft automatically.
+          / 请先阅读以下正式合同，确认无误后再进行电子签字。签字完成后，系统会自动生成对应发票草稿。
         </div>
       </div>
 
@@ -161,7 +162,7 @@ export default async function ContractSignPage({
       ) : null}
       {msg === "ready" ? (
         <div style={{ ...cardStyle("#eff6ff"), borderColor: "#93c5fd", color: "#1d4ed8" }}>
-          正式合同已准备完成，请核对后签署。 / The final contract is ready. Please review and sign.
+          正式合同已准备完成，请核对后签署。签字完成后会自动生成发票草稿。 / The final contract is ready. Please review and sign. The invoice draft will be created automatically after signing.
         </div>
       ) : null}
 
