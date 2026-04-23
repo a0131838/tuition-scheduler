@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r92
+
+- Release ID: `2026-04-23-r92`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: unify direct-billing student-type semantics so the new parent-intake flow reuses the existing `自己学生-*` taxonomy instead of creating a separate `直客学生` branch, while direct-billing exports continue to recognize both names.
+- Key files:
+  - `lib/student-type-semantics.ts`
+  - `lib/student-parent-intake.ts`
+  - `app/api/exports/student-detail/[id]/route.ts`
+  - `app/api/exports/student-schedule/[id]/route.ts`
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `docs/tasks/TASK-20260423-student-type-direct-billing-alias.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This change does not alter contract, invoice, receipt, package, or scheduling rules. It only normalizes which student type new direct-billing intake students receive and keeps export branding logic consistent across old and new labels.
+- Verification:
+  - query current student types and confirm direct-billing labels were split across `直客学生` and `自己学生-*`
+  - create a fresh parent-intake submission and confirm the new student now lands on `自己学生-新生`
+  - `npm run build`
+  - verify student detail, student schedule, and package ledger exports now treat both `自己学生-*` and `直客学生` as direct-billing student types
+- Rollback point: previous production commit before `2026-04-23-r92`.
+
 ## 2026-04-23-r91
 
 - Release ID: `2026-04-23-r91`

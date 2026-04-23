@@ -4,10 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { createReadyToSignStudentContract } from "@/lib/student-contract";
 import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
 import type { ContractParentInfo } from "@/lib/student-contract-template";
+import {
+  LEGACY_DIRECT_BILLING_STUDENT_TYPE_NAME,
+  PREFERRED_DIRECT_BILLING_STUDENT_TYPE_NAME,
+  pickPreferredDirectBillingStudentType,
+} from "@/lib/student-type-semantics";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
 const DIRECT_BILLING_INTAKE_SOURCE_NAME = "家长资料链接";
-const DIRECT_BILLING_STUDENT_TYPE_NAME = "直客学生";
 
 export type StudentParentIntakePayload = {
   studentName: string;
@@ -152,18 +156,33 @@ function validatePayload(input: StudentParentIntakePayload) {
 }
 
 async function ensureDirectBillingStudentMeta() {
-  const [source, studentType] = await Promise.all([
+  const [source, studentTypes] = await Promise.all([
     prisma.studentSourceChannel.upsert({
       where: { name: DIRECT_BILLING_INTAKE_SOURCE_NAME },
       update: { isActive: true },
       create: { name: DIRECT_BILLING_INTAKE_SOURCE_NAME, isActive: true },
     }),
-    prisma.studentType.upsert({
-      where: { name: DIRECT_BILLING_STUDENT_TYPE_NAME },
-      update: { isActive: true },
-      create: { name: DIRECT_BILLING_STUDENT_TYPE_NAME, isActive: true },
+    prisma.studentType.findMany({
+      where: {
+        OR: [
+          { name: PREFERRED_DIRECT_BILLING_STUDENT_TYPE_NAME },
+          { name: LEGACY_DIRECT_BILLING_STUDENT_TYPE_NAME },
+          { name: { startsWith: "自己学生" } },
+        ],
+      },
+      orderBy: { name: "asc" },
     }),
   ]);
+
+  let studentType = pickPreferredDirectBillingStudentType(studentTypes);
+  if (!studentType) {
+    studentType = await prisma.studentType.upsert({
+      where: { name: PREFERRED_DIRECT_BILLING_STUDENT_TYPE_NAME },
+      update: { isActive: true },
+      create: { name: PREFERRED_DIRECT_BILLING_STUDENT_TYPE_NAME, isActive: true },
+    });
+  }
+
   return { sourceId: source.id, studentTypeId: studentType.id };
 }
 

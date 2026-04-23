@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-23-r91` (new-student parent intake + first-purchase contract setup + renewal auto invoice), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-23-r92` (direct-billing student-type alias cleanup for parent intake + exports), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -32,6 +32,7 @@
 - Contract-layout risk: early `2026-04-23-r88` student contract downloads could let the bilingual title block and long summary values crowd each other; `2026-04-23-r89` tightens layout using measured text heights without changing contract logic.
 - Partner-contract-ui risk: partner-settlement packages are exempt from the student contract flow, but some page-level shortcuts still looked like normal contract actions until `2026-04-23-r90` removes those misleading entry points.
 - Contract-rework risk: `2026-04-23-r91` changes the direct-billing student contract journey from a simple draft/sign flow into a new-student intake path plus separate first-purchase and renewal modes, and it now auto-creates invoice drafts after signing, so deploy verification must cover student creation, both contract branches, and invoice dedupe.
+- Student-type alias risk: `2026-04-23-r92` changes which student type the new parent-intake flow assigns for direct-billing students, so deploy verification must confirm new intake-created students now reuse the existing `自己学生-*` taxonomy and that legacy `直客学生` exports still render as direct-billing.
 
 ## Process Guard (Installed)
 
@@ -52,6 +53,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-23-r92 Ready
+
+- Scope: stop splitting direct-billing students across `直客学生` and `自己学生-*` by making the new parent-intake flow reuse the existing `自己学生-*` taxonomy and by treating both names as direct-billing in outward-facing exports.
+- Business impact:
+  - new students created through the parent-intake link now prefer `自己学生-新生`, then any existing `自己学生-*` type, instead of always creating/using `直客学生`
+  - this prevents the admin student list from continuing to split direct-billing students into two separate type buckets over time
+  - existing legacy `直客学生` records are still treated as direct-billing in the student detail, student schedule, and package ledger PDF exports, so outward-facing branding stays consistent
+  - no partner-settlement routing, contract logic, invoice creation, receipt flow, finance gate, or scheduling rule changed
+- Validation:
+  - query current `StudentType` records and confirm the real environment contains both `直客学生` and `自己学生-*`
+  - create a fresh parent intake and confirm the submitted student is assigned to `自己学生-新生`
+  - `npm run build`
+  - verify direct-billing export helpers now recognize both `自己学生-*` and `直客学生`
 
 ## 2026-04-23-r87 Ready
 

@@ -3,6 +3,7 @@ import { getLang, type Lang } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
+import { isDirectBillingStudentTypeName } from "@/lib/student-type-semantics";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 import PDFDocument from "pdfkit";
@@ -41,10 +42,7 @@ function choose(lang: Lang, en: string, zh: string) {
 }
 
 function shouldShowLogoByStudentTypeName(typeName?: string | null) {
-  if (!typeName) return false;
-  const normalized = typeName.toLowerCase();
-  if (normalized.includes("\u81ea\u5df1\u5b66\u751f")) return true;
-  return /(^|\s|-|_)(own|self)\s*student(s)?($|\s|-|_)/i.test(typeName);
+  return isDirectBillingStudentTypeName(typeName);
 }
 
 function formatDate(d: Date) {
