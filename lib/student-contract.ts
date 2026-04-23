@@ -412,6 +412,16 @@ export async function getLatestStudentContractForPackage(packageId: string) {
   return row ? summarize(row) : null;
 }
 
+export async function listStudentContractsForPackage(packageId: string) {
+  const rows = await prisma.studentContract.findMany({
+    where: { packageId },
+    include: studentContractInclude,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 30,
+  });
+  return rows.map(summarize);
+}
+
 export async function listStudentContractsForStudent(studentId: string) {
   const rows = await prisma.studentContract.findMany({
     where: { studentId },
@@ -1207,6 +1217,25 @@ export async function voidStudentContract(input: {
     payloadJson: input.reason ? ({ reason: input.reason } as Prisma.JsonValue) : undefined,
   });
   return summarize(next);
+}
+
+export async function deleteVoidStudentContractDraft(input: {
+  contractId: string;
+  actorUserId?: string | null;
+  actorLabel?: string | null;
+}) {
+  const row = await getContractRow({ id: input.contractId });
+  if (!row) throw new Error("Contract not found");
+  const canonical = canonicalStudentContractStatus(row.status);
+  if (canonical !== StudentContractStatus.VOID) {
+    throw new Error("Only void contracts can be deleted");
+  }
+  if (row.signedAt || row.invoiceId || row.invoiceNo || row.invoiceCreatedAt) {
+    throw new Error("Signed or invoiced void contracts must stay in history");
+  }
+  await prisma.studentContract.delete({
+    where: { id: row.id },
+  });
 }
 
 export async function generateUnsignedStudentContractBuffer(contractId: string) {

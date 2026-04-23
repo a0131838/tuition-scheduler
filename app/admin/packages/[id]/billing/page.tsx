@@ -45,7 +45,8 @@ import {
   buildStudentContractIntakePath,
   buildStudentContractSignPath,
   createStudentContractDraft,
-  getLatestStudentContractForPackage,
+  deleteVoidStudentContractDraft,
+  listStudentContractsForPackage,
   hasReusableStudentContractParentInfo,
   prepareStudentContractForSigning,
   refreshStudentContractIntakeLink,
@@ -226,6 +227,22 @@ function contractCanEditDraft(status: string) {
 
 function contractIsTerminal(status: string) {
   return status === "SIGNED" || status === "INVOICE_CREATED" || status === "VOID";
+}
+
+function contractCanDeleteVoidDraft(contract: {
+  status: string;
+  signedAt: Date | null;
+  invoiceId: string | null;
+  invoiceNo: string | null;
+  invoiceCreatedAt: Date | null;
+}) {
+  return (
+    contract.status === "VOID" &&
+    !contract.signedAt &&
+    !contract.invoiceId &&
+    !contract.invoiceNo &&
+    !contract.invoiceCreatedAt
+  );
 }
 
 function packageReceiptApprovalStateLabel(
@@ -539,6 +556,29 @@ async function voidContractAction(formData: FormData) {
   redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract marked as void" }));
 }
 
+async function deleteVoidContractDraftAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const contractId = String(formData.get("contractId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !contractId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+  }
+  try {
+    await deleteVoidStudentContractDraft({
+      contractId,
+      actorUserId: admin.id,
+      actorLabel: admin.email,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Delete void contract draft failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Void draft deleted" }));
+}
+
 export default async function PackageBillingPage({
   params,
   searchParams,
@@ -556,7 +596,7 @@ export default async function PackageBillingPage({
   const lang = await getLang();
   const currentUser = await getCurrentUser();
 
-  const [pkg, data, roleCfg, latestInvoiceApproval, latestContract, hasRenewalContractParentInfo, latestParentIntakeForPackage] = await Promise.all([
+  const [pkg, data, roleCfg, latestInvoiceApproval, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: { student: true, course: true },
@@ -564,7 +604,7 @@ export default async function PackageBillingPage({
     listParentBillingForPackage(packageId),
     getApprovalRoleConfig(),
     getLatestPackageInvoiceApproval(packageId),
-    getLatestStudentContractForPackage(packageId),
+    listStudentContractsForPackage(packageId),
     prisma.coursePackage
       .findUnique({
         where: { id: packageId },
@@ -577,6 +617,10 @@ export default async function PackageBillingPage({
     }),
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
+  const latestContract =
+    packageContracts.find((contract) => contract.status !== "VOID") ??
+    null;
+  const voidContracts = packageContracts.filter((contract) => contract.status === "VOID");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
   const canManagerApproveInvoiceGate = isRoleApprover(currentUser?.email, roleCfg.managerApproverEmails);
   const invoiceApprovalInvoice = latestInvoiceApproval?.invoiceId
@@ -1222,6 +1266,119 @@ export default async function PackageBillingPage({
               </div>
             </div>
           )}
+
+          {voidContracts.length > 0 ? (
+            <details style={{ border: "1px dashed #cbd5e1", borderRadius: 12, background: "#fff", padding: 14 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+                {t(
+                  lang,
+                  `Void history (${voidContracts.length})`,
+                  `作废历史（${voidContracts.length}）`
+                )}
+              </summary>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div style={{ color: "#64748b", fontSize: 13 }}>
+                  {t(
+                    lang,
+                    "Only void drafts that were never signed and never generated an invoice can be deleted. Signed or invoiced void contracts stay here as history.",
+                    "只有未签字、未开票的作废草稿可以删除。已经签过或开过票的作废合同会保留在这里作为历史记录。"
+                  )}
+                </div>
+                {voidContracts.map((contract) => (
+                  <div
+                    key={contract.id}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      background: "#f8fafc",
+                      padding: 12,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <WorkbenchStatusChip
+                        label={`${studentContractFlowLabel(contract.flowType)} / ${studentContractFlowLabelZh(contract.flowType)}`}
+                        tone="neutral"
+                      />
+                      <WorkbenchStatusChip
+                        label={`${studentContractStatusLabel(contract.status)} / ${studentContractStatusLabelZh(contract.status)}`}
+                        tone="error"
+                        strong
+                      />
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {t(
+                          lang,
+                          `Created ${contract.createdAt.toLocaleString("en-SG")}`,
+                          `创建于 ${contract.createdAt.toLocaleString("zh-CN")}`
+                        )}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                      {contract.signedAt
+                        ? t(
+                            lang,
+                            `Signed on ${contract.signedAt.toLocaleString("en-SG")} and kept here as history.`,
+                            `已于 ${contract.signedAt.toLocaleString("zh-CN")} 签署，作为历史保留。`
+                          )
+                        : contract.invoiceNo
+                          ? t(
+                              lang,
+                              `Linked invoice ${contract.invoiceNo} keeps this void record in history.`,
+                              `已关联发票 ${contract.invoiceNo}，因此这条作废记录会保留在历史中。`
+                            )
+                          : t(
+                              lang,
+                              "This is a void draft that never reached signature or invoicing.",
+                              "这是一份未进入签字和开票阶段的作废草稿。"
+                            )}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      {contract.contractSnapshot ? (
+                        <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}`} target="_blank" rel="noreferrer">
+                          {t(lang, "Preview PDF", "预览 PDF")}
+                        </a>
+                      ) : null}
+                      {contract.signedPdfPath ? (
+                        <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?download=1`}>
+                          {t(lang, "Download signed PDF", "下载已签署 PDF")}
+                        </a>
+                      ) : null}
+                      {contractCanDeleteVoidDraft(contract) ? (
+                        <form action={deleteVoidContractDraftAction}>
+                          <input type="hidden" name="packageId" value={packageId} />
+                          <input type="hidden" name="contractId" value={contract.id} />
+                          <input type="hidden" name="source" value={sourceWorkflow} />
+                          <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                          <button
+                            type="submit"
+                            style={{
+                              padding: "8px 12px",
+                              borderRadius: 10,
+                              border: "1px solid #dc2626",
+                              background: "#fff1f2",
+                              color: "#b91c1c",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {t(lang, "Delete void draft", "删除作废草稿")}
+                          </button>
+                        </form>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "#64748b" }}>
+                          {t(
+                            lang,
+                            "History kept for audit or renewal reference",
+                            "因审计或续费参考需要保留历史"
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : (
         <div

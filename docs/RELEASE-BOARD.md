@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-23-r92` (direct-billing student-type alias cleanup for parent intake + exports), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-23-r93` (void contract draft deletion + collapsed void history in package billing), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -33,6 +33,7 @@
 - Partner-contract-ui risk: partner-settlement packages are exempt from the student contract flow, but some page-level shortcuts still looked like normal contract actions until `2026-04-23-r90` removes those misleading entry points.
 - Contract-rework risk: `2026-04-23-r91` changes the direct-billing student contract journey from a simple draft/sign flow into a new-student intake path plus separate first-purchase and renewal modes, and it now auto-creates invoice drafts after signing, so deploy verification must cover student creation, both contract branches, and invoice dedupe.
 - Student-type alias risk: `2026-04-23-r92` changes which student type the new parent-intake flow assigns for direct-billing students, so deploy verification must confirm new intake-created students now reuse the existing `自己学生-*` taxonomy and that legacy `直客学生` exports still render as direct-billing.
+- Contract-history risk: `2026-04-23-r93` changes package billing to ignore void contracts when choosing the current active contract and adds physical deletion for unsigned/uninvoiced void drafts, so verification must confirm safe drafts can be removed while signed/invoiced void rows remain in collapsed history.
 
 ## Process Guard (Installed)
 
@@ -67,6 +68,19 @@
   - create a fresh parent intake and confirm the submitted student is assigned to `自己学生-新生`
   - `npm run build`
   - verify direct-billing export helpers now recognize both `自己学生-*` and `直客学生`
+
+## 2026-04-23-r93 Ready
+
+- Scope: allow deletion of disposable void contract drafts and move void contracts into collapsed history so package billing stays focused on the current usable contract flow.
+- Business impact:
+  - void drafts that were never signed and never generated an invoice can now be deleted from package billing instead of accumulating forever
+  - signed or invoiced void contracts stay preserved in collapsed history for audit and renewal-reference safety
+  - package billing now ignores void contracts when deciding whether there is a current active contract, so an old void row no longer blocks staff from starting the next first-purchase or renewal contract
+  - renewal contracts follow the same cleanup rule: only unsigned/uninvoiced void drafts are deletable
+- Validation:
+  - `npm run build`
+  - create, void, and delete a direct-billing contract draft; confirm the package returns to a normal create-contract state
+  - confirm signed or invoiced void contracts stay in `Void history / 作废历史` and do not show the delete action
 
 ## 2026-04-23-r87 Ready
 

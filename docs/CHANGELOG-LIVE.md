@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r93
+
+- Release ID: `2026-04-23-r93`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: let finance/ops delete disposable void contract drafts while moving all void contracts into collapsed history so old void rows no longer clutter or block the package billing contract workspace.
+- Key files:
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/tasks/TASK-20260423-contract-void-draft-delete-and-history.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This change only affects contract cleanup and display. Signed or invoiced void contracts remain preserved as history, and renewal contracts follow the same safe-delete rule.
+- Verification:
+  - `npm run build`
+  - create a direct-billing contract draft, void it, then delete it and confirm the package returns to the normal create-contract state
+  - confirm `VOID` contracts that were signed or invoiced stay in collapsed history and do not show a delete action
+- Rollback point: previous production commit before `2026-04-23-r93`.
+
 ## 2026-04-23-r92
 
 - Release ID: `2026-04-23-r92`
