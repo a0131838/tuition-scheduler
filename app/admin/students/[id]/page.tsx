@@ -69,7 +69,7 @@ import {
   checkTeacherSchedulingAvailability,
   inspectTeacherSchedulingAvailability,
 } from "@/lib/teacher-scheduling-availability";
-import { packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
+import { isPartnerSettlementPackage, packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
 import { studentContractStatusLabelZh } from "@/lib/student-contract";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
@@ -4098,7 +4098,11 @@ export default async function StudentDetailPage({
                 {p.financeGateReason ? (
                   <div style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}>{p.financeGateReason}</div>
                 ) : null}
-                {p.contracts[0] ? (
+                {isPartnerSettlementPackage(p.settlementMode) ? (
+                  <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                    {t(lang, "Contract", "合同")}: {t(lang, "Not used for partner settlement packages", "合作方课包不使用合同流程")}
+                  </div>
+                ) : p.contracts[0] ? (
                   <div style={{ color: "#1d4ed8", fontSize: 12, marginTop: 4 }}>
                     {t(lang, "Contract", "合同")}: {studentContractStatusLabelZh(p.contracts[0].status)}
                     {p.contracts[0].signedAt ? ` · ${formatBusinessDateTime(new Date(p.contracts[0].signedAt))}` : ""}

@@ -35,6 +35,7 @@ import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import {
   approvePackageInvoiceApproval,
   getLatestPackageInvoiceApproval,
+  isPartnerSettlementPackage,
   packageFinanceGateLabel,
   packageFinanceGateLabelZh,
   packageFinanceGateTone,
@@ -566,6 +567,7 @@ export default async function PackageBillingPage({
     : new Map<string, { name: string | null; email: string }>();
   const receiptsCenterHref = buildReceiptsCenterHref(packageId, { sourceWorkflow, receiptsBack });
   const baseUrl = appBaseUrl();
+  const usesStudentContractFlow = !isPartnerSettlementPackage(pkg.settlementMode);
   const contractIntakePath =
     latestContract?.intakeToken ? buildStudentContractIntakePath(latestContract.intakeToken) : "";
   const contractSignPath =
@@ -653,7 +655,8 @@ export default async function PackageBillingPage({
       background: data.invoices.length === 0 ? "#fff7ed" : "#ffffff",
       border: data.invoices.length === 0 ? "#fdba74" : "#dbe4f0",
     },
-    {
+    ...(usesStudentContractFlow
+      ? [{
       href: "#contract-flow",
       label: t(lang, "Contract", "合同"),
       detail: latestContract
@@ -671,7 +674,8 @@ export default async function PackageBillingPage({
           : latestContract?.status === "READY_TO_SIGN"
           ? "#86efac"
           : "#dbe4f0",
-    },
+    }]
+      : []),
     {
       href: "#receipt-finance-processing",
       label: t(lang, "Receipt finance", "收据财务处理"),
@@ -792,18 +796,19 @@ export default async function PackageBillingPage({
         ) : null}
       </div>
 
-      <div
-        id="contract-flow"
-        style={{
-          marginBottom: 14,
-          padding: 14,
-          borderRadius: 14,
-          border: "1px solid #dbeafe",
-          background: "#f8fbff",
-          display: "grid",
-          gap: 12,
-        }}
-      >
+      {usesStudentContractFlow ? (
+        <div
+          id="contract-flow"
+          style={{
+            marginBottom: 14,
+            padding: 14,
+            borderRadius: 14,
+            border: "1px solid #dbeafe",
+            background: "#f8fbff",
+            display: "grid",
+            gap: 12,
+          }}
+        >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4 }}>
             <div style={{ fontWeight: 800 }}>{t(lang, "Contract flow", "合同流程")}</div>
@@ -941,7 +946,30 @@ export default async function PackageBillingPage({
             </form>
           </div>
         )}
-      </div>
+        </div>
+      ) : (
+        <div
+          id="contract-flow"
+          style={{
+            marginBottom: 14,
+            padding: 14,
+            borderRadius: 14,
+            border: "1px solid #dbe4f0",
+            background: "#f8fafc",
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{t(lang, "Contract flow", "合同流程")}</div>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            {t(
+              lang,
+              "Partner settlement packages stay outside the student contract workflow, so no contract draft or signing link is used here.",
+              "合作方课包不走学生合同流程，所以这里不会使用合同草稿或家长签字链接。"
+            )}
+          </div>
+        </div>
+      )}
 
       {sourceWorkflow === "receipts" ? (
         <WorkflowSourceBanner

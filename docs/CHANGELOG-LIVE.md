@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r90
+
+- Release ID: `2026-04-23-r90`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: fix contradictory contract UI on partner-settlement packages so exempt packages no longer show student-contract creation entry points.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260423-partner-package-contract-ui-guard.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a UI consistency fix only. It does not change settlement mode, finance-gate status, partner billing logic, contract records, or any scheduling and finance workflow.
+- Verification:
+  - `npm run build`
+  - confirm partner-settlement packages no longer show `Create contract draft` or `Create from package billing`
+  - confirm the same pages now explain that partner-settlement packages stay outside the student contract workflow
+- Rollback point: previous production commit before `2026-04-23-r90`.
+
 ## 2026-04-23-r89
 
 - Release ID: `2026-04-23-r89`

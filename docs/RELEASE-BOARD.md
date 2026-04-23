@@ -30,6 +30,7 @@
 - Export-layout risk: parent statement PDFs previously let the bilingual header title collide with the company/date block when the title wrapped; `2026-04-23-r87` removes that overlap without changing statement data.
 - Contract-flow risk: `2026-04-23-r88` adds new public token pages, contract PDF generation, and `/uploads/contracts/*` storage, so deploy order must keep the migration and runtime aligned.
 - Contract-layout risk: early `2026-04-23-r88` student contract downloads could let the bilingual title block and long summary values crowd each other; `2026-04-23-r89` tightens layout using measured text heights without changing contract logic.
+- Partner-contract-ui risk: partner-settlement packages are exempt from the student contract flow, but some page-level shortcuts still looked like normal contract actions until `2026-04-23-r90` removes those misleading entry points.
 
 ## Process Guard (Installed)
 
@@ -92,6 +93,18 @@
   - `npm run build`
   - generate a real student contract PDF and confirm the header/company lines no longer overlap
   - confirm long student/course/package content no longer overlaps inside the summary box
+
+## 2026-04-23-r90 Ready
+
+- Scope: remove misleading student-contract entry points from partner-settlement packages.
+- Business impact:
+  - partner-settlement packages no longer show `Create contract draft` inside package billing
+  - student detail no longer tells ops to create a contract for partner-settlement packages from package billing
+  - both pages now explain clearly that partner-settlement packages stay outside the student contract workflow
+  - no settlement data, contract data, finance-gate state, billing logic, or scheduling logic changed
+- Validation:
+  - `npm run build`
+  - verify a partner-settlement package shows the exempt explanation instead of contract creation actions
 
 ## 2026-04-21-r84 Ready
 
