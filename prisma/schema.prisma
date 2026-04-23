@@ -45,6 +45,29 @@ enum PackageInvoiceApprovalStatus {
   REJECTED
 }
 
+enum StudentContractStatus {
+  DRAFT
+  INFO_PENDING
+  INFO_SUBMITTED
+  READY_TO_SIGN
+  SIGNED
+  EXPIRED
+  VOID
+}
+
+enum StudentContractEventType {
+  GENERATED
+  INTAKE_SENT
+  INTAKE_VIEWED
+  INTAKE_SUBMITTED
+  SIGN_LINK_SENT
+  SIGN_VIEWED
+  SIGNED
+  RESENT
+  EXPIRED
+  VOIDED
+}
+
 enum AttendanceStatus {
   UNMARKED
   PRESENT
@@ -578,6 +601,7 @@ model Student {
   settlements        PartnerSettlement[]
   tickets            Ticket[]
   parentAvailabilityRequests ParentAvailabilityRequest[]
+  contracts          StudentContract[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -665,6 +689,8 @@ model User {
   expenseClaimsSubmitted ExpenseClaim[]
   sharedDocumentsUploaded SharedDocument[]      @relation("SharedDocumentUploader")
   sharedDocumentAudits    SharedDocumentAudit[] @relation("SharedDocumentAuditActor")
+  studentContractsCreated StudentContract[]     @relation("StudentContractCreatedBy")
+  studentContractEvents   StudentContractEvent[] @relation("StudentContractEventActor")
 }
 
 model ExpenseClaim {
@@ -987,6 +1013,7 @@ model CoursePackage {
   midtermReports MidtermReport[]
   finalReports   FinalReport[]
   invoiceApprovals PackageInvoiceApproval[]
+  contracts      StudentContract[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
@@ -1012,6 +1039,77 @@ model PackageInvoiceApproval {
   @@index([packageId, status, submittedAt])
   @@index([status, submittedAt])
   @@index([invoiceId])
+}
+
+model ContractTemplate {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String
+  version      Int
+  languageMode String?
+  bodyHtml     String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contracts StudentContract[]
+
+  @@unique([slug, version])
+  @@index([isActive, slug])
+}
+
+model StudentContract {
+  id                   String                @id @default(uuid())
+  studentId            String
+  packageId            String
+  templateId           String
+  status               StudentContractStatus @default(DRAFT)
+  intakeToken          String                @unique
+  signToken            String?               @unique
+  intakeExpiresAt      DateTime?
+  signExpiresAt        DateTime?
+  intakeSubmittedAt    DateTime?
+  signViewedAt         DateTime?
+  signedAt             DateTime?
+  voidedAt             DateTime?
+  parentInfoJson       Json?
+  contractSnapshotJson Json?
+  signedPdfPath        String?
+  signatureImagePath   String?
+  signerName           String?
+  signerEmail          String?
+  signerPhone          String?
+  signerIp             String?
+  createdByUserId      String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package       CoursePackage    @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  template      ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  createdByUser User?            @relation("StudentContractCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  events        StudentContractEvent[]
+
+  @@index([studentId, status, createdAt])
+  @@index([packageId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model StudentContractEvent {
+  id          String                   @id @default(uuid())
+  contractId  String
+  eventType   StudentContractEventType
+  actorType   String
+  actorUserId String?
+  actorLabel  String?
+  payloadJson Json?
+  createdAt   DateTime                 @default(now())
+
+  contract  StudentContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actorUser User?           @relation("StudentContractEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([contractId, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model CoursePackageSharedStudent {

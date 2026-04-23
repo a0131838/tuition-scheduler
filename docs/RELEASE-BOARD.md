@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-23-r87` (parent statement PDF header overlap fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-23-r88` (student contract phase 1), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -28,6 +28,7 @@
 - Migration order risk: the direct-billing package invoice gate runtime depends on new `CoursePackage.financeGate*` columns and the `PackageInvoiceApproval` table, so deploy order must keep DB schema and runtime aligned.
 - Ops-flow risk: `2026-04-21-r86` removes the remaining finance-gate bypass paths, so any direct-billing chargeable package still waiting for manager invoice approval will now fail scheduling consistently until package billing is fixed.
 - Export-layout risk: parent statement PDFs previously let the bilingual header title collide with the company/date block when the title wrapped; `2026-04-23-r87` removes that overlap without changing statement data.
+- Contract-flow risk: `2026-04-23-r88` adds new public token pages, contract PDF generation, and `/uploads/contracts/*` storage, so deploy order must keep the migration and runtime aligned.
 
 ## Process Guard (Installed)
 
@@ -59,6 +60,24 @@
 - Validation:
   - `npm run build`
   - export a parent statement PDF and confirm the top-right header block renders without overlap
+
+## 2026-04-23-r88 Ready
+
+- Scope: add the first direct-billing student contract flow with package-billing draft creation, parent intake, formal signing, and signed PDF export.
+- Business impact:
+  - package billing now exposes a `Contract flow / 合同流程` section where ops can create a contract draft, send the parent intake link, resend the formal sign link, void an open contract, preview the current draft PDF, and download the signed PDF once complete
+  - student detail now shows the latest contract status on each package card and links back to the contract section in package billing
+  - parent public link `/contract-intake/[token]` now collects parent details first and freezes them into a contract snapshot before formal signing
+  - parent public link `/contract/[token]` now serves the formal agreement, accepts typed-name signing, and writes a signed PDF into business storage even when no handwritten signature image is provided
+  - signed contract PDFs are now exportable from `/api/exports/student-contract/[id]`
+  - no partner-settlement flows, invoice/receipt rules, finance gates, scheduling gates, or package balances changed
+- Validation:
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+  - library-level QA confirmed `create draft -> intake submit -> sign -> signed PDF saved`
+  - browser QA confirmed `package billing -> parent intake -> sign page -> signed success -> signed PDF download`
+  - verify QA evidence in `tmp/qa-student-contract-flow-real-sign/`
 
 ## 2026-04-21-r84 Ready
 

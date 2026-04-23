@@ -31,6 +31,7 @@ import {
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import WorkflowSourceBanner from "@/app/admin/_components/WorkflowSourceBanner";
 import WorkbenchStatusChip from "@/app/admin/_components/WorkbenchStatusChip";
+import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 import {
   approvePackageInvoiceApproval,
   getLatestPackageInvoiceApproval,
@@ -39,6 +40,17 @@ import {
   packageFinanceGateTone,
   rejectPackageInvoiceApproval,
 } from "@/lib/package-finance-gate";
+import {
+  buildStudentContractIntakePath,
+  buildStudentContractSignPath,
+  createStudentContractDraft,
+  getLatestStudentContractForPackage,
+  refreshStudentContractIntakeLink,
+  refreshStudentContractSignLink,
+  studentContractStatusLabel,
+  studentContractStatusLabelZh,
+  voidStudentContract,
+} from "@/lib/student-contract";
 
 function billingSummaryCardStyle(background: string, border: string) {
   return {
@@ -167,6 +179,25 @@ function buildReceiptsCenterHref(
     params.set("receiptsBack", sanitizeReceiptsBack(options.receiptsBack));
   }
   return `/admin/receipts-approvals?${params.toString()}`;
+}
+
+function appBaseUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
+}
+
+function contractTone(status: string): "neutral" | "warn" | "success" | "error" {
+  switch (status) {
+    case "INFO_PENDING":
+      return "warn";
+    case "READY_TO_SIGN":
+    case "SIGNED":
+      return "success";
+    case "EXPIRED":
+    case "VOID":
+      return "error";
+    default:
+      return "neutral";
+  }
 }
 
 function packageReceiptApprovalStateLabel(
@@ -326,6 +357,100 @@ async function rejectInvoiceGateAction(formData: FormData) {
   redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Package invoice gate marked as blocked" }));
 }
 
+async function createContractDraftAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const studentId = String(formData.get("studentId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !studentId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract target" }));
+  }
+  try {
+    await createStudentContractDraft({
+      packageId,
+      studentId,
+      createdByUserId: admin.id,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Create contract draft failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract draft created" }));
+}
+
+async function resendContractIntakeAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const contractId = String(formData.get("contractId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !contractId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+  }
+  try {
+    await refreshStudentContractIntakeLink({
+      contractId,
+      actorUserId: admin.id,
+      actorLabel: admin.email,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Refresh intake link failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Parent info link refreshed" }));
+}
+
+async function resendContractSignAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const contractId = String(formData.get("contractId") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !contractId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+  }
+  try {
+    await refreshStudentContractSignLink({
+      contractId,
+      actorUserId: admin.id,
+      actorLabel: admin.email,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Refresh sign link failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract sign link refreshed" }));
+}
+
+async function voidContractAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const packageId = String(formData.get("packageId") ?? "").trim();
+  const contractId = String(formData.get("contractId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
+  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
+  if (!packageId || !contractId) {
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
+  }
+  try {
+    await voidStudentContract({
+      contractId,
+      actorUserId: admin.id,
+      actorLabel: admin.email,
+      reason,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Void contract failed";
+    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
+  }
+  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract marked as void" }));
+}
+
 export default async function PackageBillingPage({
   params,
   searchParams,
@@ -343,7 +468,7 @@ export default async function PackageBillingPage({
   const lang = await getLang();
   const currentUser = await getCurrentUser();
 
-  const [pkg, data, roleCfg, latestInvoiceApproval] = await Promise.all([
+  const [pkg, data, roleCfg, latestInvoiceApproval, latestContract] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: { student: true, course: true },
@@ -351,6 +476,7 @@ export default async function PackageBillingPage({
     listParentBillingForPackage(packageId),
     getApprovalRoleConfig(),
     getLatestPackageInvoiceApproval(packageId),
+    getLatestStudentContractForPackage(packageId),
   ]);
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
@@ -439,6 +565,15 @@ export default async function PackageBillingPage({
       )
     : new Map<string, { name: string | null; email: string }>();
   const receiptsCenterHref = buildReceiptsCenterHref(packageId, { sourceWorkflow, receiptsBack });
+  const baseUrl = appBaseUrl();
+  const contractIntakePath =
+    latestContract?.intakeToken ? buildStudentContractIntakePath(latestContract.intakeToken) : "";
+  const contractSignPath =
+    latestContract?.signToken ? buildStudentContractSignPath(latestContract.signToken) : "";
+  const contractIntakeHref = contractIntakePath;
+  const contractSignHref = contractSignPath;
+  const contractIntakeShare = contractIntakePath ? `${baseUrl}${contractIntakePath}` || contractIntakePath : "";
+  const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const currentBillingFocusTitle =
     data.invoices.length === 0
       ? t(lang, "Create the first invoice", "先创建第一张发票")
@@ -517,6 +652,25 @@ export default async function PackageBillingPage({
       detail: data.invoices.length === 0 ? t(lang, "Recommended first step now", "当前最推荐的第一步") : t(lang, "Open only when a new invoice is needed", "只在需要新发票时打开"),
       background: data.invoices.length === 0 ? "#fff7ed" : "#ffffff",
       border: data.invoices.length === 0 ? "#fdba74" : "#dbe4f0",
+    },
+    {
+      href: "#contract-flow",
+      label: t(lang, "Contract", "合同"),
+      detail: latestContract
+        ? `${studentContractStatusLabel(latestContract.status)} / ${studentContractStatusLabelZh(latestContract.status)}`
+        : t(lang, "Create draft and send parent intake link", "创建草稿并发送家长资料链接"),
+      background:
+        latestContract?.status === "INFO_PENDING"
+          ? "#fff7ed"
+          : latestContract?.status === "READY_TO_SIGN"
+          ? "#f0fdf4"
+          : "#ffffff",
+      border:
+        latestContract?.status === "INFO_PENDING"
+          ? "#fdba74"
+          : latestContract?.status === "READY_TO_SIGN"
+          ? "#86efac"
+          : "#dbe4f0",
     },
     {
       href: "#receipt-finance-processing",
@@ -636,6 +790,157 @@ export default async function PackageBillingPage({
             {t(lang, "This item is waiting in the manager approval lane. A configured manager approver must approve it here before scheduling can continue.", "这个项目正在等待管理审批。需要配置中的管理审批人在这里通过后，排课才能继续。")}
           </div>
         ) : null}
+      </div>
+
+      <div
+        id="contract-flow"
+        style={{
+          marginBottom: 14,
+          padding: 14,
+          borderRadius: 14,
+          border: "1px solid #dbeafe",
+          background: "#f8fbff",
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontWeight: 800 }}>{t(lang, "Contract flow", "合同流程")}</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(
+                lang,
+                "Send the parent info link first. Once the parent confirms their details, resend the formal sign link from this workspace.",
+                "先把家长资料链接发出去。家长确认资料后，再从这里重发正式签字链接。"
+              )}
+            </div>
+          </div>
+          {latestContract ? (
+            <WorkbenchStatusChip
+              label={`${studentContractStatusLabel(latestContract.status)} / ${studentContractStatusLabelZh(latestContract.status)}`}
+              tone={contractTone(latestContract.status)}
+              strong={latestContract.status === "INFO_PENDING" || latestContract.status === "READY_TO_SIGN"}
+            />
+          ) : (
+            <WorkbenchStatusChip label={t(lang, "No contract yet / 尚无合同", "No contract yet / 尚无合同")} tone="neutral" />
+          )}
+        </div>
+
+        {latestContract ? (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+              <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent info link", "家长资料链接")}</div>
+                <div style={{ fontWeight: 700 }}>
+                  {latestContract.intakeExpiresAt
+                    ? t(lang, `Expires ${latestContract.intakeExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.intakeExpiresAt.toLocaleString("zh-CN")}`)
+                    : t(lang, "No expiry", "无过期时间")}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {contractIntakeHref ? (
+                    <>
+                      <a href={contractIntakeHref} target="_blank" rel="noreferrer">
+                        {t(lang, "Open intake link", "打开资料链接")}
+                      </a>
+                      <CopyTextButton
+                        text={contractIntakeShare}
+                        label={t(lang, "Copy intake link", "复制资料链接")}
+                        copiedLabel={t(lang, "Copied", "已复制")}
+                        style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Formal sign link", "正式签字链接")}</div>
+                <div style={{ fontWeight: 700 }}>
+                  {latestContract.signToken
+                    ? latestContract.signExpiresAt
+                      ? t(lang, `Expires ${latestContract.signExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.signExpiresAt.toLocaleString("zh-CN")}`)
+                      : t(lang, "Ready to sign", "可签署")
+                    : t(lang, "Unlocks after intake submission", "家长提交资料后解锁")}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {contractSignHref ? (
+                    <>
+                      <a href={contractSignHref} target="_blank" rel="noreferrer">
+                        {t(lang, "Open sign link", "打开签字链接")}
+                      </a>
+                      <CopyTextButton
+                        text={contractSignShare}
+                        label={t(lang, "Copy sign link", "复制签字链接")}
+                        copiedLabel={t(lang, "Copied", "已复制")}
+                        style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
+                      />
+                    </>
+                  ) : null}
+                  <a href={`/api/exports/student-contract/${encodeURIComponent(latestContract.id)}`} target="_blank" rel="noreferrer">
+                    {t(lang, "Preview contract PDF", "预览合同 PDF")}
+                  </a>
+                  {latestContract.signedPdfPath ? (
+                    <a href={`/api/exports/student-contract/${encodeURIComponent(latestContract.id)}?download=1`}>
+                      {t(lang, "Download signed PDF", "下载已签署 PDF")}
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+              <form action={resendContractIntakeAction}>
+                <input type="hidden" name="packageId" value={packageId} />
+                <input type="hidden" name="contractId" value={latestContract.id} />
+                <input type="hidden" name="source" value={sourceWorkflow} />
+                <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#fff", color: "#2563eb", fontWeight: 700 }}>
+                  {t(lang, "Refresh intake link", "刷新资料链接")}
+                </button>
+              </form>
+              <form action={resendContractSignAction}>
+                <input type="hidden" name="packageId" value={packageId} />
+                <input type="hidden" name="contractId" value={latestContract.id} />
+                <input type="hidden" name="source" value={sourceWorkflow} />
+                <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#fff", color: "#166534", fontWeight: 700 }}>
+                  {t(lang, "Refresh sign link", "刷新签字链接")}
+                </button>
+              </form>
+              {latestContract.status !== "SIGNED" ? (
+                <form action={voidContractAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <input type="hidden" name="packageId" value={packageId} />
+                  <input type="hidden" name="contractId" value={latestContract.id} />
+                  <input type="hidden" name="source" value={sourceWorkflow} />
+                  <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                  <input name="reason" placeholder={t(lang, "Void reason", "作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
+                  <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
+                    {t(lang, "Void contract", "作废合同")}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              {t(
+                lang,
+                "No contract flow exists yet for this package. Start by creating a draft, then send the parent intake link.",
+                "当前课包还没有合同流程。先创建草稿，再把家长资料链接发出去。"
+              )}
+            </div>
+            <form action={createContractDraftAction}>
+              <input type="hidden" name="packageId" value={packageId} />
+              <input type="hidden" name="studentId" value={pkg.studentId} />
+              <input type="hidden" name="source" value={sourceWorkflow} />
+              <input type="hidden" name="receiptsBack" value={receiptsBack} />
+              <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
+                {t(lang, "Create contract draft", "创建合同草稿")}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
       {sourceWorkflow === "receipts" ? (

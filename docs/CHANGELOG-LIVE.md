@@ -15,6 +15,38 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r88
+
+- Release ID: `2026-04-23-r88`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: add the first student-contract workflow for direct-billing packages, covering admin draft creation, parent intake, formal signing, and signed PDF export.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260423113000_add_student_contracts_phase1/migration.sql`
+  - `lib/business-file-storage.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract-pdf.ts`
+  - `lib/student-contract.ts`
+  - `app/contract/_components/ContractSignaturePad.tsx`
+  - `app/contract-intake/[token]/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260423-student-contract-phase-1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This release adds new public token flows, new Prisma tables, and contract PDF generation/storage. It does not change partner-settlement flows, invoice/receipt logic, scheduling logic, or existing package balances.
+- Verification:
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+  - library-level contract flow QA now passes through `create draft -> intake submit -> sign -> signed PDF saved`
+  - browser QA now passes through `package billing -> intake link -> sign page -> signed success -> signed PDF download`
+  - QA evidence captured in `tmp/qa-student-contract-flow-real-sign/`
+- Rollback point: previous production commit before `2026-04-23-r88`.
+
 ## 2026-04-23-r87
 
 - Release ID: `2026-04-23-r87`

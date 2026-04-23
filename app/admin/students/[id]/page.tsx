@@ -70,6 +70,7 @@ import {
   inspectTeacherSchedulingAvailability,
 } from "@/lib/teacher-scheduling-availability";
 import { packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
+import { studentContractStatusLabelZh } from "@/lib/student-contract";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -1670,7 +1671,19 @@ export default async function StudentDetailPage({
     }),
     prisma.coursePackage.findMany({
       where: { ...coursePackageAccessibleByStudent(studentId) },
-      include: { course: true, sharedCourses: { select: { courseId: true } } },
+      include: {
+        course: true,
+        sharedCourses: { select: { courseId: true } },
+        contracts: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            signedAt: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
@@ -4085,6 +4098,24 @@ export default async function StudentDetailPage({
                 {p.financeGateReason ? (
                   <div style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}>{p.financeGateReason}</div>
                 ) : null}
+                {p.contracts[0] ? (
+                  <div style={{ color: "#1d4ed8", fontSize: 12, marginTop: 4 }}>
+                    {t(lang, "Contract", "合同")}: {studentContractStatusLabelZh(p.contracts[0].status)}
+                    {p.contracts[0].signedAt ? ` · ${formatBusinessDateTime(new Date(p.contracts[0].signedAt))}` : ""}
+                    {" · "}
+                    <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
+                      {t(lang, "Open contract workspace", "打开合同工作区")}
+                    </a>
+                  </div>
+                ) : (
+                  <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
+                    {t(lang, "Contract", "合同")}: {t(lang, "Not started", "尚未开始")}
+                    {" · "}
+                    <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
+                      {t(lang, "Create from package billing", "去课包账单页创建")}
+                    </a>
+                  </div>
+                )}
                 <div style={{ marginTop: 6 }}>
                   {tl(lang, "Remaining")}:{" "}
                   <span style={{ fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400, color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined }}>

@@ -8,6 +8,8 @@ export const BUSINESS_UPLOAD_PREFIX = {
   partnerPaymentProofs: "/uploads/partner-payment-proofs/",
   sharedDocs: "/uploads/shared-docs/",
   tickets: "/uploads/tickets/",
+  contracts: "/uploads/contracts/",
+  contractSignatures: "/uploads/contract-signatures/",
 } as const;
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -122,6 +124,39 @@ export async function storeBusinessUpload(
   const absolutePath = path.join(absoluteDir, storeName);
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(absolutePath, buffer);
+
+  return {
+    absolutePath,
+    originalName,
+    relativePath: `/${path.posix.join(relativeDir, storeName)}`,
+    storedFileName: storeName,
+  };
+}
+
+export async function storeBusinessBuffer(
+  input: {
+    content: Buffer;
+    originalName: string;
+  },
+  options: {
+    allowedPrefix: string;
+    subdirSegments?: string[];
+    fallbackOriginalName?: string;
+  }
+) {
+  if (!Buffer.isBuffer(input.content) || input.content.byteLength <= 0) {
+    throw new Error("Buffer content is required");
+  }
+
+  const allowedPrefix = normalizeAllowedPrefix(options.allowedPrefix);
+  const safeSubdirs = sanitizeSubdirSegments(options.subdirSegments ?? []);
+  const originalName = input.originalName || options.fallbackOriginalName || "file";
+  const storeName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${safeUploadExtension(originalName)}`;
+  const relativeDir = path.posix.join(allowedPrefix.replace(/^\/+|\/+$/g, ""), ...safeSubdirs);
+  const absoluteDir = path.join(process.cwd(), "public", ...relativeDir.split("/"));
+  await mkdir(absoluteDir, { recursive: true });
+  const absolutePath = path.join(absoluteDir, storeName);
+  await writeFile(absolutePath, input.content);
 
   return {
     absolutePath,
