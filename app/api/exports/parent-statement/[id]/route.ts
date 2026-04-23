@@ -228,6 +228,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const pageWidth = doc.page.width;
   const printableWidth = pageWidth - 64;
   let y = 32;
+  const headerRightX = pageWidth - 250;
+  const headerRightW = 218;
 
   try {
     doc.image(LOGO_PATH, 32, y, { width: 120 });
@@ -237,27 +239,39 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     } catch {}
   }
 
-  drawText(doc, "Statement of Account / 对账单", pageWidth - 250, y + 6, {
-    width: 218,
+  const headerTitle = "Statement of Account / 对账单";
+  setPdfBoldFont(doc);
+  doc.fontSize(21);
+  const titleHeight = doc.heightOfString(headerTitle, {
+    width: headerRightW,
+    align: "right",
+  });
+  setPdfFont(doc);
+
+  drawText(doc, headerTitle, headerRightX, y + 6, {
+    width: headerRightW,
     align: "right",
     size: 21,
     bold: true,
     color: BLUE,
+    lineBreak: true,
   });
-  drawText(doc, "Reshape Great Thinkers Pte. Ltd.", pageWidth - 250, y + 32, {
-    width: 218,
+  const companyY = y + 6 + titleHeight + 6;
+  drawText(doc, "Reshape Great Thinkers Pte. Ltd.", headerRightX, companyY, {
+    width: headerRightW,
     align: "right",
     size: 9,
     bold: true,
     color: DARK,
   });
-  drawText(doc, `Generated / 生成日期: ${formatDateOnly(new Date())}`, pageWidth - 250, y + 34, {
-    width: 218,
+  const generatedY = companyY + 14;
+  drawText(doc, `Generated / 生成日期: ${formatDateOnly(new Date())}`, headerRightX, generatedY, {
+    width: headerRightW,
     align: "right",
     size: 9,
     color: MUTED,
   });
-  y += 64;
+  y = Math.max(y + 64, generatedY + 24);
 
   doc.roundedRect(32, y, printableWidth, 54, 12).fillAndStroke("#ffffff", BORDER);
   drawText(doc, "Statement No. / 对账单号", 44, y + 10, { size: 8, color: MUTED, bold: true });

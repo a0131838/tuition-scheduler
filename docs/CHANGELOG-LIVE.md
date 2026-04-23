@@ -15,6 +15,23 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r87
+
+- Release ID: `2026-04-23-r87`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: fix the parent statement PDF header so the bilingual statement title no longer overlaps the company name and generated-date lines when the title wraps.
+- Key files:
+  - `app/api/exports/parent-statement/[id]/route.ts`
+  - `docs/tasks/TASK-20260423-parent-statement-header-overlap-fix.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes only header layout in the parent statement PDF export. It does not affect statement totals, package status logic, invoice/receipt data, numbering, or any scheduling and finance workflows.
+- Verification:
+  - `npm run build`
+  - export a parent statement PDF and confirm the top-right header block no longer overlaps
+- Rollback point: previous production commit before `2026-04-23-r87`.
+
 ## 2026-04-21-r86
 
 - Release ID: `2026-04-21-r86`

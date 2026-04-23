@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-21`
+- Last checked: `2026-04-23`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-21-r86` (direct-billing package invoice gate Phase 3 hard block), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-23-r87` (parent statement PDF header overlap fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -27,6 +27,7 @@
 - Historical risk confirmed: server env previously pointed to localhost DB in older backups.
 - Migration order risk: the direct-billing package invoice gate runtime depends on new `CoursePackage.financeGate*` columns and the `PackageInvoiceApproval` table, so deploy order must keep DB schema and runtime aligned.
 - Ops-flow risk: `2026-04-21-r86` removes the remaining finance-gate bypass paths, so any direct-billing chargeable package still waiting for manager invoice approval will now fail scheduling consistently until package billing is fixed.
+- Export-layout risk: parent statement PDFs previously let the bilingual header title collide with the company/date block when the title wrapped; `2026-04-23-r87` removes that overlap without changing statement data.
 
 ## Process Guard (Installed)
 
@@ -47,6 +48,17 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-23-r87 Ready
+
+- Scope: fix the top-right header layout in exported parent statement PDFs so wrapped bilingual titles no longer overlap company and generated-date text.
+- Business impact:
+  - parent statement downloads no longer show the `Statement of Account / 对账单` title colliding with the company name and generated date
+  - the header now measures the actual title height before placing the next two lines, so the layout remains stable even if the title wraps
+  - statement numbers, periods, student/package data, balances, and all finance figures remain unchanged
+- Validation:
+  - `npm run build`
+  - export a parent statement PDF and confirm the top-right header block renders without overlap
 
 ## 2026-04-21-r84 Ready
 
