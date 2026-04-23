@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-23-r89
+
+- Release ID: `2026-04-23-r89`
+- Date/Time (Asia/Shanghai): `2026-04-23`
+- Deployment status: `READY`
+- Scope: fix the new student contract PDF layout so long bilingual header text and summary values no longer overlap in downloaded contracts.
+- Key files:
+  - `lib/student-contract-pdf.ts`
+  - `docs/tasks/TASK-20260423-student-contract-pdf-overlap-fix.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a layout-only follow-up for the student contract PDF. It does not change contract statuses, contract tokens, signing rules, file storage, package billing logic, invoice gates, or any scheduling workflow.
+- Verification:
+  - `npm run build`
+  - generate a real student contract PDF and confirm the header title no longer collides with the company lines
+  - confirm long student/course/package summary values no longer overlap inside the summary box
+- Rollback point: previous production commit before `2026-04-23-r89`.
+
 ## 2026-04-23-r88
 
 - Release ID: `2026-04-23-r88`

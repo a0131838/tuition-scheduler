@@ -62,60 +62,126 @@ function drawText(
     });
 }
 
+function measureTextHeight(
+  doc: PDFDoc,
+  value: string,
+  options: {
+    width?: number;
+    size?: number;
+    bold?: boolean;
+    lineGap?: number;
+  } = {}
+) {
+  if (options.bold) setPdfBoldFont(doc);
+  else setPdfFont(doc);
+  doc.fontSize(options.size ?? 10);
+  return doc.heightOfString(value, {
+    width: options.width,
+    lineGap: options.lineGap ?? 2,
+  });
+}
+
 function drawHeader(doc: PDFDoc, snapshot: ContractSnapshot) {
+  const logoX = 40;
+  const logoY = 36;
+  const logoWidth = 120;
+  const rightX = 310;
+  const rightWidth = 240;
+  const titleY = 42;
   try {
-    doc.image(LOGO_PATH, 40, 36, { width: 120 });
+    doc.image(LOGO_PATH, logoX, logoY, { width: logoWidth });
   } catch {
     try {
-      doc.image(LOGO_FALLBACK_PATH, 40, 36, { width: 120 });
+      doc.image(LOGO_FALLBACK_PATH, logoX, logoY, { width: logoWidth });
     } catch {}
   }
+  const titleHeight = measureTextHeight(doc, "Tuition Agreement / 学费协议", {
+    width: rightWidth,
+    size: 20,
+    bold: true,
+    lineGap: 1,
+  });
   drawText(doc, "Tuition Agreement / 学费协议", {
-    x: 320,
-    y: 44,
-    width: 230,
-    size: 22,
+    x: rightX,
+    y: titleY,
+    width: rightWidth,
+    size: 20,
     color: BRAND_BLUE,
     bold: true,
     align: "right",
+    lineGap: 1,
   });
+  const brandY = titleY + titleHeight + 6;
   drawText(doc, snapshot.company.brandName, {
-    x: 320,
-    y: 86,
-    width: 230,
+    x: rightX,
+    y: brandY,
+    width: rightWidth,
     size: 10,
     color: DARK,
     bold: true,
     align: "right",
   });
+  const companyMeta = `${snapshot.company.legalName} · UEN ${snapshot.company.regNo}`;
+  const metaY = brandY + measureTextHeight(doc, snapshot.company.brandName, {
+    width: rightWidth,
+    size: 10,
+    bold: true,
+  }) + 4;
   drawText(doc, `${snapshot.company.legalName} · UEN ${snapshot.company.regNo}`, {
     x: 280,
-    y: 102,
+    y: metaY,
     width: 270,
     size: 9,
     color: MUTED,
     align: "right",
   });
-  doc.y = 148;
+  const metaHeight = measureTextHeight(doc, companyMeta, {
+    width: 270,
+    size: 9,
+  });
+  doc.y = Math.max(logoY + 72, metaY + metaHeight) + 18;
 }
 
 function drawSummaryBox(doc: PDFDoc, snapshot: ContractSnapshot) {
   const top = doc.y;
-  doc.roundedRect(40, top, 515, 96, 14).lineWidth(1).strokeColor(BORDER).fillAndStroke("#ffffff", BORDER);
+  const studentWidth = 168;
+  const courseWidth = 152;
+  const packageWidth = 114;
+  const studentValueHeight = measureTextHeight(doc, snapshot.student.name, {
+    width: studentWidth,
+    size: 16,
+    bold: true,
+    lineGap: 1,
+  });
+  const courseValueHeight = measureTextHeight(doc, snapshot.package.courseName, {
+    width: courseWidth,
+    size: 13,
+    bold: true,
+    lineGap: 1,
+  });
+  const packageValueHeight = measureTextHeight(doc, snapshot.package.totalHoursLabel, {
+    width: packageWidth,
+    size: 13,
+    bold: true,
+    lineGap: 1,
+  });
+  const contentHeight = Math.max(studentValueHeight, courseValueHeight, packageValueHeight);
+  const boxHeight = 14 + 16 + contentHeight + 18 + 18;
+  doc.roundedRect(40, top, 515, boxHeight, 14).lineWidth(1).strokeColor(BORDER).fillAndStroke("#ffffff", BORDER);
   drawText(doc, "Student / 学生", { x: 56, y: top + 14, size: 10, color: MUTED, bold: true });
-  drawText(doc, snapshot.student.name, { x: 56, y: top + 34, size: 18, bold: true });
-  drawText(doc, "Course / 课程", { x: 248, y: top + 14, size: 10, color: MUTED, bold: true });
-  drawText(doc, snapshot.package.courseName, { x: 248, y: top + 34, width: 160, size: 14, bold: true });
-  drawText(doc, "Package / 课包", { x: 424, y: top + 14, size: 10, color: MUTED, bold: true });
-  drawText(doc, snapshot.package.totalHoursLabel, { x: 424, y: top + 34, width: 110, size: 14, bold: true, align: "right" });
+  drawText(doc, snapshot.student.name, { x: 56, y: top + 34, width: studentWidth, size: 16, bold: true, lineGap: 1 });
+  drawText(doc, "Course / 课程", { x: 232, y: top + 14, size: 10, color: MUTED, bold: true });
+  drawText(doc, snapshot.package.courseName, { x: 232, y: top + 34, width: courseWidth, size: 13, bold: true, lineGap: 1 });
+  drawText(doc, "Package / 课包", { x: 420, y: top + 14, size: 10, color: MUTED, bold: true });
+  drawText(doc, snapshot.package.totalHoursLabel, { x: 420, y: top + 34, width: packageWidth, size: 13, bold: true, align: "right", lineGap: 1 });
   drawText(doc, `Agreement date / 协议日期: ${snapshot.agreementDateLabel}`, {
     x: 56,
-    y: top + 68,
+    y: top + 34 + contentHeight + 12,
     width: 478,
     size: 10,
     color: MUTED,
   });
-  doc.y = top + 118;
+  doc.y = top + boxHeight + 22;
 }
 
 async function drawSignatureBlock(doc: PDFDoc, options: {

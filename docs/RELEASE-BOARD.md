@@ -29,6 +29,7 @@
 - Ops-flow risk: `2026-04-21-r86` removes the remaining finance-gate bypass paths, so any direct-billing chargeable package still waiting for manager invoice approval will now fail scheduling consistently until package billing is fixed.
 - Export-layout risk: parent statement PDFs previously let the bilingual header title collide with the company/date block when the title wrapped; `2026-04-23-r87` removes that overlap without changing statement data.
 - Contract-flow risk: `2026-04-23-r88` adds new public token pages, contract PDF generation, and `/uploads/contracts/*` storage, so deploy order must keep the migration and runtime aligned.
+- Contract-layout risk: early `2026-04-23-r88` student contract downloads could let the bilingual title block and long summary values crowd each other; `2026-04-23-r89` tightens layout using measured text heights without changing contract logic.
 
 ## Process Guard (Installed)
 
@@ -78,6 +79,19 @@
   - library-level QA confirmed `create draft -> intake submit -> sign -> signed PDF saved`
   - browser QA confirmed `package billing -> parent intake -> sign page -> signed success -> signed PDF download`
   - verify QA evidence in `tmp/qa-student-contract-flow-real-sign/`
+
+## 2026-04-23-r89 Ready
+
+- Scope: fix the student contract PDF layout so the bilingual header and long summary values no longer overlap in downloaded contracts.
+- Business impact:
+  - downloaded student contracts now place `Tuition Agreement / 学费协议`, brand name, and legal company line based on actual measured text height instead of hard-coded offsets
+  - long student names, long course names, and package summary values now wrap inside the summary box without colliding with neighboring columns
+  - the agreement-date line now sits below the tallest summary value instead of assuming a fixed one-line layout
+  - no contract statuses, contract links, signing behavior, billing flow, package logic, or finance gates changed
+- Validation:
+  - `npm run build`
+  - generate a real student contract PDF and confirm the header/company lines no longer overlap
+  - confirm long student/course/package content no longer overlaps inside the summary box
 
 ## 2026-04-21-r84 Ready
 
