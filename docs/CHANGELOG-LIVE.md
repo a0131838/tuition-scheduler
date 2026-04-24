@@ -5415,6 +5415,7 @@ This file is the single source of truth for what changed in production.
   - `app/admin/packages/[id]/billing/page.tsx`
   - `docs/CHANGELOG-LIVE.md`
   - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-contract-billing-copy-and-action-simplify.md`
 - Risk impact (if any): Low. This release only changes billing-page guidance and action wording for signed/invoiced contracts; it does not change contract state rules, invoice math, package balances, or partner logic.
 - Verification:
   - `npm run build` passed
