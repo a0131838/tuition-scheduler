@@ -5549,3 +5549,17 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified totals block now starts below the last rendered row instead of being bottom-anchored
   - verified remittance notes are no longer clipped off the page on the last summary page
+
+## 2026-04-24-r107
+
+- Scope: move the optional partner invoice seal so it sits beside the subtotal summary block instead of staying pinned near the lower page edge.
+- Key files:
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-partner-invoice-seal-near-subtotal.md`
+- Risk impact (if any): Low. This release only repositions the optional seal image on partner invoice PDFs; it does not change invoice data, pagination, totals, approvals, or receipt behavior.
+- Verification:
+  - `npm run build` passed
+  - verified the seal now renders next to the subtotal block on the final page
+  - verified the subtotal values remain readable with the seal present

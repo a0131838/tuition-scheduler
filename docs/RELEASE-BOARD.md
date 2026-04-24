@@ -3015,3 +3015,17 @@
   - verify subtotal / GST / amount due appear directly after the final row set
   - verify remittance notes are fully visible on the last page
   - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-layout-followup.md`
+
+## 2026-04-24-r107 Ready
+
+- Scope: move the optional partner invoice seal next to the subtotal summary area instead of leaving it pinned near the lower page edge.
+- Business impact:
+  - finance sees the seal where they expect it, aligned with the subtotal summary block
+  - the seal no longer looks detached from the financial totals on long partner invoices
+  - no line-item pagination, totals, approval flow, or receipt behavior changed
+- Validation:
+  - `npm run build`
+  - export a sealed partner invoice
+  - verify the seal sits beside the subtotal block
+  - verify subtotal / GST / amount due remain readable
+  - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-near-subtotal.md`
