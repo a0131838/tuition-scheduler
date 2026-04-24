@@ -5389,3 +5389,21 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified `赵测试` package now shows `settlementMode = null`
   - verified the same package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`
+
+## 2026-04-24-r97
+
+- Scope: fix signed student-contract signature visibility so future contracts require a handwritten signature image and legacy signed contracts no longer show a blank signature area.
+- Key files:
+  - `lib/student-contract.ts`
+  - `lib/student-contract-pdf.ts`
+  - `app/contract/[token]/page.tsx`
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-contract-signature-visibility-fix.md`
+- Risk impact (if any): Low to medium. This release tightens future signature submission requirements and changes how legacy signed PDFs are served when no stored signature image exists, but does not change invoice creation math, package balances, or contract snapshot content.
+- Verification:
+  - `npm run build` passed
+  - QA script confirmed sign attempts without handwritten signature now fail with `Handwritten signature is required`
+  - generated and rendered a compatibility PDF for an existing signed contract with `signatureImagePath = null`
+  - verified the legacy signature block is no longer blank

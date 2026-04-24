@@ -121,6 +121,30 @@ export default async function ContractSignPage({
             / 感谢您，学费协议已经签署完成，系统也已为校方准备好对应发票草稿。
           </div>
           {contract.invoiceNo ? <div style={{ color: "#166534" }}>Invoice / 发票: {contract.invoiceNo}</div> : null}
+          <div
+            style={{
+              border: "1px solid #bbf7d0",
+              borderRadius: 14,
+              background: "#f0fdf4",
+              padding: 14,
+              display: "grid",
+              gap: 8,
+              maxWidth: 360,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Signature / 签名</div>
+            {contract.signatureImagePath ? (
+              <img
+                src={contract.signatureImagePath}
+                alt="Contract signature"
+                style={{ maxWidth: 240, maxHeight: 72, objectFit: "contain" }}
+              />
+            ) : (
+              <div style={{ fontWeight: 800, fontSize: 22, color: "#1d4ed8", lineHeight: 1.1 }}>
+                {contract.signerName || "Signature on file"}
+              </div>
+            )}
+          </div>
           <div>
             <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?token=${encodeURIComponent(token)}&download=1`}>
               Download signed PDF / 下载已签署合同 PDF
@@ -194,7 +218,9 @@ export default async function ContractSignPage({
 
       {err ? (
         <div style={{ ...cardStyle("#fff7ed"), borderColor: "#fdba74", color: "#9a3412" }}>
-          请补全签署资料并完成手写签名。 / Please complete the signing details and handwritten signature.
+          {err.toLowerCase().includes("signature")
+            ? "请先完成手写签名，再提交正式合同。 / Please draw the handwritten signature before submitting the final contract."
+            : "请补全签署资料并完成手写签名。 / Please complete the signing details and handwritten signature."}
         </div>
       ) : null}
       {msg === "ready" ? (

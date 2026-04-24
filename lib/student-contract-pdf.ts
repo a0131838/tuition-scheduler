@@ -237,6 +237,16 @@ async function drawSignatureBlock(doc: PDFDoc, options: {
       const bytes = await readFile(absPath);
       doc.image(bytes, 390, top + 66, { fit: [140, 40], align: "right", valign: "center" });
     } catch {}
+  } else {
+    drawText(doc, options.signerName || options.snapshot.parent.parentFullNameEn, {
+      x: 390,
+      y: top + 70,
+      width: 140,
+      size: 16,
+      color: BRAND_BLUE,
+      bold: true,
+      align: "right",
+    });
   }
   doc.y = top + 132;
 }

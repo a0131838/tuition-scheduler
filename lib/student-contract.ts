@@ -301,7 +301,7 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
   };
 }
 
-function coerceSnapshot(raw: unknown): ContractSnapshot | null {
+export function coerceSnapshot(raw: unknown): ContractSnapshot | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const row = raw as Record<string, unknown>;
   if (typeof row.agreementHtml !== "string") return null;
@@ -1176,22 +1176,23 @@ export async function signStudentContract(input: {
   if (!signerName) throw new Error("Signer name is required");
 
   const signatureDataUrl = trimOrNull(input.signatureDataUrl);
+  if (!signatureDataUrl) {
+    throw new Error("Handwritten signature is required");
+  }
   const [storedSignature, signedAt] = await Promise.all([
-    signatureDataUrl
-      ? (() => {
-          const signatureImage = parseDataUrlImage(signatureDataUrl);
-          return storeBusinessBuffer(
-            {
-              content: signatureImage.buffer,
-              originalName: `contract-signature-${current.id}${signatureImage.ext}`,
-            },
-            {
-              allowedPrefix: BUSINESS_UPLOAD_PREFIX.contractSignatures,
-              subdirSegments: [current.studentId],
-            }
-          );
-        })()
-      : Promise.resolve(null),
+    (() => {
+      const signatureImage = parseDataUrlImage(signatureDataUrl);
+      return storeBusinessBuffer(
+        {
+          content: signatureImage.buffer,
+          originalName: `contract-signature-${current.id}${signatureImage.ext}`,
+        },
+        {
+          allowedPrefix: BUSINESS_UPLOAD_PREFIX.contractSignatures,
+          subdirSegments: [current.studentId],
+        }
+      );
+    })(),
     Promise.resolve(new Date()),
   ]);
 

@@ -2872,3 +2872,17 @@
   - `npm run build`
   - verify `赵测试` package now stores `settlementMode = null`
   - verify `赵测试` package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`
+
+## 2026-04-24-r97 Ready
+
+- Scope: make signed-contract signatures visible again by requiring handwritten signature image capture for future signings and serving a compatibility rendering for legacy signed contracts that have no stored signature image.
+- Business impact:
+  - future parent sign attempts now stop with a clear error unless a handwritten signature is actually drawn
+  - the signed confirmation page now shows the captured signature block instead of only invoice/download info
+  - older signed contracts that were completed before the handwritten-signature requirement will no longer download with an empty signature area
+  - no invoice math, contract snapshot payloads, package balance rules, or partner-exclusion logic changed
+- Validation:
+  - `npm run build`
+  - verify a temporary `READY_TO_SIGN` contract now rejects empty `signatureDataUrl` with `Handwritten signature is required`
+  - generate a compatibility PDF for an existing signed contract with `signatureImagePath = null`
+  - render the compatibility PDF and verify the signature block is visible instead of blank
