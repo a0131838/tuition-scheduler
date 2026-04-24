@@ -169,7 +169,7 @@ export default async function StudentFirstPurchaseSetupPage({
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Course / 课程", "课程 / Course")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Course", "课程")}</span>
                 <select name="courseId" defaultValue="" style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }}>
                   <option value="">{t(lang, "Choose course", "选择课程")}</option>
                   {courses.map((course) => (
@@ -181,32 +181,32 @@ export default async function StudentFirstPurchaseSetupPage({
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Total minutes / 总课时分钟", "总课时分钟 / Total minutes")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Total minutes", "总课时分钟")}</span>
                 <input name="totalMinutes" type="number" min={0} step={30} defaultValue="600" style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Fee amount / 课时费用", "课时费用 / Fee amount")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Fee amount", "课时费用")}</span>
                 <input name="feeAmount" type="number" min={0} step="0.01" style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Bill to / 开票对象", "开票对象 / Bill to")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Bill to", "开票对象")}</span>
                 <input name="billTo" defaultValue={String(latestParentIntakePayload?.parentFullNameEn ?? student.name)} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Agreement date / 合同日期", "合同日期 / Agreement date")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Agreement date", "合同日期")}</span>
                 <input name="agreementDateIso" type="date" defaultValue={fmtDateInput(new Date())} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Lesson mode / 上课方式", "上课方式 / Lesson mode")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Lesson mode", "上课方式")}</span>
                 <input name="lessonMode" placeholder={t(lang, "Optional", "可选")} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Campus / 校区", "校区 / Campus")}</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{t(lang, "Campus", "校区")}</span>
                 <input name="campusName" placeholder={t(lang, "Optional", "可选")} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
               </label>
             </div>

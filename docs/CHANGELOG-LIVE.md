@@ -5683,3 +5683,4 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified the first-purchase card renders before summary cards and the sticky student workbench
   - verified the old mid-page duplicate card is removed
+  - verified the dedicated first-purchase page no longer repeats bilingual field labels such as `Course / 课程 / 课程 / Course`

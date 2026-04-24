@@ -3135,4 +3135,5 @@
   - `npm run build`
   - verify the `Start first purchase setup / 开始首购建档` card shows before the summary cards
   - verify the original lower duplicate location is gone
+  - verify the dedicated first-purchase page field labels are no longer duplicated
   - task doc: `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
