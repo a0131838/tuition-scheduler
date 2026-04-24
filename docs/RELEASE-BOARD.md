@@ -2886,3 +2886,15 @@
   - verify a temporary `READY_TO_SIGN` contract now rejects empty `signatureDataUrl` with `Handwritten signature is required`
   - generate a compatibility PDF for an existing signed contract with `signatureImagePath = null`
   - render the compatibility PDF and verify the signature block is visible instead of blank
+
+## 2026-04-24-r98 Ready
+
+- Scope: make the signed-contract correction path explicit in package billing by explaining that `Void` is no longer available after signing and that ops should stop using the old invoice draft before creating a replacement contract version.
+- Business impact:
+  - signed/invoiced contracts now clearly explain why the `Void` action is missing
+  - ops and finance now get a direct two-step correction path: open the old invoice lane first, then create a replacement contract version
+  - no contract-state rules, invoice creation logic, package balances, or partner exclusions changed
+- Validation:
+  - `npm run build`
+  - verify the signed-result card now warns not to keep using the old invoice draft
+  - verify the terminal contract warning explicitly says `Void` is no longer available after signing

@@ -1221,6 +1221,13 @@ export default async function PackageBillingPage({
                       "家长已经完成签字，系统也已经把对应发票草稿接回当前课包的收费流程。"
                     )}
                   </div>
+                  <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.6 }}>
+                    {t(
+                      lang,
+                      "This signed version is now part of history. If the content is wrong, do not void this one here. Stop using the old invoice draft, then create a replacement contract version below.",
+                      "这份已签版本已经进入历史记录。如果内容有误，请不要在这里继续作废旧合同。先停止使用旧发票草稿，再在下方创建新的更正合同版本。"
+                    )}
+                  </div>
                   <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "#166534" }}>
                     <span>{t(lang, `Invoice / 发票: ${latestContract.invoiceNo ?? "-"}`, `Invoice / 发票: ${latestContract.invoiceNo ?? "-"}`)}</span>
                     {latestContract.invoiceCreatedAt ? (
@@ -1282,11 +1289,28 @@ export default async function PackageBillingPage({
                   <div style={{ color: "#7f1d1d", fontSize: 13, lineHeight: 1.6 }}>
                     {t(
                       lang,
-                      "Signed or invoiced contracts stay in history. Instead of editing the old one, create a replacement version and send the new sign link to the parent.",
-                      "已经签过或开过票的合同会保留在历史中。不要直接修改旧合同，请新建一份更正版本，再把新的签字链接发给家长。"
+                      "Signed or invoiced contracts stay in history, so the Void button is no longer available here. Instead of editing or voiding the old one, stop using the old invoice draft and create a replacement version for the parent to sign.",
+                      "已经签过或开过票的合同会保留在历史中，所以这里不会再显示作废按钮。不要继续修改或作废旧合同，请先停用旧发票草稿，再创建一份更正版本给家长重新签字。"
                     )}
                   </div>
+                  <div style={{ display: "grid", gap: 6, color: "#7f1d1d", fontSize: 13 }}>
+                    <div>
+                      {t(
+                        lang,
+                        "Step 1: open the invoice lane and make sure finance will not continue using the old invoice draft.",
+                        "第 1 步：先打开下方发票区，确认财务不会继续使用旧发票草稿。"
+                      )}
+                    </div>
+                    <div>
+                      {t(
+                        lang,
+                        "Step 2: create a replacement contract version, then send the new sign link to the parent.",
+                        "第 2 步：创建一份新的合同版本，再把新的签字链接发给家长。"
+                      )}
+                    </div>
+                  </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <a href="#invoices">{t(lang, "Open old invoice lane first", "先打开旧发票区")}</a>
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />

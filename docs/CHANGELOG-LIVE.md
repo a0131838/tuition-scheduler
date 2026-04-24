@@ -5407,3 +5407,16 @@ This file is the single source of truth for what changed in production.
   - QA script confirmed sign attempts without handwritten signature now fail with `Handwritten signature is required`
   - generated and rendered a compatibility PDF for an existing signed contract with `signatureImagePath = null`
   - verified the legacy signature block is no longer blank
+
+## 2026-04-24-r98
+
+- Scope: clarify the signed-contract correction path in package billing so ops understand that signed or invoiced contracts no longer expose `Void`, and that the old invoice draft should be stopped before creating a replacement version.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This release only changes billing-page guidance and action wording for signed/invoiced contracts; it does not change contract state rules, invoice math, package balances, or partner logic.
+- Verification:
+  - `npm run build` passed
+  - verified signed/invoiced contract block now explains the old invoice must be stopped before replacement
+  - verified terminal contract warning now explicitly says `Void` is no longer available after signing
