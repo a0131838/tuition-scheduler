@@ -5648,3 +5648,17 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified `/admin/finance/documents` and `/admin/finance/deleted-invoices` appear in finance navigation
   - verified finance-role allowlist now includes both paths
+
+## 2026-04-24-r113
+
+- Scope: move the `Start first purchase setup / 开始首购建档` card to the very top of student detail content so ops can see the CTA immediately without scrolling past planning and enrollment sections.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
+- Risk impact (if any): Low. This release only repositions an existing student-detail CTA card; it does not change intake, contract, package, or billing logic.
+- Verification:
+  - `npm run build` passed
+  - verified the first-purchase card renders before summary cards and the sticky student workbench
+  - verified the old mid-page duplicate card is removed

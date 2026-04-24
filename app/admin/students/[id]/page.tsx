@@ -2558,6 +2558,76 @@ export default async function StudentDetailPage({
       : recommendedPrimaryKey === "packages"
       ? t(lang, "Billing or package follow-up is active, so clear this before more lesson changes.", "当前有账务或课包跟进，建议先处理这里，再继续改课。")
       : t(lang, "Scheduling tools are the most common teaching-ops entry point, so quick schedule stays first when nothing else is blocking the profile.", "排课工具是教务最常用入口，所以当前没有阻塞项时，快速排课保持第一优先级。");
+  const firstPurchaseSetupCard = showFirstPurchaseSetup ? (
+    <div
+      id="first-purchase-setup"
+      style={{
+        marginBottom: 2,
+        padding: 16,
+        borderRadius: 16,
+        border: "1px solid #bfdbfe",
+        background: "linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.2 }}>
+            {t(lang, "First purchase ready", "首购建档已就绪")}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
+            {t(lang, "Start first purchase setup", "开始首购建档")}
+          </div>
+          <div style={{ color: "#334155", fontSize: 14, maxWidth: 900, lineHeight: 1.5 }}>
+            {t(
+              lang,
+              "Parent details are already submitted. Open the dedicated setup page to add course, hours, fee, and bill-to details without mixing this step into the full student page.",
+              "家长资料已经提交。请打开单独的首购建档页，再补课程、课时、费用和开票对象，不再和完整学生页混在一起。"
+            )}
+          </div>
+        </div>
+        <a
+          href={`/admin/students/${encodeURIComponent(studentId)}/first-purchase`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 46,
+            padding: "10px 16px",
+            borderRadius: 12,
+            border: "1px solid #2563eb",
+            background: "#2563eb",
+            color: "#fff",
+            fontWeight: 800,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {t(lang, "Open first purchase setup", "打开首购建档页")}
+        </a>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Parent profile", "家长资料")}</div>
+          <div style={{ fontWeight: 800, color: "#0f172a" }}>{String(latestParentIntakePayload?.parentFullNameEn ?? "-")}</div>
+          <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+            {String(latestParentIntakePayload?.phone ?? "-")}
+            {" · "}
+            {String(latestParentIntakePayload?.email ?? "-")}
+          </div>
+        </div>
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Next step", "下一步")}</div>
+          <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Create the first package and ready-to-sign contract", "创建首购课包并生成可签合同")}</div>
+          <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+            {t(lang, "This step now lives on a dedicated page to keep the student detail page lighter.", "这一步已经拆到单独页面，学生详情页会更清爽。")}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
   return (
     <div>
       <StudentDetailHashStateClient />
@@ -2676,6 +2746,8 @@ export default async function StudentDetailPage({
       <div style={{ display: "grid", gap: 16 }}>
         {!coordinationOnly ? (
           <>
+            {firstPurchaseSetupCard}
+
             <div
               style={{
                 display: "grid",
@@ -4027,77 +4099,6 @@ export default async function StudentDetailPage({
         </div>
       )}
       </details>
-
-      {showFirstPurchaseSetup ? (
-        <div
-          id="first-purchase-setup"
-          style={{
-            marginBottom: 14,
-            padding: 16,
-            borderRadius: 16,
-            border: "1px solid #bfdbfe",
-            background: "linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
-            display: "grid",
-            gap: 14,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-            <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.2 }}>
-                {t(lang, "First purchase ready", "首购建档已就绪")}
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
-                {t(lang, "Start first purchase setup", "开始首购建档")}
-              </div>
-              <div style={{ color: "#334155", fontSize: 14, maxWidth: 900, lineHeight: 1.5 }}>
-                {t(
-                  lang,
-                  "Parent details are already submitted. Open the dedicated setup page to add course, hours, fee, and bill-to details without mixing this step into the full student page.",
-                  "家长资料已经提交。请打开单独的首购建档页，再补课程、课时、费用和开票对象，不再和完整学生页混在一起。"
-                )}
-              </div>
-            </div>
-            <a
-              href={`/admin/students/${encodeURIComponent(studentId)}/first-purchase`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: 46,
-                padding: "10px 16px",
-                borderRadius: 12,
-                border: "1px solid #2563eb",
-                background: "#2563eb",
-                color: "#fff",
-                fontWeight: 800,
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t(lang, "Open first purchase setup", "打开首购建档页")}
-            </a>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Parent profile", "家长资料")}</div>
-              <div style={{ fontWeight: 800, color: "#0f172a" }}>{String(latestParentIntakePayload?.parentFullNameEn ?? "-")}</div>
-              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                {String(latestParentIntakePayload?.phone ?? "-")}
-                {" · "}
-                {String(latestParentIntakePayload?.email ?? "-")}
-              </div>
-            </div>
-            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Next step", "下一步")}</div>
-              <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Create the first package and ready-to-sign contract", "创建首购课包并生成可签合同")}</div>
-              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                {t(lang, "This step now lives on a dedicated page to keep the student detail page lighter.", "这一步已经拆到单独页面，学生详情页会更清爽。")}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <details id="packages" open={packagesOpen} style={{ marginBottom: 14 }}>
         <summary style={{ fontWeight: 700 }}>{tl(lang, "Packages")} ({packageCount})</summary>

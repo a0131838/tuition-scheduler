@@ -3106,3 +3106,16 @@
   - verify finance users can open `/admin/finance/documents`
   - verify finance users can open `/admin/finance/deleted-invoices`
   - task doc: `docs/tasks/TASK-20260424-finance-document-center-nav-and-allowlist.md`
+
+## 2026-04-24-r113 Ready
+
+- Scope: move the student-detail first-purchase CTA card to the top of the page content so ops can start首购建档 immediately.
+- Business impact:
+  - ops no longer need to scroll down past planning and enrollment sections to find the first-purchase entry point
+  - the CTA still opens the same dedicated first-purchase setup page
+  - no intake, contract, invoice, or package logic changed
+- Validation:
+  - `npm run build`
+  - verify the `Start first purchase setup / 开始首购建档` card shows before the summary cards
+  - verify the original lower duplicate location is gone
+  - task doc: `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
