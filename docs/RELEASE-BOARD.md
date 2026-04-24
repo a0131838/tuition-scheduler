@@ -3000,3 +3000,18 @@
   - verify every row appears across one or more pages
   - verify the old collapsed-summary line is gone
   - task doc: `docs/tasks/TASK-20260424-partner-invoice-full-line-pagination.md`
+
+## 2026-04-24-r106 Ready
+
+- Scope: tighten the follow-up partner invoice summary-page layout so the totals and remittance notes sit directly after the last rows instead of drifting to the page bottom.
+- Business impact:
+  - finance no longer sees a mostly blank final page with totals floating at the bottom
+  - remittance notes remain fully readable on the last page
+  - the full multi-page line-item rendering from `r105` stays intact
+  - no invoice totals, approval flow, or receipt behavior changed
+- Validation:
+  - `npm run build`
+  - export a multi-page partner invoice
+  - verify subtotal / GST / amount due appear directly after the final row set
+  - verify remittance notes are fully visible on the last page
+  - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-layout-followup.md`

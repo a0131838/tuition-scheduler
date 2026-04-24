@@ -5535,3 +5535,17 @@ This file is the single source of truth for what changed in production.
   - verified partner invoice export no longer truncates to 10 rows
   - verified continuation pages repeat invoice/table headers and show full multiline descriptions
   - verified the old `... and N more items` summary is no longer rendered
+
+## 2026-04-24-r106
+
+- Scope: fix the partner invoice PDF follow-up layout so subtotal and remittance notes flow immediately after the last rendered rows instead of being pinned to the bottom of a mostly empty last page.
+- Key files:
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-partner-invoice-final-page-layout-followup.md`
+- Risk impact (if any): Low. This release only adjusts the final-page layout after partner invoice pagination; it does not change line selection, invoice totals, approvals, or receipt logic.
+- Verification:
+  - `npm run build` passed
+  - verified totals block now starts below the last rendered row instead of being bottom-anchored
+  - verified remittance notes are no longer clipped off the page on the last summary page

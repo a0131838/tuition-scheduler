@@ -87,6 +87,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const totalBoxX = x + 338;
   const totalLabelW = 94;
   const totalValueW = 84;
+  const pageInnerBottomPadding = 10;
 
   function drawPageFrame() {
     doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, pageBottom - y).stroke();
@@ -199,10 +200,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   ];
   const totalsHeight = totalRows.length * 24;
   const noteBlockHeight = 206;
-  if (currentY + totalsHeight + noteBlockHeight > pageBottom - 10) {
+  const finalSectionGap = 16;
+
+  if (currentY + finalSectionGap + totalsHeight + 12 + noteBlockHeight > pageBottom - pageInnerBottomPadding) {
     currentY = drawContinuationHeader();
   }
-  const totalBoxY = Math.max(currentY + 16, pageBottom - 90);
+
+  const totalBoxY = currentY + finalSectionGap;
   totalRows.forEach((r, i) => {
     const yy = totalBoxY + i * 24;
     text(doc, r[0], totalBoxX, yy + 5, 10, true, "#111827", totalLabelW - 2, "right");
@@ -210,7 +214,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
 
-  const noteY = Math.max(totalBoxY + totalsHeight + 12, notesStartY);
+  const noteY = totalBoxY + totalsHeight + 12;
   text(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
   text(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
   text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
