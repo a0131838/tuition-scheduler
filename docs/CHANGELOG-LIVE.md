@@ -5727,3 +5727,17 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified the stored signed-contract response now passes the business filename instead of the ASCII fallback
   - verified inline and attachment responses share the same UTF-8 filename logic
+
+## 2026-04-24-r117
+
+- Scope: show `Create renewal contract / 创建续费合同` inside the package contract workspace after a first-purchase contract is already signed, so ops can start the next renewal without leaving the current package page.
+- Key files:
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-package-contract-renewal-cta-after-first-purchase.md`
+- Risk impact (if any): Low. This release only adds a missing renewal CTA in the terminal first-purchase contract view; it does not change replacement flows, signing, invoice creation, or partner-package behavior.
+- Verification:
+  - `npm run build` passed
+  - verified a signed first-purchase contract view can now show `Create renewal contract / 创建续费合同`
+  - verified the replacement-contract action still remains available for correction cases

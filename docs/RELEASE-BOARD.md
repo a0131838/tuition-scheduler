@@ -3179,3 +3179,16 @@
   - verify stored signed-contract responses use the business filename in `Content-Disposition`
   - verify inline and attachment headers both include the UTF-8 filename
   - task doc: `docs/tasks/TASK-20260424-stored-student-contract-download-filename-fix.md`
+
+## 2026-04-24-r117 Ready
+
+- Scope: add the missing renewal CTA to the package contract workspace after a first-purchase contract is already signed.
+- Business impact:
+  - ops no longer need to infer that renewal should happen elsewhere after a signed首购合同
+  - the same contract workspace now shows both next-step options: start a renewal or create a correction/replacement version
+  - no contract signing, invoice, or package rules changed
+- Validation:
+  - `npm run build`
+  - verify a signed first-purchase contract now exposes `Create renewal contract / 创建续费合同`
+  - verify the replacement-contract CTA still remains visible for correction scenarios
+  - task doc: `docs/tasks/TASK-20260424-package-contract-renewal-cta-after-first-purchase.md`

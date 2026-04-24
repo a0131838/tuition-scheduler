@@ -668,6 +668,18 @@ export default async function PackageContractPage({
                       <a href={buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack }) + "#invoices"}>
                         {t(lang, "Open old invoice lane first", "先打开旧发票区")}
                       </a>
+                      {hasRenewalContractParentInfo && latestContract.flowType === "NEW_PURCHASE" ? (
+                        <form action={createContractDraftAction}>
+                          <input type="hidden" name="packageId" value={packageId} />
+                          <input type="hidden" name="studentId" value={pkg.studentId} />
+                          <input type="hidden" name="flowType" value="RENEWAL" />
+                          <input type="hidden" name="source" value={sourceWorkflow} />
+                          <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                          <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #166534", background: "#f0fdf4", color: "#166534", fontWeight: 700 }}>
+                            {t(lang, "Create renewal contract", "创建续费合同")}
+                          </button>
+                        </form>
+                      ) : null}
                       <form action={createContractDraftAction}>
                         <input type="hidden" name="packageId" value={packageId} />
                         <input type="hidden" name="studentId" value={pkg.studentId} />
