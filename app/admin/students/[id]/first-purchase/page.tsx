@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { prisma } from "@/lib/prisma";
 import { getLang, t } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/auth";
@@ -51,6 +52,7 @@ async function createFirstPurchaseFromIntakeAction(formData: FormData) {
     });
     redirect(`/admin/packages/${encodeURIComponent(result.contract.packageId)}/contract?msg=First+purchase+contract+is+ready+to+sign`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const msg = error instanceof Error ? error.message : "Create first purchase contract failed";
     redirect(appendQuery(back, { err: msg }));
   }
