@@ -2970,3 +2970,18 @@
   - `npm run build`
   - verify sign submit revalidates the public contract route before redirect
   - verify `?msg=signed` now shows a clear success banner at the top of the sign page
+
+## 2026-04-24-r104 Ready
+
+- Scope: make address optional in both parent-facing intake pages and keep contract generation compatible when no address is provided.
+- Business impact:
+  - parents can now submit student intake and contract-profile forms without sharing an address
+  - the school team can continue to reuse parent details even when address is blank
+  - signed and unsigned contract snapshots will no longer print an empty address row when no address is on file
+  - no contract-state rules, invoice creation logic, package balances, or partner exclusions changed
+- Validation:
+  - `npm run build`
+  - verify `/student-intake/[token]` marks address as optional and accepts submission without it
+  - verify `/contract-intake/[token]` marks address as optional and accepts submission without it
+  - verify contract snapshot generation omits the address line when address is absent
+  - task doc: `docs/tasks/TASK-20260424-parent-address-optional-intake.md`

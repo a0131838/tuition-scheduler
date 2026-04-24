@@ -5501,3 +5501,22 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified sign submit now revalidates the public contract route before redirecting back
   - verified the sign page now shows a green `Signature submitted successfully` message after submit
+
+## 2026-04-24-r104
+
+- Scope: make parent address optional across the new-student intake flow and the contract parent-profile intake flow, while keeping parent-profile reuse and contract generation working when no address is provided.
+- Key files:
+  - `app/contract-intake/[token]/page.tsx`
+  - `app/student-intake/[token]/page.tsx`
+  - `lib/student-parent-intake.ts`
+  - `lib/student-contract.ts`
+  - `lib/student-contract-template.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-parent-address-optional-intake.md`
+- Risk impact (if any): Low. This release only relaxes address validation and hides the address line in generated contracts when no address is provided; it does not change contract signing rules, invoice creation, package balances, or partner exclusions.
+- Verification:
+  - `npm run build` passed
+  - verified both `/student-intake/[token]` and `/contract-intake/[token]` no longer require address
+  - verified backend intake submission succeeds without address
+  - verified generated contract snapshots omit the address row when no address is present
