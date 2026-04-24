@@ -14,8 +14,8 @@ export default function ContractSignaturePad({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hiddenInputRef = useRef<HTMLInputElement | null>(null);
-  const [dataUrl, setDataUrl] = useState("");
   const [hasStroke, setHasStroke] = useState(false);
+  const hasStrokeRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,18 +48,22 @@ export default function ContractSignaturePad({
     };
   }
 
-  function redrawDataUrl() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const nextValue = hasStroke ? canvas.toDataURL("image/png") : "";
+  function setHiddenValue(nextValue: string) {
     if (hiddenInputRef.current) {
       hiddenInputRef.current.value = nextValue;
     }
-    setDataUrl(nextValue);
+  }
+
+  function redrawDataUrl(forceHasStroke = hasStrokeRef.current) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const nextValue = forceHasStroke ? canvas.toDataURL("image/png") : "";
+    setHiddenValue(nextValue);
   }
 
   useEffect(() => {
-    redrawDataUrl();
+    hasStrokeRef.current = hasStroke;
+    redrawDataUrl(hasStroke);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStroke]);
 
@@ -86,7 +90,11 @@ export default function ContractSignaturePad({
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
       last = point;
-      setHasStroke(true);
+      if (!hasStrokeRef.current) {
+        hasStrokeRef.current = true;
+        setHasStroke(true);
+      }
+      redrawDataUrl(true);
     }
 
     function endDrawing(pointerId?: number) {
@@ -96,7 +104,7 @@ export default function ContractSignaturePad({
       if (typeof pointerId === "number") {
         targetCanvas?.releasePointerCapture?.(pointerId);
       }
-      redrawDataUrl();
+      redrawDataUrl(hasStrokeRef.current);
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -183,8 +191,8 @@ export default function ContractSignaturePad({
     if (hiddenInputRef.current) {
       hiddenInputRef.current.value = "";
     }
+    hasStrokeRef.current = false;
     setHasStroke(false);
-    setDataUrl("");
   }
 
   return (
@@ -200,7 +208,7 @@ export default function ContractSignaturePad({
       >
         <canvas ref={canvasRef} />
       </div>
-      <input ref={hiddenInputRef} type="hidden" name={inputName} value={dataUrl} readOnly required />
+      <input ref={hiddenInputRef} type="hidden" name={inputName} defaultValue="" required />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontSize: 12, color: "#64748b" }}>
           请用手写方式签名。Use a handwritten signature in the box above.

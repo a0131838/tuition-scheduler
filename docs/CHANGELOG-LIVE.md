@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-24-r102
+
+- Release ID: `2026-04-24-r102`
+- Date/Time (Asia/Shanghai): `2026-04-24`
+- Deployment status: `READY`
+- Scope: fix the public handwritten-signature pad so a parent who draws and immediately clicks submit no longer gets bounced back as if no signature was provided.
+- Key files:
+  - `app/contract/_components/ContractSignaturePad.tsx`
+  - `docs/tasks/TASK-20260424-contract-signature-pad-submit-sync.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes how the client-side sign pad syncs its hidden signature payload during drawing; it does not change contract wording, signed PDF generation, invoice creation, or package balance rules.
+- Verification:
+  - `npm run build`
+  - verify drawing a signature and immediately clicking `Sign contract` now submits successfully instead of returning `Please draw the handwritten signature`
+  - verify clearing the signature still empties the hidden signature payload
+- Rollback point: previous production commit before `2026-04-24-r102`.
+
 ## 2026-04-23-r93
 
 - Release ID: `2026-04-23-r93`
