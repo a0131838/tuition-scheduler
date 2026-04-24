@@ -3091,3 +3091,4 @@
   - verify `/admin/students/[id]/first-purchase` loads and shows the setup fields once
   - verify submit redirects into `/admin/packages/[id]/contract`
   - task doc: `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`
+- 2026-04-24 `c54a15a` Finance document centers: shipped a full invoices/receipts page plus deleted draft invoice history page, and linked them into finance workbench, package billing, package contract, and partner settlement billing.

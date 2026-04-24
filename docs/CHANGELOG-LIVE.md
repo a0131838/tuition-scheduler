@@ -5633,3 +5633,4 @@ This file is the single source of truth for what changed in production.
   - verified the student detail page now shows a prominent first-purchase CTA instead of the full embedded setup form
   - verified the new `/admin/students/[id]/first-purchase` page renders the setup fields once without repeated wording
   - verified successful submit redirects to the package contract workspace
+- 2026-04-24: Added `/admin/finance/documents` and `/admin/finance/deleted-invoices` so finance can open full parent/partner invoice and receipt PDFs and trace deleted draft invoice history from one place, with direct links from finance workbench, package billing, package contract, and partner settlement billing.
