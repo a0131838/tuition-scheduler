@@ -5449,3 +5449,4 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified contract-draft block now uses one button to save business fields and generate the latest sign link
   - verified the signed-result block no longer repeats bilingual invoice and approval labels
+  - release-doc bundle finalized with matching task note

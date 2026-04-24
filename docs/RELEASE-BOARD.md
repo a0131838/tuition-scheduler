@@ -2930,3 +2930,4 @@
   - verify the `READY_TO_SIGN` state now offers a single “save and refresh sign link” action
   - verify the signed-result card no longer duplicates bilingual labels on invoice, gate, and approval rows
   - task doc: `docs/tasks/TASK-20260424-student-contract-billing-copy-and-action-simplify.md`
+  - release-doc bundle finalized in the same release train

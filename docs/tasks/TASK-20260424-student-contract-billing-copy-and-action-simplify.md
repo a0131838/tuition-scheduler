@@ -25,3 +25,4 @@ Low. This is a workflow and copy simplification inside the contract section of p
 - verify saving lesson hours / fee / bill-to / agreement date now also prepares the latest sign link in one submit
 - verify `READY_TO_SIGN` contracts now show one "save and refresh sign link" action instead of separate save + refresh buttons
 - verify the signed-result card no longer repeats invoice and approval labels twice
+- release-doc bundle finalized together with changelog and release board updates
