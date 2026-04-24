@@ -5698,3 +5698,17 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified successful first-purchase submit can rethrow the native Next.js redirect instead of rendering `NEXT_REDIRECT`
   - verified real failures still redirect back to the first-purchase page with a normal error message
+
+## 2026-04-24-r115
+
+- Scope: give student contract PDF downloads a business-friendly filename for both admin and parent downloads instead of a technical package-type filename.
+- Key files:
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-contract-download-filename.md`
+- Risk impact (if any): Low. This release only changes the PDF download filename and content-disposition headers; it does not change contract content, signing logic, invoice generation, or permissions.
+- Verification:
+  - `npm run build` passed
+  - verified contract downloads now use `学生名_课程名_首购/续费合同_已签/草稿_日期.pdf`
+  - verified the same filename logic is used for admin and parent token-based downloads

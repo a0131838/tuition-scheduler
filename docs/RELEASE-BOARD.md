@@ -3151,3 +3151,17 @@
   - verify successful submit rethrows the redirect and lands in `/admin/packages/[id]/contract`
   - verify ordinary failures still redirect back with `err=...` instead of crashing
   - task doc: `docs/tasks/TASK-20260424-first-purchase-redirect-error-fix.md`
+
+## 2026-04-24-r115 Ready
+
+- Scope: rename student contract PDF downloads to a business-readable format for both admin and parent downloads.
+- Business impact:
+  - contract PDFs no longer download with a technical internal-style filename
+  - ops and parents now receive clearer names such as `学生名_课程名_首购合同_已签_YYYYMMDD.pdf`
+  - the same naming convention applies whether the PDF is downloaded from admin pages or the parent signing link
+  - no contract, signing, billing, or invoice behavior changed
+- Validation:
+  - `npm run build`
+  - verify signed and unsigned contract downloads use the new business-friendly filename pattern
+  - verify parent token downloads and admin downloads share the same naming logic
+  - task doc: `docs/tasks/TASK-20260424-student-contract-download-filename.md`
