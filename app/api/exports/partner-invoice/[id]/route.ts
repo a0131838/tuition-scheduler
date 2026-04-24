@@ -81,13 +81,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const colX = [x + 10, x + 54, x + 292, x + 372, x + 450];
   const colW = [42, 236, 78, 78, 96];
   const pageBottom = 826;
-  const notesStartY = 646;
   const tableHeaderGap = 24;
   const continuationTopY = y + 52;
   const totalBoxX = x + 338;
   const totalLabelW = 94;
   const totalValueW = 84;
   const pageInnerBottomPadding = 10;
+  const sealWidth = 96;
+  const sealHeight = 96;
+  const sealGapFromTotals = 14;
+  const finalSectionGap = 16;
+  const finalBlockGap = 14;
+  const noteBlockHeight = 206;
+  const tableBottomLimit = pageBottom - 24;
 
   function drawPageFrame() {
     doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, pageBottom - y).stroke();
@@ -183,26 +189,29 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   let currentY = drawTableHeader(drawFirstPageHeader());
-  for (const line of partnerInvoice.lines) {
-    const description = displayPartnerInvoiceLineDescription(line.description);
-    const rowHeight = rowHeightFor(description);
-    const needsContinuation = currentY + rowHeight > notesStartY - 12;
-    if (needsContinuation) {
-      currentY = drawTableHeader(drawContinuationHeader());
-    }
-    currentY = renderLineRow(line, currentY, rowHeight);
-  }
-
   const totalRows: Array<[string, string]> = [
     ["Subtotal", money(partnerInvoice.amount)],
     ["GST Total", money(partnerInvoice.gstAmount)],
     ["Amount Due", money(partnerInvoice.totalAmount)],
   ];
   const totalsHeight = totalRows.length * 24;
-  const noteBlockHeight = 206;
-  const finalSectionGap = 16;
 
-  if (currentY + finalSectionGap + totalsHeight + 12 + noteBlockHeight > pageBottom - pageInnerBottomPadding) {
+  for (const line of partnerInvoice.lines) {
+    const description = displayPartnerInvoiceLineDescription(line.description);
+    const rowHeight = rowHeightFor(description);
+    const needsContinuation = currentY + rowHeight > tableBottomLimit;
+    if (needsContinuation) {
+      currentY = drawTableHeader(drawContinuationHeader());
+    }
+    currentY = renderLineRow(line, currentY, rowHeight);
+  }
+
+  const finalVisualHeight =
+    finalSectionGap +
+    Math.max(totalsHeight, withSeal ? sealHeight : 0) +
+    finalBlockGap +
+    noteBlockHeight;
+  if (currentY + finalVisualHeight > pageBottom - pageInnerBottomPadding) {
     currentY = drawContinuationHeader();
   }
 
@@ -214,7 +223,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
 
-  const noteY = totalBoxY + totalsHeight + 12;
+  const sealX = totalBoxX - sealWidth - sealGapFromTotals;
+  const sealY = totalBoxY - 8;
+  if (withSeal) {
+    try {
+      doc.image(SEAL_PATH, sealX, sealY, { fit: [sealWidth, sealHeight], align: "center", valign: "center" });
+    } catch {}
+  }
+
+  const noteY =
+    Math.max(totalBoxY + totalsHeight, withSeal ? sealY + sealHeight : 0) + finalBlockGap;
   text(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
   text(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
   text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
@@ -226,15 +244,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   text(doc, "Account number: 595214891001", x + 4, noteY + 148, 10);
   text(doc, "Swift code: OCBCSGSG", x + 4, noteY + 166, 10);
   text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
-  if (withSeal) {
-    try {
-      const sealWidth = 118;
-      const sealX = totalBoxX - 54;
-      const sealY = totalBoxY + 6;
-      doc.image(SEAL_PATH, sealX, sealY, { width: sealWidth });
-    } catch {}
-  }
-
   const stream = streamPdf(doc);
   const fileName = withSeal
     ? `partner_invoice_${safeName(partnerInvoice.invoiceNo)}_sealed.pdf`
