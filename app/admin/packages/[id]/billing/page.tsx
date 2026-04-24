@@ -45,6 +45,7 @@ import {
   buildStudentContractIntakePath,
   buildStudentContractSignPath,
   createStudentContractDraft,
+  detachDeletedInvoiceFromStudentContract,
   deleteVoidStudentContractDraft,
   listStudentContractsForPackage,
   hasReusableStudentContractParentInfo,
@@ -332,6 +333,11 @@ async function deleteInvoiceAction(formData: FormData) {
   try {
     const existing = await getParentInvoiceById(invoiceId);
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
+    await detachDeletedInvoiceFromStudentContract({
+      invoiceId,
+      actorUserId: admin.id,
+      actorLabel: admin.email,
+    });
     const mk = existing ? parseInvoiceNoParts(existing.invoiceNo)?.monthKey : null;
     if (mk) {
       await resequenceGlobalInvoiceNumbersForMonth(mk);
@@ -340,7 +346,13 @@ async function deleteInvoiceAction(formData: FormData) {
     const msg = e instanceof Error ? e.message : "Delete invoice failed";
     redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
-  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Invoice deleted" }));
+  redirect(
+    buildPackageBillingHref(packageId, {
+      sourceWorkflow,
+      receiptsBack,
+      msg: "Old invoice draft deleted. You can now create a replacement contract version.",
+    })
+  );
 }
 
 async function deleteReceiptAction(formData: FormData) {
@@ -408,6 +420,7 @@ async function createContractDraftAction(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const flowTypeRaw = String(formData.get("flowType") ?? "").trim();
+  const replacementFromContractId = String(formData.get("replacementFromContractId") ?? "").trim() || null;
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   if (!packageId || !studentId) {
@@ -419,6 +432,7 @@ async function createContractDraftAction(formData: FormData) {
       studentId,
       createdByUserId: admin.id,
       flowType: flowTypeRaw === "RENEWAL" ? "RENEWAL" : "NEW_PURCHASE",
+      replacementFromContractId,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Create contract draft failed";
@@ -428,7 +442,11 @@ async function createContractDraftAction(formData: FormData) {
     buildPackageBillingHref(packageId, {
       sourceWorkflow,
       receiptsBack,
-      msg: flowTypeRaw === "RENEWAL" ? "Renewal contract draft created" : "Parent info link created",
+      msg: replacementFromContractId
+        ? "Replacement contract draft created"
+        : flowTypeRaw === "RENEWAL"
+        ? "Renewal contract draft created"
+        : "Parent info link created",
     })
   );
 }
@@ -691,6 +709,11 @@ export default async function PackageBillingPage({
   const totalPendingApprovalAmount = roundMoney(
     Array.from(receiptProgressMap.values()).reduce((sum, progress) => sum + Number(progress.pendingAmount || 0), 0)
   );
+  const latestContractInvoice = latestContract?.invoiceId ? invoiceMap.get(latestContract.invoiceId) ?? null : null;
+  const latestContractInvoiceReceipts = latestContractInvoice
+    ? data.receipts.filter((receipt) => receipt.invoiceId === latestContractInvoice.id)
+    : [];
+  const canDeleteLatestContractInvoiceDraft = Boolean(latestContractInvoice) && latestContractInvoiceReceipts.length === 0;
   const creatorEmails = Array.from(
     new Set(
       data.invoices
@@ -1211,21 +1234,29 @@ export default async function PackageBillingPage({
                 </div>
               ) : null}
 
-              {latestContract.invoiceNo || latestContract.status === "INVOICE_CREATED" ? (
+              {latestContract.signedAt || latestContract.invoiceNo || latestContract.status === "INVOICE_CREATED" ? (
                 <div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", padding: 14, display: "grid", gap: 8 }}>
                   <div style={{ fontWeight: 800, color: "#166534" }}>{t(lang, "Signed result", "签署完成结果")}</div>
                   <div style={{ color: "#166534", fontSize: 13 }}>
                     {t(
                       lang,
-                      "The parent has finished signing. The billing lane now has a linked invoice draft for the next finance steps.",
-                      "家长已经完成签字，系统也已经把对应发票草稿接回当前课包的收费流程。"
+                      latestContract.invoiceId
+                        ? "The parent has finished signing. The billing lane now has a linked invoice draft for the next finance steps."
+                        : "The parent has finished signing. The old invoice draft has already been removed, so this signed version now stays in history while you prepare the corrected contract version.",
+                      latestContract.invoiceId
+                        ? "家长已经完成签字，系统也已经把对应发票草稿接回当前课包的收费流程。"
+                        : "家长已经完成签字。旧发票草稿已删除，这份已签版本会保留在历史里，接下来请创建更正合同版本。"
                     )}
                   </div>
                   <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.6 }}>
                     {t(
                       lang,
-                      "This signed version is now part of history. If the content is wrong, do not void this one here. Stop using the old invoice draft, then create a replacement contract version below.",
-                      "这份已签版本已经进入历史记录。如果内容有误，请不要在这里继续作废旧合同。先停止使用旧发票草稿，再在下方创建新的更正合同版本。"
+                      latestContract.invoiceId
+                        ? "This signed version is now part of history. If the content is wrong, do not void this one here. Stop using the old invoice draft, then create a replacement contract version below."
+                        : "This signed version is already detached from the old invoice draft. Do not edit the old one directly; create a replacement contract version below and send the new sign link to the parent.",
+                      latestContract.invoiceId
+                        ? "这份已签版本已经进入历史记录。如果内容有误，请不要在这里继续作废旧合同。先停止使用旧发票草稿，再在下方创建新的更正合同版本。"
+                        : "这份已签版本已经和旧发票草稿解绑。不要直接修改旧合同，请在下方创建更正合同版本，再把新的签字链接发给家长。"
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "#166534" }}>
@@ -1252,6 +1283,20 @@ export default async function PackageBillingPage({
                     ) : null}
                     <a href="#invoices">{t(lang, "Open invoice lane", "打开发票区")}</a>
                     {latestInvoiceApproval ? <a href="#invoice-gate">{t(lang, "Open approval status", "查看审批状态")}</a> : null}
+                    {canDeleteLatestContractInvoiceDraft && latestContractInvoice ? (
+                      <form action={deleteInvoiceAction}>
+                        <input type="hidden" name="packageId" value={packageId} />
+                        <input type="hidden" name="invoiceId" value={latestContractInvoice.id} />
+                        <input type="hidden" name="source" value={sourceWorkflow} />
+                        <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                        <button
+                          type="submit"
+                          style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #b45309", background: "#fff7ed", color: "#9a3412", fontWeight: 700 }}
+                        >
+                          {t(lang, "Delete old invoice draft", "删除旧发票草稿")}
+                        </button>
+                      </form>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -1315,6 +1360,7 @@ export default async function PackageBillingPage({
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
                       <input type="hidden" name="flowType" value={latestContract.flowType} />
+                      <input type="hidden" name="replacementFromContractId" value={latestContract.id} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 700 }}>

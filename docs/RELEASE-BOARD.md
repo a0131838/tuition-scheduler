@@ -2898,3 +2898,20 @@
   - `npm run build`
   - verify the signed-result card now warns not to keep using the old invoice draft
   - verify the terminal contract warning explicitly says `Void` is no longer available after signing
+
+## 2026-04-24-r99 Ready
+
+- Scope: let ops delete the old invoice draft from a signed student contract, detach that invoice from contract history, and immediately create a replacement contract version that reuses the previous parent profile.
+- Business impact:
+  - signed contracts that only have an unreceipted invoice draft can now be corrected in one cleaner path from package billing
+  - deleting the old invoice draft now clears the contract’s linked invoice fields instead of leaving stale invoice references behind
+  - the linked package invoice-approval rows for that deleted draft are removed as part of the correction cleanup
+  - replacement contract creation is no longer blocked by old `SIGNED / INVOICE_CREATED` versions on the same package
+  - replacement first-purchase contracts now reuse the previous parent profile so ops do not need to resend the parent intake form just to correct fee or contract details
+  - no receipt logic, partner settlement logic, or signed PDF logic changed
+- Validation:
+  - `npm run build`
+  - verify deleting a signed contract’s old invoice draft clears `invoiceId / invoiceNo / invoiceCreatedAt` from that contract
+  - verify the contract falls back to signed history
+  - verify replacement contract creation produces a fresh `CONTRACT_DRAFT`
+  - verify the replacement contract reuses the previous parent profile instead of reopening intake

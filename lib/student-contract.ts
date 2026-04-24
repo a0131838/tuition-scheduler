@@ -157,8 +157,6 @@ function openStatusesForPackageReuse() {
     StudentContractStatus.INFO_PENDING,
     StudentContractStatus.INFO_SUBMITTED,
     StudentContractStatus.READY_TO_SIGN,
-    StudentContractStatus.SIGNED,
-    StudentContractStatus.INVOICE_CREATED,
   ];
 }
 
@@ -480,6 +478,7 @@ export async function createStudentContractDraft(input: {
   createdByUserId?: string | null;
   intakeExpiresAt?: Date | null;
   flowType?: StudentContractFlowType;
+  replacementFromContractId?: string | null;
 }) {
   const existing = await prisma.studentContract.findFirst({
     where: {
@@ -506,6 +505,16 @@ export async function createStudentContractDraft(input: {
   assertDirectBillingPackage(pkg);
 
   const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
+  let replacementSource: StudentContractRow | null = null;
+  if (input.replacementFromContractId?.trim()) {
+    replacementSource = await getContractRow({ id: input.replacementFromContractId.trim() });
+    if (!replacementSource) {
+      throw new Error("Replacement source contract not found");
+    }
+    if (replacementSource.packageId !== input.packageId || replacementSource.studentId !== input.studentId) {
+      throw new Error("Replacement source contract does not match this package");
+    }
+  }
   const defaultBusinessInfo = defaultBusinessInfoFromRow(
     {
       student: pkg.student,
@@ -514,12 +523,17 @@ export async function createStudentContractDraft(input: {
     flowType
   );
   const reusableParentInfo =
-    flowType === StudentContractFlowType.RENEWAL
+    coerceParentInfo(replacementSource?.parentInfoJson) ??
+    (flowType === StudentContractFlowType.RENEWAL || Boolean(replacementSource)
       ? await getLatestReusableParentInfoForStudent(input.studentId, input.packageId)
-      : null;
+      : null);
   if (flowType === StudentContractFlowType.RENEWAL && !reusableParentInfo) {
     throw new Error("Renewal contracts need an existing parent profile. Use the first-purchase info link first.");
   }
+  const reusableBusinessInfo =
+    coerceBusinessInfo(replacementSource?.businessInfoJson) ??
+    (flowType === StudentContractFlowType.RENEWAL ? defaultBusinessInfo : null);
+  const startsAsDraft = Boolean(reusableParentInfo);
 
   const row = await prisma.studentContract.create({
     data: {
@@ -528,7 +542,7 @@ export async function createStudentContractDraft(input: {
       templateId: template.id,
       flowType,
       status:
-        flowType === StudentContractFlowType.RENEWAL
+        startsAsDraft
           ? StudentContractStatus.CONTRACT_DRAFT
           : StudentContractStatus.INTAKE_PENDING,
       intakeToken: createStudentContractToken(),
@@ -537,8 +551,8 @@ export async function createStudentContractDraft(input: {
         ? (reusableParentInfo as unknown as Prisma.InputJsonValue)
         : Prisma.JsonNull,
       businessInfoJson:
-        flowType === StudentContractFlowType.RENEWAL
-          ? (defaultBusinessInfo as unknown as Prisma.InputJsonValue)
+        reusableBusinessInfo
+          ? (reusableBusinessInfo as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull,
       createdByUserId: input.createdByUserId ?? null,
     },
@@ -550,10 +564,15 @@ export async function createStudentContractDraft(input: {
     actorType: input.createdByUserId ? "ADMIN" : "SYSTEM",
     actorUserId: input.createdByUserId ?? null,
     actorLabel:
-      flowType === StudentContractFlowType.RENEWAL
+      replacementSource
+        ? "Created replacement contract draft"
+        : flowType === StudentContractFlowType.RENEWAL
         ? "Created renewal contract draft"
         : "Created first-purchase intake flow",
-    payloadJson: { flowType },
+    payloadJson: {
+      flowType,
+      replacementFromContractId: replacementSource?.id ?? null,
+    },
   });
   return summarize(row);
 }
@@ -1314,6 +1333,76 @@ export async function voidStudentContract(input: {
     payloadJson: input.reason ? ({ reason: input.reason } as Prisma.JsonValue) : undefined,
   });
   return summarize(next);
+}
+
+export async function detachDeletedInvoiceFromStudentContract(input: {
+  invoiceId: string;
+  actorUserId?: string | null;
+  actorLabel?: string | null;
+}) {
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return null;
+  const row = await prisma.studentContract.findFirst({
+    where: { invoiceId },
+    include: studentContractInclude,
+  });
+  if (!row) return null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.studentContract.update({
+      where: { id: row.id },
+      data: {
+        status:
+          canonicalStudentContractStatus(row.status) === StudentContractStatus.INVOICE_CREATED
+            ? StudentContractStatus.SIGNED
+            : row.status,
+        invoiceId: null,
+        invoiceNo: null,
+        invoiceCreatedAt: null,
+      },
+    });
+
+    await tx.packageInvoiceApproval.deleteMany({
+      where: {
+        packageId: row.packageId,
+        invoiceId,
+      },
+    });
+
+    const latestApproval = await tx.packageInvoiceApproval.findFirst({
+      where: { packageId: row.packageId },
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+    });
+    const packageStatus = latestApproval
+      ? latestApproval.status === "APPROVED"
+        ? "SCHEDULABLE"
+        : latestApproval.status === "REJECTED"
+        ? "BLOCKED"
+        : "INVOICE_PENDING_MANAGER"
+      : "EXEMPT";
+    const packageReason = buildPackageFinanceGateReason({
+      status: packageStatus,
+      rejectReason: latestApproval?.managerRejectReason ?? null,
+      settlementMode: row.package.settlementMode,
+    });
+
+    await tx.coursePackage.update({
+      where: { id: row.packageId },
+      data: {
+        financeGateStatus: packageStatus,
+        financeGateReason: packageReason,
+        financeGateUpdatedAt: new Date(),
+        financeGateUpdatedBy: input.actorLabel ?? "Removed deleted invoice draft from signed contract",
+      },
+    });
+  });
+
+  return summarize(
+    (await prisma.studentContract.findUnique({
+      where: { id: row.id },
+      include: studentContractInclude,
+    }))!
+  );
 }
 
 export async function deleteVoidStudentContractDraft(input: {

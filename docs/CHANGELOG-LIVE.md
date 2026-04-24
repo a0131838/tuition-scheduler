@@ -5420,3 +5420,18 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified signed/invoiced contract block now explains the old invoice must be stopped before replacement
   - verified terminal contract warning now explicitly says `Void` is no longer available after signing
+
+## 2026-04-24-r99
+
+- Scope: let ops delete an old unsigned receipt-free invoice draft from a signed contract, detach that old invoice from the contract history, and immediately create a replacement contract version that reuses the previous parent profile.
+- Key files:
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-contract-invoice-delete-replacement-flow.md`
+- Risk impact (if any): Medium. This release changes the correction flow after a signed contract has auto-created an invoice draft, but does not change receipt rules, partner settlement logic, or signed PDF generation.
+- Verification:
+  - `npm run build` passed
+  - temporary QA confirmed deleting the linked invoice draft cleared the contract invoice linkage and moved the contract back to signed history
+  - temporary QA confirmed replacement contract creation now produced a new `CONTRACT_DRAFT` and reused the previous parent profile
