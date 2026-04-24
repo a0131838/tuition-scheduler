@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-24-r112
+
+- Release ID: `2026-04-24-r112`
+- Date/Time (Asia/Shanghai): `2026-04-24`
+- Deployment status: `READY`
+- Scope: let only `zhao hongwei` delete mistaken parent-intake links from the student list, and only when the link has never been used to create a student, package, or contract.
+- Key files:
+  - `lib/student-parent-intake.ts`
+  - `app/admin/students/page.tsx`
+  - `docs/tasks/TASK-20260424-owner-delete-unused-parent-intake-links.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This adds a tightly scoped delete action for mistaken intake links only. Submitted or already-used links remain preserved in history and cannot be deleted.
+- Verification:
+  - `npm run build`
+  - verify only `zhaohongwei0880@gmail.com` sees `Delete link / 删除链接`
+  - verify an unused `LINK_SENT` intake can be deleted
+  - verify submitted or contract-ready intakes do not show delete and cannot be deleted through the server action
+- Rollback point: previous production commit before `2026-04-24-r112`.
+
 ## 2026-04-24-r111
 
 - Release ID: `2026-04-24-r111`

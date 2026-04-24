@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-24-r111` (invoice delete keeps middle gaps, allows natural tail reuse only, and records deleted draft history), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-24-r112` (owner-only deletion for unused mistaken parent-intake links), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -37,6 +37,7 @@
 - Signature-submit risk: `2026-04-24-r102` changes how the public handwritten-signature pad syncs its hidden payload while the parent is drawing, so verification should confirm a quick draw-and-submit no longer falsely triggers the “please draw the handwritten signature” error.
 - Contract-workspace navigation risk: `2026-04-24-r103` moves the student-contract workflow off the package billing page into a dedicated package contract page, so verification should confirm staff can still reach every contract action from the new page and that billing now feels lighter.
 - Invoice-delete sequencing risk: `2026-04-24-r111` stops compacting later draft invoice numbers after deletion, so verification must confirm middle gaps remain visible, tail gaps get reused only naturally by the next new draft, and deleted draft numbers appear in history for audit.
+- Parent-intake cleanup risk: `2026-04-24-r112` adds deletion for unused parent-intake links, so verification must confirm only `zhaohongwei0880@gmail.com` sees the action and that any intake already submitted into a student/package/contract remains undeletable.
 
 ## Process Guard (Installed)
 
@@ -73,6 +74,20 @@
   - confirm middle-gap deletes leave later invoices unchanged
   - confirm deleting the current tail draft lets the next new invoice reuse that tail slot naturally
   - confirm deleted draft histories render in package billing, package contract, and partner billing
+
+## 2026-04-24-r112 Ready
+
+- Scope: allow only `zhao hongwei` to delete mistaken unused parent-intake links from the student list without touching any already-submitted or downstream-linked intake records.
+- Business impact:
+  - mistaken intake links that never created a student can now be removed directly from `/admin/students`
+  - only the owner account `zhaohongwei0880@gmail.com` sees the delete action
+  - once a link has been submitted or linked to a student/package/contract, it stays in history and cannot be deleted
+  - no student creation, contract flow, invoice flow, or partner logic changed
+- Validation:
+  - `npm run build`
+  - verify owner account sees `Delete link / 删除链接` only on unused rows
+  - verify non-owner accounts do not see the action
+  - verify submitted rows stay visible but undeletable
 
 ## 2026-04-23-r92 Ready
 

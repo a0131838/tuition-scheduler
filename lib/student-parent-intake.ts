@@ -213,6 +213,36 @@ export async function createStudentParentIntakeLink(input?: {
   return summarize(row);
 }
 
+export async function deleteStudentParentIntakeLink(input: {
+  intakeId: string;
+  actorEmail: string;
+}) {
+  const actor = String(input.actorEmail ?? "").trim().toLowerCase();
+  if (actor !== "zhaohongwei0880@gmail.com") {
+    throw new Error("Only zhao hongwei can delete parent intake links");
+  }
+
+  const current = await prisma.studentParentIntake.findUnique({
+    where: { id: input.intakeId },
+    include: intakeInclude,
+  });
+  if (!current) throw new Error("Parent intake link not found");
+
+  const isUnusedDraft =
+    !current.studentId &&
+    !current.packageId &&
+    !current.contractId &&
+    (current.status === StudentParentIntakeStatus.LINK_SENT || current.status === StudentParentIntakeStatus.VOID);
+
+  if (!isUnusedDraft) {
+    throw new Error("Only unused parent intake links can be deleted");
+  }
+
+  await prisma.studentParentIntake.delete({
+    where: { id: current.id },
+  });
+}
+
 export async function getStudentParentIntakeByToken(token: string) {
   const row = await prisma.studentParentIntake.findUnique({
     where: { token },

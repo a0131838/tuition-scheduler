@@ -16,6 +16,7 @@ import {
   buildStudentParentIntakeAbsoluteUrl,
   buildStudentParentIntakePath,
   createStudentParentIntakeLink,
+  deleteStudentParentIntakeLink,
   listRecentStudentParentIntakes,
 } from "@/lib/student-parent-intake";
 
@@ -145,6 +146,8 @@ export default async function StudentsPage({
   const hasExplicitView = requestedView.length > 0;
   const requestedPageSize = first(sp?.pageSize).trim();
   const cookieStore = await cookies();
+  const admin = await requireAdmin();
+  const canDeleteParentIntakeLinks = admin.email.trim().toLowerCase() === "zhaohongwei0880@gmail.com";
   const canResumeRememberedDesk =
     !clearDesk && !hasExplicitView && !hasSourceChannelParam && !hasStudentTypeParam && !hasQParam && !hasPageSizeParam;
   const rememberedDesk = canResumeRememberedDesk
@@ -191,6 +194,25 @@ export default async function StudentsPage({
       redirect(`/admin/students?err=${encodeURIComponent(message)}`);
     }
     redirect(`/admin/students?msg=${encodeURIComponent("Parent intake link created")}`);
+  }
+
+  async function deleteParentIntakeAction(formData: FormData) {
+    "use server";
+    const admin = await requireAdmin();
+    const intakeId = String(formData.get("intakeId") ?? "").trim();
+    if (!intakeId) {
+      redirect(`/admin/students?err=${encodeURIComponent("Parent intake link id is required")}`);
+    }
+    try {
+      await deleteStudentParentIntakeLink({
+        intakeId,
+        actorEmail: admin.email,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete parent intake link failed";
+      redirect(`/admin/students?err=${encodeURIComponent(message)}`);
+    }
+    redirect(`/admin/students?msg=${encodeURIComponent("Parent intake link deleted")}`);
   }
 
   const [sources, types, recentParentIntakes] = await Promise.all([
@@ -419,6 +441,12 @@ export default async function StudentsPage({
             recentParentIntakes.map((intake) => {
               const intakeHref = buildStudentParentIntakePath(intake.token);
               const intakeAbsoluteUrl = buildStudentParentIntakeAbsoluteUrl(intake.token);
+              const canDeleteThisIntake =
+                canDeleteParentIntakeLinks &&
+                !intake.studentId &&
+                !intake.packageId &&
+                !intake.contractId &&
+                (intake.status === "LINK_SENT" || intake.status === "VOID");
               const tone =
                 intake.status === "LINK_SENT"
                   ? { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" }
@@ -477,6 +505,25 @@ export default async function StudentsPage({
                           {t(lang, "Open student", "打开学生")}
                         </a>
                       ) : null}
+                      {canDeleteThisIntake ? (
+                        <form action={deleteParentIntakeAction}>
+                          <input type="hidden" name="intakeId" value={intake.id} />
+                          <button
+                            type="submit"
+                            style={{
+                              borderRadius: 999,
+                              border: "1px solid #fecaca",
+                              background: "#fff1f2",
+                              color: "#b91c1c",
+                              padding: "6px 10px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {t(lang, "Delete link", "删除链接")}
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   </div>
                   <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.5 }}>
@@ -487,6 +534,15 @@ export default async function StudentsPage({
                       ? ` · ${t(lang, "First purchase contract ready", "首购合同已准备")}`
                       : ""}
                   </div>
+                  {canDeleteParentIntakeLinks && !canDeleteThisIntake ? (
+                    <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
+                      {t(
+                        lang,
+                        "Used links stay in history. Only unused mistaken links can be deleted.",
+                        "已经用过的链接会保留在历史里，只有尚未使用的误建链接可以删除。"
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               );
             })
