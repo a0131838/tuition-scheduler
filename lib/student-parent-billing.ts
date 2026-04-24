@@ -985,3 +985,11 @@ export async function listDeletedParentInvoicesForPackage(packageId: string) {
     (x) => x.deletedAt,
   );
 }
+
+export async function listDeletedParentInvoices(packageId?: string | null) {
+  const store = await loadStore();
+  return byNewest(
+    store.deletedInvoices.filter((x) => !packageId || x.packageId === packageId),
+    (x) => x.deletedAt,
+  );
+}

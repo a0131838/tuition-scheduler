@@ -600,6 +600,8 @@ export default async function PartnerBillingPage({
           {tabBtn("receipt", t(lang, "Create Receipt", "创建收据"))}
           {tabBtn("invoices", t(lang, "Invoices", "发票"))}
           {tabBtn("receipts", t(lang, "Receipts and approvals", "收据与审批"))}
+          <a href="/admin/finance/documents?channel=PARTNER" style={primaryBtn}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
+          <a href={`/admin/finance/deleted-invoices?channel=PARTNER&month=${encodeURIComponent(month)}`} style={primaryBtn}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
         </div>
       </div>
 

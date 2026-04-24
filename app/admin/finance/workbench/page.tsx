@@ -735,6 +735,20 @@ export default async function FinanceWorkbenchPage({
   ];
   const financeWorkbenchSectionLinks = [
     {
+      href: "/admin/finance/documents",
+      label: t(lang, "Full invoices & receipts", "完整发票与收据"),
+      detail: t(lang, "Open PDFs without jumping through each package", "不用逐个进入课包也能打开 PDF"),
+      background: "#eff6ff",
+      border: "#bfdbfe",
+    },
+    {
+      href: "/admin/finance/deleted-invoices",
+      label: t(lang, "Deleted draft history", "已删除草稿历史"),
+      detail: t(lang, "Trace deleted draft invoice numbers", "追踪已删除的草稿发票号"),
+      background: "#fff7ed",
+      border: "#fdba74",
+    },
+    {
       href: "#finance-workbench-filters",
       label: t(lang, "Filters", "筛选区"),
       detail: t(lang, "Change scope before reading the desk", "先调范围，再看列表"),

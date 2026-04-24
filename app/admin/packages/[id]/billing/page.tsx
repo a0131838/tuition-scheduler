@@ -863,6 +863,13 @@ export default async function PackageBillingPage({
       border: "#dbe4f0",
     },
     {
+      href: `/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`,
+      label: t(lang, "Full PDFs", "完整 PDF"),
+      detail: t(lang, "Open invoice and receipt PDFs in one place", "在一个页面看发票和收据 PDF"),
+      background: "#ffffff",
+      border: "#dbe4f0",
+    },
+    {
       href: "#receipts",
       label: t(lang, "Receipts", "收据"),
       detail: t(lang, `${data.receipts.length} receipt(s)`, `${data.receipts.length} 张收据`),
@@ -883,6 +890,10 @@ export default async function PackageBillingPage({
       <h2>{t(lang, "Package Billing", "课包账单")}</h2>
       <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <a href="/admin/packages">← {t(lang, "Back to Packages", "返回课包列表")}</a>
+        <span style={{ color: "#94a3b8" }}>·</span>
+        <a href={`/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
+        <span style={{ color: "#94a3b8" }}>·</span>
+        <a href={`/admin/finance/deleted-invoices?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
         {sourceWorkflow === "receipts" ? (
           <>
             <span style={{ color: "#94a3b8" }}>·</span>

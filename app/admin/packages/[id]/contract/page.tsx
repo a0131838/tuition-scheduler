@@ -379,6 +379,10 @@ export default async function PackageContractPage({
         <a href={buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack })}>← {t(lang, "Back to Package Billing", "返回课包账单")}</a>
         <span style={{ color: "#94a3b8" }}>·</span>
         <a href="/admin/packages">{t(lang, "Back to Packages", "返回课包列表")}</a>
+        <span style={{ color: "#94a3b8" }}>·</span>
+        <a href={`/admin/finance/documents?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Full invoices & receipts", "完整发票与收据")}</a>
+        <span style={{ color: "#94a3b8" }}>·</span>
+        <a href={`/admin/finance/deleted-invoices?channel=PARENT&packageId=${encodeURIComponent(packageId)}`}>{t(lang, "Deleted draft history", "已删除草稿历史")}</a>
       </div>
       {err ? <div style={{ marginBottom: 12, color: "#b00" }}>{err}</div> : null}
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
