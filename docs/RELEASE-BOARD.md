@@ -3092,3 +3092,17 @@
   - verify submit redirects into `/admin/packages/[id]/contract`
   - task doc: `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`
 - 2026-04-24 `c54a15a` Finance document centers: shipped a full invoices/receipts page plus deleted draft invoice history page, and linked them into finance workbench, package billing, package contract, and partner settlement billing.
+
+## 2026-04-24-r112 Ready
+
+- Scope: add the finance document center and deleted draft invoice history pages to the finance-role access allowlist and sidebar navigation.
+- Business impact:
+  - finance users can now open the two new pages directly instead of getting bounced back to another finance page
+  - the pages are now discoverable from the sidebar, not only through deep links inside workspaces
+  - no invoice, receipt, or approval data changes
+- Validation:
+  - `npm run build`
+  - verify finance sidebar shows `Invoices & Receipts` and `Deleted Draft History`
+  - verify finance users can open `/admin/finance/documents`
+  - verify finance users can open `/admin/finance/deleted-invoices`
+  - task doc: `docs/tasks/TASK-20260424-finance-document-center-nav-and-allowlist.md`

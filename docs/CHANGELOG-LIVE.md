@@ -5634,3 +5634,17 @@ This file is the single source of truth for what changed in production.
   - verified the new `/admin/students/[id]/first-purchase` page renders the setup fields once without repeated wording
   - verified successful submit redirects to the package contract workspace
 - 2026-04-24: Added `/admin/finance/documents` and `/admin/finance/deleted-invoices` so finance can open full parent/partner invoice and receipt PDFs and trace deleted draft invoice history from one place, with direct links from finance workbench, package billing, package contract, and partner settlement billing.
+
+## 2026-04-24-r112
+
+- Scope: expose the new finance document center and deleted draft history pages in the finance-role allowlist and admin sidebar so logged-in finance users can actually open them without being bounced away.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-finance-document-center-nav-and-allowlist.md`
+- Risk impact (if any): Low. This release only updates admin navigation and finance route access rules for already-shipped pages; it does not change invoice data, receipt approvals, or export rendering.
+- Verification:
+  - `npm run build` passed
+  - verified `/admin/finance/documents` and `/admin/finance/deleted-invoices` appear in finance navigation
+  - verified finance-role allowlist now includes both paths
