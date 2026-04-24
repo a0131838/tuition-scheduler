@@ -525,7 +525,7 @@ export async function createStudentContractDraft(input: {
   const reusableParentInfo =
     coerceParentInfo(replacementSource?.parentInfoJson) ??
     (flowType === StudentContractFlowType.RENEWAL || Boolean(replacementSource)
-      ? await getLatestReusableParentInfoForStudent(input.studentId, input.packageId)
+      ? await getLatestReusableParentInfoForStudent(input.studentId)
       : null);
   if (flowType === StudentContractFlowType.RENEWAL && !reusableParentInfo) {
     throw new Error("Renewal contracts need an existing parent profile. Use the first-purchase info link first.");

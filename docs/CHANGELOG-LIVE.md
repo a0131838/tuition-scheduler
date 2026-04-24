@@ -5741,3 +5741,19 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified a signed first-purchase contract view can now show `Create renewal contract / 创建续费合同`
   - verified the replacement-contract action still remains available for correction cases
+
+
+## 2026-04-24-r118
+
+- Scope: fix renewal contract availability so a signed first-purchase contract on the current package can provide the reusable parent info needed for renewal.
+- Key files:
+  - `lib/student-contract.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`
+- Risk impact (if any): Low. This release only changes how renewal parent-profile reuse is detected; it does not change signing, invoice creation, or partner-package logic.
+- Verification:
+  - `npm run build` passed
+  - verified a signed first-purchase contract on the same package now qualifies for `Create renewal contract / 创建续费合同`
+  - verified renewal draft creation now reuses parent info from the current package when needed

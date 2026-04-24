@@ -3192,3 +3192,17 @@
   - verify a signed first-purchase contract now exposes `Create renewal contract / 创建续费合同`
   - verify the replacement-contract CTA still remains visible for correction scenarios
   - task doc: `docs/tasks/TASK-20260424-package-contract-renewal-cta-after-first-purchase.md`
+
+
+## 2026-04-24-r118 Ready
+
+- Scope: let the current package's signed first-purchase contract count as reusable parent info for renewal.
+- Business impact:
+  - a package that already has a signed首购合同 now correctly shows `Create renewal contract / 创建续费合同`
+  - ops can start renewal directly from the same package workspace instead of being blocked by a false "no reusable parent profile" condition
+  - no signing, invoice, or partner-settlement rules changed
+- Validation:
+  - `npm run build`
+  - verify `赵测试 2`-style packages with only a signed current-package first-purchase contract now show the renewal CTA
+  - verify renewal draft creation succeeds from the same package workspace
+  - task doc: `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`

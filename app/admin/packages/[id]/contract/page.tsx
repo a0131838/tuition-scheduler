@@ -330,7 +330,7 @@ export default async function PackageContractPage({
     listStudentContractsForPackage(packageId),
     prisma.coursePackage
       .findUnique({ where: { id: packageId }, select: { studentId: true } })
-      .then((row) => (row ? hasReusableStudentContractParentInfo(row.studentId, packageId) : false)),
+      .then((row) => (row ? hasReusableStudentContractParentInfo(row.studentId) : false)),
     prisma.studentParentIntake.findFirst({
       where: { packageId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
