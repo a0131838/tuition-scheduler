@@ -221,6 +221,13 @@ export default async function StudentsPage({
     listRecentStudentParentIntakes(8),
   ]);
 
+  const activeParentIntakes = recentParentIntakes.filter(
+    (intake) => !intake.studentId && !intake.packageId && !intake.contractId
+  );
+  const archivedParentIntakes = recentParentIntakes.filter(
+    (intake) => intake.studentId || intake.packageId || intake.contractId
+  );
+
   const partnerSourceId = sources.find((s) => s.name === PARTNER_SOURCE_NAME)?.id ?? "";
   const partnerTypeId = types.find((x) => x.name === PARTNER_TYPE_NAME)?.id ?? "";
 
@@ -437,8 +444,8 @@ export default async function StudentsPage({
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          {recentParentIntakes.length ? (
-            recentParentIntakes.map((intake) => {
+          {activeParentIntakes.length ? (
+            activeParentIntakes.map((intake) => {
               const intakeHref = buildStudentParentIntakePath(intake.token);
               const intakeAbsoluteUrl = buildStudentParentIntakeAbsoluteUrl(intake.token);
               const canDeleteThisIntake =
@@ -534,24 +541,115 @@ export default async function StudentsPage({
                       ? ` · ${t(lang, "First purchase contract ready", "首购合同已准备")}`
                       : ""}
                   </div>
-                  {canDeleteParentIntakeLinks && !canDeleteThisIntake ? (
-                    <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
-                      {t(
-                        lang,
-                        "Used links stay in history. Only unused mistaken links can be deleted.",
-                        "已经用过的链接会保留在历史里，只有尚未使用的误建链接可以删除。"
-                      )}
-                    </div>
-                  ) : null}
                 </div>
               );
             })
           ) : (
             <div style={{ fontSize: 13, color: "#475569" }}>
-              {t(lang, "No parent intake links yet. Create one above to start the new-student flow.", "还没有家长资料链接。先在上方创建一个，启动新生建档流程。")}
+              {t(
+                lang,
+                "No active parent intake links right now. Create one above to start the new-student flow.",
+                "当前没有待使用的家长资料链接。先在上方创建一个，启动新生建档流程。"
+              )}
             </div>
           )}
         </div>
+
+        {archivedParentIntakes.length ? (
+          <details
+            style={{
+              border: "1px solid #dbeafe",
+              borderRadius: 12,
+              background: "#fff",
+              padding: 12,
+            }}
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 800, color: "#334155" }}>
+              {t(lang, "Used link history", "已使用链接历史")} ({archivedParentIntakes.length})
+            </summary>
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
+                {t(
+                  lang,
+                  "Submitted or already-linked parent intake rows stay here as history. Only unused mistaken links can be deleted.",
+                  "已经提交或已关联学生/课包/合同的家长资料链接会保留在这里作为历史。只有尚未使用的误建链接可以删除。"
+                )}
+              </div>
+              {archivedParentIntakes.map((intake) => {
+                const intakeHref = buildStudentParentIntakePath(intake.token);
+                const intakeAbsoluteUrl = buildStudentParentIntakeAbsoluteUrl(intake.token);
+                const tone =
+                  intake.status === "SUBMITTED"
+                    ? { bg: "#fef3c7", fg: "#92400e", border: "#fde68a" }
+                    : intake.status === "CONTRACT_READY"
+                      ? { bg: "#dcfce7", fg: "#166534", border: "#86efac" }
+                      : intake.status === "SIGNED"
+                        ? { bg: "#ecfdf3", fg: "#166534", border: "#86efac" }
+                        : { bg: "#f3f4f6", fg: "#475569", border: "#d1d5db" };
+                return (
+                  <div
+                    key={intake.id}
+                    style={{
+                      border: `1px solid ${tone.border}`,
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      background: "#fff",
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            minHeight: 28,
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            background: tone.bg,
+                            color: tone.fg,
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {intake.status}
+                        </span>
+                        <span style={{ fontSize: 12, color: "#64748b" }}>
+                          {t(lang, "Created", "创建于")} {intake.createdAt.toLocaleString("en-SG")}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <a href={intakeHref} target="_blank" rel="noreferrer">
+                          {t(lang, "Open link", "打开链接")}
+                        </a>
+                        <CopyTextButton
+                          text={intakeAbsoluteUrl}
+                          label={t(lang, "Copy link", "复制链接")}
+                          copiedLabel={t(lang, "Copied", "已复制")}
+                          style={{ borderRadius: 999, border: "1px solid #cbd5e1", background: "#fff", padding: "6px 10px", fontWeight: 700 }}
+                        />
+                        {intake.studentId ? (
+                          <a href={`/admin/students/${encodeURIComponent(intake.studentId)}`}>
+                            {t(lang, "Open student", "打开学生")}
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.5 }}>
+                      {intake.studentName
+                        ? `${t(lang, "Student", "学生")}: ${intake.studentName}`
+                        : t(lang, "Waiting for the parent to submit the student profile.", "正在等待家长提交学生资料。")}
+                      {intake.packageId && intake.contractId
+                        ? ` · ${t(lang, "First purchase contract ready", "首购合同已准备")}`
+                        : ""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+        ) : null}
       </div>
 
       <div

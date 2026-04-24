@@ -82,12 +82,14 @@
   - mistaken intake links that never created a student can now be removed directly from `/admin/students`
   - only the owner account `zhaohongwei0880@gmail.com` sees the delete action
   - once a link has been submitted or linked to a student/package/contract, it stays in history and cannot be deleted
+  - used parent-intake rows no longer crowd the main active list because they are collapsed under `Used link history / 已使用链接历史`
   - no student creation, contract flow, invoice flow, or partner logic changed
 - Validation:
   - `npm run build`
   - verify owner account sees `Delete link / 删除链接` only on unused rows
   - verify non-owner accounts do not see the action
   - verify submitted rows stay visible but undeletable
+  - verify submitted rows render under the history section instead of the main active queue
 
 ## 2026-04-23-r92 Ready
 

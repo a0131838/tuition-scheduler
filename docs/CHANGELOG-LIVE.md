@@ -33,6 +33,7 @@ This file is the single source of truth for what changed in production.
   - verify only `zhaohongwei0880@gmail.com` sees `Delete link / 删除链接`
   - verify an unused `LINK_SENT` intake can be deleted
   - verify submitted or contract-ready intakes do not show delete and cannot be deleted through the server action
+  - verify used parent-intake links now live under `Used link history / 已使用链接历史` instead of occupying the main active list
 - Rollback point: previous production commit before `2026-04-24-r112`.
 
 ## 2026-04-24-r111

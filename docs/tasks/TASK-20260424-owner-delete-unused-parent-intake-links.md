@@ -20,6 +20,7 @@ Allow only `zhao hongwei` to delete mistaken parent-intake links from the studen
   - has no `contractId`
   - is still `LINK_SENT` or already `VOID`
 - show `Delete link / 删除链接` only for those eligible rows on `/admin/students`
+- collapse already-used links into `Used link history / 已使用链接历史` so the main list only shows active intake links
 
 ## Non-goals
 
@@ -40,3 +41,4 @@ Allow only `zhao hongwei` to delete mistaken parent-intake links from the studen
 - owner account sees `Delete link / 删除链接` only on unused mistaken links
 - submitted rows keep history and do not show delete
 - non-owner accounts cannot delete through UI or server action
+- used rows move into the history section instead of staying in the main active list
