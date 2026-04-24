@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-24-r103
+
+- Release ID: `2026-04-24-r103`
+- Date/Time (Asia/Shanghai): `2026-04-24`
+- Deployment status: `READY`
+- Scope: move the heavy student-contract workspace out of package billing into its own package contract page, and leave a lighter contract summary/entry point inside billing.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `docs/tasks/TASK-20260424-package-contract-workspace-page.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This changes admin navigation and where contract actions live, but does not change contract state rules, invoice creation, signed PDFs, or partner-settlement exclusions.
+- Verification:
+  - `npm run build`
+  - verify package billing now shows a compact contract summary with `Open contract workspace`
+  - verify `/admin/packages/[id]/contract` contains parent-link, draft, sign-link, replacement, and void-history actions
+- Rollback point: previous production commit before `2026-04-24-r103`.
+
 ## 2026-04-24-r102
 
 - Release ID: `2026-04-24-r102`

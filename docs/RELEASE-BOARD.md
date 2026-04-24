@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-24-r102` (public contract signature-pad submit sync fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-24-r103` (separate package contract workspace page), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -35,6 +35,7 @@
 - Student-type alias risk: `2026-04-23-r92` changes which student type the new parent-intake flow assigns for direct-billing students, so deploy verification must confirm new intake-created students now reuse the existing `自己学生-*` taxonomy and that legacy `直客学生` exports still render as direct-billing.
 - Contract-history risk: `2026-04-23-r93` changes package billing to ignore void contracts when choosing the current active contract and adds physical deletion for unsigned/uninvoiced void drafts, so verification must confirm safe drafts can be removed while signed/invoiced void rows remain in collapsed history.
 - Signature-submit risk: `2026-04-24-r102` changes how the public handwritten-signature pad syncs its hidden payload while the parent is drawing, so verification should confirm a quick draw-and-submit no longer falsely triggers the “please draw the handwritten signature” error.
+- Contract-workspace navigation risk: `2026-04-24-r103` moves the student-contract workflow off the package billing page into a dedicated package contract page, so verification should confirm staff can still reach every contract action from the new page and that billing now feels lighter.
 
 ## Process Guard (Installed)
 
@@ -94,6 +95,19 @@
   - `npm run build`
   - verify drawing a signature and immediately clicking `Sign contract` succeeds
   - verify clearing the signature still empties the hidden form value and prevents submit until the parent signs again
+
+## 2026-04-24-r103 Ready
+
+- Scope: move the heavy student-contract workflow into `/admin/packages/[id]/contract` and leave a smaller contract summary + entry point inside package billing.
+- Business impact:
+  - package billing now stays focused on invoice and receipt work instead of carrying the full contract workspace inline
+  - contract drafting, parent links, signed history, replacement versions, and void-history cleanup now live on a dedicated package contract page
+  - partner-settlement packages still do not enter the student-contract workflow
+  - no contract-state rules, invoice generation logic, signed-PDF content, or renewal hour top-up behavior changed
+- Validation:
+  - `npm run build`
+  - verify package billing shows a compact contract summary and `Open contract workspace`
+  - verify `/admin/packages/[id]/contract` exposes the same contract actions that previously lived inline on billing
 
 ## 2026-04-23-r87 Ready
 
