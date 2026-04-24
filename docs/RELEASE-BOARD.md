@@ -2931,3 +2931,15 @@
   - verify the signed-result card no longer duplicates bilingual labels on invoice, gate, and approval rows
   - task doc: `docs/tasks/TASK-20260424-student-contract-billing-copy-and-action-simplify.md`
   - release-doc bundle finalized in the same release train
+
+## 2026-04-24-r101 Ready
+
+- Scope: make the public contract sign page refresh into a clear submitted-success state after the parent clicks `Sign contract`, instead of silently landing back on the same page.
+- Business impact:
+  - parents now see an explicit green confirmation banner immediately after a successful sign submit
+  - the public sign route is revalidated before redirect so the signed-result view is less likely to lag behind the database update
+  - no contract-status rules, invoice creation logic, signed PDF output, or partner exclusions changed
+- Validation:
+  - `npm run build`
+  - verify sign submit revalidates the public contract route before redirect
+  - verify `?msg=signed` now shows a clear success banner at the top of the sign page

@@ -5450,3 +5450,17 @@ This file is the single source of truth for what changed in production.
   - verified contract-draft block now uses one button to save business fields and generate the latest sign link
   - verified the signed-result block no longer repeats bilingual invoice and approval labels
   - release-doc bundle finalized with matching task note
+
+## 2026-04-24-r101
+
+- Scope: make the public contract sign page immediately show a successful submission state after the parent signs, instead of quietly refreshing back into the same page.
+- Key files:
+  - `app/contract/[token]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-contract-sign-success-feedback.md`
+- Risk impact (if any): Low. This release only changes the sign-page refresh and success feedback flow; it does not change contract snapshot content, invoice creation rules, or package balances.
+- Verification:
+  - `npm run build` passed
+  - verified sign submit now revalidates the public contract route before redirecting back
+  - verified the sign page now shows a green `Signature submitted successfully` message after submit

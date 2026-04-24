@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import ContractSignaturePad from "@/app/contract/_components/ContractSignaturePad";
 import {
@@ -6,6 +7,9 @@ import {
   markStudentContractSignViewed,
   signStudentContract,
 } from "@/lib/student-contract";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function isNextRedirectError(error: unknown) {
   if (!error || typeof error !== "object") return false;
@@ -189,6 +193,8 @@ export default async function ContractSignPage({
         signatureDataUrl,
         signerIp: null,
       });
+      revalidatePath(buildStudentContractSignPath(tokenValue));
+      revalidatePath(`/api/exports/student-contract/${next.id}`);
       redirect(`${buildStudentContractSignPath(tokenValue)}?msg=signed&contractId=${encodeURIComponent(next.id)}`);
     } catch (error) {
       if (isNextRedirectError(error)) throw error;
@@ -226,6 +232,11 @@ export default async function ContractSignPage({
       {msg === "ready" ? (
         <div style={{ ...cardStyle("#eff6ff"), borderColor: "#93c5fd", color: "#1d4ed8" }}>
           正式合同已准备完成，请核对后签署。签字完成后会自动生成发票草稿。 / The final contract is ready. Please review and sign. The invoice draft will be created automatically after signing.
+        </div>
+      ) : null}
+      {msg === "signed" ? (
+        <div style={{ ...cardStyle("#ecfdf3"), borderColor: "#86efac", color: "#166534" }}>
+          签署已提交成功，系统正在显示最终结果。若下方还没有切换到已签状态，请刷新一次页面。 / Signature submitted successfully. The final signed result is loading now. If the status below has not switched yet, refresh once.
         </div>
       ) : null}
 
