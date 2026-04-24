@@ -3029,3 +3029,17 @@
   - verify the seal sits beside the subtotal block
   - verify subtotal / GST / amount due remain readable
   - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-near-subtotal.md`
+
+## 2026-04-24-r108 Ready
+
+- Scope: push the optional partner invoice seal closer so it visibly anchors to the subtotal block instead of reading as a detached page-bottom element.
+- Business impact:
+  - finance now sees the seal clearly attached to the subtotal summary area
+  - the subtotal block remains readable while the stamp placement looks intentional
+  - no invoice line rendering, totals, approval flow, or receipt behavior changed
+- Validation:
+  - `npm run build`
+  - export a sealed partner invoice
+  - verify the seal visibly overlaps or hugs the subtotal area
+  - verify subtotal / GST / amount due remain readable
+  - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-subtotal-overlap-followup.md`

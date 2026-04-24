@@ -5563,3 +5563,17 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified the seal now renders next to the subtotal block on the final page
   - verified the subtotal values remain readable with the seal present
+
+## 2026-04-24-r108
+
+- Scope: tighten the partner invoice seal placement again so the seal visibly overlaps the subtotal summary area instead of merely sitting somewhere lower on the same page.
+- Key files:
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-partner-invoice-seal-subtotal-overlap-followup.md`
+- Risk impact (if any): Low. This release only adjusts the optional seal placement on partner invoice PDFs; it does not change invoice rows, totals, approvals, or receipt behavior.
+- Verification:
+  - `npm run build` passed
+  - verified the seal now sits directly against the subtotal block
+  - verified subtotal / GST / amount due stay readable after the stronger seal placement

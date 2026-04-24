@@ -228,9 +228,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
   if (withSeal) {
     try {
-      const sealWidth = 101;
-      const sealX = totalBoxX - sealWidth - 18;
-      const sealY = totalBoxY - 6;
+      const sealWidth = 118;
+      const sealX = totalBoxX - 54;
+      const sealY = totalBoxY + 6;
       doc.image(SEAL_PATH, sealX, sealY, { width: sealWidth });
     } catch {}
   }
