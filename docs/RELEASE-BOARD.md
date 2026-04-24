@@ -3137,3 +3137,17 @@
   - verify the original lower duplicate location is gone
   - verify the dedicated first-purchase page field labels are no longer duplicated
   - task doc: `docs/tasks/TASK-20260424-student-detail-first-purchase-cta-top.md`
+
+## 2026-04-24-r114 Ready
+
+- Scope: fix the first-purchase setup redirect flow so successful submits do not render a red `NEXT_REDIRECT` banner on the dedicated setup page.
+- Business impact:
+  - ops can complete `创建首购课包和合同` without seeing a misleading framework error after success
+  - successful submits now continue into the package contract workspace as intended
+  - genuine validation or business-rule failures still route back to the setup page with a readable message
+  - no contract rules, package payloads, or intake eligibility logic changed
+- Validation:
+  - `npm run build`
+  - verify successful submit rethrows the redirect and lands in `/admin/packages/[id]/contract`
+  - verify ordinary failures still redirect back with `err=...` instead of crashing
+  - task doc: `docs/tasks/TASK-20260424-first-purchase-redirect-error-fix.md`

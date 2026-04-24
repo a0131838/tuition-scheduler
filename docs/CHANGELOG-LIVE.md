@@ -5684,3 +5684,17 @@ This file is the single source of truth for what changed in production.
   - verified the first-purchase card renders before summary cards and the sticky student workbench
   - verified the old mid-page duplicate card is removed
   - verified the dedicated first-purchase page no longer repeats bilingual field labels such as `Course / 课程 / 课程 / Course`
+
+## 2026-04-24-r114
+
+- Scope: fix the first-purchase setup server action so a successful create-and-redirect no longer gets swallowed into a visible `NEXT_REDIRECT` error banner.
+- Key files:
+  - `app/admin/students/[id]/first-purchase/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-first-purchase-redirect-error-fix.md`
+- Risk impact (if any): Low. This release only fixes redirect handling after a successful first-purchase create; it does not change intake eligibility rules, package creation payloads, or contract generation logic.
+- Verification:
+  - `npm run build` passed
+  - verified successful first-purchase submit can rethrow the native Next.js redirect instead of rendering `NEXT_REDIRECT`
+  - verified real failures still redirect back to the first-purchase page with a normal error message
