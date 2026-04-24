@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG, packageModeFromNote } from "@/lib/package-mode";
 import { parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
+import {
+  buildPackageFinanceGateReason,
+  getLatestPackageInvoiceApproval,
+  shouldRequirePackageInvoiceGate,
+} from "@/lib/package-finance-gate";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -78,7 +83,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   const pkg = await prisma.coursePackage.findUnique({
     where: { id },
-    select: { note: true, type: true, studentId: true, courseId: true },
+    select: {
+      note: true,
+      type: true,
+      studentId: true,
+      courseId: true,
+      financeGateStatus: true,
+    },
   });
   if (!pkg) return bad("Package not found", 404);
   const sharedStudentIds = Array.from(new Set(sharedStudentIdsRaw)).filter((sid) => sid !== pkg.studentId);
@@ -137,6 +148,27 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (overlap) return bad("Overlapping ACTIVE package exists for same mode", 409);
   }
 
+  const requiresInvoiceGate = shouldRequirePackageInvoiceGate({
+    settlementMode: settlementMode as any,
+  });
+  const latestApproval = await getLatestPackageInvoiceApproval(id);
+  const nextFinanceGateStatus = requiresInvoiceGate
+    ? latestApproval?.status === "APPROVED"
+      ? "SCHEDULABLE"
+      : latestApproval?.status === "REJECTED"
+      ? "BLOCKED"
+      : latestApproval?.status === "PENDING_MANAGER"
+      ? "INVOICE_PENDING_MANAGER"
+      : pkg.financeGateStatus === "EXEMPT"
+      ? "EXEMPT"
+      : pkg.financeGateStatus
+    : "EXEMPT";
+  const nextFinanceGateReason = buildPackageFinanceGateReason({
+    status: nextFinanceGateStatus,
+    settlementMode: settlementMode as any,
+    rejectReason: latestApproval?.managerRejectReason ?? null,
+  });
+
   await prisma.$transaction(async (tx) => {
     await tx.coursePackage.update({
       where: { id },
@@ -150,6 +182,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         paidAmount: paid ? paidAmount : null,
         paidNote: paid ? paidNote || null : null,
         note: note || null,
+        financeGateStatus: nextFinanceGateStatus as any,
+        financeGateReason: nextFinanceGateReason,
+        financeGateUpdatedAt: new Date(),
+        financeGateUpdatedBy: "system.package-edit@sgtmanage.local",
         sharedStudents: {
           deleteMany: {},
           ...(sharedStudentIds.length

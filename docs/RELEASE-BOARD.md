@@ -2859,3 +2859,16 @@
   - verify parent intake page shows `Parent profile confirmation / 家长资料确认`
   - verify parent sign page shows `Agreement preview / 正式合同预览`
   - verify temporary QA student/package/contract/auth-session data was removed afterwards
+
+## 2026-04-24-r96 Ready
+
+- Scope: make package edits resync invoice-gate status and reason when settlement mode changes, so direct-billing packages no longer keep stale partner-settlement wording.
+- Business impact:
+  - editing a package from partner settlement back to direct-billing now also refreshes the package invoice-gate copy instead of leaving old partner wording behind
+  - approval-backed package gate states remain intact when approval history exists
+  - packages without approval history now at least fall back to a correct generic direct-billing exempt message instead of the wrong partner message
+  - no receipt rules, invoice totals, partner settlement calculations, or scheduling rules changed
+- Validation:
+  - `npm run build`
+  - verify `赵测试` package now stores `settlementMode = null`
+  - verify `赵测试` package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`

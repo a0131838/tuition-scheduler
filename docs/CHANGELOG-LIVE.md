@@ -5375,3 +5375,17 @@ This file is the single source of truth for what changed in production.
   - local QA sign page showed `Agreement preview / 正式合同预览`
   - local QA sign-stage billing page showed `Waiting for signature`
   - temporary QA student/package/contract/auth-session data was deleted after verification
+
+## 2026-04-24-r96
+
+- Scope: resync package invoice-gate state when ops edit package settlement mode, so direct-billing packages do not keep stale partner-settlement gate copy.
+- Key files:
+  - `app/api/admin/packages/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-package-settlement-mode-gate-resync.md`
+- Risk impact (if any): Low. This release only recalculates package invoice-gate display state during package edits; it does not change receipt rules, invoice math, partner settlement math, or scheduling logic.
+- Verification:
+  - `npm run build` passed
+  - verified `赵测试` package now shows `settlementMode = null`
+  - verified the same package now stores `financeGateReason = Package is exempt from direct-billing invoice gate.`
