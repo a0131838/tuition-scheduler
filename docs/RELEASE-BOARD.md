@@ -3165,3 +3165,17 @@
   - verify signed and unsigned contract downloads use the new business-friendly filename pattern
   - verify parent token downloads and admin downloads share the same naming logic
   - task doc: `docs/tasks/TASK-20260424-student-contract-download-filename.md`
+
+## 2026-04-24-r116 Ready
+
+- Scope: fix the stored signed-contract download branch so older saved PDFs also use the business-readable filename instead of the old technical fallback.
+- Business impact:
+  - already-saved signed contract PDFs now download with the same business-friendly naming pattern as regenerated PDFs
+  - admin downloads and parent-access downloads no longer diverge based on whether the PDF came from storage or regeneration
+  - inline preview responses now advertise the same UTF-8 filename too
+  - no contract, signing, invoice, or permission logic changed
+- Validation:
+  - `npm run build`
+  - verify stored signed-contract responses use the business filename in `Content-Disposition`
+  - verify inline and attachment headers both include the UTF-8 filename
+  - task doc: `docs/tasks/TASK-20260424-stored-student-contract-download-filename-fix.md`

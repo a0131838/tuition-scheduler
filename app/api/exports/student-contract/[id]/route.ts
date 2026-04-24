@@ -120,10 +120,10 @@ export async function GET(
       return buildStoredBusinessFileResponse(req, {
         allowedPrefix: BUSINESS_UPLOAD_PREFIX.contracts,
         relativePath: contract.signedPdfPath,
-        originalFileName: path.basename(asciiFallbackName),
+        originalFileName: downloadName,
         fallbackFileName: "student-contract-signed.pdf",
         contentType: "application/pdf",
-        inlineFileName: asciiFallbackName,
+        inlineFileName: downloadName,
       });
     }
 

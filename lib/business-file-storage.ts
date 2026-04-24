@@ -209,7 +209,16 @@ export async function buildStoredBusinessFileResponse(
       `attachment; filename="${asciiName.replace(/"/g, "")}"; filename*=UTF-8''${encodedName}`
     );
   } else if (options.inlineFileName) {
-    headers.set("content-disposition", `inline; filename="${path.basename(options.inlineFileName).replace(/"/g, "")}"`);
+    const inlineSafeName = path.basename(options.inlineFileName);
+    const inlineAsciiName = toAsciiFilename(
+      inlineSafeName,
+      path.basename(options.fallbackFileName, path.extname(options.fallbackFileName))
+    );
+    const inlineEncodedName = encodeURIComponent(inlineSafeName);
+    headers.set(
+      "content-disposition",
+      `inline; filename="${inlineAsciiName.replace(/"/g, "")}"; filename*=UTF-8''${inlineEncodedName}`
+    );
   }
 
   return new Response(body, { status: 200, headers });

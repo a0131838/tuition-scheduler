@@ -5712,3 +5712,18 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified contract downloads now use `学生名_课程名_首购/续费合同_已签/草稿_日期.pdf`
   - verified the same filename logic is used for admin and parent token-based downloads
+
+## 2026-04-24-r116
+
+- Scope: fix stored signed student-contract downloads so already-saved PDFs also use the new business-friendly filename instead of falling back to an old technical name.
+- Key files:
+  - `app/api/exports/student-contract/[id]/route.ts`
+  - `lib/business-file-storage.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-stored-student-contract-download-filename-fix.md`
+- Risk impact (if any): Low. This release only fixes the content-disposition filename for stored signed contract PDFs and aligns inline/download headers; it does not change contract content, signing, invoice generation, or access control.
+- Verification:
+  - `npm run build` passed
+  - verified the stored signed-contract response now passes the business filename instead of the ASCII fallback
+  - verified inline and attachment responses share the same UTF-8 filename logic
