@@ -2985,3 +2985,18 @@
   - verify `/contract-intake/[token]` marks address as optional and accepts submission without it
   - verify contract snapshot generation omits the address line when address is absent
   - task doc: `docs/tasks/TASK-20260424-parent-address-optional-intake.md`
+
+## 2026-04-24-r105 Ready
+
+- Scope: render the full partner invoice settlement list across paginated PDF pages instead of collapsing the export after the first 10 rows.
+- Business impact:
+  - finance can print and share partner invoices with every selected settlement line visible
+  - long partner invoice batches no longer end with a hidden `... and N more items` summary
+  - continuation pages keep invoice/table headers so reviewers do not lose context across pages
+  - no invoice totals, approval flow, or receipt behavior changed
+- Validation:
+  - `npm run build`
+  - export a partner invoice with more than 10 selected settlement rows
+  - verify every row appears across one or more pages
+  - verify the old collapsed-summary line is gone
+  - task doc: `docs/tasks/TASK-20260424-partner-invoice-full-line-pagination.md`

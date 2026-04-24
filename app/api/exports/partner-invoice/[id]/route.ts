@@ -46,11 +46,22 @@ function displayPartnerInvoiceLineDescription(description: string) {
   return raw;
 }
 
-function text(doc: PDFDoc, str: string, x: number, y: number, size = 10, bold = false, color = "#111827", width?: number, align: "left" | "right" | "center" = "left") {
+function text(
+  doc: PDFDoc,
+  str: string,
+  x: number,
+  y: number,
+  size = 10,
+  bold = false,
+  color = "#111827",
+  width?: number,
+  align: "left" | "right" | "center" = "left",
+  lineBreak = false
+) {
   if (bold) setPdfBoldFont(doc);
   else setPdfFont(doc);
   doc.fillColor(color).fontSize(size);
-  doc.text(str, x, y, { width, align, lineBreak: false });
+  doc.text(str, x, y, { width, align, lineBreak });
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -59,6 +70,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const invoice = await getPartnerInvoiceById(id);
   if (!invoice) return new Response("Invoice not found", { status: 404 });
+  const partnerInvoice = invoice;
 
   const doc = new PDFDocument({ size: "A4", margin: 0 });
   setPdfFont(doc);
@@ -66,87 +78,131 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const x = 16;
   const y = 16;
   const w = 554;
-  const h = 620;
-  doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, h).stroke();
-
-  try {
-    doc.image(LOGO_PATH, x + 14, y + 10, { width: 155 });
-  } catch {
-    try {
-      doc.image(LOGO_FALLBACK_PATH, x + 14, y + 10, { width: 155 });
-    } catch {}
-  }
-  text(doc, "INVOICE", x + w - 180, y + 18, 30, true, ORANGE, 165, "right");
-
-  const companyY = y + 78;
-  const leftInfoW = 332;
-  text(doc, "Company:  Reshape Great Thinkers Pte. Ltd", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
-  text(doc, "Address:  150 Orchard Road, #08-15, Orchard Plaza, Singapore 238841", x + 8, companyY + 20, 9, true, "#111827", leftInfoW, "left");
-  text(doc, "Phone:  (65) 80421572", x + 8, companyY + 40, 9, true, "#111827", leftInfoW, "left");
-  text(doc, "Email:  contact.greatthinkers@gmail.com", x + 8, companyY + 60, 9, true, "#111827", leftInfoW, "left");
-  text(doc, "Company Reg No. 202303312G", x + 8, companyY + 80, 9, true, "#111827", leftInfoW, "left");
-
-  const rightPadding = 12;
-  const rightValueW = 96;
-  const rightGap = 4;
-  const rightLabelW = 96;
-  const rightValueX = x + w - rightPadding - rightValueW;
-  const rightLabelX = rightValueX - rightGap - rightLabelW;
-  const rightY = companyY - 2;
-  const rightRows: Array<[string, string]> = [
-    ["Invoice Date", fmtDate(invoice.issueDate)],
-    ["Invoice No.", invoice.invoiceNo],
-    ["Payment Terms", invoice.paymentTerms || "Immediate"],
-    ["Due Date", fmtDate(invoice.dueDate)],
-    ["Mode", invoice.mode === "ONLINE_PACKAGE_END" ? "Online" : "Offline"],
-    ["Month", invoice.monthKey ?? "-"],
-  ];
-  if (invoice.courseStartDate) rightRows.push(["Course Start", fmtDate(invoice.courseStartDate)]);
-  if (invoice.courseEndDate) rightRows.push(["Course End", fmtDate(invoice.courseEndDate)]);
-  rightRows.forEach((r, i) => {
-    const yy = rightY + i * 21;
-    text(doc, r[0], rightLabelX, yy, 10, true, "#111827", rightLabelW, "right");
-    text(doc, r[1], rightValueX, yy, 9, false, "#111827", rightValueW, "right");
-  });
-
-  const billY = y + 180;
-  doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
-  text(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
-  text(doc, `Customer Name   ${invoice.billTo || invoice.partnerName}`, x + 8, billY + 36, 10, true);
-
-  const tableY = y + 258;
   const colX = [x + 10, x + 54, x + 292, x + 372, x + 450];
   const colW = [42, 236, 78, 78, 96];
-  text(doc, "Qty", colX[0], tableY, 10, true);
-  text(doc, "Description", colX[1], tableY, 10, true);
-  text(doc, "Amount", colX[2], tableY, 10, true);
-  text(doc, "GST", colX[3], tableY, 10, true);
-  text(doc, "Total", colX[4], tableY, 10, true);
+  const pageBottom = 826;
+  const notesStartY = 646;
+  const tableHeaderGap = 24;
+  const continuationTopY = y + 52;
+  const totalBoxX = x + 338;
+  const totalLabelW = 94;
+  const totalValueW = 84;
 
-  const maxRows = 10;
-  const lines = invoice.lines.slice(0, maxRows);
-  lines.forEach((line, idx) => {
-    const yy = tableY + 24 + idx * 22;
+  function drawPageFrame() {
+    doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, pageBottom - y).stroke();
+  }
+
+  function drawLogoAndTitle() {
+    try {
+      doc.image(LOGO_PATH, x + 14, y + 10, { width: 155 });
+    } catch {
+      try {
+        doc.image(LOGO_FALLBACK_PATH, x + 14, y + 10, { width: 155 });
+      } catch {}
+    }
+    text(doc, "INVOICE", x + w - 180, y + 18, 30, true, ORANGE, 165, "right");
+  }
+
+  function drawFirstPageHeader() {
+    drawPageFrame();
+    drawLogoAndTitle();
+
+    const companyY = y + 78;
+    const leftInfoW = 332;
+    text(doc, "Company:  Reshape Great Thinkers Pte. Ltd", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
+    text(doc, "Address:  150 Orchard Road, #08-15, Orchard Plaza, Singapore 238841", x + 8, companyY + 20, 9, true, "#111827", leftInfoW, "left");
+    text(doc, "Phone:  (65) 80421572", x + 8, companyY + 40, 9, true, "#111827", leftInfoW, "left");
+    text(doc, "Email:  contact.greatthinkers@gmail.com", x + 8, companyY + 60, 9, true, "#111827", leftInfoW, "left");
+    text(doc, "Company Reg No. 202303312G", x + 8, companyY + 80, 9, true, "#111827", leftInfoW, "left");
+
+    const rightPadding = 12;
+    const rightValueW = 96;
+    const rightGap = 4;
+    const rightLabelW = 96;
+    const rightValueX = x + w - rightPadding - rightValueW;
+    const rightLabelX = rightValueX - rightGap - rightLabelW;
+    const rightY = companyY - 2;
+    const rightRows: Array<[string, string]> = [
+      ["Invoice Date", fmtDate(partnerInvoice.issueDate)],
+      ["Invoice No.", partnerInvoice.invoiceNo],
+      ["Payment Terms", partnerInvoice.paymentTerms || "Immediate"],
+      ["Due Date", fmtDate(partnerInvoice.dueDate)],
+      ["Mode", partnerInvoice.mode === "ONLINE_PACKAGE_END" ? "Online" : "Offline"],
+      ["Month", partnerInvoice.monthKey ?? "-"],
+    ];
+    if (partnerInvoice.courseStartDate) rightRows.push(["Course Start", fmtDate(partnerInvoice.courseStartDate)]);
+    if (partnerInvoice.courseEndDate) rightRows.push(["Course End", fmtDate(partnerInvoice.courseEndDate)]);
+    rightRows.forEach((r, i) => {
+      const yy = rightY + i * 21;
+      text(doc, r[0], rightLabelX, yy, 10, true, "#111827", rightLabelW, "right");
+      text(doc, r[1], rightValueX, yy, 9, false, "#111827", rightValueW, "right");
+    });
+
+    const billY = y + 180;
+    doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
+    text(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
+    text(doc, `Customer Name   ${partnerInvoice.billTo || partnerInvoice.partnerName}`, x + 8, billY + 36, 10, true);
+
+    return y + 258;
+  }
+
+  function drawContinuationHeader() {
+    doc.addPage({ size: "A4", margin: 0 });
+    drawPageFrame();
+    text(doc, "INVOICE (continued)", x + 12, y + 18, 18, true, ORANGE, 220, "left");
+    text(doc, `Invoice No. ${partnerInvoice.invoiceNo}`, x + w - 180, y + 18, 10, true, "#111827", 168, "right");
+    text(doc, `Bill To: ${partnerInvoice.billTo || partnerInvoice.partnerName}`, x + 12, y + 42, 10, true, "#111827", 360, "left");
+    return continuationTopY;
+  }
+
+  function drawTableHeader(tableY: number) {
+    text(doc, "Qty", colX[0], tableY, 10, true);
+    text(doc, "Description", colX[1], tableY, 10, true);
+    text(doc, "Amount", colX[2], tableY, 10, true);
+    text(doc, "GST", colX[3], tableY, 10, true);
+    text(doc, "Total", colX[4], tableY, 10, true);
+    return tableY + tableHeaderGap;
+  }
+
+  function rowHeightFor(description: string) {
+    setPdfFont(doc);
+    doc.fontSize(9);
+    const descHeight = doc.heightOfString(description, { width: colW[1], align: "left" });
+    return Math.max(22, Math.ceil(descHeight) + 4);
+  }
+
+  function renderLineRow(line: (typeof partnerInvoice.lines)[number], yy: number, rowHeight: number) {
+    const description = displayPartnerInvoiceLineDescription(line.description);
     text(doc, fmtQty(line.quantity), colX[0] + 8, yy, 9);
-    text(doc, displayPartnerInvoiceLineDescription(line.description), colX[1], yy, 9, false, "#111827", colW[1]);
+    text(doc, description, colX[1], yy, 9, false, "#111827", colW[1], "left", true);
     text(doc, money(line.amount), colX[2], yy, 9);
     text(doc, money(line.gstAmount), colX[3], yy, 9);
     text(doc, money(line.totalAmount), colX[4], yy, 9);
-  });
-  if (invoice.lines.length > maxRows) {
-    const yy = tableY + 24 + maxRows * 22;
-    text(doc, `... and ${invoice.lines.length - maxRows} more items`, colX[1], yy, 9, false, "#6b7280", 220);
+    return yy + rowHeight;
   }
 
-  const totalBoxX = x + 338;
-  const totalBoxY = y + h - 90;
-  const totalLabelW = 94;
-  const totalValueW = 84;
+  let currentY = drawTableHeader(drawFirstPageHeader());
+  for (const line of partnerInvoice.lines) {
+    const description = displayPartnerInvoiceLineDescription(line.description);
+    const rowHeight = rowHeightFor(description);
+    const needsContinuation = currentY + rowHeight > notesStartY - 12;
+    if (needsContinuation) {
+      currentY = drawTableHeader(drawContinuationHeader());
+    }
+    currentY = renderLineRow(line, currentY, rowHeight);
+  }
+
   const totalRows: Array<[string, string]> = [
-    ["Subtotal", money(invoice.amount)],
-    ["GST Total", money(invoice.gstAmount)],
-    ["Amount Due", money(invoice.totalAmount)],
+    ["Subtotal", money(partnerInvoice.amount)],
+    ["GST Total", money(partnerInvoice.gstAmount)],
+    ["Amount Due", money(partnerInvoice.totalAmount)],
   ];
+  const totalsHeight = totalRows.length * 24;
+  const noteBlockHeight = 206;
+  if (currentY + totalsHeight + noteBlockHeight > pageBottom - 10) {
+    currentY = drawContinuationHeader();
+  }
+  const totalBoxY = Math.max(currentY + 16, pageBottom - 90);
   totalRows.forEach((r, i) => {
     const yy = totalBoxY + i * 24;
     text(doc, r[0], totalBoxX, yy + 5, 10, true, "#111827", totalLabelW - 2, "right");
@@ -154,7 +210,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     text(doc, r[1], totalBoxX + totalLabelW + 4, yy + 5, 9, false, "#111827", totalValueW - 8, "right");
   });
 
-  const noteY = y + h + 18;
+  const noteY = Math.max(totalBoxY + totalsHeight + 12, notesStartY);
   text(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
   text(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
   text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
@@ -168,14 +224,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   text(doc, "Currency: SGD", x + 4, noteY + 184, 10);
   if (withSeal) {
     try {
-      doc.image(SEAL_PATH, x + w - 284, y + h - 118, { width: 101 });
+      doc.image(SEAL_PATH, x + w - 284, pageBottom - 118, { width: 101 });
     } catch {}
   }
 
   const stream = streamPdf(doc);
   const fileName = withSeal
-    ? `partner_invoice_${safeName(invoice.invoiceNo)}_sealed.pdf`
-    : `partner_invoice_${safeName(invoice.invoiceNo)}.pdf`;
+    ? `partner_invoice_${safeName(partnerInvoice.invoiceNo)}_sealed.pdf`
+    : `partner_invoice_${safeName(partnerInvoice.invoiceNo)}.pdf`;
   const fileNameAscii = fileName.replace(/[^\x20-\x7E]/g, "_");
   const fileNameUtf8 = encodeURIComponent(fileName);
   return new Response(stream as any, {

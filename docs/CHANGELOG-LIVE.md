@@ -5520,3 +5520,18 @@ This file is the single source of truth for what changed in production.
   - verified both `/student-intake/[token]` and `/contract-intake/[token]` no longer require address
   - verified backend intake submission succeeds without address
   - verified generated contract snapshots omit the address row when no address is present
+
+## 2026-04-24-r105
+
+- Scope: stop collapsing partner invoice PDFs after the first 10 selected settlement lines and instead render every chosen line item across paginated pages.
+- Key files:
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-partner-invoice-full-line-pagination.md`
+- Risk impact (if any): Low to medium. This release only changes partner invoice PDF layout and pagination; it does not change invoice totals, settlement selection, approval rules, or receipt behavior.
+- Verification:
+  - `npm run build` passed
+  - verified partner invoice export no longer truncates to 10 rows
+  - verified continuation pages repeat invoice/table headers and show full multiline descriptions
+  - verified the old `... and N more items` summary is no longer rendered
