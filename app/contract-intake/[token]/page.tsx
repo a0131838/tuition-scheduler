@@ -161,7 +161,7 @@ export default async function ContractIntakePage({
     const isLegalGuardian = String(formData.get("isLegalGuardian") ?? "") === "yes";
 
     if (!tokenValue) redirect(`${buildStudentContractIntakePath(token)}?err=missing`);
-    if (!parentFullNameEn || !phone || !email || !address || !relationshipToStudent) {
+    if (!parentFullNameEn || !phone || !email || !relationshipToStudent) {
       redirect(`${buildStudentContractIntakePath(tokenValue)}?err=missing`);
     }
 
@@ -303,7 +303,7 @@ export default async function ContractIntakePage({
             <input name="email" type="email" defaultValue={defaultInfo?.email ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
           </label>
           <label style={{ ...fieldLabelStyle(), gridColumn: "1 / -1" }}>
-            Address / 地址 *
+            Address / 地址（选填）
             <input name="address" defaultValue={defaultInfo?.address ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
           </label>
           <label style={fieldLabelStyle()}>

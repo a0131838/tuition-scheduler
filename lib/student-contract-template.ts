@@ -8,7 +8,7 @@ export type ContractParentInfo = {
   parentFullNameZh?: string | null;
   phone: string;
   email: string;
-  address: string;
+  address?: string | null;
   relationshipToStudent: string;
   isLegalGuardian: boolean;
   emergencyContactName?: string | null;
@@ -163,7 +163,7 @@ export function getDefaultStudentContractTemplateInput() {
       <p>
         Contact number / 联系电话: {{phone}}<br/>
         Email / 电邮: {{email}}<br/>
-        Address / 地址: {{address}}<br/>
+        {{address_block}}
         Relationship to student / 与学生关系: {{relationship}}<br/>
         Legal guardian / 法定监护人: {{legal_guardian}}
       </p>
@@ -188,6 +188,7 @@ export function buildStudentContractSnapshot(input: {
     ? ` / ${escapeHtml(input.parentInfo.parentFullNameZh.trim())}`
     : "";
   const contractTypeLabel = input.businessInfo.contractTypeLabel?.trim() || "Tuition agreement / 学费合同";
+  const address = input.parentInfo.address?.trim() || "";
   const html = renderTemplatePlaceholders(template.bodyHtml, {
     company_brand: escapeHtml(company.brandName),
     parent_full_name_en: escapeHtml(input.parentInfo.parentFullNameEn.trim()),
@@ -201,7 +202,7 @@ export function buildStudentContractSnapshot(input: {
     agreement_date_long: escapeHtml(agreementDateLabel),
     phone: escapeHtml(input.parentInfo.phone.trim()),
     email: escapeHtml(input.parentInfo.email.trim()),
-    address: escapeHtml(input.parentInfo.address.trim()),
+    address_block: address ? `Address / 地址: ${escapeHtml(address)}<br/>` : "",
     relationship: escapeHtml(input.parentInfo.relationshipToStudent.trim()),
     legal_guardian: input.parentInfo.isLegalGuardian ? "Yes / 是" : "No / 否",
   });

@@ -23,7 +23,7 @@ export type StudentParentIntakePayload = {
   parentFullNameZh?: string | null;
   phone: string;
   email: string;
-  address: string;
+  address?: string | null;
   relationshipToStudent: string;
   isLegalGuardian: boolean;
   courseInterest?: string | null;
@@ -134,7 +134,7 @@ function validatePayload(input: StudentParentIntakePayload) {
   const email = String(input.email ?? "").trim();
   const address = String(input.address ?? "").trim();
   const relationshipToStudent = String(input.relationshipToStudent ?? "").trim();
-  if (!studentName || !parentFullNameEn || !phone || !email || !address || !relationshipToStudent) {
+  if (!studentName || !parentFullNameEn || !phone || !email || !relationshipToStudent) {
     throw new Error("Missing required intake fields");
   }
   return {
@@ -147,7 +147,7 @@ function validatePayload(input: StudentParentIntakePayload) {
     parentFullNameZh: trimOrNull(input.parentFullNameZh),
     phone,
     email,
-    address,
+    address: address || null,
     relationshipToStudent,
     isLegalGuardian: Boolean(input.isLegalGuardian),
     courseInterest: trimOrNull(input.courseInterest),
@@ -359,7 +359,7 @@ export async function createFirstPurchasePackageAndContractFromIntake(input: {
     parentFullNameZh: payload.parentFullNameZh ?? null,
     phone: payload.phone,
     email: payload.email,
-    address: payload.address,
+    address: payload.address ?? null,
     relationshipToStudent: payload.relationshipToStudent,
     isLegalGuardian: Boolean(payload.isLegalGuardian),
   };

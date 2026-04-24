@@ -261,13 +261,13 @@ function coerceParentInfo(raw: unknown): ContractParentInfo | null {
   const email = coerceString(row.email);
   const address = coerceString(row.address);
   const relationshipToStudent = coerceString(row.relationshipToStudent);
-  if (!parentFullNameEn || !phone || !email || !address || !relationshipToStudent) return null;
+  if (!parentFullNameEn || !phone || !email || !relationshipToStudent) return null;
   return {
     parentFullNameEn,
     parentFullNameZh: trimOrNull(row.parentFullNameZh),
     phone,
     email,
-    address,
+    address: address || null,
     relationshipToStudent,
     isLegalGuardian: Boolean(row.isLegalGuardian),
     emergencyContactName: trimOrNull(row.emergencyContactName),

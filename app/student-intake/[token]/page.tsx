@@ -121,7 +121,7 @@ export default async function StudentIntakePage({
     const note = String(formData.get("note") ?? "").trim();
     const isLegalGuardian = String(formData.get("isLegalGuardian") ?? "") === "yes";
 
-    if (!tokenValue || !studentName || !parentFullNameEn || !phone || !email || !address || !relationshipToStudent) {
+    if (!tokenValue || !studentName || !parentFullNameEn || !phone || !email || !relationshipToStudent) {
       redirect(`${buildStudentParentIntakePath(token)}?err=missing`);
     }
 
@@ -228,7 +228,7 @@ export default async function StudentIntakePage({
             <input name="relationshipToStudent" style={{ width: "100%", padding: "10px 12px" }} />
           </label>
           <label style={{ ...fieldLabelStyle(), gridColumn: "1 / -1" }}>
-            Address / 地址 *
+            Address / 地址（选填）
             <textarea name="address" rows={3} style={{ width: "100%", padding: "10px 12px" }} />
           </label>
           <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14, color: "#334155" }}>
