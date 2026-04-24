@@ -13,6 +13,7 @@ import {
   deletePartnerReceipt,
   getPartnerBilledSettlementIdSet,
   getPartnerInvoiceById,
+  listDeletedPartnerInvoices,
   listPartnerBillingByMode,
   replacePartnerPaymentRecord,
   type PartnerBillingMode,
@@ -20,8 +21,6 @@ import {
 import {
   assertGlobalInvoiceNoAvailable,
   getNextGlobalInvoiceNo,
-  parseInvoiceNoParts,
-  resequenceGlobalInvoiceNumbersForMonth,
 } from "@/lib/global-invoice-sequence";
 import {
   deletePartnerReceiptApproval,
@@ -362,10 +361,6 @@ async function deleteInvoiceAction(formData: FormData) {
   const inv = await getPartnerInvoiceById(invoiceId);
   try {
     await deletePartnerInvoice({ invoiceId, actorEmail: admin.email });
-    const mk = inv ? parseInvoiceNoParts(inv.invoiceNo)?.monthKey : null;
-    if (mk) {
-      await resequenceGlobalInvoiceNumbersForMonth(mk);
-    }
     if (inv?.settlementIds?.length) {
       await prisma.partnerSettlement.updateMany({ where: { id: { in: inv.settlementIds } }, data: { status: "PENDING" } });
     }
@@ -445,7 +440,7 @@ export default async function PartnerBillingPage({
   const tabHref = (tab: BillingTab) =>
     `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}&tab=${encodeURIComponent(tab)}`;
 
-  const [billedSet, settlementRows, billing] = await Promise.all([
+  const [billedSet, settlementRows, billing, deletedInvoiceHistory] = await Promise.all([
     getPartnerBilledSettlementIdSet(),
     prisma.partnerSettlement.findMany({
       where: { mode, status: "PENDING", ...(mode === "OFFLINE_MONTHLY" ? { monthKey: month } : {}), student: { sourceChannelId: source.id } },
@@ -453,6 +448,7 @@ export default async function PartnerBillingPage({
       orderBy: [{ createdAt: "asc" }],
     }),
     listPartnerBillingByMode(mode, mode === "OFFLINE_MONTHLY" ? month : null),
+    listDeletedPartnerInvoices(mode === "OFFLINE_MONTHLY" ? month : null),
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
   const selectedSettlementIds =
@@ -784,6 +780,44 @@ export default async function PartnerBillingPage({
       {activeTab === "invoices" ? (
       <div id="partner-billing-invoices" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Partner Invoices", "合作方发票")}</h3>
+      {deletedInvoiceHistory.length > 0 ? (
+        <div style={{ border: "1px dashed #cbd5e1", borderRadius: 12, background: "#f8fafc", padding: 12, marginBottom: 12, display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 700 }}>
+            {t(lang, `Deleted draft history (${deletedInvoiceHistory.length})`, `已删草稿记录（${deletedInvoiceHistory.length}）`)}
+          </div>
+          <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.6 }}>
+            {t(
+              lang,
+              "Deleted partner invoice drafts stay here for audit. Existing later invoice numbers no longer move forward after a delete. Only deleting the current tail number allows the next new draft to reuse that tail slot naturally.",
+              "已删除的合作方发票草稿编号会保留在这里供审计查看。删除后，后面已经存在的发票号不会再整体往前补；只有删掉当前尾号时，下一张新草稿才会自然补回这个尾号。"
+            )}
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 760 }}>
+              <thead>
+                <tr style={{ background: "#fff" }}>
+                  <th align="left">{t(lang, "Deleted invoice no.", "已删发票号")}</th>
+                  <th align="left">{t(lang, "Issue date", "开票日期")}</th>
+                  <th align="left">{t(lang, "Month", "月份")}</th>
+                  <th align="left">{t(lang, "Deleted by", "删除人")}</th>
+                  <th align="left">{t(lang, "Deleted at", "删除时间")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deletedInvoiceHistory.map((row) => (
+                  <tr key={row.id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <td style={{ fontWeight: 700 }}>{row.invoiceNo}</td>
+                    <td>{normalizeDateOnly(row.issueDate) ?? "-"}</td>
+                    <td>{row.monthKey || "-"}</td>
+                    <td>{row.deletedBy}</td>
+                    <td>{new Date(row.deletedAt).toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
       <div style={{ overflowX: "auto" }}>
       <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16, minWidth: 980 }}>
         <thead>

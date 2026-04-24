@@ -70,7 +70,26 @@ type ParentBillingStore = {
   invoices: ParentInvoiceItem[];
   paymentRecords: ParentPaymentRecordItem[];
   receipts: ParentReceiptItem[];
+  deletedInvoices: Array<{
+    id: string;
+    invoiceId: string;
+    invoiceNo: string;
+    packageId: string;
+    studentId: string;
+    billTo: string;
+    issueDate: string;
+    deletedBy: string;
+    deletedAt: string;
+  }>;
   invoiceSeqByMonth: Record<string, number>;
+};
+
+const EMPTY_PARENT_BILLING_STORE: ParentBillingStore = {
+  invoices: [],
+  paymentRecords: [],
+  receipts: [],
+  deletedInvoices: [],
+  invoiceSeqByMonth: {},
 };
 
 function normalizeEmail(email: string) {
@@ -114,7 +133,13 @@ function nextParentReceiptOrdinalForInvoice(
 }
 
 function sanitizeStore(input: unknown): ParentBillingStore {
-  const out: ParentBillingStore = { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
+  const out: ParentBillingStore = {
+    invoices: [],
+    paymentRecords: [],
+    receipts: [],
+    deletedInvoices: [],
+    invoiceSeqByMonth: {},
+  };
   const today = formatDateOnly(new Date());
   if (!input || typeof input !== "object") return out;
   const root = input as Record<string, unknown>;
@@ -212,6 +237,29 @@ function sanitizeStore(input: unknown): ParentBillingStore {
     });
   }
 
+  const deletedInvoicesRaw = Array.isArray(root.deletedInvoices) ? root.deletedInvoices : [];
+  for (const row of deletedInvoicesRaw) {
+    if (!row || typeof row !== "object") continue;
+    const x = row as Record<string, unknown>;
+    const id = String(x.id ?? "").trim();
+    const invoiceId = String(x.invoiceId ?? "").trim();
+    const invoiceNo = String(x.invoiceNo ?? "").trim();
+    const packageId = String(x.packageId ?? "").trim();
+    const studentId = String(x.studentId ?? "").trim();
+    if (!id || !invoiceId || !invoiceNo || !packageId || !studentId) continue;
+    out.deletedInvoices.push({
+      id,
+      invoiceId,
+      invoiceNo,
+      packageId,
+      studentId,
+      billTo: String(x.billTo ?? "").trim(),
+      issueDate: normalizeDateOnly(x.issueDate as string | Date | null | undefined, new Date()) ?? today,
+      deletedBy: normalizeEmail(String(x.deletedBy ?? "")),
+      deletedAt: String(x.deletedAt ?? "").trim() || new Date().toISOString(),
+    });
+  }
+
   const seqRaw = root.invoiceSeqByMonth;
   if (seqRaw && typeof seqRaw === "object" && !Array.isArray(seqRaw)) {
     for (const [k, v] of Object.entries(seqRaw as Record<string, unknown>)) {
@@ -228,7 +276,7 @@ async function loadStore(): Promise<ParentBillingStore> {
   const { store } = await loadJsonAppSettingForDb(
     prisma as any,
     PARENT_BILLING_KEY,
-    { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    EMPTY_PARENT_BILLING_STORE,
     sanitizeStore,
   );
   return store;
@@ -389,7 +437,7 @@ export async function createParentInvoice(input: {
   };
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
@@ -438,7 +486,7 @@ export async function addParentPaymentRecord(input: {
   };
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       store.paymentRecords.push(item);
@@ -477,7 +525,7 @@ export async function replaceParentPaymentRecord(input: {
   let next: ParentPaymentRecordItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
@@ -522,7 +570,7 @@ export async function updateParentPaymentRecordAmount(input: {
   let item: ParentPaymentRecordItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
@@ -558,7 +606,7 @@ export async function deleteParentPaymentRecord(input: { recordId: string; actor
   let row: ParentPaymentRecordItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const id = input.recordId.trim();
@@ -606,7 +654,7 @@ export async function createParentReceipt(input: {
   let item: ParentReceiptItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       ensureUniqueReceiptNo(store, normalizedReceiptNo);
@@ -690,7 +738,7 @@ export async function updateParentReceiptDirect(input: {
   let after: ParentReceiptItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const receiptId = String(input.receiptId ?? "").trim();
@@ -790,7 +838,7 @@ export async function deleteParentInvoice(input: { invoiceId: string; actorEmail
   let invoice: ParentInvoiceItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const invoiceId = input.invoiceId.trim();
@@ -801,6 +849,17 @@ export async function deleteParentInvoice(input: { invoiceId: string; actorEmail
       }
       store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
       rebuildInvoiceSeqByMonth(store);
+      store.deletedInvoices.unshift({
+        id: crypto.randomUUID(),
+        invoiceId: invoice.id,
+        invoiceNo: invoice.invoiceNo,
+        packageId: invoice.packageId,
+        studentId: invoice.studentId,
+        billTo: invoice.billTo,
+        issueDate: invoice.issueDate,
+        deletedBy: normalizeEmail(input.actorEmail),
+        deletedAt: new Date().toISOString(),
+      });
     },
   });
   await logAudit({
@@ -829,7 +888,7 @@ export async function applyParentInvoiceNumberAssignments(
   let changed = 0;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
@@ -900,7 +959,7 @@ export async function deleteParentReceipt(input: { receiptId: string; actorEmail
   let receipt: ParentReceiptItem | null = null;
   await mutateJsonAppSetting({
     key: PARENT_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARENT_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const receiptId = input.receiptId.trim();
@@ -917,4 +976,12 @@ export async function deleteParentReceipt(input: { receiptId: string; actorEmail
     entityId: input.receiptId.trim(),
     meta: { receiptNo: receipt!.receiptNo, packageId: receipt!.packageId, studentId: receipt!.studentId },
   });
+}
+
+export async function listDeletedParentInvoicesForPackage(packageId: string) {
+  const store = await loadStore();
+  return byNewest(
+    store.deletedInvoices.filter((x) => x.packageId === packageId),
+    (x) => x.deletedAt,
+  );
 }

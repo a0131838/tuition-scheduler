@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-24-r103` (separate package contract workspace page), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-24-r111` (invoice delete keeps middle gaps, allows natural tail reuse only, and records deleted draft history), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -36,6 +36,7 @@
 - Contract-history risk: `2026-04-23-r93` changes package billing to ignore void contracts when choosing the current active contract and adds physical deletion for unsigned/uninvoiced void drafts, so verification must confirm safe drafts can be removed while signed/invoiced void rows remain in collapsed history.
 - Signature-submit risk: `2026-04-24-r102` changes how the public handwritten-signature pad syncs its hidden payload while the parent is drawing, so verification should confirm a quick draw-and-submit no longer falsely triggers the “please draw the handwritten signature” error.
 - Contract-workspace navigation risk: `2026-04-24-r103` moves the student-contract workflow off the package billing page into a dedicated package contract page, so verification should confirm staff can still reach every contract action from the new page and that billing now feels lighter.
+- Invoice-delete sequencing risk: `2026-04-24-r111` stops compacting later draft invoice numbers after deletion, so verification must confirm middle gaps remain visible, tail gaps get reused only naturally by the next new draft, and deleted draft numbers appear in history for audit.
 
 ## Process Guard (Installed)
 
@@ -56,6 +57,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-24-r111 Ready
+
+- Scope: stop renumbering later draft invoices after deletions and surface deleted-draft history in both parent and partner billing views.
+- Business impact:
+  - deleting a middle draft invoice no longer rewrites later invoice numbers to close that gap
+  - deleting the current month-end tail draft still lets the next new draft reuse that tail slot naturally because new numbering now follows the highest surviving monthly sequence
+  - package billing and package contract pages now show deleted parent invoice draft history so finance can see exactly which number was removed
+  - partner settlement billing now shows deleted partner invoice draft history on the invoices tab
+  - no receipt numbering, approval logic, package balances, or finance-gate rules changed
+- Validation:
+  - `npm run build`
+  - confirm delete actions no longer call monthly resequencing
+  - confirm middle-gap deletes leave later invoices unchanged
+  - confirm deleting the current tail draft lets the next new invoice reuse that tail slot naturally
+  - confirm deleted draft histories render in package billing, package contract, and partner billing
 
 ## 2026-04-23-r92 Ready
 

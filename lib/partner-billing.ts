@@ -84,7 +84,27 @@ type PartnerBillingStore = {
   invoices: PartnerInvoiceItem[];
   paymentRecords: PartnerPaymentRecordItem[];
   receipts: PartnerReceiptItem[];
+  deletedInvoices: Array<{
+    id: string;
+    invoiceId: string;
+    invoiceNo: string;
+    partnerName: string;
+    mode: PartnerBillingMode;
+    monthKey: string | null;
+    billTo: string;
+    issueDate: string;
+    deletedBy: string;
+    deletedAt: string;
+  }>;
   invoiceSeqByMonth: Record<string, number>;
+};
+
+const EMPTY_PARTNER_BILLING_STORE: PartnerBillingStore = {
+  invoices: [],
+  paymentRecords: [],
+  receipts: [],
+  deletedInvoices: [],
+  invoiceSeqByMonth: {},
 };
 
 function normalizeEmail(email: string) {
@@ -120,7 +140,7 @@ function sanitizeLine(input: unknown): PartnerInvoiceLine | null {
 }
 
 function sanitizeStore(input: unknown): PartnerBillingStore {
-  const out: PartnerBillingStore = { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} };
+  const out: PartnerBillingStore = { invoices: [], paymentRecords: [], receipts: [], deletedInvoices: [], invoiceSeqByMonth: {} };
   const today = formatDateOnly(new Date());
   if (!input || typeof input !== "object") return out;
   const root = input as Record<string, unknown>;
@@ -218,6 +238,28 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
     });
   }
 
+  const deletedInvoicesRaw = Array.isArray(root.deletedInvoices) ? root.deletedInvoices : [];
+  for (const row of deletedInvoicesRaw) {
+    if (!row || typeof row !== "object") continue;
+    const x = row as Record<string, unknown>;
+    const id = String(x.id ?? "").trim();
+    const invoiceId = String(x.invoiceId ?? "").trim();
+    const invoiceNo = String(x.invoiceNo ?? "").trim();
+    if (!id || !invoiceId || !invoiceNo) continue;
+    out.deletedInvoices.push({
+      id,
+      invoiceId,
+      invoiceNo,
+      partnerName: String(x.partnerName ?? "").trim() || "Partner",
+      mode: String(x.mode ?? "") === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END",
+      monthKey: String(x.monthKey ?? "").trim() || null,
+      billTo: String(x.billTo ?? "").trim(),
+      issueDate: normalizeDateOnly(x.issueDate as string | Date | null | undefined, new Date()) ?? today,
+      deletedBy: normalizeEmail(String(x.deletedBy ?? "")),
+      deletedAt: String(x.deletedAt ?? "").trim() || new Date().toISOString(),
+    });
+  }
+
   const seqRaw = root.invoiceSeqByMonth;
   if (seqRaw && typeof seqRaw === "object" && !Array.isArray(seqRaw)) {
     for (const [k, v] of Object.entries(seqRaw as Record<string, unknown>)) {
@@ -234,7 +276,7 @@ async function loadStore(): Promise<PartnerBillingStore> {
   const { store } = await loadJsonAppSettingForDb(
     prisma as any,
     PARTNER_BILLING_KEY,
-    { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    EMPTY_PARTNER_BILLING_STORE,
     sanitizeStore,
   );
   return store;
@@ -421,7 +463,7 @@ export async function createPartnerInvoice(input: {
 
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       ensureUniqueInvoiceNo(store, normalizedInvoiceNo);
@@ -472,7 +514,7 @@ export async function addPartnerPaymentRecord(input: {
   };
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       store.paymentRecords.push(item);
@@ -498,7 +540,7 @@ export async function replacePartnerPaymentRecord(input: {
   let next: PartnerPaymentRecordItem | null = null;
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
@@ -530,7 +572,7 @@ export async function deletePartnerPaymentRecord(input: { recordId: string; acto
   let row: PartnerPaymentRecordItem | null = null;
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const id = input.recordId.trim();
@@ -567,7 +609,7 @@ export async function createPartnerReceipt(input: {
   let item: PartnerReceiptItem | null = null;
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const invoice = store.invoices.find((x) => x.id === invoiceId);
@@ -622,20 +664,49 @@ export async function buildPartnerReceiptNoForInvoice(invoiceId: string) {
 }
 
 export async function deletePartnerInvoice(input: { invoiceId: string; actorEmail: string }) {
+  let deletedInvoiceId = "";
+  let deletedInvoiceNo = "";
+  let deletedPartnerName = "";
+  let deletedMonthKey: string | null = null;
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const invoiceId = input.invoiceId.trim();
       const row = store.invoices.find((x) => x.id === invoiceId);
       if (!row) throw new Error("Invoice not found");
+      deletedInvoiceId = row.id;
+      deletedInvoiceNo = row.invoiceNo;
+      deletedPartnerName = row.partnerName;
+      deletedMonthKey = row.monthKey;
       if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
         throw new Error("Cannot delete invoice: linked receipt exists");
       }
       store.invoices = store.invoices.filter((x) => x.id !== invoiceId);
       rebuildInvoiceSeqByMonth(store);
+      store.deletedInvoices.unshift({
+        id: crypto.randomUUID(),
+        invoiceId: row.id,
+        invoiceNo: row.invoiceNo,
+        partnerName: row.partnerName,
+        mode: row.mode,
+        monthKey: row.monthKey,
+        billTo: row.billTo,
+        issueDate: row.issueDate,
+        deletedBy: normalizeEmail(input.actorEmail),
+        deletedAt: new Date().toISOString(),
+      });
     },
+  });
+  if (!deletedInvoiceId) return;
+  await logAudit({
+    actor: { email: input.actorEmail, role: "ADMIN" },
+    module: "PARTNER_BILLING",
+    action: "DELETE_INVOICE",
+    entityType: "PartnerInvoice",
+    entityId: deletedInvoiceId,
+    meta: { invoiceNo: deletedInvoiceNo, partnerName: deletedPartnerName, monthKey: deletedMonthKey },
   });
 }
 
@@ -655,7 +726,7 @@ export async function applyPartnerInvoiceNumberAssignments(
   let changed = 0;
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const invoiceById = new Map(store.invoices.map((x) => [x.id, x]));
@@ -708,7 +779,7 @@ export async function applyPartnerInvoiceNumberAssignments(
 export async function deletePartnerReceipt(input: { receiptId: string; actorEmail: string }) {
   await mutateJsonAppSetting({
     key: PARTNER_BILLING_KEY,
-    fallback: { invoices: [], paymentRecords: [], receipts: [], invoiceSeqByMonth: {} },
+    fallback: EMPTY_PARTNER_BILLING_STORE,
     sanitize: sanitizeStore,
     mutate(store) {
       const receiptId = input.receiptId.trim();
@@ -717,4 +788,12 @@ export async function deletePartnerReceipt(input: { receiptId: string; actorEmai
       store.receipts = store.receipts.filter((x) => x.id !== receiptId);
     },
   });
+}
+
+export async function listDeletedPartnerInvoices(monthKey?: string | null) {
+  const store = await loadStore();
+  return byNewest(
+    store.deletedInvoices.filter((x) => !monthKey || x.monthKey === monthKey),
+    (x) => x.deletedAt,
+  );
 }

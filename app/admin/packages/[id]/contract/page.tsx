@@ -24,13 +24,9 @@ import {
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
 import {
   deleteParentInvoice,
-  getParentInvoiceById,
+  listDeletedParentInvoicesForPackage,
   listParentBillingForPackage,
 } from "@/lib/student-parent-billing";
-import {
-  parseInvoiceNoParts,
-  resequenceGlobalInvoiceNumbersForMonth,
-} from "@/lib/global-invoice-sequence";
 
 function normalizePackageBillingSource(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase() === "receipts" ? "receipts" : "";
@@ -150,15 +146,12 @@ async function deleteInvoiceAction(formData: FormData) {
     redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing invoice id" }));
   }
   try {
-    const existing = await getParentInvoiceById(invoiceId);
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
     await detachDeletedInvoiceFromStudentContract({
       invoiceId,
       actorUserId: admin.id,
       actorLabel: admin.email,
     });
-    const mk = existing ? parseInvoiceNoParts(existing.invoiceNo)?.monthKey : null;
-    if (mk) await resequenceGlobalInvoiceNumbersForMonth(mk);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete invoice failed";
     redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
@@ -328,7 +321,7 @@ export default async function PackageContractPage({
   const receiptsBack = sanitizeReceiptsBack(sp?.receiptsBack);
   const lang = await getLang();
 
-  const [pkg, data, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage] = await Promise.all([
+  const [pkg, data, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage, deletedInvoiceHistory] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
       include: { student: true, course: true },
@@ -342,6 +335,7 @@ export default async function PackageContractPage({
       where: { packageId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     }),
+    listDeletedParentInvoicesForPackage(packageId),
   ]);
 
   if (!pkg) redirect("/admin/packages?err=Package+not+found");
@@ -728,6 +722,47 @@ export default async function PackageContractPage({
               </div>
             )}
           </div>
+
+          {deletedInvoiceHistory.length > 0 ? (
+            <details style={{ border: "1px dashed #cbd5e1", borderRadius: 12, background: "#fff", padding: 14 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+                {t(lang, `Deleted invoice draft history (${deletedInvoiceHistory.length})`, `已删发票草稿记录（${deletedInvoiceHistory.length}）`)}
+              </summary>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.6 }}>
+                  {t(
+                    lang,
+                    "Use this log to check which draft number was removed. Later invoice numbers now stay unchanged after a delete; only deleting the month-end tail number lets the next new draft reuse that tail slot.",
+                    "这里会记录被删掉的是哪一张草稿发票。删除后，后面已经存在的发票号现在不会再改；只有删掉当月尾号时，下一张新草稿才会自然补回这个尾号。"
+                  )}
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", minWidth: 760 }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th align="left">{t(lang, "Deleted invoice no.", "已删发票号")}</th>
+                        <th align="left">{t(lang, "Issue date", "开票日期")}</th>
+                        <th align="left">{t(lang, "Bill to", "开票对象")}</th>
+                        <th align="left">{t(lang, "Deleted by", "删除人")}</th>
+                        <th align="left">{t(lang, "Deleted at", "删除时间")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deletedInvoiceHistory.map((row) => (
+                        <tr key={row.id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                          <td style={{ fontWeight: 700 }}>{row.invoiceNo}</td>
+                          <td>{row.issueDate || "-"}</td>
+                          <td>{row.billTo || "-"}</td>
+                          <td>{row.deletedBy}</td>
+                          <td>{new Date(row.deletedAt).toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+          ) : null}
 
           {voidContracts.length > 0 ? (
             <details style={{ border: "1px dashed #cbd5e1", borderRadius: 12, background: "#fff", padding: 14 }}>

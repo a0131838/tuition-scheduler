@@ -4,7 +4,7 @@ import { composePackageNote, GROUP_PACK_MINUTES_TAG, GROUP_PACK_TAG } from "@/li
 import { parseBusinessDateEnd, parseBusinessDateStart } from "@/lib/date-only";
 import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
 import { createParentInvoice, deleteParentInvoice } from "@/lib/student-parent-billing";
-import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo, parseInvoiceNoParts, resequenceGlobalInvoiceNumbersForMonth } from "@/lib/global-invoice-sequence";
+import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import {
   buildPackageFinanceGateReason,
   createPackageInvoiceApproval,
@@ -177,8 +177,6 @@ export async function POST(req: Request) {
   const invoiceIssueDate = validFromStr || now.toISOString().slice(0, 10);
   let createdPackageId: string | null = null;
   let createdInvoiceId: string | null = null;
-  let createdInvoiceMonthKey: string | null = null;
-
   const createFinanceGateData = (invoiceNo?: string | null) => ({
     financeGateStatus: requiresInvoiceGate ? ("INVOICE_PENDING_MANAGER" as const) : ("EXEMPT" as const),
     financeGateReason: buildPackageFinanceGateReason({
@@ -224,7 +222,6 @@ export async function POST(req: Request) {
       createdBy: admin.email,
     });
     createdInvoiceId = invoice.id;
-    createdInvoiceMonthKey = parseInvoiceNoParts(invoice.invoiceNo)?.monthKey ?? null;
     await prisma.coursePackage.update({
       where: { id: input.packageId },
       data: createFinanceGateData(invoice.invoiceNo),
@@ -239,9 +236,6 @@ export async function POST(req: Request) {
   async function rollbackCreatedPackage() {
     if (createdInvoiceId) {
       await deleteParentInvoice({ invoiceId: createdInvoiceId, actorEmail: admin.email }).catch(() => null);
-      if (createdInvoiceMonthKey) {
-        await resequenceGlobalInvoiceNumbersForMonth(createdInvoiceMonthKey).catch(() => null);
-      }
     }
     if (createdPackageId) {
       await prisma.packageTxn.deleteMany({ where: { packageId: createdPackageId } }).catch(() => null);

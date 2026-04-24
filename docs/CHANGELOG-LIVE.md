@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-24-r111
+
+- Release ID: `2026-04-24-r111`
+- Date/Time (Asia/Shanghai): `2026-04-24`
+- Deployment status: `READY`
+- Scope: stop invoice-number compaction after draft deletion so only month-end tail holes can be reused naturally, and add visible deleted-draft history for parent and partner billing pages.
+- Key files:
+  - `lib/global-invoice-sequence.ts`
+  - `lib/student-parent-billing.ts`
+  - `lib/partner-billing.ts`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/api/admin/packages/route.ts`
+  - `docs/tasks/TASK-20260424-invoice-delete-tail-gap-and-history.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. Invoice numbering behavior changes for draft deletion only. Existing issued/remaining invoice numbers are preserved instead of being compacted, and deleted draft numbers are now kept in visible history.
+- Verification:
+  - `npm run build`
+  - confirm deleting a middle draft leaves the gap and does not renumber later invoices
+  - confirm deleting the current tail draft lets the next new invoice reuse that tail slot naturally
+  - confirm package billing, contract workspace, and partner billing show deleted draft invoice history
+- Rollback point: previous production commit before `2026-04-24-r111`.
+
 ## 2026-04-24-r103
 
 - Release ID: `2026-04-24-r103`
