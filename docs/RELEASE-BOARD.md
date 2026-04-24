@@ -3059,3 +3059,18 @@
   - verify the seal sits against the subtotal block
   - verify remittance notes begin below the totals/seal group
   - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-compaction-and-seal-anchor.md`
+
+## 2026-04-24-r110 Ready
+
+- Scope: give first-purchase setup its own admin page so student detail no longer carries a large mixed-purpose embedded form.
+- Business impact:
+  - ops can start first-purchase setup from a clearer, more prominent CTA on the student detail page
+  - the setup form no longer competes with package, scheduling, and profile sections on the same page
+  - duplicated bilingual wording is reduced because the dedicated page only explains the step once
+  - successful setup now flows directly into the package contract workspace
+- Validation:
+  - `npm run build`
+  - verify student detail shows a dedicated first-purchase CTA instead of the large inline form
+  - verify `/admin/students/[id]/first-purchase` loads and shows the setup fields once
+  - verify submit redirects into `/admin/packages/[id]/contract`
+  - task doc: `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`

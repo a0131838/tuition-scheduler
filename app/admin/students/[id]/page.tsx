@@ -58,7 +58,6 @@ import {
   coerceParentAvailabilityPayload,
   formatParentAvailabilityFieldRows,
 } from "@/lib/parent-availability";
-import { createFirstPurchasePackageAndContractFromIntake } from "@/lib/student-parent-intake";
 import CopyTextButton from "../../_components/CopyTextButton";
 import {
   workbenchHeroStyle,
@@ -1510,44 +1509,6 @@ async function markSchedulingCoordinationTeacherException(studentId: string, for
   });
 
   redirect(appendStudentDetailQuery(back, { msg: "Coordination moved to waiting for teacher exception" }));
-}
-
-async function createFirstPurchaseFromIntakeAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const studentId = String(formData.get("studentId") ?? "").trim();
-  const intakeId = String(formData.get("intakeId") ?? "").trim();
-  const courseId = String(formData.get("courseId") ?? "").trim();
-  const totalMinutes = Number(String(formData.get("totalMinutes") ?? "").trim() || 0);
-  const feeAmount = Number(String(formData.get("feeAmount") ?? "").trim() || 0);
-  const billTo = String(formData.get("billTo") ?? "").trim();
-  const agreementDateIso = String(formData.get("agreementDateIso") ?? "").trim();
-  const lessonMode = String(formData.get("lessonMode") ?? "").trim();
-  const campusName = String(formData.get("campusName") ?? "").trim();
-  const back = appendStudentDetailQuery(`/admin/students/${encodeURIComponent(studentId)}#packages`, {});
-
-  if (!studentId || !intakeId || !courseId) {
-    redirect(appendStudentDetailQuery(back, { err: "Missing first-purchase setup target" }));
-  }
-
-  try {
-    await createFirstPurchasePackageAndContractFromIntake({
-      intakeId,
-      courseId,
-      totalMinutes,
-      feeAmount,
-      billTo,
-      agreementDateIso,
-      lessonMode: lessonMode || null,
-      campusName: campusName || null,
-      actorUserId: admin.id,
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Create first purchase contract failed";
-    redirect(appendStudentDetailQuery(back, { err: msg }));
-  }
-
-  redirect(appendStudentDetailQuery(back, { msg: "First purchase contract is ready to sign" }));
 }
 
 export default async function StudentDetailPage({
@@ -4072,94 +4033,69 @@ export default async function StudentDetailPage({
           id="first-purchase-setup"
           style={{
             marginBottom: 14,
-            padding: 14,
-            borderRadius: 14,
-            border: "1px solid #dbeafe",
-            background: "#f8fbff",
+            padding: 16,
+            borderRadius: 16,
+            border: "1px solid #bfdbfe",
+            background: "linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)",
             display: "grid",
-            gap: 12,
+            gap: 14,
           }}
         >
-          <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ fontWeight: 800 }}>{t(lang, "First purchase setup", "首购建档")}</div>
-            <div style={{ color: "#475569", fontSize: 13 }}>
-              {t(
-                lang,
-                "The parent has already submitted the student profile. Complete the course, hours, and fee below to create the first package and a ready-to-sign contract in one step.",
-                "家长已经提交学生资料。请在这里补课程、课时和费用，一次性生成首购课包和正式可签合同。"
-              )}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8", letterSpacing: 0.2 }}>
+                {t(lang, "First purchase ready", "首购建档已就绪")}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
+                {t(lang, "Start first purchase setup", "开始首购建档")}
+              </div>
+              <div style={{ color: "#334155", fontSize: 14, maxWidth: 900, lineHeight: 1.5 }}>
+                {t(
+                  lang,
+                  "Parent details are already submitted. Open the dedicated setup page to add course, hours, fee, and bill-to details without mixing this step into the full student page.",
+                  "家长资料已经提交。请打开单独的首购建档页，再补课程、课时、费用和开票对象，不再和完整学生页混在一起。"
+                )}
+              </div>
             </div>
+            <a
+              href={`/admin/students/${encodeURIComponent(studentId)}/first-purchase`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 46,
+                padding: "10px 16px",
+                borderRadius: 12,
+                border: "1px solid #2563eb",
+                background: "#2563eb",
+                color: "#fff",
+                fontWeight: 800,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t(lang, "Open first purchase setup", "打开首购建档页")}
+            </a>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Student intake summary", "资料摘要")}</div>
-              <div style={{ fontWeight: 800 }}>{student.name}</div>
+              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Parent profile", "家长资料")}</div>
+              <div style={{ fontWeight: 800, color: "#0f172a" }}>{String(latestParentIntakePayload?.parentFullNameEn ?? "-")}</div>
               <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                {String(latestParentIntakePayload?.parentFullNameEn ?? "-")}
-                {" · "}
                 {String(latestParentIntakePayload?.phone ?? "-")}
                 {" · "}
                 {String(latestParentIntakePayload?.email ?? "-")}
               </div>
-              {latestParentIntakePayload?.courseInterest ? (
-                <div style={{ fontSize: 13, color: "#475569" }}>
-                  {t(lang, "Course interest", "课程意向")}: {String(latestParentIntakePayload.courseInterest)}
-                </div>
-              ) : null}
+            </div>
+            <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{t(lang, "Next step", "下一步")}</div>
+              <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Create the first package and ready-to-sign contract", "创建首购课包并生成可签合同")}</div>
+              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                {t(lang, "This step now lives on a dedicated page to keep the student detail page lighter.", "这一步已经拆到单独页面，学生详情页会更清爽。")}
+              </div>
             </div>
           </div>
-
-          <form action={createFirstPurchaseFromIntakeAction} style={{ display: "grid", gap: 12 }}>
-            <input type="hidden" name="studentId" value={studentId} />
-            <input type="hidden" name="intakeId" value={latestParentIntake!.id} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Course / 课程", "Course / 课程")}</span>
-                <select name="courseId" defaultValue="" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}>
-                  <option value="">{t(lang, "Choose course", "选择课程")}</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Total minutes / 总课时分钟", "Total minutes / 总课时分钟")}</span>
-                <input name="totalMinutes" type="number" min={0} step={30} defaultValue="600" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Fee amount / 课时费用", "Fee amount / 课时费用")}</span>
-                <input name="feeAmount" type="number" min={0} step="0.01" style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Bill to / 开票对象", "Bill to / 开票对象")}</span>
-                <input
-                  name="billTo"
-                  defaultValue={String(latestParentIntakePayload?.parentFullNameEn ?? student.name)}
-                  style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Agreement date / 合同日期", "Agreement date / 合同日期")}</span>
-                <input name="agreementDateIso" type="date" defaultValue={fmtDateInput(new Date())} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Lesson mode / 上课方式", "Lesson mode / 上课方式")}</span>
-                <input name="lessonMode" placeholder={t(lang, "Optional", "可选")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Campus name / 校区", "Campus name / 校区")}</span>
-                <input name="campusName" placeholder={t(lang, "Optional", "可选")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
-              </label>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
-                {t(lang, "Create first purchase package and contract", "创建首购课包和合同")}
-              </button>
-            </div>
-          </form>
         </div>
       ) : null}
 

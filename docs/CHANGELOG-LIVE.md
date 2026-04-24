@@ -5592,3 +5592,19 @@ This file is the single source of truth for what changed in production.
   - verified line items continue lower on the page before the final totals block
   - verified the optional seal stays attached to the subtotal area
   - verified remittance notes start below the grouped totals/seal block
+
+## 2026-04-24-r110
+
+- Scope: move first-purchase setup out of the student detail page and into a dedicated admin page, leaving the student page with a prominent CTA instead of the full embedded form.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/first-purchase/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-first-purchase-dedicated-page.md`
+- Risk impact (if any): Low. This release only changes the admin UX for first-purchase setup; it does not change contract signing rules, invoice generation logic, or package balances.
+- Verification:
+  - `npm run build` passed
+  - verified the student detail page now shows a prominent first-purchase CTA instead of the full embedded setup form
+  - verified the new `/admin/students/[id]/first-purchase` page renders the setup fields once without repeated wording
+  - verified successful submit redirects to the package contract workspace
