@@ -2840,3 +2840,22 @@
   - verify one invoice draft was created for the signed renewal contract
   - verify one package purchase txn exists with note marker `student-contract-renewal-topup:<contractId>`
   - verify all temporary QA data was removed afterwards
+
+## 2026-04-24-r95 Ready
+
+- Scope: polish the student contract workflow with business-facing status labels, stronger contract entry points from student detail, lighter parent pages, explicit signed-contract correction guidance, and cleaner archived/void history.
+- Business impact:
+  - student detail now surfaces the contract workspace directly and explains the next business step instead of exposing only technical contract states
+  - package billing now shows clearer sign-stage and signed-stage guidance, including direct invoice/open-approval links once a contract has produced an invoice
+  - parent intake and sign pages now frame the process as a simple three-step journey, reducing parent-facing clutter without changing the underlying workflow
+  - signed or invoiced contracts now steer ops toward `void + regenerate` instead of implying direct edits to historical contract versions
+  - void drafts that are safe to delete stay separate from archived signed/invoiced history, so active workspaces no longer fill up with old contract noise
+  - direct-billing packages with clear legacy billing/use history but no contract now warn ops that the next renewal should use the renewal-contract path
+  - no signing rules, invoice math, package balance rules, partner exclusions, or receipt logic changed
+- Validation:
+  - `npm run build`
+  - verify student detail shows the direct contract workspace link and stage-specific next-step message
+  - verify package billing shows business-stage copy for sign-ready contracts and invoice/open-approval links for signed/invoiced contracts
+  - verify parent intake page shows `Parent profile confirmation / 家长资料确认`
+  - verify parent sign page shows `Agreement preview / 正式合同预览`
+  - verify temporary QA student/package/contract/auth-session data was removed afterwards

@@ -33,6 +33,37 @@ function fieldLabelStyle() {
   } as const;
 }
 
+function stepPillStyle(state: "done" | "active" | "idle") {
+  if (state === "done") {
+    return {
+      padding: "6px 10px",
+      borderRadius: 999,
+      background: "#ecfdf3",
+      color: "#166534",
+      fontWeight: 800,
+      fontSize: 12,
+    } as const;
+  }
+  if (state === "active") {
+    return {
+      padding: "6px 10px",
+      borderRadius: 999,
+      background: "#dbeafe",
+      color: "#1d4ed8",
+      fontWeight: 800,
+      fontSize: 12,
+    } as const;
+  }
+  return {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#f1f5f9",
+    color: "#475569",
+    fontWeight: 700,
+    fontSize: 12,
+  } as const;
+}
+
 export default async function ContractIntakePage({
   params,
   searchParams,
@@ -169,11 +200,17 @@ export default async function ContractIntakePage({
     return (
       <div style={{ maxWidth: 960, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Parent information received / 家长资料已收到</h1>
+          <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Parent profile received / 家长资料已收到</h1>
           <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
             The school team is now preparing the final contract. We will send the formal signing link after checking the lesson hours and fee details.
             / 校方正在准备正式合同，会在核对课时与费用后再发送正式签字链接。
           </div>
+        </div>
+
+        <div style={{ ...cardStyle("#ffffff"), gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={stepPillStyle("done")}>1. Parent profile / 家长资料</div>
+          <div style={stepPillStyle("active")}>2. School prepares contract / 校方准备合同</div>
+          <div style={stepPillStyle("idle")}>3. Parent signs / 家长签字</div>
         </div>
 
         <div style={{ ...cardStyle("#f8fbff") }}>
@@ -192,6 +229,9 @@ export default async function ContractIntakePage({
               <div style={{ fontWeight: 700 }}>{defaultInfo?.email || "-"}</div>
             </div>
           </div>
+          <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
+            {`Next / 下一步:`} {`The school team will confirm lesson hours and fee details, then send a separate formal sign link. / 校方会确认课时和费用后，再单独发送正式签字链接。`}
+          </div>
         </div>
       </div>
     );
@@ -200,11 +240,17 @@ export default async function ContractIntakePage({
   return (
     <div style={{ maxWidth: 960, margin: "32px auto 48px", padding: "0 16px", display: "grid", gap: 18 }}>
       <div style={{ display: "grid", gap: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Contract Intake / 合同信息确认</h1>
+        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.05 }}>Parent profile confirmation / 家长资料确认</h1>
         <div style={{ color: "#475569", fontSize: 16, lineHeight: 1.6 }}>
           Please confirm only the parent profile details below. The school team will prepare the lesson hours and fee information separately, then send the final contract for signature.
           / 请先确认家长基础资料。课时和费用会由校方另行补充，之后再发送正式合同供签署。
         </div>
+      </div>
+
+      <div style={{ ...cardStyle("#ffffff"), gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+        <div style={stepPillStyle("active")}>1. Parent profile / 家长资料</div>
+        <div style={stepPillStyle("idle")}>2. School prepares contract / 校方准备合同</div>
+        <div style={stepPillStyle("idle")}>3. Parent signs / 家长签字</div>
       </div>
 
       {err ? (
@@ -264,15 +310,23 @@ export default async function ContractIntakePage({
             Relationship to student / 与学生关系 *
             <input name="relationshipToStudent" defaultValue={defaultInfo?.relationshipToStudent ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
           </label>
-          <label style={fieldLabelStyle()}>
-            Emergency contact name / 紧急联系人
-            <input name="emergencyContactName" defaultValue={defaultInfo?.emergencyContactName ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
-          </label>
-          <label style={fieldLabelStyle()}>
-            Emergency contact phone / 紧急联系电话
-            <input name="emergencyContactPhone" defaultValue={defaultInfo?.emergencyContactPhone ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
-          </label>
         </div>
+
+        <details style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#f8fafc" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700, color: "#334155" }}>
+            Optional contact details / 可选补充信息
+          </summary>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginTop: 12 }}>
+            <label style={fieldLabelStyle()}>
+              Emergency contact name / 紧急联系人
+              <input name="emergencyContactName" defaultValue={defaultInfo?.emergencyContactName ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
+            </label>
+            <label style={fieldLabelStyle()}>
+              Emergency contact phone / 紧急联系电话
+              <input name="emergencyContactPhone" defaultValue={defaultInfo?.emergencyContactPhone ?? ""} style={{ width: "100%", padding: "10px 12px" }} />
+            </label>
+          </div>
+        </details>
 
         <label style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "#0f172a", fontWeight: 700 }}>
           <input type="checkbox" name="isLegalGuardian" value="yes" defaultChecked={defaultInfo?.isLegalGuardian ?? true} />

@@ -34,6 +34,37 @@ function fieldLabelStyle() {
   } as const;
 }
 
+function stepPillStyle(state: "done" | "active" | "idle") {
+  if (state === "done") {
+    return {
+      padding: "6px 10px",
+      borderRadius: 999,
+      background: "#ecfdf3",
+      color: "#166534",
+      fontWeight: 800,
+      fontSize: 12,
+    } as const;
+  }
+  if (state === "active") {
+    return {
+      padding: "6px 10px",
+      borderRadius: 999,
+      background: "#dbeafe",
+      color: "#1d4ed8",
+      fontWeight: 800,
+      fontSize: 12,
+    } as const;
+  }
+  return {
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#f1f5f9",
+    color: "#475569",
+    fontWeight: 700,
+    fontSize: 12,
+  } as const;
+}
+
 export default async function ContractSignPage({
   params,
   searchParams,
@@ -155,6 +186,12 @@ export default async function ContractSignPage({
         </div>
       </div>
 
+      <div style={{ ...cardStyle("#ffffff"), gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+        <div style={stepPillStyle("done")}>1. Parent profile / 家长资料</div>
+        <div style={stepPillStyle("done")}>2. Contract prepared / 合同已准备</div>
+        <div style={stepPillStyle("active")}>3. Parent signs / 家长签字</div>
+      </div>
+
       {err ? (
         <div style={{ ...cardStyle("#fff7ed"), borderColor: "#fdba74", color: "#9a3412" }}>
           请补全签署资料并完成手写签名。 / Please complete the signing details and handwritten signature.
@@ -184,8 +221,13 @@ export default async function ContractSignPage({
         </div>
       </div>
 
-      <div style={{ ...cardStyle("#ffffff"), gap: 16 }}>
-        <div style={{ fontWeight: 800, fontSize: 18 }}>Agreement Preview / 正式合同预览</div>
+      <details style={{ ...cardStyle("#ffffff"), gap: 16 }} open>
+        <summary style={{ cursor: "pointer", fontWeight: 800, fontSize: 18 }}>
+          Agreement preview / 正式合同预览
+        </summary>
+        <div style={{ color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
+          {`Summary first, full contract below. / 先看摘要，再展开阅读完整合同。`}
+        </div>
         <div
           style={{
             border: "1px solid #e2e8f0",
@@ -197,7 +239,7 @@ export default async function ContractSignPage({
           }}
           dangerouslySetInnerHTML={{ __html: snapshot.agreementHtml }}
         />
-      </div>
+      </details>
 
       <form action={signAction} style={{ ...cardStyle("#ffffff"), gap: 16 }}>
         <input type="hidden" name="token" value={token} />
@@ -222,6 +264,10 @@ export default async function ContractSignPage({
           I have read and understood the tuition agreement and agree to sign it electronically.
           / 我已阅读并理解本学费协议，并同意以电子方式签署。
         </label>
+
+        <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
+          {`After signing / 签字后:`} {`The school team will receive a signed PDF and the matching invoice draft automatically. / 系统会自动生成已签 PDF，并给校方准备对应的发票草稿。`}
+        </div>
 
         <div style={{ display: "grid", gap: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Signature / 签名 *</div>

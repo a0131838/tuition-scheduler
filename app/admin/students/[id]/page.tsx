@@ -1722,6 +1722,8 @@ export default async function StudentDetailPage({
             flowType: true,
             status: true,
             signedAt: true,
+            invoiceId: true,
+            invoiceNo: true,
           },
         },
       },
@@ -4176,6 +4178,7 @@ export default async function StudentDetailPage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginTop: 8 }}>
           {packages.map((p) => {
             const remaining = p.remainingMinutes ?? 0;
+            const latestContract = p.contracts[0] ?? null;
             const deducted30 = deducted30Map.get(p.id) ?? 0;
             const avgPerDay = deducted30 / FORECAST_WINDOW_DAYS;
             const estDays =
@@ -4196,6 +4199,15 @@ export default async function StudentDetailPage({
                   ? tl(lang, "Low balance")
                   : tl(lang, "Likely to run out soon")
                 : tl(lang, "Normal");
+            const contractWorkspaceHref = `/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`;
+            const likelyLegacyNoContract =
+              !isPartnerSettlementPackage(p.settlementMode) &&
+              !latestContract &&
+              Boolean(
+                p.paid ||
+                p.paidAt ||
+                (p.totalMinutes ?? 0) > (p.remainingMinutes ?? 0)
+              );
             return (
               <div key={p.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, background: "#fff" }}>
                 <div style={{ fontWeight: 700 }}>{p.course?.name ?? "-"}</div>
@@ -4252,22 +4264,59 @@ export default async function StudentDetailPage({
                   <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
                     {t(lang, "Contract", "合同")}: {t(lang, "Not used for partner settlement packages", "合作方课包不使用合同流程")}
                   </div>
-                ) : p.contracts[0] ? (
-                  <div style={{ color: "#1d4ed8", fontSize: 12, marginTop: 4 }}>
-                    {t(lang, "Contract", "合同")}: {studentContractFlowLabelZh(p.contracts[0].flowType)} · {studentContractStatusLabelZh(p.contracts[0].status)}
-                    {p.contracts[0].signedAt ? ` · ${formatBusinessDateTime(new Date(p.contracts[0].signedAt))}` : ""}
-                    {" · "}
-                    <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
-                      {t(lang, "Open contract workspace", "打开合同工作区")}
-                    </a>
+                ) : latestContract ? (
+                  <div style={{ marginTop: 4, display: "grid", gap: 6 }}>
+                    <div style={{ color: "#1d4ed8", fontSize: 12 }}>
+                      {t(lang, "Contract", "合同")}: {studentContractFlowLabelZh(latestContract.flowType)} · {studentContractStatusLabelZh(latestContract.status)}
+                      {latestContract.signedAt ? ` · ${formatBusinessDateTime(new Date(latestContract.signedAt))}` : ""}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+                      <a href={contractWorkspaceHref}>
+                        {t(lang, "Open contract workspace", "打开合同工作区")}
+                      </a>
+                      {latestContract.invoiceId ? (
+                        <a href={`/api/exports/parent-invoice/${encodeURIComponent(latestContract.invoiceId)}`} target="_blank" rel="noreferrer">
+                          {t(lang, "Open invoice PDF", "打开对应发票 PDF")}
+                        </a>
+                      ) : null}
+                    </div>
+                    <div style={{ color: "#475569", fontSize: 12 }}>
+                      {latestContract.status === "INTAKE_PENDING"
+                        ? t(lang, "Next: send or resend the parent profile link.", "下一步：发送或重发家长资料链接。")
+                        : latestContract.status === "INTAKE_SUBMITTED"
+                          ? t(lang, "Next: complete lesson hours and fee details before generating the formal sign link.", "下一步：补课时和费用，再生成正式签字链接。")
+                          : latestContract.status === "CONTRACT_DRAFT"
+                            ? t(lang, "Next: save the business fields and generate the formal sign link.", "下一步：保存业务字段并生成正式签字链接。")
+                            : latestContract.status === "READY_TO_SIGN"
+                              ? t(lang, "Next: send the formal sign link and wait for the parent signature.", "下一步：发送正式签字链接并等待家长签署。")
+                              : latestContract.invoiceNo
+                                ? t(lang, `Next: continue in billing with invoice ${latestContract.invoiceNo}.`, `下一步：继续到收费流程处理发票 ${latestContract.invoiceNo}。`)
+                                : t(lang, "Next: continue in package billing for invoice and follow-up.", "下一步：继续到课包账单里处理发票和后续动作。")}
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
-                    {t(lang, "Contract", "合同")}: {t(lang, "Not started", "尚未开始")}
-                    {" · "}
-                    <a href={`/admin/packages/${encodeURIComponent(p.id)}/billing#contract-flow`}>
-                      {t(lang, "Open contract workspace", "打开合同工作区")}
-                    </a>
+                  <div style={{ marginTop: 4, display: "grid", gap: 6 }}>
+                    <div style={{ color: "#475569", fontSize: 12 }}>
+                      {t(lang, "Contract", "合同")}: {t(lang, "Not started", "尚未开始")}
+                    </div>
+                    {likelyLegacyNoContract ? (
+                      <div style={{ color: "#92400e", fontSize: 12, lineHeight: 1.5 }}>
+                        {t(
+                          lang,
+                          "Legacy direct-billing package without contract history. The current package can continue, but the next renewal should use the renewal contract flow.",
+                          "这是历史存量直客课包，还没有合同记录。当前课包可继续使用，但下一次续费应走续费合同流程。"
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ color: "#475569", fontSize: 12 }}>
+                        {t(lang, "Next: start the contract flow from package billing.", "下一步：去课包账单里开始合同流程。")}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+                      <a href={contractWorkspaceHref}>
+                        {t(lang, "Open contract workspace", "打开合同工作区")}
+                      </a>
+                    </div>
                   </div>
                 )}
                 <div style={{ marginTop: 6 }}>

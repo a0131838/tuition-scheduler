@@ -5354,3 +5354,24 @@ This file is the single source of truth for what changed in production.
   - temporary direct-billing renewal QA confirmed package minutes moved from `600 -> 900`
   - the same QA confirmed one invoice draft was created and one `PURCHASE` package txn carried the renewal marker note
   - temporary QA student/package/contract/invoice data was deleted after verification
+
+## 2026-04-24-r95
+
+- Scope: polish the student-contract UX so ops see clearer business-stage states, the student page exposes the contract workspace directly, parent pages are lighter, and archived contract history no longer crowds the active workspace.
+- Key files:
+  - `lib/student-contract.ts`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/contract-intake/[token]/page.tsx`
+  - `app/contract/[token]/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-student-contract-ux-polish.md`
+- Risk impact (if any): Low to medium. This release changes contract display and action framing, but does not change signing rules, invoice math, package balances, partner exclusion rules, or receipt logic.
+- Verification:
+  - `npm run build` passed
+  - local QA student detail showed `Open contract workspace / 打开合同工作区` and the new business next-step copy for intake-stage contracts
+  - local QA intake page showed `Parent profile confirmation / 家长资料确认`
+  - local QA sign page showed `Agreement preview / 正式合同预览`
+  - local QA sign-stage billing page showed `Waiting for signature`
+  - temporary QA student/package/contract/auth-session data was deleted after verification

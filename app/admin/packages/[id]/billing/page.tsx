@@ -621,6 +621,8 @@ export default async function PackageBillingPage({
     packageContracts.find((contract) => contract.status !== "VOID") ??
     null;
   const voidContracts = packageContracts.filter((contract) => contract.status === "VOID");
+  const deletableVoidContracts = voidContracts.filter((contract) => contractCanDeleteVoidDraft(contract));
+  const archivedVoidContracts = voidContracts.filter((contract) => !contractCanDeleteVoidDraft(contract));
   const approvalMap = await getParentReceiptApprovalMap(data.receipts.map((x) => x.id));
   const canManagerApproveInvoiceGate = isRoleApprover(currentUser?.email, roleCfg.managerApproverEmails);
   const invoiceApprovalInvoice = latestInvoiceApproval?.invoiceId
@@ -719,6 +721,16 @@ export default async function PackageBillingPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
+  const likelyLegacyNoContract =
+    usesStudentContractFlow &&
+    !latestContract &&
+    Boolean(
+      data.invoices.length > 0 ||
+      data.receipts.length > 0 ||
+      pkg.paid ||
+      pkg.paidAt ||
+      (pkg.totalMinutes ?? 0) > (pkg.remainingMinutes ?? 0)
+    );
   const contractFromParentIntake =
     Boolean(latestContract && latestParentIntakeForPackage && latestParentIntakeForPackage.contractId === latestContract.id);
   const currentBillingFocusTitle =
@@ -883,6 +895,7 @@ export default async function PackageBillingPage({
       {msg ? <div style={{ marginBottom: 12, color: "#166534" }}>{msg}</div> : null}
 
       <div
+        id="invoice-gate"
         style={{
           marginBottom: 14,
           padding: 14,
@@ -1033,6 +1046,11 @@ export default async function PackageBillingPage({
                           ? t(lang, `Expires ${latestContract.intakeExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.intakeExpiresAt.toLocaleString("zh-CN")}`)
                           : t(lang, "No expiry", "无过期时间")}
                     </div>
+                    <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                      {contractNeedsParentInfo(latestContract.status)
+                        ? t(lang, "Waiting for the parent to finish the profile form. Resend only if the link expires or the parent cannot find it.", "正在等待家长完成资料表。只有链接过期或家长找不到时才需要重发。")
+                        : t(lang, "Parent details are already on file, so the school team can move on to lesson hours and fee details.", "家长资料已经在系统里，教务现在可以继续补课时和费用。")}
+                    </div>
                     {!contractFromParentIntake ? (
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {contractIntakeHref ? (
@@ -1084,6 +1102,19 @@ export default async function PackageBillingPage({
                         ? t(lang, `Expires ${latestContract.signExpiresAt.toLocaleString("en-SG")}`, `有效至 ${latestContract.signExpiresAt.toLocaleString("zh-CN")}`)
                         : t(lang, "Ready to sign", "可签署")
                       : t(lang, "Not generated yet", "尚未生成")}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                    {latestContract.status === "READY_TO_SIGN"
+                      ? latestContract.signViewedAt
+                        ? t(
+                            lang,
+                            `Viewed by parent on ${latestContract.signViewedAt.toLocaleString("en-SG")}. Resend only if the link has expired or the business details changed.`,
+                            `家长已于 ${latestContract.signViewedAt.toLocaleString("zh-CN")} 打开过签字链接。只有链接过期或商务信息变化时，才需要重发。`
+                          )
+                        : t(lang, "Waiting for the parent to open and sign the formal agreement.", "正在等待家长打开并签署正式合同。")
+                      : latestContract.signToken
+                        ? t(lang, "This contract version already has a formal sign link attached.", "这份合同版本已经带有正式签字链接。")
+                        : t(lang, "Generate the formal sign link after the school checks lesson hours and fee details.", "教务确认课时和费用后，再生成正式签字链接。")}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {contractSignHref ? (
@@ -1201,6 +1232,19 @@ export default async function PackageBillingPage({
                         )}
                       </span>
                     ) : null}
+                    <span>{t(lang, `Invoice gate / 发票闸门: ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`, `Invoice gate / 发票闸门: ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`)}</span>
+                    {latestInvoiceApproval ? (
+                      <span>{t(lang, `Approval / 审批: ${latestInvoiceApproval.status}`, `Approval / 审批: ${latestInvoiceApproval.status}`)}</span>
+                    ) : null}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    {latestContract.invoiceId ? (
+                      <a href={`/api/exports/parent-invoice/${encodeURIComponent(latestContract.invoiceId)}`} target="_blank" rel="noreferrer">
+                        {t(lang, "Open invoice PDF", "打开对应发票 PDF")}
+                      </a>
+                    ) : null}
+                    <a href="#invoices">{t(lang, "Open invoice lane", "打开发票区")}</a>
+                    {latestInvoiceApproval ? <a href="#invoice-gate">{t(lang, "Open approval status", "查看审批状态")}</a> : null}
                   </div>
                 </div>
               ) : null}
@@ -1230,6 +1274,34 @@ export default async function PackageBillingPage({
                   </form>
                 ) : null}
               </div>
+              {contractIsTerminal(latestContract.status) ? (
+                <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fff7f7", padding: 14, display: "grid", gap: 10 }}>
+                  <div style={{ fontWeight: 800, color: "#991b1b" }}>
+                    {t(lang, "Need a corrected contract version?", "需要更正这份合同吗？")}
+                  </div>
+                  <div style={{ color: "#7f1d1d", fontSize: 13, lineHeight: 1.6 }}>
+                    {t(
+                      lang,
+                      "Signed or invoiced contracts stay in history. Instead of editing the old one, create a replacement version and send the new sign link to the parent.",
+                      "已经签过或开过票的合同会保留在历史中。不要直接修改旧合同，请新建一份更正版本，再把新的签字链接发给家长。"
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <form action={createContractDraftAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
+                      <input type="hidden" name="flowType" value={latestContract.flowType} />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 700 }}>
+                        {latestContract.flowType === "RENEWAL"
+                          ? t(lang, "Create replacement renewal contract", "创建新的续费合同版本")
+                          : t(lang, "Create replacement first-purchase contract", "创建新的首购合同版本")}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
@@ -1240,6 +1312,15 @@ export default async function PackageBillingPage({
                   "如果家长资料还没收集，请走首购流程；只有学生已经有上一份确认过的家长资料时，才直接走续费合同。"
                 )}
               </div>
+              {likelyLegacyNoContract ? (
+                <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, color: "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
+                  {t(
+                    lang,
+                    "Legacy direct-billing package without contract history detected. The current package can continue, but the next renewal should use the renewal contract flow instead of manual top-up.",
+                    "系统识别到这像是一条历史存量直客课包，目前还没有合同历史。当前课包可继续使用，但下一次续费应改走续费合同流程，而不是手工 top-up。"
+                  )}
+                </div>
+              ) : null}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <form action={createContractDraftAction}>
                   <input type="hidden" name="packageId" value={packageId} />
@@ -1288,98 +1369,136 @@ export default async function PackageBillingPage({
                     "只有未签字、未开票的作废草稿可以删除。已经签过或开过票的作废合同会保留在这里作为历史记录。"
                   )}
                 </div>
-                {voidContracts.map((contract) => (
-                  <div
-                    key={contract.id}
-                    style={{
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 12,
-                      background: "#f8fafc",
-                      padding: 12,
-                      display: "grid",
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                      <WorkbenchStatusChip
-                        label={`${studentContractFlowLabel(contract.flowType)} / ${studentContractFlowLabelZh(contract.flowType)}`}
-                        tone="neutral"
-                      />
-                      <WorkbenchStatusChip
-                        label={`${studentContractStatusLabel(contract.status)} / ${studentContractStatusLabelZh(contract.status)}`}
-                        tone="error"
-                        strong
-                      />
-                      <span style={{ fontSize: 12, color: "#64748b" }}>
-                        {t(
-                          lang,
-                          `Created ${contract.createdAt.toLocaleString("en-SG")}`,
-                          `创建于 ${contract.createdAt.toLocaleString("zh-CN")}`
-                        )}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                      {contract.signedAt
-                        ? t(
-                            lang,
-                            `Signed on ${contract.signedAt.toLocaleString("en-SG")} and kept here as history.`,
-                            `已于 ${contract.signedAt.toLocaleString("zh-CN")} 签署，作为历史保留。`
-                          )
-                        : contract.invoiceNo
-                          ? t(
-                              lang,
-                              `Linked invoice ${contract.invoiceNo} keeps this void record in history.`,
-                              `已关联发票 ${contract.invoiceNo}，因此这条作废记录会保留在历史中。`
-                            )
-                          : t(
-                              lang,
-                              "This is a void draft that never reached signature or invoicing.",
-                              "这是一份未进入签字和开票阶段的作废草稿。"
-                            )}
-                    </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      {contract.contractSnapshot ? (
-                        <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}`} target="_blank" rel="noreferrer">
-                          {t(lang, "Preview PDF", "预览 PDF")}
-                        </a>
-                      ) : null}
-                      {contract.signedPdfPath ? (
-                        <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?download=1`}>
-                          {t(lang, "Download signed PDF", "下载已签署 PDF")}
-                        </a>
-                      ) : null}
-                      {contractCanDeleteVoidDraft(contract) ? (
-                        <form action={deleteVoidContractDraftAction}>
-                          <input type="hidden" name="packageId" value={packageId} />
-                          <input type="hidden" name="contractId" value={contract.id} />
-                          <input type="hidden" name="source" value={sourceWorkflow} />
-                          <input type="hidden" name="receiptsBack" value={receiptsBack} />
-                          <button
-                            type="submit"
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid #dc2626",
-                              background: "#fff1f2",
-                              color: "#b91c1c",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {t(lang, "Delete void draft", "删除作废草稿")}
-                          </button>
-                        </form>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "#64748b" }}>
-                          {t(
-                            lang,
-                            "History kept for audit or renewal reference",
-                            "因审计或续费参考需要保留历史"
-                          )}
-                        </span>
-                      )}
-                    </div>
+                {deletableVoidContracts.length > 0 ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div style={{ fontWeight: 700, color: "#991b1b" }}>{t(lang, "Void drafts you can delete", "可删除的作废草稿")}</div>
+                    {deletableVoidContracts.map((contract) => (
+                      <div
+                        key={contract.id}
+                        style={{
+                          border: "1px solid #fecaca",
+                          borderRadius: 12,
+                          background: "#fff7f7",
+                          padding: 12,
+                          display: "grid",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <WorkbenchStatusChip
+                            label={`${studentContractFlowLabel(contract.flowType)} / ${studentContractFlowLabelZh(contract.flowType)}`}
+                            tone="neutral"
+                          />
+                          <WorkbenchStatusChip
+                            label={`${studentContractStatusLabel(contract.status)} / ${studentContractStatusLabelZh(contract.status)}`}
+                            tone="error"
+                            strong
+                          />
+                        </div>
+                        <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
+                          {t(lang, "This void draft never reached signature or invoice creation, so it can be safely deleted.", "这份作废草稿还没进入签字和开票阶段，因此可以安全删除。")}
+                        </div>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                          {contract.contractSnapshot ? (
+                            <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}`} target="_blank" rel="noreferrer">
+                              {t(lang, "Preview PDF", "预览 PDF")}
+                            </a>
+                          ) : null}
+                          <form action={deleteVoidContractDraftAction}>
+                            <input type="hidden" name="packageId" value={packageId} />
+                            <input type="hidden" name="contractId" value={contract.id} />
+                            <input type="hidden" name="source" value={sourceWorkflow} />
+                            <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                            <button
+                              type="submit"
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: 10,
+                                border: "1px solid #dc2626",
+                                background: "#fff1f2",
+                                color: "#b91c1c",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {t(lang, "Delete void draft", "删除作废草稿")}
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : null}
+                {archivedVoidContracts.length > 0 ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div style={{ fontWeight: 700, color: "#475569" }}>{t(lang, "Archived contract history", "已归档的合同历史")}</div>
+                    {archivedVoidContracts.map((contract) => (
+                      <div
+                        key={contract.id}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 12,
+                          background: "#f8fafc",
+                          padding: 12,
+                          display: "grid",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <WorkbenchStatusChip
+                            label={`${studentContractFlowLabel(contract.flowType)} / ${studentContractFlowLabelZh(contract.flowType)}`}
+                            tone="neutral"
+                          />
+                          <WorkbenchStatusChip
+                            label={`${studentContractStatusLabel(contract.status)} / ${studentContractStatusLabelZh(contract.status)}`}
+                            tone="error"
+                            strong
+                          />
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            {t(
+                              lang,
+                              `Created ${contract.createdAt.toLocaleString("en-SG")}`,
+                              `创建于 ${contract.createdAt.toLocaleString("zh-CN")}`
+                            )}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                          {contract.signedAt
+                            ? t(
+                                lang,
+                                `Signed on ${contract.signedAt.toLocaleString("en-SG")} and kept here as history.`,
+                                `已于 ${contract.signedAt.toLocaleString("zh-CN")} 签署，作为历史保留。`
+                              )
+                            : contract.invoiceNo
+                              ? t(
+                                  lang,
+                                  `Linked invoice ${contract.invoiceNo} keeps this void record in history.`,
+                                  `已关联发票 ${contract.invoiceNo}，因此这条作废记录会保留在历史中。`
+                                )
+                              : t(
+                                  lang,
+                                  "This contract stays here for audit or later renewal reference.",
+                                  "这条记录会保留在这里，供审计或后续续费参考。"
+                                )}
+                        </div>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                          {contract.contractSnapshot ? (
+                            <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}`} target="_blank" rel="noreferrer">
+                              {t(lang, "Preview PDF", "预览 PDF")}
+                            </a>
+                          ) : null}
+                          {contract.signedPdfPath ? (
+                            <a href={`/api/exports/student-contract/${encodeURIComponent(contract.id)}?download=1`}>
+                              {t(lang, "Download signed PDF", "下载已签署 PDF")}
+                            </a>
+                          ) : null}
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            {t(lang, "History kept for audit or renewal reference", "因审计或续费参考需要保留历史")}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </details>
           ) : null}

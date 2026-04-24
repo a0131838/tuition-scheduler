@@ -204,21 +204,21 @@ export function buildStudentContractSignPath(token: string) {
 export function studentContractStatusLabel(status: StudentContractStatus) {
   switch (canonicalStudentContractStatus(status)) {
     case StudentContractStatus.INTAKE_PENDING:
-      return "Parent info pending";
+      return "Waiting for parent profile";
     case StudentContractStatus.INTAKE_SUBMITTED:
-      return "Parent info received";
+      return "Waiting for school review";
     case StudentContractStatus.CONTRACT_DRAFT:
-      return "Contract draft";
+      return "Waiting to send sign link";
     case StudentContractStatus.READY_TO_SIGN:
-      return "Ready to sign";
+      return "Waiting for signature";
     case StudentContractStatus.SIGNED:
       return "Signed";
     case StudentContractStatus.INVOICE_CREATED:
-      return "Signed and invoiced";
+      return "Signed + invoice ready";
     case StudentContractStatus.EXPIRED:
-      return "Expired";
+      return "Link expired";
     case StudentContractStatus.VOID:
-      return "Void";
+      return "Archived";
     default:
       return "Draft";
   }
@@ -229,19 +229,19 @@ export function studentContractStatusLabelZh(status: StudentContractStatus) {
     case StudentContractStatus.INTAKE_PENDING:
       return "待家长填写资料";
     case StudentContractStatus.INTAKE_SUBMITTED:
-      return "家长资料已提交";
+      return "待教务补商务信息";
     case StudentContractStatus.CONTRACT_DRAFT:
-      return "待教务补合同信息";
+      return "待发送签字链接";
     case StudentContractStatus.READY_TO_SIGN:
       return "待家长签字";
     case StudentContractStatus.SIGNED:
-      return "已签署";
+      return "已签约";
     case StudentContractStatus.INVOICE_CREATED:
-      return "已签字并已开票";
+      return "已签约并已生成发票";
     case StudentContractStatus.EXPIRED:
-      return "已过期";
+      return "链接已过期";
     case StudentContractStatus.VOID:
-      return "已作废";
+      return "已作废归档";
     default:
       return "草稿";
   }
