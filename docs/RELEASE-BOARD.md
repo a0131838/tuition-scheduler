@@ -2826,3 +2826,17 @@
   - verify student detail shows only the reuse/open-current action when an open coordination ticket already exists
   - verify the student-detail create action returns to the coordination card with a bilingual reuse message instead of creating another open ticket
   - verify ticket intake returns the current open coordination ticket for the same student and shows the bilingual reuse success message
+## 2026-04-24-r94 Ready
+
+- Scope: make direct-billing renewal signing increase package balance automatically and reframe old direct package top-up as a special/manual operation.
+- Business impact:
+  - when a direct-billing renewal contract is signed, the system now adds the renewal lesson minutes onto the same package automatically instead of leaving ops to do a second manual top-up
+  - the same renewal signature still auto-creates the parent invoice draft, so the renewal path now closes as `sign -> add hours -> invoice draft`
+  - direct-billing package edit modal now labels old top-up as a legacy/manual path and warns that it bypasses renewal contract + auto-invoice workflow
+  - partner-style top-up behavior is unchanged
+- Validation:
+  - `npm run build`
+  - verify temporary renewal QA package moved from `600 / 600` minutes to `900 / 900` minutes after signature
+  - verify one invoice draft was created for the signed renewal contract
+  - verify one package purchase txn exists with note marker `student-contract-renewal-topup:<contractId>`
+  - verify all temporary QA data was removed afterwards

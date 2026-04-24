@@ -974,8 +974,8 @@ export default async function PackageBillingPage({
               <div style={{ color: "#475569", fontSize: 13 }}>
                 {t(
                   lang,
-                  "First purchase: send a parent info link, then complete the commercial details here before sending the formal sign link. Renewal: skip intake, draft the new contract here, and signing will auto-create the invoice draft.",
-                  "首购：先发家长资料链接，再由教务在这里补课时和费用后生成正式签字链接。续费：直接在这里起草续费合同，家长签字后系统会自动生成发票草稿。"
+                  "First purchase: send a parent info link, then complete the commercial details here before sending the formal sign link. Renewal: skip intake, draft the new contract here, and signing will auto-create the invoice draft and add the renewal hours to the package.",
+                  "首购：先发家长资料链接，再由教务在这里补课时和费用后生成正式签字链接。续费：直接在这里起草续费合同，家长签字后系统会自动生成发票草稿，并把续费课时加回课包。"
                 )}
               </div>
             </div>
@@ -1009,12 +1009,14 @@ export default async function PackageBillingPage({
                       ? t(lang, "Waiting for the parent to submit their profile details.", "正在等待家长提交资料。")
                       : latestContract.status === "INTAKE_SUBMITTED"
                         ? t(lang, "Parent details are in. The school team should complete fee and hours before sending the formal contract.", "家长资料已到位，接下来请教务补充课时与费用，再发送正式合同。")
-                        : latestContract.status === "CONTRACT_DRAFT"
-                          ? t(lang, "Commercial details are editable here. Save changes, then generate the formal sign link.", "课时和费用可以在这里修改。保存后再生成正式签字链接。")
+                          : latestContract.status === "CONTRACT_DRAFT"
+                            ? t(lang, "Commercial details are editable here. Save changes, then generate the formal sign link.", "课时和费用可以在这里修改。保存后再生成正式签字链接。")
                           : latestContract.status === "READY_TO_SIGN"
                             ? t(lang, "The formal sign link is ready. If you change the draft below, the sign link will be regenerated.", "正式签字链接已准备好。如果修改下方合同内容，需要重新生成签字链接。")
-                            : latestContract.status === "INVOICE_CREATED"
-                              ? t(lang, "Parent signing is complete and the linked invoice draft is ready for the billing workflow.", "家长签字已完成，对应发票草稿也已生成，可以继续后续收费流程。")
+                          : latestContract.status === "INVOICE_CREATED"
+                              ? latestContract.flowType === "RENEWAL"
+                                ? t(lang, "Parent signing is complete. The renewal hours have been added to the package and the linked invoice draft is ready for billing.", "家长签字已完成，续费课时已经加回课包，对应发票草稿也已生成，可以继续后续收费流程。")
+                                : t(lang, "Parent signing is complete and the linked invoice draft is ready for the billing workflow.", "家长签字已完成，对应发票草稿也已生成，可以继续后续收费流程。")
                               : t(lang, "This contract is archived or closed. Create a new one only if a new contract version is truly needed.", "当前合同已经完成或关闭。只有确实需要新版本时，才重新创建。")}
                   </div>
                 </div>
@@ -1068,6 +1070,8 @@ export default async function PackageBillingPage({
                       {contractParentInfo
                         ? `${contractParentInfo.parentFullNameEn} · ${contractParentInfo.phone} · ${contractParentInfo.email}`
                         : t(lang, "This renewal contract reuses the latest signed parent profile on the student record.", "当前续费合同会复用该学生最近一次已确认的家长资料。")}
+                      <br />
+                      {t(lang, "After the parent signs, the system will auto-create the invoice draft and add the renewal hours to this package.", "家长签字后，系统会自动生成发票草稿，并把这次续费课时加入当前课包。")}
                     </div>
                   </div>
                 )}

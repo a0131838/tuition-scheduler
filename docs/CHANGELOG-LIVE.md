@@ -5338,3 +5338,19 @@ This file is the single source of truth for what changed in production.
   - intake API now returns the existing open coordination ticket for the same student instead of creating another scheduling-coordination ticket
   - intake form now shows a bilingual reuse success message and preserves the existing parent-availability link when applicable
 - Rollback point: previous production commit before `2026-04-11-r35`.
+## 2026-04-24-r94
+
+- Scope: auto-add direct-billing renewal hours to the package when the renewal contract is signed, and downgrade old direct top-up into a clearly marked special/manual path.
+- Key files:
+  - `lib/student-contract.ts`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-direct-billing-renewal-auto-topup.md`
+- Risk impact (if any): Medium. This release changes the direct-billing renewal completion flow by adding package minutes after signature. It avoids double top-up by writing and checking a renewal-contract package transaction marker before applying minutes.
+- Verification:
+  - `npm run build` passed
+  - temporary direct-billing renewal QA confirmed package minutes moved from `600 -> 900`
+  - the same QA confirmed one invoice draft was created and one `PURCHASE` package txn carried the renewal marker note
+  - temporary QA student/package/contract/invoice data was deleted after verification

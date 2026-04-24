@@ -123,6 +123,7 @@ export default function PackageEditModal({
   const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
   const isXdfPartner = (pkg.sourceChannelName ?? "").includes("新东方");
+  const isDirectBillingPackage = pkg.settlementMode == null;
   const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_TOP_UP_PRESETS;
   const currentRemaining = pkg.remainingMinutes ?? 0;
   const currentTotal = pkg.totalMinutes ?? null;
@@ -205,6 +206,21 @@ export default function PackageEditModal({
     .slice(0, 5)
     .map((course) => course.name)
     .join(", ");
+  const topUpModeLabel = isDirectBillingPackage ? "Special top-up / 特殊增购" : `${labels.topUp} / 增购`;
+  const topUpIntroLabel = isDirectBillingPackage
+    ? "You are opening a legacy/manual top-up path for this package / 你正在打开这个课包的历史/人工增购入口"
+    : "You are topping up this package / 你正在给这个课包增购";
+  const topUpGuidance = isDirectBillingPackage
+    ? "For direct-billing students, normal renewals should use the renewal contract workflow. Use this screen only for legacy carry-over, manager-approved manual corrections, or data repair. / 对直客学生，常规续费应走续费合同流程。这里只用于历史延续、管理批准的人工修正或数据修补。"
+    : "Use top-up only to add balance. Do not use it to correct the original package. / 增购只用于增加课时，不应用来修正原始课包录入。";
+  const topUpHighlight = isDirectBillingPackage
+    ? `This action will add minutes directly to the package and bypass the renewal contract + auto-invoice workflow. Remaining balance will change from ${currentRemaining} to ${nextRemaining}. / 这个操作会直接把课时加到课包里，并绕过续费合同和自动开票流程。剩余课时将从 ${currentRemaining} 变成 ${nextRemaining}。`
+    : `You are adding ${topUpMinutesNumber > 0 ? topUpMinutesNumber : 0} minutes to ${pkg.studentName ?? "this student"}'s ${pkg.courseName ?? "package"}. Remaining balance will change from ${currentRemaining} to ${nextRemaining}. / 你正在给 ${pkg.studentName ?? "该学生"} 的 ${pkg.courseName ?? "课包"} 增加 ${topUpMinutesNumber > 0 ? topUpMinutesNumber : 0} 分钟，剩余课时将从 ${currentRemaining} 变成 ${nextRemaining}。`;
+  const topUpPatternHint = isDirectBillingPackage
+    ? "Direct-billing renewals should normally be signed first so the system can auto-create the invoice and add the renewal hours for you. / 直客续费正常应先签续费合同，让系统自动开票并自动增加续费课时。"
+    : isXdfPartner
+      ? "New Oriental partner packages usually follow 45-minute lesson bundles. / 新东方合作方课包通常按 45 分钟课时打包。"
+      : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。";
 
   const preserveRefresh = (
     okMsg?: string,
@@ -304,7 +320,7 @@ export default function PackageEditModal({
               fontWeight: 700,
             }}
           >
-            {labels.topUp} / 增购
+            {topUpModeLabel}
           </button>
         </div>
 
@@ -322,7 +338,7 @@ export default function PackageEditModal({
           <div style={{ fontWeight: 700, color: "#1d4ed8" }}>
             {mode === "edit"
               ? "You are editing this package / 你正在编辑这个课包"
-              : "You are topping up this package / 你正在给这个课包增购"}
+              : topUpIntroLabel}
           </div>
           <div style={{ display: "grid", gap: 6, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <div>
@@ -597,7 +613,7 @@ export default function PackageEditModal({
             }
           }}
         >
-          <b>{labels.topUp} / 增购课时</b>
+          <b>{topUpModeLabel}</b>
           <input type="hidden" name="id" value={pkg.id} />
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc", display: "grid", gap: 8 }}>
             <div style={{ fontWeight: 700 }}>Top-up summary / 增购摘要</div>
@@ -609,15 +625,10 @@ export default function PackageEditModal({
             ))}
           </div>
           <div style={{ color: "#475569", fontSize: 13 }}>
-            Use top-up only to add balance. Do not use it to correct the original package. / 增购只用于增加课时，不应用来修正原始课包录入。
+            {topUpGuidance}
           </div>
           <div style={{ border: "1px solid #f59e0b", borderRadius: 12, padding: 12, background: "#fff7ed", color: "#9a3412" }}>
-            You are adding <strong>{topUpMinutesNumber > 0 ? topUpMinutesNumber : 0}</strong> minutes to{" "}
-            <strong>{pkg.studentName ?? "this student"}</strong>'s <strong>{pkg.courseName ?? "package"}</strong>.
-            Remaining balance will change from <strong>{currentRemaining}</strong> to <strong>{nextRemaining}</strong>. /
-            你正在给 <strong>{pkg.studentName ?? "该学生"}</strong> 的 <strong>{pkg.courseName ?? "课包"}</strong> 增加{" "}
-            <strong>{topUpMinutesNumber > 0 ? topUpMinutesNumber : 0}</strong> 分钟，剩余课时将从{" "}
-            <strong>{currentRemaining}</strong> 变成 <strong>{nextRemaining}</strong>。
+            {topUpHighlight}
           </div>
           <label>
             {labels.topUpMinutes}:
@@ -652,10 +663,8 @@ export default function PackageEditModal({
               </button>
             ))}
           </div>
-          <div style={{ color: isXdfPartner ? "#92400e" : "#475569", fontSize: 13 }}>
-            {isXdfPartner
-              ? "New Oriental partner packages usually follow 45-minute lesson bundles. / 新东方合作方课包通常按 45 分钟课时打包。"
-              : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。"}
+          <div style={{ color: isDirectBillingPackage || isXdfPartner ? "#92400e" : "#475569", fontSize: 13 }}>
+            {topUpPatternHint}
           </div>
           {isXdfPartner ? (
             <div style={{ display: "grid", gap: 10 }}>

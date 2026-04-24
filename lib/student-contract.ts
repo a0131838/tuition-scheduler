@@ -21,6 +21,8 @@ import {
   generateSignedStudentContractPdfBuffer,
   generateUnsignedStudentContractPdfBuffer,
 } from "@/lib/student-contract-pdf";
+import { buildTopUpMinutesUpdate } from "@/lib/package-top-up";
+import { buildPurchaseTxnCreates } from "@/lib/package-purchase-batches";
 import { isPartnerSettlementPackage } from "@/lib/package-finance-gate";
 import {
   buildPackageFinanceGateReason,
@@ -34,6 +36,7 @@ import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
 const CONTRACT_INVOICE_MARKER_PREFIX = "student-contract:";
+const CONTRACT_RENEWAL_TOP_UP_MARKER_PREFIX = "student-contract-renewal-topup:";
 
 const studentContractInclude = {
   template: true,
@@ -117,6 +120,10 @@ function roundMoney(value: number | null | undefined) {
 
 function contractInvoiceMarker(contractId: string) {
   return `${CONTRACT_INVOICE_MARKER_PREFIX}${contractId}`;
+}
+
+function contractRenewalTopUpMarker(contractId: string) {
+  return `${CONTRACT_RENEWAL_TOP_UP_MARKER_PREFIX}${contractId}`;
 }
 
 function canonicalStudentContractStatus(status: StudentContractStatus) {
@@ -1059,6 +1066,86 @@ async function ensurePackageGateAfterSignedContract(input: {
   });
 }
 
+async function ensureRenewalTopUpAfterSign(input: {
+  row: StudentContractRow;
+  snapshot: ContractSnapshot;
+  signedAt: Date;
+}) {
+  if (input.row.flowType !== StudentContractFlowType.RENEWAL) {
+    return { applied: false, topUpMinutes: 0 };
+  }
+  if (input.row.package.type !== "HOURS") {
+    return { applied: false, topUpMinutes: 0 };
+  }
+
+  const topUpMinutes = Math.max(0, Math.round(Number(input.snapshot.package.totalMinutes ?? 0)));
+  if (!Number.isFinite(topUpMinutes) || topUpMinutes <= 0) {
+    throw new Error("Renewal contract must include valid lesson hours before signing");
+  }
+
+  const marker = contractRenewalTopUpMarker(input.row.id);
+  const existingTxn = await prisma.packageTxn.findFirst({
+    where: {
+      packageId: input.row.packageId,
+      kind: "PURCHASE",
+      note: { contains: marker },
+    },
+    select: { id: true },
+  });
+  if (existingTxn) {
+    return { applied: false, topUpMinutes };
+  }
+
+  const totalAmount = roundMoney(input.snapshot.package.feeAmount);
+  const topUpTxns = buildPurchaseTxnCreates({
+    batches: [{ minutes: topUpMinutes, note: "Signed renewal contract / 已签续费合同" }],
+    totalAmount: totalAmount > 0 ? totalAmount : null,
+    defaultNote: marker,
+    prefix: "Renewal contract top-up",
+    baseCreatedAt: input.signedAt,
+  });
+
+  await prisma.$transaction(async (tx) => {
+    const pkgNow = await tx.coursePackage.findUnique({
+      where: { id: input.row.packageId },
+      select: {
+        id: true,
+        remainingMinutes: true,
+        totalMinutes: true,
+      },
+    });
+    if (!pkgNow) {
+      throw new Error("Package not found");
+    }
+
+    await tx.coursePackage.update({
+      where: { id: input.row.packageId },
+      data: buildTopUpMinutesUpdate(
+        {
+          remainingMinutes: pkgNow.remainingMinutes,
+          totalMinutes: pkgNow.totalMinutes,
+        },
+        topUpMinutes
+      ),
+    });
+
+    for (const txn of topUpTxns) {
+      await tx.packageTxn.create({
+        data: {
+          packageId: input.row.packageId,
+          kind: txn.kind,
+          deltaMinutes: txn.deltaMinutes,
+          deltaAmount: txn.deltaAmount,
+          note: txn.note,
+          createdAt: txn.createdAt,
+        },
+      });
+    }
+  });
+
+  return { applied: true, topUpMinutes };
+}
+
 export async function signStudentContract(input: {
   token: string;
   signerName: string;
@@ -1114,6 +1201,11 @@ export async function signStudentContract(input: {
     invoiceId: invoice.invoiceId,
     invoiceNo: invoice.invoiceNo,
   });
+  const renewalTopUp = await ensureRenewalTopUpAfterSign({
+    row: current,
+    snapshot,
+    signedAt,
+  });
   const signedPdf = await generateSignedStudentContractPdfBuffer({
     snapshot,
     signerName,
@@ -1167,6 +1259,8 @@ export async function signStudentContract(input: {
       signerEmail: trimOrNull(input.signerEmail),
       signerPhone: trimOrNull(input.signerPhone),
       signerIp: trimOrNull(input.signerIp),
+      renewalTopUpMinutes: renewalTopUp.topUpMinutes || null,
+      renewalTopUpApplied: renewalTopUp.applied,
     },
   });
   await appendStudentContractEvent({
@@ -1177,6 +1271,8 @@ export async function signStudentContract(input: {
     payloadJson: {
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,
+      renewalTopUpMinutes: renewalTopUp.topUpMinutes || null,
+      renewalTopUpApplied: renewalTopUp.applied,
     },
   });
   await prisma.studentParentIntake.updateMany({
