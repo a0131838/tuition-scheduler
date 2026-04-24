@@ -5577,3 +5577,18 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - verified the seal now sits directly against the subtotal block
   - verified subtotal / GST / amount due stay readable after the stronger seal placement
+
+## 2026-04-24-r109
+
+- Scope: compact the partner invoice final page so line items fill more of the page before totals, and keep the optional seal/remittance block grouped correctly around the subtotal area.
+- Key files:
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+  - `docs/tasks/TASK-20260424-partner-invoice-final-page-compaction-and-seal-anchor.md`
+- Risk impact (if any): Low. This release only adjusts partner invoice PDF pagination and final-page positioning for totals, remittance notes, and the optional seal; it does not change invoice data, totals, approvals, or receipts.
+- Verification:
+  - `npm run build` passed
+  - verified line items continue lower on the page before the final totals block
+  - verified the optional seal stays attached to the subtotal area
+  - verified remittance notes start below the grouped totals/seal block

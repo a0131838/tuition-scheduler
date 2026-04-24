@@ -3043,3 +3043,19 @@
   - verify the seal visibly overlaps or hugs the subtotal area
   - verify subtotal / GST / amount due remain readable
   - task doc: `docs/tasks/TASK-20260424-partner-invoice-seal-subtotal-overlap-followup.md`
+
+## 2026-04-24-r109 Ready
+
+- Scope: compact the final page of partner invoices so long settlement batches do not leave a large blank area before totals, while keeping the optional seal and remittance notes attached to the subtotal block as one grouped section.
+- Business impact:
+  - finance sees fuller use of the last content page before the totals block
+  - the optional seal now stays visually locked to the subtotal area instead of drifting lower than expected
+  - remittance notes and bank details start below the totals/seal group, so the page reads as one coherent finance summary
+  - no invoice totals, selected settlements, approval flow, or receipt behavior changed
+- Validation:
+  - `npm run build`
+  - export a multi-page sealed partner invoice
+  - verify line items continue lower before the totals summary starts
+  - verify the seal sits against the subtotal block
+  - verify remittance notes begin below the totals/seal group
+  - task doc: `docs/tasks/TASK-20260424-partner-invoice-final-page-compaction-and-seal-anchor.md`
