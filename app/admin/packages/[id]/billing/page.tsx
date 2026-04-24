@@ -51,7 +51,6 @@ import {
   hasReusableStudentContractParentInfo,
   prepareStudentContractForSigning,
   refreshStudentContractIntakeLink,
-  refreshStudentContractSignLink,
   saveStudentContractBusinessDraft,
   studentContractFlowLabel,
   studentContractFlowLabelZh,
@@ -474,30 +473,7 @@ async function resendContractIntakeAction(formData: FormData) {
   redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Parent info link refreshed" }));
 }
 
-async function resendContractSignAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const packageId = String(formData.get("packageId") ?? "").trim();
-  const contractId = String(formData.get("contractId") ?? "").trim();
-  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
-  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
-  if (!packageId || !contractId) {
-    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
-  }
-  try {
-    await refreshStudentContractSignLink({
-      contractId,
-      actorUserId: admin.id,
-      actorLabel: admin.email,
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Refresh sign link failed";
-    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
-  }
-  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract sign link refreshed" }));
-}
-
-async function saveContractBusinessDraftAction(formData: FormData) {
+async function prepareContractSignAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
@@ -519,24 +495,6 @@ async function saveContractBusinessDraftAction(formData: FormData) {
         agreementDateIso: String(formData.get("agreementDateIso") ?? "").trim(),
       },
     });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Save contract draft failed";
-    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
-  }
-  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Contract draft updated" }));
-}
-
-async function prepareContractSignAction(formData: FormData) {
-  "use server";
-  const admin = await requireAdmin();
-  const packageId = String(formData.get("packageId") ?? "").trim();
-  const contractId = String(formData.get("contractId") ?? "").trim();
-  const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
-  const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
-  if (!packageId || !contractId) {
-    redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing contract id" }));
-  }
-  try {
     await prepareStudentContractForSigning({
       contractId,
       actorUserId: admin.id,
@@ -546,7 +504,13 @@ async function prepareContractSignAction(formData: FormData) {
     const msg = error instanceof Error ? error.message : "Prepare sign link failed";
     redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: msg }));
   }
-  redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, msg: "Formal contract link is ready" }));
+  redirect(
+    buildPackageBillingHref(packageId, {
+      sourceWorkflow,
+      receiptsBack,
+      msg: "Contract details saved and sign link is ready",
+    })
+  );
 }
 
 async function voidContractAction(formData: FormData) {
@@ -1174,12 +1138,12 @@ export default async function PackageBillingPage({
                     <div style={{ color: "#475569", fontSize: 13 }}>
                       {t(
                         lang,
-                        "Only keep the business fields here: lesson hours, fee amount, bill-to, and agreement date. If you edit them after generating the sign link, save the draft again and regenerate the formal link.",
-                        "这里只保留教务需要补充的业务字段：课时、费用、开票对象和合同日期。如果生成正式链接后又修改了这些内容，请先保存草稿，再重新生成签字链接。"
+                        "Only keep the business fields here: lesson hours, fee amount, bill-to, and agreement date. Save once and the system will prepare the latest sign link for you.",
+                        "这里只保留教务需要补充的业务字段：课时、费用、开票对象和合同日期。保存一次，系统就会按最新内容生成签字链接。"
                       )}
                     </div>
                   </div>
-                  <form action={saveContractBusinessDraftAction} style={{ display: "grid", gap: 12 }}>
+                  <form action={prepareContractSignAction} style={{ display: "grid", gap: 12 }}>
                     <input type="hidden" name="packageId" value={packageId} />
                     <input type="hidden" name="contractId" value={latestContract.id} />
                     <input type="hidden" name="source" value={sourceWorkflow} />
@@ -1203,34 +1167,18 @@ export default async function PackageBillingPage({
                       </label>
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#fff", color: "#2563eb", fontWeight: 700 }}>
-                        {t(lang, "Save contract draft", "保存合同草稿")}
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 700 }}>
+                        {latestContract.status === "READY_TO_SIGN"
+                          ? t(lang, "Save and refresh sign link", "保存并刷新签字链接")
+                          : t(lang, "Save and generate sign link", "保存并生成签字链接")}
                       </button>
+                      {latestContract.status === "READY_TO_SIGN" ? (
+                        <span style={{ fontSize: 12, color: "#166534" }}>
+                          {t(lang, "This will overwrite the old sign link with the latest fee details.", "这会用最新的课时和费用覆盖旧签字链接。")}
+                        </span>
+                      ) : null}
                     </div>
                   </form>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <form action={prepareContractSignAction}>
-                      <input type="hidden" name="packageId" value={packageId} />
-                      <input type="hidden" name="contractId" value={latestContract.id} />
-                      <input type="hidden" name="source" value={sourceWorkflow} />
-                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
-                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 700 }}>
-                        {t(lang, "Generate formal contract link", "生成正式合同链接")}
-                      </button>
-                    </form>
-                    {latestContract.status === "READY_TO_SIGN" ? (
-                      <form action={resendContractSignAction}>
-                        <input type="hidden" name="packageId" value={packageId} />
-                        <input type="hidden" name="contractId" value={latestContract.id} />
-                        <input type="hidden" name="source" value={sourceWorkflow} />
-                        <input type="hidden" name="receiptsBack" value={receiptsBack} />
-                        <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#fff", color: "#166534", fontWeight: 700 }}>
-                          {t(lang, "Refresh sign link", "刷新签字链接")}
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
                 </div>
               ) : null}
 
@@ -1248,31 +1196,18 @@ export default async function PackageBillingPage({
                         : "家长已经完成签字。旧发票草稿已删除，这份已签版本会保留在历史里，接下来请创建更正合同版本。"
                     )}
                   </div>
-                  <div style={{ color: "#166534", fontSize: 13, lineHeight: 1.6 }}>
-                    {t(
-                      lang,
-                      latestContract.invoiceId
-                        ? "This signed version is now part of history. If the content is wrong, do not void this one here. Stop using the old invoice draft, then create a replacement contract version below."
-                        : "This signed version is already detached from the old invoice draft. Do not edit the old one directly; create a replacement contract version below and send the new sign link to the parent.",
-                      latestContract.invoiceId
-                        ? "这份已签版本已经进入历史记录。如果内容有误，请不要在这里继续作废旧合同。先停止使用旧发票草稿，再在下方创建新的更正合同版本。"
-                        : "这份已签版本已经和旧发票草稿解绑。不要直接修改旧合同，请在下方创建更正合同版本，再把新的签字链接发给家长。"
-                    )}
-                  </div>
                   <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "#166534" }}>
-                    <span>{t(lang, `Invoice / 发票: ${latestContract.invoiceNo ?? "-"}`, `Invoice / 发票: ${latestContract.invoiceNo ?? "-"}`)}</span>
+                    <span>{t(lang, "Invoice", "发票")}: {latestContract.invoiceNo ?? "-"}</span>
                     {latestContract.invoiceCreatedAt ? (
                       <span>
-                        {t(
-                          lang,
-                          `Created ${latestContract.invoiceCreatedAt.toLocaleString("en-SG")}`,
-                          `创建于 ${latestContract.invoiceCreatedAt.toLocaleString("zh-CN")}`
-                        )}
+                        {t(lang, "Created", "创建于")}: {latestContract.invoiceCreatedAt.toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG")}
                       </span>
                     ) : null}
-                    <span>{t(lang, `Invoice gate / 发票闸门: ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`, `Invoice gate / 发票闸门: ${packageFinanceGateLabelZh(pkg.financeGateStatus)}`)}</span>
+                    <span>
+                      {t(lang, "Invoice gate", "发票闸门")}: {packageFinanceGateLabel(pkg.financeGateStatus)} / {packageFinanceGateLabelZh(pkg.financeGateStatus)}
+                    </span>
                     {latestInvoiceApproval ? (
-                      <span>{t(lang, `Approval / 审批: ${latestInvoiceApproval.status}`, `Approval / 审批: ${latestInvoiceApproval.status}`)}</span>
+                      <span>{t(lang, "Approval", "审批")}: {latestInvoiceApproval.status}</span>
                     ) : null}
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>

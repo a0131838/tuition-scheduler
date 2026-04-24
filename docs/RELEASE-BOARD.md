@@ -2915,3 +2915,17 @@
   - verify the contract falls back to signed history
   - verify replacement contract creation produces a fresh `CONTRACT_DRAFT`
   - verify the replacement contract reuses the previous parent profile instead of reopening intake
+
+## 2026-04-24-r100 Ready
+
+- Scope: simplify the contract section in package billing by reducing repeated bilingual copy and replacing the old “save draft” plus “generate/refresh sign link” sequence with one main save-and-prepare action.
+- Business impact:
+  - ops no longer need two separate clicks just to save fee details and prepare the latest sign link
+  - the contract draft section now explains one cleaner action instead of a save-then-regenerate workflow
+  - the signed-result summary is shorter and easier to scan, without duplicated invoice and approval labels
+  - no contract-state rules, invoice creation logic, signed-PDF behavior, or partner exclusions changed
+- Validation:
+  - `npm run build`
+  - verify editing lesson hours / fee / bill-to / agreement date and submitting once updates the draft and prepares the latest sign link
+  - verify the `READY_TO_SIGN` state now offers a single “save and refresh sign link” action
+  - verify the signed-result card no longer duplicates bilingual labels on invoice, gate, and approval rows

@@ -5435,3 +5435,16 @@ This file is the single source of truth for what changed in production.
   - `npm run build` passed
   - temporary QA confirmed deleting the linked invoice draft cleared the contract invoice linkage and moved the contract back to signed history
   - temporary QA confirmed replacement contract creation now produced a new `CONTRACT_DRAFT` and reused the previous parent profile
+
+## 2026-04-24-r100
+
+- Scope: simplify the student-contract billing workspace by removing duplicated signed-result copy and collapsing “save draft” plus “generate/refresh sign link” into one main action.
+- Key files:
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This release only changes billing-page copy and action flow around contract draft preparation; it does not change contract status rules, signed PDF behavior, invoice creation, or partner exclusions.
+- Verification:
+  - `npm run build` passed
+  - verified contract-draft block now uses one button to save business fields and generate the latest sign link
+  - verified the signed-result block no longer repeats bilingual invoice and approval labels
