@@ -132,6 +132,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin" ||
     pathname === "/admin/approvals" ||
     pathname === "/admin/finance/workbench" ||
+    pathname === "/admin/finance/documents" ||
+    pathname === "/admin/finance/deleted-invoices" ||
     pathname === "/admin/finance/student-package-invoices" ||
     pathname === "/admin/finance/student-package-balances" ||
     pathname === "/admin/reports/teacher-payroll" ||
@@ -266,6 +268,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Track parent and partner billing exceptions.", "跟进家长和合作方账单异常。"),
           tone: "warning" as const,
         },
+        {
+          href: "/admin/finance/documents",
+          label: t(lang, "Invoices & Receipts", "完整发票与收据"),
+          description: t(lang, "Open the cross-workspace document center.", "打开跨工作台的单据总览。"),
+          tone: "success" as const,
+        },
+        {
+          href: "/admin/finance/deleted-invoices",
+          label: t(lang, "Deleted Draft History", "已删除草稿历史"),
+          description: t(lang, "Review deleted draft invoice numbers and who removed them.", "查看已删除草稿号及删除人。"),
+          tone: "neutral" as const,
+        },
       ],
     },
     {
@@ -286,6 +300,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: t(lang, "Billing & Audit", "账单与审计"),
       summary: t(lang, "Invoice work and finance-only reference pages.", "发票处理和财务参考页。"),
       items: [
+        { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
+        { href: "/admin/finance/deleted-invoices", label: t(lang, "Deleted Draft History", "已删除草稿历史"), tone: "neutral" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
