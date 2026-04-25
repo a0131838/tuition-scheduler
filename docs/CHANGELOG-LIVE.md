@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r122
+
+- Release ID: `2026-04-25-r122`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: make the parent-facing teacher feedback template bilingual, with English/Chinese section headings and English/Chinese hints for every required section.
+- Key files:
+  - `lib/parent-feedback-format.ts`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `docs/SOP-老师端操作流程图文-20260425.md`
+  - `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
+  - `docs/tasks/TASK-20260425-teacher-feedback-bilingual-prompts.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This changes teacher-facing template wording and validation labels, while keeping the existing feedback storage fields, attendance logic, payroll eligibility, forwarding queues, and database schema unchanged.
+- Verification:
+  - tested empty bilingual template returns all five missing sections
+  - tested English-filled and Chinese-filled feedback both pass section validation
+  - verified the real teacher feedback page renders the bilingual template
+  - refreshed the SOP feedback-form screenshot
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r122`.
+
 ## 2026-04-25-r121
 
 - Release ID: `2026-04-25-r121`

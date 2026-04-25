@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r121` (parent-facing teacher after-class feedback), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r122` (bilingual parent-facing teacher feedback prompts), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -41,6 +41,7 @@
 - Student mobile sticky risk: before `2026-04-25-r119`, the student detail workbench could remain a full-height sticky panel on phones because the sticky guard used a desktop minimum width. Verification should confirm the large workbench is downgraded and only the compact shortcut row stays sticky.
 - Admin mobile layout risk: `2026-04-25-r120` adds shared mobile shrink guardrails for logged-in admin content, so verification should cover representative admin pages and confirm tables remain horizontally scrollable inside their own containers instead of forcing the whole page sideways.
 - Parent-feedback workflow risk: `2026-04-25-r121` makes five parent-facing sections required for teacher after-class feedback, so teachers revising old feedback must reshape it into the new structure before resubmitting.
+- Teacher-feedback language risk: `2026-04-25-r122` changes the teacher feedback template to English/Chinese headings and hints, so screenshots and training docs should stay aligned with the live form.
 
 ## Process Guard (Installed)
 
@@ -61,6 +62,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r122 Ready
+
+- Scope: make the required parent-facing teacher feedback template bilingual for English-first teachers.
+- Business impact:
+  - 老师会看到 `Lesson focus / 本节课重点` 这类中英文对照标题
+  - 每个反馈段落下方都有 `Hint / 提示`，英文老师可以直接按英文提示作答
+  - 系统仍然接受英文标题、中英文标题、或旧中文标题，避免旧反馈被突然卡死
+  - 不改变点名、工资、反馈转发队列、数据库结构或家长反馈业务逻辑
+- Validation:
+  - tested empty bilingual template returns all five missing sections
+  - tested English-filled and Chinese-filled feedback both pass section validation
+  - verified a real teacher session page renders the bilingual template
+  - refreshed SOP screenshot `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
+  - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-teacher-feedback-bilingual-prompts.md`
 
 ## 2026-04-25-r121 Ready
 
