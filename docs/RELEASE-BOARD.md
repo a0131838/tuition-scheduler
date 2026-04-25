@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r122` (bilingual parent-facing teacher feedback prompts), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r123` (section-based parent-facing teacher feedback inputs), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -42,6 +42,7 @@
 - Admin mobile layout risk: `2026-04-25-r120` adds shared mobile shrink guardrails for logged-in admin content, so verification should cover representative admin pages and confirm tables remain horizontally scrollable inside their own containers instead of forcing the whole page sideways.
 - Parent-feedback workflow risk: `2026-04-25-r121` makes five parent-facing sections required for teacher after-class feedback, so teachers revising old feedback must reshape it into the new structure before resubmitting.
 - Teacher-feedback language risk: `2026-04-25-r122` changes the teacher feedback template to English/Chinese headings and hints, so screenshots and training docs should stay aligned with the live form.
+- Teacher-feedback input risk: `2026-04-25-r123` changes the teacher feedback form from one textarea to five section textareas plus preview, so deploy verification should confirm old formatted feedback still parses and new submits assemble into the same saved fields.
 
 ## Process Guard (Installed)
 
@@ -62,6 +63,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r123 Ready
+
+- Scope: replace the teacher feedback editable template with five separate answer boxes and an automatic parent-facing preview.
+- Business impact:
+  - 老师不用再删除 `Hint / 提示`，提示固定显示在输入框外
+  - 每段反馈都有独立输入框：`Lesson focus`、`Current finding`、`Class performance`、`Next plan`、`What parents should know`
+  - 系统自动把五段答案拼成家长可见反馈预览，并保存到原有反馈字段
+  - 不改变点名、工资、反馈转发队列、作业字段或数据库结构
+- Validation:
+  - tested parsing for old Chinese headings, bilingual headings, and unstructured legacy text
+  - tested empty values return all five missing labels
+  - verified a real teacher session page renders five answer boxes and a preview
+  - refreshed SOP screenshot `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
+  - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-teacher-feedback-section-inputs.md`
 
 ## 2026-04-25-r122 Ready
 

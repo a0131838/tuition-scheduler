@@ -7,7 +7,11 @@ import {
   getFeedbackDueAt,
   getFeedbackSubmissionStatus,
 } from "@/lib/feedback-timing";
-import { getMissingParentFeedbackSections } from "@/lib/parent-feedback-format";
+import {
+  buildParentFeedbackText,
+  getMissingParentFeedbackSectionLabels,
+  parseParentFeedbackSections,
+} from "@/lib/parent-feedback-format";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -34,13 +38,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const focusStudentName = String(body?.focusStudentName ?? "").trim() || null;
   const actualStartRaw = String(body?.actualStartAt ?? "").trim();
   const actualEndRaw = String(body?.actualEndAt ?? "").trim();
-  const classPerformance = String(body?.classPerformance ?? "").trim();
+  const parentFeedbackSections =
+    body?.parentFeedbackSections && typeof body.parentFeedbackSections === "object"
+      ? parseParentFeedbackSections(buildParentFeedbackText(body.parentFeedbackSections))
+      : parseParentFeedbackSections(String(body?.classPerformance ?? "").trim());
+  const classPerformance = buildParentFeedbackText(parentFeedbackSections);
   const homework = String(body?.homework ?? "").trim();
   const previousHomeworkDoneRaw = String(body?.previousHomeworkDone ?? "").trim();
   const previousHomeworkDone =
     previousHomeworkDoneRaw === "yes" ? true : previousHomeworkDoneRaw === "no" ? false : null;
 
-  const missingParentSections = getMissingParentFeedbackSections(classPerformance);
+  const missingParentSections = getMissingParentFeedbackSectionLabels(parentFeedbackSections);
   if (!classPerformance || missingParentSections.length > 0) {
     return bad(`Parent-facing feedback must complete: ${missingParentSections.join(", ")}`, 409, {
       missingParentSections,

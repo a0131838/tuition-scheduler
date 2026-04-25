@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r123
+
+- Release ID: `2026-04-25-r123`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: replace the parent-facing teacher feedback editable template with five separate answer boxes, external bilingual prompts, examples, and an automatic parent-facing preview.
+- Key files:
+  - `lib/parent-feedback-format.ts`
+  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `app/api/teacher/sessions/[id]/feedback/route.ts`
+  - `docs/SOP-老师端操作流程图文-20260425.md`
+  - `docs/assets/teacher-sop-20260425/04-parent-feedback-form.png`
+  - `docs/tasks/TASK-20260425-teacher-feedback-section-inputs.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This changes the teacher feedback writing UI and submit payload, but stores the assembled result in the same existing fields and does not change attendance, payroll, forwarding queues, homework, or database schema.
+- Verification:
+  - tested helper parsing for old Chinese headings, bilingual headings, and unstructured legacy feedback
+  - tested empty section values return all five missing labels
+  - verified the real teacher feedback page renders five separate answer boxes and a preview
+  - refreshed the SOP feedback-form screenshot
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r123`.
+
 ## 2026-04-25-r122
 
 - Release ID: `2026-04-25-r122`

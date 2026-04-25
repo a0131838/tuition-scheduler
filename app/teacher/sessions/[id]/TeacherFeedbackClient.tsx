@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
-import { buildParentFeedbackTemplate, getMissingParentFeedbackSections } from "@/lib/parent-feedback-format";
+import {
+  PARENT_FEEDBACK_SECTIONS,
+  buildParentFeedbackText,
+  getMissingParentFeedbackSectionLabels,
+  parseParentFeedbackSections,
+  type ParentFeedbackSectionKey,
+} from "@/lib/parent-feedback-format";
 
 export default function TeacherFeedbackClient({
   sessionId,
@@ -30,6 +36,8 @@ export default function TeacherFeedbackClient({
     requiredHomework: string;
     missingParentSections: string;
     templateHint: string;
+    preview: string;
+    example: string;
     focusStudent: string;
     focusStudentPlaceholder: string;
     actualStart: string;
@@ -57,9 +65,14 @@ export default function TeacherFeedbackClient({
   const [focusStudentName, setFocusStudentName] = useState(initial.focusStudentName);
   const [actualStartAt, setActualStartAt] = useState(initial.actualStartAt);
   const [actualEndAt, setActualEndAt] = useState(initial.actualEndAt);
-  const [classPerformance, setClassPerformance] = useState(initial.classPerformance || buildParentFeedbackTemplate());
+  const [parentFeedbackSections, setParentFeedbackSections] = useState(() => parseParentFeedbackSections(initial.classPerformance));
   const [homework, setHomework] = useState(initial.homework);
   const [previousHomeworkDone, setPreviousHomeworkDone] = useState(initial.previousHomeworkDone);
+  const parentFeedbackText = buildParentFeedbackText(parentFeedbackSections);
+
+  function updateParentFeedbackSection(key: ParentFeedbackSectionKey, value: string) {
+    setParentFeedbackSections((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,8 +80,8 @@ export default function TeacherFeedbackClient({
     setErr("");
     setSaveResult(null);
 
-    const missingSections = getMissingParentFeedbackSections(classPerformance);
-    if (!classPerformance.trim() || missingSections.length > 0) {
+    const missingSections = getMissingParentFeedbackSectionLabels(parentFeedbackSections);
+    if (missingSections.length > 0) {
       setErr(labels.requiredPerformance);
       return;
     }
@@ -86,7 +99,8 @@ export default function TeacherFeedbackClient({
           focusStudentName,
           actualStartAt,
           actualEndAt,
-          classPerformance,
+          parentFeedbackSections,
+          classPerformance: parentFeedbackText,
           homework,
           previousHomeworkDone,
         }),
@@ -164,24 +178,61 @@ export default function TeacherFeedbackClient({
             />
           </label>
         </div>
-        <label>
+        <section style={{ display: "grid", gap: 10 }}>
           {labels.classPerformance}
           <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.5, margin: "4px 0 6px" }}>
             {labels.templateHint}
           </div>
-          <textarea
-            value={classPerformance}
-            onChange={(e) => setClassPerformance(e.target.value)}
-            rows={12}
-            style={{ width: "100%" }}
-            placeholder={labels.classPerformancePlaceholder}
-          />
-          {getMissingParentFeedbackSections(classPerformance).length > 0 ? (
+          {PARENT_FEEDBACK_SECTIONS.map((section) => (
+            <label
+              key={section.key}
+              style={{
+                border: "1px solid #dbe4f0",
+                borderRadius: 12,
+                padding: 12,
+                background: "#ffffff",
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <span style={{ fontWeight: 800 }}>{section.en} / {section.zh}</span>
+              <span style={{ color: "#475569", fontSize: 12, lineHeight: 1.5 }}>
+                {section.promptEn} / {section.promptZh}
+              </span>
+              <details>
+                <summary style={{ color: "#2563eb", cursor: "pointer", fontSize: 12 }}>{labels.example}</summary>
+                <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>
+                  {section.exampleEn} / {section.exampleZh}
+                </div>
+              </details>
+              <textarea
+                value={parentFeedbackSections[section.key]}
+                onChange={(e) => updateParentFeedbackSection(section.key, e.target.value)}
+                rows={3}
+                style={{ width: "100%" }}
+                placeholder={labels.classPerformancePlaceholder}
+              />
+            </label>
+          ))}
+          {getMissingParentFeedbackSectionLabels(parentFeedbackSections).length > 0 ? (
             <div style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}>
-              {labels.missingParentSections}: {getMissingParentFeedbackSections(classPerformance).join("、")}
+              {labels.missingParentSections}: {getMissingParentFeedbackSectionLabels(parentFeedbackSections).join("、")}
             </div>
           ) : null}
-        </label>
+          <div
+            style={{
+              border: "1px solid #bfdbfe",
+              borderRadius: 12,
+              padding: 12,
+              background: "#eff6ff",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#1d4ed8" }}>{labels.preview}</div>
+            <div style={{ whiteSpace: "pre-wrap", color: "#0f172a", lineHeight: 1.5, fontSize: 13 }}>{parentFeedbackText}</div>
+          </div>
+        </section>
         <label>
           {labels.homework}
           <textarea

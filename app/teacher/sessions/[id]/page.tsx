@@ -475,9 +475,11 @@ export default async function TeacherSessionDetailPage({
           missingParentSections: t(lang, "Missing sections", "未完成部分"),
           templateHint: t(
             lang,
-            "Use the bilingual prompts in the box. You may write the answer in English, Chinese, or both, but keep it parent-facing: student's issue, evidence, progress, and next plan.",
-            "请按框内中英文提示填写。可以用英文、中文或双语作答，但要写给家长看：孩子的问题、证据、进步和下一步计划。"
+            "Answer each section below. The prompts stay outside the writing boxes, so you only type the actual parent-facing feedback.",
+            "请逐项填写。提示会保留在输入框外，你只需要在框内写给家长看的真实反馈。"
           ),
+          preview: t(lang, "Parent-facing preview", "家长可见预览"),
+          example: t(lang, "Example", "示例"),
           focusStudent: t(lang, "Focus student (optional)", "重点学生(选填)"),
           focusStudentPlaceholder: t(lang, "e.g. Wang Xiaoming", "例如：王小明"),
           actualStart: t(lang, "Actual start", "实际上课开始"),
@@ -485,8 +487,8 @@ export default async function TeacherSessionDetailPage({
           classPerformance: t(lang, "Parent-facing feedback", "家长视角反馈"),
           classPerformancePlaceholder: t(
             lang,
-            "Complete the bilingual sections. Keep the headings and replace each hint with your answer.",
-            "请完整填写中英文对照段落。保留标题，并把每段提示替换成你的反馈内容。"
+            "Write your answer here. Do not copy the prompt.",
+            "在这里写答案，不需要复制提示。"
           ),
           homework: t(lang, "Homework", "作业"),
           homeworkPlaceholder: t(lang, "Homework assigned after class", "课后作业"),
