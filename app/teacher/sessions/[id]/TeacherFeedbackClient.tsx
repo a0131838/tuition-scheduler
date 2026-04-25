@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DateTimeSplitInput from "@/app/_components/DateTimeSplitInput";
+import { buildParentFeedbackTemplate, getMissingParentFeedbackSections } from "@/lib/parent-feedback-format";
 
 export default function TeacherFeedbackClient({
   sessionId,
@@ -27,6 +28,8 @@ export default function TeacherFeedbackClient({
     ruleHint: string;
     requiredPerformance: string;
     requiredHomework: string;
+    missingParentSections: string;
+    templateHint: string;
     focusStudent: string;
     focusStudentPlaceholder: string;
     actualStart: string;
@@ -54,7 +57,7 @@ export default function TeacherFeedbackClient({
   const [focusStudentName, setFocusStudentName] = useState(initial.focusStudentName);
   const [actualStartAt, setActualStartAt] = useState(initial.actualStartAt);
   const [actualEndAt, setActualEndAt] = useState(initial.actualEndAt);
-  const [classPerformance, setClassPerformance] = useState(initial.classPerformance);
+  const [classPerformance, setClassPerformance] = useState(initial.classPerformance || buildParentFeedbackTemplate());
   const [homework, setHomework] = useState(initial.homework);
   const [previousHomeworkDone, setPreviousHomeworkDone] = useState(initial.previousHomeworkDone);
 
@@ -64,7 +67,8 @@ export default function TeacherFeedbackClient({
     setErr("");
     setSaveResult(null);
 
-    if (!classPerformance.trim()) {
+    const missingSections = getMissingParentFeedbackSections(classPerformance);
+    if (!classPerformance.trim() || missingSections.length > 0) {
       setErr(labels.requiredPerformance);
       return;
     }
@@ -162,13 +166,21 @@ export default function TeacherFeedbackClient({
         </div>
         <label>
           {labels.classPerformance}
+          <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.5, margin: "4px 0 6px" }}>
+            {labels.templateHint}
+          </div>
           <textarea
             value={classPerformance}
             onChange={(e) => setClassPerformance(e.target.value)}
-            rows={4}
+            rows={12}
             style={{ width: "100%" }}
             placeholder={labels.classPerformancePlaceholder}
           />
+          {getMissingParentFeedbackSections(classPerformance).length > 0 ? (
+            <div style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}>
+              {labels.missingParentSections}: {getMissingParentFeedbackSections(classPerformance).join("、")}
+            </div>
+          ) : null}
         </label>
         <label>
           {labels.homework}

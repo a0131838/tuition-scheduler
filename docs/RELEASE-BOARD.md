@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r120` (global logged-in admin mobile layout sweep), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r121` (parent-facing teacher after-class feedback), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -40,6 +40,7 @@
 - Parent-intake cleanup risk: `2026-04-24-r112` adds deletion for unused parent-intake links, so verification must confirm only `zhaohongwei0880@gmail.com` sees the action and that any intake already submitted into a student/package/contract remains undeletable.
 - Student mobile sticky risk: before `2026-04-25-r119`, the student detail workbench could remain a full-height sticky panel on phones because the sticky guard used a desktop minimum width. Verification should confirm the large workbench is downgraded and only the compact shortcut row stays sticky.
 - Admin mobile layout risk: `2026-04-25-r120` adds shared mobile shrink guardrails for logged-in admin content, so verification should cover representative admin pages and confirm tables remain horizontally scrollable inside their own containers instead of forcing the whole page sideways.
+- Parent-feedback workflow risk: `2026-04-25-r121` makes five parent-facing sections required for teacher after-class feedback, so teachers revising old feedback must reshape it into the new structure before resubmitting.
 
 ## Process Guard (Installed)
 
@@ -60,6 +61,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r121 Ready
+
+- Scope: change teacher after-class feedback from a teacher-side lesson log into a parent-facing progress note structure.
+- Business impact:
+  - 老师提交课后反馈时必须写清 `本节课重点`、`目前发现`、`课堂表现`、`下一步计划`、`家长需要知道`
+  - 家长收到的反馈会更像“老师理解我孩子当前问题和训练路径”，而不是只看到今天讲了什么知识点
+  - 作业和旧作业完成情况仍保留在原有字段里
+  - 不改变点名、工资、超时反馈队列、转发状态或数据库结构
+- Validation:
+  - inspected recent real `SessionFeedback` examples
+  - tested complete and incomplete parent-facing samples with the shared formatter
+  - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-parent-facing-teacher-feedback.md`
 
 ## 2026-04-25-r120 Ready
 

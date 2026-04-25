@@ -7,6 +7,7 @@ import {
   getFeedbackDueAt,
   getFeedbackSubmissionStatus,
 } from "@/lib/feedback-timing";
+import { getMissingParentFeedbackSections } from "@/lib/parent-feedback-format";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -39,7 +40,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const previousHomeworkDone =
     previousHomeworkDoneRaw === "yes" ? true : previousHomeworkDoneRaw === "no" ? false : null;
 
-  if (!classPerformance) return bad("Class performance is required", 409);
+  const missingParentSections = getMissingParentFeedbackSections(classPerformance);
+  if (!classPerformance || missingParentSections.length > 0) {
+    return bad(`Parent-facing feedback must complete: ${missingParentSections.join(", ")}`, 409, {
+      missingParentSections,
+    });
+  }
   if (!homework) return bad("Homework is required", 409);
 
   const session = await prisma.session.findUnique({
@@ -75,12 +81,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     previousHomeworkDone === true ? "yes" : previousHomeworkDone === false ? "no" : "not set";
   const feedbackTitle = focusStudentName || "Whole Class";
   const content = [
-    `[Class Feedback / 课堂反馈 - ${feedbackTitle}]`,
+    `[Parent-facing Feedback / 家长视角课后反馈 - ${feedbackTitle}]`,
     `1. Subject / 科目: ${subjectName}`,
     `2. Time / 时间: Planned / 计划 ${plannedStart} - ${plannedEnd}; Actual / 实际 ${actualTimeLine}`,
-    `3. Class performance / 课堂表现: ${classPerformance}`,
-    `4. Homework / 作业: ${homework}`,
-    `5. Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
+    "",
+    classPerformance,
+    "",
+    `课后作业 / Homework: ${homework}`,
+    `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
   await prisma.sessionFeedback.upsert({

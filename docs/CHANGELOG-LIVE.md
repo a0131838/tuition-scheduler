@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r121
+
+- Release ID: `2026-04-25-r121`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: make teacher after-class feedback submit as a parent-facing progress note with required sections for lesson focus, current finding, class evidence, next plan, and parent note.
+- Key files:
+  - `lib/parent-feedback-format.ts`
+  - `app/teacher/sessions/[id]/TeacherFeedbackClient.tsx`
+  - `app/teacher/sessions/[id]/page.tsx`
+  - `app/api/teacher/sessions/[id]/feedback/route.ts`
+  - `docs/tasks/TASK-20260425-parent-facing-teacher-feedback.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This changes teacher feedback submission requirements and the text copied by admins to parents, but keeps the existing database fields and does not change attendance, payroll, overdue queue, or forwarding status logic.
+- Verification:
+  - inspected recent real `SessionFeedback` rows and confirmed many entries are teacher-log style
+  - added shared client/server validation for the five parent-facing sections
+  - tested complete and incomplete parent-facing feedback samples through the shared formatter
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r121`.
+
 ## 2026-04-25-r120
 
 - Release ID: `2026-04-25-r120`

@@ -369,8 +369,8 @@ export default async function TeacherSessionDetailPage({
           <div style={{ color: "#0f172a", fontSize: 13 }}>
             {t(
               lang,
-              "Once attendance is settled, record what was covered, how the student performed, and the homework assigned.",
-              "点名确认后，再补充本节课内容、学生表现和课后作业。"
+              "Once attendance is settled, write the parent-facing version: what problem was solved, what was found, what changed, and what comes next.",
+              "点名确认后，填写家长视角反馈：解决了什么问题、发现了什么、孩子有什么变化、下一步怎么练。"
             )}
           </div>
         </div>
@@ -466,14 +466,28 @@ export default async function TeacherSessionDetailPage({
           savedLate: t(lang, "Saved. This submission is marked as late.", "已保存，但这次提交会标记为迟交。"),
           deadlinePrefix: t(lang, "Late starts at", "迟交开始时间"),
           ruleHint: feedbackRuleHint,
-          requiredPerformance: t(lang, "Class performance is required", "课堂表现为必填"),
+          requiredPerformance: t(
+            lang,
+            "Parent-facing feedback must complete all five sections",
+            "家长视角反馈必须完整填写五个部分"
+          ),
           requiredHomework: t(lang, "Homework is required", "作业为必填"),
+          missingParentSections: t(lang, "Missing sections", "未完成部分"),
+          templateHint: t(
+            lang,
+            "Write for parents, not as a lesson log. Avoid only listing knowledge points; explain the student's current issue, visible progress, and next training plan.",
+            "请写给家长看，不要只写教学流水账。不要只列知识点；要说明孩子当前问题、可观察进步和下一步训练计划。"
+          ),
           focusStudent: t(lang, "Focus student (optional)", "重点学生(选填)"),
           focusStudentPlaceholder: t(lang, "e.g. Wang Xiaoming", "例如：王小明"),
           actualStart: t(lang, "Actual start", "实际上课开始"),
           actualEnd: t(lang, "Actual end", "实际上课结束"),
-          classPerformance: t(lang, "Class performance", "课堂表现"),
-          classPerformancePlaceholder: t(lang, "What was covered and how the student performed", "本节课内容和学生表现"),
+          classPerformance: t(lang, "Parent-facing feedback", "家长视角反馈"),
+          classPerformancePlaceholder: t(
+            lang,
+            "Complete: lesson focus, current finding, class evidence, next plan, and parent note.",
+            "请完整填写：本节课重点、目前发现、课堂表现、下一步计划、家长需要知道。"
+          ),
           homework: t(lang, "Homework", "作业"),
           homeworkPlaceholder: t(lang, "Homework assigned after class", "课后作业"),
           previousHomeworkDone: t(lang, "Previous homework done", "之前作业完成情况"),
