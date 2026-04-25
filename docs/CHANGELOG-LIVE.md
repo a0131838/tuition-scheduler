@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r120
+
+- Release ID: `2026-04-25-r120`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: sweep logged-in admin mobile layouts so common grid/flex containers no longer force page-level horizontal scrolling, and let the teacher payroll work area collapse to one column on phones.
+- Key files:
+  - `app/responsive-layout.css`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `docs/tasks/TASK-20260425-admin-mobile-post-login-layout-sweep.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This is UI-only and mobile-focused, but it touches the shared logged-in responsive layout. It does not change student, scheduling, finance, payroll, approval, or attachment data logic.
+- Verification:
+  - queried real admin, student, package, teacher, and ticket records for representative logged-in routes
+  - local Playwright mobile viewport `390x844`
+  - verified 17 logged-in admin routes have `overflowX=0` and no oversized sticky/fixed panels
+  - verified the mobile admin menu opens with `overflowX=0`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r120`.
+
 ## 2026-04-25-r119
 
 - Release ID: `2026-04-25-r119`

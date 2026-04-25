@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r119` (mobile student detail sticky workbench fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r120` (global logged-in admin mobile layout sweep), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -39,6 +39,7 @@
 - Invoice-delete sequencing risk: `2026-04-24-r111` stops compacting later draft invoice numbers after deletion, so verification must confirm middle gaps remain visible, tail gaps get reused only naturally by the next new draft, and deleted draft numbers appear in history for audit.
 - Parent-intake cleanup risk: `2026-04-24-r112` adds deletion for unused parent-intake links, so verification must confirm only `zhaohongwei0880@gmail.com` sees the action and that any intake already submitted into a student/package/contract remains undeletable.
 - Student mobile sticky risk: before `2026-04-25-r119`, the student detail workbench could remain a full-height sticky panel on phones because the sticky guard used a desktop minimum width. Verification should confirm the large workbench is downgraded and only the compact shortcut row stays sticky.
+- Admin mobile layout risk: `2026-04-25-r120` adds shared mobile shrink guardrails for logged-in admin content, so verification should cover representative admin pages and confirm tables remain horizontally scrollable inside their own containers instead of forcing the whole page sideways.
 
 ## Process Guard (Installed)
 
@@ -59,6 +60,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r120 Ready
+
+- Scope: improve logged-in admin mobile layout globally and fix the remaining teacher payroll mobile overflow.
+- Business impact:
+  - logged-in admin pages now keep common grid/flex content inside the phone viewport instead of creating page-level sideways scrolling
+  - teacher payroll's work queue and selected payroll panel now collapse to one column on phones
+  - wide tables can still scroll horizontally inside their own table area, but the full page should not drift sideways
+  - no student, scheduling, finance, payroll, approval, or attachment records are changed
+- Validation:
+  - queried real admin, student, package, teacher, and ticket records for route coverage
+  - local Playwright mobile viewport `390x844`
+  - verified 17 logged-in admin routes with `overflowX=0` and no oversized sticky/fixed panels
+  - verified mobile admin menu opens with `overflowX=0`
+  - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-admin-mobile-post-login-layout-sweep.md`
 
 ## 2026-04-25-r119 Ready
 

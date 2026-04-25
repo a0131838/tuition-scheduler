@@ -1040,7 +1040,7 @@ export default async function TeacherPayrollPage({
         style={{
           display: "grid",
           gap: 16,
-          gridTemplateColumns: "minmax(280px, 0.95fr) minmax(340px, 1.05fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
           alignItems: "start",
           marginBottom: 18,
         }}

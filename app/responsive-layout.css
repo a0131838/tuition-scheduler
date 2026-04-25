@@ -149,6 +149,21 @@
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
+  .app-main,
+  .app-main * {
+    box-sizing: border-box;
+  }
+
+  .app-main :where(div, section, article, aside, form, fieldset, details, summary, header, footer, nav, label, p, h1, h2, h3, h4) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .app-main :where(input, select, textarea, button, a) {
+    max-width: 100%;
+  }
+
   .app-main-head {
     flex-direction: column;
     align-items: flex-start;
