@@ -1,5 +1,13 @@
 export const ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS = 14;
 
+export const ACADEMIC_STUDENT_LANES = [
+  { value: "all", zh: "全部学生", en: "All students" },
+  { value: "own", zh: "自己学生", en: "Own students" },
+  { value: "partner", zh: "合作方学生", en: "Partner students" },
+] as const;
+
+export type AcademicStudentLane = (typeof ACADEMIC_STUDENT_LANES)[number]["value"];
+
 export const ACADEMIC_SERVICE_PLANS = [
   {
     value: "STANDARD_COURSE",
@@ -43,6 +51,34 @@ const PROFILE_FIELDS = [
 ] as const;
 
 export type AcademicProfileLike = Partial<Record<(typeof PROFILE_FIELDS)[number], string | null | undefined>>;
+
+export function normalizeAcademicStudentLane(value?: string | null): AcademicStudentLane {
+  return ACADEMIC_STUDENT_LANES.some((item) => item.value === value) ? (value as AcademicStudentLane) : "all";
+}
+
+export function academicStudentLaneLabel(value?: string | null) {
+  return ACADEMIC_STUDENT_LANES.find((item) => item.value === value)?.zh ?? ACADEMIC_STUDENT_LANES[0].zh;
+}
+
+export function packageAcademicStudentLane(settlementMode?: string | null): Exclude<AcademicStudentLane, "all"> {
+  return settlementMode === "ONLINE_PACKAGE_END" || settlementMode === "OFFLINE_MONTHLY" ? "partner" : "own";
+}
+
+export function studentAcademicStudentLane(input: {
+  settlementMode?: string | null;
+  studentTypeName?: string | null;
+  sourceChannelName?: string | null;
+}): Exclude<AcademicStudentLane, "all"> {
+  if (packageAcademicStudentLane(input.settlementMode) === "partner") return "partner";
+  const text = `${input.studentTypeName ?? ""} ${input.sourceChannelName ?? ""}`;
+  if (/合作方|新东方|partner/i.test(text)) return "partner";
+  return "own";
+}
+
+export function matchesAcademicStudentLane(input: { settlementMode?: string | null }, lane: AcademicStudentLane) {
+  if (lane === "all") return true;
+  return packageAcademicStudentLane(input.settlementMode) === lane;
+}
 
 export function academicRiskLabel(value?: string | null) {
   return ACADEMIC_RISK_LEVELS.find((item) => item.value === value)?.zh ?? "未设置";

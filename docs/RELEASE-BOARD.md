@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r126` (academic management followups without OpenClaw runtime changes), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r127` (academic management own-vs-partner split), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -46,6 +46,7 @@
 - Admin-feedback forwarding risk: `2026-04-25-r124` changes the primary copied text for feedback forwarding to a parent-readable WeChat format, while keeping a separate internal-record copy button for audit-style text.
 - Student-academic-management risk: `2026-04-25-r125` adds nullable student management fields and a Todo Center read path for active-package students without upcoming lessons; verification should confirm the page renders before operators start filling these fields.
 - Academic-management-followup risk: `2026-04-25-r126` adds quality/completeness signals and an academic management monthly report without touching OpenClaw; verification should confirm the new report and Todo Center render correctly with mostly empty profile fields.
+- Academic-management-lane risk: `2026-04-25-r127` splits academic management views by own/direct versus partner package settlement mode; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
 
 ## Process Guard (Installed)
 
@@ -67,21 +68,21 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-04-25-r126 Ready
+## 2026-04-25-r127 Ready
 
-- Scope: complete the non-OpenClaw academic management followups.
+- Scope: split academic management handling between own/direct students and partner students.
 - Business impact:
-  - 学生详情页服务计划改为固定选项，并显示档案完整度和服务节奏
-  - 今日工作台 `学业管理提醒` 现在也会暴露档案不完整、服务计划需要月报的有效课包学生
-  - 反馈转发台显示家长反馈质量分和具体风险提示
-  - 管理端报表新增 `学业管理月报`
-  - OpenClaw 周一/周三/周五提醒方案仍只记录到文档，不改任何 OpenClaw 脚本、定时任务或企业微信投递链路
-  - 不改变排课创建、点名、扣费、工资、财务审批或反馈提交逻辑
+  - 今日工作台 `学业管理提醒` 增加 `全部学生 / 自己学生 / 合作方学生` 分流筛选
+  - `学业管理月报` 增加同样的学生类型筛选
+  - 提醒和月报行内显示学生类型，方便教务把自己学生和合作方学生分开处理
+  - 分流依据优先使用课包 `settlementMode`，与真实结算流程一致
+  - 不改变 OpenClaw、排课创建、点名、扣费、合同、工资、合作方结算或财务审批逻辑
 - Validation:
-  - queried production data: 77 students, 67 active hour packages, 64 active-package students, 39 active-package students without a session in the next 14 days
-  - confirmed current academic management fields are empty until operators populate them
-  - `npx tsx --test tests/parent-feedback-quality.test.ts`
+  - queried production data: 77 students, 51 active hour packages with remaining balance, 19 direct/own active packages, 32 partner active packages
+  - confirmed student types include `合作方学生`, `自己学生-新生`, `自己学生-留学+课程`, and legacy `直客学生`
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
   - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-academic-management-own-vs-partner.md`
   - `npx prisma generate`
   - `npx prisma migrate deploy`
   - `npm run build`

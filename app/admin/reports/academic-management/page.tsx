@@ -5,10 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import {
   ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
+  ACADEMIC_STUDENT_LANES,
   academicProfileCompleteness,
   academicRiskLabel,
+  academicStudentLaneLabel,
+  normalizeAcademicStudentLane,
   requiresMonthlyAcademicReport,
   servicePlanLabel,
+  studentAcademicStudentLane,
 } from "@/lib/academic-management";
 
 function monthKey(d: Date) {
@@ -47,13 +51,14 @@ function sessionStudentIds(session: any) {
 export default async function AcademicManagementReportPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ month?: string }>;
+  searchParams?: Promise<{ month?: string; lane?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const now = new Date();
   const month = sp?.month ?? monthKey(now);
+  const lane = normalizeAcademicStudentLane(sp?.lane);
   const range = toDateRange(month);
 
   if (!range) {
@@ -66,8 +71,13 @@ export default async function AcademicManagementReportPage({
   }
 
   const activePackages = await prisma.coursePackage.findMany({
-    where: { type: "HOURS", status: "ACTIVE", remainingMinutes: { gt: 0 } },
-    include: { student: true },
+    where: {
+      type: "HOURS",
+      status: "ACTIVE",
+      remainingMinutes: { gt: 0 },
+      ...(lane === "own" ? { settlementMode: null } : lane === "partner" ? { settlementMode: { not: null } } : {}),
+    },
+    include: { student: { include: { studentType: true, sourceChannel: true } } },
     orderBy: { updatedAt: "desc" },
     take: 1000,
   });
@@ -186,6 +196,13 @@ export default async function AcademicManagementReportPage({
 
       <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
         <input type="month" name="month" defaultValue={month} />
+        <select name="lane" defaultValue={lane}>
+          {ACADEMIC_STUDENT_LANES.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.zh}
+            </option>
+          ))}
+        </select>
         <button type="submit">{t(lang, "Apply", "应用")}</button>
         <Link href="/admin/todos">{t(lang, "Todo Center", "今日待办")}</Link>
       </form>
@@ -200,8 +217,9 @@ export default async function AcademicManagementReportPage({
           <div style={{ fontWeight: 800, fontSize: 22 }}>{attentionCount}</div>
         </div>
         <div style={{ border: "1px solid #bfdbfe", borderRadius: 10, padding: 10 }}>
-          <div style={{ color: "#1d4ed8", fontSize: 12 }}>{t(lang, "Month", "月份")}</div>
-          <div style={{ fontWeight: 800, fontSize: 22 }}>{month}</div>
+          <div style={{ color: "#1d4ed8", fontSize: 12 }}>{t(lang, "Student lane", "学生类型")}</div>
+          <div style={{ fontWeight: 800, fontSize: 22 }}>{academicStudentLaneLabel(lane)}</div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>{month}</div>
         </div>
       </div>
 
@@ -225,6 +243,15 @@ export default async function AcademicManagementReportPage({
                     {row.student.name}
                   </Link>
                   <div style={{ color: "#64748b", fontSize: 12 }}>{fmtMinutes(row.remainingMinutes)} / {row.packageCount} pkg</div>
+                  <div style={{ color: "#334155", fontSize: 12, fontWeight: 700 }}>
+                    {academicStudentLaneLabel(
+                      studentAcademicStudentLane({
+                        settlementMode: row.student.settlementMode,
+                        studentTypeName: row.student.studentType?.name,
+                        sourceChannelName: row.student.sourceChannel?.name,
+                      })
+                    )}
+                  </div>
                 </td>
                 <td>
                   <div>{servicePlanLabel(row.student.servicePlanType)}</div>

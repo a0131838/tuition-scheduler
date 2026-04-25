@@ -32,11 +32,17 @@ import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination";
 import {
   ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
+  ACADEMIC_STUDENT_LANES,
   academicProfileCompleteness,
   academicRiskLabel,
+  academicStudentLaneLabel,
   isAcademicProfileIncomplete,
+  matchesAcademicStudentLane,
+  normalizeAcademicStudentLane,
+  packageAcademicStudentLane,
   requiresMonthlyAcademicReport,
   servicePlanLabel,
+  studentAcademicStudentLane,
 } from "@/lib/academic-management";
 
 const TODO_DESK_COOKIE = "adminTodosDesk";
@@ -305,7 +311,7 @@ async function runAutoFixNow(formData: FormData) {
 export default async function AdminTodosPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ clearDesk?: string; warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string }>;
+  searchParams?: Promise<{ clearDesk?: string; warnDays?: string; warnMinutes?: string; pastDays?: string; pastPage?: string; showConfirmed?: string; includeConflicts?: string; academicLane?: string }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
@@ -338,6 +344,7 @@ export default async function AdminTodosPage({
   const pastPageSize = 50;
   const showConfirmed = hasShowConfirmedParam ? sp?.showConfirmed === "1" : rememberedDesk.showConfirmed;
   const includeConflicts = hasIncludeConflictsParam ? sp?.includeConflicts === "1" : rememberedDesk.includeConflicts;
+  const academicLane = normalizeAcademicStudentLane(sp?.academicLane);
   const resumedRememberedDesk = !clearDesk && !hasExplicitDeskContext && Boolean(rememberedDesk.value);
   const rememberedDeskValue = (() => {
     const params = new URLSearchParams();
@@ -719,7 +726,7 @@ export default async function AdminTodosPage({
         status: "ACTIVE",
         remainingMinutes: { gt: 0 },
       },
-      include: { student: true, course: true },
+      include: { student: { include: { studentType: true, sourceChannel: true } }, course: true },
       orderBy: { updatedAt: "desc" },
       take: 500,
     }),
@@ -780,7 +787,8 @@ export default async function AdminTodosPage({
     }),
   ]);
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
-  const activePackageStudentIds = Array.from(new Set(packages.map((p) => p.studentId).filter(Boolean)));
+  const academicPackages = packages.filter((p) => matchesAcademicStudentLane({ settlementMode: p.settlementMode }, academicLane));
+  const activePackageStudentIds = Array.from(new Set(academicPackages.map((p) => p.studentId).filter(Boolean)));
   const scheduleLookaheadEnd = new Date(now);
   scheduleLookaheadEnd.setDate(scheduleLookaheadEnd.getDate() + STUDENT_SCHEDULE_LOOKAHEAD_DAYS);
   const activePackageStudentIdSet = new Set(activePackageStudentIds);
@@ -829,7 +837,7 @@ export default async function AdminTodosPage({
     packageCount: number;
     totalRemainingMinutes: number;
   }>();
-  for (const p of packages) {
+  for (const p of academicPackages) {
     if (!p.student) continue;
     const existing = activePackageByStudent.get(p.studentId) ?? {
       student: p.student,
@@ -840,6 +848,13 @@ export default async function AdminTodosPage({
     existing.totalRemainingMinutes += p.remainingMinutes ?? 0;
     activePackageByStudent.set(p.studentId, existing);
   }
+  const academicPackageLaneCounts = packages.reduce(
+    (acc, p) => {
+      acc[packageAcademicStudentLane(p.settlementMode)] += 1;
+      return acc;
+    },
+    { own: 0, partner: 0 }
+  );
   const academicManagementAlerts = Array.from(activePackageByStudent.entries())
     .map(([studentId, row]) => {
       const nextSession = nextSessionByStudentId.get(studentId) ?? null;
@@ -1128,6 +1143,7 @@ export default async function AdminTodosPage({
     if (pastPage) p.set("pastPage", String(pastPage));
     if (showConfirmed) p.set("showConfirmed", "1");
     if (includeConflicts) p.set("includeConflicts", "1");
+    if (academicLane !== "all") p.set("academicLane", academicLane);
     Object.entries(extra).forEach(([k, v]) => {
       if (v == null || v === "") p.delete(k);
       else p.set(k, String(v));
@@ -2129,6 +2145,30 @@ export default async function AdminTodosPage({
                   `有有效课包但未来 ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} 天无课、档案未完整、下一步动作临近、服务计划需要月报，或被标记为高风险的学生。`
                 )}
               </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                {ACADEMIC_STUDENT_LANES.map((item) => (
+                  <a
+                    key={item.value}
+                    href={todoHref({ academicLane: item.value === "all" ? null : item.value })}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: academicLane === item.value ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                      background: academicLane === item.value ? "#dbeafe" : "#fff",
+                      color: "#0f172a",
+                      textDecoration: "none",
+                      fontWeight: academicLane === item.value ? 800 : 600,
+                    }}
+                  >
+                    {item.zh}
+                    {item.value === "own"
+                      ? ` (${academicPackageLaneCounts.own})`
+                      : item.value === "partner"
+                        ? ` (${academicPackageLaneCounts.partner})`
+                        : ` (${packages.length})`}
+                  </a>
+                ))}
+              </div>
               {academicManagementAlerts.length === 0 ? (
                 <div style={{ color: "#999" }}>{t(lang, "No academic management alerts.", "暂无学业管理提醒。")}</div>
               ) : (
@@ -2136,6 +2176,7 @@ export default async function AdminTodosPage({
                   <thead>
                     <tr style={{ background: "#f5f5f5" }}>
                       <th align="left">{t(lang, "Student", "学生")}</th>
+                      <th align="left">{t(lang, "Type", "类型")}</th>
                       <th align="left">{t(lang, "Risk", "风险")}</th>
                       <th align="left">{t(lang, "Service plan", "服务计划")}</th>
                       <th align="left">{t(lang, "Next lesson", "下一节课")}</th>
@@ -2151,6 +2192,18 @@ export default async function AdminTodosPage({
                           <div style={{ fontWeight: 700 }}>{row.student?.name ?? "-"}</div>
                           <div style={{ fontSize: 12, color: "#64748b" }}>
                             {t(lang, "Remaining", "剩余")}: {fmtMinutes(row.totalRemainingMinutes)}
+                          </div>
+                        </td>
+                        <td style={{ fontWeight: 700 }}>
+                          {academicStudentLaneLabel(
+                            studentAcademicStudentLane({
+                              settlementMode: row.student?.settlementMode,
+                              studentTypeName: row.student?.studentType?.name,
+                              sourceChannelName: row.student?.sourceChannel?.name,
+                            })
+                          )}
+                          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>
+                            {row.student?.studentType?.name ?? row.student?.sourceChannel?.name ?? "-"}
                           </div>
                         </td>
                         <td style={{ color: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b", fontWeight: 700 }}>

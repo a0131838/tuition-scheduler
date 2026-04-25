@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r127
+
+- Release ID: `2026-04-25-r127`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: split academic management views between own/direct students and partner students.
+- Key files:
+  - `lib/academic-management.ts`
+  - `tests/academic-management.test.ts`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/reports/academic-management/page.tsx`
+  - `docs/tasks/TASK-20260425-academic-management-own-vs-partner.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds filtering and labels to academic management views only. It does not change package settlement mode, student type records, OpenClaw, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
+- Verification:
+  - queried production data: 77 students, 51 active hour packages with remaining balance, 19 direct/own active packages, 32 partner active packages
+  - confirmed student types include `合作方学生`, `自己学生-新生`, `自己学生-留学+课程`, and legacy `直客学生`
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r127`.
+
 ## 2026-04-25-r126
 
 - Release ID: `2026-04-25-r126`
