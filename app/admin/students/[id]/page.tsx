@@ -71,6 +71,13 @@ import {
 } from "@/lib/teacher-scheduling-availability";
 import { isPartnerSettlementPackage, packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
 import { studentContractFlowLabelZh, studentContractStatusLabelZh } from "@/lib/student-contract";
+import {
+  ACADEMIC_RISK_LEVELS,
+  ACADEMIC_SERVICE_PLANS,
+  academicProfileCompleteness,
+  servicePlanCadence,
+  servicePlanLabel,
+} from "@/lib/academic-management";
 const zhMap: Record<string, string> = {
   "Action": "\u64cd\u4f5c",
   "Actions": "\u64cd\u4f5c",
@@ -2775,7 +2782,10 @@ export default async function StudentDetailPage({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Service plan", "服务计划")}</div>
-            <div style={{ fontWeight: 800 }}>{student.servicePlanType || t(lang, "Not set", "未设置")}</div>
+            <div style={{ fontWeight: 800 }}>{servicePlanLabel(student.servicePlanType)}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+              {servicePlanCadence(student.servicePlanType)}
+            </div>
           </div>
           <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Risk level", "风险等级")}</div>
@@ -2791,6 +2801,15 @@ export default async function StudentDetailPage({
             <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next action due", "下一步截止")}</div>
             <div style={{ fontWeight: 800 }}>
               {student.nextActionDue ? formatBusinessDateOnly(new Date(student.nextActionDue)) : "-"}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Profile completeness", "档案完整度")}</div>
+            <div style={{ fontWeight: 800 }}>
+              {academicProfileCompleteness(student).percent}%
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+              {academicProfileCompleteness(student).filled}/{academicProfileCompleteness(student).total}
             </div>
           </div>
         </div>
@@ -4772,6 +4791,8 @@ export default async function StudentDetailPage({
           sources={sources.map((s) => ({ id: s.id, name: s.name }))}
           types={types.map((t) => ({ id: t.id, name: t.name }))}
           gradeOptions={GRADE_OPTIONS}
+          servicePlanOptions={ACADEMIC_SERVICE_PLANS.map((item) => ({ value: item.value, label: `${item.zh} / ${item.en}` }))}
+          riskOptions={ACADEMIC_RISK_LEVELS.map((item) => ({ value: item.value, label: item.zh }))}
           initialOpen={editStudentOpen}
           labels={{
             title: tl(lang, "Edit Student"),

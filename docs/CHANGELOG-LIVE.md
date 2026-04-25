@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r126
+
+- Release ID: `2026-04-25-r126`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: improve the non-OpenClaw academic management workflow with service-plan presets, profile completeness, feedback quality checks, Todo Center alert expansion, and a monthly academic management report.
+- Key files:
+  - `lib/academic-management.ts`
+  - `lib/parent-feedback-quality.ts`
+  - `tests/parent-feedback-quality.test.ts`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/feedbacks/page.tsx`
+  - `app/admin/reports/academic-management/page.tsx`
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260425-academic-management-followups.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds read-only reporting and visible quality/completeness signals, plus changes the student service-plan input from free text to presets. It does not change OpenClaw, scheduling creation, attendance, package deduction, payroll, or finance approval logic.
+- Verification:
+  - queried production data: 77 students, 67 active hour packages, 64 active-package students, 39 active-package students without a session in the next 14 days
+  - confirmed current academic management profile data is still empty before operators classify students
+  - `npx tsx --test tests/parent-feedback-quality.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r126`.
+
 ## 2026-04-25-r125
 
 - Release ID: `2026-04-25-r125`

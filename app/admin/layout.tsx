@@ -242,6 +242,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Audit, archive, and context pages.", "审计、归档和辅助查看页。"),
       items: [
         { href: "/admin/reports/monthly-hours", label: t(lang, "Monthly Hours", "月度课时明细"), tone: "neutral" as const },
+        { href: "/admin/reports/academic-management", label: t(lang, "Academic Management", "学业管理月报"), tone: "accent" as const },
         { href: "/admin/reports/cancelled-sessions", label: t(lang, "Cancelled Sessions", "已取消课次"), tone: "neutral" as const },
         { href: "/admin/reports/package-sharing-audit", label: t(lang, "Package Sharing Audit", "共享课包审计"), tone: "neutral" as const },
         { href: "/admin/reports/midterm", label: t(lang, "Midterm Reports", "中期报告"), tone: "neutral" as const },

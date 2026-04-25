@@ -7,6 +7,7 @@ import { restoreStudentDetailHashAfterRefresh } from "./studentDetailHash";
 
 type SourceOption = { id: string; name: string };
 type TypeOption = { id: string; name: string };
+type SelectOption = { value: string; label: string };
 
 export default function StudentEditClient({
   studentId,
@@ -14,6 +15,8 @@ export default function StudentEditClient({
   sources,
   types,
   gradeOptions,
+  servicePlanOptions,
+  riskOptions,
   labels,
   returnHash,
   initialOpen,
@@ -42,6 +45,8 @@ export default function StudentEditClient({
   sources: SourceOption[];
   types: TypeOption[];
   gradeOptions: string[];
+  servicePlanOptions: SelectOption[];
+  riskOptions: SelectOption[];
   labels: {
     title: string;
     name: string;
@@ -177,19 +182,27 @@ export default function StudentEditClient({
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 8 }}>
           <div style={{ fontWeight: 700 }}>{labels.academicProfile}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-            <input
+            <select
               value={form.servicePlanType}
-              placeholder={labels.servicePlanType}
               onChange={(e) => setForm((p) => ({ ...p, servicePlanType: e.target.value }))}
-            />
+            >
+              <option value="">{labels.servicePlanType}</option>
+              {servicePlanOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <select
               value={form.academicRiskLevel}
               onChange={(e) => setForm((p) => ({ ...p, academicRiskLevel: e.target.value }))}
             >
               <option value="">{labels.academicRiskLevel}</option>
-              <option value="LOW">低风险</option>
-              <option value="MEDIUM">中风险</option>
-              <option value="HIGH">高风险</option>
+              {riskOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <input
               value={form.advisorOwner}

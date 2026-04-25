@@ -14,6 +14,7 @@ import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getFeedbackOverdueCutoff } from "@/lib/feedback-timing";
 import { buildWeChatFeedbackText } from "@/lib/feedback-forward-text";
+import { evaluateParentFeedbackQuality } from "@/lib/parent-feedback-quality";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -916,6 +917,7 @@ export default async function AdminFeedbacksPage({
           {rows.map((r) => {
             const studentNames = getStudentNames(r.session);
             const weChatForwardText = buildWeChatFeedbackText(r, studentNames);
+            const quality = evaluateParentFeedbackQuality(r.content);
             return (
               <div
                 id={`feedback-card-${r.id}`}
@@ -952,6 +954,35 @@ export default async function AdminFeedbacksPage({
                     <div>
                       {t(lang, "Teacher", "老师")}: {r.teacher.name}
                     </div>
+                    <div
+                      style={{
+                        display: "inline-block",
+                        marginTop: 6,
+                        padding: "3px 8px",
+                        borderRadius: 999,
+                        border:
+                          quality.status === "good"
+                            ? "1px solid #86efac"
+                            : quality.status === "watch"
+                              ? "1px solid #fcd34d"
+                              : "1px solid #fecaca",
+                        background:
+                          quality.status === "good"
+                            ? "#f0fdf4"
+                            : quality.status === "watch"
+                              ? "#fffbeb"
+                              : "#fff7f7",
+                        color:
+                          quality.status === "good"
+                            ? "#166534"
+                            : quality.status === "watch"
+                              ? "#92400e"
+                              : "#991b1b",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t(lang, "Quality", "质量")}: {quality.score}
+                    </div>
                   </div>
                 </div>
 
@@ -966,6 +997,11 @@ export default async function AdminFeedbacksPage({
                   {r.proxyNote ? (
                     <div>
                       <b>{t(lang, "Proxy note", "代填备注")}:</b> {r.proxyNote}
+                    </div>
+                  ) : null}
+                  {quality.issues.length > 0 ? (
+                    <div style={{ color: quality.status === "risk" ? "#991b1b" : "#92400e" }}>
+                      <b>{t(lang, "Quality checks", "质量检查")}:</b> {quality.issueLabels.slice(0, 3).join(" / ")}
                     </div>
                   ) : null}
                 </div>

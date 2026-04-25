@@ -30,10 +30,18 @@ import {
 } from "../_components/workbenchStyles";
 import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination";
+import {
+  ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
+  academicProfileCompleteness,
+  academicRiskLabel,
+  isAcademicProfileIncomplete,
+  requiresMonthlyAcademicReport,
+  servicePlanLabel,
+} from "@/lib/academic-management";
 
 const TODO_DESK_COOKIE = "adminTodosDesk";
 const FORECAST_WINDOW_DAYS = 30;
-const STUDENT_SCHEDULE_LOOKAHEAD_DAYS = 14;
+const STUDENT_SCHEDULE_LOOKAHEAD_DAYS = ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS;
 const DEFAULT_WARN_DAYS = 3;
 const DEFAULT_WARN_MINUTES = 240;
 const MAX_LIST_ITEMS = 6;
@@ -839,8 +847,22 @@ export default async function AdminTodosPage({
       const actionDueSoon = Boolean(nextActionDue && nextActionDue.getTime() <= scheduleLookaheadEnd.getTime());
       const noUpcomingSession = !nextSession;
       const highRisk = row.student?.academicRiskLevel === "HIGH";
-      const needsAttention = noUpcomingSession || actionDueSoon || (highRisk && !nextSession);
-      return { studentId, ...row, nextSession, nextActionDue, actionDueSoon, noUpcomingSession, highRisk, needsAttention };
+      const profileIncomplete = isAcademicProfileIncomplete(row.student ?? {});
+      const monthlyReportNeeded = requiresMonthlyAcademicReport(row.student?.servicePlanType);
+      const needsAttention = noUpcomingSession || actionDueSoon || (highRisk && !nextSession) || profileIncomplete || monthlyReportNeeded;
+      return {
+        studentId,
+        ...row,
+        nextSession,
+        nextActionDue,
+        actionDueSoon,
+        noUpcomingSession,
+        highRisk,
+        profileIncomplete,
+        profileCompleteness: academicProfileCompleteness(row.student ?? {}),
+        monthlyReportNeeded,
+        needsAttention,
+      };
     })
     .filter((row) => row.needsAttention)
     .sort((a, b) => {
@@ -2103,8 +2125,8 @@ export default async function AdminTodosPage({
               <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>
                 {t(
                   lang,
-                  `Active package students without a lesson in the next ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} days, with due next actions, or marked high risk.`,
-                  `有有效课包但未来 ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} 天无课、下一步动作临近，或被标记为高风险的学生。`
+                  `Active package students without a lesson in the next ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} days, incomplete profiles, due next actions, monthly-report plans, or marked high risk.`,
+                  `有有效课包但未来 ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} 天无课、档案未完整、下一步动作临近、服务计划需要月报，或被标记为高风险的学生。`
                 )}
               </div>
               {academicManagementAlerts.length === 0 ? (
@@ -2132,15 +2154,19 @@ export default async function AdminTodosPage({
                           </div>
                         </td>
                         <td style={{ color: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b", fontWeight: 700 }}>
-                          {row.student?.academicRiskLevel === "HIGH"
-                            ? t(lang, "High risk", "高风险")
-                            : row.student?.academicRiskLevel === "MEDIUM"
-                              ? t(lang, "Medium risk", "中风险")
-                              : row.student?.academicRiskLevel === "LOW"
-                                ? t(lang, "Low risk", "低风险")
-                                : t(lang, "Not set", "未设置")}
+                          {academicRiskLabel(row.student?.academicRiskLevel)}
+                          <div style={{ color: row.profileIncomplete ? "#c2410c" : "#64748b", fontSize: 12, fontWeight: row.profileIncomplete ? 700 : 400 }}>
+                            {t(lang, "Profile", "档案")}: {row.profileCompleteness.percent}%
+                          </div>
                         </td>
-                        <td>{row.student?.servicePlanType || "-"}</td>
+                        <td>
+                          {servicePlanLabel(row.student?.servicePlanType)}
+                          {row.monthlyReportNeeded ? (
+                            <div style={{ color: "#1d4ed8", fontSize: 12, fontWeight: 700 }}>
+                              {t(lang, "Monthly report", "需要月报")}
+                            </div>
+                          ) : null}
+                        </td>
                         <td>
                           {row.nextSession
                             ? `${formatBusinessDateTime(new Date(row.nextSession.startAt))} | ${courseLabel(row.nextSession.class)}`
