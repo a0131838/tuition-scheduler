@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r127` (academic management own-vs-partner split), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r128` (academic management student-type lane correction), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -46,7 +46,7 @@
 - Admin-feedback forwarding risk: `2026-04-25-r124` changes the primary copied text for feedback forwarding to a parent-readable WeChat format, while keeping a separate internal-record copy button for audit-style text.
 - Student-academic-management risk: `2026-04-25-r125` adds nullable student management fields and a Todo Center read path for active-package students without upcoming lessons; verification should confirm the page renders before operators start filling these fields.
 - Academic-management-followup risk: `2026-04-25-r126` adds quality/completeness signals and an academic management monthly report without touching OpenClaw; verification should confirm the new report and Todo Center render correctly with mostly empty profile fields.
-- Academic-management-lane risk: `2026-04-25-r127` splits academic management views by own/direct versus partner package settlement mode; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
+- Academic-management-lane risk: `2026-04-25-r128` corrects the split to use student type as the academic-management source of truth and shows package settlement differences as warnings only; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
 
 ## Process Guard (Installed)
 
@@ -67,6 +67,26 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r128 Ready
+
+- Scope: correct academic management own/partner grouping to use student type instead of package settlement mode.
+- Business impact:
+  - 今日工作台 `学业管理提醒` 的 `自己学生 / 合作方学生` 筛选现在按学生类型分流
+  - `学业管理月报` 使用同一套学生类型分流规则
+  - 新增 `未分类` 分流，用来暴露学生类型为空或无法识别的有效课包学生
+  - 课包 `settlementMode` 只作为异常提示，不再决定学业管理归属
+  - 不改变 OpenClaw、排课创建、点名、扣费、合同、工资、合作方结算或财务审批逻辑
+- Validation:
+  - queried active-package students by the corrected rule: 17 own, 29 partner, 4 unclassified
+  - confirmed warning rows are missing-student-type cleanup items: 张磊, lily, 邵楚然, 李东恒
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260425-academic-management-student-type-lanes.md`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - production read-only QA should confirm `/admin/todos` and `/admin/reports/academic-management` render the corrected `未分类` filter and warning labels
 
 ## 2026-04-25-r127 Ready
 

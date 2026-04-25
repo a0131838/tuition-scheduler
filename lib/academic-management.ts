@@ -4,6 +4,7 @@ export const ACADEMIC_STUDENT_LANES = [
   { value: "all", zh: "全部学生", en: "All students" },
   { value: "own", zh: "自己学生", en: "Own students" },
   { value: "partner", zh: "合作方学生", en: "Partner students" },
+  { value: "unclassified", zh: "未分类", en: "Unclassified" },
 ] as const;
 
 export type AcademicStudentLane = (typeof ACADEMIC_STUDENT_LANES)[number]["value"];
@@ -60,24 +61,36 @@ export function academicStudentLaneLabel(value?: string | null) {
   return ACADEMIC_STUDENT_LANES.find((item) => item.value === value)?.zh ?? ACADEMIC_STUDENT_LANES[0].zh;
 }
 
-export function packageAcademicStudentLane(settlementMode?: string | null): Exclude<AcademicStudentLane, "all"> {
+export function packageAcademicStudentLane(settlementMode?: string | null): Exclude<AcademicStudentLane, "all" | "unclassified"> {
   return settlementMode === "ONLINE_PACKAGE_END" || settlementMode === "OFFLINE_MONTHLY" ? "partner" : "own";
 }
 
 export function studentAcademicStudentLane(input: {
-  settlementMode?: string | null;
   studentTypeName?: string | null;
-  sourceChannelName?: string | null;
 }): Exclude<AcademicStudentLane, "all"> {
-  if (packageAcademicStudentLane(input.settlementMode) === "partner") return "partner";
-  const text = `${input.studentTypeName ?? ""} ${input.sourceChannelName ?? ""}`;
-  if (/合作方|新东方|partner/i.test(text)) return "partner";
-  return "own";
+  const typeName = String(input.studentTypeName ?? "").trim();
+  if (!typeName) return "unclassified";
+  if (/合作方|partner/i.test(typeName)) return "partner";
+  if (/自己学生|直客学生|own\s*student|self\s*student/i.test(typeName)) return "own";
+  return "unclassified";
 }
 
-export function matchesAcademicStudentLane(input: { settlementMode?: string | null }, lane: AcademicStudentLane) {
+export function matchesAcademicStudentLane(input: { studentTypeName?: string | null }, lane: AcademicStudentLane) {
   if (lane === "all") return true;
-  return packageAcademicStudentLane(input.settlementMode) === lane;
+  return studentAcademicStudentLane(input) === lane;
+}
+
+export function academicLanePackageWarning(input: {
+  studentTypeName?: string | null;
+  settlementModes?: Array<string | null | undefined>;
+}) {
+  const lane = studentAcademicStudentLane({ studentTypeName: input.studentTypeName });
+  const packageLanes = new Set((input.settlementModes ?? []).map((mode) => packageAcademicStudentLane(mode)));
+  if (lane === "unclassified") return "学生类型缺失";
+  if (packageLanes.size > 1) return "同一学生存在不同课包结算模式";
+  const [packageLane] = Array.from(packageLanes);
+  if (packageLane && packageLane !== lane) return "学生类型与课包结算模式不一致";
+  return null;
 }
 
 export function academicRiskLabel(value?: string | null) {

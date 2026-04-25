@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r128
+
+- Release ID: `2026-04-25-r128`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: correct academic management lane logic so own/partner grouping follows the student type, not the package settlement mode.
+- Key files:
+  - `lib/academic-management.ts`
+  - `tests/academic-management.test.ts`
+  - `app/admin/todos/page.tsx`
+  - `app/admin/reports/academic-management/page.tsx`
+  - `docs/tasks/TASK-20260425-academic-management-student-type-lanes.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes academic management filtering and warning labels only. It does not change package settlement mode, student type records, OpenClaw, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
+- Verification:
+  - queried active-package students by the corrected student-type rule: 17 own, 29 partner, 4 unclassified
+  - confirmed the 4 warning rows are students with missing student type: 张磊, lily, 邵楚然, 李东恒
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-04-25-r128`.
+
+---
+
 ## 2026-04-25-r127
 
 - Release ID: `2026-04-25-r127`

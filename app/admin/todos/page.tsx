@@ -33,13 +33,13 @@ import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination
 import {
   ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
   ACADEMIC_STUDENT_LANES,
+  academicLanePackageWarning,
   academicProfileCompleteness,
   academicRiskLabel,
   academicStudentLaneLabel,
   isAcademicProfileIncomplete,
   matchesAcademicStudentLane,
   normalizeAcademicStudentLane,
-  packageAcademicStudentLane,
   requiresMonthlyAcademicReport,
   servicePlanLabel,
   studentAcademicStudentLane,
@@ -787,7 +787,7 @@ export default async function AdminTodosPage({
     }),
   ]);
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
-  const academicPackages = packages.filter((p) => matchesAcademicStudentLane({ settlementMode: p.settlementMode }, academicLane));
+  const academicPackages = packages.filter((p) => matchesAcademicStudentLane({ studentTypeName: p.student?.studentType?.name }, academicLane));
   const activePackageStudentIds = Array.from(new Set(academicPackages.map((p) => p.studentId).filter(Boolean)));
   const scheduleLookaheadEnd = new Date(now);
   scheduleLookaheadEnd.setDate(scheduleLookaheadEnd.getDate() + STUDENT_SCHEDULE_LOOKAHEAD_DAYS);
@@ -836,6 +836,7 @@ export default async function AdminTodosPage({
     student: (typeof packages)[number]["student"];
     packageCount: number;
     totalRemainingMinutes: number;
+    settlementModes: Array<string | null>;
   }>();
   for (const p of academicPackages) {
     if (!p.student) continue;
@@ -843,18 +844,28 @@ export default async function AdminTodosPage({
       student: p.student,
       packageCount: 0,
       totalRemainingMinutes: 0,
+      settlementModes: [],
     };
     existing.packageCount += 1;
     existing.totalRemainingMinutes += p.remainingMinutes ?? 0;
+    existing.settlementModes.push(p.settlementMode ?? null);
     activePackageByStudent.set(p.studentId, existing);
   }
-  const academicPackageLaneCounts = packages.reduce(
+  const academicPackageLaneCounts = Array.from(
+    packages.reduce((acc, p) => {
+      if (!p.studentId || acc.has(p.studentId)) return acc;
+      acc.set(p.studentId, p.student?.studentType?.name ?? null);
+      return acc;
+    }, new Map<string, string | null>()).values()
+  ).reduce(
     (acc, p) => {
-      acc[packageAcademicStudentLane(p.settlementMode)] += 1;
+      acc[studentAcademicStudentLane({ studentTypeName: p })] += 1;
       return acc;
     },
-    { own: 0, partner: 0 }
+    { own: 0, partner: 0, unclassified: 0 }
   );
+  const academicPackageStudentCount =
+    academicPackageLaneCounts.own + academicPackageLaneCounts.partner + academicPackageLaneCounts.unclassified;
   const academicManagementAlerts = Array.from(activePackageByStudent.entries())
     .map(([studentId, row]) => {
       const nextSession = nextSessionByStudentId.get(studentId) ?? null;
@@ -864,6 +875,10 @@ export default async function AdminTodosPage({
       const highRisk = row.student?.academicRiskLevel === "HIGH";
       const profileIncomplete = isAcademicProfileIncomplete(row.student ?? {});
       const monthlyReportNeeded = requiresMonthlyAcademicReport(row.student?.servicePlanType);
+      const packageWarning = academicLanePackageWarning({
+        studentTypeName: row.student?.studentType?.name,
+        settlementModes: row.settlementModes,
+      });
       const needsAttention = noUpcomingSession || actionDueSoon || (highRisk && !nextSession) || profileIncomplete || monthlyReportNeeded;
       return {
         studentId,
@@ -876,6 +891,7 @@ export default async function AdminTodosPage({
         profileIncomplete,
         profileCompleteness: academicProfileCompleteness(row.student ?? {}),
         monthlyReportNeeded,
+        packageWarning,
         needsAttention,
       };
     })
@@ -2165,7 +2181,9 @@ export default async function AdminTodosPage({
                       ? ` (${academicPackageLaneCounts.own})`
                       : item.value === "partner"
                         ? ` (${academicPackageLaneCounts.partner})`
-                        : ` (${packages.length})`}
+                        : item.value === "unclassified"
+                          ? ` (${academicPackageLaneCounts.unclassified})`
+                          : ` (${academicPackageStudentCount})`}
                   </a>
                 ))}
               </div>
@@ -2197,14 +2215,15 @@ export default async function AdminTodosPage({
                         <td style={{ fontWeight: 700 }}>
                           {academicStudentLaneLabel(
                             studentAcademicStudentLane({
-                              settlementMode: row.student?.settlementMode,
                               studentTypeName: row.student?.studentType?.name,
-                              sourceChannelName: row.student?.sourceChannel?.name,
                             })
                           )}
                           <div style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>
                             {row.student?.studentType?.name ?? row.student?.sourceChannel?.name ?? "-"}
                           </div>
+                          {row.packageWarning ? (
+                            <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 700 }}>{row.packageWarning}</div>
+                          ) : null}
                         </td>
                         <td style={{ color: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b", fontWeight: 700 }}>
                           {academicRiskLabel(row.student?.academicRiskLevel)}

@@ -6,9 +6,11 @@ import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only"
 import {
   ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS,
   ACADEMIC_STUDENT_LANES,
+  academicLanePackageWarning,
   academicProfileCompleteness,
   academicRiskLabel,
   academicStudentLaneLabel,
+  matchesAcademicStudentLane,
   normalizeAcademicStudentLane,
   requiresMonthlyAcademicReport,
   servicePlanLabel,
@@ -70,17 +72,19 @@ export default async function AcademicManagementReportPage({
     );
   }
 
-  const activePackages = await prisma.coursePackage.findMany({
+  const activePackagesRaw = await prisma.coursePackage.findMany({
     where: {
       type: "HOURS",
       status: "ACTIVE",
       remainingMinutes: { gt: 0 },
-      ...(lane === "own" ? { settlementMode: null } : lane === "partner" ? { settlementMode: { not: null } } : {}),
     },
     include: { student: { include: { studentType: true, sourceChannel: true } } },
     orderBy: { updatedAt: "desc" },
     take: 1000,
   });
+  const activePackages = activePackagesRaw.filter((pkg) =>
+    matchesAcademicStudentLane({ studentTypeName: pkg.student?.studentType?.name }, lane)
+  );
 
   const activeStudentIds = Array.from(new Set(activePackages.map((pkg) => pkg.studentId).filter(Boolean)));
   const lookaheadEnd = new Date(now.getTime() + ACADEMIC_MANAGEMENT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
@@ -133,6 +137,7 @@ export default async function AcademicManagementReportPage({
     feedbackCount: number;
     latestLessonAt: Date | null;
     nextLessonAt: Date | null;
+    settlementModes: Array<string | null>;
   }>();
 
   for (const pkg of activePackages) {
@@ -145,9 +150,11 @@ export default async function AcademicManagementReportPage({
       feedbackCount: 0,
       latestLessonAt: null,
       nextLessonAt: null,
+      settlementModes: [],
     };
     existing.packageCount += 1;
     existing.remainingMinutes += pkg.remainingMinutes ?? 0;
+    existing.settlementModes.push(pkg.settlementMode ?? null);
     byStudent.set(pkg.studentId, existing);
   }
 
@@ -173,13 +180,17 @@ export default async function AcademicManagementReportPage({
     .map(([studentId, row]) => {
       const completeness = academicProfileCompleteness(row.student);
       const monthlyReportNeeded = requiresMonthlyAcademicReport(row.student.servicePlanType);
+      const packageWarning = academicLanePackageWarning({
+        studentTypeName: row.student.studentType?.name,
+        settlementModes: row.settlementModes,
+      });
       const attention =
         !row.nextLessonAt ||
         completeness.percent < 70 ||
         row.student.academicRiskLevel === "HIGH" ||
         monthlyReportNeeded ||
         Boolean(row.student.nextActionDue && new Date(row.student.nextActionDue) <= lookaheadEnd);
-      return { studentId, ...row, completeness, monthlyReportNeeded, attention };
+      return { studentId, ...row, completeness, monthlyReportNeeded, packageWarning, attention };
     })
     .sort((a, b) => Number(b.attention) - Number(a.attention) || a.student.name.localeCompare(b.student.name));
 
@@ -246,12 +257,15 @@ export default async function AcademicManagementReportPage({
                   <div style={{ color: "#334155", fontSize: 12, fontWeight: 700 }}>
                     {academicStudentLaneLabel(
                       studentAcademicStudentLane({
-                        settlementMode: row.student.settlementMode,
                         studentTypeName: row.student.studentType?.name,
-                        sourceChannelName: row.student.sourceChannel?.name,
                       })
                     )}
                   </div>
+                  {row.packageWarning ? (
+                    <div style={{ color: "#c2410c", fontSize: 12, fontWeight: 700 }}>
+                      {row.packageWarning}
+                    </div>
+                  ) : null}
                 </td>
                 <td>
                   <div>{servicePlanLabel(row.student.servicePlanType)}</div>
