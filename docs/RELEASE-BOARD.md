@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r123` (section-based parent-facing teacher feedback inputs), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r124` (WeChat-friendly admin feedback copy), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -43,6 +43,7 @@
 - Parent-feedback workflow risk: `2026-04-25-r121` makes five parent-facing sections required for teacher after-class feedback, so teachers revising old feedback must reshape it into the new structure before resubmitting.
 - Teacher-feedback language risk: `2026-04-25-r122` changes the teacher feedback template to English/Chinese headings and hints, so screenshots and training docs should stay aligned with the live form.
 - Teacher-feedback input risk: `2026-04-25-r123` changes the teacher feedback form from one textarea to five section textareas plus preview, so deploy verification should confirm old formatted feedback still parses and new submits assemble into the same saved fields.
+- Admin-feedback forwarding risk: `2026-04-25-r124` changes the primary copied text for feedback forwarding to a parent-readable WeChat format, while keeping a separate internal-record copy button for audit-style text.
 
 ## Process Guard (Installed)
 
@@ -63,6 +64,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r124 Ready
+
+- Scope: add a WeChat-friendly copy format for admin feedback forwarding.
+- Business impact:
+  - 教务点击 `复制微信版反馈` 时，粘贴到微信的是家长可读分段文本，而不是后台记录格式
+  - 新五段反馈会按 `本节课重点`、`目前发现`、`课堂表现`、`下一步计划`、`家长需要知道` 输出
+  - 旧非结构化反馈会降级成 `课堂反馈` + `课后作业`，避免历史数据复制失败
+  - 原来的内部记录复制保留为 `复制内部记录`
+  - 不改变反馈提交、已转发状态、点名、工资、作业或数据库结构
+- Validation:
+  - tested WeChat text generation against real recent structured feedback
+  - tested fallback formatting against old unstructured feedback
+  - verified the admin feedback page renders WeChat preview and both copy buttons
+  - `npm run build`
+  - task doc: `docs/tasks/TASK-20260425-admin-feedback-wechat-copy.md`
 
 ## 2026-04-25-r123 Ready
 

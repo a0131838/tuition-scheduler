@@ -13,6 +13,7 @@ import MarkForwardedFormClient from "./MarkForwardedFormClient";
 import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getFeedbackOverdueCutoff } from "@/lib/feedback-timing";
+import { buildWeChatFeedbackText } from "@/lib/feedback-forward-text";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -914,6 +915,7 @@ export default async function AdminFeedbacksPage({
         <div id="feedback-work-items" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
           {rows.map((r) => {
             const studentNames = getStudentNames(r.session);
+            const weChatForwardText = buildWeChatFeedbackText(r, studentNames);
             return (
               <div
                 id={`feedback-card-${r.id}`}
@@ -972,13 +974,24 @@ export default async function AdminFeedbacksPage({
                   <summary>{t(lang, "Formatted text", "格式化文本")}</summary>
                   <div style={{ marginTop: 6, color: "#666", whiteSpace: "pre-wrap" }}>{toBilingualFeedbackText(r.content)}</div>
                 </details>
+                <details>
+                  <summary>{t(lang, "WeChat copy preview", "微信版预览")}</summary>
+                  <div style={{ marginTop: 6, color: "#334155", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{weChatForwardText}</div>
+                </details>
 
                 <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>
-                  <div style={{ marginBottom: 8 }}>
+                  <div style={{ marginBottom: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <CopyTextButton
+                      text={weChatForwardText}
+                      label={t(lang, "Copy WeChat Version", "复制微信版反馈")}
+                      copiedLabel={t(lang, "Copied", "已复制")}
+                      style={primaryButtonStyle}
+                    />
                     <CopyTextButton
                       text={buildForwardText(r)}
-                      label={t(lang, "Copy Feedback", "复制反馈")}
+                      label={t(lang, "Copy Internal Record", "复制内部记录")}
                       copiedLabel={t(lang, "Copied", "已复制")}
+                      style={secondaryButtonStyle}
                     />
                   </div>
                   {r.forwardedAt ? (

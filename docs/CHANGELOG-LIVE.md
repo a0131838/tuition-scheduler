@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r124
+
+- Release ID: `2026-04-25-r124`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: add a parent-readable WeChat copy format for admin teacher-feedback forwarding while keeping the existing internal record copy.
+- Key files:
+  - `lib/feedback-forward-text.ts`
+  - `app/admin/feedbacks/page.tsx`
+  - `docs/tasks/TASK-20260425-admin-feedback-wechat-copy.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes copied text and preview on the admin feedback forwarding page; it does not change teacher feedback submission, forwarded status, attendance, payroll, homework storage, or database schema.
+- Verification:
+  - tested WeChat text generation against real recent structured parent-facing feedback
+  - tested fallback formatting against old unstructured feedback
+  - verified the admin feedback page now shows a WeChat preview and separate WeChat/internal copy buttons
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r124`.
+
 ## 2026-04-25-r123
 
 - Release ID: `2026-04-25-r123`
