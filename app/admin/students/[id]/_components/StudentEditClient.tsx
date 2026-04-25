@@ -26,6 +26,17 @@ export default function StudentEditClient({
     birthDate: string;
     sourceChannelId: string;
     studentTypeId: string;
+    curriculum: string;
+    englishLevel: string;
+    parentExpectation: string;
+    mainAnxiety: string;
+    personalityNotes: string;
+    academicRiskLevel: string;
+    currentRiskSummary: string;
+    nextAction: string;
+    nextActionDue: string;
+    advisorOwner: string;
+    servicePlanType: string;
     note: string;
   };
   sources: SourceOption[];
@@ -39,6 +50,18 @@ export default function StudentEditClient({
     birthDate: string;
     source: string;
     type: string;
+    academicProfile: string;
+    servicePlanType: string;
+    academicRiskLevel: string;
+    advisorOwner: string;
+    curriculum: string;
+    englishLevel: string;
+    parentExpectation: string;
+    mainAnxiety: string;
+    personalityNotes: string;
+    currentRiskSummary: string;
+    nextAction: string;
+    nextActionDue: string;
     notes: string;
     save: string;
     deleteStudent: string;
@@ -150,6 +173,76 @@ export default function StudentEditClient({
               </option>
             ))}
           </select>
+        </div>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 700 }}>{labels.academicProfile}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            <input
+              value={form.servicePlanType}
+              placeholder={labels.servicePlanType}
+              onChange={(e) => setForm((p) => ({ ...p, servicePlanType: e.target.value }))}
+            />
+            <select
+              value={form.academicRiskLevel}
+              onChange={(e) => setForm((p) => ({ ...p, academicRiskLevel: e.target.value }))}
+            >
+              <option value="">{labels.academicRiskLevel}</option>
+              <option value="LOW">低风险</option>
+              <option value="MEDIUM">中风险</option>
+              <option value="HIGH">高风险</option>
+            </select>
+            <input
+              value={form.advisorOwner}
+              placeholder={labels.advisorOwner}
+              onChange={(e) => setForm((p) => ({ ...p, advisorOwner: e.target.value }))}
+            />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            <input
+              value={form.curriculum}
+              placeholder={labels.curriculum}
+              onChange={(e) => setForm((p) => ({ ...p, curriculum: e.target.value }))}
+            />
+            <input
+              value={form.englishLevel}
+              placeholder={labels.englishLevel}
+              onChange={(e) => setForm((p) => ({ ...p, englishLevel: e.target.value }))}
+            />
+            <input
+              type="date"
+              value={form.nextActionDue}
+              aria-label={labels.nextActionDue}
+              onChange={(e) => setForm((p) => ({ ...p, nextActionDue: e.target.value }))}
+            />
+          </div>
+          <input
+            value={form.parentExpectation}
+            placeholder={labels.parentExpectation}
+            onChange={(e) => setForm((p) => ({ ...p, parentExpectation: e.target.value }))}
+          />
+          <input
+            value={form.mainAnxiety}
+            placeholder={labels.mainAnxiety}
+            onChange={(e) => setForm((p) => ({ ...p, mainAnxiety: e.target.value }))}
+          />
+          <textarea
+            value={form.currentRiskSummary}
+            placeholder={labels.currentRiskSummary}
+            rows={2}
+            onChange={(e) => setForm((p) => ({ ...p, currentRiskSummary: e.target.value }))}
+          />
+          <textarea
+            value={form.nextAction}
+            placeholder={labels.nextAction}
+            rows={2}
+            onChange={(e) => setForm((p) => ({ ...p, nextAction: e.target.value }))}
+          />
+          <textarea
+            value={form.personalityNotes}
+            placeholder={labels.personalityNotes}
+            rows={2}
+            onChange={(e) => setForm((p) => ({ ...p, personalityNotes: e.target.value }))}
+          />
         </div>
         <textarea
           value={form.note}

@@ -202,6 +202,20 @@ function tl(lang: Lang, en: string) {
   return t(lang, en, zhMap[en] ?? en);
 }
 
+function academicRiskLabel(lang: Lang, risk?: string | null) {
+  if (risk === "HIGH") return t(lang, "High risk", "高风险");
+  if (risk === "MEDIUM") return t(lang, "Medium risk", "中风险");
+  if (risk === "LOW") return t(lang, "Low risk", "低风险");
+  return t(lang, "Not set", "未设置");
+}
+
+function academicRiskColor(risk?: string | null) {
+  if (risk === "HIGH") return "#be123c";
+  if (risk === "MEDIUM") return "#c2410c";
+  if (risk === "LOW") return "#166534";
+  return "#64748b";
+}
+
 function humanizeSchedulingGateMessage(lang: Lang, message: string) {
   if (message.startsWith("Invoice approval is pending.")) {
     return t(lang, "Invoice approval is pending. Open package billing before scheduling.", "该课包发票待审批，请先打开课包账单处理后再排课。");
@@ -622,6 +636,17 @@ async function updateStudent(studentId: string, formData: FormData) {
   const school = String(formData.get("school") ?? "").trim();
   const grade = String(formData.get("grade") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
+  const curriculum = String(formData.get("curriculum") ?? "").trim();
+  const englishLevel = String(formData.get("englishLevel") ?? "").trim();
+  const parentExpectation = String(formData.get("parentExpectation") ?? "").trim();
+  const mainAnxiety = String(formData.get("mainAnxiety") ?? "").trim();
+  const personalityNotes = String(formData.get("personalityNotes") ?? "").trim();
+  const academicRiskLevel = String(formData.get("academicRiskLevel") ?? "").trim();
+  const currentRiskSummary = String(formData.get("currentRiskSummary") ?? "").trim();
+  const nextAction = String(formData.get("nextAction") ?? "").trim();
+  const nextActionDueStr = String(formData.get("nextActionDue") ?? "").trim();
+  const advisorOwner = String(formData.get("advisorOwner") ?? "").trim();
+  const servicePlanType = String(formData.get("servicePlanType") ?? "").trim();
   const birthDateStr = String(formData.get("birthDate") ?? "").trim();
   const sourceChannelId = String(formData.get("sourceChannelId") ?? "").trim() || null;
   const studentTypeId = String(formData.get("studentTypeId") ?? "").trim() || null;
@@ -639,6 +664,13 @@ async function updateStudent(studentId: string, formData: FormData) {
       birthDate = new Date(Y, M - 1, D, 0, 0, 0, 0);
     }
   }
+  let nextActionDue: Date | null = null;
+  if (nextActionDueStr) {
+    const [Y, M, D] = nextActionDueStr.split("-").map(Number);
+    if (Number.isFinite(Y) && Number.isFinite(M) && Number.isFinite(D)) {
+      nextActionDue = new Date(Y, M - 1, D, 0, 0, 0, 0);
+    }
+  }
 
   await prisma.student.update({
     where: { id: studentId },
@@ -647,6 +679,17 @@ async function updateStudent(studentId: string, formData: FormData) {
       school: school || null,
       grade: grade || null,
       note: note || null,
+      curriculum: curriculum || null,
+      englishLevel: englishLevel || null,
+      parentExpectation: parentExpectation || null,
+      mainAnxiety: mainAnxiety || null,
+      personalityNotes: personalityNotes || null,
+      academicRiskLevel: academicRiskLevel || null,
+      currentRiskSummary: currentRiskSummary || null,
+      nextAction: nextAction || null,
+      nextActionDue,
+      advisorOwner: advisorOwner || null,
+      servicePlanType: servicePlanType || null,
       birthDate,
       sourceChannelId,
       studentTypeId,
@@ -2707,6 +2750,66 @@ export default async function StudentDetailPage({
         </div>
       </div>
 
+      <div
+        style={{
+          border: "1px solid #bfdbfe",
+          background: "#eff6ff",
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontWeight: 800 }}>{t(lang, "Academic Management Profile", "学业管理档案")}</div>
+            <div style={{ color: "#475569", fontSize: 12 }}>
+              {t(lang, "Use this as the student's operating brief: risk, parent concern, owner, and next action.", "这里作为学生经营简报：风险、家长焦虑、负责人和下一步动作。")}
+            </div>
+          </div>
+          <a href="#edit-student" style={{ fontWeight: 700 }}>
+            {tl(lang, "Edit Student")}
+          </a>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Service plan", "服务计划")}</div>
+            <div style={{ fontWeight: 800 }}>{student.servicePlanType || t(lang, "Not set", "未设置")}</div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Risk level", "风险等级")}</div>
+            <div style={{ fontWeight: 800, color: academicRiskColor(student.academicRiskLevel) }}>
+              {academicRiskLabel(lang, student.academicRiskLevel)}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Advisor", "负责顾问")}</div>
+            <div style={{ fontWeight: 800 }}>{student.advisorOwner || "-"}</div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next action due", "下一步截止")}</div>
+            <div style={{ fontWeight: 800 }}>
+              {student.nextActionDue ? formatBusinessDateOnly(new Date(student.nextActionDue)) : "-"}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Parent concern", "家长主要焦虑")}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{student.mainAnxiety || "-"}</div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Current risk", "当前风险")}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{student.currentRiskSummary || "-"}</div>
+          </div>
+          <div style={{ border: "1px solid #dbeafe", background: "#fff", borderRadius: 10, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Next action", "下一步动作")}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{student.nextAction || "-"}</div>
+          </div>
+        </div>
+      </div>
+
       {sourceWorkflow === "students" ? (
         <WorkflowSourceBanner
           tone="blue"
@@ -4653,6 +4756,17 @@ export default async function StudentDetailPage({
             birthDate: fmtDateInput(student.birthDate),
             sourceChannelId: student.sourceChannelId ?? "",
             studentTypeId: student.studentTypeId ?? "",
+            curriculum: student.curriculum ?? "",
+            englishLevel: student.englishLevel ?? "",
+            parentExpectation: student.parentExpectation ?? "",
+            mainAnxiety: student.mainAnxiety ?? "",
+            personalityNotes: student.personalityNotes ?? "",
+            academicRiskLevel: student.academicRiskLevel ?? "",
+            currentRiskSummary: student.currentRiskSummary ?? "",
+            nextAction: student.nextAction ?? "",
+            nextActionDue: fmtDateInput(student.nextActionDue),
+            advisorOwner: student.advisorOwner ?? "",
+            servicePlanType: student.servicePlanType ?? "",
             note: student.note ?? "",
           }}
           sources={sources.map((s) => ({ id: s.id, name: s.name }))}
@@ -4667,6 +4781,18 @@ export default async function StudentDetailPage({
             birthDate: tl(lang, "Birth Date"),
             source: tl(lang, "Source"),
             type: tl(lang, "Type"),
+            academicProfile: t(lang, "Academic Management Profile", "学业管理档案"),
+            servicePlanType: t(lang, "Service plan, e.g. Academic Management / Full Care", "服务计划，如：学业管理 / 全程托管"),
+            academicRiskLevel: t(lang, "Risk level", "风险等级"),
+            advisorOwner: t(lang, "Advisor owner", "负责顾问"),
+            curriculum: t(lang, "Curriculum, e.g. IB / IGCSE / AEIS", "课程体系，如：IB / IGCSE / AEIS"),
+            englishLevel: t(lang, "English level / EAL status", "英文水平 / EAL 状态"),
+            parentExpectation: t(lang, "Parent expectation", "家长期望"),
+            mainAnxiety: t(lang, "Main parent concern", "家长主要焦虑"),
+            personalityNotes: t(lang, "Student personality / learning habits", "孩子性格 / 学习习惯"),
+            currentRiskSummary: t(lang, "Current risk summary", "当前风险摘要"),
+            nextAction: t(lang, "Next action", "下一步动作"),
+            nextActionDue: t(lang, "Next action due", "下一步截止"),
             notes: tl(lang, "Notes"),
             save: tl(lang, "Save"),
             deleteStudent: tl(lang, "Delete Student"),

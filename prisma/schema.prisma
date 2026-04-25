@@ -599,6 +599,17 @@ model Student {
   currentMajor    String?
   coachingContent String?
   note            String?
+  curriculum      String?
+  englishLevel    String?
+  parentExpectation String?
+  mainAnxiety     String?
+  personalityNotes String?
+  academicRiskLevel String?
+  currentRiskSummary String?
+  nextAction      String?
+  nextActionDue   DateTime?
+  advisorOwner    String?
+  servicePlanType String?
   sourceChannelId String?
   studentTypeId   String?
   settlementMode  PartnerSettlementMode?
@@ -626,6 +637,9 @@ model Student {
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
+  @@index([academicRiskLevel])
+  @@index([servicePlanType])
+  @@index([nextActionDue])
   @@index([createdAt])
 }
 

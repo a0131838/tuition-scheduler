@@ -33,6 +33,7 @@ import { deriveSchedulingCoordinationPhase } from "@/lib/scheduling-coordination
 
 const TODO_DESK_COOKIE = "adminTodosDesk";
 const FORECAST_WINDOW_DAYS = 30;
+const STUDENT_SCHEDULE_LOOKAHEAD_DAYS = 14;
 const DEFAULT_WARN_DAYS = 3;
 const DEFAULT_WARN_MINUTES = 240;
 const MAX_LIST_ITEMS = 6;
@@ -771,6 +772,85 @@ export default async function AdminTodosPage({
     }),
   ]);
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
+  const activePackageStudentIds = Array.from(new Set(packages.map((p) => p.studentId).filter(Boolean)));
+  const scheduleLookaheadEnd = new Date(now);
+  scheduleLookaheadEnd.setDate(scheduleLookaheadEnd.getDate() + STUDENT_SCHEDULE_LOOKAHEAD_DAYS);
+  const activePackageStudentIdSet = new Set(activePackageStudentIds);
+  const upcomingStudentSessions = activePackageStudentIds.length
+    ? await prisma.session.findMany({
+        where: {
+          startAt: { gte: now, lt: scheduleLookaheadEnd },
+          OR: [
+            { studentId: { in: activePackageStudentIds } },
+            { class: { oneOnOneStudentId: { in: activePackageStudentIds } } },
+            { class: { enrollments: { some: { studentId: { in: activePackageStudentIds } } } } },
+          ],
+        },
+        include: {
+          student: { select: { id: true, name: true } },
+          class: {
+            include: {
+              course: true,
+              subject: true,
+              level: true,
+              oneOnOneStudent: { select: { id: true, name: true } },
+              enrollments: { select: { studentId: true, student: { select: { id: true, name: true } } } },
+            },
+          },
+        },
+        orderBy: { startAt: "asc" },
+        take: 1000,
+      })
+    : [];
+  const nextSessionByStudentId = new Map<string, (typeof upcomingStudentSessions)[number]>();
+  for (const session of upcomingStudentSessions) {
+    const ids = new Set<string>();
+    if (session.studentId && activePackageStudentIdSet.has(session.studentId)) ids.add(session.studentId);
+    if (session.class.oneOnOneStudentId && activePackageStudentIdSet.has(session.class.oneOnOneStudentId)) {
+      ids.add(session.class.oneOnOneStudentId);
+    }
+    for (const enrollment of session.class.enrollments) {
+      if (activePackageStudentIdSet.has(enrollment.studentId)) ids.add(enrollment.studentId);
+    }
+    for (const sid of ids) {
+      if (!nextSessionByStudentId.has(sid)) nextSessionByStudentId.set(sid, session);
+    }
+  }
+  const activePackageByStudent = new Map<string, {
+    student: (typeof packages)[number]["student"];
+    packageCount: number;
+    totalRemainingMinutes: number;
+  }>();
+  for (const p of packages) {
+    if (!p.student) continue;
+    const existing = activePackageByStudent.get(p.studentId) ?? {
+      student: p.student,
+      packageCount: 0,
+      totalRemainingMinutes: 0,
+    };
+    existing.packageCount += 1;
+    existing.totalRemainingMinutes += p.remainingMinutes ?? 0;
+    activePackageByStudent.set(p.studentId, existing);
+  }
+  const academicManagementAlerts = Array.from(activePackageByStudent.entries())
+    .map(([studentId, row]) => {
+      const nextSession = nextSessionByStudentId.get(studentId) ?? null;
+      const nextActionDue = row.student?.nextActionDue ? new Date(row.student.nextActionDue) : null;
+      const actionDueSoon = Boolean(nextActionDue && nextActionDue.getTime() <= scheduleLookaheadEnd.getTime());
+      const noUpcomingSession = !nextSession;
+      const highRisk = row.student?.academicRiskLevel === "HIGH";
+      const needsAttention = noUpcomingSession || actionDueSoon || (highRisk && !nextSession);
+      return { studentId, ...row, nextSession, nextActionDue, actionDueSoon, noUpcomingSession, highRisk, needsAttention };
+    })
+    .filter((row) => row.needsAttention)
+    .sort((a, b) => {
+      if (a.highRisk !== b.highRisk) return a.highRisk ? -1 : 1;
+      if (a.noUpcomingSession !== b.noUpcomingSession) return a.noUpcomingSession ? -1 : 1;
+      const ad = a.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bd = b.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return ad - bd;
+    })
+    .slice(0, 20);
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
     ? await prisma.packageTxn.groupBy({
@@ -2009,6 +2089,86 @@ export default async function AdminTodosPage({
             </div>
           </div>
         ) : null}
+        </div>
+
+        <div style={sectionStyle}>
+          <details open>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+              {t(lang, "Academic Management Alerts", "学业管理提醒")} ({academicManagementAlerts.length})
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              <div style={sectionHeaderStyle}>
+                <h3 style={{ margin: 0 }}>{t(lang, "Academic Management Alerts", "学业管理提醒")}</h3>
+              </div>
+              <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>
+                {t(
+                  lang,
+                  `Active package students without a lesson in the next ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} days, with due next actions, or marked high risk.`,
+                  `有有效课包但未来 ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} 天无课、下一步动作临近，或被标记为高风险的学生。`
+                )}
+              </div>
+              {academicManagementAlerts.length === 0 ? (
+                <div style={{ color: "#999" }}>{t(lang, "No academic management alerts.", "暂无学业管理提醒。")}</div>
+              ) : (
+                <table cellPadding={8} style={tableStyle}>
+                  <thead>
+                    <tr style={{ background: "#f5f5f5" }}>
+                      <th align="left">{t(lang, "Student", "学生")}</th>
+                      <th align="left">{t(lang, "Risk", "风险")}</th>
+                      <th align="left">{t(lang, "Service plan", "服务计划")}</th>
+                      <th align="left">{t(lang, "Next lesson", "下一节课")}</th>
+                      <th align="left">{t(lang, "Next action", "下一步动作")}</th>
+                      <th align="left">{t(lang, "Owner", "负责人")}</th>
+                      <th align="left">{t(lang, "Action", "操作")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {academicManagementAlerts.map((row) => (
+                      <tr key={row.studentId} style={{ borderTop: "1px solid #eee" }}>
+                        <td>
+                          <div style={{ fontWeight: 700 }}>{row.student?.name ?? "-"}</div>
+                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                            {t(lang, "Remaining", "剩余")}: {fmtMinutes(row.totalRemainingMinutes)}
+                          </div>
+                        </td>
+                        <td style={{ color: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b", fontWeight: 700 }}>
+                          {row.student?.academicRiskLevel === "HIGH"
+                            ? t(lang, "High risk", "高风险")
+                            : row.student?.academicRiskLevel === "MEDIUM"
+                              ? t(lang, "Medium risk", "中风险")
+                              : row.student?.academicRiskLevel === "LOW"
+                                ? t(lang, "Low risk", "低风险")
+                                : t(lang, "Not set", "未设置")}
+                        </td>
+                        <td>{row.student?.servicePlanType || "-"}</td>
+                        <td>
+                          {row.nextSession
+                            ? `${formatBusinessDateTime(new Date(row.nextSession.startAt))} | ${courseLabel(row.nextSession.class)}`
+                            : (
+                              <span style={{ color: "#be123c", fontWeight: 700 }}>
+                                {t(lang, "No upcoming lesson", "暂无未来课程")}
+                              </span>
+                            )}
+                        </td>
+                        <td>
+                          <div style={{ whiteSpace: "pre-wrap" }}>{row.student?.nextAction || "-"}</div>
+                          {row.nextActionDue ? (
+                            <div style={{ color: row.actionDueSoon ? "#be123c" : "#64748b", fontSize: 12, fontWeight: row.actionDueSoon ? 700 : 400 }}>
+                              {t(lang, "Due", "截止")}: {formatBusinessDateOnly(row.nextActionDue)}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>{row.student?.advisorOwner || "-"}</td>
+                        <td>
+                          <a href={`/admin/students/${row.studentId}`}>{t(lang, "Student Detail", "学生详情")}</a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </details>
         </div>
 
         <div style={sectionStyle}>

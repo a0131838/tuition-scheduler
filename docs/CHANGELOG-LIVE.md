@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r125
+
+- Release ID: `2026-04-25-r125`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: add student academic management fields, student-detail profile display, Todo Center alerts for active-package students without upcoming lessons, and a documentation-only OpenClaw reminder plan.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260425143000_add_student_academic_management_fields/migration.sql`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/students/[id]/_components/StudentEditClient.tsx`
+  - `app/admin/todos/page.tsx`
+  - `app/api/admin/students/route.ts`
+  - `app/api/admin/students/[id]/route.ts`
+  - `docs/OpenClaw-学业管理提醒方案-暂存.md`
+  - `docs/tasks/TASK-20260425-student-academic-management-reminders.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds nullable student profile columns and a Todo Center read path. It does not change OpenClaw runtime, scheduling creation, attendance, package deduction, payroll, or finance approval logic.
+- Verification:
+  - queried production data: 77 students, 50 active-package students, 28 active-package students without a lesson in the next 14 days
+  - confirmed current academic management fields are empty until operators populate them
+  - confirmed the existing parent-facing feedback template already has five required sections and missing-section validation
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-04-25-r125`.
+
 ## 2026-04-25-r124
 
 - Release ID: `2026-04-25-r124`

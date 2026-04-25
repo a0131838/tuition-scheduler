@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r124` (WeChat-friendly admin feedback copy), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r125` (student academic management reminders), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -44,6 +44,7 @@
 - Teacher-feedback language risk: `2026-04-25-r122` changes the teacher feedback template to English/Chinese headings and hints, so screenshots and training docs should stay aligned with the live form.
 - Teacher-feedback input risk: `2026-04-25-r123` changes the teacher feedback form from one textarea to five section textareas plus preview, so deploy verification should confirm old formatted feedback still parses and new submits assemble into the same saved fields.
 - Admin-feedback forwarding risk: `2026-04-25-r124` changes the primary copied text for feedback forwarding to a parent-readable WeChat format, while keeping a separate internal-record copy button for audit-style text.
+- Student-academic-management risk: `2026-04-25-r125` adds nullable student management fields and a Todo Center read path for active-package students without upcoming lessons; verification should confirm the page renders before operators start filling these fields.
 
 ## Process Guard (Installed)
 
@@ -64,6 +65,25 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r125 Ready
+
+- Scope: add student academic management profile fields and Todo Center reminders.
+- Business impact:
+  - 学生详情页现在可以维护服务计划、风险等级、家长焦虑、当前风险、下一步动作、截止日期和负责顾问
+  - 今日工作台新增 `学业管理提醒`，优先暴露有有效课包但未来 14 天无课、下一步动作临近、或高风险的学生
+  - OpenClaw 周一/周三/周五提醒方案只记录到文档，不改任何 OpenClaw 脚本、定时任务或企业微信投递链路
+  - 不改变排课创建、点名、扣费、工资、财务审批或反馈提交逻辑
+- Validation:
+  - queried production data: 77 students, 50 active-package students, 28 active-package students without a lesson in the next 14 days
+  - confirmed current academic management fields are empty until operators populate them
+  - confirmed the existing parent-facing feedback template already has five required sections and missing-section validation
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npm run build`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - production read-only QA should confirm `/admin/todos` renders `学业管理提醒` and student detail renders `学业管理档案`
 
 ## 2026-04-25-r124 Ready
 
