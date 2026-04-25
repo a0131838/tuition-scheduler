@@ -30,7 +30,7 @@ function shouldDowngradeSticky(element: HTMLElement, main: HTMLElement) {
 
   const rect = element.getBoundingClientRect();
   const mainWidth = main.clientWidth;
-  const minWideWidth = Math.max(520, Math.round(mainWidth * 0.72));
+  const minWideWidth = mainWidth < 520 ? Math.round(mainWidth * 0.72) : Math.max(520, Math.round(mainWidth * 0.72));
   const topValue = Number.parseFloat(style.top || "0");
 
   if (rect.width < minWideWidth) return false;
@@ -57,6 +57,7 @@ function getCompactLinks(element: HTMLElement) {
   const seen = new Set<string>();
   return Array.from(element.querySelectorAll<HTMLAnchorElement>("a[href]"))
     .map((anchor) => {
+      const explicitLabel = anchor.dataset.workbenchShortcutLabel;
       const headingLike = Array.from(anchor.children)
         .map((child) => ({
           text: normalizeText(child.textContent || ""),
@@ -65,7 +66,7 @@ function getCompactLinks(element: HTMLElement) {
         .find((child) => child.text && child.weight >= 650)?.text
         || normalizeText(anchor.querySelector("strong, span, b")?.textContent || "");
       const fullText = normalizeText(anchor.textContent || "");
-      const label = collapseCompactLabel(headingLike || fullText);
+      const label = collapseCompactLabel(explicitLabel || headingLike || fullText);
       return {
         href: anchor.getAttribute("href") || "",
         label,
@@ -86,6 +87,7 @@ function createCompactBar(source: HTMLElement) {
   if (!compactLinks.length) return null;
   const primaryLinks = compactLinks.slice(0, COMPACT_VISIBLE_LINKS);
   const moreLinks = compactLinks.slice(COMPACT_VISIBLE_LINKS);
+  const mobileCompact = window.matchMedia("(max-width: 520px)").matches;
 
   const wrapper = document.createElement("div");
   wrapper.setAttribute(GUARDED_ATTR, "compact");
@@ -97,12 +99,14 @@ function createCompactBar(source: HTMLElement) {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    flexWrap: "wrap",
+    flexWrap: mobileCompact ? "nowrap" : "wrap",
+    overflowX: mobileCompact ? "auto" : "visible",
+    maxWidth: "100%",
     marginTop: "8px",
     marginBottom: "12px",
     padding: "8px 10px",
     border: "1px solid #dbe4f0",
-    borderRadius: "999px",
+    borderRadius: mobileCompact ? "14px" : "999px",
     background: "rgba(255, 255, 255, 0.96)",
     boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
     backdropFilter: "blur(12px)",
@@ -116,6 +120,7 @@ function createCompactBar(source: HTMLElement) {
     fontWeight: "700",
     whiteSpace: "nowrap",
     paddingInline: "4px",
+    flex: "0 0 auto",
   } satisfies Partial<CSSStyleDeclaration>);
 
   const linksWrap = document.createElement("div");
@@ -123,7 +128,8 @@ function createCompactBar(source: HTMLElement) {
     display: "flex",
     gap: "8px",
     alignItems: "center",
-    flexWrap: "wrap",
+    flexWrap: mobileCompact ? "nowrap" : "wrap",
+    flex: mobileCompact ? "0 0 auto" : "1 1 auto",
   } satisfies Partial<CSSStyleDeclaration>);
 
   primaryLinks.forEach((item) => {

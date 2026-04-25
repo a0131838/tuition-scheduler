@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r119
+
+- Release ID: `2026-04-25-r119`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: fix the mobile student detail page so the large student workbench no longer stays sticky and covers the screen; keep only a compact horizontal shortcut row sticky on phones.
+- Key files:
+  - `app/admin/_components/WorkbenchStickyGuardClient.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `docs/tasks/TASK-20260425-student-mobile-sticky-workbench-fix.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is UI-only and only changes sticky guard presentation. It does not change student records, scheduling, attendance, package, contract, or finance behavior.
+- Verification:
+  - `npm run build`
+  - local Playwright mobile viewport `390x844` on real student `王艺晨`
+  - verified `#student-workbench-bar` becomes `position: static` with `data-workbench-sticky-guard="downgraded"`
+  - verified the generated phone shortcut row is `56px` high with horizontal scrolling
+  - verified scrolling leaves the large workbench behind while page content remains visible below the compact sticky row
+- Rollback point: previous production commit before `2026-04-25-r119`.
+
 ## 2026-04-24-r112
 
 - Release ID: `2026-04-24-r112`

@@ -2792,6 +2792,7 @@ export default async function StudentDetailPage({
                 <div style={{ display: "grid", gap: 10 }}>
                   <a
                     href={recommendedPrimaryLink.href}
+                    data-workbench-shortcut-label={recommendedPrimaryLink.label}
                     style={studentRecommendedActionStyle(
                       recommendedPrimaryLink.background === "#ffffff" ? "#eff6ff" : recommendedPrimaryLink.background,
                       recommendedPrimaryLink.border === "#dbe4f0" ? "#93c5fd" : recommendedPrimaryLink.border
@@ -2826,7 +2827,7 @@ export default async function StudentDetailPage({
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                     {studentSupportingPrimaryLinks.map((link) => (
-                      <a key={link.href} href={link.href} style={studentPrimaryActionStyle(link.background, link.border)}>
+                      <a key={link.href} href={link.href} data-workbench-shortcut-label={link.label} style={studentPrimaryActionStyle(link.background, link.border)}>
                         <span style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{link.label}</span>
                         <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.45 }}>{link.shortDetail}</span>
                       </a>
