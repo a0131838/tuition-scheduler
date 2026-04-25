@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-25-r129
+
+- Release ID: `2026-04-25-r129`
+- Date/Time (Asia/Shanghai): `2026-04-25`
+- Deployment status: `READY`
+- Scope: make Todo Center academic-management lane switching instant and align lane counts with visible alert rows.
+- Key files:
+  - `app/admin/todos/page.tsx`
+  - `app/admin/todos/AcademicManagementAlertsClient.tsx`
+  - `docs/tasks/TASK-20260425-todo-academic-alert-filter-counts.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes the Todo Center academic-management alert UI only. It does not change OpenClaw, student records, package settlement, scheduling, attendance, package deduction, partner settlement, contracts, payroll, or finance approval logic.
+- Verification:
+  - confirmed the old section mixed active-student counts with alert-row counts and capped alert rows at 20
+  - scanned Todo Center for remaining `todoHref` lane links; only pagination and lazy conflict-load links remain
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-04-25-r129`.
+
+---
+
 ## 2026-04-25-r128
 
 - Release ID: `2026-04-25-r128`

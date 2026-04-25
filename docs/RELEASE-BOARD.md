@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r128` (academic management student-type lane correction), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-25-r129` (Todo Center academic alert filter/count polish), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -47,6 +47,7 @@
 - Student-academic-management risk: `2026-04-25-r125` adds nullable student management fields and a Todo Center read path for active-package students without upcoming lessons; verification should confirm the page renders before operators start filling these fields.
 - Academic-management-followup risk: `2026-04-25-r126` adds quality/completeness signals and an academic management monthly report without touching OpenClaw; verification should confirm the new report and Todo Center render correctly with mostly empty profile fields.
 - Academic-management-lane risk: `2026-04-25-r128` corrects the split to use student type as the academic-management source of truth and shows package settlement differences as warnings only; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
+- Todo-academic-alert UI risk: `2026-04-25-r129` moves the Todo Center academic lane filter to client-side switching and changes pill counts to visible alert counts; verification should confirm lane buttons no longer reload the full page and counts match the rows shown.
 
 ## Process Guard (Installed)
 
@@ -67,6 +68,26 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-25-r129 Ready
+
+- Scope: make Todo Center academic-management lane switching instant and fix mismatched counts.
+- Business impact:
+  - `学业管理提醒` 的 `全部学生 / 自己学生 / 合作方学生 / 未分类` 点击后不再整页刷新
+  - 筛选按钮数量改为当前提醒行数，不再混用有效课包学生总数
+  - 移除原来最多只显示 20 条提醒的截断，避免学生显示不全
+  - 保留 URL `academicLane` 状态，复制链接仍能打开对应分流
+  - 不改变 OpenClaw、排课创建、点名、扣费、合同、工资、合作方结算或财务审批逻辑
+- Validation:
+  - confirmed the old section mixed active-student counts with alert-row counts and capped rows at 20
+  - scanned Todo Center for remaining `todoHref` lane links; only pagination and lazy conflict-load links remain
+  - `npx tsx --test tests/academic-management.test.ts tests/parent-feedback-quality.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260425-todo-academic-alert-filter-counts.md`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - production QA should click `/admin/todos` academic lane buttons and confirm the page does not reload and counts match visible rows
 
 ## 2026-04-25-r128 Ready
 

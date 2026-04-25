@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import ClassTypeBadge from "@/app/_components/ClassTypeBadge";
 import AdminTodosRemindersClient from "./AdminTodosRemindersClient";
 import AdminTodosOpsClient from "./AdminTodosOpsClient";
+import AcademicManagementAlertsClient, { type AcademicAlertRow } from "./AcademicManagementAlertsClient";
 import RememberedWorkbenchQueryClient from "../_components/RememberedWorkbenchQueryClient";
 import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
@@ -787,7 +788,7 @@ export default async function AdminTodosPage({
     }),
   ]);
   const ledgerAlert = parseLedgerIntegrityAlertState(ledgerAlertRow?.value);
-  const academicPackages = packages.filter((p) => matchesAcademicStudentLane({ studentTypeName: p.student?.studentType?.name }, academicLane));
+  const academicPackages = packages;
   const activePackageStudentIds = Array.from(new Set(academicPackages.map((p) => p.studentId).filter(Boolean)));
   const scheduleLookaheadEnd = new Date(now);
   scheduleLookaheadEnd.setDate(scheduleLookaheadEnd.getDate() + STUDENT_SCHEDULE_LOOKAHEAD_DAYS);
@@ -851,21 +852,6 @@ export default async function AdminTodosPage({
     existing.settlementModes.push(p.settlementMode ?? null);
     activePackageByStudent.set(p.studentId, existing);
   }
-  const academicPackageLaneCounts = Array.from(
-    packages.reduce((acc, p) => {
-      if (!p.studentId || acc.has(p.studentId)) return acc;
-      acc.set(p.studentId, p.student?.studentType?.name ?? null);
-      return acc;
-    }, new Map<string, string | null>()).values()
-  ).reduce(
-    (acc, p) => {
-      acc[studentAcademicStudentLane({ studentTypeName: p })] += 1;
-      return acc;
-    },
-    { own: 0, partner: 0, unclassified: 0 }
-  );
-  const academicPackageStudentCount =
-    academicPackageLaneCounts.own + academicPackageLaneCounts.partner + academicPackageLaneCounts.unclassified;
   const academicManagementAlerts = Array.from(activePackageByStudent.entries())
     .map(([studentId, row]) => {
       const nextSession = nextSessionByStudentId.get(studentId) ?? null;
@@ -875,6 +861,7 @@ export default async function AdminTodosPage({
       const highRisk = row.student?.academicRiskLevel === "HIGH";
       const profileIncomplete = isAcademicProfileIncomplete(row.student ?? {});
       const monthlyReportNeeded = requiresMonthlyAcademicReport(row.student?.servicePlanType);
+      const studentLane = studentAcademicStudentLane({ studentTypeName: row.student?.studentType?.name });
       const packageWarning = academicLanePackageWarning({
         studentTypeName: row.student?.studentType?.name,
         settlementModes: row.settlementModes,
@@ -891,6 +878,7 @@ export default async function AdminTodosPage({
         profileIncomplete,
         profileCompleteness: academicProfileCompleteness(row.student ?? {}),
         monthlyReportNeeded,
+        studentLane,
         packageWarning,
         needsAttention,
       };
@@ -902,8 +890,33 @@ export default async function AdminTodosPage({
       const ad = a.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
       const bd = b.nextActionDue?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return ad - bd;
-    })
-    .slice(0, 20);
+    });
+  const academicManagementAlertRows: AcademicAlertRow[] = academicManagementAlerts.map((row) => ({
+    studentId: row.studentId,
+    studentName: row.student?.name ?? "-",
+    remainingLabel: `${t(lang, "Remaining", "剩余")}: ${fmtMinutes(row.totalRemainingMinutes)}`,
+    lane: row.studentLane,
+    laneLabel: academicStudentLaneLabel(row.studentLane),
+    studentTypeLabel: row.student?.studentType?.name ?? row.student?.sourceChannel?.name ?? "-",
+    packageWarning: row.packageWarning,
+    riskLabel: academicRiskLabel(row.student?.academicRiskLevel),
+    riskColor: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b",
+    profileLabel: `${t(lang, "Profile", "档案")}: ${row.profileCompleteness.percent}%`,
+    profileColor: row.profileIncomplete ? "#c2410c" : "#64748b",
+    profileBold: row.profileIncomplete,
+    servicePlanLabel: servicePlanLabel(row.student?.servicePlanType),
+    monthlyReportLabel: row.monthlyReportNeeded ? t(lang, "Monthly report", "需要月报") : null,
+    nextLessonLabel: row.nextSession
+      ? `${formatBusinessDateTime(new Date(row.nextSession.startAt))} | ${courseLabel(row.nextSession.class)}`
+      : null,
+    noUpcomingLessonLabel: t(lang, "No upcoming lesson", "暂无未来课程"),
+    nextAction: row.student?.nextAction || "-",
+    nextActionDueLabel: row.nextActionDue ? `${t(lang, "Due", "截止")}: ${formatBusinessDateOnly(row.nextActionDue)}` : null,
+    nextActionDueColor: row.actionDueSoon ? "#be123c" : "#64748b",
+    nextActionDueBold: row.actionDueSoon,
+    ownerLabel: row.student?.advisorOwner || "-",
+    actionLabel: t(lang, "Student Detail", "学生详情"),
+  }));
   const packageIds = packages.map((p) => p.id);
   const deductedRows = packageIds.length
     ? await prisma.packageTxn.groupBy({
@@ -2161,110 +2174,22 @@ export default async function AdminTodosPage({
                   `有有效课包但未来 ${STUDENT_SCHEDULE_LOOKAHEAD_DAYS} 天无课、档案未完整、下一步动作临近、服务计划需要月报，或被标记为高风险的学生。`
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                {ACADEMIC_STUDENT_LANES.map((item) => (
-                  <a
-                    key={item.value}
-                    href={todoHref({ academicLane: item.value === "all" ? null : item.value })}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: academicLane === item.value ? "1px solid #2563eb" : "1px solid #cbd5e1",
-                      background: academicLane === item.value ? "#dbeafe" : "#fff",
-                      color: "#0f172a",
-                      textDecoration: "none",
-                      fontWeight: academicLane === item.value ? 800 : 600,
-                    }}
-                  >
-                    {item.zh}
-                    {item.value === "own"
-                      ? ` (${academicPackageLaneCounts.own})`
-                      : item.value === "partner"
-                        ? ` (${academicPackageLaneCounts.partner})`
-                        : item.value === "unclassified"
-                          ? ` (${academicPackageLaneCounts.unclassified})`
-                          : ` (${academicPackageStudentCount})`}
-                  </a>
-                ))}
-              </div>
-              {academicManagementAlerts.length === 0 ? (
-                <div style={{ color: "#999" }}>{t(lang, "No academic management alerts.", "暂无学业管理提醒。")}</div>
-              ) : (
-                <table cellPadding={8} style={tableStyle}>
-                  <thead>
-                    <tr style={{ background: "#f5f5f5" }}>
-                      <th align="left">{t(lang, "Student", "学生")}</th>
-                      <th align="left">{t(lang, "Type", "类型")}</th>
-                      <th align="left">{t(lang, "Risk", "风险")}</th>
-                      <th align="left">{t(lang, "Service plan", "服务计划")}</th>
-                      <th align="left">{t(lang, "Next lesson", "下一节课")}</th>
-                      <th align="left">{t(lang, "Next action", "下一步动作")}</th>
-                      <th align="left">{t(lang, "Owner", "负责人")}</th>
-                      <th align="left">{t(lang, "Action", "操作")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {academicManagementAlerts.map((row) => (
-                      <tr key={row.studentId} style={{ borderTop: "1px solid #eee" }}>
-                        <td>
-                          <div style={{ fontWeight: 700 }}>{row.student?.name ?? "-"}</div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
-                            {t(lang, "Remaining", "剩余")}: {fmtMinutes(row.totalRemainingMinutes)}
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: 700 }}>
-                          {academicStudentLaneLabel(
-                            studentAcademicStudentLane({
-                              studentTypeName: row.student?.studentType?.name,
-                            })
-                          )}
-                          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>
-                            {row.student?.studentType?.name ?? row.student?.sourceChannel?.name ?? "-"}
-                          </div>
-                          {row.packageWarning ? (
-                            <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 700 }}>{row.packageWarning}</div>
-                          ) : null}
-                        </td>
-                        <td style={{ color: row.highRisk ? "#be123c" : row.student?.academicRiskLevel === "MEDIUM" ? "#c2410c" : "#64748b", fontWeight: 700 }}>
-                          {academicRiskLabel(row.student?.academicRiskLevel)}
-                          <div style={{ color: row.profileIncomplete ? "#c2410c" : "#64748b", fontSize: 12, fontWeight: row.profileIncomplete ? 700 : 400 }}>
-                            {t(lang, "Profile", "档案")}: {row.profileCompleteness.percent}%
-                          </div>
-                        </td>
-                        <td>
-                          {servicePlanLabel(row.student?.servicePlanType)}
-                          {row.monthlyReportNeeded ? (
-                            <div style={{ color: "#1d4ed8", fontSize: 12, fontWeight: 700 }}>
-                              {t(lang, "Monthly report", "需要月报")}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>
-                          {row.nextSession
-                            ? `${formatBusinessDateTime(new Date(row.nextSession.startAt))} | ${courseLabel(row.nextSession.class)}`
-                            : (
-                              <span style={{ color: "#be123c", fontWeight: 700 }}>
-                                {t(lang, "No upcoming lesson", "暂无未来课程")}
-                              </span>
-                            )}
-                        </td>
-                        <td>
-                          <div style={{ whiteSpace: "pre-wrap" }}>{row.student?.nextAction || "-"}</div>
-                          {row.nextActionDue ? (
-                            <div style={{ color: row.actionDueSoon ? "#be123c" : "#64748b", fontSize: 12, fontWeight: row.actionDueSoon ? 700 : 400 }}>
-                              {t(lang, "Due", "截止")}: {formatBusinessDateOnly(row.nextActionDue)}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>{row.student?.advisorOwner || "-"}</td>
-                        <td>
-                          <a href={`/admin/students/${row.studentId}`}>{t(lang, "Student Detail", "学生详情")}</a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <AcademicManagementAlertsClient
+                initialLane={academicLane}
+                lanes={ACADEMIC_STUDENT_LANES.map((item) => ({ value: item.value, label: item.zh }))}
+                rows={academicManagementAlertRows}
+                labels={{
+                  empty: t(lang, "No academic management alerts.", "暂无学业管理提醒。"),
+                  student: t(lang, "Student", "学生"),
+                  type: t(lang, "Type", "类型"),
+                  risk: t(lang, "Risk", "风险"),
+                  servicePlan: t(lang, "Service plan", "服务计划"),
+                  nextLesson: t(lang, "Next lesson", "下一节课"),
+                  nextAction: t(lang, "Next action", "下一步动作"),
+                  owner: t(lang, "Owner", "负责人"),
+                  action: t(lang, "Action", "操作"),
+                }}
+              />
             </div>
           </details>
         </div>
