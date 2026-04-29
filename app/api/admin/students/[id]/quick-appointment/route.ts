@@ -14,6 +14,7 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { runRejectQuickScheduleBatch, runSkipQuickScheduleBatch } from "@/lib/quick-schedule-execution";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { formatStudentQuickScheduleConflictReason } from "@/lib/quick-schedule-messages";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -50,10 +51,10 @@ function formatSessionConflictLabel(s: any) {
 
 function formatStudentSessionConflictReason(s: any, startAt: Date, endAt: Date) {
   const label = formatSessionConflictLabel(s);
-  if (isExactSessionTimeslot(s, startAt, endAt)) {
-    return `Session already exists at this time: ${label}`;
-  }
-  return `Student already has another session at this time: ${label}`;
+  return formatStudentQuickScheduleConflictReason({
+    existingSessionLabel: label,
+    exactTimeslot: isExactSessionTimeslot(s, startAt, endAt),
+  });
 }
 
 type DbClient = typeof prisma | Prisma.TransactionClient;

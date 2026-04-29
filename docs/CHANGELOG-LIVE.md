@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-04-29-r130
+
+- Release ID: `2026-04-29-r130`
+- Date/Time (Asia/Shanghai): `2026-04-29`
+- Deployment status: `READY`
+- Scope: clarify quick-schedule student time conflicts so existing-session room labels are not mistaken for selected-room occupancy.
+- Key files:
+  - `app/admin/students/[id]/page.tsx`
+  - `app/api/admin/students/[id]/quick-appointment/route.ts`
+  - `lib/quick-schedule-messages.ts`
+  - `tests/quick-schedule-messages.test.ts`
+  - `docs/tasks/TASK-20260429-quick-schedule-student-conflict-room-wording.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes quick-schedule conflict wording only. It does not change room selection, room conflict detection, teacher availability, scheduling writes, attendance, package deduction, billing, contracts, payroll, settlement, or OpenClaw.
+- Verification:
+  - checked the reported real window: `2026-05-14 17:30-19:00`, Orchard Plaza `Room 3` has no overlapping session
+  - confirmed the shown `Room 1` row is an existing overlapping student session at `18:00-19:30`, not selected-room occupancy
+  - `npx tsx --test tests/quick-schedule-messages.test.ts tests/quick-schedule-execution.test.ts tests/availability-conflict.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-04-29-r130`.
+
+---
+
 ## 2026-04-25-r129
 
 - Release ID: `2026-04-25-r129`

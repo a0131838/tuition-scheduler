@@ -69,6 +69,7 @@ import {
   checkTeacherSchedulingAvailability,
   inspectTeacherSchedulingAvailability,
 } from "@/lib/teacher-scheduling-availability";
+import { formatStudentQuickScheduleConflictReason } from "@/lib/quick-schedule-messages";
 import { isPartnerSettlementPackage, packageFinanceGateLabelZh } from "@/lib/package-finance-gate";
 import { studentContractFlowLabelZh, studentContractStatusLabelZh } from "@/lib/student-contract";
 import {
@@ -433,10 +434,10 @@ function formatSessionConflictLabel(s: any) {
 
 function formatStudentSessionConflictReason(s: any, startAt: Date, endAt: Date) {
   const label = formatSessionConflictLabel(s);
-  if (isExactSessionTimeslot(s, startAt, endAt)) {
-    return `Session already exists at this time: ${label}`;
-  }
-  return `Student already has another session at this time: ${label}`;
+  return formatStudentQuickScheduleConflictReason({
+    existingSessionLabel: label,
+    exactTimeslot: isExactSessionTimeslot(s, startAt, endAt),
+  });
 }
 
 async function humanizeQuickScheduleError(raw: string) {

@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-25`
+- Last checked: `2026-04-29`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-25-r129` (Todo Center academic alert filter/count polish), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-04-29-r130` (quick-schedule student conflict room wording), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -48,6 +48,7 @@
 - Academic-management-followup risk: `2026-04-25-r126` adds quality/completeness signals and an academic management monthly report without touching OpenClaw; verification should confirm the new report and Todo Center render correctly with mostly empty profile fields.
 - Academic-management-lane risk: `2026-04-25-r128` corrects the split to use student type as the academic-management source of truth and shows package settlement differences as warnings only; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
 - Todo-academic-alert UI risk: `2026-04-25-r129` moves the Todo Center academic lane filter to client-side switching and changes pill counts to visible alert counts; verification should confirm lane buttons no longer reload the full page and counts match the rows shown.
+- Quick-schedule wording risk: `2026-04-29-r130` clarifies student time conflicts so an existing session's room does not look like the currently selected room was ignored; verification should confirm room conflict logic and scheduling writes remain unchanged.
 
 ## Process Guard (Installed)
 
@@ -68,6 +69,25 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-04-29-r130 Ready
+
+- Scope: clarify quick-schedule student conflict wording.
+- Business impact:
+  - quick-schedule candidate rows now say `学生时间冲突（不是所选教室被占用）/ Student time conflict, not selected-room conflict`
+  - the existing session details still show the original class room, but are labeled as `Existing session`
+  - this prevents staff from reading `Room 1` in the conflict detail as the selected `Room 3` being ignored
+  - no room selection, room conflict detection, teacher availability, scheduling write, attendance, package, billing, contract, payroll, settlement, or OpenClaw logic changed
+- Validation:
+  - checked the reported real window: `2026-05-14 17:30-19:00`, Orchard Plaza `Room 3` has no overlapping session
+  - confirmed the displayed `Room 1` row is the student's overlapping existing session at `18:00-19:30`
+  - `npx tsx --test tests/quick-schedule-messages.test.ts tests/quick-schedule-execution.test.ts tests/availability-conflict.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260429-quick-schedule-student-conflict-room-wording.md`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - production QA should retry the same quick-schedule search and confirm the conflict reads as student-time conflict, not selected-room occupancy
 
 ## 2026-04-25-r129 Ready
 
