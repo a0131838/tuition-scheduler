@@ -36,9 +36,17 @@ function isExcusedNoCharge(a: AttendanceLite) {
 export function sessionIncludesStudent(session: SessionConflictLite, schedulingStudentId?: string | null) {
   if (!schedulingStudentId) return false;
   if (session.studentId === schedulingStudentId) return true;
+  if ((session.attendances ?? []).some((row) => row.studentId === schedulingStudentId)) return true;
+  const isOneOnOne = Number(session.class?.capacity ?? 0) === 1;
+  if (isOneOnOne) {
+    if (session.studentId) return false;
+    if (session.class?.oneOnOneStudentId) return session.class.oneOnOneStudentId === schedulingStudentId;
+    const enrollments = session.class?.enrollments ?? [];
+    if (enrollments.length === 1) return enrollments[0]?.studentId === schedulingStudentId;
+    return false;
+  }
   if (session.class?.oneOnOneStudentId === schedulingStudentId) return true;
   if ((session.class?.enrollments ?? []).some((row) => row?.studentId === schedulingStudentId)) return true;
-  if ((session.attendances ?? []).some((row) => row.studentId === schedulingStudentId)) return true;
   return false;
 }
 

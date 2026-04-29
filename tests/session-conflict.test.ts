@@ -25,6 +25,20 @@ test("sessionIncludesStudent sees one-on-one, enrollment, and attendance links",
   assert.equal(sessionIncludesStudent({ studentId: "other" }, activeStudentId), false);
 });
 
+test("one-on-one session ignores stale class enrollments when session has a concrete student", () => {
+  const session = {
+    studentId: "actual-student",
+    class: {
+      capacity: 1,
+      enrollments: [{ studentId: activeStudentId }, { studentId: "actual-student" }],
+    },
+    attendances: [],
+  };
+
+  assert.equal(sessionIncludesStudent(session, activeStudentId), false);
+  assert.equal(pickStudentSessionConflict([session], activeStudentId), null);
+});
+
 test("pickStudentSessionConflict skips fully excused self sessions", () => {
   const ignored = {
     studentId: activeStudentId,
