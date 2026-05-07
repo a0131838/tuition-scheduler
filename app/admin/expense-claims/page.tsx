@@ -204,6 +204,33 @@ function normalizeExpenseStatus(value: string) {
     : 'ALL';
 }
 
+type ExpenseArchiveFilter = 'active' | 'archived' | 'include';
+
+function normalizeExpenseArchiveFilter(value: string): ExpenseArchiveFilter {
+  const v = value.trim().toLowerCase();
+  if (v === '1' || v === 'archived') return 'archived';
+  if (v === 'include' || v === 'all') return 'include';
+  return 'active';
+}
+
+function expenseArchiveQueryValue(value: ExpenseArchiveFilter) {
+  if (value === 'archived') return '1';
+  if (value === 'include') return 'include';
+  return '';
+}
+
+function expenseArchiveListFilter(value: ExpenseArchiveFilter) {
+  if (value === 'archived') return true;
+  if (value === 'include') return null;
+  return false;
+}
+
+function formatArchiveFilterLabel(lang: Lang, value: ExpenseArchiveFilter) {
+  if (value === 'archived') return t(lang, 'Archived only', '仅看已归档');
+  if (value === 'include') return t(lang, 'Include archived', '包含已归档');
+  return t(lang, 'Active only', '仅看未归档');
+}
+
 function parseRememberedExpenseFilters(raw: string) {
   let normalizedRaw = raw;
   try {
@@ -221,7 +248,7 @@ function parseRememberedExpenseFilters(raw: string) {
   const currency = String(params.get('currency') ?? '').trim().toUpperCase();
   const q = String(params.get('q') ?? '').trim();
   const approvedUnpaidOnly = params.get('approvedUnpaidOnly') === '1';
-  const archived = params.get('archived') === '1';
+  const archived = normalizeExpenseArchiveFilter(String(params.get('archived') ?? '').trim());
   const attachmentIssueOnly = params.get('attachmentIssueOnly') === '1';
   return {
     status,
@@ -241,7 +268,7 @@ function parseRememberedExpenseFilters(raw: string) {
       currency,
       q,
       approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
-      archived: archived ? '1' : '',
+      archived: expenseArchiveQueryValue(archived),
       attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
     }),
   };
@@ -294,7 +321,7 @@ export default async function AdminExpenseClaimsPage({
   const repairReturnFinanceGroup = typeof params.repairReturnFinanceGroup === 'string' ? params.repairReturnFinanceGroup : '';
   const repairReturnConfirmed = typeof params.repairReturn === 'string' ? params.repairReturn === '1' : false;
   const approvedUnpaidOnlyParam = hasApprovedUnpaidOnlyParam ? params.approvedUnpaidOnly === '1' : false;
-  const archivedOnlyParam = hasArchivedOnlyParam ? params.archived === '1' : false;
+  const archiveFilterParam = hasArchivedOnlyParam ? normalizeExpenseArchiveFilter(String(params.archived ?? '')) : 'active';
   const attachmentIssueOnlyParam = hasAttachmentIssueOnlyParam ? params.attachmentIssueOnly === '1' : false;
   const canResumeRememberedFilters =
     !clearFilters &&
@@ -327,7 +354,7 @@ export default async function AdminExpenseClaimsPage({
         currency: '',
         q: '',
         approvedUnpaidOnly: false,
-        archived: false,
+        archived: 'active' as ExpenseArchiveFilter,
         attachmentIssueOnly: false,
         value: '',
       };
@@ -338,7 +365,7 @@ export default async function AdminExpenseClaimsPage({
   const currencyFilter = hasCurrencyParam ? currencyParam : rememberedFilters.currency;
   const submitterQuery = hasSubmitterQueryParam ? submitterQueryParam : rememberedFilters.q;
   const approvedUnpaidOnly = hasApprovedUnpaidOnlyParam ? approvedUnpaidOnlyParam : rememberedFilters.approvedUnpaidOnly;
-  const archivedOnly = hasArchivedOnlyParam ? archivedOnlyParam : rememberedFilters.archived;
+  const archiveFilter = hasArchivedOnlyParam ? archiveFilterParam : rememberedFilters.archived;
   const attachmentIssueOnly = hasAttachmentIssueOnlyParam ? attachmentIssueOnlyParam : rememberedFilters.attachmentIssueOnly;
   const resumedRememberedFilters =
     canResumeRememberedFilters && Boolean(rememberedFilters.value);
@@ -355,7 +382,7 @@ export default async function AdminExpenseClaimsPage({
     currency: currencyFilter,
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
-    archived: archivedOnly ? '1' : '',
+    archived: expenseArchiveQueryValue(archiveFilter),
     attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   });
   const workflowQuery = buildFilterQuery({
@@ -389,7 +416,7 @@ export default async function AdminExpenseClaimsPage({
     currency: currencyFilter,
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
-    archived: archivedOnly ? '1' : '',
+    archived: expenseArchiveQueryValue(archiveFilter),
     attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
   })}`;
   const quickExpenseLastMonthHref = `/admin/expense-claims?${buildFilterQuery({
@@ -400,8 +427,19 @@ export default async function AdminExpenseClaimsPage({
     currency: currencyFilter,
     q: submitterQuery,
     approvedUnpaidOnly: approvedUnpaidOnly ? '1' : '',
-    archived: archivedOnly ? '1' : '',
+    archived: expenseArchiveQueryValue(archiveFilter),
     attachmentIssueOnly: attachmentIssueOnly ? '1' : '',
+  })}`;
+  const quickAllPaidHref = `/admin/expense-claims?${buildFilterQuery({
+    status: ExpenseClaimStatus.PAID,
+    month: '',
+    paymentBatchMonth: '',
+    expenseType: '',
+    currency: '',
+    q: '',
+    approvedUnpaidOnly: '',
+    archived: 'include',
+    attachmentIssueOnly: '',
   })}`;
   const quickApprovedUnpaidHref = `/admin/expense-claims?${buildFilterQuery({
     status: '',
@@ -446,7 +484,7 @@ export default async function AdminExpenseClaimsPage({
     Boolean(currencyFilter) ||
     Boolean(submitterQuery) ||
     approvedUnpaidOnly ||
-    archivedOnly ||
+    archiveFilter !== 'active' ||
     attachmentIssueOnly;
 
   async function approveAction(formData: FormData) {
@@ -573,7 +611,7 @@ export default async function AdminExpenseClaimsPage({
     currencyCode: currencyFilter || null,
     submitterQuery: submitterQuery || null,
     approvedUnpaidOnly,
-    archived: archivedOnly,
+    archived: expenseArchiveListFilter(archiveFilter),
   });
   const claimsWithAttachmentState = await Promise.all(
     claims.map(async (claim) => ({
@@ -642,7 +680,7 @@ export default async function AdminExpenseClaimsPage({
     Boolean(currencyFilter),
     Boolean(submitterQuery),
     approvedUnpaidOnly,
-    archivedOnly,
+    archiveFilter !== 'active',
     attachmentIssueOnly,
   ].filter(Boolean).length;
   const reminderCount = reminders.staleSubmitted.length + reminders.staleApprovedUnpaid.length;
@@ -776,9 +814,11 @@ export default async function AdminExpenseClaimsPage({
     ? t(lang, 'Approved but unpaid only', '仅看已批未付')
     : attachmentIssueOnly
       ? t(lang, 'Attachment issues only', '仅看附件异常')
-    : archivedOnly
-      ? t(lang, 'Archived claims only', '仅看已归档报销单')
-      : statusFilter !== 'ALL'
+    : statusFilter === ExpenseClaimStatus.PAID && archiveFilter === 'include'
+      ? t(lang, 'All paid expenses', '所有已付款报销')
+      : archiveFilter !== 'active'
+        ? formatArchiveFilterLabel(lang, archiveFilter)
+        : statusFilter !== 'ALL'
         ? formatClaimStatusLabel(lang, statusFilter as ExpenseClaimStatus)
         : t(lang, 'All working states', '全部工作状态');
   const expenseFocusTitle = selectedReviewClaim
@@ -935,6 +975,9 @@ export default async function AdminExpenseClaimsPage({
           title={t(lang, 'Action saved', '操作已完成')}
           description={msg}
           actions={[
+            msg.toLowerCase().includes('marked paid')
+              ? { href: quickAllPaidHref, label: t(lang, 'View all paid', '查看所有已付款'), emphasis: 'primary' as const }
+              : null,
             selectedReviewClaim
               ? { href: '#expense-review-actions', label: t(lang, 'Jump to review actions', '跳到审批操作') }
               : selectedFinanceGroup
@@ -1075,6 +1118,7 @@ export default async function AdminExpenseClaimsPage({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href={quickSubmittedHref} scroll={false}>{t(lang, 'Submitted review queue', '待审批队列')}</Link>
           <a href={quickApprovedUnpaidHref}>{t(lang, 'Approved but unpaid', '已批未付')}</a>
+          <a href={quickAllPaidHref}>{t(lang, 'All paid expenses', '所有已付款报销')}</a>
           <a href={quickAttachmentIssueHref}>{t(lang, 'Attachment issues', '附件异常')}</a>
           <a href={attachmentHealthDeskHref}>{t(lang, 'Attachment health desk', '附件异常总览')}</a>
           <a href={quickExpenseThisMonthHref}>{t(lang, 'This month expenses', '本月消费')}</a>
@@ -1711,6 +1755,9 @@ export default async function AdminExpenseClaimsPage({
           <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
             {t(lang, 'Submitter query', '提交人搜索')}: {submitterQuery || '-'}
           </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 12 }}>
+            {t(lang, 'Archive view', '归档视图')}: {formatArchiveFilterLabel(lang, archiveFilter)}
+          </span>
         </div>
         <div style={{ color: '#475569', fontSize: 14, marginTop: 12 }}>
           {t(
@@ -1776,9 +1823,13 @@ export default async function AdminExpenseClaimsPage({
                 <input type="checkbox" name="attachmentIssueOnly" value="1" defaultChecked={attachmentIssueOnly} />
                 <span>{t(lang, 'Only attachment issues', '仅看附件异常')}</span>
               </label>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', minHeight: 40 }}>
-                <input type="checkbox" name="archived" value="1" defaultChecked={archivedOnly} />
-                <span>{t(lang, 'Archived only', '仅看已归档')}</span>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>{t(lang, 'Archive view', '归档视图')}</span>
+                <select name="archived" defaultValue={expenseArchiveQueryValue(archiveFilter)}>
+                  <option value="">{t(lang, 'Active only', '仅看未归档')}</option>
+                  <option value="1">{t(lang, 'Archived only', '仅看已归档')}</option>
+                  <option value="include">{t(lang, 'Include archived', '包含已归档')}</option>
+                </select>
               </label>
             </div>
           </div>

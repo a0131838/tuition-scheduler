@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ExpenseClaimStatus } from "@prisma/client";
-import { findRecentDuplicateExpenseClaimForDb, resubmitExpenseClaim, updateExpenseClaimWithExpectedStatusForDb } from "../lib/expense-claims";
+import {
+  findRecentDuplicateExpenseClaimForDb,
+  resolveExpenseClaimArchivedWhere,
+  resubmitExpenseClaim,
+  updateExpenseClaimWithExpectedStatusForDb,
+} from "../lib/expense-claims";
 
 test("expense claim transition uses conditional update on expected status", async () => {
   const calls: Array<unknown> = [];
@@ -34,6 +39,12 @@ test("expense claim transition uses conditional update on expected status", asyn
       data: { status: ExpenseClaimStatus.APPROVED },
     },
   ]);
+});
+
+test("expense claim archived filter can show active, archived, or all paid history", () => {
+  assert.deepEqual(resolveExpenseClaimArchivedWhere(false), { archivedAt: null });
+  assert.deepEqual(resolveExpenseClaimArchivedWhere(true), { archivedAt: { not: null } });
+  assert.deepEqual(resolveExpenseClaimArchivedWhere(null), {});
 });
 
 test("expense claim transition rejects stale concurrent updates", async () => {

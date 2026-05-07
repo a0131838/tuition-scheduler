@@ -20,7 +20,8 @@ export async function GET(req: Request) {
   const currencyCode = searchParams.get('currency');
   const submitterQuery = searchParams.get('q');
   const approvedUnpaidOnly = searchParams.get('approvedUnpaidOnly') === '1';
-  const archived = searchParams.get('archived') === '1';
+  const archivedParam = String(searchParams.get('archived') ?? '').trim().toLowerCase();
+  const archived = archivedParam === '1' || archivedParam === 'archived' ? true : archivedParam === 'include' ? null : false;
   const rows = await listExpenseClaims({
     month,
     paymentBatchMonth,

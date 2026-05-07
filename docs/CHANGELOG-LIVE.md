@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-07-r131
+
+- Release ID: `2026-05-07-r131`
+- Date/Time (Asia/Shanghai): `2026-05-07`
+- Deployment status: `READY`
+- Scope: add an all-paid expense-claims view that includes both active and archived paid claims.
+- Key files:
+  - `app/admin/expense-claims/page.tsx`
+  - `app/api/exports/expense-claims/route.ts`
+  - `lib/expense-claims.ts`
+  - `tests/expense-claims.test.ts`
+  - `docs/tasks/TASK-20260507-expense-claims-all-paid-archive-view.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes finance expense-claim filtering and CSV export only. It does not change claim approval, payment marking, attachment storage, payroll, student billing, package deduction, scheduling, attendance, contracts, partner settlement, or OpenClaw.
+- Verification:
+  - queried real paid expense claims: 41 active, 1 archived, 42 total
+  - `npx tsx --test tests/expense-claims.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-05-07-r131`.
+
+---
+
 ## 2026-04-29-r130
 
 - Release ID: `2026-04-29-r130`

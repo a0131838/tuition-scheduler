@@ -569,12 +569,18 @@ export type ExpenseClaimListFilters = {
   archived?: boolean | null;
 };
 
+export function resolveExpenseClaimArchivedWhere(archived?: boolean | null): Prisma.ExpenseClaimWhereInput {
+  if (archived === true) return { archivedAt: { not: null } };
+  if (archived === false) return { archivedAt: null };
+  return {};
+}
+
 export async function listExpenseClaims(filters: ExpenseClaimListFilters = {}) {
-  const where: Prisma.ExpenseClaimWhereInput = {};
+  const where: Prisma.ExpenseClaimWhereInput = {
+    ...resolveExpenseClaimArchivedWhere(filters.archived),
+  };
   if (filters.submitterUserId) where.submitterUserId = filters.submitterUserId;
   if (filters.status && filters.status !== 'ALL') where.status = filters.status;
-  if (filters.archived === true) where.archivedAt = { not: null };
-  else if (filters.archived === false) where.archivedAt = null;
   if (filters.expenseTypeCode) where.expenseTypeCode = String(filters.expenseTypeCode).trim().toUpperCase();
   if (filters.currencyCode) where.currencyCode = normalizeExpenseCurrencyCode(filters.currencyCode);
   if (filters.approvedUnpaidOnly) where.status = ExpenseClaimStatus.APPROVED;

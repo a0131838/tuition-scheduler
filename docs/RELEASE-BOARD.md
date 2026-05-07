@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-04-29`
+- Last checked: `2026-05-07`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-04-29-r130` (quick-schedule student conflict room wording), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-07-r131` (all-paid expense-claims archive view), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -49,6 +49,7 @@
 - Academic-management-lane risk: `2026-04-25-r128` corrects the split to use student type as the academic-management source of truth and shows package settlement differences as warnings only; verification should confirm the filters do not change billing, settlement, scheduling, or attendance data.
 - Todo-academic-alert UI risk: `2026-04-25-r129` moves the Todo Center academic lane filter to client-side switching and changes pill counts to visible alert counts; verification should confirm lane buttons no longer reload the full page and counts match the rows shown.
 - Quick-schedule wording risk: `2026-04-29-r130` clarifies student time conflicts so an existing session's room does not look like the currently selected room was ignored; verification should confirm room conflict logic and scheduling writes remain unchanged.
+- Expense-paid-history risk: `2026-05-07-r131` adds an include-archived paid-claims view and extends CSV export to match it; verification should confirm finance can see both active and archived paid claims without changing payment records.
 
 ## Process Guard (Installed)
 
@@ -69,6 +70,25 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-07-r131 Ready
+
+- Scope: add an all-paid expense-claims view that includes archived paid claims.
+- Business impact:
+  - Finance can open `All paid expenses / 所有已付款报销` from the expense-claims quick filters.
+  - Advanced filters now expose `Archive view / 归档视图`: active only, archived only, or include archived.
+  - `Paid / 已付款` plus `Include archived / 包含已归档` shows the complete paid history instead of only active or only archived claims.
+  - CSV export follows the same archived filter, so exported paid history matches the visible list.
+  - Claim approval, payment marking, archive status, attachment files, student billing, scheduling, attendance, contracts, payroll, settlement, and OpenClaw are unchanged.
+- Validation:
+  - queried real paid expense claims: 41 active, 1 archived, 42 total
+  - `npx tsx --test tests/expense-claims.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260507-expense-claims-all-paid-archive-view.md`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - production QA should open `/admin/expense-claims?status=PAID&archived=include` and confirm the count includes active and archived paid claims
 
 ## 2026-04-29-r130 Ready
 
