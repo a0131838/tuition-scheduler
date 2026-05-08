@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-08-r136` (teacher notice center admin), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-08-r137` (teacher notice nav placement), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -55,6 +55,7 @@
 - Package-ledger-PDF-display risk: `2026-05-08-r134` changes only hour/minute formatting in package-ledger displays and exports; verification should confirm old deductions are not manually corrected because stored ledger data already contains the correct `-90` minute values.
 - Teacher-notice risk: `2026-05-08-r135` adds a teacher portal announcement and read tracking; verification should confirm teachers can still open the dashboard and marking a notice read does not affect teaching, payroll, or expense workflows.
 - Teacher-notice-admin risk: `2026-05-08-r136` lets admin/finance publish and archive teacher notices with read tracking; verification should confirm notice writes affect only `AppSetting` notice keys and do not touch teacher payroll, expenses, classes, or attendance.
+- Teacher-notice-nav risk: `2026-05-08-r137` moves the notice admin link higher in the sidebar only; verification should confirm the route remains reachable for admin and finance users.
 
 ## Process Guard (Installed)
 
@@ -75,6 +76,20 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-08-r137 Ready
+
+- Scope: make the teacher notice admin entry visible near the top of the left sidebar.
+- Business impact:
+  - Admin users see `Teacher Notices / 老师通知` under `Today / 今天`.
+  - Finance users see `Teacher Notices / 老师通知` under their top `Today / 今天` group.
+  - The duplicate lower placement was removed to keep the sidebar cleaner.
+- Files:
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - `npm run build`
+- Post-deploy verification:
+  - open admin sidebar and confirm `Teacher Notices / 老师通知` appears near the top
 
 ## 2026-05-08-r136 Ready
 

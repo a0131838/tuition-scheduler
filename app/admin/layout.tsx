@@ -163,6 +163,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "accent" as const,
         },
         {
+          href: "/admin/teacher-notices",
+          label: t(lang, "Teacher Notices", "老师通知"),
+          description: t(lang, "Publish and track teacher announcements.", "发布并追踪老师通知。"),
+          tone: "accent" as const,
+        },
+        {
           href: "/admin/todos",
           label: t(lang, "Todo Center", "待办中心"),
           description: t(lang, "Attendance, follow-up, renewal, and repair queues.", "点名、跟进、续费和修复队列。"),
@@ -216,7 +222,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
-        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
       ],
     },
@@ -267,6 +272,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "accent" as const,
         },
         {
+          href: "/admin/teacher-notices",
+          label: t(lang, "Teacher Notices", "老师通知"),
+          description: t(lang, "Publish and track teacher announcements.", "发布并追踪老师通知。"),
+          tone: "accent" as const,
+        },
+        {
           href: "/admin/finance/workbench",
           label: t(lang, "Finance Workbench", "财务工作台"),
           description: t(lang, "Track parent and partner billing exceptions.", "跟进家长和合作方账单异常。"),
@@ -298,7 +309,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
-        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
       ],
     },
     {

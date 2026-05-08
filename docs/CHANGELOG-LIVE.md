@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r137
+
+- Release ID: `2026-05-08-r137`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: move the teacher notice admin entry higher in the left navigation so admins and finance users can find it immediately.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260508-teacher-notice-nav-placement.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Navigation placement only. It does not change notice data, scheduling, attendance, payroll, expense claims, billing, packages, student data, or OpenClaw.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-08-r137`.
+
+---
+
 ## 2026-05-08-r136
 
 - Release ID: `2026-05-08-r136`
