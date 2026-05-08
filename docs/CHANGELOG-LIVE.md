@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r132
+
+- Release ID: `2026-05-08-r132`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: add payment status, period filters, and Excel export to the finance document center.
+- Key files:
+  - `app/admin/finance/documents/page.tsx`
+  - `app/api/exports/finance-documents/route.ts`
+  - `lib/finance-documents.ts`
+  - `tests/finance-documents.test.ts`
+  - `docs/tasks/TASK-20260508-finance-documents-payment-status-export.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This changes finance document visibility and export reporting only. It does not create, approve, reject, mark paid, archive, or delete invoices/receipts, and does not change student billing, package deduction, scheduling, attendance, contracts, partner settlement, payroll, expense claims, or OpenClaw.
+- Verification:
+  - queried real invoice rows with the new status logic: 25 invoices total; paid 15, partial 1, unpaid 8, rejected 1
+  - `npx tsx --test tests/finance-documents.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-05-08-r132`.
+
+---
+
 ## 2026-05-07-r131
 
 - Release ID: `2026-05-07-r131`

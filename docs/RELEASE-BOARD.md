@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-07`
+- Last checked: `2026-05-08`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-07-r131` (all-paid expense-claims archive view), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-08-r132` (finance document payment status and export), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -50,6 +50,7 @@
 - Todo-academic-alert UI risk: `2026-04-25-r129` moves the Todo Center academic lane filter to client-side switching and changes pill counts to visible alert counts; verification should confirm lane buttons no longer reload the full page and counts match the rows shown.
 - Quick-schedule wording risk: `2026-04-29-r130` clarifies student time conflicts so an existing session's room does not look like the currently selected room was ignored; verification should confirm room conflict logic and scheduling writes remain unchanged.
 - Expense-paid-history risk: `2026-05-07-r131` adds an include-archived paid-claims view and extends CSV export to match it; verification should confirm finance can see both active and archived paid claims without changing payment records.
+- Finance-document-export risk: `2026-05-08-r132` derives invoice payment status from finance-approved receipts and adds filtered Excel export; verification should confirm finance understands pending or rejected receipts are not counted as paid.
 
 ## Process Guard (Installed)
 
@@ -70,6 +71,26 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-08-r132 Ready
+
+- Scope: add payment status, period filters, and Excel export to the finance document center.
+- Business impact:
+  - `/admin/finance/documents` now shows `Payment status / 收款状态` for invoices and receipts.
+  - Payment status is derived from finance-approved receipts: paid, partial, unpaid, pending approval, or rejected.
+  - Finance can filter by payment status plus date range before reviewing PDFs.
+  - Finance can export the current filtered document list as Excel for Statement of Accounts and invoice/receipt follow-up.
+  - The export includes document amount, approved received amount, pending/rejected receipt amount, remaining unpaid amount, receipt count, PDF link, and source page.
+  - No invoice/receipt creation, approval, rejection, deletion, package deduction, student billing, partner settlement, payroll, expense-claim, scheduling, attendance, contract, or OpenClaw logic changed.
+- Validation:
+  - queried real invoice rows with the new status logic: 25 invoices total; paid 15, partial 1, unpaid 8, rejected 1
+  - `npx tsx --test tests/finance-documents.test.ts`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260508-finance-documents-payment-status-export.md`
+- Deploy check:
+  - post-deploy `bash ops/server/scripts/new_chat_startup_check.sh` should confirm local/origin/server alignment and `/admin/login => 200`
+  - production QA should open `/admin/finance/documents?type=INVOICE&paymentStatus=UNPAID`, confirm rows render, then download `/api/exports/finance-documents?type=INVOICE&paymentStatus=UNPAID`
 
 ## 2026-05-07-r131 Ready
 

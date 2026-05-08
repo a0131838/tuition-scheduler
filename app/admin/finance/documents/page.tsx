@@ -1,41 +1,51 @@
 import { requireAdmin } from "@/lib/auth";
-import { getLang, t } from "@/lib/i18n";
-import { prisma } from "@/lib/prisma";
-import { listAllParentBilling } from "@/lib/student-parent-billing";
-import { listPartnerBilling } from "@/lib/partner-billing";
-import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
-import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
-import { getApprovalRoleConfig } from "@/lib/approval-flow";
-import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
+import {
+  filterFinanceDocumentRows,
+  listFinanceDocumentRows,
+  normalizeFinanceDocumentChannel,
+  normalizeFinanceDocumentPaymentStatus,
+  normalizeFinanceDocumentType,
+  type FinanceDocumentPaymentStatus,
+} from "@/lib/finance-documents";
+import { getLang, t, type Lang } from "@/lib/i18n";
 import { normalizeDateOnly } from "@/lib/date-only";
 import { workbenchFilterPanelStyle, workbenchHeroStyle } from "@/app/admin/_components/workbenchStyles";
-
-type DocChannel = "PARENT" | "PARTNER";
-type DocType = "INVOICE" | "RECEIPT";
-
-type DocRow = {
-  id: string;
-  channel: DocChannel;
-  type: DocType;
-  docNo: string;
-  issueDate: string;
-  partyLabel: string;
-  contextLabel: string;
-  amountLabel: string;
-  exportHref: string | null;
-  openHref: string;
-  exportReadyLabel: string;
-};
 
 function money(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
-function includesQuery(parts: Array<string | null | undefined>, query: string) {
-  if (!query) return true;
-  const normalized = query.trim().toLowerCase();
-  return parts.some((part) => String(part ?? "").toLowerCase().includes(normalized));
+function paymentStatusLabel(lang: Lang, status: FinanceDocumentPaymentStatus) {
+  if (status === "PAID") return t(lang, "Paid", "已收款");
+  if (status === "PARTIAL") return t(lang, "Partial", "部分收款");
+  if (status === "PENDING_APPROVAL") return t(lang, "Pending approval", "收据待审批");
+  if (status === "REJECTED") return t(lang, "Rejected", "已驳回");
+  return t(lang, "Unpaid", "未收款");
+}
+
+function paymentStatusStyle(status: FinanceDocumentPaymentStatus): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "3px 8px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  };
+  if (status === "PAID") return { ...base, background: "#dcfce7", color: "#166534" };
+  if (status === "PARTIAL") return { ...base, background: "#fef3c7", color: "#92400e" };
+  if (status === "PENDING_APPROVAL") return { ...base, background: "#e0f2fe", color: "#075985" };
+  if (status === "REJECTED") return { ...base, background: "#fee2e2", color: "#991b1b" };
+  return { ...base, background: "#f1f5f9", color: "#334155" };
+}
+
+function buildDocumentQuery(input: Record<string, string>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input)) {
+    if (value) params.set(key, value);
+  }
+  return params.toString();
 }
 
 export default async function FinanceDocumentsPage({
@@ -46,133 +56,47 @@ export default async function FinanceDocumentsPage({
     type?: string;
     q?: string;
     packageId?: string;
+    paymentStatus?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }>;
 }) {
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
-  const channelFilter = String(sp?.channel ?? "").trim().toUpperCase();
-  const typeFilter = String(sp?.type ?? "").trim().toUpperCase();
+  const channelFilter = normalizeFinanceDocumentChannel(sp?.channel);
+  const typeFilter = normalizeFinanceDocumentType(sp?.type);
+  const paymentStatusFilter = normalizeFinanceDocumentPaymentStatus(sp?.paymentStatus);
   const q = String(sp?.q ?? "").trim();
   const packageIdFilter = String(sp?.packageId ?? "").trim();
-
-  const [parentAll, partnerAll, roleCfg] = await Promise.all([
-    listAllParentBilling(),
-    listPartnerBilling(),
-    getApprovalRoleConfig(),
-  ]);
-
-  const packageIds = Array.from(
-    new Set(
-      [...parentAll.invoices.map((x) => x.packageId), ...parentAll.receipts.map((x) => x.packageId)].filter(Boolean),
-    ),
-  );
-  const packages = packageIds.length
-    ? await prisma.coursePackage.findMany({
-        where: { id: { in: packageIds } },
-        include: { student: true, course: true },
-      })
-    : [];
-  const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg] as const));
-
-  const [parentApprovalMap, partnerApprovalMap] = await Promise.all([
-    getParentReceiptApprovalMap(parentAll.receipts.map((x) => x.id)),
-    getPartnerReceiptApprovalMap(partnerAll.receipts.map((x) => x.id)),
-  ]);
-
-  const rows: DocRow[] = [];
-
-  for (const invoice of parentAll.invoices) {
-    const pkg = packageMap.get(invoice.packageId);
-    rows.push({
-      id: invoice.id,
-      channel: "PARENT",
-      type: "INVOICE",
-      docNo: invoice.invoiceNo,
-      issueDate: invoice.issueDate,
-      partyLabel: invoice.billTo || pkg?.student.name || "-",
-      contextLabel: pkg ? `${pkg.student.name} · ${pkg.course.name}` : invoice.packageId,
-      amountLabel: `SGD ${money(invoice.totalAmount)}`,
-      exportHref: `/api/exports/parent-invoice/${encodeURIComponent(invoice.id)}`,
-      openHref: `/admin/packages/${encodeURIComponent(invoice.packageId)}/billing#invoices`,
-      exportReadyLabel: t(lang, "PDF ready", "PDF 可查看"),
-    });
-  }
-
-  for (const receipt of parentAll.receipts) {
-    const pkg = packageMap.get(receipt.packageId);
-    const approval = parentApprovalMap.get(receipt.id);
-    const exportReady = isReceiptFinanceApproved(approval, roleCfg);
-    rows.push({
-      id: receipt.id,
-      channel: "PARENT",
-      type: "RECEIPT",
-      docNo: receipt.receiptNo,
-      issueDate: receipt.receiptDate,
-      partyLabel: receipt.receivedFrom || pkg?.student.name || "-",
-      contextLabel: pkg ? `${pkg.student.name} · ${pkg.course.name}` : receipt.packageId,
-      amountLabel: `SGD ${money(receipt.amountReceived)}`,
-      exportHref: exportReady ? `/api/exports/parent-receipt/${encodeURIComponent(receipt.id)}` : null,
-      openHref: `/admin/packages/${encodeURIComponent(receipt.packageId)}/billing#receipts`,
-      exportReadyLabel: exportReady
-        ? t(lang, "PDF ready", "PDF 可查看")
-        : t(lang, "Waiting finance approval", "待财务审批"),
-    });
-  }
-
-  for (const invoice of partnerAll.invoices) {
-    rows.push({
-      id: invoice.id,
-      channel: "PARTNER",
-      type: "INVOICE",
-      docNo: invoice.invoiceNo,
-      issueDate: invoice.issueDate,
-      partyLabel: invoice.billTo || invoice.partnerName,
-      contextLabel: `${invoice.partnerName} · ${invoice.mode}${invoice.monthKey ? ` · ${invoice.monthKey}` : ""}`,
-      amountLabel: `SGD ${money(invoice.totalAmount)}`,
-      exportHref: `/api/exports/partner-invoice/${encodeURIComponent(invoice.id)}`,
-      openHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(invoice.mode)}${invoice.monthKey ? `&month=${encodeURIComponent(invoice.monthKey)}` : ""}&tab=invoices`,
-      exportReadyLabel: t(lang, "PDF ready", "PDF 可查看"),
-    });
-  }
-
-  for (const receipt of partnerAll.receipts) {
-    const approval = partnerApprovalMap.get(receipt.id);
-    const exportReady = isReceiptFinanceApproved(approval, roleCfg);
-    rows.push({
-      id: receipt.id,
-      channel: "PARTNER",
-      type: "RECEIPT",
-      docNo: receipt.receiptNo,
-      issueDate: receipt.receiptDate,
-      partyLabel: receipt.receivedFrom || "-",
-      contextLabel: `${receipt.mode}${receipt.monthKey ? ` · ${receipt.monthKey}` : ""}`,
-      amountLabel: `SGD ${money(receipt.amountReceived)}`,
-      exportHref: exportReady ? `/api/exports/partner-receipt/${encodeURIComponent(receipt.id)}` : null,
-      openHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(receipt.mode)}${receipt.monthKey ? `&month=${encodeURIComponent(receipt.monthKey)}` : ""}&tab=receipts`,
-      exportReadyLabel: exportReady
-        ? t(lang, "PDF ready", "PDF 可查看")
-        : t(lang, "Waiting finance approval", "待财务审批"),
-    });
-  }
-
-  const filteredRows = rows.filter((row) => {
-    if (channelFilter && row.channel !== channelFilter) return false;
-    if (typeFilter && row.type !== typeFilter) return false;
-    if (packageIdFilter && row.channel === "PARENT") {
-      const parentInvoice = row.type === "INVOICE" ? parentAll.invoices.find((x) => x.id === row.id) : null;
-      const parentReceipt = row.type === "RECEIPT" ? parentAll.receipts.find((x) => x.id === row.id) : null;
-      const rowPackageId = parentInvoice?.packageId ?? parentReceipt?.packageId ?? "";
-      if (rowPackageId !== packageIdFilter) return false;
-    }
-    return includesQuery(
-      [row.docNo, row.partyLabel, row.contextLabel, row.channel, row.type, row.issueDate],
-      q,
-    );
+  const dateFromFilter = normalizeDateOnly(String(sp?.dateFrom ?? "").trim()) ?? "";
+  const dateToFilter = normalizeDateOnly(String(sp?.dateTo ?? "").trim()) ?? "";
+  const rows = await listFinanceDocumentRows();
+  const filteredRows = filterFinanceDocumentRows(rows, {
+    channel: channelFilter,
+    type: typeFilter,
+    paymentStatus: paymentStatusFilter,
+    q,
+    packageId: packageIdFilter,
+    dateFrom: dateFromFilter,
+    dateTo: dateToFilter,
   });
+  const exportQuery = buildDocumentQuery({
+    channel: channelFilter,
+    type: typeFilter,
+    paymentStatus: paymentStatusFilter,
+    packageId: packageIdFilter,
+    q,
+    dateFrom: dateFromFilter,
+    dateTo: dateToFilter,
+  });
+  const exportHref = `/api/exports/finance-documents${exportQuery ? `?${exportQuery}` : ""}`;
 
   const countInvoices = filteredRows.filter((x) => x.type === "INVOICE").length;
   const countReceipts = filteredRows.filter((x) => x.type === "RECEIPT").length;
+  const countUnpaid = filteredRows.filter((x) => x.paymentStatus === "UNPAID").length;
+  const countPartial = filteredRows.filter((x) => x.paymentStatus === "PARTIAL").length;
+  const countPending = filteredRows.filter((x) => x.paymentStatus === "PENDING_APPROVAL").length;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -193,6 +117,7 @@ export default async function FinanceDocumentsPage({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <a href="/admin/finance/workbench">{t(lang, "Back to finance workbench", "返回财务工作台")}</a>
           <a href="/admin/finance/deleted-invoices">{t(lang, "Open deleted draft history", "打开已删除草稿历史")}</a>
+          <a href={exportHref}>{t(lang, "Export report", "导出报表")}</a>
         </div>
       </section>
 
@@ -200,7 +125,7 @@ export default async function FinanceDocumentsPage({
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontWeight: 800, color: "#0f172a" }}>{t(lang, "Document filters", "单据筛选")}</div>
           <div style={{ color: "#475569", fontSize: 13 }}>
-            {t(lang, "Narrow by channel, type, package, or keyword before opening PDFs.", "先按渠道、类型、课包或关键词缩小范围，再打开 PDF。")}
+            {t(lang, "Narrow by channel, type, payment status, period, package, or keyword before opening PDFs or exporting the report.", "先按渠道、类型、收款状态、期间、课包或关键词缩小范围，再打开 PDF 或导出报表。")}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -225,6 +150,25 @@ export default async function FinanceDocumentsPage({
             <input name="packageId" defaultValue={packageIdFilter} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
+            <span>{t(lang, "Payment status", "收款状态")}</span>
+            <select name="paymentStatus" defaultValue={paymentStatusFilter} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}>
+              <option value="">{t(lang, "All", "全部")}</option>
+              <option value="PAID">{t(lang, "Paid", "已收款")}</option>
+              <option value="PARTIAL">{t(lang, "Partial", "部分收款")}</option>
+              <option value="UNPAID">{t(lang, "Unpaid", "未收款")}</option>
+              <option value="PENDING_APPROVAL">{t(lang, "Pending approval", "收据待审批")}</option>
+              <option value="REJECTED">{t(lang, "Rejected", "已驳回")}</option>
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>{t(lang, "Date from", "开始日期")}</span>
+            <input type="date" name="dateFrom" defaultValue={dateFromFilter} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>{t(lang, "Date to", "结束日期")}</span>
+            <input type="date" name="dateTo" defaultValue={dateToFilter} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
             <span>{t(lang, "Keyword", "关键词")}</span>
             <input name="q" defaultValue={q} placeholder={t(lang, "Invoice no., student, bill to...", "发票号、学生名、开票对象...")} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
           </label>
@@ -232,6 +176,7 @@ export default async function FinanceDocumentsPage({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="submit">{t(lang, "Apply filters", "应用筛选")}</button>
           <a href="/admin/finance/documents">{t(lang, "Reset", "重置")}</a>
+          <a href={exportHref}>{t(lang, "Export filtered report", "导出当前筛选报表")}</a>
         </div>
       </form>
 
@@ -248,6 +193,10 @@ export default async function FinanceDocumentsPage({
           <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Receipts", "收据")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{countReceipts}</div>
         </div>
+        <div style={{ border: "1px solid #fed7aa", borderRadius: 14, padding: 14, background: "#fff7ed" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>{t(lang, "Unpaid / partial / pending", "未收 / 部分 / 待审")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{countUnpaid} / {countPartial} / {countPending}</div>
+        </div>
       </section>
 
       <section style={{ border: "1px solid #e5e7eb", borderRadius: 14, background: "#fff", overflow: "hidden" }}>
@@ -255,7 +204,8 @@ export default async function FinanceDocumentsPage({
         {filteredRows.length === 0 ? (
           <div style={{ padding: "0 14px 14px", color: "#475569" }}>{t(lang, "No documents matched this filter.", "当前筛选下没有单据。")}</div>
         ) : (
-          <table cellPadding={10} style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ overflowX: "auto" }}>
+          <table cellPadding={10} style={{ width: "100%", borderCollapse: "collapse", minWidth: 1240 }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderTop: "1px solid #e5e7eb" }}>
                 <th align="left">{t(lang, "Channel", "渠道")}</th>
@@ -265,6 +215,9 @@ export default async function FinanceDocumentsPage({
                 <th align="left">{t(lang, "Party", "对象")}</th>
                 <th align="left">{t(lang, "Context", "上下文")}</th>
                 <th align="left">{t(lang, "Amount", "金额")}</th>
+                <th align="left">{t(lang, "Received", "已收")}</th>
+                <th align="left">{t(lang, "Remaining", "未收余额")}</th>
+                <th align="left">{t(lang, "Payment status", "收款状态")}</th>
                 <th align="left">{t(lang, "PDF", "PDF")}</th>
                 <th align="left">{t(lang, "Workspace", "工作台")}</th>
               </tr>
@@ -278,14 +231,17 @@ export default async function FinanceDocumentsPage({
                   <td>{normalizeDateOnly(row.issueDate) ?? "-"}</td>
                   <td>{row.partyLabel}</td>
                   <td>{row.contextLabel}</td>
-                  <td>{row.amountLabel}</td>
+                  <td>SGD {money(row.amount)}</td>
+                  <td>SGD {money(row.receiptedAmount)}</td>
+                  <td>SGD {money(row.remainingAmount)}</td>
+                  <td><span style={paymentStatusStyle(row.paymentStatus)}>{paymentStatusLabel(lang, row.paymentStatus)}</span></td>
                   <td>
                     {row.exportHref ? (
                       <a href={row.exportHref} target="_blank" rel="noreferrer">
-                        {row.exportReadyLabel}
+                        {t(lang, "PDF ready", "PDF 可查看")}
                       </a>
                     ) : (
-                      <span style={{ color: "#b45309" }}>{row.exportReadyLabel}</span>
+                      <span style={{ color: "#b45309" }}>{t(lang, "Waiting finance approval", "待财务审批")}</span>
                     )}
                   </td>
                   <td>
@@ -295,6 +251,7 @@ export default async function FinanceDocumentsPage({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </div>
