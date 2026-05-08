@@ -7,6 +7,8 @@ import { getVisibleSessionStudentNames } from "@/lib/session-students";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { ExpenseClaimStatus } from "@prisma/client";
 import { getTeacherPayrollPublishForTeacher } from "@/lib/teacher-payroll";
+import { getTeacherNoticeState } from "@/lib/teacher-notices";
+import TeacherNoticeCardClient from "./TeacherNoticeCardClient";
 
 const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
 const TEACHER_SELF_CONFIRM_TOMORROW = "TEACHER_SELF_CONFIRM_TOMORROW";
@@ -72,7 +74,16 @@ export default async function TeacherHomePage({
 
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const currentMonthKey = `${todayStart.getFullYear()}-${String(todayStart.getMonth() + 1).padStart(2, "0")}`;
-  const [todaySessions, tomorrowSessions, todayConfirmed, tomorrowConfirmed, riskStudentCount, rejectedExpenseClaims, payrollPublish] = await Promise.all([
+  const [
+    todaySessions,
+    tomorrowSessions,
+    todayConfirmed,
+    tomorrowConfirmed,
+    riskStudentCount,
+    rejectedExpenseClaims,
+    payrollPublish,
+    teacherNoticeState,
+  ] = await Promise.all([
     prisma.session.findMany({
       where: {
         startAt: { gte: todayStart, lte: todayEnd },
@@ -181,6 +192,7 @@ export default async function TeacherHomePage({
       },
     }),
     getTeacherPayrollPublishForTeacher({ teacherId: teacher.id, month: currentMonthKey, scope: "all" }),
+    getTeacherNoticeState(user.id),
   ]);
   const todaySessionsVisible = todaySessions.filter((s) => sessionStudentNames(s).length > 0);
   const tomorrowSessionsVisible = tomorrowSessions.filter((s) => sessionStudentNames(s).length > 0);
@@ -255,6 +267,26 @@ export default async function TeacherHomePage({
 
       {err ? <div style={{ color: "#b00", marginBottom: 8 }}>{err}</div> : null}
       {msg ? <div style={{ color: "#087", marginBottom: 8 }}>{msg}</div> : null}
+
+      {teacherNoticeState.unreadNotices.length > 0 ? (
+        <section style={{ display: "grid", gap: 10 }}>
+          {teacherNoticeState.unreadNotices.map((notice) => (
+            <TeacherNoticeCardClient
+              key={notice.id}
+              notice={notice}
+              title={t(lang, notice.titleEn, notice.titleZh)}
+              body={t(lang, notice.bodyEn, notice.bodyZh)}
+              publishedLabel={t(lang, "Published", "发布时间")}
+              markReadLabel={t(lang, "Mark as read", "标记已读")}
+              readLabel={t(lang, "Marked as read", "已标记为已读")}
+              errorLabel={t(lang, "Error", "错误")}
+            />
+          ))}
+          <div style={{ fontSize: 12 }}>
+            <a href="/teacher/notices">{t(lang, "Open all notices", "查看全部通知")}</a>
+          </div>
+        </section>
+      ) : null}
 
       <section style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>

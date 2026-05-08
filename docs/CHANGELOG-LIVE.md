@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r135
+
+- Release ID: `2026-05-08-r135`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: add teacher-facing notices so the company-name update can be shown inside the SGT Manage teacher portal.
+- Key files:
+  - `app/teacher/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/teacher/notices/page.tsx`
+  - `app/teacher/TeacherNoticeCardClient.tsx`
+  - `app/api/teacher/notices/read/route.ts`
+  - `lib/teacher-notices.ts`
+  - `tests/teacher-notices.test.ts`
+  - `docs/tasks/TASK-20260508-teacher-company-name-notice.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This adds a teacher portal notice and read tracking only. It does not change scheduling, attendance, payroll calculation, expense-claim submission, invoices, receipts, package balances, student data, or OpenClaw.
+- Verification:
+  - confirmed no existing `teacher_notices_v1` or `teacher_notice_reads_v1` AppSetting rows would be overwritten
+  - `npx tsx --test tests/teacher-notices.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-08-r135`.
+
+---
+
 ## 2026-05-08-r134
 
 - Release ID: `2026-05-08-r134`

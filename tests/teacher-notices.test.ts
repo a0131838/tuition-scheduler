@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { activeTeacherNotices, sanitizeTeacherNoticeReads, sanitizeTeacherNotices } from "@/lib/teacher-notices";
+
+test("teacher notice sanitizer keeps valid configurable notices", () => {
+  const notices = sanitizeTeacherNotices([
+    {
+      id: "n1",
+      titleEn: "English",
+      titleZh: "中文",
+      bodyEn: "Body",
+      bodyZh: "内容",
+      publishedAt: "2026-05-08",
+      important: true,
+      active: true,
+    },
+  ]);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].id, "n1");
+  assert.equal(notices[0].important, true);
+});
+
+test("teacher notice sanitizer falls back when configured notices are invalid", () => {
+  const notices = sanitizeTeacherNotices([{ id: "bad" }]);
+  assert.equal(notices[0].id, "company-name-update-20260508");
+});
+
+test("teacher notices only show active published notices first by importance", () => {
+  const notices = activeTeacherNotices(
+    sanitizeTeacherNotices([
+      { id: "future", titleEn: "F", titleZh: "F", bodyEn: "F", bodyZh: "F", publishedAt: "2099-01-01", important: true, active: true },
+      { id: "normal", titleEn: "N", titleZh: "N", bodyEn: "N", bodyZh: "N", publishedAt: "2026-05-01", important: false, active: true },
+      { id: "important", titleEn: "I", titleZh: "I", bodyEn: "I", bodyZh: "I", publishedAt: "2026-05-01", important: true, active: true },
+      { id: "inactive", titleEn: "X", titleZh: "X", bodyEn: "X", bodyZh: "X", publishedAt: "2026-05-01", important: true, active: false },
+    ]),
+    new Date("2026-05-08T00:00:00.000Z"),
+  );
+  assert.deepEqual(notices.map((x) => x.id), ["important", "normal"]);
+});
+
+test("teacher notice read sanitizer drops malformed read rows", () => {
+  const store = sanitizeTeacherNoticeReads({
+    readsByUser: {
+      u1: { n1: "2026-05-08T00:00:00.000Z", bad: "" },
+      u2: "bad",
+    },
+  });
+  assert.deepEqual(store, { readsByUser: { u1: { n1: "2026-05-08T00:00:00.000Z" } } });
+});
