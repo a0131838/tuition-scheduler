@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r138
+
+- Release ID: `2026-05-08-r138`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: improve shared mobile usability for admin and teacher workspaces.
+- Key files:
+  - `app/responsive-layout.css`
+  - `docs/tasks/TASK-20260508-mobile-usability-global-pass.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This is a CSS-only responsive pass for small screens; it does not change business logic, data writes, permissions, billing, attendance, scheduling, or finance calculations.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-08-r138`.
+
+---
+
 ## 2026-05-08-r137
 
 - Release ID: `2026-05-08-r137`

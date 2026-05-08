@@ -114,6 +114,7 @@
 .table-scroll {
   overflow-x: auto;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 1200px) {
@@ -127,6 +128,12 @@
 }
 
 @media (max-width: 900px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .app-shell {
     display: block;
     height: auto;
@@ -139,7 +146,11 @@
     border-bottom: 1px solid #eee;
     overflow: visible;
     padding: 12px;
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
   }
 
   .app-main {
@@ -162,6 +173,16 @@
 
   .app-main :where(input, select, textarea, button, a) {
     max-width: 100%;
+  }
+
+  .app-main :where(input, select, textarea) {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .app-main :where(button, a) {
+    min-height: 44px;
+    align-items: center;
   }
 
   .app-main-head {
@@ -187,6 +208,7 @@
   .ts-filter-bar button,
   .ts-filter-bar a {
     width: 100%;
+    justify-content: center;
   }
 
   .app-main table {
@@ -194,6 +216,35 @@
     width: 100%;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  .table-scroll {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+    scroll-padding-left: 12px;
+    scroll-padding-right: 12px;
+  }
+
+  .table-scroll table,
+  .app-main table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-main :where(th, td) {
+    padding: 10px 8px;
+    vertical-align: top;
+  }
+
+  .app-main [style*="gridTemplateColumns"],
+  .app-main [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-main [style*="gridColumn"],
+  .app-main [style*="grid-column"] {
+    grid-column: auto !important;
   }
 
   .teacher-workspace-hero__header {
@@ -228,6 +279,71 @@
     height: min(80vh, 700px);
     border-radius: 14px 14px 0 0;
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-sidebar {
+    padding: 10px;
+  }
+
+  .app-main {
+    padding: 10px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .app-nav-mobile > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .app-main :where(h1) {
+    font-size: 26px !important;
+    line-height: 1.15;
+  }
+
+  .app-main :where(h2) {
+    font-size: 22px !important;
+    line-height: 1.2;
+  }
+
+  .app-main :where(h3) {
+    font-size: 18px !important;
+    line-height: 1.25;
+  }
+
+  .app-main :where(form) {
+    gap: 10px !important;
+  }
+
+  .app-main :where(form) > :where(label, input, select, textarea, button, a) {
+    width: 100%;
+  }
+
+  .app-main :where(form) > :where(button, a),
+  .app-main :where(form) button,
+  .app-main :where(form) a {
+    justify-content: center;
+  }
+
+  .app-main :where(button, a) {
+    width: auto;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .app-main :where(td) :where(button, a) {
+    min-height: 40px;
+  }
+
+  .app-main table {
+    font-size: 12px;
+  }
+
+  .ts-drawer {
+    height: min(86vh, 760px);
+    border-radius: 16px 16px 0 0;
   }
 }
 
