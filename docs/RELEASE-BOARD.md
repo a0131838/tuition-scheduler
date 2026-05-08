@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-08-r135` (teacher company-name notice), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-08-r136` (teacher notice center admin), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -54,6 +54,7 @@
 - Company-name-change risk: `2026-05-08-r133` updates document headers and remittance account names to `GT Educational Institute Pte. Ltd.`; finance should confirm bank account naming is legally/banking correct before using PDFs externally.
 - Package-ledger-PDF-display risk: `2026-05-08-r134` changes only hour/minute formatting in package-ledger displays and exports; verification should confirm old deductions are not manually corrected because stored ledger data already contains the correct `-90` minute values.
 - Teacher-notice risk: `2026-05-08-r135` adds a teacher portal announcement and read tracking; verification should confirm teachers can still open the dashboard and marking a notice read does not affect teaching, payroll, or expense workflows.
+- Teacher-notice-admin risk: `2026-05-08-r136` lets admin/finance publish and archive teacher notices with read tracking; verification should confirm notice writes affect only `AppSetting` notice keys and do not touch teacher payroll, expenses, classes, or attendance.
 
 ## Process Guard (Installed)
 
@@ -74,6 +75,29 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-08-r136 Ready
+
+- Scope: make teacher notices manageable from admin.
+- Business impact:
+  - Admin/finance can open `/admin/teacher-notices`.
+  - Notices now support category, important flag, required acknowledgement, publish date, expiry date, active/archive status, and bilingual content.
+  - Admin can see read/unread detail by teacher and reset read records when a notice needs renewed acknowledgement.
+  - Teacher dashboard shows only the first two unread notices; full history remains under `/teacher/notices`.
+- Files:
+  - `app/admin/teacher-notices/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/page.tsx`
+  - `app/teacher/notices/page.tsx`
+  - `lib/teacher-notices.ts`
+  - `tests/teacher-notices.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/teacher-notices.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - `bash ops/server/scripts/new_chat_startup_check.sh` or equivalent server-side health checks must confirm local/origin/server alignment and `/admin/login => 200`
+  - open `/admin/teacher-notices` and confirm the notice list renders
+  - open `/teacher/notices` and confirm teacher-facing history renders
 
 ## 2026-05-08-r135 Ready
 

@@ -1,15 +1,20 @@
 import { prisma } from "@/lib/prisma";
-import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { loadJsonAppSettingForDb, mutateJsonAppSetting, saveJsonAppSettingForDb } from "@/lib/app-setting-lock";
 
 export type TeacherNotice = {
   id: string;
+  category: "COMPANY" | "FINANCE" | "SCHEDULE" | "POLICY" | "GENERAL";
   titleEn: string;
   titleZh: string;
   bodyEn: string;
   bodyZh: string;
   publishedAt: string;
+  expiresAt: string;
   important: boolean;
+  requiresAck: boolean;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TeacherNoticeReadStore = {
@@ -22,6 +27,7 @@ const TEACHER_NOTICE_READS_KEY = "teacher_notice_reads_v1";
 export const DEFAULT_TEACHER_NOTICES: TeacherNotice[] = [
   {
     id: "company-name-update-20260508",
+    category: "COMPANY",
     titleEn: "Company name update",
     titleZh: "公司名称更新",
     bodyEn:
@@ -29,13 +35,23 @@ export const DEFAULT_TEACHER_NOTICES: TeacherNotice[] = [
     bodyZh:
       "请注意，公司正式名称现为 GT Educational Institute Pte. Ltd. 如涉及发票、收据、报销、工资相关文件或需要填写公司名称的对外沟通，请使用此名称。",
     publishedAt: "2026-05-08",
+    expiresAt: "",
     important: true,
+    requiresAck: true,
     active: true,
+    createdAt: "2026-05-08T00:00:00.000Z",
+    updatedAt: "2026-05-08T00:00:00.000Z",
   },
 ];
 
 function cleanString(v: unknown, fallback = "") {
   return typeof v === "string" ? v.trim() : fallback;
+}
+
+export function normalizeTeacherNoticeCategory(input: unknown): TeacherNotice["category"] {
+  const raw = cleanString(input).toUpperCase();
+  if (raw === "COMPANY" || raw === "FINANCE" || raw === "SCHEDULE" || raw === "POLICY" || raw === "GENERAL") return raw;
+  return "GENERAL";
 }
 
 export function sanitizeTeacherNotices(input: unknown): TeacherNotice[] {
@@ -50,15 +66,21 @@ export function sanitizeTeacherNotices(input: unknown): TeacherNotice[] {
       const bodyEn = cleanString(row.bodyEn);
       const bodyZh = cleanString(row.bodyZh);
       if (!id || !titleEn || !titleZh || !bodyEn || !bodyZh) return null;
+      const nowIso = new Date().toISOString();
       return {
         id,
+        category: normalizeTeacherNoticeCategory(row.category),
         titleEn,
         titleZh,
         bodyEn,
         bodyZh,
         publishedAt: cleanString(row.publishedAt, new Date().toISOString().slice(0, 10)),
+        expiresAt: cleanString(row.expiresAt),
         important: Boolean(row.important),
+        requiresAck: Boolean(row.requiresAck),
         active: row.active !== false,
+        createdAt: cleanString(row.createdAt, nowIso),
+        updatedAt: cleanString(row.updatedAt, nowIso),
       };
     })
     .filter((x): x is TeacherNotice => Boolean(x));
@@ -88,7 +110,7 @@ export function sanitizeTeacherNoticeReads(input: unknown): TeacherNoticeReadSto
 export function activeTeacherNotices(notices: TeacherNotice[], now = new Date()) {
   const today = now.toISOString().slice(0, 10);
   return notices
-    .filter((notice) => notice.active && notice.publishedAt <= today)
+    .filter((notice) => notice.active && notice.publishedAt <= today && (!notice.expiresAt || notice.expiresAt >= today))
     .sort((a, b) => {
       if (a.important !== b.important) return a.important ? -1 : 1;
       return b.publishedAt.localeCompare(a.publishedAt);
@@ -109,6 +131,32 @@ export async function getTeacherNoticeState(userId: string) {
   };
 }
 
+export async function getAllTeacherNotices() {
+  const { store: notices, updatedAt } = await loadJsonAppSettingForDb(
+    prisma as any,
+    TEACHER_NOTICES_KEY,
+    DEFAULT_TEACHER_NOTICES,
+    sanitizeTeacherNotices,
+  );
+  return {
+    notices: notices.sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      return b.publishedAt.localeCompare(a.publishedAt);
+    }),
+    updatedAt,
+  };
+}
+
+export async function getTeacherNoticeReadStore() {
+  const { store } = await loadJsonAppSettingForDb(
+    prisma as any,
+    TEACHER_NOTICE_READS_KEY,
+    { readsByUser: {} },
+    sanitizeTeacherNoticeReads,
+  );
+  return store;
+}
+
 export async function markTeacherNoticeRead(userId: string, noticeId: string) {
   const normalizedNoticeId = noticeId.trim();
   if (!normalizedNoticeId) throw new Error("Missing notice id");
@@ -123,4 +171,51 @@ export async function markTeacherNoticeRead(userId: string, noticeId: string) {
       store.readsByUser[userId] = userReads;
     },
   });
+}
+
+export async function upsertTeacherNotice(notice: TeacherNotice) {
+  await mutateJsonAppSetting<TeacherNotice[]>({
+    key: TEACHER_NOTICES_KEY,
+    fallback: DEFAULT_TEACHER_NOTICES,
+    sanitize: sanitizeTeacherNotices,
+    mutate: (store) => {
+      const idx = store.findIndex((row) => row.id === notice.id);
+      if (idx >= 0) store[idx] = notice;
+      else store.unshift(notice);
+    },
+  });
+}
+
+export async function archiveTeacherNotice(noticeId: string) {
+  await mutateJsonAppSetting<TeacherNotice[]>({
+    key: TEACHER_NOTICES_KEY,
+    fallback: DEFAULT_TEACHER_NOTICES,
+    sanitize: sanitizeTeacherNotices,
+    mutate: (store) => {
+      const row = store.find((notice) => notice.id === noticeId);
+      if (row) {
+        row.active = false;
+        row.updatedAt = new Date().toISOString();
+      }
+    },
+  });
+}
+
+export async function resetTeacherNoticeReads(noticeId: string) {
+  await mutateJsonAppSetting<TeacherNoticeReadStore>({
+    key: TEACHER_NOTICE_READS_KEY,
+    fallback: { readsByUser: {} },
+    sanitize: sanitizeTeacherNoticeReads,
+    mutate: (store) => {
+      for (const reads of Object.values(store.readsByUser)) {
+        delete reads[noticeId];
+      }
+    },
+  });
+}
+
+export async function seedDefaultTeacherNoticesIfMissing() {
+  const existing = await prisma.appSetting.findUnique({ where: { key: TEACHER_NOTICES_KEY }, select: { updatedAt: true } });
+  if (existing) return;
+  await saveJsonAppSettingForDb(prisma as any, TEACHER_NOTICES_KEY, DEFAULT_TEACHER_NOTICES, null);
 }

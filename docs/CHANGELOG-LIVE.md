@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r136
+
+- Release ID: `2026-05-08-r136`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: upgrade teacher notices into a manageable notice center with admin publishing, categories, expiry dates, required acknowledgement, and read/unread tracking.
+- Key files:
+  - `app/admin/teacher-notices/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/page.tsx`
+  - `app/teacher/notices/page.tsx`
+  - `lib/teacher-notices.ts`
+  - `tests/teacher-notices.test.ts`
+  - `docs/tasks/TASK-20260508-teacher-notice-center-admin.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds admin publishing and notice acknowledgement workflow only. It does not change scheduling, attendance, payroll calculation, expense-claim submission, invoices, receipts, package balances, student data, or OpenClaw.
+- Verification:
+  - `npx tsx --test tests/teacher-notices.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-08-r136`.
+
+---
+
 ## 2026-05-08-r135
 
 - Release ID: `2026-05-08-r135`

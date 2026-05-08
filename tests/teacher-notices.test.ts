@@ -7,18 +7,23 @@ test("teacher notice sanitizer keeps valid configurable notices", () => {
   const notices = sanitizeTeacherNotices([
     {
       id: "n1",
+      category: "FINANCE",
       titleEn: "English",
       titleZh: "中文",
       bodyEn: "Body",
       bodyZh: "内容",
       publishedAt: "2026-05-08",
+      expiresAt: "2026-05-30",
       important: true,
+      requiresAck: true,
       active: true,
     },
   ]);
   assert.equal(notices.length, 1);
   assert.equal(notices[0].id, "n1");
+  assert.equal(notices[0].category, "FINANCE");
   assert.equal(notices[0].important, true);
+  assert.equal(notices[0].requiresAck, true);
 });
 
 test("teacher notice sanitizer falls back when configured notices are invalid", () => {
@@ -32,6 +37,7 @@ test("teacher notices only show active published notices first by importance", (
       { id: "future", titleEn: "F", titleZh: "F", bodyEn: "F", bodyZh: "F", publishedAt: "2099-01-01", important: true, active: true },
       { id: "normal", titleEn: "N", titleZh: "N", bodyEn: "N", bodyZh: "N", publishedAt: "2026-05-01", important: false, active: true },
       { id: "important", titleEn: "I", titleZh: "I", bodyEn: "I", bodyZh: "I", publishedAt: "2026-05-01", important: true, active: true },
+      { id: "expired", titleEn: "E", titleZh: "E", bodyEn: "E", bodyZh: "E", publishedAt: "2026-05-01", expiresAt: "2026-05-07", important: true, active: true },
       { id: "inactive", titleEn: "X", titleZh: "X", bodyEn: "X", bodyZh: "X", publishedAt: "2026-05-01", important: true, active: false },
     ]),
     new Date("2026-05-08T00:00:00.000Z"),

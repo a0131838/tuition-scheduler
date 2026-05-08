@@ -59,6 +59,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/receipts-approvals/history")) return t(lang, "Receipt History", "收据历史");
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
+  if (matchesPath(pathname, "/admin/teacher-notices")) return t(lang, "Teacher Notices", "老师通知管理");
   if (matchesPath(pathname, "/admin/finance/student-package-balances")) return t(lang, "Package Balance Reports", "课时包余额报表");
   if (matchesPath(pathname, "/admin/recovery/uploads")) return t(lang, "Attachment Health Desk", "附件异常工作台");
   return t(lang, "Admin Workspace", "管理工作台");
@@ -141,6 +142,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname.startsWith("/admin/reports/partner-settlement") ||
     pathname === "/admin/reports/audit-logs" ||
     pathname === "/admin/expense-claims" ||
+    pathname === "/admin/teacher-notices" ||
     pathname.startsWith("/admin/receipts-approvals") ||
     pathname === "/admin/recovery/uploads" ||
     (pathname.startsWith("/admin/packages/") && pathname.endsWith("/billing"));
@@ -214,6 +216,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
+        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
         { href: "/admin/recovery/uploads", label: t(lang, "Attachment Health", "附件异常总览"), tone: "warning" as const },
       ],
     },
@@ -295,6 +298,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/receipts-approvals/repairs", label: t(lang, "Proof Repair", "凭证修复"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/history", label: t(lang, "Receipt History", "收据历史"), tone: "neutral" as const },
         { href: "/admin/expense-claims", label: t(lang, "Expense Claims", "报销审批"), tone: "warning" as const },
+        { href: "/admin/teacher-notices", label: t(lang, "Teacher Notices", "老师通知"), tone: "accent" as const },
       ],
     },
     {

@@ -1,6 +1,6 @@
 import { requireTeacher } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
-import { getTeacherNoticeState } from "@/lib/teacher-notices";
+import { getAllTeacherNotices, getTeacherNoticeReadStore } from "@/lib/teacher-notices";
 
 function cardStyle(background: string, border: string) {
   return {
@@ -16,7 +16,10 @@ function cardStyle(background: string, border: string) {
 export default async function TeacherNoticesPage() {
   const lang = await getLang();
   const user = await requireTeacher();
-  const { notices, readMap } = await getTeacherNoticeState(user.id);
+  const [{ notices: allNotices }, readStore] = await Promise.all([getAllTeacherNotices(), getTeacherNoticeReadStore()]);
+  const today = new Date().toISOString().slice(0, 10);
+  const notices = allNotices.filter((notice) => notice.publishedAt <= today);
+  const readMap = readStore.readsByUser[user.id] ?? {};
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -42,12 +45,24 @@ export default async function TeacherNoticesPage() {
                   {t(lang, notice.titleEn, notice.titleZh)}
                 </div>
                 <div style={{ color: isRead ? "#166534" : "#b45309", fontSize: 12, fontWeight: 700 }}>
-                  {isRead ? t(lang, "Read", "已读") : t(lang, "Unread", "未读")}
+                  {isRead
+                    ? notice.requiresAck
+                      ? t(lang, "Acknowledged", "已确认")
+                      : t(lang, "Read", "已读")
+                    : notice.requiresAck
+                      ? t(lang, "Needs acknowledgement", "需确认")
+                      : t(lang, "Unread", "未读")}
                 </div>
+              </div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>
+                {notice.category} {notice.important ? `· ${t(lang, "Important", "重要")}` : ""}
+                {!notice.active ? ` · ${t(lang, "Archived", "已下架")}` : ""}
+                {notice.expiresAt && notice.expiresAt < today ? ` · ${t(lang, "Expired", "已过期")}` : ""}
               </div>
               <div style={{ color: "#334155", lineHeight: 1.45 }}>{t(lang, notice.bodyEn, notice.bodyZh)}</div>
               <div style={{ color: "#64748b", fontSize: 12 }}>
                 {t(lang, "Published", "发布时间")}: {notice.publishedAt}
+                {notice.expiresAt ? ` · ${t(lang, "Expires", "截止")}: ${notice.expiresAt}` : ""}
                 {isRead ? ` · ${t(lang, "Read at", "已读时间")}: ${readMap[notice.id]}` : ""}
               </div>
             </section>

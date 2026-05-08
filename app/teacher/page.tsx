@@ -270,15 +270,15 @@ export default async function TeacherHomePage({
 
       {teacherNoticeState.unreadNotices.length > 0 ? (
         <section style={{ display: "grid", gap: 10 }}>
-          {teacherNoticeState.unreadNotices.map((notice) => (
+          {teacherNoticeState.unreadNotices.slice(0, 2).map((notice) => (
             <TeacherNoticeCardClient
               key={notice.id}
               notice={notice}
               title={t(lang, notice.titleEn, notice.titleZh)}
               body={t(lang, notice.bodyEn, notice.bodyZh)}
               publishedLabel={t(lang, "Published", "发布时间")}
-              markReadLabel={t(lang, "Mark as read", "标记已读")}
-              readLabel={t(lang, "Marked as read", "已标记为已读")}
+              markReadLabel={notice.requiresAck ? t(lang, "Acknowledge", "确认知悉") : t(lang, "Mark as read", "标记已读")}
+              readLabel={notice.requiresAck ? t(lang, "Acknowledged", "已确认知悉") : t(lang, "Marked as read", "已标记为已读")}
               errorLabel={t(lang, "Error", "错误")}
             />
           ))}
