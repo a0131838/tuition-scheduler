@@ -257,7 +257,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     lineBreak: true,
   });
   const companyY = y + 6 + titleHeight + 6;
-  drawText(doc, "Reshape Great Thinkers Pte. Ltd.", headerRightX, companyY, {
+  drawText(doc, "GT Educational Institute Pte. Ltd.", headerRightX, companyY, {
     width: headerRightW,
     align: "right",
     size: 9,

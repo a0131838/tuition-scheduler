@@ -62,7 +62,7 @@ export type ContractSnapshot = {
 export function getStudentContractCompanyInfo() {
   return {
     brandName: "GT Educational Institute",
-    legalName: "Reshape Great Thinkers Pte. Ltd.",
+    legalName: "GT Educational Institute Pte. Ltd.",
     regNo: "202303312G",
   };
 }

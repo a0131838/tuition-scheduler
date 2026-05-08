@@ -9,7 +9,7 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 
 const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
 const COMPANY_LINES = [
-  "Company: Reshape Great Thinkers Pte. Ltd",
+  "Company: GT Educational Institute Pte. Ltd.",
   "150 Orchard Road, Orchard Plaza, #08-15/16, S238841",
   "Phone: (65) 80421572",
   "Email: contact.greatthinkers@gmail.com",

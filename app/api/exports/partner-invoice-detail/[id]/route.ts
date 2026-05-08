@@ -9,7 +9,7 @@ const ATTENDED_STATUSES = new Set(["PRESENT", "LATE"]);
 const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
 const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const TZ = "Asia/Shanghai";
-const SEAL_PATH = path.join(process.cwd(), "public", "reshapeSeal.png");
+const SEAL_PATH = path.join(process.cwd(), "public", "gt_edu_seal.png");
 
 function parseMonthKey(monthKey: string | null | undefined) {
   const s = String(monthKey ?? "").trim();

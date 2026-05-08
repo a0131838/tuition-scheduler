@@ -75,7 +75,7 @@ function drawTemplate(doc: PDFDoc, data: {
 
   const companyY = y + 78;
   const leftInfoW = 332;
-  text(doc, "Company:  Reshape Great Thinkers Pte. Ltd", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
+  text(doc, "Company:  GT Educational Institute Pte. Ltd.", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
   text(doc, "Address:  150 Orchard Road, #08-15, Orchard Plaza, Singapore 238841", x + 8, companyY + 20, 9, true, "#111827", leftInfoW, "left");
   text(doc, "Phone:  (65) 80421572", x + 8, companyY + 40, 9, true, "#111827", leftInfoW, "left");
   text(doc, "Email:  contact.greatthinkers@gmail.com", x + 8, companyY + 60, 9, true, "#111827", leftInfoW, "left");

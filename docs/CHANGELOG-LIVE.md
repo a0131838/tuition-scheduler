@@ -15,6 +15,38 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r133
+
+- Release ID: `2026-05-08-r133`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: update exported finance/legal document company name to GT Educational Institute Pte. Ltd. and switch sealed partner exports to the GT education seal.
+- Key files:
+  - `app/api/exports/parent-invoice/[id]/route.ts`
+  - `app/api/exports/parent-receipt/[id]/route.ts`
+  - `app/api/exports/partner-invoice/[id]/route.ts`
+  - `app/api/exports/partner-receipt/[id]/route.ts`
+  - `app/api/exports/partner-invoice-detail/[id]/route.ts`
+  - `app/api/exports/parent-statement/[id]/route.ts`
+  - `app/api/exports/student-detail/[id]/route.ts`
+  - `app/api/exports/student-schedule/[id]/route.ts`
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `app/admin/enrollments/export/pdf/route.ts`
+  - `lib/student-contract-template.ts`
+  - `docs/tasks/TASK-20260508-company-name-and-seal-update.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes displayed company/legal name and seal image only. It does not change invoice numbers, receipt numbers, totals, approvals, payment status, billing records, package deduction, scheduling, attendance, payroll, settlement, expense claims, or OpenClaw.
+- Verification:
+  - confirmed uploaded invoice and receipt templates already show `GT Educational Institute Pte. Ltd.` in visible cells
+  - scanned app/lib exports so the old company name no longer appears in system document generation code
+  - confirmed sealed partner invoice/detail exports now reference `public/gt_edu_seal.png`
+  - `npx tsc --noEmit`
+  - `npx next build`
+- Rollback point: previous production commit before `2026-05-08-r133`.
+
+---
+
 ## 2026-05-08-r132
 
 - Release ID: `2026-05-08-r132`

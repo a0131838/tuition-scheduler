@@ -11,7 +11,7 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 const ORANGE = "#f97316";
 const LOGO_PATH = path.join(process.cwd(), "public", "invoice-org.png");
 const LOGO_FALLBACK_PATH = path.join(process.cwd(), "public", "logo.png");
-const SEAL_PATH = path.join(process.cwd(), "public", "reshapeSeal.png");
+const SEAL_PATH = path.join(process.cwd(), "public", "gt_edu_seal.png");
 
 function streamPdf(doc: PDFDoc) {
   const stream = new PassThrough();
@@ -116,7 +116,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const companyY = y + 78;
     const leftInfoW = 332;
-    text(doc, "Company:  Reshape Great Thinkers Pte. Ltd", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
+    text(doc, "Company:  GT Educational Institute Pte. Ltd.", x + 8, companyY, 9, true, "#111827", leftInfoW, "left");
     text(doc, "Address:  150 Orchard Road, #08-15, Orchard Plaza, Singapore 238841", x + 8, companyY + 20, 9, true, "#111827", leftInfoW, "left");
     text(doc, "Phone:  (65) 80421572", x + 8, companyY + 40, 9, true, "#111827", leftInfoW, "left");
     text(doc, "Email:  contact.greatthinkers@gmail.com", x + 8, companyY + 60, 9, true, "#111827", leftInfoW, "left");
@@ -238,7 +238,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   text(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
   text(doc, 'Please e-mail remittance advice to "sggreatthinker@gmail.com".', x + 4, noteY + 54, 10, true);
 
-  text(doc, "Account name: Reshape Great Thinkers Pte Ltd.", x + 4, noteY + 94, 10);
+  text(doc, "Account name: GT Educational Institute Pte. Ltd.", x + 4, noteY + 94, 10);
   text(doc, "Bankname: OCBC Bank Singapore", x + 4, noteY + 112, 10);
   text(doc, "Bankaddress: 65 Chulia Street #01-40 OCBC Centre Singapore, S049513", x + 4, noteY + 130, 10);
   text(doc, "Account number: 595214891001", x + 4, noteY + 148, 10);

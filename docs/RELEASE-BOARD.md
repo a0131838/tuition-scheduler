@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-08-r132` (finance document payment status and export), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-08-r133` (company name and GT education seal update), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -51,6 +51,7 @@
 - Quick-schedule wording risk: `2026-04-29-r130` clarifies student time conflicts so an existing session's room does not look like the currently selected room was ignored; verification should confirm room conflict logic and scheduling writes remain unchanged.
 - Expense-paid-history risk: `2026-05-07-r131` adds an include-archived paid-claims view and extends CSV export to match it; verification should confirm finance can see both active and archived paid claims without changing payment records.
 - Finance-document-export risk: `2026-05-08-r132` derives invoice payment status from finance-approved receipts and adds filtered Excel export; verification should confirm finance understands pending or rejected receipts are not counted as paid.
+- Company-name-change risk: `2026-05-08-r133` updates document headers and remittance account names to `GT Educational Institute Pte. Ltd.`; finance should confirm bank account naming is legally/banking correct before using PDFs externally.
 
 ## Process Guard (Installed)
 
@@ -71,6 +72,28 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-08-r133 Ready
+
+- Scope: update company name and sealed export stamp across generated documents.
+- Business impact:
+  - Parent invoice and receipt PDFs now show `GT Educational Institute Pte. Ltd.`.
+  - Partner invoice and receipt PDFs now show `GT Educational Institute Pte. Ltd.`.
+  - Parent statement, student detail, student schedule, package ledger, enrollment export, and student contract legal name now use the same company name.
+  - Remittance `Account name` on invoice PDFs now uses `GT Educational Institute Pte. Ltd.`.
+  - Sealed partner invoice PDF and sealed partner detail XLSX now use `public/gt_edu_seal.png`.
+  - Logo files and document layout were not changed.
+  - No billing amounts, invoice numbers, receipt numbers, approval logic, payment status, package deduction, scheduling, attendance, payroll, settlement, expense-claim, or OpenClaw logic changed.
+- Validation:
+  - confirmed uploaded invoice and receipt templates already show `GT Educational Institute Pte. Ltd.` in visible cells
+  - scanned app/lib exports so the old company name no longer appears in system document generation code
+  - confirmed sealed partner invoice/detail exports now reference `public/gt_edu_seal.png`
+  - `npx tsc --noEmit`
+  - `npx next build`
+  - task doc: `docs/tasks/TASK-20260508-company-name-and-seal-update.md`
+- Deploy check:
+  - post-deploy `/admin/login` should return 200
+  - production QA should generate one parent invoice PDF and one sealed partner invoice PDF, then confirm the company name and seal
 
 ## 2026-05-08-r132 Ready
 
