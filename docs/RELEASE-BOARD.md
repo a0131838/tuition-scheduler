@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-08-r133` (company name and GT education seal update), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-08-r134` (package-ledger PDF negative-minute display fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -52,6 +52,7 @@
 - Expense-paid-history risk: `2026-05-07-r131` adds an include-archived paid-claims view and extends CSV export to match it; verification should confirm finance can see both active and archived paid claims without changing payment records.
 - Finance-document-export risk: `2026-05-08-r132` derives invoice payment status from finance-approved receipts and adds filtered Excel export; verification should confirm finance understands pending or rejected receipts are not counted as paid.
 - Company-name-change risk: `2026-05-08-r133` updates document headers and remittance account names to `GT Educational Institute Pte. Ltd.`; finance should confirm bank account naming is legally/banking correct before using PDFs externally.
+- Package-ledger-PDF-display risk: `2026-05-08-r134` changes only hour/minute formatting in package-ledger displays and exports; verification should confirm old deductions are not manually corrected because stored ledger data already contains the correct `-90` minute values.
 
 ## Process Guard (Installed)
 
@@ -72,6 +73,26 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-08-r134 Ready
+
+- Scope: fix package-ledger PDF export display for negative hour deductions.
+- Business impact:
+  - PDF package-ledger rows now format `-90` minutes as `-1h 30m`, matching the website ledger and the running balance.
+  - Existing ledger transactions and remaining balances are unchanged.
+- Files:
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `lib/package-ledger-format.ts`
+  - `tests/package-ledger-format.test.ts`
+- Verification before deploy:
+  - real Dong Xinyi AEIS package ledger query confirms deductions are stored as `-90` minutes
+  - uploaded PDF extraction confirms only the delta text was wrong while balances stepped down by 1h30m
+  - `npx tsx --test tests/package-ledger-format.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - `bash ops/server/scripts/new_chat_startup_check.sh` must confirm local/origin/server alignment and `/admin/login => 200`
+  - re-export the same package ledger PDF and confirm the DEDUCT rows show `-1h 30m`
 
 ## 2026-05-08-r133 Ready
 

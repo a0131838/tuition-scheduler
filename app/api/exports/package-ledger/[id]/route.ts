@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { isDirectBillingStudentTypeName } from "@/lib/student-type-semantics";
+import { formatPackageLedgerMinutes } from "@/lib/package-ledger-format";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
@@ -21,11 +22,7 @@ const COMPANY_LINES = [
 const ORANGE = "#d97706";
 
 function fmtMinutes(min: number) {
-  const h = Math.floor(min / 60);
-  const m = Math.abs(min % 60);
-  if (h == 0) return `${min}m`;
-  if (m == 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  return formatPackageLedgerMinutes(min);
 }
 
 function formatDate(d: Date) {

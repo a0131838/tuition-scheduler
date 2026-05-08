@@ -9,6 +9,7 @@ import PackageLedgerEditTxnClient from "./PackageLedgerEditTxnClient";
 import { parseAbnormalLedgerNote } from "@/lib/package-ledger-guard";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { formatLedgerNoteForDisplay } from "@/lib/package-ledger-note";
+import { formatPackageLedgerMinutes } from "@/lib/package-ledger-format";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -33,12 +34,7 @@ function ledgerSectionLinkStyle(background: string, border: string) {
 }
 
 function fmtMinutes(min: number) {
-  const h = Math.floor(Math.abs(min) / 60);
-  const m = Math.abs(min % 60);
-  const sign = min < 0 ? "-" : "";
-  if (h === 0) return `${sign}${m}m`;
-  if (m === 0) return `${sign}${h}h`;
-  return `${sign}${h}h ${m}m`;
+  return formatPackageLedgerMinutes(min);
 }
 
 function fmtCount(v: number) {

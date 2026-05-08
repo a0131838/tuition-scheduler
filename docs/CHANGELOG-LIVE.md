@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-08-r134
+
+- Release ID: `2026-05-08-r134`
+- Date/Time (Asia/Shanghai): `2026-05-08`
+- Deployment status: `READY`
+- Scope: fix package-ledger PDF export minute formatting so negative 90-minute deductions display as `-1h 30m` instead of `-2h 30m`.
+- Key files:
+  - `app/api/exports/package-ledger/[id]/route.ts`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `lib/package-ledger-format.ts`
+  - `tests/package-ledger-format.test.ts`
+  - `docs/tasks/TASK-20260508-package-ledger-pdf-negative-minutes.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes display formatting only for package-ledger hour values. It does not edit package transactions, balances, attendance, scheduling, billing, settlements, payroll, expense claims, or OpenClaw.
+- Verification:
+  - queried the real Dong Xinyi AEIS package ledger and confirmed each deduction is stored as `-90` minutes while balances decrease by 1h30m
+  - extracted the uploaded PDF and confirmed the visible delta text was inconsistent with the running balance
+  - `npx tsx --test tests/package-ledger-format.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-08-r134`.
+
+---
+
 ## 2026-05-08-r133
 
 - Release ID: `2026-05-08-r133`
