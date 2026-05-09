@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-09-r140
+
+- Release ID: `2026-05-09-r140`
+- Date/Time (Asia/Shanghai): `2026-05-09`
+- Deployment status: `READY`
+- Scope: add the tutor cost export to admin and finance left navigation and allow FINANCE role access.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260509-finance-tutor-cost-sidebar-entry.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Navigation and route access only for an existing read-only finance export page. It does not change export calculations, payroll writes, approvals, scheduling, attendance, billing, package balances, or expense claims.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-09-r140`.
+
+---
+
 ## 2026-05-09-r139
 
 - Release ID: `2026-05-09-r139`

@@ -60,6 +60,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
   if (matchesPath(pathname, "/admin/teacher-notices")) return t(lang, "Teacher Notices", "老师通知管理");
+  if (matchesPath(pathname, "/admin/finance/tutor-cost-export")) return t(lang, "Tutor Cost Export", "老师成本导出");
   if (matchesPath(pathname, "/admin/finance/student-package-balances")) return t(lang, "Package Balance Reports", "课时包余额报表");
   if (matchesPath(pathname, "/admin/recovery/uploads")) return t(lang, "Attachment Health Desk", "附件异常工作台");
   return t(lang, "Admin Workspace", "管理工作台");
@@ -133,6 +134,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin" ||
     pathname === "/admin/approvals" ||
     pathname === "/admin/finance/workbench" ||
+    pathname === "/admin/finance/tutor-cost-export" ||
     pathname === "/admin/finance/documents" ||
     pathname === "/admin/finance/deleted-invoices" ||
     pathname === "/admin/finance/student-package-invoices" ||
@@ -216,6 +218,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/approvals", label: approvalInboxLabel, tone: "warning" as const },
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
+        { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
         { href: "/admin/receipts-approvals/queue", label: t(lang, "Receipt Queue", "收据审批队列"), tone: "warning" as const },
         { href: "/admin/receipts-approvals/package", label: t(lang, "Package Workspace", "课包财务工作区"), tone: "success" as const },
@@ -284,6 +287,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "warning" as const,
         },
         {
+          href: "/admin/finance/tutor-cost-export",
+          label: t(lang, "Tutor Cost Export", "老师成本导出"),
+          description: t(lang, "Download completed tutor cost from the 15th to month-end.", "下载 15 号到月底已完成老师成本。"),
+          tone: "success" as const,
+        },
+        {
           href: "/admin/finance/documents",
           label: t(lang, "Invoices & Receipts", "完整发票与收据"),
           description: t(lang, "Open the cross-workspace document center.", "打开跨工作台的单据总览。"),
@@ -319,6 +328,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/finance/deleted-invoices", label: t(lang, "Deleted Draft History", "已删除草稿历史"), tone: "neutral" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
+        { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
       ],
     },

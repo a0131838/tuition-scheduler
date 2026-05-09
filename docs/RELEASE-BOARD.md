@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-09-r139` (finance tutor cost cut-off export), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-09-r140` (finance tutor cost sidebar entry), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -58,6 +58,7 @@
 - Teacher-notice-nav risk: `2026-05-08-r137` moves the notice admin link higher in the sidebar only; verification should confirm the route remains reachable for admin and finance users.
 - Shared-mobile-CSS risk: `2026-05-08-r138` changes shared small-screen CSS for admin and teacher pages; verification should confirm phone layouts are easier to tap and tables scroll inside their containers without changing desktop behavior.
 - Tutor-cost-cutoff-export risk: `2026-05-09-r139` adds a read-only finance Excel export for completed and confirmed tutor cost from the 15th to month-end; verification should confirm finance understands it is not arranged-future-session cost and that zero-rate rows indicate missing teacher-rate setup.
+- Tutor-cost-sidebar risk: `2026-05-09-r140` changes navigation and FINANCE role access for the tutor cost export only; verification should confirm both admin and finance sidebars show the link.
 
 ## Process Guard (Installed)
 
@@ -78,6 +79,24 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-09-r140 Ready
+
+- Scope: expose the tutor cost export in left navigation for admin and finance users.
+- Business impact:
+  - Admin sidebar now includes `Tutor Cost Export / 老师成本导出` under `Finance & Review`.
+  - Finance sidebar now includes `Tutor Cost Export / 老师成本导出`.
+  - FINANCE users are allowed to open `/admin/finance/tutor-cost-export` directly.
+  - Existing export calculation and Excel format are unchanged.
+- Files:
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Post-deploy verification:
+  - log in as admin or finance and confirm the left sidebar shows `Tutor Cost Export / 老师成本导出`
+  - open `/admin/finance/tutor-cost-export`
+  - confirm `/admin/login` returns 200
 
 ## 2026-05-09-r139 Ready
 
