@@ -1,0 +1,166 @@
+import { requireAdmin } from "@/lib/auth";
+import {
+  formatMoneyCents,
+  formatTeachingModeLabel,
+  loadTutorCostCutoffReport,
+  parseMonth,
+} from "@/lib/teacher-payroll";
+import ExcelJS from "exceljs";
+
+function safeFileName(value: string) {
+  return value.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
+}
+
+function moneyCents(cents: number) {
+  return Number((cents / 100).toFixed(2));
+}
+
+function applyHeader(row: ExcelJS.Row) {
+  row.font = { bold: true, color: { argb: "FF0F172A" } };
+  row.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  row.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE2E8F0" },
+  };
+  row.eachCell((cell) => {
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFCBD5E1" } },
+      left: { style: "thin", color: { argb: "FFCBD5E1" } },
+      bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+      right: { style: "thin", color: { argb: "FFCBD5E1" } },
+    };
+  });
+}
+
+function applyDataBorders(sheet: ExcelJS.Worksheet, startRow: number) {
+  for (let rowIndex = startRow; rowIndex <= sheet.rowCount; rowIndex += 1) {
+    const row = sheet.getRow(rowIndex);
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE5E7EB" } },
+        left: { style: "thin", color: { argb: "FFE5E7EB" } },
+        bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+        right: { style: "thin", color: { argb: "FFE5E7EB" } },
+      };
+      cell.alignment = { vertical: "middle", horizontal: typeof cell.value === "number" ? "right" : "left", wrapText: true };
+    });
+  }
+}
+
+export async function GET(req: Request) {
+  await requireAdmin();
+  const { searchParams } = new URL(req.url);
+  const month = String(searchParams.get("month") ?? "").trim();
+  if (!parseMonth(month)) {
+    return new Response("Invalid month format. Use YYYY-MM.", { status: 400 });
+  }
+
+  const report = await loadTutorCostCutoffReport(month);
+  if (!report) {
+    return new Response("Invalid month format. Use YYYY-MM.", { status: 400 });
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "SGT Manage";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const summary = workbook.addWorksheet("Summary");
+  summary.mergeCells("A1:F1");
+  summary.getCell("A1").value = "Tutor Cost Cut-off Report";
+  summary.getCell("A1").font = { bold: true, size: 15, color: { argb: "FF0F172A" } };
+  summary.getCell("A2").value = `Period: ${report.periodLabel} (inclusive of the 15th)`;
+  summary.getCell("A3").value = "Scope: completed and confirmed sessions only";
+  summary.getCell("A4").value = `Generated at: ${new Date().toISOString()}`;
+  summary.getCell("A5").value = `Total sessions: ${report.totalSessions}`;
+  summary.getCell("B5").value = `Total hours: ${report.totalHours.toFixed(2)}`;
+  summary.getCell("C5").value = `Total cost: ${report.grandCurrencyTotals.map((x) => formatMoneyCents(x.amountCents, x.currencyCode)).join(" / ") || "SGD 0.00"}`;
+  summary.columns = [
+    { header: "Teacher", key: "teacherName", width: 24 },
+    { header: "Sessions", key: "sessionCount", width: 12 },
+    { header: "Hours", key: "totalHours", width: 12 },
+    { header: "Currency", key: "currencyCode", width: 12 },
+    { header: "Tutor Cost", key: "amount", width: 16 },
+    { header: "Teacher ID", key: "teacherId", width: 38 },
+  ];
+  const summaryHeader = summary.getRow(7);
+  summaryHeader.values = summary.columns.map((column) => column.header as string);
+  applyHeader(summaryHeader);
+  for (const row of report.summaryRows) {
+    summary.addRow({
+      teacherName: row.teacherName,
+      sessionCount: row.sessionCount,
+      totalHours: row.totalHours,
+      currencyCode: row.currencyCode,
+      amount: moneyCents(row.amountCents),
+      teacherId: row.teacherId,
+    });
+  }
+  summary.views = [{ state: "frozen", ySplit: 7 }];
+  summary.autoFilter = { from: "A7", to: "F7" };
+  summary.getColumn("C").numFmt = "0.00";
+  summary.getColumn("E").numFmt = "#,##0.00";
+  applyDataBorders(summary, 8);
+
+  const details = workbook.addWorksheet("Details");
+  details.mergeCells("A1:N1");
+  details.getCell("A1").value = "Completed and Confirmed Session Details";
+  details.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF0F172A" } };
+  details.getCell("A2").value = `Period: ${report.periodLabel}`;
+  details.getCell("A3").value = "Only sessions with completed confirmation status are included.";
+  details.columns = [
+    { header: "Session Date", key: "sessionDate", width: 14 },
+    { header: "Start", key: "startTime", width: 10 },
+    { header: "End", key: "endTime", width: 10 },
+    { header: "Teacher", key: "teacherName", width: 22 },
+    { header: "Student(s)", key: "studentName", width: 32 },
+    { header: "Course", key: "courseName", width: 28 },
+    { header: "Subject", key: "subjectName", width: 18 },
+    { header: "Level", key: "levelName", width: 22 },
+    { header: "Teaching Mode", key: "teachingMode", width: 14 },
+    { header: "Hours", key: "totalHours", width: 10 },
+    { header: "Hourly Rate", key: "hourlyRate", width: 14 },
+    { header: "Currency", key: "currencyCode", width: 10 },
+    { header: "Tutor Cost", key: "amount", width: 14 },
+    { header: "Session ID", key: "sessionId", width: 38 },
+  ];
+  const detailHeader = details.getRow(5);
+  detailHeader.values = details.columns.map((column) => column.header as string);
+  applyHeader(detailHeader);
+  for (const row of report.detailRows) {
+    details.addRow({
+      sessionDate: row.sessionDate,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      teacherName: row.teacherName,
+      studentName: row.studentName,
+      courseName: row.courseName,
+      subjectName: row.subjectName ?? "",
+      levelName: row.levelName ?? "",
+      teachingMode: formatTeachingModeLabel(row.teachingMode),
+      totalHours: row.totalHours,
+      hourlyRate: moneyCents(row.hourlyRateCents),
+      currencyCode: row.currencyCode,
+      amount: moneyCents(row.amountCents),
+      sessionId: row.sessionId,
+    });
+  }
+  details.views = [{ state: "frozen", ySplit: 5 }];
+  details.autoFilter = { from: "A5", to: "N5" };
+  details.getColumn("J").numFmt = "0.00";
+  details.getColumn("K").numFmt = "#,##0.00";
+  details.getColumn("M").numFmt = "#,##0.00";
+  applyDataBorders(details, 6);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const fileName = safeFileName(`tutor-cost-cutoff-${month}-15-to-month-end.xlsx`);
+  const fileNameUtf8 = encodeURIComponent(fileName);
+
+  return new Response(buffer as ArrayBuffer, {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${fileName}"; filename*=UTF-8''${fileNameUtf8}`,
+    },
+  });
+}

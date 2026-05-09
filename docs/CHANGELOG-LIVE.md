@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-09-r139
+
+- Release ID: `2026-05-09-r139`
+- Date/Time (Asia/Shanghai): `2026-05-09`
+- Deployment status: `READY`
+- Scope: add a finance self-service Excel export for tutor cost from the 15th to month-end.
+- Key files:
+  - `lib/teacher-payroll.ts`
+  - `app/admin/finance/tutor-cost-export/page.tsx`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `tests/tutor-cost-cutoff.test.ts`
+  - `docs/tasks/TASK-20260509-finance-tutor-cost-cutoff-export.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This is a read-only finance export based on existing payroll completion and teacher-rate logic. It does not create, edit, approve, or pay payroll records, and it does not change scheduling, attendance, package balances, invoices, receipts, or expense claims.
+- Verification:
+  - `npx tsx --test tests/tutor-cost-cutoff.test.ts`
+  - `npx tsc --noEmit`
+  - local route compiled via `/admin/finance/tutor-cost-export`
+- Rollback point: previous production commit before `2026-05-09-r139`.
+
+---
+
 ## 2026-05-08-r138
 
 - Release ID: `2026-05-08-r138`

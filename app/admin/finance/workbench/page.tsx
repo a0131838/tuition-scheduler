@@ -735,6 +735,13 @@ export default async function FinanceWorkbenchPage({
   ];
   const financeWorkbenchSectionLinks = [
     {
+      href: "/admin/finance/tutor-cost-export",
+      label: t(lang, "Tutor cost export", "老师成本导出"),
+      detail: t(lang, "Download 15th-to-month-end completed session cost", "下载 15 号到月底已完成课次成本"),
+      background: "#f0fdf4",
+      border: "#86efac",
+    },
+    {
       href: "/admin/finance/documents",
       label: t(lang, "Full invoices & receipts", "完整发票与收据"),
       detail: t(lang, "Open PDFs without jumping through each package", "不用逐个进入课包也能打开 PDF"),

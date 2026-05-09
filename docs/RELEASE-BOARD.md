@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-08`
+- Last checked: `2026-05-09`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-08-r138` (shared mobile usability pass), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-09-r139` (finance tutor cost cut-off export), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -57,6 +57,7 @@
 - Teacher-notice-admin risk: `2026-05-08-r136` lets admin/finance publish and archive teacher notices with read tracking; verification should confirm notice writes affect only `AppSetting` notice keys and do not touch teacher payroll, expenses, classes, or attendance.
 - Teacher-notice-nav risk: `2026-05-08-r137` moves the notice admin link higher in the sidebar only; verification should confirm the route remains reachable for admin and finance users.
 - Shared-mobile-CSS risk: `2026-05-08-r138` changes shared small-screen CSS for admin and teacher pages; verification should confirm phone layouts are easier to tap and tables scroll inside their containers without changing desktop behavior.
+- Tutor-cost-cutoff-export risk: `2026-05-09-r139` adds a read-only finance Excel export for completed and confirmed tutor cost from the 15th to month-end; verification should confirm finance understands it is not arranged-future-session cost and that zero-rate rows indicate missing teacher-rate setup.
 
 ## Process Guard (Installed)
 
@@ -77,6 +78,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-09-r139 Ready
+
+- Scope: add finance self-service tutor cost export for the 15th-to-month-end cut-off.
+- Business impact:
+  - Finance can open `/admin/finance/tutor-cost-export`.
+  - Selecting a month exports completed and confirmed tutor cost from the 15th through month-end.
+  - The Excel workbook includes `Summary` by teacher and `Details` by session.
+  - The export uses existing teacher hourly rates and existing payroll completion rules.
+  - It is read-only and does not mark payroll as sent, confirmed, approved, or paid.
+- Files:
+  - `lib/teacher-payroll.ts`
+  - `app/admin/finance/tutor-cost-export/page.tsx`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `tests/tutor-cost-cutoff.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/tutor-cost-cutoff.test.ts`
+  - `npx tsc --noEmit`
+  - local compile check for `/admin/finance/tutor-cost-export`
+- Post-deploy verification:
+  - open `/admin/finance/tutor-cost-export`
+  - download one Excel workbook for a known month
+  - confirm `/admin/login` returns 200
 
 ## 2026-05-08-r138 Ready
 

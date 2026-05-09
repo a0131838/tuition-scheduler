@@ -112,6 +112,36 @@ export type PayrollTeacherDetailSessionRow = {
   usedRateFallback: boolean;
 };
 
+export type TutorCostCutoffSummaryRow = {
+  teacherId: string;
+  teacherName: string;
+  sessionCount: number;
+  totalMinutes: number;
+  totalHours: number;
+  currencyCode: PayrollCurrencyCode;
+  amountCents: number;
+};
+
+export type TutorCostCutoffDetailRow = {
+  sessionId: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  teacherId: string;
+  teacherName: string;
+  studentName: string;
+  courseName: string;
+  subjectName: string | null;
+  levelName: string | null;
+  teachingMode: PayrollTeachingMode;
+  totalMinutes: number;
+  totalHours: number;
+  hourlyRateCents: number;
+  currencyCode: PayrollCurrencyCode;
+  amountCents: number;
+  usedRateFallback: boolean;
+};
+
 export type PayrollPendingReason =
   | "ATTENDANCE_MISSING"
   | "ATTENDANCE_UNMARKED"
@@ -174,6 +204,15 @@ export function toPayrollRange(month: string): PayrollRange | null {
   const start = bizMidnightUtc(prevYear, prevMonth, 15);
   const end = bizMidnightUtc(parsed.year, parsed.month, 15);
   return { start, end };
+}
+
+export function toTutorCostCutoffRange(month: string): PayrollRange | null {
+  const parsed = parseMonth(month);
+  if (!parsed) return null;
+  return {
+    start: bizMidnightUtc(parsed.year, parsed.month, 15),
+    end: bizMidnightUtc(parsed.year, parsed.month + 1, 1),
+  };
 }
 
 function normalizePayrollScope(scope?: string | null): PayrollScope {
@@ -1057,6 +1096,200 @@ export async function loadTeacherPayroll(month: string, scopeInput?: string | nu
     grandCurrencyTotals: currencyTotalsFromMap(grandCurrencyMap),
     grandTotalHours,
     scope,
+    usingRateFallback: !loadedFromTable,
+  };
+}
+
+function formatBusinessDate(value: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
+function formatBusinessTime(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Singapore",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(value);
+}
+
+export async function loadTutorCostCutoffReport(month: string) {
+  const range = toTutorCostCutoffRange(month);
+  if (!range) return null;
+
+  const sessions = await prisma.session.findMany({
+    where: {
+      startAt: { gte: range.start, lt: range.end },
+    },
+    include: {
+      teacher: { select: { id: true, name: true } },
+      student: { select: { name: true } },
+      class: {
+        select: {
+          teacher: { select: { id: true, name: true } },
+          teacherId: true,
+          capacity: true,
+          oneOnOneStudentId: true,
+          oneOnOneStudent: { select: { name: true } },
+          enrollments: { include: { student: { select: { name: true } } } },
+          course: { select: { id: true, name: true } },
+          subject: { select: { id: true, name: true } },
+          level: { select: { id: true, name: true } },
+        },
+      },
+      attendances: { select: { studentId: true, status: true, excusedCharge: true, deductedMinutes: true, deductedCount: true } },
+      feedbacks: { select: { teacherId: true, content: true } },
+    },
+    orderBy: { startAt: "asc" },
+    take: 20000,
+  });
+
+  const teacherIds = new Set<string>();
+  for (const session of sessions) {
+    const teacher = session.teacher ?? session.class.teacher;
+    if (teacher?.id) teacherIds.add(teacher.id);
+  }
+
+  let rates: Array<{
+    teacherId: string;
+    courseId: string;
+    subjectId: string | null;
+    levelId: string | null;
+    teachingMode: string;
+    hourlyRateCents: number;
+    currencyCode: string;
+  }> = [];
+  let loadedFromTable = true;
+  try {
+    rates = await prisma.teacherCourseRate.findMany({
+      where: { teacherId: { in: Array.from(teacherIds) } },
+      select: {
+        teacherId: true,
+        courseId: true,
+        subjectId: true,
+        levelId: true,
+        teachingMode: true,
+        hourlyRateCents: true,
+        currencyCode: true,
+      },
+    });
+  } catch (err) {
+    if (!isMissingRateTableError(err)) throw err;
+    loadedFromTable = false;
+    const fallbackRates = await loadFallbackRateItems();
+    rates = fallbackRates.filter((r) => teacherIds.has(r.teacherId));
+  }
+
+  const rateMap = new Map<string, { hourlyRateCents: number; currencyCode: PayrollCurrencyCode }>();
+  for (const rate of rates) {
+    rateMap.set(comboKey(rate.teacherId, rate.courseId, rate.subjectId, rate.levelId, normalizePayrollTeachingMode(rate.teachingMode)), {
+      hourlyRateCents: rate.hourlyRateCents,
+      currencyCode: normalizePayrollCurrencyCode(rate.currencyCode),
+    });
+  }
+
+  const detailRows: TutorCostCutoffDetailRow[] = [];
+  const summaryMap = new Map<string, TutorCostCutoffSummaryRow>();
+  const grandCurrencyMap = new Map<PayrollCurrencyCode, number>();
+  let totalMinutes = 0;
+
+  for (const session of sessions) {
+    if (isFullyCancelledSessionForPayroll(session)) continue;
+    const effectiveTeacher = session.teacher ?? session.class.teacher;
+    if (!effectiveTeacher) continue;
+    const completion = getSessionCompletionState(
+      {
+        teacherId: session.teacherId ?? null,
+        class: {
+          teacherId: session.class.teacherId,
+          capacity: session.class.capacity,
+          oneOnOneStudentId: session.class.oneOnOneStudentId,
+          enrollments: session.class.enrollments,
+        },
+        attendances: session.attendances,
+        feedbacks: session.feedbacks,
+      },
+      effectiveTeacher.id,
+    );
+    if (!completion.completed) continue;
+
+    const minutes = Math.max(0, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000));
+    if (!minutes) continue;
+
+    const courseId = session.class.course.id;
+    const courseName = session.class.course.name;
+    const subjectId = session.class.subject?.id ?? null;
+    const subjectName = session.class.subject?.name ?? null;
+    const levelId = session.class.level?.id ?? null;
+    const levelName = session.class.level?.name ?? null;
+    const teachingMode = derivePayrollTeachingMode(session.class.capacity);
+    const resolvedRate = resolveRate(rateMap, effectiveTeacher.id, courseId, subjectId, levelId, teachingMode);
+    const hourlyRateCents = resolvedRate.hourlyRateCents;
+    const currencyCode = resolvedRate.currencyCode;
+    const amountCents = Math.round((minutes * hourlyRateCents) / 60);
+
+    detailRows.push({
+      sessionId: session.id,
+      sessionDate: formatBusinessDate(session.startAt),
+      startTime: formatBusinessTime(session.startAt),
+      endTime: formatBusinessTime(session.endAt),
+      teacherId: effectiveTeacher.id,
+      teacherName: effectiveTeacher.name,
+      studentName: resolveSessionStudentName(session),
+      courseName,
+      subjectName,
+      levelName,
+      teachingMode,
+      totalMinutes: minutes,
+      totalHours: toHours(minutes),
+      hourlyRateCents,
+      currencyCode,
+      amountCents,
+      usedRateFallback: resolvedRate.usedFallback,
+    });
+
+    const summaryKey = `${effectiveTeacher.id}__${currencyCode}`;
+    const prev = summaryMap.get(summaryKey);
+    if (prev) {
+      prev.sessionCount += 1;
+      prev.totalMinutes += minutes;
+      prev.totalHours = toHours(prev.totalMinutes);
+      prev.amountCents += amountCents;
+    } else {
+      summaryMap.set(summaryKey, {
+        teacherId: effectiveTeacher.id,
+        teacherName: effectiveTeacher.name,
+        sessionCount: 1,
+        totalMinutes: minutes,
+        totalHours: toHours(minutes),
+        currencyCode,
+        amountCents,
+      });
+    }
+    totalMinutes += minutes;
+    upsertCurrencyTotal(grandCurrencyMap, currencyCode, amountCents);
+  }
+
+  const summaryRows = Array.from(summaryMap.values()).sort((a, b) => {
+    if (a.teacherName !== b.teacherName) return a.teacherName.localeCompare(b.teacherName);
+    return a.currencyCode.localeCompare(b.currencyCode);
+  });
+
+  return {
+    month,
+    range,
+    periodLabel: `${formatBusinessDate(range.start)} to ${formatBusinessDate(new Date(range.end.getTime() - 1))}`,
+    summaryRows,
+    detailRows,
+    totalSessions: detailRows.length,
+    totalMinutes,
+    totalHours: toHours(totalMinutes),
+    grandCurrencyTotals: currencyTotalsFromMap(grandCurrencyMap),
     usingRateFallback: !loadedFromTable,
   };
 }
