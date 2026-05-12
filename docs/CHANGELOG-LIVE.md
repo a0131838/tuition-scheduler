@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-12-r141
+
+- Release ID: `2026-05-12-r141`
+- Date/Time (Asia/Shanghai): `2026-05-12`
+- Deployment status: `READY`
+- Scope: add a read-only finance/admin Excel report for weekly or monthly individual student utility.
+- Key files:
+  - `lib/individual-student-utility-report.ts`
+  - `app/admin/finance/individual-student-utility/page.tsx`
+  - `app/api/exports/individual-student-utility/route.ts`
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260512-individual-student-utility-report.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a read-only attendance/session/package export and navigation entry. It does not change reminders, OpenClaw, package deduction, scheduling, invoices, receipts, payroll, or approval workflows.
+- Verification:
+  - real-data helper check for `2026-04`: 20 students, 227 lessons, 399.25 deducted hours
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - local authenticated HTTP check for page and Excel export returned `200`
+  - exported workbook opened with `Student Summary` and `Utility Detail` sheets
+- Rollback point: previous production commit before `2026-05-12-r141`.
+
+---
+
 ## 2026-05-09-r140
 
 - Release ID: `2026-05-09-r140`

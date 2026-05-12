@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-09`
+- Last checked: `2026-05-12`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-09-r140` (finance tutor cost sidebar entry), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-12-r141` (individual student utility report), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -59,6 +59,7 @@
 - Shared-mobile-CSS risk: `2026-05-08-r138` changes shared small-screen CSS for admin and teacher pages; verification should confirm phone layouts are easier to tap and tables scroll inside their containers without changing desktop behavior.
 - Tutor-cost-cutoff-export risk: `2026-05-09-r139` adds a read-only finance Excel export for completed and confirmed tutor cost from the 15th to month-end; verification should confirm finance understands it is not arranged-future-session cost and that zero-rate rows indicate missing teacher-rate setup.
 - Tutor-cost-sidebar risk: `2026-05-09-r140` changes navigation and FINANCE role access for the tutor cost export only; verification should confirm both admin and finance sidebars show the link.
+- Individual-student-utility risk: `2026-05-12-r141` adds a read-only finance/admin Excel export based on confirmed deducted attendance by lesson date; finance should confirm this is the Sales forecast utility definition they want before reminder automation is added.
 
 ## Process Guard (Installed)
 
@@ -79,6 +80,33 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-12-r141 Ready
+
+- Scope: add weekly/monthly individual student utility Excel reporting for admin and finance.
+- Business impact:
+  - Admin sidebar now includes `Individual Student Utility / 个人学生课时使用` under `Finance & Review`.
+  - Finance sidebar now includes `Individual Student Utility / 个人学生课时使用`.
+  - FINANCE users are allowed to open `/admin/finance/individual-student-utility` directly.
+  - The export includes `Student Summary` and `Utility Detail` sheets.
+  - The report is based on lesson/session date, individual student type, confirmed attendance, and deducted minutes.
+  - It is read-only and does not change reminders, package balances, attendance, scheduling, billing, approvals, payroll, or OpenClaw.
+- Files:
+  - `lib/individual-student-utility-report.ts`
+  - `app/admin/finance/individual-student-utility/page.tsx`
+  - `app/api/exports/individual-student-utility/route.ts`
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - real-data helper check for `2026-04`: 20 students, 227 lessons, 399.25 deducted hours
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - local authenticated HTTP page check returned `200`
+  - local authenticated Excel export returned `200` and opened with the expected two sheets
+- Post-deploy verification:
+  - open `/admin/finance/individual-student-utility`
+  - download one Excel workbook for `2026-04`
+  - confirm `/admin/login` returns 200
+  - confirm unauthenticated `/admin/finance/individual-student-utility` redirects to login
 
 ## 2026-05-09-r140 Ready
 
