@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-12`
+- Last checked: `2026-05-13`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-12-r141` (individual student utility report), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-13-r142` (package balance audit guardrails), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -60,6 +60,7 @@
 - Tutor-cost-cutoff-export risk: `2026-05-09-r139` adds a read-only finance Excel export for completed and confirmed tutor cost from the 15th to month-end; verification should confirm finance understands it is not arranged-future-session cost and that zero-rate rows indicate missing teacher-rate setup.
 - Tutor-cost-sidebar risk: `2026-05-09-r140` changes navigation and FINANCE role access for the tutor cost export only; verification should confirm both admin and finance sidebars show the link.
 - Individual-student-utility risk: `2026-05-12-r141` adds a read-only finance/admin Excel export based on confirmed deducted attendance by lesson date; finance should confirm this is the Sales forecast utility definition they want before reminder automation is added.
+- Package-balance-audit risk: `2026-05-13-r142` makes package ledger edit endpoints re-sync current remaining balance from ledger totals and adds audit views for balance mismatches plus risky rollback/adjustment rows; academic users should still validate abnormal corrections with ClassIn or attendance evidence before relying on corrected balances.
 
 ## Process Guard (Installed)
 
@@ -80,6 +81,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-13-r142 Ready
+
+- Scope: add package balance audit guardrails and ledger/current-balance synchronization for manual ledger corrections.
+- Business impact:
+  - Admin and finance sidebars now include `Package Balance Audit / 课包余额复核`.
+  - The audit page shows packages where current remaining balance differs from the ledger closing balance.
+  - The audit page flags recent rollback or adjustment records that lack a linked session, have missing linked sessions, mention historical orphan/manual reconciliation, or lack structured abnormal-operation notes.
+  - Package ledger pages show a red warning when current remaining balance and ledger closing balance differ.
+  - Manual package transaction edit/delete/restore/create operations now re-sync current remaining balance from the ledger total after the change.
+  - OpenClaw, scheduling, attendance save rules, invoices, receipts, payroll, and partner settlement logic are unchanged.
+- Files:
+  - `lib/package-balance-audit.ts`
+  - `app/admin/reports/package-balance-audit/page.tsx`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - `npm run build`
+- Post-deploy verification:
+  - open `/admin/reports/package-balance-audit`
+  - confirm the page renders after login
+  - open one package ledger and confirm no red mismatch warning appears when current balance equals ledger closing balance
+  - confirm `/admin/login` returns 200
 
 ## 2026-05-12-r141 Ready
 

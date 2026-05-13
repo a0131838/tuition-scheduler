@@ -28,6 +28,14 @@ function parseOptionalAmount(value: unknown) {
   return Math.round(amount);
 }
 
+async function getPackageLedgerRemaining(packageId: string) {
+  const txns = await prisma.packageTxn.findMany({
+    where: { packageId },
+    select: { deltaMinutes: true },
+  });
+  return txns.reduce((sum, txn) => sum + (txn.deltaMinutes ?? 0), 0);
+}
+
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; txnId: string }> }) {
   const admin = await requireAdmin();
   const actor = admin.email.trim().toLowerCase();
@@ -74,7 +82,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   if (!pkg) return bad("Package not found", 404);
 
   const diff = Math.round(deltaMinutes) - txn.deltaMinutes;
-  const nextRemaining = (pkg.remainingMinutes ?? 0) + diff;
+  const ledgerRemaining = await getPackageLedgerRemaining(packageId);
+  const nextRemaining = ledgerRemaining + diff;
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
   const isPurchase = txn.kind === "PURCHASE";
   const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
@@ -125,9 +134,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
         note: abnormalMeta ? buildAbnormalLedgerNote(abnormalMeta) : note || null,
       },
     });
+    const updatedTxns = await tx.packageTxn.findMany({
+      where: { packageId },
+      select: { deltaMinutes: true },
+    });
+    const syncedRemaining = updatedTxns.reduce((sum, row) => sum + (row.deltaMinutes ?? 0), 0);
     await tx.coursePackage.update({
       where: { id: packageId },
-      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
+      data: isPurchase ? { remainingMinutes: syncedRemaining, totalMinutes: nextTotal } : { remainingMinutes: syncedRemaining },
     });
   });
 
@@ -180,7 +194,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
   });
   if (!pkg) return bad("Package not found", 404);
 
-  const nextRemaining = (pkg.remainingMinutes ?? 0) - txn.deltaMinutes;
+  const ledgerRemaining = await getPackageLedgerRemaining(packageId);
+  const nextRemaining = ledgerRemaining - txn.deltaMinutes;
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
   const isPurchase = txn.kind === "PURCHASE";
   const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
@@ -216,9 +231,14 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
       await tx.partnerSettlement.deleteMany({ where: { id: { in: settlementIdsToDelete } } });
     }
     await tx.packageTxn.delete({ where: { id: txn.id } });
+    const updatedTxns = await tx.packageTxn.findMany({
+      where: { packageId },
+      select: { deltaMinutes: true },
+    });
+    const syncedRemaining = updatedTxns.reduce((sum, row) => sum + (row.deltaMinutes ?? 0), 0);
     await tx.coursePackage.update({
       where: { id: packageId },
-      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
+      data: isPurchase ? { remainingMinutes: syncedRemaining, totalMinutes: nextTotal } : { remainingMinutes: syncedRemaining },
     });
   });
 
@@ -283,15 +303,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
   });
   if (!pkg) return bad("Package not found", 404);
 
-  const nextRemaining = (pkg.remainingMinutes ?? 0) + Math.round(deltaMinutes);
+  const ledgerRemaining = await getPackageLedgerRemaining(packageId);
+  const nextRemaining = ledgerRemaining + Math.round(deltaMinutes);
   if (nextRemaining < 0) return bad("Remaining minutes cannot be negative", 409);
   const isPurchase = kind === "PURCHASE";
   const curTotal = pkg.totalMinutes ?? pkg.remainingMinutes ?? 0;
   const nextTotal = isPurchase ? curTotal + Math.round(deltaMinutes) : curTotal;
   if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
-  await prisma.$transaction([
-    prisma.packageTxn.create({
+  await prisma.$transaction(async (tx) => {
+    await tx.packageTxn.create({
       data: {
         id: txnId,
         packageId,
@@ -302,12 +323,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; tx
         note: note || null,
         createdAt: createdAtDate,
       },
-    }),
-    prisma.coursePackage.update({
+    });
+    const updatedTxns = await tx.packageTxn.findMany({
+      where: { packageId },
+      select: { deltaMinutes: true },
+    });
+    const syncedRemaining = updatedTxns.reduce((sum, row) => sum + (row.deltaMinutes ?? 0), 0);
+    await tx.coursePackage.update({
       where: { id: packageId },
-      data: isPurchase ? { remainingMinutes: nextRemaining, totalMinutes: nextTotal } : { remainingMinutes: nextRemaining },
-    }),
-  ]);
+      data: isPurchase ? { remainingMinutes: syncedRemaining, totalMinutes: nextTotal } : { remainingMinutes: syncedRemaining },
+    });
+  });
 
   await logAudit({
     actor: admin,

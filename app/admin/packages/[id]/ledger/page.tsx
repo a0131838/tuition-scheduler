@@ -95,6 +95,7 @@ export default async function PackageLedgerPage({
   });
   const opening = rows.length ? rows[0].running - rows[0].txn.deltaMinutes : 0;
   const closing = rows.length ? rows[rows.length - 1].running : opening;
+  const balanceMismatch = pkg.remainingMinutes != null && pkg.remainingMinutes !== closing;
   const isGroupPack = packageModeFromNote(pkg.note) === "GROUP_COUNT";
   const fmtUnit = (v: number) => (isGroupPack ? fmtCount(v) : fmtMinutes(v));
 
@@ -178,6 +179,17 @@ export default async function PackageLedgerPage({
 
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "OK", "成功")} message={msg} /> : null}
+      {balanceMismatch ? (
+        <NoticeBanner
+          type="error"
+          title={t(lang, "Balance mismatch needs review", "余额不同步，需要先复核")}
+          message={t(
+            lang,
+            `Current remaining (${fmtUnit(pkg.remainingMinutes ?? 0)}) does not match ledger closing balance (${fmtUnit(closing)}). Do not deduct or manually adjust this package until the mismatch is reviewed.`,
+            `当前余额（${fmtUnit(pkg.remainingMinutes ?? 0)}）和流水期末余额（${fmtUnit(closing)}）不一致。请先复核，不要继续扣课或手动调整。`,
+          )}
+        />
+      ) : null}
 
       <div id="ledger-summary" style={{ padding: 12, border: "1px solid #eee", borderRadius: 8, marginBottom: 16 }}>
         <div><b>{t(lang, "Student", "学生")}:</b> {pkg.student?.name ?? "-"}</div>

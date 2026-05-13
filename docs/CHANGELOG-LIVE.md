@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-13-r142
+
+- Release ID: `2026-05-13-r142`
+- Date/Time (Asia/Shanghai): `2026-05-13`
+- Deployment status: `READY`
+- Scope: add package-balance guardrails so academic/admin users can find balance drift and risky rollback or adjustment records before package deductions fail.
+- Key files:
+  - `lib/package-balance-audit.ts`
+  - `app/admin/reports/package-balance-audit/page.tsx`
+  - `app/admin/packages/[id]/ledger/page.tsx`
+  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/manager/quality/page.tsx`
+  - `lib/manager-quality-workspace.ts`
+  - `docs/tasks/TASK-20260513-package-balance-audit-guardrails.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. Package ledger edit endpoints now re-sync current remaining balance from ledger totals after manual ledger changes. This reduces balance drift but should be watched on abnormal package correction workflows.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-13-r142`.
+
+---
+
 ## 2026-05-12-r141
 
 - Release ID: `2026-05-12-r141`

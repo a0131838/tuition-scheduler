@@ -63,6 +63,8 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/finance/individual-student-utility")) return t(lang, "Individual Student Utility", "个人学生课时使用");
   if (matchesPath(pathname, "/admin/finance/tutor-cost-export")) return t(lang, "Tutor Cost Export", "老师成本导出");
   if (matchesPath(pathname, "/admin/finance/student-package-balances")) return t(lang, "Package Balance Reports", "课时包余额报表");
+  if (matchesPath(pathname, "/admin/manager/quality")) return t(lang, "Manager Quality Desk", "管理者质量工作台");
+  if (matchesPath(pathname, "/admin/reports/package-balance-audit")) return t(lang, "Package Balance Audit", "课包余额复核");
   if (matchesPath(pathname, "/admin/recovery/uploads")) return t(lang, "Attachment Health Desk", "附件异常工作台");
   return t(lang, "Admin Workspace", "管理工作台");
 }
@@ -145,6 +147,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname.startsWith("/admin/reports/teacher-payroll/") ||
     pathname.startsWith("/admin/reports/partner-settlement") ||
     pathname === "/admin/reports/audit-logs" ||
+    pathname === "/admin/reports/package-balance-audit" ||
     pathname === "/admin/expense-claims" ||
     pathname === "/admin/teacher-notices" ||
     pathname.startsWith("/admin/receipts-approvals") ||
@@ -196,6 +199,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Review the month view without leaving the day-first desk.", "在今天工作台附近直接查看整月课表。"),
           tone: "neutral" as const,
         },
+        ...(showManagerConsole
+          ? [
+              {
+                href: "/admin/manager/quality",
+                label: t(lang, "Manager Quality Desk", "管理者质量工作台"),
+                description: t(lang, "Print Lead Desk and complete the daily manager reflection.", "打印 Lead Desk，并完成每日管理复盘。"),
+                tone: "accent" as const,
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -259,6 +272,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/reports/academic-management", label: t(lang, "Academic Management", "学业管理月报"), tone: "accent" as const },
         { href: "/admin/reports/cancelled-sessions", label: t(lang, "Cancelled Sessions", "已取消课次"), tone: "neutral" as const },
         { href: "/admin/reports/package-sharing-audit", label: t(lang, "Package Sharing Audit", "共享课包审计"), tone: "neutral" as const },
+        { href: "/admin/reports/package-balance-audit", label: t(lang, "Package Balance Audit", "课包余额复核"), tone: "danger" as const },
         { href: "/admin/reports/midterm", label: t(lang, "Midterm Reports", "中期报告"), tone: "neutral" as const },
         { href: "/admin/reports/final", label: t(lang, "Final Reports", "结课报告"), tone: "neutral" as const },
         { href: "/admin/reports/undeducted-completed", label: t(lang, "Undeducted Completed", "已完成未减扣"), tone: "danger" as const },
@@ -337,6 +351,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/finance/deleted-invoices", label: t(lang, "Deleted Draft History", "已删除草稿历史"), tone: "neutral" as const },
         { href: "/admin/finance/student-package-invoices", label: t(lang, "Student Package Invoices", "学生课时包发票"), tone: "success" as const },
         { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
+        { href: "/admin/reports/package-balance-audit", label: t(lang, "Package Balance Audit", "课包余额复核"), tone: "warning" as const },
         { href: "/admin/finance/individual-student-utility", label: t(lang, "Individual Student Utility", "个人学生课时使用"), tone: "success" as const },
         { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
         { href: "/admin/reports/audit-logs", label: t(lang, "Audit Logs", "审计日志"), tone: "neutral" as const },
