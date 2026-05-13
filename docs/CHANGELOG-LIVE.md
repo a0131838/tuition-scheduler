@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-13-r143
+
+- Release ID: `2026-05-13-r143`
+- Date/Time (Asia/Shanghai): `2026-05-13`
+- Deployment status: `READY`
+- Scope: add a manager quality workspace for Jasmine/manager users with printable Lead Desk schedule, daily workflow reflection log, and quality/KPI snapshots.
+- Key files:
+  - `lib/manager-quality-workspace.ts`
+  - `app/admin/manager/quality/page.tsx`
+  - `app/admin/manager/quality/_components/ManagerQualityPrintButton.tsx`
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260513-manager-quality-desk.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds a manager-only page and an AppSetting-backed daily reflection log. It does not send reminders, emails, OpenClaw messages, change scheduling, attendance deduction, payroll, billing, invoices, receipts, or report assignment workflows.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - local authenticated HTTP check for `/admin/manager/quality?date=2026-05-13` returned `200`
+  - Playwright confirmed Jasmine can see the left sidebar entry, Lead Desk rows, quality snapshot, and reflection form
+  - Playwright submitted a local reflection log successfully; local QA entry and temporary auth session were removed afterwards
+- Rollback point: previous production commit before `2026-05-13-r143`.
+
+---
+
 ## 2026-05-13-r142
 
 - Release ID: `2026-05-13-r142`

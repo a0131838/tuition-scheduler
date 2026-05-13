@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-13-r142` (package balance audit guardrails), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-13-r143` (manager quality workspace), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -61,6 +61,7 @@
 - Tutor-cost-sidebar risk: `2026-05-09-r140` changes navigation and FINANCE role access for the tutor cost export only; verification should confirm both admin and finance sidebars show the link.
 - Individual-student-utility risk: `2026-05-12-r141` adds a read-only finance/admin Excel export based on confirmed deducted attendance by lesson date; finance should confirm this is the Sales forecast utility definition they want before reminder automation is added.
 - Package-balance-audit risk: `2026-05-13-r142` makes package ledger edit endpoints re-sync current remaining balance from ledger totals and adds audit views for balance mismatches plus risky rollback/adjustment rows; academic users should still validate abnormal corrections with ClassIn or attendance evidence before relying on corrected balances.
+- Manager-quality-desk risk: `2026-05-13-r143` adds a manager-only daily reflection log stored in `AppSetting` plus read-only Lead Desk, feedback, report, and approval snapshots; it does not yet send reminders or OpenClaw messages, so managers still need to open the page themselves.
 
 ## Process Guard (Installed)
 
@@ -81,6 +82,33 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-13-r143 Ready
+
+- Scope: add a manager quality workspace for printable Lead Desk schedules and daily manager reflection logging.
+- Business impact:
+  - Manager users such as `jasmine@123.com` see `Manager Quality Desk / 管理者质量工作台` in the left sidebar.
+  - The page shows a date-filtered Lead Desk daily schedule grouped by teacher for printing.
+  - The page adds a daily workflow checklist covering receipts/invoices/claims, teacher feedback quality, mid-term reports, and end-term reports.
+  - The page stores manager reflection notes for operations wins, problems, improvements, and follow-up actions.
+  - The page surfaces read-only quality snapshots from approval inbox, teacher feedback, mid-term reports, and final reports.
+  - Reminder automation, email reminders, and OpenClaw reminders remain out of scope for this release.
+- Files:
+  - `lib/manager-quality-workspace.ts`
+  - `app/admin/manager/quality/page.tsx`
+  - `app/admin/manager/quality/_components/ManagerQualityPrintButton.tsx`
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - local authenticated HTTP check for `/admin/manager/quality?date=2026-05-13` returned `200`
+  - Playwright verified the left sidebar entry and page content under a Jasmine test session
+  - Playwright submitted the reflection form and confirmed the saved AppSetting entry, then the local QA entry/session were removed
+- Post-deploy verification:
+  - open `/admin/manager/quality` as Jasmine or another manager user
+  - confirm the left sidebar shows `Manager Quality Desk / 管理者质量工作台`
+  - confirm the Lead Desk print button opens the browser print flow
+  - save one real daily reflection entry when Jasmine is ready to start using the log
 
 ## 2026-05-13-r142 Ready
 
