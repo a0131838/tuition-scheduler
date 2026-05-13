@@ -168,23 +168,154 @@ export default async function ManagerQualityPage({
     date: sp?.date,
   });
   const entry = data.currentEntry;
+  const leadDeskRows = data.leadDeskGroups.flatMap((group) =>
+    group.rows.map((row) => ({
+      ...row,
+      teacherName: group.teacherName,
+    })),
+  );
 
   return (
     <main style={{ padding: "24px 24px 48px", display: "grid", gap: 18 }}>
       <style>{`
         @media print {
-          body { background: #ffffff !important; }
-          .no-print, aside, nav, header { display: none !important; }
+          @page {
+            size: A4 landscape;
+            margin: 7mm;
+          }
+          html,
+          body {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          .print-sheet,
+          .print-sheet * {
+            visibility: visible !important;
+          }
+          .print-sheet {
+            display: block !important;
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: #111827 !important;
+            background: #ffffff !important;
+            font-size: 9px !important;
+            line-height: 1.18 !important;
+          }
+          .print-sheet h1 {
+            margin: 0 !important;
+            font-size: 16px !important;
+            line-height: 1.1 !important;
+          }
+          .print-sheet table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+          }
+          .print-sheet th,
+          .print-sheet td {
+            padding: 3px 4px !important;
+            border-bottom: 1px solid #d1d5db !important;
+            vertical-align: top !important;
+            overflow-wrap: anywhere !important;
+          }
+          .print-sheet th {
+            background: #f3f4f6 !important;
+            font-weight: 800 !important;
+            text-align: left !important;
+          }
+          .print-sheet .print-teacher-row td {
+            padding-top: 6px !important;
+            background: #eef2ff !important;
+            font-weight: 900 !important;
+          }
+          .no-print,
+          .lead-desk-print,
+          aside,
+          nav,
+          header {
+            display: none !important;
+          }
           .print-only { display: block !important; }
-          .lead-desk-print { box-shadow: none !important; border: none !important; }
           main { padding: 0 !important; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
         }
         @media screen {
-          .print-only { display: none; }
+          .print-only,
+          .print-sheet {
+            display: none;
+          }
         }
       `}</style>
+
+      <section className="print-sheet" aria-hidden="true">
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 6 }}>
+          <div>
+            <h1>Lead Desk Daily Schedule / Lead Desk 当日课表</h1>
+            <div style={{ marginTop: 3, color: "#374151", fontSize: 9.5 }}>
+              {data.date} · {data.leadDeskTotals.sessions} sessions / 课次 · {data.leadDeskTotals.teachers} teachers / 老师 ·{" "}
+              {data.leadDeskTotals.students} students / 学生
+            </div>
+          </div>
+          <div style={{ fontWeight: 900, color: "#1f2937", fontSize: 10 }}>SGT Lead Desk</div>
+        </div>
+
+        <table>
+          <colgroup>
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Time / 时间</th>
+              <th>Teacher / 老师</th>
+              <th>Course / 课程</th>
+              <th>Students / 学生</th>
+              <th>Campus / 校区</th>
+              <th>Room / 教室</th>
+              <th>Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leadDeskRows.length === 0 ? (
+              <tr>
+                <td colSpan={7}>No sessions scheduled for this date. / 这个日期没有已安排课次。</td>
+              </tr>
+            ) : (
+              data.leadDeskGroups.flatMap((group) => [
+                <tr key={`${group.teacherName}-group`} className="print-teacher-row">
+                  <td colSpan={7}>{group.teacherName}</td>
+                </tr>,
+                ...group.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={{ fontWeight: 800 }}>{row.timeRange}</td>
+                    <td>{group.teacherName}</td>
+                    <td>{row.course || "-"}</td>
+                    <td>{row.students}</td>
+                    <td>{row.campus}</td>
+                    <td>{row.room || "-"}</td>
+                    <td>{row.mode}</td>
+                  </tr>
+                )),
+              ])
+            )}
+          </tbody>
+        </table>
+      </section>
 
       <section
         className="no-print"

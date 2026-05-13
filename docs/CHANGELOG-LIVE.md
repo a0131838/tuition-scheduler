@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-13-r144
+
+- Release ID: `2026-05-13-r144`
+- Date/Time (Asia/Shanghai): `2026-05-13`
+- Deployment status: `READY`
+- Scope: tighten Manager Quality Desk printing so the Lead Desk printout is a one-page schedule only.
+- Key files:
+  - `app/admin/manager/quality/page.tsx`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Print CSS and print-only markup only. It does not change schedule data, manager reflection data, reminders, attendance, payroll, billing, invoices, receipts, or package balances.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - Playwright generated the local Lead Desk PDF as 1 page
+  - PDF text check confirmed the printout includes Lead Desk schedule and excludes ledger alert, Todo Center links, reflection log, and quality snapshot
+- Rollback point: previous production commit before `2026-05-13-r144`.
+
+---
+
 ## 2026-05-13-r143
 
 - Release ID: `2026-05-13-r143`

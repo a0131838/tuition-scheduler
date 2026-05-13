@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-13-r143` (manager quality workspace), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-13-r144` (one-page manager Lead Desk printout), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -62,6 +62,7 @@
 - Individual-student-utility risk: `2026-05-12-r141` adds a read-only finance/admin Excel export based on confirmed deducted attendance by lesson date; finance should confirm this is the Sales forecast utility definition they want before reminder automation is added.
 - Package-balance-audit risk: `2026-05-13-r142` makes package ledger edit endpoints re-sync current remaining balance from ledger totals and adds audit views for balance mismatches plus risky rollback/adjustment rows; academic users should still validate abnormal corrections with ClassIn or attendance evidence before relying on corrected balances.
 - Manager-quality-desk risk: `2026-05-13-r143` adds a manager-only daily reflection log stored in `AppSetting` plus read-only Lead Desk, feedback, report, and approval snapshots; it does not yet send reminders or OpenClaw messages, so managers still need to open the page themselves.
+- Manager-print risk: `2026-05-13-r144` changes only Manager Quality Desk print rendering to a compact one-page Lead Desk table; operators should use browser print preview for unusually busy days because very high session counts may still need scaling.
 
 ## Process Guard (Installed)
 
@@ -82,6 +83,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-13-r144 Ready
+
+- Scope: make Manager Quality Desk printing output only the useful Lead Desk schedule on one page.
+- Business impact:
+  - Print preview no longer includes admin sidebar, ledger alerts, Todo Center links, reflection log, or quality snapshot.
+  - Print mode uses a compact A4 landscape Lead Desk table.
+  - Screen view is unchanged.
+  - No data writes or schedule calculations changed.
+- Files:
+  - `app/admin/manager/quality/page.tsx`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - Playwright PDF export for `/admin/manager/quality?date=2026-05-13` produced 1 page
+  - PDF text check confirmed only Lead Desk schedule content was present
 
 ## 2026-05-13-r143 Ready
 
