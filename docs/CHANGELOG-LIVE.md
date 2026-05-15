@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-15-r145
+
+- Release ID: `2026-05-15-r145`
+- Date/Time (Asia/Shanghai): `2026-05-15`
+- Deployment status: `READY`
+- Scope: stop treating academically confirmed historical orphan rollback reversals as active ledger-integrity alerts.
+- Key files:
+  - `scripts/reconciliation/daily-ledger-integrity.ts`
+  - `docs/tasks/TASK-20260515-ledger-integrity-confirmed-exceptions.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This changes alert classification only: confirmed historical exceptions no longer appear as active red ledger mismatch alerts. It does not alter package transactions, attendance, balances, invoices, receipts, payroll, scheduling, or OpenClaw.
+- Verification:
+  - `npx tsx scripts/reconciliation/daily-ledger-integrity.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-15-r145`.
+
+---
+
 ## 2026-05-13-r144
 
 - Release ID: `2026-05-13-r144`

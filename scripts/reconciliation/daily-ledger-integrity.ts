@@ -46,7 +46,7 @@ function writeCsv(filePath: string, rows: Array<Record<string, unknown>>) {
 
 async function main() {
   type DetailRow = {
-    type: "LEDGER_SESSION_PACKAGE_MISMATCH" | "ATTENDANCE_DEDUCT_WITHOUT_PACKAGE";
+    type: "LEDGER_SESSION_PACKAGE_MISMATCH" | "ATTENDANCE_DEDUCT_WITHOUT_PACKAGE" | "CONFIRMED_HISTORICAL_EXCEPTION";
     reasonCode: string;
     rootCauseCN: string;
     rootCauseEN: string;
@@ -106,7 +106,7 @@ async function main() {
 
   const txns = await prisma.packageTxn.findMany({
     where: { sessionId: { not: null } },
-    select: { sessionId: true, packageId: true, deltaMinutes: true },
+    select: { sessionId: true, packageId: true, deltaMinutes: true, note: true },
   });
   const attendanceWithPackage = await prisma.attendance.findMany({
     where: { packageId: { not: null } },
@@ -123,10 +123,14 @@ async function main() {
   });
 
   const txMap = new Map<string, number>();
+  const txNoteMap = new Map<string, string[]>();
   for (const t of txns) {
     if (!t.sessionId) continue;
     const k = `${t.sessionId}|${t.packageId}`;
     txMap.set(k, (txMap.get(k) ?? 0) + t.deltaMinutes);
+    const notes = txNoteMap.get(k) ?? [];
+    if (t.note) notes.push(t.note);
+    txNoteMap.set(k, notes);
   }
 
   const attMap = new Map<string, number>();
@@ -150,6 +154,12 @@ async function main() {
     const expectedNet = -(attMap.get(key) ?? 0);
     if (actualNet === expectedNet) continue;
     const [sessionId, packageId] = key.split("|");
+    const notes = (txNoteMap.get(key) ?? []).join("\n").toLowerCase();
+    const isConfirmedHistoricalException =
+      !attMap.has(key) &&
+      notes.includes("academic confirmed") &&
+      notes.includes("reverse mistaken orphan rollback");
+    if (isConfirmedHistoricalException) continue;
     rawMismatches.push({ sessionId, packageId, expectedNet, actualNet, diff: actualNet - expectedNet });
   }
   rawMismatches.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
