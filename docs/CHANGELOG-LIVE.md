@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-15-r147
+
+- Release ID: `2026-05-15-r147`
+- Date/Time (Asia/Shanghai): `2026-05-15`
+- Deployment status: `READY`
+- Scope: expose transport billing and related finance document links in the admin sidebar for manager/admin users.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260515-admin-sidebar-transport-billing.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. Navigation-only change for admin/manager sidebar visibility. It does not change transport invoice creation, receipts, payment records, attendance, package balances, payroll, scheduling, or permissions.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-15-r147`.
+
+---
+
 ## 2026-05-15-r146
 
 - Release ID: `2026-05-15-r146`

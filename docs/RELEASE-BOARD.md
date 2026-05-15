@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-15-r146` (transport reimbursement billing), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-15-r147` (admin sidebar transport billing entry), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -65,6 +65,7 @@
 - Manager-print risk: `2026-05-13-r144` changes only Manager Quality Desk print rendering to a compact one-page Lead Desk table; operators should use browser print preview for unusually busy days because very high session counts may still need scaling.
 - Ledger-confirmed-exception risk: `2026-05-15-r145` removes academically confirmed historical orphan rollback reversals from the active red ledger-integrity alert count; new unconfirmed mismatches and no-package deductions still need operator review.
 - Transport-billing risk: `2026-05-15-r146` adds a parent transport reimbursement billing workflow that reuses parent invoice creation after Finance marks sessions billable; Finance must avoid marking normal campus lessons or lessons without parent agreement.
+- Admin-sidebar-transport risk: `2026-05-15-r147` changes admin/manager navigation visibility only so managers can find transport billing and related finance document pages from the sidebar; it does not change billing permissions or transaction logic.
 
 ## Process Guard (Installed)
 
@@ -85,6 +86,22 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-15-r147 Ready
+
+- Scope: add manager/admin sidebar entries for `Finance Workbench`, `Transport Billing`, and `Invoices & Receipts`.
+- Business impact:
+  - Manager/admin users can find the transport reimbursement billing workflow from the left sidebar.
+  - The same sidebar area also exposes the document center needed after invoice generation.
+  - No billing, receipt, payment proof, package balance, attendance, scheduling, payroll, or OpenClaw logic changed.
+- Files:
+  - `app/admin/layout.tsx`
+- Verification before deploy:
+  - `npm run build`
+- Post-deploy verification:
+  - log in as manager/admin
+  - confirm `Finance & Review / 财务与审核` shows `Transport Billing / 交通费月结`
+  - open `/admin/finance/transport-billing`
 
 ## 2026-05-15-r146 Ready
 
