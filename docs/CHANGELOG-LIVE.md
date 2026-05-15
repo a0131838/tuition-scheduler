@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-15-r146
+
+- Release ID: `2026-05-15-r146`
+- Date/Time (Asia/Shanghai): `2026-05-15`
+- Deployment status: `READY`
+- Scope: add a finance transport reimbursement billing desk for parent invoices generated from held lessons.
+- Key files:
+  - `lib/transport-billing.ts`
+  - `app/admin/finance/transport-billing/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/page.tsx`
+  - `docs/tasks/TASK-20260515-transport-reimbursement-billing.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds a separate finance workflow and stores transport billing flags in AppSetting. It reuses existing parent invoice creation only after finance explicitly marks billable sessions and clicks create invoice. It does not change lesson scheduling, attendance deduction, package balances, teacher expense claims, payroll, partner settlement, receipts, or OpenClaw.
+- Verification:
+  - real-data read check for `2026-03`: 45 students and 394 held lesson rows available for review
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-15-r146`.
+
+---
+
 ## 2026-05-15-r145
 
 - Release ID: `2026-05-15-r145`

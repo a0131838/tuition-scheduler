@@ -742,6 +742,13 @@ export default async function FinanceWorkbenchPage({
       border: "#86efac",
     },
     {
+      href: "/admin/finance/transport-billing",
+      label: t(lang, "Transport billing", "交通费月结"),
+      detail: t(lang, "Create parent transport reimbursement invoices from held lessons", "从已上课次生成家长交通费发票"),
+      background: "#fffbeb",
+      border: "#fcd34d",
+    },
+    {
       href: "/admin/finance/documents",
       label: t(lang, "Full invoices & receipts", "完整发票与收据"),
       detail: t(lang, "Open PDFs without jumping through each package", "不用逐个进入课包也能打开 PDF"),
