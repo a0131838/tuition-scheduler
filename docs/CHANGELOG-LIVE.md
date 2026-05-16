@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-16-r148
+
+- Release ID: `2026-05-16-r148`
+- Date/Time (Asia/Shanghai): `2026-05-16`
+- Deployment status: `READY`
+- Scope: allow renewal contracts on legacy direct-billing packages with multiple historical invoices to sign normally.
+- Key files:
+  - `lib/student-contract.ts`
+  - `tests/student-contract-renewal-invoice.test.ts`
+  - `docs/tasks/TASK-20260516-renewal-contract-historical-invoices.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. Renewal contracts now ignore unrelated historical package invoices when deciding whether signing can continue. First-purchase contracts still keep the existing multi-invoice ambiguity guard, so the system still avoids auto-linking the wrong old invoice for new purchase flows.
+- Verification:
+  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-16-r148`.
+
+---
+
 ## 2026-05-15-r147
 
 - Release ID: `2026-05-15-r147`

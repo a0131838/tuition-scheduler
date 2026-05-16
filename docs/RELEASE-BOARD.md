@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-15`
+- Last checked: `2026-05-16`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-15-r147` (admin sidebar transport billing entry), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-16-r148` (renewal contract historical invoice signing fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -66,6 +66,7 @@
 - Ledger-confirmed-exception risk: `2026-05-15-r145` removes academically confirmed historical orphan rollback reversals from the active red ledger-integrity alert count; new unconfirmed mismatches and no-package deductions still need operator review.
 - Transport-billing risk: `2026-05-15-r146` adds a parent transport reimbursement billing workflow that reuses parent invoice creation after Finance marks sessions billable; Finance must avoid marking normal campus lessons or lessons without parent agreement.
 - Admin-sidebar-transport risk: `2026-05-15-r147` changes admin/manager navigation visibility only so managers can find transport billing and related finance document pages from the sidebar; it does not change billing permissions or transaction logic.
+- Renewal-contract-history risk: `2026-05-16-r148` changes renewal contract signing so legacy package invoices no longer block the renewal flow; first-purchase contracts keep the multi-invoice ambiguity guard, and finance should still verify the newly generated renewal invoice after signing.
 
 ## Process Guard (Installed)
 
@@ -86,6 +87,24 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-16-r148 Ready
+
+- Scope: fix renewal contract signing for legacy direct-billing packages that already have multiple historical invoices.
+- Business impact:
+  - Old students can sign a renewal contract on a legacy package even when that package has prior invoices and receipts.
+  - The renewal signing flow can create the new renewal invoice for this contract instead of being blocked by old invoices.
+  - First-purchase contracts still refuse to guess among multiple old invoices, preserving the original safety guard.
+- Files:
+  - `lib/student-contract.ts`
+  - `tests/student-contract-renewal-invoice.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - void the mistakenly created first-purchase contract for 汪宇轩
+  - create a renewal contract from the package contract workspace
+  - generate the sign link and confirm the parent can submit without returning to the unsigned state
 
 ## 2026-05-15-r147 Ready
 

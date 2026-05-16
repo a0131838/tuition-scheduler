@@ -126,6 +126,20 @@ function contractRenewalTopUpMarker(contractId: string) {
   return `${CONTRACT_RENEWAL_TOP_UP_MARKER_PREFIX}${contractId}`;
 }
 
+export function shouldAutoLinkOnlyInvoiceForSignedContract(input: {
+  flowType: StudentContractFlowType;
+  invoiceCount: number;
+}) {
+  return input.flowType !== StudentContractFlowType.RENEWAL && input.invoiceCount === 1;
+}
+
+export function shouldBlockAmbiguousInvoicesForSignedContract(input: {
+  flowType: StudentContractFlowType;
+  invoiceCount: number;
+}) {
+  return input.flowType !== StudentContractFlowType.RENEWAL && input.invoiceCount > 1;
+}
+
 function canonicalStudentContractStatus(status: StudentContractStatus) {
   switch (status) {
     case StudentContractStatus.INFO_PENDING:
@@ -1000,7 +1014,12 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     };
   }
 
-  if (billing.invoices.length === 1) {
+  if (
+    shouldAutoLinkOnlyInvoiceForSignedContract({
+      flowType: row.flowType,
+      invoiceCount: billing.invoices.length,
+    })
+  ) {
     const onlyInvoice = billing.invoices[0];
     return {
       invoiceId: onlyInvoice.id,
@@ -1010,7 +1029,12 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     };
   }
 
-  if (billing.invoices.length > 1) {
+  if (
+    shouldBlockAmbiguousInvoicesForSignedContract({
+      flowType: row.flowType,
+      invoiceCount: billing.invoices.length,
+    })
+  ) {
     throw new Error("This package already has multiple invoices. Please review billing manually before signing.");
   }
 
