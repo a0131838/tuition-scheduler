@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-17-r149
+
+- Release ID: `2026-05-17-r149`
+- Date/Time (Asia/Shanghai): `2026-05-17`
+- Deployment status: `READY`
+- Scope: allow renewal-contract creation to reuse complete parent information from a voided first-purchase intake contract.
+- Key files:
+  - `lib/student-contract.ts`
+  - `tests/student-contract-renewal-invoice.test.ts`
+  - `docs/tasks/TASK-20260517-renewal-parent-info-from-void-contract.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. The change only expands the statuses searched for reusable parent information to include voided contracts; incomplete parent information is still rejected by the existing parser. It does not change invoice creation, receipt handling, package balances, scheduling, or attendance.
+- Verification:
+  - `npx tsx --test tests/student-contract-renewal-invoice.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-17-r149`.
+
+---
+
 ## 2026-05-16-r148
 
 - Release ID: `2026-05-16-r148`

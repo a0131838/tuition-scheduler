@@ -174,6 +174,18 @@ function openStatusesForPackageReuse() {
   ];
 }
 
+export function reusableParentInfoContractStatuses() {
+  return [
+    StudentContractStatus.READY_TO_SIGN,
+    StudentContractStatus.SIGNED,
+    StudentContractStatus.INVOICE_CREATED,
+    StudentContractStatus.CONTRACT_DRAFT,
+    StudentContractStatus.INTAKE_SUBMITTED,
+    StudentContractStatus.INFO_SUBMITTED,
+    StudentContractStatus.VOID,
+  ];
+}
+
 function defaultContractTypeLabel(flowType: StudentContractFlowType) {
   return flowType === StudentContractFlowType.RENEWAL
     ? "Renewal tuition agreement / 续费合同"
@@ -457,14 +469,7 @@ async function getLatestReusableParentInfoForStudent(studentId: string, excludeP
       studentId,
       packageId: excludePackageId ? { not: excludePackageId } : undefined,
       status: {
-        in: [
-          StudentContractStatus.READY_TO_SIGN,
-          StudentContractStatus.SIGNED,
-          StudentContractStatus.INVOICE_CREATED,
-          StudentContractStatus.CONTRACT_DRAFT,
-          StudentContractStatus.INTAKE_SUBMITTED,
-          StudentContractStatus.INFO_SUBMITTED,
-        ],
+        in: reusableParentInfoContractStatuses(),
       },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],

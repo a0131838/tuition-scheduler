@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { StudentContractFlowType } from "@prisma/client";
+import { StudentContractFlowType, StudentContractStatus } from "@prisma/client";
 import {
+  reusableParentInfoContractStatuses,
   shouldAutoLinkOnlyInvoiceForSignedContract,
   shouldBlockAmbiguousInvoicesForSignedContract,
 } from "../lib/student-contract";
@@ -38,4 +39,8 @@ test("renewal signing ignores historical package invoices", () => {
     }),
     false,
   );
+});
+
+test("renewal parent info can be reused from voided submitted contracts", () => {
+  assert.equal(reusableParentInfoContractStatuses().includes(StudentContractStatus.VOID), true);
 });
