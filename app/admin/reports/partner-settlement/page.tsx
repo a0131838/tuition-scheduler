@@ -239,6 +239,9 @@ async function createOnlineSettlementAction(formData: FormData) {
   }
 
   const rates = await getSettlementRates();
+  const closeoutNote = candidate.isPartialCloseout
+    ? ` | Partial closeout: forfeited ${candidate.forfeitedMinutes} mins`
+    : "";
   const existingReverted = await prisma.partnerSettlement.findFirst({
     where: {
       packageTxnId,
@@ -266,7 +269,7 @@ async function createOnlineSettlementAction(formData: FormData) {
           settlementEndAt: candidate.settlementEndAt,
           revertedAt: null,
           revertedBy: null,
-          note: `Online package tranche settled: ${candidate.courseName} | packageId=${candidate.packageId} | packageTxnId=${candidate.packageTxnId} | ${formatBusinessDateOnly(candidate.settlementStartAt)} -> ${formatBusinessDateOnly(candidate.settlementEndAt)}`,
+          note: `Online package tranche settled: ${candidate.courseName} | packageId=${candidate.packageId} | packageTxnId=${candidate.packageTxnId} | ${formatBusinessDateOnly(candidate.settlementStartAt)} -> ${formatBusinessDateOnly(candidate.settlementEndAt)}${closeoutNote}`,
         },
         select: { id: true },
       });
@@ -283,7 +286,7 @@ async function createOnlineSettlementAction(formData: FormData) {
           amount: calcAmountByRatePer45(candidate.purchasedMinutes, rates.onlineRatePer45),
           settlementStartAt: candidate.settlementStartAt,
           settlementEndAt: candidate.settlementEndAt,
-          note: `Online package tranche settled: ${candidate.courseName} | packageId=${candidate.packageId} | packageTxnId=${candidate.packageTxnId} | ${formatBusinessDateOnly(candidate.settlementStartAt)} -> ${formatBusinessDateOnly(candidate.settlementEndAt)}`,
+          note: `Online package tranche settled: ${candidate.courseName} | packageId=${candidate.packageId} | packageTxnId=${candidate.packageTxnId} | ${formatBusinessDateOnly(candidate.settlementStartAt)} -> ${formatBusinessDateOnly(candidate.settlementEndAt)}${closeoutNote}`,
         },
         select: { id: true },
       });
@@ -583,6 +586,8 @@ export default async function PartnerSettlementPage({
     purchaseAt: Date;
     purchasedMinutes: number;
     purchasedHours: number;
+    forfeitedMinutes: number;
+    isPartialCloseout: boolean;
     amount: number;
     settlementStartAt: Date;
     settlementEndAt: Date;
@@ -1640,7 +1645,14 @@ export default async function PartnerSettlementPage({
                 <td>{formatBusinessDateOnly(p.purchaseAt)}</td>
                 <td>{formatBusinessDateOnly(p.settlementStartAt)}</td>
                 <td>{formatBusinessDateOnly(p.settlementEndAt)}</td>
-                <td>{p.packageStatus}</td>
+                <td>
+                  {p.packageStatus}
+                  {p.isPartialCloseout ? (
+                    <div style={{ color: "#92400e", fontSize: 12 }}>
+                      {t(lang, `Partial closeout, forfeited ${p.forfeitedMinutes} mins`, `部分结清，核销 ${p.forfeitedMinutes} 分钟`)}
+                    </div>
+                  ) : null}
+                </td>
                 <td>{p.purchasedHours}</td>
                 <td>SGD {Number(p.amount).toFixed(2)}</td>
                 <td>

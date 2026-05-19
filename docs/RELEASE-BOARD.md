@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-16`
+- Last checked: `2026-05-19`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-17-r149` (renewal parent-info reuse from voided intake contracts), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-19-r150` (New Oriental online partner partial closeout settlement), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -68,6 +68,7 @@
 - Admin-sidebar-transport risk: `2026-05-15-r147` changes admin/manager navigation visibility only so managers can find transport billing and related finance document pages from the sidebar; it does not change billing permissions or transaction logic.
 - Renewal-contract-history risk: `2026-05-16-r148` changes renewal contract signing so legacy package invoices no longer block the renewal flow; first-purchase contracts keep the multi-invoice ambiguity guard, and finance should still verify the newly generated renewal invoice after signing.
 - Renewal-parent-info risk: `2026-05-17-r149` allows complete parent profiles on voided contracts to unlock renewal-contract creation; operators should still avoid reusing parent info if they voided the old contract specifically because the parent details were wrong.
+- XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by actual consumed minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
 
 ## Process Guard (Installed)
 
@@ -88,6 +89,25 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-19-r150 Ready
+
+- Scope: allow New Oriental online package-end settlement to handle manually expired packages where a parent forfeits the remaining balance.
+- Business impact:
+  - Staff can close a New Oriental online package, write off the unused balance, and settle only the actually consumed minutes.
+  - Active incomplete online partner packages still do not appear as settlement candidates.
+  - No attendance deduction, scheduling, direct-billing, receipt, payroll, or OpenClaw behavior changes.
+- Files:
+  - `lib/partner-settlement.ts`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `tests/partner-settlement.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/partner-settlement.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - apply the 苏闻熹 one-package closeout data fix only after confirming the same package still has 90 remaining minutes and no settlements
+  - confirm 苏闻熹 has one pending online partner settlement for 13.5 hours, with 90 minutes noted as forfeited
+  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
 
 ## 2026-05-17-r149 Ready
 

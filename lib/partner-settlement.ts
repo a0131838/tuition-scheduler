@@ -13,9 +13,36 @@ export type OnlinePartnerSettlementCandidate = {
   purchaseAt: Date;
   purchasedMinutes: number;
   purchasedHours: number;
+  forfeitedMinutes: number;
+  isPartialCloseout: boolean;
   settlementStartAt: Date;
   settlementEndAt: Date;
 };
+
+export function resolveOnlineSettlementTrancheMinutes(input: {
+  packageStatus: string;
+  purchasedMinutes: number;
+  consumedMinutes: number;
+  remainingMinutes: number;
+}) {
+  const purchasedMinutes = Math.max(0, Number(input.purchasedMinutes ?? 0));
+  const consumedMinutes = Math.max(0, Number(input.consumedMinutes ?? 0));
+  const remainingMinutes = Math.max(0, Number(input.remainingMinutes ?? 0));
+  if (purchasedMinutes <= 0 || consumedMinutes <= 0) {
+    return { settledMinutes: 0, forfeitedMinutes: 0, isPartialCloseout: false };
+  }
+  if (remainingMinutes <= 0) {
+    return { settledMinutes: purchasedMinutes, forfeitedMinutes: 0, isPartialCloseout: false };
+  }
+  if (input.packageStatus === "EXPIRED") {
+    return {
+      settledMinutes: Math.min(consumedMinutes, purchasedMinutes),
+      forfeitedMinutes: Math.min(remainingMinutes, purchasedMinutes),
+      isPartialCloseout: true,
+    };
+  }
+  return { settledMinutes: 0, forfeitedMinutes: 0, isPartialCloseout: false };
+}
 
 export async function listOnlinePartnerSettlementCandidates(input: {
   sourceChannelId: string;
@@ -154,9 +181,15 @@ export async function listOnlinePartnerSettlementCandidates(input: {
     }
 
     for (const tranche of tranches) {
-      const purchasedMinutes = Math.max(0, Number(tranche.txn.deltaMinutes ?? 0));
+      const originalPurchasedMinutes = Math.max(0, Number(tranche.txn.deltaMinutes ?? 0));
+      const resolved = resolveOnlineSettlementTrancheMinutes({
+        packageStatus: tranche.txn.package.status,
+        purchasedMinutes: originalPurchasedMinutes,
+        consumedMinutes: tranche.consumedMinutes,
+        remainingMinutes: tranche.remainingMinutes,
+      });
+      const purchasedMinutes = resolved.settledMinutes;
       if (purchasedMinutes <= 0) continue;
-      if (tranche.remainingMinutes > 0) continue;
       if (!tranche.settlementStartAt || !tranche.settlementEndAt) continue;
       if (blockedTxnIds.has(tranche.txn.id)) continue;
 
@@ -171,6 +204,8 @@ export async function listOnlinePartnerSettlementCandidates(input: {
         purchaseAt: tranche.txn.createdAt,
         purchasedMinutes,
         purchasedHours: Number((purchasedMinutes / 60).toFixed(2)),
+        forfeitedMinutes: resolved.forfeitedMinutes,
+        isPartialCloseout: resolved.isPartialCloseout,
         settlementStartAt: tranche.settlementStartAt,
         settlementEndAt: tranche.settlementEndAt,
       });

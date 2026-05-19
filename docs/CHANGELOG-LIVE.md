@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-19-r150
+
+- Release ID: `2026-05-19-r150`
+- Date/Time (Asia/Shanghai): `2026-05-19`
+- Deployment status: `READY`
+- Scope: allow a manually expired New Oriental online partner package with forfeited remaining minutes to be settled by actual consumed minutes.
+- Key files:
+  - `lib/partner-settlement.ts`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `tests/partner-settlement.test.ts`
+  - `docs/tasks/TASK-20260519-xdf-online-partial-closeout.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. The new settlement candidate branch only applies to `ONLINE_PACKAGE_END` packages after the package status is `EXPIRED`; active incomplete packages still do not become settlement candidates. It does not change attendance deduction, scheduling, direct-billing invoices, receipts, payroll, or OpenClaw.
+- Verification:
+  - read-only production data check for 苏闻熹 before changes: one New Oriental online package, 900 total minutes, 810 deducted minutes, 90 remaining minutes, no future sessions, no existing settlements
+  - `npx tsx --test tests/partner-settlement.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-19-r150`.
+
+---
+
 ## 2026-05-17-r149
 
 - Release ID: `2026-05-17-r149`
