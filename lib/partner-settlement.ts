@@ -36,7 +36,7 @@ export function resolveOnlineSettlementTrancheMinutes(input: {
   }
   if (input.packageStatus === "EXPIRED") {
     return {
-      settledMinutes: Math.min(consumedMinutes, purchasedMinutes),
+      settledMinutes: purchasedMinutes,
       forfeitedMinutes: Math.min(remainingMinutes, purchasedMinutes),
       isPartialCloseout: true,
     };

@@ -14,7 +14,7 @@ test("online partner settlement waits for active incomplete packages", () => {
   );
 });
 
-test("online partner settlement allows expired partial closeout by consumed minutes", () => {
+test("online partner settlement allows expired partial closeout by purchased minutes", () => {
   assert.deepEqual(
     resolveOnlineSettlementTrancheMinutes({
       packageStatus: "EXPIRED",
@@ -22,7 +22,7 @@ test("online partner settlement allows expired partial closeout by consumed minu
       consumedMinutes: 810,
       remainingMinutes: 90,
     }),
-    { settledMinutes: 810, forfeitedMinutes: 90, isPartialCloseout: true }
+    { settledMinutes: 900, forfeitedMinutes: 90, isPartialCloseout: true }
   );
 });
 

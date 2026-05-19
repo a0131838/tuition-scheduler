@@ -68,7 +68,7 @@
 - Admin-sidebar-transport risk: `2026-05-15-r147` changes admin/manager navigation visibility only so managers can find transport billing and related finance document pages from the sidebar; it does not change billing permissions or transaction logic.
 - Renewal-contract-history risk: `2026-05-16-r148` changes renewal contract signing so legacy package invoices no longer block the renewal flow; first-purchase contracts keep the multi-invoice ambiguity guard, and finance should still verify the newly generated renewal invoice after signing.
 - Renewal-parent-info risk: `2026-05-17-r149` allows complete parent profiles on voided contracts to unlock renewal-contract creation; operators should still avoid reusing parent info if they voided the old contract specifically because the parent details were wrong.
-- XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by actual consumed minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
+- XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by full purchased minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
 
 ## Process Guard (Installed)
 
@@ -94,7 +94,7 @@
 
 - Scope: allow New Oriental online package-end settlement to handle manually expired packages where a parent forfeits the remaining balance.
 - Business impact:
-  - Staff can close a New Oriental online package, write off the unused balance, and settle only the actually consumed minutes.
+  - Staff can close a New Oriental online package, write off the unused balance, and settle the full purchased package minutes.
   - Active incomplete online partner packages still do not appear as settlement candidates.
   - No attendance deduction, scheduling, direct-billing, receipt, payroll, or OpenClaw behavior changes.
 - Files:
@@ -106,7 +106,7 @@
   - `npm run build`
 - Post-deploy verification:
   - apply the 苏闻熹 one-package closeout data fix only after confirming the same package still has 90 remaining minutes and no settlements
-  - confirm 苏闻熹 has one pending online partner settlement for 13.5 hours, with 90 minutes noted as forfeited
+  - confirm 苏闻熹 has one pending online partner settlement for 15 hours / SGD 1400, with 90 minutes noted as forfeited
   - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
 
 ## 2026-05-17-r149 Ready

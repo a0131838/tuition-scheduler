@@ -18,13 +18,14 @@ Handle the New Oriental student 苏闻熹, whose online partner package was not 
 
 ## Change
 
-Allow online partner settlement candidates to include an `EXPIRED` package whose remaining minutes were forfeited, settling by actual consumed attendance minutes instead of requiring the original purchase tranche to be fully consumed.
+Allow online partner settlement candidates to include an `EXPIRED` package whose remaining minutes were forfeited, settling by the original full purchase tranche instead of requiring every minute to be physically consumed.
 
 ## Guardrails
 
 - Active incomplete online partner packages remain excluded from settlement candidates.
 - Fully consumed online partner packages keep the existing settlement behavior.
 - The closeout note records forfeited minutes.
+- 苏闻熹 should settle 900 purchased minutes = 15 hours = SGD 1400 at the current SGD 70 / 45-minute rate.
 - No scheduling, attendance deduction, direct-billing invoice, receipt, payroll, or OpenClaw logic changes.
 
 ## Verification

@@ -20,7 +20,7 @@ This file is the single source of truth for what changed in production.
 - Release ID: `2026-05-19-r150`
 - Date/Time (Asia/Shanghai): `2026-05-19`
 - Deployment status: `READY`
-- Scope: allow a manually expired New Oriental online partner package with forfeited remaining minutes to be settled by actual consumed minutes.
+- Scope: allow a manually expired New Oriental online partner package with forfeited remaining minutes to be settled by the full purchased package minutes.
 - Key files:
   - `lib/partner-settlement.ts`
   - `app/admin/reports/partner-settlement/page.tsx`
