@@ -154,20 +154,39 @@ function TextAreaField({ name, label, defaultValue }: { name: string; label: str
   );
 }
 
+function checklistDoneCount(entry: { checklist: Record<ManagerReflectionChecklistKey, boolean> }) {
+  return MANAGER_REFLECTION_CHECKLIST.filter((item) => Boolean(entry.checklist[item.key])).length;
+}
+
+function ProgressBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#f59e0b" : "#dc2626" }} />
+    </div>
+  );
+}
+
 export default async function ManagerQualityPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; saved?: string }>;
+  searchParams?: Promise<{ date?: string; saved?: string; historyDays?: string; incompleteOnly?: string }>;
 }) {
   const user = await requireManager();
   const lang = await getLang();
   const sp = await searchParams;
+  const historyDays = [7, 14, 30, 90].includes(Number(sp?.historyDays)) ? Number(sp?.historyDays) : 14;
+  const incompleteOnly = sp?.incompleteOnly === "1";
   const data = await loadManagerQualityWorkspace({
     managerEmail: user.email,
     managerRole: user.role,
     date: sp?.date,
+    historyDays,
   });
   const entry = data.currentEntry;
+  const shownReflectionEntries = incompleteOnly
+    ? data.recentEntries.filter((item) => checklistDoneCount(item) < MANAGER_REFLECTION_CHECKLIST.length)
+    : data.recentEntries;
   const leadDeskRows = data.leadDeskGroups.flatMap((group) =>
     group.rows.map((row) => ({
       ...row,
@@ -392,7 +411,7 @@ export default async function ManagerQualityPage({
         <MetricCard label={t(lang, "Lead Desk sessions", "Lead Desk 课次")} value={data.leadDeskTotals.sessions} detail={`${data.leadDeskTotals.teachers} teachers / 老师`} />
         <MetricCard label={t(lang, "Students scheduled", "当日学生")} value={data.leadDeskTotals.students} detail={data.date} />
         <MetricCard label={t(lang, "Feedback issues", "反馈质量提醒")} value={data.feedbackSummary.issueCount} detail={`${data.feedbackSummary.recentCount} recent feedbacks / 近 7 天反馈`} />
-        <MetricCard label={t(lang, "Reflection completion", "复盘完成率")} value={`${data.kpiSummary.completionRate}%`} detail={`${data.kpiSummary.completedLogDays}/${data.kpiSummary.logDays} days / 近 14 天`} />
+        <MetricCard label={t(lang, "Reflection completion", "复盘完成率")} value={`${data.kpiSummary.completionRate}%`} detail={`${data.kpiSummary.completedLogDays}/${data.kpiSummary.logDays} days / 近 ${data.historyDays} 天`} />
       </section>
 
       <section className="lead-desk-print" style={{ ...panelStyle, overflow: "hidden" }}>
@@ -553,6 +572,112 @@ export default async function ManagerQualityPage({
             )}
           </section>
         </aside>
+      </section>
+
+      <section className="no-print" style={{ ...panelStyle, padding: 18, display: "grid", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div>
+            <h2 style={sectionTitleStyle}>{t(lang, "Reflection History Dashboard", "历史复盘看板")}</h2>
+            <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
+              {t(
+                lang,
+                "Review previous manager feedback, checklist completion, and missed workflow items.",
+                "查看之前提交的管理复盘、检查项完成率，以及经常漏掉的流程项。",
+              )}
+            </p>
+          </div>
+          <form action="/admin/manager/quality" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input type="hidden" name="date" value={data.date} />
+            <select name="historyDays" defaultValue={String(data.historyDays)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 10px" }}>
+              <option value="7">{t(lang, "Last 7 days", "近 7 天")}</option>
+              <option value="14">{t(lang, "Last 14 days", "近 14 天")}</option>
+              <option value="30">{t(lang, "Last 30 days", "近 30 天")}</option>
+              <option value="90">{t(lang, "Last 90 days", "近 90 天")}</option>
+            </select>
+            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, color: "#334155", fontWeight: 800 }}>
+              <input type="checkbox" name="incompleteOnly" value="1" defaultChecked={incompleteOnly} />
+              {t(lang, "Only incomplete", "只看未完成")}
+            </label>
+            <button type="submit" style={{ border: "1px solid #1d4ed8", background: "#1d4ed8", color: "#fff", borderRadius: 8, padding: "9px 12px", fontWeight: 800 }}>
+              {t(lang, "Apply", "应用")}
+            </button>
+          </form>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          <MetricCard label={t(lang, "Submitted days", "已提交天数")} value={data.kpiSummary.logDays} detail={t(lang, `In selected ${data.historyDays}-day window`, `所选 ${data.historyDays} 天范围内`)} />
+          <MetricCard label={t(lang, "Fully completed days", "全部完成天数")} value={data.kpiSummary.completedLogDays} detail={`${data.kpiSummary.completionRate}%`} />
+          <MetricCard label={t(lang, "Checklist item completion", "检查项完成率")} value={`${data.kpiSummary.checklistCompletionRate}%`} detail={t(lang, "All checklist items combined", "所有检查项合计")} />
+          <MetricCard label={t(lang, "Incomplete days", "未完成天数")} value={Math.max(0, data.kpiSummary.logDays - data.kpiSummary.completedLogDays)} detail={incompleteOnly ? t(lang, "Filtered below", "下方已筛选") : ""} />
+        </div>
+
+        <section style={{ display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>{t(lang, "Checklist Completion by Item", "各检查项完成率")}</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+            {data.kpiSummary.itemStats.map((item) => (
+              <div key={item.key} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <strong style={{ color: "#0f172a", fontSize: 13 }}>{t(lang, item.en, item.zh)}</strong>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: "#1e293b" }}>{item.rate}%</span>
+                </div>
+                <ProgressBar value={item.rate} />
+                <div style={mutedStyle}>{item.done}/{item.total} {t(lang, "submitted days checked", "个提交日已勾选")}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ display: "grid", gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>{t(lang, "Previous Feedback", "之前提交的复盘")}</h3>
+          {shownReflectionEntries.length === 0 ? (
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, ...mutedStyle }}>
+              {t(lang, "No reflection entries match this filter.", "当前筛选下没有复盘记录。")}
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", minWidth: 980, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>{t(lang, "Date", "日期")}</th>
+                    <th style={thStyle}>{t(lang, "Checklist", "检查项")}</th>
+                    <th style={thStyle}>{t(lang, "What went well", "做得好的地方")}</th>
+                    <th style={thStyle}>{t(lang, "Did not go well", "不顺的地方")}</th>
+                    <th style={thStyle}>{t(lang, "Could be better", "可改进")}</th>
+                    <th style={thStyle}>{t(lang, "Follow-up actions", "后续跟进")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shownReflectionEntries.map((row) => {
+                    const done = checklistDoneCount(row);
+                    const total = MANAGER_REFLECTION_CHECKLIST.length;
+                    return (
+                      <tr key={row.id}>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                          <div style={{ fontWeight: 900 }}>{row.date}</div>
+                          <div style={mutedStyle}>{row.updatedAt.slice(0, 10)}</div>
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "grid", gap: 6 }}>
+                            <StatusPill tone={done === total ? "success" : done > 0 ? "warning" : "danger"}>{done}/{total}</StatusPill>
+                            {MANAGER_REFLECTION_CHECKLIST.map((item) => (
+                              <div key={item.key} style={{ fontSize: 12, color: row.checklist[item.key] ? "#166534" : "#991b1b" }}>
+                                {row.checklist[item.key] ? "✓" : "×"} {t(lang, item.en, item.zh)}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={tdStyle}>{row.wentWell || "-"}</td>
+                        <td style={tdStyle}>{row.didNotGoWell || "-"}</td>
+                        <td style={tdStyle}>{row.couldBeBetter || "-"}</td>
+                        <td style={tdStyle}>{row.followUpActions || "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </section>
     </main>
   );

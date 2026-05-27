@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-27-r153
+
+- Release ID: `2026-05-27-r153`
+- Date/Time (Asia/Shanghai): `2026-05-27`
+- Deployment status: `READY`
+- Scope: add a manager quality reflection history dashboard showing previous feedback, checklist completion rate, per-item completion, and an incomplete-only filter.
+- Key files:
+  - `app/admin/manager/quality/page.tsx`
+  - `lib/manager-quality-workspace.ts`
+  - `lib/manager-reflection-summary.ts`
+  - `tests/manager-quality-workspace.test.ts`
+  - `docs/tasks/TASK-20260527-manager-quality-history-dashboard.md`
+- Risk impact (if any): Low. The dashboard reads existing manager reflection entries from `AppSetting` and does not change storage shape, approvals, scheduling, feedback submission, billing, payroll, or OpenClaw behavior.
+- Verification:
+  - `npx tsx --test tests/manager-quality-workspace.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-27-r153`.
+
+---
+
 ## 2026-05-27-r152
 
 - Release ID: `2026-05-27-r152`

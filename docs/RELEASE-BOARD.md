@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-27-r152` (bank-transfer fields for tutor payment profiles), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-27-r153` (manager quality reflection history dashboard), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -71,6 +71,7 @@
 - XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by full purchased minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
 - Tutor-payment-profile risk: `2026-05-27-r151` adds full PayNow details to finance payout exports, so finance users must treat generated CSV/XLSX files as sensitive payment data.
 - Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
+- Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
 
 ## Process Guard (Installed)
 
@@ -91,6 +92,27 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-27-r153 Ready
+
+- Scope: add a reflection history dashboard to Manager Quality so managers can review previous feedback and checklist completion rates.
+- Business impact:
+  - Managers can choose 7, 14, 30, or 90-day history windows.
+  - The page shows submitted days, fully completed days, all-item checklist completion rate, incomplete day count, per-checklist-item completion, and previous feedback text.
+  - Managers can filter the history table to only incomplete reflection days.
+  - Existing reflection submission, Lead Desk snapshots, feedback snapshots, approvals, scheduling, billing, payroll, and OpenClaw behavior are unchanged.
+- Files:
+  - `app/admin/manager/quality/page.tsx`
+  - `lib/manager-quality-workspace.ts`
+  - `lib/manager-reflection-summary.ts`
+  - `tests/manager-quality-workspace.test.ts`
+- Verification before deploy:
+  - `npx tsx --test tests/manager-quality-workspace.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
+  - confirm `/admin/manager/quality` is still protected by manager/admin auth
+  - confirm empty or low-history managers see the dashboard without errors
 
 ## 2026-05-27-r152 Ready
 

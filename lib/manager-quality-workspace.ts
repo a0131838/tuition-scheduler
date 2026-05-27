@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly, parseBusinessDateStart } from "@/lib/date-only";
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
+import { summarizeManagerReflectionHistory } from "@/lib/manager-reflection-summary";
 
 const MANAGER_REFLECTION_KEY = "manager_daily_reflection_v1";
 
@@ -198,11 +199,13 @@ export async function loadManagerQualityWorkspace(input: {
   managerEmail: string;
   managerRole: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT";
   date?: string | null;
+  historyDays?: number | null;
 }) {
   const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : formatBusinessDateOnly(new Date());
+  const historyDays = [7, 14, 30, 90].includes(Number(input.historyDays)) ? Number(input.historyDays) : 14;
   const { start, end } = dayRange(date);
   const last7Start = addDays(start, -6);
-  const last14Start = addDays(start, -13);
+  const historyStart = addDays(start, -(historyDays - 1));
 
   const [
     sessions,
@@ -342,14 +345,13 @@ export async function loadManagerQualityWorkspace(input: {
   const managerEmail = normalizeEmail(input.managerEmail);
   const currentEntry = reflectionStore.entries.find((entry) => entry.managerEmail === managerEmail && entry.date === date) ?? null;
   const recentEntries = reflectionStore.entries
-    .filter((entry) => entry.managerEmail === managerEmail && entry.date >= formatBusinessDateOnly(last14Start) && entry.date <= date)
+    .filter((entry) => entry.managerEmail === managerEmail && entry.date >= formatBusinessDateOnly(historyStart) && entry.date <= date)
     .sort((a, b) => b.date.localeCompare(a.date));
-  const completedEntries = recentEntries.filter((entry) => Object.values(entry.checklist).every(Boolean));
-  const checklistItemsDone = recentEntries.reduce((sum, entry) => sum + Object.values(entry.checklist).filter(Boolean).length, 0);
-  const checklistItemsTotal = recentEntries.length * MANAGER_REFLECTION_CHECKLIST.length;
+  const reflectionSummary = summarizeManagerReflectionHistory(recentEntries, MANAGER_REFLECTION_CHECKLIST);
 
   return {
     date,
+    historyDays,
     leadDeskGroups,
     leadDeskTotals: {
       sessions: leadDeskRows.length,
@@ -372,10 +374,11 @@ export async function loadManagerQualityWorkspace(input: {
     currentEntry,
     recentEntries,
     kpiSummary: {
-      logDays: recentEntries.length,
-      completedLogDays: completedEntries.length,
-      completionRate: recentEntries.length ? Math.round((completedEntries.length / recentEntries.length) * 100) : 0,
-      checklistCompletionRate: checklistItemsTotal ? Math.round((checklistItemsDone / checklistItemsTotal) * 100) : 0,
+      logDays: reflectionSummary.logDays,
+      completedLogDays: reflectionSummary.completedLogDays,
+      completionRate: reflectionSummary.completionRate,
+      checklistCompletionRate: reflectionSummary.checklistCompletionRate,
+      itemStats: reflectionSummary.itemStats,
     },
   };
 }
