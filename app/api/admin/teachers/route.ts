@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { TeachingLanguage } from "@prisma/client";
+import { allocateNextTutorCode, cleanTeacherPaymentProfile } from "@/lib/teacher-payment-profile";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   const offlineShanghai = !!body?.offlineShanghai;
   const offlineSingapore = !!body?.offlineSingapore;
   const subjectIds = Array.isArray(body?.subjectIds) ? body.subjectIds.map((v: any) => String(v)).filter(Boolean) : [];
+  const paymentProfile = cleanTeacherPaymentProfile(body ?? {});
 
   if (!name) return bad("Name is required", 409);
 
@@ -43,22 +45,32 @@ export async function POST(req: Request) {
     return bad("Other language is required", 409);
   }
 
-  const created = await prisma.teacher.create({
-    data: {
-      name,
-      nationality: nationality || null,
-      almaMater: almaMater || null,
-      intro: intro || null,
-      yearsExperience,
-      teachingLanguage,
-      teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
-      offlineShanghai,
-      offlineSingapore,
-      subjects: { connect: subjectIds.map((id: string) => ({ id })) },
-    },
-    select: { id: true },
-  });
+  let created: { id: string };
+  try {
+    created = await prisma.teacher.create({
+      data: {
+        name,
+        tutorCode: paymentProfile.tutorCode || (await allocateNextTutorCode()),
+        nationality: nationality || null,
+        almaMater: almaMater || null,
+        intro: intro || null,
+        yearsExperience,
+        teachingLanguage,
+        teachingLanguageOther: teachingLanguage ? null : teachingLanguageOther || null,
+        offlineShanghai,
+        offlineSingapore,
+        payNowType: paymentProfile.payNowType,
+        payNowValue: paymentProfile.payNowValue,
+        payNowName: paymentProfile.payNowName,
+        payNowNote: paymentProfile.payNowNote,
+        subjects: { connect: subjectIds.map((id: string) => ({ id })) },
+      },
+      select: { id: true },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") return bad("Tutor code already exists", 409);
+    throw err;
+  }
 
   return Response.json({ ok: true, id: created.id }, { status: 201 });
 }
-

@@ -183,6 +183,7 @@ model Room {
 model Teacher {
   id   String @id @default(uuid())
   name String
+  tutorCode String? @unique
 
   nationality           String?
   almaMater             String?
@@ -192,6 +193,10 @@ model Teacher {
   teachingLanguageOther String?
   offlineShanghai       Boolean           @default(false)
   offlineSingapore      Boolean           @default(false)
+  payNowType            String?
+  payNowValue           String?
+  payNowName            String?
+  payNowNote            String?
 
   subjectCourseId String?
   subjectCourse   Subject?  @relation("SubjectCourse", fields: [subjectCourseId], references: [id])

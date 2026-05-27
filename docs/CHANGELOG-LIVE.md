@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-27-r151
+
+- Release ID: `2026-05-27-r151`
+- Date/Time (Asia/Shanghai): `2026-05-27`
+- Deployment status: `READY`
+- Scope: add stable tutor serial numbers and PayNow payment profiles, with finance export columns for tutor payroll and expense-claim reimbursements.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260527090000_add_teacher_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+  - `docs/tasks/TASK-20260527-tutor-code-paynow-profile.md`
+- Risk impact (if any): Low to medium. The migration backfills existing teachers with deterministic `T###` codes and exports full PayNow values for finance payout files. Payroll, tutor-cost, and expense amounts remain unchanged.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts`
+  - `npx tsx --test tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts tests/teacher-payment-profile.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-27-r151`.
+
+---
+
 ## 2026-05-19-r150
 
 - Release ID: `2026-05-19-r150`

@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-19`
+- Last checked: `2026-05-27`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-19-r150` (New Oriental online partner partial closeout settlement), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-27-r151` (tutor serial number and PayNow profile exports), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -69,6 +69,7 @@
 - Renewal-contract-history risk: `2026-05-16-r148` changes renewal contract signing so legacy package invoices no longer block the renewal flow; first-purchase contracts keep the multi-invoice ambiguity guard, and finance should still verify the newly generated renewal invoice after signing.
 - Renewal-parent-info risk: `2026-05-17-r149` allows complete parent profiles on voided contracts to unlock renewal-contract creation; operators should still avoid reusing parent info if they voided the old contract specifically because the parent details were wrong.
 - XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by full purchased minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
+- Tutor-payment-profile risk: `2026-05-27-r151` adds full PayNow details to finance payout exports, so finance users must treat generated CSV/XLSX files as sensitive payment data.
 
 ## Process Guard (Installed)
 
@@ -89,6 +90,38 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-27-r151 Ready
+
+- Scope: add permanent tutor serial numbers and PayNow payment profiles for tutor payroll and expense-claim reimbursement workflows.
+- Business impact:
+  - Existing teachers receive deterministic `T###` codes during migration; new teachers get the next code automatically unless admin enters one.
+  - Teachers can update their own PayNow details from the teacher portal.
+  - Finance exports for salary slips, tutor cost cut-off, and expense claims include tutor code plus PayNow type/value/name.
+  - Existing payroll amounts, tutor-cost amounts, expense statuses, approvals, scheduling, attendance, and OpenClaw behavior are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260527090000_add_teacher_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/reports/teacher-payroll/page.tsx`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts`
+  - `npx tsx --test tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts tests/teacher-payment-profile.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
+  - confirm teacher payroll export and expense-claim export headers include tutor code and PayNow columns
+  - confirm `/teacher/payment-details` renders for a linked teacher account
 
 ## 2026-05-19-r150 Ready
 

@@ -40,6 +40,7 @@ export default async function TeacherLayout({ children }: { children: React.Reac
       items: [
         { href: "/teacher/payroll", label: t(lang, "My Payroll", "我的工资单") },
         { href: "/teacher/expense-claims", label: t(lang, "My Expense Claims", "我的报销") },
+        { href: "/teacher/payment-details", label: t(lang, "Payment Details", "收款资料") },
         { href: "/teacher/card", label: t(lang, "My Teacher Card", "我的老师名片") },
       ],
     },

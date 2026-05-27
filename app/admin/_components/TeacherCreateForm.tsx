@@ -46,10 +46,20 @@ export default function TeacherCreateForm({
     offlineTeaching: string;
     offlineShanghai: string;
     offlineSingapore: string;
+    tutorCode: string;
+    payNowType: string;
+    payNowMobile: string;
+    payNowNric: string;
+    payNowUen: string;
+    payNowOther: string;
+    payNowValue: string;
+    payNowName: string;
+    payNowNote: string;
     add: string;
   };
   initial?: {
     name?: string;
+    tutorCode?: string | null;
     nationality?: string;
     almaMater?: string;
     intro?: string;
@@ -59,6 +69,10 @@ export default function TeacherCreateForm({
     subjectIds?: string[];
     offlineShanghai?: boolean | null;
     offlineSingapore?: boolean | null;
+    payNowType?: string | null;
+    payNowValue?: string | null;
+    payNowName?: string | null;
+    payNowNote?: string | null;
   };
   teacherId?: string;
   onDone?: () => void;
@@ -116,6 +130,11 @@ export default function TeacherCreateForm({
             teachingLanguageOther: String(fd.get("teachingLanguageOther") ?? ""),
             offlineShanghai: String(fd.get("offlineShanghai") ?? "") === "on",
             offlineSingapore: String(fd.get("offlineSingapore") ?? "") === "on",
+            tutorCode: String(fd.get("tutorCode") ?? ""),
+            payNowType: String(fd.get("payNowType") ?? ""),
+            payNowValue: String(fd.get("payNowValue") ?? ""),
+            payNowName: String(fd.get("payNowName") ?? ""),
+            payNowNote: String(fd.get("payNowNote") ?? ""),
             subjectIds: selectedSubjectIds,
           };
 
@@ -157,10 +176,26 @@ export default function TeacherCreateForm({
     >
       {err ? <div style={{ color: "#b00" }}>{err}</div> : null}
       <input name="name" placeholder={labels.teacherName} defaultValue={initial?.name ?? ""} />
+      <input name="tutorCode" placeholder={labels.tutorCode} defaultValue={initial?.tutorCode ?? ""} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input name="nationality" placeholder={labels.nationality} defaultValue={initial?.nationality ?? ""} />
         <input name="almaMater" placeholder={labels.almaMater} defaultValue={initial?.almaMater ?? ""} />
       </div>
+      <fieldset style={{ border: "1px solid #ddd", borderRadius: 8, padding: 10, display: "grid", gap: 8 }}>
+        <legend style={{ color: "#475569", fontWeight: 700 }}>{labels.payNowType}</legend>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select name="payNowType" defaultValue={initial?.payNowType ?? ""}>
+            <option value="">{labels.payNowType}</option>
+            <option value="MOBILE">{labels.payNowMobile}</option>
+            <option value="NRIC">{labels.payNowNric}</option>
+            <option value="UEN">{labels.payNowUen}</option>
+            <option value="OTHER">{labels.payNowOther}</option>
+          </select>
+          <input name="payNowValue" placeholder={labels.payNowValue} defaultValue={initial?.payNowValue ?? ""} />
+          <input name="payNowName" placeholder={labels.payNowName} defaultValue={initial?.payNowName ?? ""} />
+        </div>
+        <input name="payNowNote" placeholder={labels.payNowNote} defaultValue={initial?.payNowNote ?? ""} />
+      </fieldset>
       <div style={{ color: "#666", fontSize: 12 }}>{labels.almaMaterRule}</div>
       <textarea name="intro" rows={3} placeholder={labels.teacherIntro} defaultValue={initial?.intro ?? ""} />
 
@@ -284,4 +319,3 @@ export default function TeacherCreateForm({
     </form>
   );
 }
-

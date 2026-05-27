@@ -1,6 +1,8 @@
 import { requireAdmin } from '@/lib/auth';
 import { canFinanceOperateExpense, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
 import { formatUTCDateOnly } from '@/lib/date-only';
+import { prisma } from '@/lib/prisma';
+import { formatPayNowType } from '@/lib/teacher-payment-profile';
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? '');
@@ -32,9 +34,24 @@ export async function GET(req: Request) {
     approvedUnpaidOnly,
     archived,
   });
+  const submitterIds = Array.from(new Set(rows.map((row) => row.submitterUserId).filter(Boolean)));
+  const submitters = submitterIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: submitterIds } },
+        select: {
+          id: true,
+          teacher: { select: { tutorCode: true, payNowType: true, payNowValue: true, payNowName: true } },
+        },
+      })
+    : [];
+  const submitterMap = new Map(submitters.map((submitter) => [submitter.id, submitter.teacher]));
   const header = [
     'Claim Ref No',
     'Submitter',
+    'Tutor Code',
+    'PayNow Type',
+    'PayNow ID / Mobile',
+    'PayNow Name',
     'Role',
     'Expense Date',
     'Expense Type',
@@ -58,9 +75,14 @@ export async function GET(req: Request) {
   ];
   const lines = [header.join(',')];
   for (const claim of rows) {
+    const teacher = submitterMap.get(claim.submitterUserId);
     lines.push([
       claim.claimRefNo,
       claim.submitterName,
+      teacher?.tutorCode || '',
+      formatPayNowType(teacher?.payNowType),
+      teacher?.payNowValue || '',
+      teacher?.payNowName || '',
       claim.submitterRole,
       formatUTCDateOnly(claim.expenseDate),
       getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode,

@@ -359,6 +359,7 @@ export default async function TeacherDetailPage({
           <h2 style={{ margin: 0 }}>{t(lang, "Teacher Detail", "老师详情")}</h2>
           <div style={{ color: "#475569", lineHeight: 1.5 }}>
             {teacher.name} <span style={{ color: "#94a3b8" }}>(TCH-{teacher.id.slice(0, 4)}…{teacher.id.slice(-4)})</span>
+            {teacher.tutorCode ? <span style={{ color: "#475569", marginLeft: 8 }}>({teacher.tutorCode})</span> : null}
           </div>
           <div style={{ color: "#475569", fontSize: 14 }}>
             {t(lang, "Use this page to maintain the profile, bind login access, keep 1-1 templates healthy, and preview session generation before writing real sessions.", "这个页面用来维护老师资料、绑定登录账号、维护一对一模版，以及在真正生成课次前先做预览。")}
@@ -432,6 +433,7 @@ export default async function TeacherDetailPage({
           subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
           labels={{
             teacherName: t(lang, "Teacher name", "老师姓名"),
+            tutorCode: t(lang, "Tutor code", "老师编号"),
             nationality: t(lang, "Nationality", "国籍"),
             almaMater: t(lang, "Alma Mater", "毕业学校"),
             almaMaterRule: t(
@@ -455,10 +457,19 @@ export default async function TeacherDetailPage({
             offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
             offlineShanghai: t(lang, "Shanghai", "上海线下"),
             offlineSingapore: t(lang, "Singapore", "新加坡线下"),
+            payNowType: t(lang, "PayNow Type", "PayNow 类型"),
+            payNowMobile: t(lang, "Mobile", "手机号"),
+            payNowNric: t(lang, "NRIC/FIN", "NRIC/FIN"),
+            payNowUen: t(lang, "UEN", "UEN"),
+            payNowOther: t(lang, "Other", "其他"),
+            payNowValue: t(lang, "PayNow ID / Mobile", "PayNow 账号 / 手机号"),
+            payNowName: t(lang, "PayNow Name", "PayNow 收款名"),
+            payNowNote: t(lang, "PayNow Note", "PayNow 备注"),
             add: t(lang, "Save", "保存"),
           }}
           initial={{
             name: teacher.name,
+            tutorCode: teacher.tutorCode ?? "",
             nationality: teacher.nationality ?? "",
             almaMater: teacher.almaMater ?? "",
             intro: teacher.intro ?? "",
@@ -468,6 +479,10 @@ export default async function TeacherDetailPage({
             subjectIds: teacher.subjects.map((s) => s.id),
             offlineShanghai: teacher.offlineShanghai ?? false,
             offlineSingapore: teacher.offlineSingapore ?? false,
+            payNowType: teacher.payNowType ?? "",
+            payNowValue: teacher.payNowValue ?? "",
+            payNowName: teacher.payNowName ?? "",
+            payNowNote: teacher.payNowNote ?? "",
           }}
         />
       </div>
@@ -684,5 +699,4 @@ export default async function TeacherDetailPage({
     </div>
   );
 }
-
 

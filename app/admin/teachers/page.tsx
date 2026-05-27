@@ -161,9 +161,11 @@ export default async function TeachersPage({
     andClauses.push({
       OR: [
         { name: { contains: q, mode: "insensitive" } },
+        { tutorCode: { contains: q, mode: "insensitive" } },
         { nationality: { contains: q, mode: "insensitive" } },
         { almaMater: { contains: q, mode: "insensitive" } },
         { intro: { contains: q, mode: "insensitive" } },
+        { payNowName: { contains: q, mode: "insensitive" } },
         { users: { some: { email: { contains: q, mode: "insensitive" }, role: { in: ["TEACHER", "ADMIN"] } } } },
       ],
     });
@@ -369,6 +371,7 @@ export default async function TeachersPage({
             subjects={subjects.map((s) => ({ id: s.id, name: s.name, courseId: s.courseId, courseName: s.course.name }))}
             labels={{
               teacherName: t(lang, "Teacher name", "老师姓名"),
+              tutorCode: t(lang, "Tutor code (auto if blank)", "老师编号（留空自动生成）"),
               nationality: t(lang, "Nationality", "国籍"),
               almaMater: t(lang, "Alma Mater", "毕业学校"),
               almaMaterRule: t(
@@ -392,6 +395,14 @@ export default async function TeachersPage({
               offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
               offlineShanghai: t(lang, "Shanghai", "上海线下"),
               offlineSingapore: t(lang, "Singapore", "新加坡线下"),
+              payNowType: t(lang, "PayNow Type", "PayNow 类型"),
+              payNowMobile: t(lang, "Mobile", "手机号"),
+              payNowNric: t(lang, "NRIC/FIN", "NRIC/FIN"),
+              payNowUen: t(lang, "UEN", "UEN"),
+              payNowOther: t(lang, "Other", "其他"),
+              payNowValue: t(lang, "PayNow ID / Mobile", "PayNow 账号 / 手机号"),
+              payNowName: t(lang, "PayNow Name", "PayNow 收款名"),
+              payNowNote: t(lang, "PayNow Note", "PayNow 备注"),
               add: t(lang, "Add", "新增"),
             }}
           />
@@ -445,7 +456,7 @@ export default async function TeachersPage({
           }}
           labels={{
             title: t(lang, "Search & Category View", "检索与类目展示"),
-            searchPlaceholder: t(lang, "Search name/intro/email...", "搜索姓名/介绍/邮箱..."),
+            searchPlaceholder: t(lang, "Search name/code/intro/email...", "搜索姓名/编号/介绍/邮箱..."),
             courseAll: t(lang, "Course (all)", "课程（全部）"),
             subjectAll: t(lang, "Subject (all)", "科目（全部）"),
             languageAll: t(lang, "Language (all)", "语言（全部）"),
@@ -519,6 +530,7 @@ export default async function TeachersPage({
         <thead>
           <tr style={{ background: "#f5f5f5" }}>
             <th align="left">{t(lang, "Name", "姓名")}</th>
+            <th align="left">{t(lang, "Tutor Code", "老师编号")}</th>
             <th align="left">{t(lang, "Subject", "科目")}</th>
             <th align="left">{t(lang, "Language", "语言")}</th>
             <th align="left">{t(lang, "Location", "上课地点")}</th>
@@ -538,7 +550,7 @@ export default async function TeachersPage({
               <Fragment key={tch.id}>
                 {groupBy && (idx === 0 || currentGroup !== prevGroup) && (
                   <tr>
-                    <td colSpan={9} style={{ background: "#fff8db", fontWeight: 700 }}>
+                    <td colSpan={11} style={{ background: "#fff8db", fontWeight: 700 }}>
                       {t(lang, "Group", "分组")}: {currentGroup || "-"}
                     </td>
                   </tr>
@@ -546,6 +558,9 @@ export default async function TeachersPage({
                 <tr style={{ borderTop: "1px solid #eee" }}>
                   <td>
                     <a href={`/admin/teachers/${tch.id}`}>{tch.name}</a>
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: 700 }}>{tch.tutorCode ?? "-"}</span>
                   </td>
                   <td>
                     {tch.subjects.length > 0
@@ -622,7 +637,7 @@ export default async function TeachersPage({
           })}
           {sortedTeachers.length === 0 && (
             <tr>
-              <td colSpan={10}>{t(lang, "No teachers yet.", "暂无老师")}</td>
+              <td colSpan={11}>{t(lang, "No teachers yet.", "暂无老师")}</td>
             </tr>
           )}
         </tbody>

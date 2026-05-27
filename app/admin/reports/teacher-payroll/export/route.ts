@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/auth";
 import { getApprovalRoleConfig, areAllApproversConfirmed } from "@/lib/approval-flow";
 import { getLang, type Lang } from "@/lib/i18n";
+import { prisma } from "@/lib/prisma";
+import { formatPayNowType } from "@/lib/teacher-payment-profile";
 import {
   formatCurrencyTotals,
   getTeacherPayrollPublishStatus,
@@ -44,7 +46,14 @@ export async function GET(req: Request) {
     return new Response("Invalid month format. Use YYYY-MM.", { status: 400 });
   }
 
+  const teacherProfiles = await prisma.teacher.findMany({
+    where: { id: { in: data.summaryRows.map((row) => row.teacherId) } },
+    select: { id: true, tutorCode: true, payNowType: true, payNowValue: true, payNowName: true },
+  });
+  const teacherProfileMap = new Map(teacherProfiles.map((teacher) => [teacher.id, teacher]));
+
   const rows = data.summaryRows.filter((row) => {
+    const profile = teacherProfileMap.get(row.teacherId);
     const publish = publishMap.get(row.teacherId) ?? null;
     const managerAllConfirmed = publish
       ? areAllApproversConfirmed(publish.managerApprovedBy, roleConfig.managerApproverEmails)
@@ -54,14 +63,18 @@ export async function GET(req: Request) {
       : false;
     if (pendingOnly && !hasPendingWorkflow) return false;
     if (unsentOnly && Boolean(publish)) return false;
-    if (q && !row.teacherName.toLowerCase().includes(q)) return false;
+    if (q && !`${row.teacherName} ${profile?.tutorCode ?? ""}`.toLowerCase().includes(q)) return false;
     return true;
   });
 
   const header = [
     choose(lang, "Payroll Month", "工资月份"),
     choose(lang, "Scope", "统计口径"),
+    choose(lang, "Tutor Code", "老师编号"),
     choose(lang, "Teacher", "老师"),
+    choose(lang, "PayNow Type", "PayNow 类型"),
+    choose(lang, "PayNow ID / Mobile", "PayNow 账号 / 手机号"),
+    choose(lang, "PayNow Name", "PayNow 收款名"),
     choose(lang, "Sessions", "课次数"),
     choose(lang, "Cancelled+Charged", "取消但计薪"),
     choose(lang, "Completed", "已完成"),
@@ -80,6 +93,7 @@ export async function GET(req: Request) {
 
   const lines = [header.join(",")];
   for (const row of rows) {
+    const profile = teacherProfileMap.get(row.teacherId);
     const publish = publishMap.get(row.teacherId) ?? null;
     const managerApprovedCount = publish?.managerApprovedBy.length ?? 0;
     const managerAllConfirmed = publish
@@ -97,7 +111,11 @@ export async function GET(req: Request) {
       [
         month,
         scope,
+        profile?.tutorCode ?? "",
         row.teacherName,
+        formatPayNowType(profile?.payNowType),
+        profile?.payNowValue ?? "",
+        profile?.payNowName ?? "",
         row.totalSessions,
         row.chargedExcusedSessions,
         row.completedSessions,

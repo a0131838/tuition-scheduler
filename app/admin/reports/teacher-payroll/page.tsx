@@ -27,6 +27,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import {
   workbenchFilterPanelStyle,
   workbenchHeroStyle,
@@ -499,6 +500,11 @@ export default async function TeacherPayrollPage({
       </div>
     );
   }
+  const teacherProfiles = await prisma.teacher.findMany({
+    where: { id: { in: data.summaryRows.map((row) => row.teacherId) } },
+    select: { id: true, tutorCode: true },
+  });
+  const teacherProfileMap = new Map(teacherProfiles.map((teacher) => [teacher.id, teacher]));
 
   const periodText = `${PERIOD_DATE_FMT.format(data.range.start)} - ${PERIOD_DATE_FMT.format(
     new Date(data.range.end.getTime() - 1000)
@@ -519,7 +525,8 @@ export default async function TeacherPayrollPage({
       : false;
     if (pendingOnly && !hasPendingWorkflow) return false;
     if (unsentOnly && Boolean(publish)) return false;
-    if (q && !row.teacherName.toLowerCase().includes(q)) return false;
+    const profile = teacherProfileMap.get(row.teacherId);
+    if (q && !`${row.teacherName} ${profile?.tutorCode ?? ""}`.toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -1289,6 +1296,7 @@ export default async function TeacherPayrollPage({
                   <tr key={row.teacherId}>
                     <td style={{ ...payrollTableFirstColCellStyle, borderTop: "1px solid #eee" }}>
                       <a href={`/admin/reports/teacher-payroll/${encodeURIComponent(row.teacherId)}?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`}>
+                        {teacherProfileMap.get(row.teacherId)?.tutorCode ? `${teacherProfileMap.get(row.teacherId)?.tutorCode} ` : ""}
                         {row.teacherName}
                       </a>
                     </td>
