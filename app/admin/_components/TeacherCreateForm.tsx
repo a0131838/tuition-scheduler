@@ -47,6 +47,9 @@ export default function TeacherCreateForm({
     offlineShanghai: string;
     offlineSingapore: string;
     tutorCode: string;
+    paymentMethod: string;
+    paymentPayNow: string;
+    paymentBankTransfer: string;
     payNowType: string;
     payNowMobile: string;
     payNowNric: string;
@@ -55,11 +58,16 @@ export default function TeacherCreateForm({
     payNowValue: string;
     payNowName: string;
     payNowNote: string;
+    bankName: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
+    bankBranchCode: string;
     add: string;
   };
   initial?: {
     name?: string;
     tutorCode?: string | null;
+    paymentMethod?: string | null;
     nationality?: string;
     almaMater?: string;
     intro?: string;
@@ -73,6 +81,10 @@ export default function TeacherCreateForm({
     payNowValue?: string | null;
     payNowName?: string | null;
     payNowNote?: string | null;
+    bankName?: string | null;
+    bankAccountName?: string | null;
+    bankAccountNumber?: string | null;
+    bankBranchCode?: string | null;
   };
   teacherId?: string;
   onDone?: () => void;
@@ -131,10 +143,15 @@ export default function TeacherCreateForm({
             offlineShanghai: String(fd.get("offlineShanghai") ?? "") === "on",
             offlineSingapore: String(fd.get("offlineSingapore") ?? "") === "on",
             tutorCode: String(fd.get("tutorCode") ?? ""),
+            paymentMethod: String(fd.get("paymentMethod") ?? ""),
             payNowType: String(fd.get("payNowType") ?? ""),
             payNowValue: String(fd.get("payNowValue") ?? ""),
             payNowName: String(fd.get("payNowName") ?? ""),
             payNowNote: String(fd.get("payNowNote") ?? ""),
+            bankName: String(fd.get("bankName") ?? ""),
+            bankAccountName: String(fd.get("bankAccountName") ?? ""),
+            bankAccountNumber: String(fd.get("bankAccountNumber") ?? ""),
+            bankBranchCode: String(fd.get("bankBranchCode") ?? ""),
             subjectIds: selectedSubjectIds,
           };
 
@@ -182,7 +199,12 @@ export default function TeacherCreateForm({
         <input name="almaMater" placeholder={labels.almaMater} defaultValue={initial?.almaMater ?? ""} />
       </div>
       <fieldset style={{ border: "1px solid #ddd", borderRadius: 8, padding: 10, display: "grid", gap: 8 }}>
-        <legend style={{ color: "#475569", fontWeight: 700 }}>{labels.payNowType}</legend>
+        <legend style={{ color: "#475569", fontWeight: 700 }}>{labels.paymentMethod}</legend>
+        <select name="paymentMethod" defaultValue={initial?.paymentMethod ?? ""}>
+          <option value="">{labels.paymentMethod}</option>
+          <option value="PAYNOW">{labels.paymentPayNow}</option>
+          <option value="BANK_TRANSFER">{labels.paymentBankTransfer}</option>
+        </select>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select name="payNowType" defaultValue={initial?.payNowType ?? ""}>
             <option value="">{labels.payNowType}</option>
@@ -195,6 +217,12 @@ export default function TeacherCreateForm({
           <input name="payNowName" placeholder={labels.payNowName} defaultValue={initial?.payNowName ?? ""} />
         </div>
         <input name="payNowNote" placeholder={labels.payNowNote} defaultValue={initial?.payNowNote ?? ""} />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input name="bankName" placeholder={labels.bankName} defaultValue={initial?.bankName ?? ""} />
+          <input name="bankAccountName" placeholder={labels.bankAccountName} defaultValue={initial?.bankAccountName ?? ""} />
+          <input name="bankAccountNumber" placeholder={labels.bankAccountNumber} defaultValue={initial?.bankAccountNumber ?? ""} />
+        </div>
+        <input name="bankBranchCode" placeholder={labels.bankBranchCode} defaultValue={initial?.bankBranchCode ?? ""} />
       </fieldset>
       <div style={{ color: "#666", fontSize: 12 }}>{labels.almaMaterRule}</div>
       <textarea name="intro" rows={3} placeholder={labels.teacherIntro} defaultValue={initial?.intro ?? ""} />

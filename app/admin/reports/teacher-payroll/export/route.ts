@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getApprovalRoleConfig, areAllApproversConfirmed } from "@/lib/approval-flow";
 import { getLang, type Lang } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { formatPayNowType } from "@/lib/teacher-payment-profile";
+import { formatPayNowType, formatTeacherPaymentMethod } from "@/lib/teacher-payment-profile";
 import {
   formatCurrencyTotals,
   getTeacherPayrollPublishStatus,
@@ -48,7 +48,18 @@ export async function GET(req: Request) {
 
   const teacherProfiles = await prisma.teacher.findMany({
     where: { id: { in: data.summaryRows.map((row) => row.teacherId) } },
-    select: { id: true, tutorCode: true, payNowType: true, payNowValue: true, payNowName: true },
+    select: {
+      id: true,
+      tutorCode: true,
+      paymentMethod: true,
+      payNowType: true,
+      payNowValue: true,
+      payNowName: true,
+      bankName: true,
+      bankAccountName: true,
+      bankAccountNumber: true,
+      bankBranchCode: true,
+    },
   });
   const teacherProfileMap = new Map(teacherProfiles.map((teacher) => [teacher.id, teacher]));
 
@@ -72,9 +83,14 @@ export async function GET(req: Request) {
     choose(lang, "Scope", "统计口径"),
     choose(lang, "Tutor Code", "老师编号"),
     choose(lang, "Teacher", "老师"),
+    choose(lang, "Payment Method", "收款方式"),
     choose(lang, "PayNow Type", "PayNow 类型"),
     choose(lang, "PayNow ID / Mobile", "PayNow 账号 / 手机号"),
     choose(lang, "PayNow Name", "PayNow 收款名"),
+    choose(lang, "Bank Name", "银行名称"),
+    choose(lang, "Bank Account Name", "银行户名"),
+    choose(lang, "Bank Account Number", "银行账号"),
+    choose(lang, "SWIFT / Branch Code", "SWIFT / 分行代码"),
     choose(lang, "Sessions", "课次数"),
     choose(lang, "Cancelled+Charged", "取消但计薪"),
     choose(lang, "Completed", "已完成"),
@@ -113,9 +129,14 @@ export async function GET(req: Request) {
         scope,
         profile?.tutorCode ?? "",
         row.teacherName,
+        formatTeacherPaymentMethod(profile?.paymentMethod),
         formatPayNowType(profile?.payNowType),
         profile?.payNowValue ?? "",
         profile?.payNowName ?? "",
+        profile?.bankName ?? "",
+        profile?.bankAccountName ?? "",
+        profile?.bankAccountNumber ?? "",
+        profile?.bankBranchCode ?? "",
         row.totalSessions,
         row.chargedExcusedSessions,
         row.completedSessions,

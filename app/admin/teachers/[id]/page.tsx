@@ -457,6 +457,9 @@ export default async function TeacherDetailPage({
             offlineTeaching: t(lang, "Offline Teaching", "线下授课"),
             offlineShanghai: t(lang, "Shanghai", "上海线下"),
             offlineSingapore: t(lang, "Singapore", "新加坡线下"),
+            paymentMethod: t(lang, "Payment Method", "收款方式"),
+            paymentPayNow: t(lang, "PayNow", "PayNow"),
+            paymentBankTransfer: t(lang, "Bank Transfer", "银行转账"),
             payNowType: t(lang, "PayNow Type", "PayNow 类型"),
             payNowMobile: t(lang, "Mobile", "手机号"),
             payNowNric: t(lang, "NRIC/FIN", "NRIC/FIN"),
@@ -465,6 +468,10 @@ export default async function TeacherDetailPage({
             payNowValue: t(lang, "PayNow ID / Mobile", "PayNow 账号 / 手机号"),
             payNowName: t(lang, "PayNow Name", "PayNow 收款名"),
             payNowNote: t(lang, "PayNow Note", "PayNow 备注"),
+            bankName: t(lang, "Bank Name", "银行名称"),
+            bankAccountName: t(lang, "Bank Account Name", "银行户名"),
+            bankAccountNumber: t(lang, "Bank Account Number", "银行账号"),
+            bankBranchCode: t(lang, "SWIFT / Branch Code", "SWIFT / 分行代码"),
             add: t(lang, "Save", "保存"),
           }}
           initial={{
@@ -479,10 +486,15 @@ export default async function TeacherDetailPage({
             subjectIds: teacher.subjects.map((s) => s.id),
             offlineShanghai: teacher.offlineShanghai ?? false,
             offlineSingapore: teacher.offlineSingapore ?? false,
+            paymentMethod: teacher.paymentMethod ?? "",
             payNowType: teacher.payNowType ?? "",
             payNowValue: teacher.payNowValue ?? "",
             payNowName: teacher.payNowName ?? "",
             payNowNote: teacher.payNowNote ?? "",
+            bankName: teacher.bankName ?? "",
+            bankAccountName: teacher.bankAccountName ?? "",
+            bankAccountNumber: teacher.bankAccountNumber ?? "",
+            bankBranchCode: teacher.bankBranchCode ?? "",
           }}
         />
       </div>
@@ -699,4 +711,3 @@ export default async function TeacherDetailPage({
     </div>
   );
 }
-

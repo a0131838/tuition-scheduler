@@ -193,10 +193,15 @@ model Teacher {
   teachingLanguageOther String?
   offlineShanghai       Boolean           @default(false)
   offlineSingapore      Boolean           @default(false)
+  paymentMethod         String?
   payNowType            String?
   payNowValue           String?
   payNowName            String?
   payNowNote            String?
+  bankName              String?
+  bankAccountName       String?
+  bankAccountNumber     String?
+  bankBranchCode        String?
 
   subjectCourseId String?
   subjectCourse   Subject?  @relation("SubjectCourse", fields: [subjectCourseId], references: [id])

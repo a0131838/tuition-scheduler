@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth';
 import { canFinanceOperateExpense, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
 import { formatUTCDateOnly } from '@/lib/date-only';
 import { prisma } from '@/lib/prisma';
-import { formatPayNowType } from '@/lib/teacher-payment-profile';
+import { formatPayNowType, formatTeacherPaymentMethod } from '@/lib/teacher-payment-profile';
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? '');
@@ -40,7 +40,19 @@ export async function GET(req: Request) {
         where: { id: { in: submitterIds } },
         select: {
           id: true,
-          teacher: { select: { tutorCode: true, payNowType: true, payNowValue: true, payNowName: true } },
+          teacher: {
+            select: {
+              tutorCode: true,
+              paymentMethod: true,
+              payNowType: true,
+              payNowValue: true,
+              payNowName: true,
+              bankName: true,
+              bankAccountName: true,
+              bankAccountNumber: true,
+              bankBranchCode: true,
+            },
+          },
         },
       })
     : [];
@@ -49,9 +61,14 @@ export async function GET(req: Request) {
     'Claim Ref No',
     'Submitter',
     'Tutor Code',
+    'Tutor Payment Method',
     'PayNow Type',
     'PayNow ID / Mobile',
     'PayNow Name',
+    'Bank Name',
+    'Bank Account Name',
+    'Bank Account Number',
+    'SWIFT / Branch Code',
     'Role',
     'Expense Date',
     'Expense Type',
@@ -80,9 +97,14 @@ export async function GET(req: Request) {
       claim.claimRefNo,
       claim.submitterName,
       teacher?.tutorCode || '',
+      formatTeacherPaymentMethod(teacher?.paymentMethod),
       formatPayNowType(teacher?.payNowType),
       teacher?.payNowValue || '',
       teacher?.payNowName || '',
+      teacher?.bankName || '',
+      teacher?.bankAccountName || '',
+      teacher?.bankAccountNumber || '',
+      teacher?.bankBranchCode || '',
       claim.submitterRole,
       formatUTCDateOnly(claim.expenseDate),
       getExpenseTypeOption(claim.expenseTypeCode)?.label ?? claim.expenseTypeCode,

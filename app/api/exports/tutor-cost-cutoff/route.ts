@@ -6,7 +6,7 @@ import {
   parseMonth,
 } from "@/lib/teacher-payroll";
 import { prisma } from "@/lib/prisma";
-import { formatPayNowType } from "@/lib/teacher-payment-profile";
+import { formatPayNowType, formatTeacherPaymentMethod } from "@/lib/teacher-payment-profile";
 import ExcelJS from "exceljs";
 
 function safeFileName(value: string) {
@@ -69,7 +69,18 @@ export async function GET(req: Request) {
   const teacherProfiles = teacherIds.length
     ? await prisma.teacher.findMany({
         where: { id: { in: teacherIds } },
-        select: { id: true, tutorCode: true, payNowType: true, payNowValue: true, payNowName: true },
+        select: {
+          id: true,
+          tutorCode: true,
+          paymentMethod: true,
+          payNowType: true,
+          payNowValue: true,
+          payNowName: true,
+          bankName: true,
+          bankAccountName: true,
+          bankAccountNumber: true,
+          bankBranchCode: true,
+        },
       })
     : [];
   const teacherProfileMap = new Map(teacherProfiles.map((teacher) => [teacher.id, teacher]));
@@ -80,7 +91,7 @@ export async function GET(req: Request) {
   workbook.modified = new Date();
 
   const summary = workbook.addWorksheet("Summary");
-  summary.mergeCells("A1:J1");
+  summary.mergeCells("A1:O1");
   summary.getCell("A1").value = "Tutor Cost Cut-off Report";
   summary.getCell("A1").font = { bold: true, size: 15, color: { argb: "FF0F172A" } };
   summary.getCell("A2").value = `Period: ${report.periodLabel} (inclusive of the 15th)`;
@@ -92,9 +103,14 @@ export async function GET(req: Request) {
   summary.columns = [
     { header: "Tutor Code", key: "tutorCode", width: 14 },
     { header: "Teacher", key: "teacherName", width: 24 },
+    { header: "Payment Method", key: "paymentMethod", width: 16 },
     { header: "PayNow Type", key: "payNowType", width: 14 },
     { header: "PayNow ID / Mobile", key: "payNowValue", width: 22 },
     { header: "PayNow Name", key: "payNowName", width: 22 },
+    { header: "Bank Name", key: "bankName", width: 22 },
+    { header: "Bank Account Name", key: "bankAccountName", width: 22 },
+    { header: "Bank Account Number", key: "bankAccountNumber", width: 22 },
+    { header: "SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
     { header: "Sessions", key: "sessionCount", width: 12 },
     { header: "Hours", key: "totalHours", width: 12 },
     { header: "Currency", key: "currencyCode", width: 12 },
@@ -109,9 +125,14 @@ export async function GET(req: Request) {
     summary.addRow({
       tutorCode: profile?.tutorCode ?? "",
       teacherName: row.teacherName,
+      paymentMethod: formatTeacherPaymentMethod(profile?.paymentMethod),
       payNowType: formatPayNowType(profile?.payNowType),
       payNowValue: profile?.payNowValue ?? "",
       payNowName: profile?.payNowName ?? "",
+      bankName: profile?.bankName ?? "",
+      bankAccountName: profile?.bankAccountName ?? "",
+      bankAccountNumber: profile?.bankAccountNumber ?? "",
+      bankBranchCode: profile?.bankBranchCode ?? "",
       sessionCount: row.sessionCount,
       totalHours: row.totalHours,
       currencyCode: row.currencyCode,
@@ -120,13 +141,13 @@ export async function GET(req: Request) {
     });
   }
   summary.views = [{ state: "frozen", ySplit: 7 }];
-  summary.autoFilter = { from: "A7", to: "J7" };
-  summary.getColumn("G").numFmt = "0.00";
-  summary.getColumn("I").numFmt = "#,##0.00";
+  summary.autoFilter = { from: "A7", to: "O7" };
+  summary.getColumn("L").numFmt = "0.00";
+  summary.getColumn("N").numFmt = "#,##0.00";
   applyDataBorders(summary, 8);
 
   const details = workbook.addWorksheet("Details");
-  details.mergeCells("A1:R1");
+  details.mergeCells("A1:W1");
   details.getCell("A1").value = "Completed and Confirmed Session Details";
   details.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF0F172A" } };
   details.getCell("A2").value = `Period: ${report.periodLabel}`;
@@ -137,9 +158,14 @@ export async function GET(req: Request) {
     { header: "End", key: "endTime", width: 10 },
     { header: "Tutor Code", key: "tutorCode", width: 14 },
     { header: "Teacher", key: "teacherName", width: 22 },
+    { header: "Payment Method", key: "paymentMethod", width: 16 },
     { header: "PayNow Type", key: "payNowType", width: 14 },
     { header: "PayNow ID / Mobile", key: "payNowValue", width: 22 },
     { header: "PayNow Name", key: "payNowName", width: 22 },
+    { header: "Bank Name", key: "bankName", width: 22 },
+    { header: "Bank Account Name", key: "bankAccountName", width: 22 },
+    { header: "Bank Account Number", key: "bankAccountNumber", width: 22 },
+    { header: "SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
     { header: "Student(s)", key: "studentName", width: 32 },
     { header: "Course", key: "courseName", width: 28 },
     { header: "Subject", key: "subjectName", width: 18 },
@@ -162,9 +188,14 @@ export async function GET(req: Request) {
       endTime: row.endTime,
       tutorCode: profile?.tutorCode ?? "",
       teacherName: row.teacherName,
+      paymentMethod: formatTeacherPaymentMethod(profile?.paymentMethod),
       payNowType: formatPayNowType(profile?.payNowType),
       payNowValue: profile?.payNowValue ?? "",
       payNowName: profile?.payNowName ?? "",
+      bankName: profile?.bankName ?? "",
+      bankAccountName: profile?.bankAccountName ?? "",
+      bankAccountNumber: profile?.bankAccountNumber ?? "",
+      bankBranchCode: profile?.bankBranchCode ?? "",
       studentName: row.studentName,
       courseName: row.courseName,
       subjectName: row.subjectName ?? "",
@@ -178,10 +209,10 @@ export async function GET(req: Request) {
     });
   }
   details.views = [{ state: "frozen", ySplit: 5 }];
-  details.autoFilter = { from: "A5", to: "R5" };
-  details.getColumn("N").numFmt = "0.00";
-  details.getColumn("O").numFmt = "#,##0.00";
-  details.getColumn("Q").numFmt = "#,##0.00";
+  details.autoFilter = { from: "A5", to: "W5" };
+  details.getColumn("S").numFmt = "0.00";
+  details.getColumn("T").numFmt = "#,##0.00";
+  details.getColumn("V").numFmt = "#,##0.00";
   applyDataBorders(details, 6);
 
   const buffer = await workbook.xlsx.writeBuffer();

@@ -1,7 +1,13 @@
 import { requireTeacherProfile } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { cleanTeacherPaymentProfile, formatPayNowType, maskPayNowValue } from "@/lib/teacher-payment-profile";
+import {
+  cleanTeacherPaymentProfile,
+  formatPayNowType,
+  formatTeacherPaymentMethod,
+  maskBankAccountNumber,
+  maskPayNowValue,
+} from "@/lib/teacher-payment-profile";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,19 +17,29 @@ async function savePaymentDetails(formData: FormData) {
   if (!teacher) redirect("/teacher");
 
   const cleaned = cleanTeacherPaymentProfile({
+    paymentMethod: formData.get("paymentMethod"),
     payNowType: formData.get("payNowType"),
     payNowValue: formData.get("payNowValue"),
     payNowName: formData.get("payNowName"),
     payNowNote: formData.get("payNowNote"),
+    bankName: formData.get("bankName"),
+    bankAccountName: formData.get("bankAccountName"),
+    bankAccountNumber: formData.get("bankAccountNumber"),
+    bankBranchCode: formData.get("bankBranchCode"),
   });
 
   await prisma.teacher.update({
     where: { id: teacher.id },
     data: {
+      paymentMethod: cleaned.paymentMethod,
       payNowType: cleaned.payNowType,
       payNowValue: cleaned.payNowValue,
       payNowName: cleaned.payNowName,
       payNowNote: cleaned.payNowNote,
+      bankName: cleaned.bankName,
+      bankAccountName: cleaned.bankAccountName,
+      bankAccountNumber: cleaned.bankAccountNumber,
+      bankBranchCode: cleaned.bankBranchCode,
     },
   });
   revalidatePath("/teacher/payment-details");
@@ -56,9 +72,18 @@ export default async function TeacherPaymentDetailsPage({
           {t(lang, "Tutor Code", "老师编号")}: <b>{teacher.tutorCode ?? "-"}</b>
         </div>
         <div style={{ color: "#475569", lineHeight: 1.5 }}>
+          {t(lang, "Payment Method", "收款方式")}: <b>{formatTeacherPaymentMethod(teacher.paymentMethod) || "-"}</b>
+        </div>
+        <div style={{ color: "#475569", lineHeight: 1.5 }}>
           {t(lang, "Current PayNow", "当前 PayNow")}:{" "}
           <b>
             {formatPayNowType(teacher.payNowType) || "-"} {maskPayNowValue(teacher.payNowValue)}
+          </b>
+        </div>
+        <div style={{ color: "#475569", lineHeight: 1.5 }}>
+          {t(lang, "Current Bank Account", "当前银行账号")}:{" "}
+          <b>
+            {teacher.bankName ?? "-"} {maskBankAccountNumber(teacher.bankAccountNumber)}
           </b>
         </div>
       </section>
@@ -70,6 +95,14 @@ export default async function TeacherPaymentDetailsPage({
       ) : null}
 
       <form action={savePaymentDetails} style={{ display: "grid", gap: 12 }}>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span>{t(lang, "Payment Method", "收款方式")}</span>
+          <select name="paymentMethod" defaultValue={teacher.paymentMethod ?? ""}>
+            <option value="">{t(lang, "Select", "请选择")}</option>
+            <option value="PAYNOW">{t(lang, "PayNow", "PayNow")}</option>
+            <option value="BANK_TRANSFER">{t(lang, "Bank Transfer", "银行转账")}</option>
+          </select>
+        </label>
         <label style={{ display: "grid", gap: 4 }}>
           <span>{t(lang, "PayNow Type", "PayNow 类型")}</span>
           <select name="payNowType" defaultValue={teacher.payNowType ?? ""}>
@@ -91,6 +124,22 @@ export default async function TeacherPaymentDetailsPage({
         <label style={{ display: "grid", gap: 4 }}>
           <span>{t(lang, "Note", "备注")}</span>
           <textarea name="payNowNote" rows={3} defaultValue={teacher.payNowNote ?? ""} />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span>{t(lang, "Bank Name", "银行名称")}</span>
+          <input name="bankName" defaultValue={teacher.bankName ?? ""} />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span>{t(lang, "Bank Account Name", "银行户名")}</span>
+          <input name="bankAccountName" defaultValue={teacher.bankAccountName ?? ""} />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span>{t(lang, "Bank Account Number", "银行账号")}</span>
+          <input name="bankAccountNumber" defaultValue={teacher.bankAccountNumber ?? ""} />
+        </label>
+        <label style={{ display: "grid", gap: 4 }}>
+          <span>{t(lang, "SWIFT / Branch Code", "SWIFT / 分行代码")}</span>
+          <input name="bankBranchCode" defaultValue={teacher.bankBranchCode ?? ""} />
         </label>
         <button type="submit" style={{ justifySelf: "start" }}>
           {t(lang, "Save Payment Details", "保存收款资料")}

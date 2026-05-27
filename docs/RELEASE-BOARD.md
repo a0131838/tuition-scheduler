@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-27-r151` (tutor serial number and PayNow profile exports), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-27-r152` (bank-transfer fields for tutor payment profiles), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -70,6 +70,7 @@
 - Renewal-parent-info risk: `2026-05-17-r149` allows complete parent profiles on voided contracts to unlock renewal-contract creation; operators should still avoid reusing parent info if they voided the old contract specifically because the parent details were wrong.
 - XDF-online-partial-closeout risk: `2026-05-19-r150` lets expired New Oriental online partner packages settle by full purchased minutes when remaining minutes were forfeited; active incomplete packages still remain blocked from settlement candidates.
 - Tutor-payment-profile risk: `2026-05-27-r151` adds full PayNow details to finance payout exports, so finance users must treat generated CSV/XLSX files as sensitive payment data.
+- Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
 
 ## Process Guard (Installed)
 
@@ -90,6 +91,35 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-27-r152 Ready
+
+- Scope: support tutors who receive reimbursements or payroll by bank transfer instead of PayNow.
+- Business impact:
+  - Teacher/admin payment profiles now have `Payment Method`, PayNow fields, and bank-transfer fields.
+  - Teacher self-service payment details page can capture bank name, account holder name, account number, and SWIFT/branch code.
+  - Teacher payroll CSV, tutor cost cut-off XLSX, and expense-claim CSV exports include bank-transfer columns.
+  - Salary, tutor cost, expense claim status, approval, scheduling, attendance, and OpenClaw behavior are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260527093000_add_teacher_bank_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
+  - confirm production `Teacher` table has bank-transfer columns
+  - confirm teacher payment details route still redirects unauthenticated users as expected
 
 ## 2026-05-27-r151 Ready
 

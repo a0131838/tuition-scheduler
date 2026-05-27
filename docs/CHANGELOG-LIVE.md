@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-27-r152
+
+- Release ID: `2026-05-27-r152`
+- Date/Time (Asia/Shanghai): `2026-05-27`
+- Deployment status: `READY`
+- Scope: extend tutor payment profiles from PayNow-only to support bank-transfer collection details and export those bank fields for finance payout work.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260527093000_add_teacher_bank_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+  - `docs/tasks/TASK-20260527-tutor-bank-payment-profile.md`
+- Risk impact (if any): Low to medium. Finance exports now include full bank account details in addition to full PayNow values, so generated files remain sensitive payout data. Amount calculations and approval workflows are unchanged.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts tests/tutor-cost-cutoff.test.ts tests/expense-claims.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-27-r152`.
+
+---
+
 ## 2026-05-27-r151
 
 - Release ID: `2026-05-27-r151`
