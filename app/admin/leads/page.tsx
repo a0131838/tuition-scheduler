@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
-import { LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES, LEAD_STATUS_LABELS, summarizeLeadRows } from "@/lib/leads";
+import { buildLeadFocusWhere, LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES, LEAD_STATUS_LABELS, summarizeLeadRows } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -42,15 +42,8 @@ export default async function AdminLeadsPage({
   const focus = first(sp?.focus).trim();
   const archived = first(sp?.archived).trim() === "1";
   const ok = first(sp?.ok).trim();
-  const effectiveOwner = focus === "mine" ? user.name : owner;
   const now = new Date();
-  const overdueWhere =
-    focus === "overdue"
-      ? {
-          nextActionDue: { lt: now },
-          status: { notIn: ["Won", "Lost"] },
-        }
-      : {};
+  const focusWhere = buildLeadFocusWhere(focus, user.name, now);
 
   const [rows, owners, allForSummary, pendingAssessmentCount] = await Promise.all([
     prisma.lead.findMany({
@@ -68,10 +61,10 @@ export default async function AdminLeadsPage({
           : {}),
         ...(status ? { status } : {}),
         ...(sourceType ? { sourceType } : {}),
-        ...(effectiveOwner ? { ownerName: effectiveOwner } : {}),
+        ...(owner && focus !== "mine" ? { ownerName: owner } : {}),
         ...(intent ? { intentLevel: intent } : {}),
         isArchived: archived,
-        ...overdueWhere,
+        ...focusWhere,
       },
       include: { assessmentRequests: { select: { status: true, dueAt: true } } },
       orderBy: [{ updatedAt: "desc" }],
@@ -138,6 +131,41 @@ export default async function AdminLeadsPage({
         ))}
       </section>
 
+      <section style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {[
+          ["mine", t(lang, "My resources", "我的资源")],
+          ["today", t(lang, "Today", "今日新增")],
+          ["week", t(lang, "This week", "本周新增")],
+          ["hot", t(lang, "Hot", "高意向")],
+          ["overdue", t(lang, "Overdue", "逾期未跟进")],
+          ["pending-assessment", t(lang, "Pending assessment", "待老师评估")],
+          ["won", t(lang, "Won", "已成交")],
+          ["lost", t(lang, "Lost", "已流失")],
+        ].map(([value, label]) => {
+          const quick = new URLSearchParams(params);
+          quick.set("focus", String(value));
+          quick.delete("owner");
+          return (
+            <Link
+              key={String(value)}
+              href={`/admin/leads?${quick.toString()}`}
+              style={{
+                border: focus === value ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+                background: focus === value ? "#dbeafe" : "#fff",
+                color: focus === value ? "#1d4ed8" : "#334155",
+                borderRadius: 999,
+                padding: "7px 10px",
+                textDecoration: "none",
+                fontWeight: 900,
+                fontSize: 13,
+              }}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </section>
+
       <section style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 10, padding: 12 }}>
         <form style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <input name="q" defaultValue={q} placeholder={t(lang, "Search name, WeChat, phone", "搜索姓名、微信、电话")} style={{ minHeight: 38, minWidth: 220 }} />
@@ -160,7 +188,13 @@ export default async function AdminLeadsPage({
           <select name="focus" defaultValue={focus} style={{ minHeight: 38 }}>
             <option value="">{t(lang, "Normal view", "普通视图")}</option>
             <option value="mine">{t(lang, "My resources", "我的资源")}</option>
+            <option value="today">{t(lang, "Today", "今日新增")}</option>
+            <option value="week">{t(lang, "This week", "本周新增")}</option>
+            <option value="hot">{t(lang, "Hot", "高意向")}</option>
             <option value="overdue">{t(lang, "Only overdue", "只看逾期")}</option>
+            <option value="pending-assessment">{t(lang, "Pending assessment", "待老师评估")}</option>
+            <option value="won">{t(lang, "Won", "已成交")}</option>
+            <option value="lost">{t(lang, "Lost", "已流失")}</option>
           </select>
           <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, fontWeight: 800 }}>
             <input type="checkbox" name="archived" value="1" defaultChecked={archived} />

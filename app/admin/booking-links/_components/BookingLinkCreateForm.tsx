@@ -47,6 +47,9 @@ type Labels = {
 export default function BookingLinkCreateForm({
   students,
   teachers: _teachers,
+  initialStudentId = "",
+  initialTitle = "",
+  initialNote = "",
   labels = {
     student: "Student",
     startDate: "Start Date",
@@ -76,9 +79,12 @@ export default function BookingLinkCreateForm({
 }: {
   students: StudentOption[];
   teachers: TeacherOption[];
+  initialStudentId?: string;
+  initialTitle?: string;
+  initialNote?: string;
   labels?: Labels;
 }) {
-  const [studentId, setStudentId] = useState("");
+  const [studentId, setStudentId] = useState(initialStudentId);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [durationMin, setDurationMin] = useState(60);
@@ -268,8 +274,8 @@ export default function BookingLinkCreateForm({
         </label>
       </div>
 
-      <input name="title" placeholder={labels.titleOptional} />
-      <textarea name="note" rows={3} placeholder={labels.noteOptional} />
+      <input name="title" defaultValue={initialTitle} placeholder={labels.titleOptional} />
+      <textarea name="note" rows={3} defaultValue={initialNote} placeholder={labels.noteOptional} />
 
       <div style={{ border: "1px solid #e8e8e8", borderRadius: 8, padding: 10 }}>
         <div style={{ marginBottom: 6, fontWeight: 600 }}>{labels.teacherHint}</div>

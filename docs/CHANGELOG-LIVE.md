@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-28-r156
+
+- Release ID: `2026-05-28-r156`
+- Date/Time (Asia/Shanghai): `2026-05-28`
+- Deployment status: `READY`
+- Scope: finish the next Resource Follow-up CRM workflow gaps with quick list filters, matching CSV focus export, cancellable teacher assessments, and a Booking Link handoff after student conversion.
+- Key files:
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `app/admin/booking-links/page.tsx`
+  - `app/admin/booking-links/_components/BookingLinkCreateForm.tsx`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-followup-shortcuts-and-booking.md`
+- Risk impact (if any): Low. This release only improves the new Resource Follow-up workflow and adds a prefilled handoff into the existing Booking Link page. It does not change booking-link creation APIs, scheduling availability logic, contracts, packages, invoices, receipts, payroll, attendance, or OpenClaw behavior.
+- Verification:
+  - `npx prisma validate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-28-r156`.
+
+---
+
 ## 2026-05-28-r155
 
 - Release ID: `2026-05-28-r155`

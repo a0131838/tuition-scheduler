@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { csvEscape, LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES } from "@/lib/leads";
+import { buildLeadFocusWhere, csvEscape, LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 
 function valid(value: string | null, allowed: string[]) {
@@ -16,8 +16,8 @@ export async function GET(req: Request) {
   const intent = valid(url.searchParams.get("intent"), LEAD_INTENT_LEVELS);
   const focus = String(url.searchParams.get("focus") ?? "").trim();
   const archived = String(url.searchParams.get("archived") ?? "").trim() === "1";
-  const effectiveOwner = focus === "mine" ? user.name : owner;
   const now = new Date();
+  const focusWhere = buildLeadFocusWhere(focus, user.name, now);
   const rows = await prisma.lead.findMany({
     where: {
       ...(q
@@ -33,10 +33,10 @@ export async function GET(req: Request) {
         : {}),
       ...(status ? { status } : {}),
       ...(sourceType ? { sourceType } : {}),
-      ...(effectiveOwner ? { ownerName: effectiveOwner } : {}),
+      ...(owner && focus !== "mine" ? { ownerName: owner } : {}),
       ...(intent ? { intentLevel: intent } : {}),
       isArchived: archived,
-      ...(focus === "overdue" ? { nextActionDue: { lt: now }, status: { notIn: ["Won", "Lost"] } } : {}),
+      ...focusWhere,
     },
     orderBy: [{ updatedAt: "desc" }],
     take: 2000,

@@ -164,6 +164,38 @@ export function summarizeLeadRows<T extends { status: string; intentLevel: strin
   };
 }
 
+export function singaporeDayRange(now = new Date()) {
+  const sg = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const start = new Date(Date.UTC(sg.getUTCFullYear(), sg.getUTCMonth(), sg.getUTCDate()) - 8 * 60 * 60 * 1000);
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+export function singaporeWeekRange(now = new Date()) {
+  const day = singaporeDayRange(now);
+  const sg = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const mondayOffset = (sg.getUTCDay() + 6) % 7;
+  const start = new Date(day.start.getTime() - mondayOffset * 24 * 60 * 60 * 1000);
+  return { start, end: new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000) };
+}
+
+export function buildLeadFocusWhere(focus: string, currentUserName: string, now = new Date()): Prisma.LeadWhereInput {
+  if (focus === "mine") return { ownerName: currentUserName };
+  if (focus === "overdue") return { nextActionDue: { lt: now }, status: { notIn: ["Won", "Lost"] } };
+  if (focus === "today") {
+    const range = singaporeDayRange(now);
+    return { createdAt: { gte: range.start, lt: range.end } };
+  }
+  if (focus === "week") {
+    const range = singaporeWeekRange(now);
+    return { createdAt: { gte: range.start, lt: range.end } };
+  }
+  if (focus === "hot") return { intentLevel: "Hot" };
+  if (focus === "pending-assessment") return { assessmentRequests: { some: { status: { in: ["Pending", "Revision Requested"] } } } };
+  if (focus === "won") return { status: "Won" };
+  if (focus === "lost") return { status: "Lost" };
+  return {};
+}
+
 export function csvEscape(value: unknown) {
   const text = String(value ?? "");
   if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;

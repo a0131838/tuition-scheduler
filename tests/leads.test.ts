@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeadSourceChannelName, buildLeadStudentNote, canHardDeleteLead, csvEscape, summarizeLeadRows } from "../lib/leads";
+import {
+  buildLeadFocusWhere,
+  buildLeadSourceChannelName,
+  buildLeadStudentNote,
+  canHardDeleteLead,
+  csvEscape,
+  singaporeDayRange,
+  singaporeWeekRange,
+  summarizeLeadRows,
+} from "../lib/leads";
 
 test("build lead source channel name keeps main source and manual platform", () => {
   assert.equal(buildLeadSourceChannelName({ sourceType: "短视频/自媒体", sourcePlatform: "TikTok" }), "短视频/自媒体 - TikTok");
@@ -51,4 +60,21 @@ test("hard delete guard only allows clearly marked test resources", () => {
   assert.equal(canHardDeleteLead({ studentName: "TEST CRM Student" }), true);
   assert.equal(canHardDeleteLead({ sourceDetail: "created for test run" }), true);
   assert.equal(canHardDeleteLead({ studentName: "Real Student", latestSummary: "normal inquiry" }), false);
+});
+
+test("lead focus filters use Singapore today and week boundaries", () => {
+  const now = new Date("2026-05-28T04:00:00.000Z");
+  assert.deepEqual(singaporeDayRange(now), {
+    start: new Date("2026-05-27T16:00:00.000Z"),
+    end: new Date("2026-05-28T16:00:00.000Z"),
+  });
+  assert.deepEqual(singaporeWeekRange(now), {
+    start: new Date("2026-05-24T16:00:00.000Z"),
+    end: new Date("2026-05-31T16:00:00.000Z"),
+  });
+  assert.deepEqual(buildLeadFocusWhere("mine", "Jasmine", now), { ownerName: "Jasmine" });
+  assert.deepEqual(buildLeadFocusWhere("hot", "Jasmine", now), { intentLevel: "Hot" });
+  assert.deepEqual(buildLeadFocusWhere("pending-assessment", "Jasmine", now), {
+    assessmentRequests: { some: { status: { in: ["Pending", "Revision Requested"] } } },
+  });
 });

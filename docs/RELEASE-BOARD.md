@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-28-r155` (resource owner and archive enhancements), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-28-r156` (resource follow-up shortcuts and booking handoff), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -74,6 +74,7 @@
 - Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
 - Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
 - Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
+- Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.
 
 ## Process Guard (Installed)
 
@@ -94,6 +95,29 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-28-r156 Ready
+
+- Scope: finish the next Resource Follow-up CRM gaps with faster list filters, CSV focus alignment, assessment cancellation, and Booking Link handoff.
+- Business impact:
+  - Admin users can jump directly to My Resources, Today, This Week, Hot, Overdue, Pending Assessment, Won, and Lost from `/admin/leads`.
+  - CSV export uses the same focus filter as the resource list.
+  - Admin users can cancel pending or revision-requested teacher assessments without deleting their records.
+  - Converted resources show a Booking Link handoff that opens the existing Booking Links page with student, title, and note prefilled.
+  - Booking Link creation API, teacher matching, scheduling availability, billing, contracts, packages, receipts, payroll, attendance, and OpenClaw are unchanged.
+- Files:
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `app/admin/booking-links/page.tsx`
+  - `app/admin/booking-links/_components/BookingLinkCreateForm.tsx`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-followup-shortcuts-and-booking.md`
+- Verification:
+  - `npx prisma validate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
 
 ## 2026-05-28-r155 Ready
 

@@ -237,6 +237,39 @@ async function reopenAssessmentAction(formData: FormData) {
   redirect(`/admin/leads/${id}?ok=reopened`);
 }
 
+async function cancelAssessmentAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = read(formData, "id", 80);
+  const assessmentId = read(formData, "assessmentId", 80);
+  if (!id || !assessmentId) redirect("/admin/leads");
+  await prisma.$transaction(async (tx) => {
+    const assessment = await tx.leadAssessmentRequest.findFirst({
+      where: { id: assessmentId, leadId: id },
+      select: { id: true, status: true },
+    });
+    if (!assessment || assessment.status === "Submitted" || assessment.status === "Cancelled") return;
+    await tx.leadAssessmentRequest.update({ where: { id: assessment.id }, data: { status: "Cancelled" } });
+    const remaining = await tx.leadAssessmentRequest.count({
+      where: { leadId: id, id: { not: assessment.id }, status: { in: ["Pending", "Revision Requested"] } },
+    });
+    const lead = await tx.lead.findUnique({ where: { id }, select: { status: true } });
+    if (remaining === 0 && lead?.status === "Need Assessment") {
+      await tx.lead.update({
+        where: { id },
+        data: {
+          status: "Contacted",
+          nextAction: "Assessment cancelled; continue sales follow-up.",
+          nextActionDue: null,
+        },
+      });
+    }
+  });
+  revalidatePath(`/admin/leads/${id}`);
+  revalidatePath("/teacher/assessments");
+  redirect(`/admin/leads/${id}?ok=cancelled-assessment`);
+}
+
 async function convertToStudentAction(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -362,6 +395,7 @@ export default async function LeadDetailPage({
     : sp?.ok === "followup" ? t(lang, "Follow-up saved.", "跟进已保存。")
     : sp?.ok === "assessment" ? t(lang, "Assessment request created.", "老师评估已派发。")
     : sp?.ok === "reopened" ? t(lang, "Assessment revision approved.", "已批准老师重新修改评估。")
+    : sp?.ok === "cancelled-assessment" ? t(lang, "Assessment request cancelled.", "老师评估已取消。")
     : sp?.ok === "profile" ? t(lang, "Resource profile updated.", "资源信息已更新。")
     : sp?.ok === "archived" ? t(lang, "Resource archived.", "资源已归档。")
     : sp?.ok === "restored" ? t(lang, "Resource restored.", "资源已恢复。")
@@ -499,6 +533,13 @@ export default async function LeadDetailPage({
               <input type="hidden" name="id" value={lead.id} />
               <button type="submit">{lead.schedulingTicketId ? t(lang, "Open Scheduling Ticket", "打开排课协调工单") : t(lang, "Create Scheduling Ticket", "创建排课协调工单")}</button>
             </form>
+            {lead.convertedStudent ? (
+              <Link href={`/admin/booking-links?studentId=${encodeURIComponent(lead.convertedStudent.id)}&title=${encodeURIComponent(`${lead.studentName} booking link`)}&note=${encodeURIComponent(`From resource ${lead.leadNo}. ${lead.needs || ""}`)}#booking-links-actions`}>
+                {t(lang, "Create Booking Link", "创建选课链接")}
+              </Link>
+            ) : (
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Convert to student before creating a booking link.", "先转为学生后再创建选课链接。")}</div>
+            )}
           </div>
         </aside>
 
@@ -556,6 +597,16 @@ export default async function LeadDetailPage({
                         <input type="hidden" name="assessmentId" value={item.id} />
                         <textarea name="reopenNote" rows={2} placeholder={t(lang, "Reason or requested change", "原因或需要修改的内容")} style={fieldStyle} />
                         <button type="submit">{t(lang, "Approve Re-edit", "批准重改")}</button>
+                      </form>
+                    </details>
+                  ) : null}
+                  {item.status === "Pending" || item.status === "Revision Requested" ? (
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ cursor: "pointer", color: "#991b1b", fontWeight: 800 }}>{t(lang, "Cancel assessment", "取消评估")}</summary>
+                      <form action={cancelAssessmentAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                        <input type="hidden" name="id" value={lead.id} />
+                        <input type="hidden" name="assessmentId" value={item.id} />
+                        <button type="submit" style={{ borderColor: "#991b1b", color: "#991b1b" }}>{t(lang, "Cancel Assessment", "取消老师评估")}</button>
                       </form>
                     </details>
                   ) : null}

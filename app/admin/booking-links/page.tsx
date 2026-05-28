@@ -14,13 +14,16 @@ function appBaseUrl() {
 export default async function AdminBookingLinksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ err?: string; msg?: string }>;
+  searchParams?: Promise<{ err?: string; msg?: string; studentId?: string; title?: string; note?: string }>;
 }) {
   const lang = await getLang();
   await requireAdmin();
   const sp = await searchParams;
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
+  const initialStudentId = typeof sp?.studentId === "string" ? sp.studentId : "";
+  const initialTitle = typeof sp?.title === "string" ? sp.title : "";
+  const initialNote = typeof sp?.note === "string" ? sp.note : "";
 
   const [students, teachers, links] = await Promise.all([
     prisma.student.findMany({
@@ -125,6 +128,13 @@ export default async function AdminBookingLinksPage({
       </div>
       {err ? <NoticeBanner type="error" title={t(lang, "Error", "错误")} message={err} /> : null}
       {msg ? <NoticeBanner type="success" title={t(lang, "Success", "成功")} message={msg} /> : null}
+      {initialStudentId ? (
+        <NoticeBanner
+          type="success"
+          title={t(lang, "Resource handoff", "资源承接")}
+          message={t(lang, "The create form is prefilled from the resource. Open Create Link to continue.", "创建表单已带入资源学生信息，请点击创建链接继续。")}
+        />
+      ) : null}
 
       <div
         style={{
@@ -151,6 +161,9 @@ export default async function AdminBookingLinksPage({
           <BookingLinkCreateForm
             students={studentOptions}
             teachers={teacherOptions}
+            initialStudentId={initialStudentId}
+            initialTitle={initialTitle}
+            initialNote={initialNote}
             labels={{
               student: t(lang, "Student", "学生"),
               startDate: t(lang, "Start Date", "开始日期"),
