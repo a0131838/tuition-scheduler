@@ -15,6 +15,35 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-28-r154
+
+- Release ID: `2026-05-28-r154`
+- Date/Time (Asia/Shanghai): `2026-05-28`
+- Deployment status: `READY`
+- Scope: add the first Resource Follow-up CRM workflow for inquiry intake, sales follow-up, teacher assessments, student conversion, scheduling ticket handoff, dashboard metrics, and CSV export.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260528090000_add_resource_followup_crm/migration.sql`
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/new/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/dashboard/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `app/teacher/assessments/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/layout.tsx`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-followup-crm-plan.md`
+- Risk impact (if any): Medium. This release adds new CRM tables and routes, but it keeps billing, package, receipt, attendance, payroll, contract, and OpenClaw workflows unchanged. Student conversion only creates a Student and optional scheduling ticket after an admin action.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-28-r154`.
+
+---
+
 ## 2026-05-27-r153
 
 - Release ID: `2026-05-27-r153`

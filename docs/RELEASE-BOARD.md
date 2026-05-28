@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-27`
+- Last checked: `2026-05-28`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-27-r153` (manager quality reflection history dashboard), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-28-r154` (resource follow-up CRM first version), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -72,6 +72,7 @@
 - Tutor-payment-profile risk: `2026-05-27-r151` adds full PayNow details to finance payout exports, so finance users must treat generated CSV/XLSX files as sensitive payment data.
 - Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
 - Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
+- Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
 
 ## Process Guard (Installed)
 
@@ -92,6 +93,42 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-28-r154 Ready
+
+- Scope: add the first Resource Follow-up CRM workflow from customer inquiry through sales follow-up, teacher assessment, student conversion, scheduling ticket handoff, dashboard metrics, and CSV export.
+- Business impact:
+  - Admin users can create resources from sources such as Xiaohongshu, Douyin, short video/self-media, referrals, channels, WeChat/private domain, website/forms, offline events, and manual platforms.
+  - Sales/customer-service owners use existing admin user names rather than a new role.
+  - Resource detail pages keep follow-up history, next action, due date, intent level, and status.
+  - Teachers get a dedicated `Assessment Requests / 评估请求` page and can submit assigned assessments; submitted assessments are locked until admin approves revision.
+  - Admin can convert a resource into a Student with source channel automatically set and source detail written into the student note.
+  - Admin can create a scheduling coordination ticket after conversion.
+  - Admin can view a 7-day resource dashboard and export filtered resources as CSV.
+  - Billing, contracts, packages, receipts, attendance, payroll, teacher costs, and OpenClaw are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260528090000_add_resource_followup_crm/migration.sql`
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/new/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/dashboard/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `app/teacher/assessments/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/teacher/layout.tsx`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-followup-crm-plan.md`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
+- Post-deploy verification:
+  - confirm `/admin/login` returns `200` and pm2 reports `tuition-scheduler` online
+  - confirm migration adds Lead CRM tables
+  - confirm `/admin/leads` and `/teacher/assessments` redirect unauthenticated users to login
+  - confirm `/admin/leads/export` is protected by admin auth
 
 ## 2026-05-27-r153 Ready
 
