@@ -123,8 +123,17 @@ export default async function NewLeadPage({
     select: { name: true, email: true },
     orderBy: { name: "asc" },
   });
-  const fieldStyle = { minHeight: 38, border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px" } as const;
-  const labelStyle = { display: "grid", gap: 5, fontWeight: 800, fontSize: 13 } as const;
+  const fieldStyle = {
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    minHeight: 38,
+    border: "1px solid #cbd5e1",
+    borderRadius: 8,
+    padding: "8px 10px",
+  } as const;
+  const labelStyle = { display: "grid", gap: 5, minWidth: 0, fontWeight: 800, fontSize: 13 } as const;
 
   return (
     <main style={{ maxWidth: 980, display: "grid", gap: 14 }}>

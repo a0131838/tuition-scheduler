@@ -15,6 +15,22 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-28-r157
+
+- Release ID: `2026-05-28-r157`
+- Date/Time (Asia/Shanghai): `2026-05-28`
+- Deployment status: `READY`
+- Scope: fix the Resource Follow-up new resource form layout so the owner selector no longer overflows into the intent selector.
+- Key files:
+  - `app/admin/leads/new/page.tsx`
+  - `docs/tasks/TASK-20260528-lead-new-form-layout-fix.md`
+- Risk impact (if any): Low. This is a CSS/layout constraint fix on the new resource form only. It does not change resource creation logic, owner assignment, follow-up records, teacher assessment, student conversion, booking links, billing, contracts, packages, attendance, payroll, or OpenClaw behavior.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-28-r157`.
+
+---
+
 ## 2026-05-28-r156
 
 - Release ID: `2026-05-28-r156`

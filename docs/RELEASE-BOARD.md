@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-28-r156` (resource follow-up shortcuts and booking handoff), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-28-r157` (new resource form layout fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -75,6 +75,7 @@
 - Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
 - Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
 - Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.
+- Resource-new-form-layout risk: `2026-05-28-r157` only constrains field widths on the new resource form so the owner selector cannot overlap the intent selector; no resource creation or downstream workflow logic is changed.
 
 ## Process Guard (Installed)
 
@@ -95,6 +96,18 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-28-r157 Ready
+
+- Scope: fix the Resource Follow-up new resource form layout so owner and intent controls stay within their responsive grid columns.
+- Business impact:
+  - `/admin/leads/new` no longer lets the owner selector visually collide with the intent selector.
+  - Resource creation, owner assignment, follow-up records, teacher assessment, student conversion, booking links, billing, contracts, packages, attendance, payroll, and OpenClaw are unchanged.
+- Files:
+  - `app/admin/leads/new/page.tsx`
+  - `docs/tasks/TASK-20260528-lead-new-form-layout-fix.md`
+- Verification:
+  - `npm run build`
 
 ## 2026-05-28-r156 Ready
 
