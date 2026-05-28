@@ -169,3 +169,15 @@ export function csvEscape(value: unknown) {
   if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }
+
+export function isTestLeadName(value: string | null | undefined) {
+  return normalizeLeadText(value, 160).toUpperCase().includes("TEST");
+}
+
+export function canHardDeleteLead(input: {
+  studentName?: string | null;
+  sourceDetail?: string | null;
+  latestSummary?: string | null;
+}) {
+  return [input.studentName, input.sourceDetail, input.latestSummary].some(isTestLeadName);
+}

@@ -29,9 +29,9 @@ function pillStyle(tone: "green" | "amber" | "red" | "blue" | "slate") {
 export default async function AdminLeadsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; sourceType?: string; owner?: string; intent?: string; focus?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; sourceType?: string; owner?: string; intent?: string; focus?: string; archived?: string; ok?: string }>;
 }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const q = first(sp?.q).trim();
@@ -40,6 +40,9 @@ export default async function AdminLeadsPage({
   const owner = first(sp?.owner).trim();
   const intent = first(sp?.intent).trim();
   const focus = first(sp?.focus).trim();
+  const archived = first(sp?.archived).trim() === "1";
+  const ok = first(sp?.ok).trim();
+  const effectiveOwner = focus === "mine" ? user.name : owner;
   const now = new Date();
   const overdueWhere =
     focus === "overdue"
@@ -65,21 +68,21 @@ export default async function AdminLeadsPage({
           : {}),
         ...(status ? { status } : {}),
         ...(sourceType ? { sourceType } : {}),
-        ...(owner ? { ownerName: owner } : {}),
+        ...(effectiveOwner ? { ownerName: effectiveOwner } : {}),
         ...(intent ? { intentLevel: intent } : {}),
+        isArchived: archived,
         ...overdueWhere,
       },
       include: { assessmentRequests: { select: { status: true, dueAt: true } } },
       orderBy: [{ updatedAt: "desc" }],
       take: 200,
     }),
-    prisma.lead.findMany({
-      where: { ownerName: { not: null } },
-      distinct: ["ownerName"],
-      select: { ownerName: true },
-      orderBy: { ownerName: "asc" },
+    prisma.leadResourceOwner.findMany({
+      where: { isActive: true },
+      select: { name: true },
+      orderBy: { name: "asc" },
     }),
-    prisma.lead.findMany({ select: { status: true, intentLevel: true, nextActionDue: true } }),
+    prisma.lead.findMany({ where: { isArchived: false }, select: { status: true, intentLevel: true, nextActionDue: true } }),
     prisma.leadAssessmentRequest.count({ where: { status: { in: ["Pending", "Revision Requested"] } } }),
   ]);
   const summary = summarizeLeadRows(allForSummary, now);
@@ -90,6 +93,7 @@ export default async function AdminLeadsPage({
   if (owner) params.set("owner", owner);
   if (intent) params.set("intent", intent);
   if (focus) params.set("focus", focus);
+  if (archived) params.set("archived", "1");
   const exportHref = `/admin/leads/export${params.toString() ? `?${params.toString()}` : ""}`;
 
   return (
@@ -108,12 +112,16 @@ export default async function AdminLeadsPage({
             <Link href="/admin/leads/dashboard" style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
               {t(lang, "Dashboard", "资源看板")}
             </Link>
+            <Link href="/admin/leads/owners" style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
+              {t(lang, "Owners", "负责人名单")}
+            </Link>
             <a href={exportHref} style={{ border: "1px solid #16a34a", background: "#f0fdf4", color: "#166534", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
               {t(lang, "Export CSV", "导出 CSV")}
             </a>
           </div>
         </div>
       </section>
+      {ok === "deleted-test" ? <div style={{ color: "#166534", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: 10 }}>{t(lang, "Test resource deleted.", "测试资源已删除。")}</div> : null}
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
         {[
@@ -143,7 +151,7 @@ export default async function AdminLeadsPage({
           </select>
           <select name="owner" defaultValue={owner} style={{ minHeight: 38 }}>
             <option value="">{t(lang, "All owners", "全部负责人")}</option>
-            {owners.map((item) => item.ownerName ? <option key={item.ownerName} value={item.ownerName}>{item.ownerName}</option> : null)}
+            {owners.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
           </select>
           <select name="intent" defaultValue={intent} style={{ minHeight: 38 }}>
             <option value="">{t(lang, "All intent", "全部意向")}</option>
@@ -151,8 +159,13 @@ export default async function AdminLeadsPage({
           </select>
           <select name="focus" defaultValue={focus} style={{ minHeight: 38 }}>
             <option value="">{t(lang, "Normal view", "普通视图")}</option>
+            <option value="mine">{t(lang, "My resources", "我的资源")}</option>
             <option value="overdue">{t(lang, "Only overdue", "只看逾期")}</option>
           </select>
+          <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, fontWeight: 800 }}>
+            <input type="checkbox" name="archived" value="1" defaultChecked={archived} />
+            {t(lang, "Archived", "已归档")}
+          </label>
           <button type="submit">{t(lang, "Apply", "应用")}</button>
           <Link href="/admin/leads">{t(lang, "Clear", "清除")}</Link>
         </form>

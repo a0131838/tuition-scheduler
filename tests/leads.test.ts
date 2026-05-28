@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeadSourceChannelName, buildLeadStudentNote, csvEscape, summarizeLeadRows } from "../lib/leads";
+import { buildLeadSourceChannelName, buildLeadStudentNote, canHardDeleteLead, csvEscape, summarizeLeadRows } from "../lib/leads";
 
 test("build lead source channel name keeps main source and manual platform", () => {
   assert.equal(buildLeadSourceChannelName({ sourceType: "短视频/自媒体", sourcePlatform: "TikTok" }), "短视频/自媒体 - TikTok");
@@ -45,4 +45,10 @@ test("csv escape quotes only when needed", () => {
   assert.equal(csvEscape("plain"), "plain");
   assert.equal(csvEscape("a,b"), '"a,b"');
   assert.equal(csvEscape('say "hi"'), '"say ""hi"""');
+});
+
+test("hard delete guard only allows clearly marked test resources", () => {
+  assert.equal(canHardDeleteLead({ studentName: "TEST CRM Student" }), true);
+  assert.equal(canHardDeleteLead({ sourceDetail: "created for test run" }), true);
+  assert.equal(canHardDeleteLead({ studentName: "Real Student", latestSummary: "normal inquiry" }), false);
 });

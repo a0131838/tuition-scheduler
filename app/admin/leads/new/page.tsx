@@ -27,17 +27,16 @@ async function createLeadAction(formData: FormData) {
   const sourceType = normalizeLeadOption(formData.get("sourceType"), LEAD_SOURCE_TYPES, "");
   const sourcePlatform = normalizeLeadFlexibleOption(formData.get("sourcePlatform"), LEAD_SOURCE_PLATFORMS, "");
   const intentLevel = normalizeLeadOption(formData.get("intentLevel"), LEAD_INTENT_LEVELS, "Warm");
-  const ownerUserId = read(formData, "ownerUserId", 80);
+  const ownerNameInput = read(formData, "ownerName", 120);
   const initialContent = read(formData, "initialContent", 2000);
   const forceDuplicate = read(formData, "forceDuplicate", 5) === "1";
   if (!studentName || !sourceType || !initialContent) {
     redirect("/admin/leads/new?err=required");
   }
-  const owner = ownerUserId
-    ? await prisma.user.findUnique({ where: { id: ownerUserId }, select: { id: true, name: true, role: true } })
+  const owner = ownerNameInput
+    ? await prisma.user.findFirst({ where: { name: ownerNameInput }, select: { id: true, name: true, role: true } })
     : null;
-  const manualOwnerName = read(formData, "ownerName", 120);
-  const resolvedOwnerName = owner?.name || manualOwnerName || null;
+  const resolvedOwnerName = ownerNameInput || null;
   const parentWechat = read(formData, "parentWechat", 120);
   const parentPhone = read(formData, "parentPhone", 80);
   if (!forceDuplicate && (parentWechat || parentPhone)) {
@@ -119,9 +118,9 @@ export default async function NewLeadPage({
   const sp = await searchParams;
   const err = String(sp?.err ?? "");
   const leadNo = String(sp?.leadNo ?? "");
-  const users = await prisma.user.findMany({
-    where: { role: "ADMIN" },
-    select: { id: true, name: true, email: true },
+  const owners = await prisma.leadResourceOwner.findMany({
+    where: { isActive: true },
+    select: { name: true, email: true },
     orderBy: { name: "asc" },
   });
   const fieldStyle = { minHeight: 38, border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px" } as const;
@@ -155,10 +154,11 @@ export default async function NewLeadPage({
               <datalist id="lead-platforms">{LEAD_SOURCE_PLATFORMS.map((item) => <option key={item} value={item} />)}</datalist>
             </label>
             <label style={labelStyle}>{t(lang, "Owner", "负责人")}
-              <select name="ownerUserId" style={fieldStyle}>
+              <select name="ownerName" style={fieldStyle}>
                 <option value="">{t(lang, "Unassigned", "暂不分配")}</option>
-                {users.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
+                {owners.map((item) => <option key={item.name} value={item.name}>{item.name}{item.email ? ` (${item.email})` : ""}</option>)}
               </select>
+              <Link href="/admin/leads/owners" style={{ fontSize: 12 }}>{t(lang, "Manage owner list", "维护负责人名单")}</Link>
             </label>
             <label style={labelStyle}>{t(lang, "Intent", "意向等级")}
               <select name="intentLevel" defaultValue="Warm" style={fieldStyle}>{LEAD_INTENT_LEVELS.map((item) => <option key={item} value={item}>{item}</option>)}</select>

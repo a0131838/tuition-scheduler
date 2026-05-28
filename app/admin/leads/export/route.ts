@@ -7,7 +7,7 @@ function valid(value: string | null, allowed: string[]) {
 }
 
 export async function GET(req: Request) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const url = new URL(req.url);
   const q = String(url.searchParams.get("q") ?? "").trim();
   const status = valid(url.searchParams.get("status"), LEAD_STATUSES);
@@ -15,6 +15,8 @@ export async function GET(req: Request) {
   const owner = String(url.searchParams.get("owner") ?? "").trim();
   const intent = valid(url.searchParams.get("intent"), LEAD_INTENT_LEVELS);
   const focus = String(url.searchParams.get("focus") ?? "").trim();
+  const archived = String(url.searchParams.get("archived") ?? "").trim() === "1";
+  const effectiveOwner = focus === "mine" ? user.name : owner;
   const now = new Date();
   const rows = await prisma.lead.findMany({
     where: {
@@ -31,8 +33,9 @@ export async function GET(req: Request) {
         : {}),
       ...(status ? { status } : {}),
       ...(sourceType ? { sourceType } : {}),
-      ...(owner ? { ownerName: owner } : {}),
+      ...(effectiveOwner ? { ownerName: effectiveOwner } : {}),
       ...(intent ? { intentLevel: intent } : {}),
+      isArchived: archived,
       ...(focus === "overdue" ? { nextActionDue: { lt: now }, status: { notIn: ["Won", "Lost"] } } : {}),
     },
     orderBy: [{ updatedAt: "desc" }],
@@ -59,6 +62,9 @@ export async function GET(req: Request) {
     "Latest Summary",
     "Converted Student ID",
     "Lost Reason",
+    "Archived",
+    "Archived At",
+    "Archived By",
     "Created At",
     "Updated At",
   ];
@@ -86,6 +92,9 @@ export async function GET(req: Request) {
         row.latestSummary,
         row.convertedStudentId,
         row.lostReason,
+        row.isArchived ? "Yes" : "No",
+        row.archivedAt?.toISOString() ?? "",
+        row.archivedByName,
         row.createdAt.toISOString(),
         row.updatedAt.toISOString(),
       ].map(csvEscape).join(",")

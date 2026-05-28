@@ -1,13 +1,15 @@
-import { requireAdmin } from "@/lib/auth";
+import { isOwnerManager, requireAdmin } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import {
   buildLeadSourceChannelName,
   buildLeadStudentNote,
+  canHardDeleteLead,
   formatLeadDateInput,
-  LEAD_ASSESSMENT_STATUSES,
   LEAD_FOLLOW_UP_CHANNELS,
   LEAD_INTENT_LEVELS,
+  LEAD_SOURCE_PLATFORMS,
+  LEAD_SOURCE_TYPES,
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
   normalizeLeadFlexibleOption,
@@ -73,6 +75,113 @@ async function addFollowUpAction(formData: FormData) {
   revalidatePath("/admin/leads");
   revalidatePath(`/admin/leads/${id}`);
   redirect(`/admin/leads/${id}?ok=followup`);
+}
+
+async function updateLeadProfileAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = read(formData, "id", 80);
+  const studentName = read(formData, "studentName", 120);
+  const sourceType = normalizeLeadOption(formData.get("sourceType"), LEAD_SOURCE_TYPES, "");
+  const intentLevel = normalizeLeadOption(formData.get("intentLevel"), LEAD_INTENT_LEVELS, "Warm");
+  const status = normalizeLeadOption(formData.get("status"), LEAD_STATUSES, "New Lead");
+  if (!id || !studentName || !sourceType) redirect("/admin/leads");
+  const ownerName = read(formData, "ownerName", 120);
+  const owner = ownerName
+    ? await prisma.user.findFirst({ where: { name: ownerName }, select: { id: true } })
+    : null;
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      sourceType,
+      sourcePlatform: normalizeLeadFlexibleOption(formData.get("sourcePlatform"), LEAD_SOURCE_PLATFORMS, "") || null,
+      sourceDetail: read(formData, "sourceDetail", 1000) || null,
+      referralName: read(formData, "referralName", 120) || null,
+      parentName: read(formData, "parentName", 120) || null,
+      parentWechat: read(formData, "parentWechat", 120) || null,
+      parentPhone: read(formData, "parentPhone", 80) || null,
+      studentName,
+      grade: read(formData, "grade", 40) || null,
+      school: read(formData, "school", 160) || null,
+      target: read(formData, "target", 1000) || null,
+      needs: read(formData, "needs", 2000) || null,
+      preferredCourse: read(formData, "preferredCourse", 160) || null,
+      budgetRange: read(formData, "budgetRange", 120) || null,
+      urgency: read(formData, "urgency", 120) || null,
+      intentLevel,
+      status,
+      ownerUserId: owner?.id ?? null,
+      ownerName: ownerName || null,
+      assignedSalesName: ownerName || null,
+      lostReason: read(formData, "lostReason", 1000) || null,
+    },
+  });
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${id}`);
+  redirect(`/admin/leads/${id}?ok=profile`);
+}
+
+async function archiveLeadAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const id = read(formData, "id", 80);
+  if (!id) redirect("/admin/leads");
+  await prisma.lead.update({
+    where: { id },
+    data: { isArchived: true, archivedAt: new Date(), archivedByName: user.name },
+  });
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${id}`);
+  redirect(`/admin/leads/${id}?ok=archived`);
+}
+
+async function restoreLeadAction(formData: FormData) {
+  "use server";
+  const id = read(formData, "id", 80);
+  if (!id) redirect("/admin/leads");
+  await requireAdmin();
+  await prisma.lead.update({
+    where: { id },
+    data: { isArchived: false, archivedAt: null, archivedByName: null },
+  });
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${id}`);
+  redirect(`/admin/leads/${id}?ok=restored`);
+}
+
+async function deleteTestLeadAction(formData: FormData) {
+  "use server";
+  const user = await requireAdmin();
+  const id = read(formData, "id", 80);
+  const confirmDelete = read(formData, "confirmDelete", 40);
+  if (!id || !isOwnerManager(user) || confirmDelete !== "DELETE_TEST") redirect(`/admin/leads/${id}`);
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    include: {
+      convertedStudent: { select: { id: true, name: true } },
+    },
+  });
+  if (!lead || !canHardDeleteLead(lead)) redirect("/admin/leads");
+  await prisma.$transaction(async (tx) => {
+    if (lead.schedulingTicketId) {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: lead.schedulingTicketId },
+        select: { id: true, studentName: true, summary: true },
+      });
+      if (ticket && canHardDeleteLead({ studentName: ticket.studentName, latestSummary: ticket.summary })) {
+        await tx.parentAvailabilityRequest.deleteMany({ where: { ticketId: ticket.id } });
+        await tx.ticket.delete({ where: { id: ticket.id } });
+      }
+    }
+    await tx.lead.delete({ where: { id: lead.id } });
+    if (lead.convertedStudent && canHardDeleteLead({ studentName: lead.convertedStudent.name })) {
+      await tx.student.deleteMany({ where: { id: lead.convertedStudent.id, name: { contains: "TEST", mode: "insensitive" } } });
+    }
+  });
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/tickets");
+  redirect("/admin/leads?ok=deleted-test");
 }
 
 async function createAssessmentAction(formData: FormData) {
@@ -229,7 +338,7 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ ok?: string; err?: string }>;
 }) {
-  await requireAdmin();
+  const adminUser = await requireAdmin();
   const lang = await getLang();
   const { id } = await params;
   const sp = await searchParams;
@@ -242,8 +351,9 @@ export default async function LeadDetailPage({
     },
   });
   if (!lead) notFound();
-  const [teachers] = await Promise.all([
+  const [teachers, owners] = await Promise.all([
     prisma.teacher.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }, take: 500 }),
+    prisma.leadResourceOwner.findMany({ where: { isActive: true }, select: { name: true, email: true }, orderBy: { name: "asc" } }),
   ]);
   const fieldStyle = { minHeight: 38, border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px" } as const;
   const labelStyle = { display: "grid", gap: 5, fontWeight: 800, fontSize: 13 } as const;
@@ -252,6 +362,9 @@ export default async function LeadDetailPage({
     : sp?.ok === "followup" ? t(lang, "Follow-up saved.", "跟进已保存。")
     : sp?.ok === "assessment" ? t(lang, "Assessment request created.", "老师评估已派发。")
     : sp?.ok === "reopened" ? t(lang, "Assessment revision approved.", "已批准老师重新修改评估。")
+    : sp?.ok === "profile" ? t(lang, "Resource profile updated.", "资源信息已更新。")
+    : sp?.ok === "archived" ? t(lang, "Resource archived.", "资源已归档。")
+    : sp?.ok === "restored" ? t(lang, "Resource restored.", "资源已恢复。")
     : "";
   const error = sp?.err === "convert-first" ? t(lang, "Convert this resource to a student before creating a scheduling ticket.", "请先把资源转为学生，再创建排课协调工单。") : "";
 
@@ -273,6 +386,7 @@ export default async function LeadDetailPage({
             <div><b>{t(lang, "Intent", "意向")}</b>: {lead.intentLevel}</div>
             <div><b>{t(lang, "Owner", "负责人")}</b>: {lead.ownerName || "-"}</div>
             <div><b>{t(lang, "Source", "来源")}</b>: {lead.sourceType}{lead.sourcePlatform ? ` / ${lead.sourcePlatform}` : ""}</div>
+            {lead.isArchived ? <div style={{ color: "#92400e", fontWeight: 900 }}>{t(lang, "Archived", "已归档")}: {lead.archivedByName || "-"} {lead.archivedAt ? `· ${formatBusinessDateTime(lead.archivedAt)}` : ""}</div> : null}
           </div>
         </div>
       </section>
@@ -293,6 +407,82 @@ export default async function LeadDetailPage({
             ].map(([k, v]) => (
               <div key={String(k)} style={{ marginBottom: 8 }}><b>{k}</b><div style={{ color: "#475569", whiteSpace: "pre-wrap" }}>{v || "-"}</div></div>
             ))}
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ cursor: "pointer", color: "#1d4ed8", fontWeight: 900 }}>{t(lang, "Edit profile", "编辑资源信息")}</summary>
+              <form action={updateLeadProfileAction} style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                <input type="hidden" name="id" value={lead.id} />
+                <label style={labelStyle}>{t(lang, "Owner", "负责人")}
+                  <select name="ownerName" defaultValue={lead.ownerName || ""} style={fieldStyle}>
+                    <option value="">{t(lang, "Unassigned", "暂不分配")}</option>
+                    {owners.map((item) => <option key={item.name} value={item.name}>{item.name}{item.email ? ` (${item.email})` : ""}</option>)}
+                  </select>
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                  <label style={labelStyle}>{t(lang, "Status", "状态")}
+                    <select name="status" defaultValue={lead.status} style={fieldStyle}>{LEAD_STATUSES.map((item) => <option key={item} value={item}>{statusLabel(lang, item)}</option>)}</select>
+                  </label>
+                  <label style={labelStyle}>{t(lang, "Intent", "意向")}
+                    <select name="intentLevel" defaultValue={lead.intentLevel} style={fieldStyle}>{LEAD_INTENT_LEVELS.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+                  </label>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                  <label style={labelStyle}>{t(lang, "Main source", "主来源")}
+                    <select name="sourceType" defaultValue={lead.sourceType} required style={fieldStyle}>{LEAD_SOURCE_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+                  </label>
+                  <label style={labelStyle}>{t(lang, "Platform / channel", "具体平台/渠道")}
+                    <input name="sourcePlatform" list="lead-detail-platforms" defaultValue={lead.sourcePlatform || ""} style={fieldStyle} />
+                    <datalist id="lead-detail-platforms">{LEAD_SOURCE_PLATFORMS.map((item) => <option key={item} value={item} />)}</datalist>
+                  </label>
+                </div>
+                <label style={labelStyle}>{t(lang, "Student name", "学生姓名")}<input name="studentName" required defaultValue={lead.studentName} style={fieldStyle} /></label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                  <label style={labelStyle}>{t(lang, "Grade", "年级")}<input name="grade" defaultValue={lead.grade || ""} style={fieldStyle} /></label>
+                  <label style={labelStyle}>{t(lang, "School", "学校")}<input name="school" defaultValue={lead.school || ""} style={fieldStyle} /></label>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                  <label style={labelStyle}>{t(lang, "Parent name", "家长姓名")}<input name="parentName" defaultValue={lead.parentName || ""} style={fieldStyle} /></label>
+                  <label style={labelStyle}>{t(lang, "Parent WeChat", "家长微信")}<input name="parentWechat" defaultValue={lead.parentWechat || ""} style={fieldStyle} /></label>
+                  <label style={labelStyle}>{t(lang, "Parent phone", "家长电话")}<input name="parentPhone" defaultValue={lead.parentPhone || ""} style={fieldStyle} /></label>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                  <label style={labelStyle}>{t(lang, "Course", "课程")}<input name="preferredCourse" defaultValue={lead.preferredCourse || ""} style={fieldStyle} /></label>
+                  <label style={labelStyle}>{t(lang, "Budget", "预算")}<input name="budgetRange" defaultValue={lead.budgetRange || ""} style={fieldStyle} /></label>
+                  <label style={labelStyle}>{t(lang, "Urgency", "紧急程度")}<input name="urgency" defaultValue={lead.urgency || ""} style={fieldStyle} /></label>
+                </div>
+                <label style={labelStyle}>{t(lang, "Target", "目标")}<textarea name="target" rows={2} defaultValue={lead.target || ""} style={fieldStyle} /></label>
+                <label style={labelStyle}>{t(lang, "Needs", "需求")}<textarea name="needs" rows={3} defaultValue={lead.needs || ""} style={fieldStyle} /></label>
+                <label style={labelStyle}>{t(lang, "Source detail", "来源备注")}<textarea name="sourceDetail" rows={3} defaultValue={lead.sourceDetail || ""} style={fieldStyle} /></label>
+                <label style={labelStyle}>{t(lang, "Referral name", "介绍人")}<input name="referralName" defaultValue={lead.referralName || ""} style={fieldStyle} /></label>
+                <label style={labelStyle}>{t(lang, "Lost reason", "流失原因")}<textarea name="lostReason" rows={2} defaultValue={lead.lostReason || ""} style={fieldStyle} /></label>
+                <button type="submit">{t(lang, "Save Profile", "保存资源信息")}</button>
+              </form>
+            </details>
+          </div>
+
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, background: "#fff", display: "grid", gap: 10 }}>
+            <h3 style={{ margin: 0 }}>{t(lang, "Resource Admin", "资源管理")}</h3>
+            {lead.isArchived ? (
+              <form action={restoreLeadAction}>
+                <input type="hidden" name="id" value={lead.id} />
+                <button type="submit">{t(lang, "Restore Resource", "恢复资源")}</button>
+              </form>
+            ) : (
+              <form action={archiveLeadAction}>
+                <input type="hidden" name="id" value={lead.id} />
+                <button type="submit">{t(lang, "Archive Resource", "归档资源")}</button>
+              </form>
+            )}
+            {isOwnerManager(adminUser) && canHardDeleteLead(lead) ? (
+              <details>
+                <summary style={{ cursor: "pointer", color: "#991b1b", fontWeight: 900 }}>{t(lang, "Delete test resource", "删除测试资源")}</summary>
+                <form action={deleteTestLeadAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  <input type="hidden" name="id" value={lead.id} />
+                  <div style={{ color: "#991b1b", fontSize: 12 }}>{t(lang, "Only resources marked TEST can be physically deleted.", "只有标记 TEST 的资源允许物理删除。")}</div>
+                  <input name="confirmDelete" placeholder="DELETE_TEST" style={fieldStyle} />
+                  <button type="submit" style={{ borderColor: "#991b1b", color: "#991b1b" }}>{t(lang, "Delete Test Resource", "删除测试资源")}</button>
+                </form>
+              </details>
+            ) : null}
           </div>
 
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, background: "#fff", display: "grid", gap: 8 }}>

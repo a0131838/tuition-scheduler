@@ -1426,6 +1426,9 @@ model Lead {
   convertedSourceChannelId String?
   schedulingTicketId       String?
   lostReason               String?
+  isArchived               Boolean  @default(false)
+  archivedAt               DateTime?
+  archivedByName           String?
   createdByUserId          String?
   createdByName            String?
   createdAt                DateTime @default(now())
@@ -1438,6 +1441,7 @@ model Lead {
   assessmentRequests     LeadAssessmentRequest[]
 
   @@index([status, createdAt])
+  @@index([isArchived, createdAt])
   @@index([sourceType, createdAt])
   @@index([sourcePlatform, createdAt])
   @@index([ownerName, createdAt])
@@ -1446,6 +1450,18 @@ model Lead {
   @@index([parentWechat])
   @@index([parentPhone])
   @@index([convertedStudentId])
+}
+
+model LeadResourceOwner {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  email     String?
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, name])
 }
 
 model LeadFollowUp {

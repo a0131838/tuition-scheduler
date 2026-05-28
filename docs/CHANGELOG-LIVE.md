@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-28-r155
+
+- Release ID: `2026-05-28-r155`
+- Date/Time (Asia/Shanghai): `2026-05-28`
+- Deployment status: `READY`
+- Scope: enhance the Resource Follow-up CRM with an independent owner list, owner maintenance page, resource profile editing, archived-resource handling, My Resources filtering, and guarded test-resource deletion.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260528093000_resource_owner_and_archive/migration.sql`
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/new/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/owners/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-owner-archive-enhancements.md`
+- Risk impact (if any): Low to medium. This release only extends the new CRM lead workflow. Archive is reversible, owner names are independent from login roles, and physical deletion is restricted to clearly marked `TEST` resources for the owner manager. Billing, package, contract, receipt, attendance, payroll, teacher cost, scheduling conflict, and OpenClaw logic are unchanged.
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-28-r155`.
+
+---
+
 ## 2026-05-28-r154
 
 - Release ID: `2026-05-28-r154`

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-28-r154` (resource follow-up CRM first version), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-28-r155` (resource owner and archive enhancements), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -73,6 +73,7 @@
 - Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
 - Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
 - Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
+- Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
 
 ## Process Guard (Installed)
 
@@ -93,6 +94,34 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-28-r155 Ready
+
+- Scope: improve the Resource Follow-up CRM after first production testing with owner maintenance, editability, archive cleanup, My Resources filtering, and safer test-data cleanup.
+- Business impact:
+  - Admin users can maintain `/admin/leads/owners` without changing login roles.
+  - New resource creation and resource filters use active owner names from the independent owner list.
+  - Resource detail pages allow admin users to correct owner, source, parent/student details, intent, status, needs, and lost reason.
+  - Old resources can be archived and restored; archived resources are hidden from the default list but can be filtered and exported.
+  - `My resources` filters by the current logged-in admin name and CSV export follows the same filter.
+  - Owner manager can physically delete clearly marked `TEST` resources only; real resources remain archive-only.
+  - Billing, contracts, packages, receipts, attendance, payroll, teacher costs, scheduling conflict logic, and OpenClaw are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260528093000_resource_owner_and_archive/migration.sql`
+  - `lib/leads.ts`
+  - `app/admin/leads/page.tsx`
+  - `app/admin/leads/new/page.tsx`
+  - `app/admin/leads/[id]/page.tsx`
+  - `app/admin/leads/owners/page.tsx`
+  - `app/admin/leads/export/route.ts`
+  - `tests/leads.test.ts`
+  - `docs/tasks/TASK-20260528-resource-owner-archive-enhancements.md`
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx tsx --test tests/leads.test.ts`
+  - `npm run build`
 
 ## 2026-05-28-r154 Ready
 
