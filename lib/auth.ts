@@ -2,6 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
+import { canAccessResourceWorkspaceRole, SystemUserRole } from "@/lib/staff-roles";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
@@ -13,7 +14,7 @@ type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT";
+  role: SystemUserRole;
   language: "BILINGUAL" | "ZH" | "EN";
   teacherId: string | null;
 };
@@ -171,6 +172,36 @@ export async function requireAdmin() {
   if (user.role === "ADMIN" || user.role === "FINANCE") return user;
   if (await isManagerUser(user)) return user;
   redirect("/admin/login");
+  throw new Error("unreachable");
+}
+
+export async function requireAdminAreaUser() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/admin/login");
+    throw new Error("unreachable");
+  }
+  if (user.role === "ADMIN" || user.role === "FINANCE" || user.role === "SALES" || user.role === "CS") return user;
+  if (await isManagerUser(user)) return user;
+  redirect("/admin/login");
+  throw new Error("unreachable");
+}
+
+export async function requireResourceUser() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/admin/login");
+    throw new Error("unreachable");
+  }
+  if (canAccessResourceWorkspaceRole(user.role)) return user;
+  redirect("/admin");
+  throw new Error("unreachable");
+}
+
+export async function requireResourceAdmin() {
+  const user = await requireAdmin();
+  if (user.role === "ADMIN") return user;
+  redirect("/admin/leads");
   throw new Error("unreachable");
 }
 

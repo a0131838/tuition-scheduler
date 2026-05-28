@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-28-r158
+
+- Release ID: `2026-05-28-r158`
+- Date/Time (Asia/Shanghai): `2026-05-28`
+- Deployment status: `READY`
+- Scope: add independent `SALES` and `CS` roles with a scoped Resource Follow-up workspace instead of full admin access.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260528103000_add_sales_cs_roles/migration.sql`
+  - `lib/auth.ts`
+  - `lib/staff-roles.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `app/admin/leads/*`
+  - `app/admin/manager/users/*`
+  - `tests/staff-roles.test.ts`
+  - `docs/tasks/TASK-20260528-sales-cs-independent-roles.md`
+- Risk impact (if any): Low to medium. This release adds new user roles and a scoped resource workspace. `requireAdmin()` remains restricted to existing admin/finance/manager access, while Sales/CS can only enter Resource Follow-up pages through resource-specific guards. Billing, packages, contracts, attendance, payroll, teacher portal, and finance workflows are unchanged.
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-28-r158`.
+
+---
+
 ## 2026-05-28-r157
 
 - Release ID: `2026-05-28-r157`

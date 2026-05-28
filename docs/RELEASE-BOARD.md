@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-28-r157` (new resource form layout fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-28-r158` (Sales / CS independent roles and scoped Resource Follow-up workspace), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -76,6 +76,7 @@
 - Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
 - Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.
 - Resource-new-form-layout risk: `2026-05-28-r157` only constrains field widths on the new resource form so the owner selector cannot overlap the intent selector; no resource creation or downstream workflow logic is changed.
+- Sales-CS-role risk: `2026-05-28-r158` adds new `SALES` and `CS` user roles and a scoped Resource Follow-up workspace; verify these users cannot enter full admin, finance, student, ticket, package, payroll, contract, or system-user pages.
 
 ## Process Guard (Installed)
 

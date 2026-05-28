@@ -1,4 +1,4 @@
-import { isOwnerManager, requireAdmin } from "@/lib/auth";
+import { isOwnerManager, requireResourceAdmin, requireResourceUser } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import {
@@ -18,6 +18,7 @@ import {
   parseLeadDateTime,
 } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
+import { canManageResourceWorkspaceRole, canUseResourceOpsHandoffRole } from "@/lib/staff-roles";
 import { allocateTicketNo, composeTicketSituation, SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -35,7 +36,7 @@ function statusLabel(lang: "BILINGUAL" | "ZH" | "EN", status: string) {
 
 async function addFollowUpAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceUser();
   const id = read(formData, "id", 80);
   const content = read(formData, "content", 2000);
   if (!id || !content) redirect("/admin/leads");
@@ -79,7 +80,7 @@ async function addFollowUpAction(formData: FormData) {
 
 async function updateLeadProfileAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceUser();
   const id = read(formData, "id", 80);
   const studentName = read(formData, "studentName", 120);
   const sourceType = normalizeLeadOption(formData.get("sourceType"), LEAD_SOURCE_TYPES, "");
@@ -123,7 +124,7 @@ async function updateLeadProfileAction(formData: FormData) {
 
 async function archiveLeadAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceAdmin();
   const id = read(formData, "id", 80);
   if (!id) redirect("/admin/leads");
   await prisma.lead.update({
@@ -139,7 +140,7 @@ async function restoreLeadAction(formData: FormData) {
   "use server";
   const id = read(formData, "id", 80);
   if (!id) redirect("/admin/leads");
-  await requireAdmin();
+  await requireResourceAdmin();
   await prisma.lead.update({
     where: { id },
     data: { isArchived: false, archivedAt: null, archivedByName: null },
@@ -151,7 +152,7 @@ async function restoreLeadAction(formData: FormData) {
 
 async function deleteTestLeadAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceAdmin();
   const id = read(formData, "id", 80);
   const confirmDelete = read(formData, "confirmDelete", 40);
   if (!id || !isOwnerManager(user) || confirmDelete !== "DELETE_TEST") redirect(`/admin/leads/${id}`);
@@ -186,7 +187,7 @@ async function deleteTestLeadAction(formData: FormData) {
 
 async function createAssessmentAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceUser();
   const id = read(formData, "id", 80);
   const teacherId = read(formData, "teacherId", 80);
   if (!id || !teacherId) redirect(`/admin/leads/${id}`);
@@ -218,7 +219,7 @@ async function createAssessmentAction(formData: FormData) {
 
 async function reopenAssessmentAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceAdmin();
   const id = read(formData, "id", 80);
   const assessmentId = read(formData, "assessmentId", 80);
   const note = read(formData, "reopenNote", 1000);
@@ -239,7 +240,7 @@ async function reopenAssessmentAction(formData: FormData) {
 
 async function cancelAssessmentAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceUser();
   const id = read(formData, "id", 80);
   const assessmentId = read(formData, "assessmentId", 80);
   if (!id || !assessmentId) redirect("/admin/leads");
@@ -272,7 +273,7 @@ async function cancelAssessmentAction(formData: FormData) {
 
 async function convertToStudentAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceAdmin();
   const id = read(formData, "id", 80);
   if (!id) redirect("/admin/leads");
   const lead = await prisma.lead.findUnique({ where: { id } });
@@ -319,7 +320,7 @@ async function convertToStudentAction(formData: FormData) {
 
 async function createSchedulingTicketAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceAdmin();
   const id = read(formData, "id", 80);
   const lead = id
     ? await prisma.lead.findUnique({ where: { id }, include: { convertedStudent: { select: { id: true, name: true, grade: true } } } })
@@ -371,7 +372,7 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ ok?: string; err?: string }>;
 }) {
-  const adminUser = await requireAdmin();
+  const adminUser = await requireResourceUser();
   const lang = await getLang();
   const { id } = await params;
   const sp = await searchParams;
@@ -390,6 +391,8 @@ export default async function LeadDetailPage({
   ]);
   const fieldStyle = { minHeight: 38, border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px" } as const;
   const labelStyle = { display: "grid", gap: 5, fontWeight: 800, fontSize: 13 } as const;
+  const canManageResource = canManageResourceWorkspaceRole(adminUser.role);
+  const canUseOpsHandoff = canUseResourceOpsHandoffRole(adminUser.role);
   const banner =
     sp?.ok === "created" ? t(lang, "Resource created.", "资源已创建。")
     : sp?.ok === "followup" ? t(lang, "Follow-up saved.", "跟进已保存。")
@@ -493,52 +496,60 @@ export default async function LeadDetailPage({
             </details>
           </div>
 
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, background: "#fff", display: "grid", gap: 10 }}>
-            <h3 style={{ margin: 0 }}>{t(lang, "Resource Admin", "资源管理")}</h3>
-            {lead.isArchived ? (
-              <form action={restoreLeadAction}>
-                <input type="hidden" name="id" value={lead.id} />
-                <button type="submit">{t(lang, "Restore Resource", "恢复资源")}</button>
-              </form>
-            ) : (
-              <form action={archiveLeadAction}>
-                <input type="hidden" name="id" value={lead.id} />
-                <button type="submit">{t(lang, "Archive Resource", "归档资源")}</button>
-              </form>
-            )}
-            {isOwnerManager(adminUser) && canHardDeleteLead(lead) ? (
-              <details>
-                <summary style={{ cursor: "pointer", color: "#991b1b", fontWeight: 900 }}>{t(lang, "Delete test resource", "删除测试资源")}</summary>
-                <form action={deleteTestLeadAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>
+          {canManageResource ? (
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, background: "#fff", display: "grid", gap: 10 }}>
+              <h3 style={{ margin: 0 }}>{t(lang, "Resource Admin", "资源管理")}</h3>
+              {lead.isArchived ? (
+                <form action={restoreLeadAction}>
                   <input type="hidden" name="id" value={lead.id} />
-                  <div style={{ color: "#991b1b", fontSize: 12 }}>{t(lang, "Only resources marked TEST can be physically deleted.", "只有标记 TEST 的资源允许物理删除。")}</div>
-                  <input name="confirmDelete" placeholder="DELETE_TEST" style={fieldStyle} />
-                  <button type="submit" style={{ borderColor: "#991b1b", color: "#991b1b" }}>{t(lang, "Delete Test Resource", "删除测试资源")}</button>
+                  <button type="submit">{t(lang, "Restore Resource", "恢复资源")}</button>
                 </form>
-              </details>
-            ) : null}
-          </div>
+              ) : (
+                <form action={archiveLeadAction}>
+                  <input type="hidden" name="id" value={lead.id} />
+                  <button type="submit">{t(lang, "Archive Resource", "归档资源")}</button>
+                </form>
+              )}
+              {isOwnerManager(adminUser) && canHardDeleteLead(lead) ? (
+                <details>
+                  <summary style={{ cursor: "pointer", color: "#991b1b", fontWeight: 900 }}>{t(lang, "Delete test resource", "删除测试资源")}</summary>
+                  <form action={deleteTestLeadAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                    <input type="hidden" name="id" value={lead.id} />
+                    <div style={{ color: "#991b1b", fontSize: 12 }}>{t(lang, "Only resources marked TEST can be physically deleted.", "只有标记 TEST 的资源允许物理删除。")}</div>
+                    <input name="confirmDelete" placeholder="DELETE_TEST" style={fieldStyle} />
+                    <button type="submit" style={{ borderColor: "#991b1b", color: "#991b1b" }}>{t(lang, "Delete Test Resource", "删除测试资源")}</button>
+                  </form>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
 
           <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, background: "#fff", display: "grid", gap: 8 }}>
             <h3 style={{ margin: 0 }}>{t(lang, "Ops Handoff", "教务承接")}</h3>
-            {lead.convertedStudent ? (
-              <Link href={`/admin/students/${lead.convertedStudent.id}`}>{t(lang, "Open converted student", "打开已转学生")} · {lead.convertedStudent.name}</Link>
+            {canUseOpsHandoff ? (
+              <>
+                {lead.convertedStudent ? (
+                  <Link href={`/admin/students/${lead.convertedStudent.id}`}>{t(lang, "Open converted student", "打开已转学生")} · {lead.convertedStudent.name}</Link>
+                ) : (
+                  <form action={convertToStudentAction}>
+                    <input type="hidden" name="id" value={lead.id} />
+                    <button type="submit">{t(lang, "Convert to Student", "转为学生")}</button>
+                  </form>
+                )}
+                <form action={createSchedulingTicketAction}>
+                  <input type="hidden" name="id" value={lead.id} />
+                  <button type="submit">{lead.schedulingTicketId ? t(lang, "Open Scheduling Ticket", "打开排课协调工单") : t(lang, "Create Scheduling Ticket", "创建排课协调工单")}</button>
+                </form>
+                {lead.convertedStudent ? (
+                  <Link href={`/admin/booking-links?studentId=${encodeURIComponent(lead.convertedStudent.id)}&title=${encodeURIComponent(`${lead.studentName} booking link`)}&note=${encodeURIComponent(`From resource ${lead.leadNo}. ${lead.needs || ""}`)}#booking-links-actions`}>
+                    {t(lang, "Create Booking Link", "创建选课链接")}
+                  </Link>
+                ) : (
+                  <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Convert to student before creating a booking link.", "先转为学生后再创建选课链接。")}</div>
+                )}
+              </>
             ) : (
-              <form action={convertToStudentAction}>
-                <input type="hidden" name="id" value={lead.id} />
-                <button type="submit">{t(lang, "Convert to Student", "转为学生")}</button>
-              </form>
-            )}
-            <form action={createSchedulingTicketAction}>
-              <input type="hidden" name="id" value={lead.id} />
-              <button type="submit">{lead.schedulingTicketId ? t(lang, "Open Scheduling Ticket", "打开排课协调工单") : t(lang, "Create Scheduling Ticket", "创建排课协调工单")}</button>
-            </form>
-            {lead.convertedStudent ? (
-              <Link href={`/admin/booking-links?studentId=${encodeURIComponent(lead.convertedStudent.id)}&title=${encodeURIComponent(`${lead.studentName} booking link`)}&note=${encodeURIComponent(`From resource ${lead.leadNo}. ${lead.needs || ""}`)}#booking-links-actions`}>
-                {t(lang, "Create Booking Link", "创建选课链接")}
-              </Link>
-            ) : (
-              <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Convert to student before creating a booking link.", "先转为学生后再创建选课链接。")}</div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Ask an admin to convert the resource when the parent is ready to become a student.", "家长确认成交后，请管理把资源转为正式学生。")}</div>
             )}
           </div>
         </aside>
@@ -589,7 +600,7 @@ export default async function LeadDetailPage({
                     <b>{t(lang, "Risks", "风险")}</b>: {item.risks || "-"}{"\n"}
                     <b>{t(lang, "Sales note", "销售建议")}</b>: {item.suggestionForSales || "-"}
                   </div>
-                  {item.status === "Submitted" ? (
+                  {item.status === "Submitted" && canManageResource ? (
                     <details style={{ marginTop: 8 }}>
                       <summary style={{ cursor: "pointer", color: "#1d4ed8", fontWeight: 800 }}>{t(lang, "Approve revision", "批准老师重新修改")}</summary>
                       <form action={reopenAssessmentAction} style={{ display: "grid", gap: 8, marginTop: 8 }}>

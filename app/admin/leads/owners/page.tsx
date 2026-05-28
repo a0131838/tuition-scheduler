@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireResourceAdmin } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { normalizeLeadText } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ function revalidateOwnerPages() {
 
 async function addOwnerAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceAdmin();
   const name = read(formData, "name", 120);
   if (!name) redirect("/admin/leads/owners?err=name");
   await prisma.leadResourceOwner.upsert({
@@ -40,7 +40,7 @@ async function addOwnerAction(formData: FormData) {
 
 async function updateOwnerAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceAdmin();
   const id = read(formData, "id", 80);
   const name = read(formData, "name", 120);
   if (!id || !name) redirect("/admin/leads/owners?err=name");
@@ -58,7 +58,7 @@ async function updateOwnerAction(formData: FormData) {
 
 async function setOwnerActiveAction(formData: FormData) {
   "use server";
-  await requireAdmin();
+  await requireResourceAdmin();
   const id = read(formData, "id", 80);
   const isActive = read(formData, "isActive", 5) === "1";
   if (!id) redirect("/admin/leads/owners");
@@ -72,7 +72,7 @@ export default async function LeadOwnersPage({
 }: {
   searchParams?: Promise<{ ok?: string; err?: string }>;
 }) {
-  await requireAdmin();
+  await requireResourceAdmin();
   const lang = await getLang();
   const sp = await searchParams;
   const owners = await prisma.leadResourceOwner.findMany({

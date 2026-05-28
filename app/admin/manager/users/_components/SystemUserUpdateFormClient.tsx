@@ -71,6 +71,8 @@ export default function SystemUserUpdateFormClient({
           <select name="role" defaultValue={user.role} disabled={busy}>
             <option value="ADMIN">ADMIN</option>
             <option value="FINANCE">FINANCE</option>
+            <option value="SALES">SALES</option>
+            <option value="CS">CS</option>
             <option value="TEACHER">TEACHER</option>
             <option value="STUDENT">STUDENT</option>
           </select>

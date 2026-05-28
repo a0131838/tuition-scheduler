@@ -1,8 +1,9 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireResourceUser } from "@/lib/auth";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { buildLeadFocusWhere, LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES, LEAD_STATUS_LABELS, summarizeLeadRows } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
+import { canManageResourceWorkspaceRole } from "@/lib/staff-roles";
 import Link from "next/link";
 
 function first(v?: string | string[]) {
@@ -31,7 +32,8 @@ export default async function AdminLeadsPage({
 }: {
   searchParams?: Promise<{ q?: string; status?: string; sourceType?: string; owner?: string; intent?: string; focus?: string; archived?: string; ok?: string }>;
 }) {
-  const user = await requireAdmin();
+  const user = await requireResourceUser();
+  const canManageResource = canManageResourceWorkspaceRole(user.role);
   const lang = await getLang();
   const sp = await searchParams;
   const q = first(sp?.q).trim();
@@ -105,9 +107,11 @@ export default async function AdminLeadsPage({
             <Link href="/admin/leads/dashboard" style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
               {t(lang, "Dashboard", "资源看板")}
             </Link>
-            <Link href="/admin/leads/owners" style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
-              {t(lang, "Owners", "负责人名单")}
-            </Link>
+            {canManageResource ? (
+              <Link href="/admin/leads/owners" style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
+                {t(lang, "Owners", "负责人名单")}
+              </Link>
+            ) : null}
             <a href={exportHref} style={{ border: "1px solid #16a34a", background: "#f0fdf4", color: "#166534", borderRadius: 8, padding: "9px 12px", textDecoration: "none", fontWeight: 900 }}>
               {t(lang, "Export CSV", "导出 CSV")}
             </a>

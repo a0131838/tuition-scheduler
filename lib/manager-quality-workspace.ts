@@ -3,6 +3,7 @@ import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly,
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { summarizeManagerReflectionHistory } from "@/lib/manager-reflection-summary";
+import { SystemUserRole } from "@/lib/staff-roles";
 
 const MANAGER_REFLECTION_KEY = "manager_daily_reflection_v1";
 
@@ -197,7 +198,7 @@ function courseText(cls: {
 
 export async function loadManagerQualityWorkspace(input: {
   managerEmail: string;
-  managerRole: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT";
+  managerRole: SystemUserRole;
   date?: string | null;
   historyDays?: number | null;
 }) {

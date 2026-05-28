@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireResourceUser } from "@/lib/auth";
 import { buildLeadFocusWhere, csvEscape, LEAD_INTENT_LEVELS, LEAD_SOURCE_TYPES, LEAD_STATUSES } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 
@@ -7,7 +7,7 @@ function valid(value: string | null, allowed: string[]) {
 }
 
 export async function GET(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireResourceUser();
   const url = new URL(req.url);
   const q = String(url.searchParams.get("q") ?? "").trim();
   const status = valid(url.searchParams.get("status"), LEAD_STATUSES);

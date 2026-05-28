@@ -88,6 +88,8 @@ export default function SystemUserCreateClient({
           <select name="role" defaultValue="ADMIN" disabled={busy}>
             <option value="ADMIN">ADMIN</option>
             <option value="FINANCE">FINANCE</option>
+            <option value="SALES">SALES</option>
+            <option value="CS">CS</option>
             <option value="TEACHER">TEACHER</option>
             <option value="STUDENT">STUDENT</option>
           </select>

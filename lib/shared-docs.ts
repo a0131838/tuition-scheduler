@@ -1,12 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { isManagerUser } from '@/lib/auth';
+import { SystemUserRole } from '@/lib/staff-roles';
 
 const DEFAULT_DOC_CATEGORIES = ['合同', '财务', '运营', '制度', '其他'];
 
 type SharedDocUser = {
   id: string;
   email: string;
-  role: 'ADMIN' | 'FINANCE' | 'TEACHER' | 'STUDENT';
+  role: SystemUserRole;
 };
 
 export async function canAccessSharedDocs(user: SharedDocUser | null | undefined) {

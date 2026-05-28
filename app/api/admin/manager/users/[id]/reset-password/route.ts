@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { createPasswordHash, getManagerEmailSet, isOwnerManager, requireManager } from "@/lib/auth";
+import { SystemUserRole } from "@/lib/staff-roles";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
 
-type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
+type BasicUser = { id: string; email: string; role: SystemUserRole };
 
 function canEditTargetUser(
   actor: BasicUser,

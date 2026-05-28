@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireResourceUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import {
   allocateLeadNo,
@@ -12,6 +12,7 @@ import {
   parseLeadDateTime,
 } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
+import { canManageResourceWorkspaceRole } from "@/lib/staff-roles";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -22,7 +23,7 @@ function read(formData: FormData, key: string, max = 500) {
 
 async function createLeadAction(formData: FormData) {
   "use server";
-  const user = await requireAdmin();
+  const user = await requireResourceUser();
   const studentName = read(formData, "studentName", 120);
   const sourceType = normalizeLeadOption(formData.get("sourceType"), LEAD_SOURCE_TYPES, "");
   const sourcePlatform = normalizeLeadFlexibleOption(formData.get("sourcePlatform"), LEAD_SOURCE_PLATFORMS, "");
@@ -113,7 +114,8 @@ export default async function NewLeadPage({
 }: {
   searchParams?: Promise<{ err?: string; leadNo?: string }>;
 }) {
-  await requireAdmin();
+  const user = await requireResourceUser();
+  const canManageResource = canManageResourceWorkspaceRole(user.role);
   const lang = await getLang();
   const sp = await searchParams;
   const err = String(sp?.err ?? "");
@@ -167,7 +169,7 @@ export default async function NewLeadPage({
                 <option value="">{t(lang, "Unassigned", "暂不分配")}</option>
                 {owners.map((item) => <option key={item.name} value={item.name}>{item.name}{item.email ? ` (${item.email})` : ""}</option>)}
               </select>
-              <Link href="/admin/leads/owners" style={{ fontSize: 12 }}>{t(lang, "Manage owner list", "维护负责人名单")}</Link>
+              {canManageResource ? <Link href="/admin/leads/owners" style={{ fontSize: 12 }}>{t(lang, "Manage owner list", "维护负责人名单")}</Link> : null}
             </label>
             <label style={labelStyle}>{t(lang, "Intent", "意向等级")}
               <select name="intentLevel" defaultValue="Warm" style={fieldStyle}>{LEAD_INTENT_LEVELS.map((item) => <option key={item} value={item}>{item}</option>)}</select>

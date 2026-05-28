@@ -1,12 +1,14 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
+import { isResourceOnlyRole } from "@/lib/staff-roles";
 import { workbenchHeroStyle } from "./_components/workbenchStyles";
 
 export default async function AdminHome() {
   const lang = await getLang();
   const user = await getCurrentUser();
   const isFinance = user?.role === "FINANCE";
+  const isResourceOnly = isResourceOnlyRole(user?.role);
   const approvalInbox = await getApprovalInboxData(user?.email, user?.role);
   const cardStyle = {
     padding: "16px 18px",
@@ -139,6 +141,53 @@ export default async function AdminHome() {
             <a href="/admin/finance/student-package-balances">{t(lang, "Student Package Balances", "学生课时包余额报表")}</a>
             <a href="/admin/expense-claims">{t(lang, "Expense Claims", "报销审批")}</a>
             <a href="/admin/reports/audit-logs">{t(lang, "Audit Logs", "审计日志")}</a>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (isResourceOnly) {
+    const isCs = user?.role === "CS";
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <section style={{ ...workbenchHeroStyle("indigo"), marginBottom: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+            {isCs ? t(lang, "CS Workspace", "客服工作台") : t(lang, "Sales Workspace", "销售工作台")}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>
+            {t(lang, "Resource follow-up", "资源跟进")}
+          </div>
+          <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.45, maxWidth: 760 }}>
+            {t(
+              lang,
+              "This role can create resources, update follow-ups, request teacher assessments, and view the resource dashboard. Admin-only student conversion and system settings stay hidden.",
+              "该角色可以录入资源、更新跟进、派发老师评估、查看资源看板；转学生和系统配置仍由管理处理。"
+            )}
+          </div>
+        </section>
+
+        <section style={{ ...cardStyle, background: "#f8fafc" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.3 }}>
+            {t(lang, "Main work", "主要工作")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
+            <a href="/admin/leads" style={{ ...tileStyle, background: "#eff6ff", borderColor: "#93c5fd" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Resource Follow-up", "资源跟进")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Open active resources and continue the next action.", "打开资源列表并继续下一步跟进。")}</div>
+            </a>
+            <a href="/admin/leads/new" style={{ ...tileStyle, background: "#f0fdf4", borderColor: "#86efac" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "New Resource", "新增资源")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Create a record as soon as a parent inquiry arrives.", "家长咨询后立即创建记录。")}</div>
+            </a>
+            <a href="/admin/leads?focus=mine" style={{ ...tileStyle, background: "#fff7ed", borderColor: "#fdba74" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "My Resources", "我的资源")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Focus on resources assigned to your name.", "只看分配给自己的资源。")}</div>
+            </a>
+            <a href="/admin/leads/dashboard" style={{ ...tileStyle, background: "#f8fbff", borderColor: "#bfdbfe" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Resource Dashboard", "资源看板")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Review pipeline status and completion rates.", "查看资源管道和完成情况。")}</div>
+            </a>
           </div>
         </section>
       </div>

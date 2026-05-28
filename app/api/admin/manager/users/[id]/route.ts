@@ -1,19 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { getManagerEmailSet, isOwnerManager, requireManager } from "@/lib/auth";
+import { pickSystemUserRole, SystemUserRole } from "@/lib/staff-roles";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
-}
-
-function pickRole(v: string) {
-  return v === "ADMIN" || v === "FINANCE" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
 }
 
 function pickLang(v: string) {
   return v === "BILINGUAL" || v === "ZH" || v === "EN" ? v : "BILINGUAL";
 }
 
-type BasicUser = { id: string; email: string; role: "ADMIN" | "FINANCE" | "TEACHER" | "STUDENT" };
+type BasicUser = { id: string; email: string; role: SystemUserRole };
 
 function canEditTargetUser(
   actor: BasicUser,
@@ -66,7 +63,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const email = String(body?.email ?? "").trim().toLowerCase();
   const name = String(body?.name ?? "").trim();
-  const role = pickRole(String(body?.role ?? ""));
+  const role = pickSystemUserRole(String(body?.role ?? ""));
   const language = pickLang(String(body?.language ?? ""));
   const teacherIdRaw = String(body?.teacherId ?? "").trim();
 

@@ -1,12 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { createPasswordHash, requireManager } from "@/lib/auth";
+import { pickSystemUserRole } from "@/lib/staff-roles";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
-}
-
-function pickRole(v: string) {
-  return v === "ADMIN" || v === "FINANCE" || v === "TEACHER" || v === "STUDENT" ? v : "ADMIN";
 }
 
 function pickLang(v: string) {
@@ -25,7 +22,7 @@ export async function POST(req: Request) {
 
   const email = String(body?.email ?? "").trim().toLowerCase();
   const name = String(body?.name ?? "").trim();
-  const role = pickRole(String(body?.role ?? ""));
+  const role = pickSystemUserRole(String(body?.role ?? ""));
   const language = pickLang(String(body?.language ?? ""));
   const teacherIdRaw = String(body?.teacherId ?? "").trim();
   const password = String(body?.password ?? "");

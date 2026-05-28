@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireResourceUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, summarizeLeadRows } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +15,7 @@ function statusLabel(lang: "BILINGUAL" | "ZH" | "EN", status: string) {
 }
 
 export default async function LeadDashboardPage() {
-  await requireAdmin();
+  await requireResourceUser();
   const lang = await getLang();
   const now = new Date();
   const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

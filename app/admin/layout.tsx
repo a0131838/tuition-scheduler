@@ -1,8 +1,9 @@
-import { isManagerUser, requireAdmin } from "@/lib/auth";
+import { isManagerUser, requireAdminAreaUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { parseLedgerIntegrityAlertState, LEDGER_INTEGRITY_ALERT_KEY } from "@/lib/ledger-integrity-alert";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
 import { prisma } from "@/lib/prisma";
+import { isResourceOnlyRole } from "@/lib/staff-roles";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -71,12 +72,19 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   return t(lang, "Admin Workspace", "管理工作台");
 }
 
-function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFinance: boolean) {
+function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFinance: boolean, isResourceOnly: boolean) {
   if (isFinance) {
     return t(
       lang,
       "Keep queue work narrow: pick the next payable or blocked item, then clear the current row before scanning history.",
       "尽量缩窄财务处理视角：先处理下一条可付款或被阻塞的事项，再回头看历史。"
+    );
+  }
+  if (isResourceOnly) {
+    return t(
+      lang,
+      "Keep the workspace narrow: create resources, follow up, request assessments, and hand off to admin when conversion is ready.",
+      "保持工作台聚焦：录入资源、持续跟进、派发评估；需要转学生时交给管理处理。"
     );
   }
   if (matchesPath(pathname, "/admin/approvals")) {
@@ -119,11 +127,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  const user = await requireAdmin();
+  const user = await requireAdminAreaUser();
   const lang = await getLang();
   const showManagerConsole = await isManagerUser(user);
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
+  const isResourceOnly = isResourceOnlyRole(user.role);
   const ledgerAlertRow = await prisma.appSetting.findUnique({
     where: { key: LEDGER_INTEGRITY_ALERT_KEY },
     select: { value: true },
@@ -159,6 +168,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (isFinance && !financeAllowedPath) {
     redirect("/admin/reports/teacher-payroll");
+  }
+
+  const resourceAllowedPath =
+    pathname === "/admin" ||
+    pathname === "/admin/leads" ||
+    pathname === "/admin/leads/new" ||
+    pathname === "/admin/leads/dashboard" ||
+    pathname === "/admin/leads/export" ||
+    (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners"));
+
+  if (isResourceOnly && !resourceAllowedPath) {
+    redirect("/admin/leads");
   }
 
   const adminNavGroups = [
@@ -367,6 +388,39 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     },
   ];
 
+  const resourceNavGroups = [
+    {
+      title: user.role === "CS" ? t(lang, "CS Queue", "客服队列") : t(lang, "Sales Queue", "销售队列"),
+      summary: t(lang, "Resource follow-up only.", "只处理资源跟进相关工作。"),
+      items: [
+        {
+          href: "/admin",
+          label: user.role === "CS" ? t(lang, "CS Dashboard", "客服首页") : t(lang, "Sales Dashboard", "销售首页"),
+          description: t(lang, "Open the resource workspace shortcuts.", "打开资源工作台快捷入口。"),
+          tone: "accent" as const,
+        },
+        {
+          href: "/admin/leads",
+          label: t(lang, "Resource Follow-up", "资源跟进"),
+          description: t(lang, "Track inquiries, follow-ups, assessments, and outcomes.", "跟进咨询、评估和结果。"),
+          tone: "accent" as const,
+        },
+        {
+          href: "/admin/leads/new",
+          label: t(lang, "New Resource", "新增资源"),
+          description: t(lang, "Create a parent inquiry as soon as it arrives.", "家长咨询后立即录入。"),
+          tone: "success" as const,
+        },
+        {
+          href: "/admin/leads/dashboard",
+          label: t(lang, "Resource Dashboard", "资源看板"),
+          description: t(lang, "Review pipeline health and completion rates.", "查看资源管道和完成情况。"),
+          tone: "neutral" as const,
+        },
+      ],
+    },
+  ];
+
   const sidebarNavContent = (
     <>
       <div
@@ -378,9 +432,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       >
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#312e81" }}>
-            {isFinance ? t(lang, "Finance Workspace", "财务工作台") : t(lang, "Admin Workspace", "管理工作台")}
+            {isFinance
+              ? t(lang, "Finance Workspace", "财务工作台")
+              : isResourceOnly
+                ? user.role === "CS"
+                  ? t(lang, "CS Workspace", "客服工作台")
+                  : t(lang, "Sales Workspace", "销售工作台")
+                : t(lang, "Admin Workspace", "管理工作台")}
           </div>
-          <div style={{ fontSize: 11.5, lineHeight: 1.4, color: "#475569" }}>{workspaceHint(pathname, lang, isFinance)}</div>
+          <div style={{ fontSize: 11.5, lineHeight: 1.4, color: "#475569" }}>{workspaceHint(pathname, lang, isFinance, isResourceOnly)}</div>
         </div>
         <div
           style={{
@@ -420,7 +480,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : adminNavGroups} />
+      <AdminSidebarNavClient groups={isFinance ? financeNavGroups : isResourceOnly ? resourceNavGroups : adminNavGroups} />
 
       <div
         style={{
@@ -484,7 +544,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             }}
           >
             <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
-              {isFinance ? t(lang, "Finance", "财务") : t(lang, "Admin", "管理后台")}
+              {isFinance
+                ? t(lang, "Finance", "财务")
+                : isResourceOnly
+                  ? user.role === "CS"
+                    ? t(lang, "CS", "客服")
+                    : t(lang, "Sales", "销售")
+                  : t(lang, "Admin", "管理后台")}
             </div>
             <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>Tuition Scheduler</div>
           </div>
@@ -513,7 +579,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           >
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{workspaceTitle(pathname, lang)}</div>
-              <div style={{ color: "#64748b", lineHeight: 1.45 }}>{workspaceHint(pathname, lang, isFinance)}</div>
+              <div style={{ color: "#64748b", lineHeight: 1.45 }}>{workspaceHint(pathname, lang, isFinance, isResourceOnly)}</div>
               <div style={{ color: "#475569", fontSize: 12 }}>
                 {t(lang, "Logged in", "已登录")}: <b>{user.name}</b> ({user.email})
               </div>
