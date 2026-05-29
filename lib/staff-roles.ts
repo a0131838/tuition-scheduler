@@ -16,6 +16,16 @@ export function isStaffWorkspace(value: string): value is StaffWorkspace {
   return STAFF_WORKSPACES.includes(value as StaffWorkspace);
 }
 
+export function pickStaffWorkspaces(values: unknown): StaffWorkspace[] {
+  const input = Array.isArray(values) ? values : [];
+  const picked = new Set<StaffWorkspace>();
+  for (const value of input) {
+    const raw = String(value ?? "").trim().toUpperCase();
+    if (isStaffWorkspace(raw)) picked.add(raw);
+  }
+  return STAFF_WORKSPACES.filter((workspace) => picked.has(workspace));
+}
+
 export function isResourceOnlyRole(role: string | null | undefined) {
   return role === "SALES" || role === "CS";
 }

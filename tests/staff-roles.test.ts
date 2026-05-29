@@ -6,6 +6,7 @@ import {
   canUseResourceOpsHandoffRole,
   hasWorkspaceAccess,
   isResourceOnlyRole,
+  pickStaffWorkspaces,
   pickSystemUserRole,
   preferredResourceWorkspace,
   STAFF_WORKSPACES,
@@ -41,4 +42,5 @@ test("admin users can carry extra workspace access without changing role", () =>
   assert.equal(preferredResourceWorkspace("ADMIN", []), null);
   assert.equal(preferredResourceWorkspace("CS", []), "CS");
   assert.equal(preferredResourceWorkspace("SALES", []), "SALES");
+  assert.deepEqual(pickStaffWorkspaces(["sales", "CS", "BAD", "CS"]), ["SALES", "CS"]);
 });

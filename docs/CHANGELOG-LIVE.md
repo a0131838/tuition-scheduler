@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-29-r160
+
+- Release ID: `2026-05-29-r160`
+- Date/Time (Asia/Shanghai): `2026-05-29`
+- Deployment status: `READY`
+- Scope: add an owner-manager-only management form for turning Sales and CS workspace access on or off per system user.
+- Key files:
+  - `app/admin/manager/users/page.tsx`
+  - `app/admin/manager/users/_components/UserWorkspaceAccessFormClient.tsx`
+  - `app/api/admin/manager/users/[id]/workspaces/route.ts`
+  - `lib/staff-roles.ts`
+  - `tests/staff-roles.test.ts`
+  - `docs/tasks/TASK-20260529-workspace-access-management-form.md`
+- Risk impact (if any): Low to medium. This release adds a workspace-access management surface under System User Admin edit mode and restricts writes to the owner manager. It does not change user main-role editing rules, billing, packages, contracts, attendance, payroll, receipts, or scheduling logic.
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-29-r160`.
+
+---
+
 ## 2026-05-29-r159
 
 - Release ID: `2026-05-29-r159`

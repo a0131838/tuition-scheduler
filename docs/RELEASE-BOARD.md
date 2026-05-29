@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-29-r159` (admin users with extra Sales/CS workspace access), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-29-r160` (owner-manager form for Sales/CS workspace access), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -78,6 +78,7 @@
 - Resource-new-form-layout risk: `2026-05-28-r157` only constrains field widths on the new resource form so the owner selector cannot overlap the intent selector; no resource creation or downstream workflow logic is changed.
 - Sales-CS-role risk: `2026-05-28-r158` adds new `SALES` and `CS` user roles and a scoped Resource Follow-up workspace; verify these users cannot enter full admin, finance, student, ticket, package, payroll, contract, or system-user pages.
 - Admin-extra-workspace risk: `2026-05-29-r159` adds `UserWorkspaceAccess` so selected admins can use CS/Sales focused views while remaining `ADMIN`; verify Eva/Jasmine/zhao keep admin access and see only their configured extra workspace shortcuts.
+- Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 
 ## Process Guard (Installed)
 

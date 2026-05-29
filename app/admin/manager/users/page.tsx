@@ -16,8 +16,9 @@ import TeacherLeadEmailRemoveClient from "./_components/TeacherLeadEmailRemoveCl
 import SystemUserCreateClient from "./_components/SystemUserCreateClient";
 import SystemUserUpdateFormClient from "./_components/SystemUserUpdateFormClient";
 import SystemUserActionsClient from "./_components/SystemUserActionsClient";
+import UserWorkspaceAccessFormClient from "./_components/UserWorkspaceAccessFormClient";
 import { formatBusinessDateTime } from "@/lib/date-only";
-import { SystemUserRole } from "@/lib/staff-roles";
+import { StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 
 type BasicUser = { id: string; email: string; role: SystemUserRole };
 
@@ -50,6 +51,7 @@ export default async function ManagerUsersPage({
   const lang = await getLang();
   const now = new Date();
   const canEdit = true;
+  const canEditWorkspaces = isOwnerManager(currentUser);
   const canViewAllPasswordControls = currentUser.email.trim().toLowerCase() === "zhaohongwei0880@gmail.com";
   const sp = await searchParams;
   const isEditMode = canEdit && (sp?.mode ?? "").toLowerCase() === "edit";
@@ -354,7 +356,22 @@ export default async function ManagerUsersPage({
                       </div>
                     )}
                   </td>
-                  <td>{u.workspaceAccesses.length ? u.workspaceAccesses.map((item) => item.workspace).join(" / ") : "-"}</td>
+                  <td>
+                    {isEditMode && canEditWorkspaces ? (
+                      <UserWorkspaceAccessFormClient
+                        userId={u.id}
+                        current={u.workspaceAccesses.map((item) => item.workspace as StaffWorkspace)}
+                        labels={{
+                          sales: t(lang, "Sales", "销售"),
+                          cs: t(lang, "CS", "客服"),
+                          save: t(lang, "Save", "保存"),
+                          errorPrefix: t(lang, "Error", "错误"),
+                        }}
+                      />
+                    ) : (
+                      u.workspaceAccesses.length ? u.workspaceAccesses.map((item) => item.workspace).join(" / ") : "-"
+                    )}
+                  </td>
                   <td>{u.teacher ? u.teacher.name : t(lang, "Not linked", "未绑定")}</td>
                   <td>
                     <div>{t(lang, "Active", "活跃")}: {sess?.count ?? 0}</div>
