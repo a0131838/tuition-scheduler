@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-29-r159
+
+- Release ID: `2026-05-29-r159`
+- Date/Time (Asia/Shanghai): `2026-05-29`
+- Deployment status: `READY`
+- Scope: allow selected admin users to carry extra Sales or CS workspace access without changing their main `ADMIN` role.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260529093000_user_workspace_access/migration.sql`
+  - `lib/auth.ts`
+  - `lib/staff-roles.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `app/admin/manager/users/page.tsx`
+  - `tests/staff-roles.test.ts`
+  - `docs/tasks/TASK-20260529-admin-extra-workspace-access.md`
+- Risk impact (if any): Low to medium. This release adds a focused-workspace access table and seeds Eva with CS workspace access plus Jasmine/zhao hongwei with Sales workspace access, while leaving their main role as `ADMIN`. Pure `SALES` and `CS` role restrictions remain unchanged. Billing, packages, contracts, attendance, payroll, receipts, and scheduling logic are unchanged.
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx tsx --test tests/staff-roles.test.ts tests/leads.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-29-r159`.
+
+---
+
 ## 2026-05-28-r158
 
 - Release ID: `2026-05-28-r158`

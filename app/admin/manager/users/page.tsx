@@ -57,7 +57,14 @@ export default async function ManagerUsersPage({
   const [users, teachers, sessions, managerAclRows, teacherLeadAclRows, managerSet, teacherLeadSet] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ role: "asc" }, { createdAt: "asc" }],
-      include: { teacher: { select: { id: true, name: true } } },
+      include: {
+        teacher: { select: { id: true, name: true } },
+        workspaceAccesses: {
+          where: { isActive: true },
+          select: { workspace: true },
+          orderBy: { workspace: "asc" },
+        },
+      },
     }),
     prisma.teacher.findMany({
       orderBy: { name: "asc" },
@@ -299,6 +306,7 @@ export default async function ManagerUsersPage({
             <tr style={{ background: "#f8fafc" }}>
               <th align="left">{t(lang, "User", "用户")}</th>
               <th align="left">{t(lang, "Role / Lang", "角色 / 语言")}</th>
+              <th align="left">{t(lang, "Extra Workspaces", "兼职工作台")}</th>
               <th align="left">{t(lang, "Teacher Link", "老师绑定")}</th>
               <th align="left">{t(lang, "Session", "会话")}</th>
               {isEditMode ? <th align="left">{t(lang, "Actions", "操作")}</th> : null}
@@ -346,6 +354,7 @@ export default async function ManagerUsersPage({
                       </div>
                     )}
                   </td>
+                  <td>{u.workspaceAccesses.length ? u.workspaceAccesses.map((item) => item.workspace).join(" / ") : "-"}</td>
                   <td>{u.teacher ? u.teacher.name : t(lang, "Not linked", "未绑定")}</td>
                   <td>
                     <div>{t(lang, "Active", "活跃")}: {sess?.count ?? 0}</div>
@@ -379,7 +388,7 @@ export default async function ManagerUsersPage({
             })}
             {users.length === 0 ? (
               <tr>
-                <td colSpan={isEditMode ? 5 : 4}>{t(lang, "No users.", "暂无用户")}</td>
+                <td colSpan={isEditMode ? 6 : 5}>{t(lang, "No users.", "暂无用户")}</td>
               </tr>
             ) : null}
           </tbody>

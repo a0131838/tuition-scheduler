@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
-import { canAccessResourceWorkspaceRole, SystemUserRole } from "@/lib/staff-roles";
+import { canAccessResourceWorkspaceRole, StaffWorkspace, SystemUserRole } from "@/lib/staff-roles";
 
 const SESSION_COOKIE = "ts_admin_session";
 const SESSION_DAYS = 30;
@@ -17,6 +17,7 @@ type AuthUser = {
   role: SystemUserRole;
   language: "BILINGUAL" | "ZH" | "EN";
   teacherId: string | null;
+  workspaces: StaffWorkspace[];
 };
 
 function managerEmailSet() {
@@ -143,7 +144,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   const session = await prisma.authSession.findUnique({
     where: { token },
-    include: { user: true },
+    include: {
+      user: {
+        include: {
+          workspaceAccesses: {
+            where: { isActive: true },
+            select: { workspace: true },
+          },
+        },
+      },
+    },
   });
 
   if (!session) return null;
@@ -160,6 +170,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     role: u.role as AuthUser["role"],
     language: u.language as AuthUser["language"],
     teacherId: u.teacherId ?? null,
+    workspaces: u.workspaceAccesses.map((item) => item.workspace as StaffWorkspace),
   };
 }
 

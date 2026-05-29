@@ -17,6 +17,11 @@ enum UserRole {
   STUDENT
 }
 
+enum StaffWorkspace {
+  SALES
+  CS
+}
+
 enum UserLanguage {
   BILINGUAL
   ZH
@@ -745,6 +750,23 @@ model User {
   leadsOwned              Lead[]                 @relation("LeadOwner")
   leadFollowUps           LeadFollowUp[]         @relation("LeadFollowUpActor")
   leadAssessmentReopened  LeadAssessmentRequest[] @relation("LeadAssessmentReopenedBy")
+  workspaceAccesses       UserWorkspaceAccess[]
+}
+
+model UserWorkspaceAccess {
+  id        String         @id @default(uuid())
+  userId    String
+  workspace StaffWorkspace
+  isDefault Boolean        @default(false)
+  isActive  Boolean        @default(true)
+  note      String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspace])
+  @@index([workspace, isActive])
 }
 
 model ExpenseClaim {

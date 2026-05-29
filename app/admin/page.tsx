@@ -1,14 +1,31 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getLang, t } from "@/lib/i18n";
 import { getApprovalInboxData } from "@/lib/approval-inbox";
-import { isResourceOnlyRole } from "@/lib/staff-roles";
+import { hasWorkspaceAccess, isResourceOnlyRole, isStaffWorkspace, preferredResourceWorkspace } from "@/lib/staff-roles";
 import { workbenchHeroStyle } from "./_components/workbenchStyles";
 
-export default async function AdminHome() {
+function first(v?: string | string[]) {
+  return Array.isArray(v) ? v[0] ?? "" : v ?? "";
+}
+
+export default async function AdminHome({
+  searchParams,
+}: {
+  searchParams?: Promise<{ workspace?: string }>;
+}) {
   const lang = await getLang();
   const user = await getCurrentUser();
+  const sp = await searchParams;
+  const requestedWorkspaceRaw = first(sp?.workspace).trim().toUpperCase();
+  const requestedWorkspace = isStaffWorkspace(requestedWorkspaceRaw) ? requestedWorkspaceRaw : null;
   const isFinance = user?.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user?.role);
+  const activeResourceWorkspace =
+    isResourceOnly
+      ? preferredResourceWorkspace(user?.role, user?.workspaces)
+      : requestedWorkspace && hasWorkspaceAccess(user?.workspaces, requestedWorkspace)
+        ? requestedWorkspace
+        : null;
   const approvalInbox = await getApprovalInboxData(user?.email, user?.role);
   const cardStyle = {
     padding: "16px 18px",
@@ -147,22 +164,35 @@ export default async function AdminHome() {
     );
   }
 
-  if (isResourceOnly) {
-    const isCs = user?.role === "CS";
+  if (activeResourceWorkspace) {
+    const isCs = activeResourceWorkspace === "CS";
     return (
       <div style={{ display: "grid", gap: 16 }}>
         <section style={{ ...workbenchHeroStyle("indigo"), marginBottom: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
-            {isCs ? t(lang, "CS Workspace", "客服工作台") : t(lang, "Sales Workspace", "销售工作台")}
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>
-            {t(lang, "Resource follow-up", "资源跟进")}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#3730a3", letterSpacing: 0.4 }}>
+                {isCs ? t(lang, "CS Workspace", "客服工作台") : t(lang, "Sales Workspace", "销售工作台")}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>
+                {t(lang, "Resource follow-up", "资源跟进")}
+              </div>
+            </div>
+            {user?.role === "ADMIN" ? (
+              <a href="/admin" style={{ fontWeight: 800, color: "#1d4ed8" }}>
+                {t(lang, "Back to Admin Workspace", "返回管理工作台")}
+              </a>
+            ) : null}
           </div>
           <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.45, maxWidth: 760 }}>
             {t(
               lang,
-              "This role can create resources, update follow-ups, request teacher assessments, and view the resource dashboard. Admin-only student conversion and system settings stay hidden.",
-              "该角色可以录入资源、更新跟进、派发老师评估、查看资源看板；转学生和系统配置仍由管理处理。"
+              user?.role === "ADMIN"
+                ? "This is a focused workspace view. Your admin permission is unchanged; use the link above to return to the full admin workspace."
+                : "This role can create resources, update follow-ups, request teacher assessments, and view the resource dashboard. Admin-only student conversion and system settings stay hidden.",
+              user?.role === "ADMIN"
+                ? "这是精简工作台视角。你的管理员权限不变；需要完整后台时点上方链接返回。"
+                : "该角色可以录入资源、更新跟进、派发老师评估、查看资源看板；转学生和系统配置仍由管理处理。"
             )}
           </div>
         </section>

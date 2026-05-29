@@ -235,6 +235,36 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           : []),
       ],
     },
+    ...(user.workspaces.length > 0
+      ? [
+          {
+            title: t(lang, "Extra Workspaces", "兼职工作台"),
+            summary: t(lang, "Use a focused view without changing admin permissions.", "用精简视角处理兼职工作，不改变管理员权限。"),
+            items: [
+              ...(user.workspaces.includes("CS")
+                ? [
+                    {
+                      href: "/admin?workspace=cs",
+                      label: t(lang, "CS Workspace", "客服工作台"),
+                      description: t(lang, "Focused resource intake and follow-up view.", "聚焦资源录入和客服跟进。"),
+                      tone: "accent" as const,
+                    },
+                  ]
+                : []),
+              ...(user.workspaces.includes("SALES")
+                ? [
+                    {
+                      href: "/admin?workspace=sales",
+                      label: t(lang, "Sales Workspace", "销售工作台"),
+                      description: t(lang, "Focused sales resource pipeline view.", "聚焦销售资源管道。"),
+                      tone: "success" as const,
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
     {
       title: t(lang, "Core Workflows", "核心流程"),
       summary: t(lang, "Main student and teaching workflows.", "学生和教学的主流程入口。"),
