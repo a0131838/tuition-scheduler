@@ -2,8 +2,10 @@ import { prisma } from "@/lib/prisma";
 
 export const PAYNOW_TYPES = ["MOBILE", "NRIC", "UEN", "OTHER"] as const;
 export type PayNowType = (typeof PAYNOW_TYPES)[number];
-export const TEACHER_PAYMENT_METHODS = ["PAYNOW", "BANK_TRANSFER"] as const;
+export const TEACHER_PAYMENT_METHODS = ["PAYNOW", "WISE"] as const;
 export type TeacherPaymentMethod = (typeof TEACHER_PAYMENT_METHODS)[number];
+export const PAYMENT_PROFILE_STATUSES = ["PENDING_REVIEW", "VERIFIED", "REJECTED"] as const;
+export type PaymentProfileStatus = (typeof PAYMENT_PROFILE_STATUSES)[number];
 
 export type TeacherPaymentProfile = {
   tutorCode?: string | null;
@@ -12,6 +14,15 @@ export type TeacherPaymentProfile = {
   payNowValue?: string | null;
   payNowName?: string | null;
   payNowNote?: string | null;
+  wiseAccountName?: string | null;
+  wiseEmail?: string | null;
+  wisePhone?: string | null;
+  wiseTag?: string | null;
+  wiseCountry?: string | null;
+  wiseCurrency?: string | null;
+  wiseNote?: string | null;
+  paymentProfileStatus?: string | null;
+  paymentProfileRejectReason?: string | null;
   bankName?: string | null;
   bankAccountName?: string | null;
   bankAccountNumber?: string | null;
@@ -33,6 +44,11 @@ export function normalizeTeacherPaymentMethod(value: unknown) {
   return TEACHER_PAYMENT_METHODS.includes(raw as TeacherPaymentMethod) ? (raw as TeacherPaymentMethod) : null;
 }
 
+export function normalizePaymentProfileStatus(value: unknown) {
+  const raw = String(value ?? "").trim().toUpperCase();
+  return PAYMENT_PROFILE_STATUSES.includes(raw as PaymentProfileStatus) ? (raw as PaymentProfileStatus) : null;
+}
+
 export function cleanTeacherPaymentProfile(input: Record<string, unknown>) {
   return {
     tutorCode: normalizeTutorCode(input.tutorCode),
@@ -41,6 +57,15 @@ export function cleanTeacherPaymentProfile(input: Record<string, unknown>) {
     payNowValue: String(input.payNowValue ?? "").trim() || null,
     payNowName: String(input.payNowName ?? "").trim() || null,
     payNowNote: String(input.payNowNote ?? "").trim() || null,
+    wiseAccountName: String(input.wiseAccountName ?? "").trim() || null,
+    wiseEmail: String(input.wiseEmail ?? "").trim() || null,
+    wisePhone: String(input.wisePhone ?? "").trim() || null,
+    wiseTag: String(input.wiseTag ?? "").trim() || null,
+    wiseCountry: String(input.wiseCountry ?? "").trim() || null,
+    wiseCurrency: String(input.wiseCurrency ?? "").trim().toUpperCase() || null,
+    wiseNote: String(input.wiseNote ?? "").trim() || null,
+    paymentProfileStatus: normalizePaymentProfileStatus(input.paymentProfileStatus),
+    paymentProfileRejectReason: String(input.paymentProfileRejectReason ?? "").trim() || null,
     bankName: String(input.bankName ?? "").trim() || null,
     bankAccountName: String(input.bankAccountName ?? "").trim() || null,
     bankAccountNumber: String(input.bankAccountNumber ?? "").trim() || null,
@@ -50,7 +75,15 @@ export function cleanTeacherPaymentProfile(input: Record<string, unknown>) {
 
 export function formatTeacherPaymentMethod(value?: string | null) {
   if (value === "PAYNOW") return "PayNow";
-  if (value === "BANK_TRANSFER") return "Bank Transfer";
+  if (value === "WISE") return "Wise";
+  if (value === "BANK_TRANSFER") return "Legacy Bank Transfer";
+  return "";
+}
+
+export function formatPaymentProfileStatus(value?: string | null) {
+  if (value === "VERIFIED") return "Verified";
+  if (value === "REJECTED") return "Rejected";
+  if (value === "PENDING_REVIEW") return "Pending Review";
   return "";
 }
 

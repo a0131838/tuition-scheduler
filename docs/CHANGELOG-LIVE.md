@@ -15,6 +15,38 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-29-r161
+
+- Release ID: `2026-05-29-r161`
+- Date/Time (Asia/Shanghai): `2026-05-29`
+- Deployment status: `READY`
+- Scope: replace new tutor payment-profile collection with PayNow or Wise only, while keeping legacy bank-transfer details read-only for finance reference.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260529090000_add_teacher_wise_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/api/admin/teachers/route.ts`
+  - `app/api/admin/teachers/[id]/route.ts`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+  - `docs/tasks/TASK-20260529-tutor-wise-payment-profile.md`
+- Risk impact (if any): Medium. This release changes teacher payout-profile collection, review status, and finance exports, but does not change payroll amount calculation, expense claim approval, lesson scheduling, attendance deduction, package balance, receipt, or invoice logic.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsc --noEmit --pretty false`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts`
+  - `npm run test:backend`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-29-r161`.
+
+---
+
 ## 2026-05-29-r160
 
 - Release ID: `2026-05-29-r160`

@@ -205,6 +205,17 @@ model Teacher {
   payNowValue           String?
   payNowName            String?
   payNowNote            String?
+  wiseAccountName       String?
+  wiseEmail             String?
+  wisePhone             String?
+  wiseTag               String?
+  wiseCountry           String?
+  wiseCurrency          String?
+  wiseNote              String?
+  paymentProfileStatus  String?
+  paymentProfileVerifiedAt DateTime?
+  paymentProfileVerifiedBy String?
+  paymentProfileRejectReason String?
   bankName              String?
   bankAccountName       String?
   bankAccountNumber     String?

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-29-r160` (owner-manager form for Sales/CS workspace access), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-29-r161` (tutor payment profiles limited to PayNow or Wise with finance review status), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -79,6 +79,7 @@
 - Sales-CS-role risk: `2026-05-28-r158` adds new `SALES` and `CS` user roles and a scoped Resource Follow-up workspace; verify these users cannot enter full admin, finance, student, ticket, package, payroll, contract, or system-user pages.
 - Admin-extra-workspace risk: `2026-05-29-r159` adds `UserWorkspaceAccess` so selected admins can use CS/Sales focused views while remaining `ADMIN`; verify Eva/Jasmine/zhao keep admin access and see only their configured extra workspace shortcuts.
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
+- Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
 
 ## Process Guard (Installed)
 
@@ -99,6 +100,40 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-29-r161 Ready
+
+- Scope: limit tutor payment-profile collection to PayNow or Wise and add finance review status for payout details.
+- Business impact:
+  - Teachers can submit PayNow for local payout or Wise details for overseas payout.
+  - New Bank Transfer submission is no longer offered; old bank-transfer data remains visible as legacy read-only reference.
+  - Admin/finance users can mark payment profiles as pending review, verified, or rejected with a reason.
+  - Payroll, expense-claim, and tutor-cost cutoff exports include Wise details and payment-profile review status.
+  - Payroll amount calculation, expense approval, attendance, scheduling, package balances, invoices, and receipts are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260529090000_add_teacher_wise_payment_profile/migration.sql`
+  - `lib/teacher-payment-profile.ts`
+  - `app/teacher/payment-details/page.tsx`
+  - `app/admin/_components/TeacherCreateForm.tsx`
+  - `app/admin/teachers/page.tsx`
+  - `app/admin/teachers/[id]/page.tsx`
+  - `app/api/admin/teachers/route.ts`
+  - `app/api/admin/teachers/[id]/route.ts`
+  - `app/admin/reports/teacher-payroll/export/route.ts`
+  - `app/api/exports/expense-claims/route.ts`
+  - `app/api/exports/tutor-cost-cutoff/route.ts`
+  - `tests/teacher-payment-profile.test.ts`
+  - `docs/tasks/TASK-20260529-tutor-wise-payment-profile.md`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsc --noEmit --pretty false`
+  - `npx tsx --test tests/teacher-payment-profile.test.ts`
+  - `npm run test:backend`
+  - `npm run build`
+- Post-deploy verification:
+  - `ssh -i "/Users/zhao111/Documents/sgt系统/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
 
 ## 2026-05-28-r157 Ready
 

@@ -49,7 +49,12 @@ export default function TeacherCreateForm({
     tutorCode: string;
     paymentMethod: string;
     paymentPayNow: string;
-    paymentBankTransfer: string;
+    paymentWise: string;
+    paymentProfileStatus: string;
+    paymentPendingReview: string;
+    paymentVerified: string;
+    paymentRejected: string;
+    paymentRejectReason: string;
     payNowType: string;
     payNowMobile: string;
     payNowNric: string;
@@ -58,6 +63,14 @@ export default function TeacherCreateForm({
     payNowValue: string;
     payNowName: string;
     payNowNote: string;
+    wiseAccountName: string;
+    wiseEmail: string;
+    wisePhone: string;
+    wiseTag: string;
+    wiseCountry: string;
+    wiseCurrency: string;
+    wiseNote: string;
+    legacyBankDetails: string;
     bankName: string;
     bankAccountName: string;
     bankAccountNumber: string;
@@ -68,6 +81,8 @@ export default function TeacherCreateForm({
     name?: string;
     tutorCode?: string | null;
     paymentMethod?: string | null;
+    paymentProfileStatus?: string | null;
+    paymentProfileRejectReason?: string | null;
     nationality?: string;
     almaMater?: string;
     intro?: string;
@@ -81,6 +96,13 @@ export default function TeacherCreateForm({
     payNowValue?: string | null;
     payNowName?: string | null;
     payNowNote?: string | null;
+    wiseAccountName?: string | null;
+    wiseEmail?: string | null;
+    wisePhone?: string | null;
+    wiseTag?: string | null;
+    wiseCountry?: string | null;
+    wiseCurrency?: string | null;
+    wiseNote?: string | null;
     bankName?: string | null;
     bankAccountName?: string | null;
     bankAccountNumber?: string | null;
@@ -144,14 +166,19 @@ export default function TeacherCreateForm({
             offlineSingapore: String(fd.get("offlineSingapore") ?? "") === "on",
             tutorCode: String(fd.get("tutorCode") ?? ""),
             paymentMethod: String(fd.get("paymentMethod") ?? ""),
+            paymentProfileStatus: String(fd.get("paymentProfileStatus") ?? ""),
+            paymentProfileRejectReason: String(fd.get("paymentProfileRejectReason") ?? ""),
             payNowType: String(fd.get("payNowType") ?? ""),
             payNowValue: String(fd.get("payNowValue") ?? ""),
             payNowName: String(fd.get("payNowName") ?? ""),
             payNowNote: String(fd.get("payNowNote") ?? ""),
-            bankName: String(fd.get("bankName") ?? ""),
-            bankAccountName: String(fd.get("bankAccountName") ?? ""),
-            bankAccountNumber: String(fd.get("bankAccountNumber") ?? ""),
-            bankBranchCode: String(fd.get("bankBranchCode") ?? ""),
+            wiseAccountName: String(fd.get("wiseAccountName") ?? ""),
+            wiseEmail: String(fd.get("wiseEmail") ?? ""),
+            wisePhone: String(fd.get("wisePhone") ?? ""),
+            wiseTag: String(fd.get("wiseTag") ?? ""),
+            wiseCountry: String(fd.get("wiseCountry") ?? ""),
+            wiseCurrency: String(fd.get("wiseCurrency") ?? ""),
+            wiseNote: String(fd.get("wiseNote") ?? ""),
             subjectIds: selectedSubjectIds,
           };
 
@@ -203,8 +230,14 @@ export default function TeacherCreateForm({
         <select name="paymentMethod" defaultValue={initial?.paymentMethod ?? ""}>
           <option value="">{labels.paymentMethod}</option>
           <option value="PAYNOW">{labels.paymentPayNow}</option>
-          <option value="BANK_TRANSFER">{labels.paymentBankTransfer}</option>
+          <option value="WISE">{labels.paymentWise}</option>
         </select>
+        <select name="paymentProfileStatus" defaultValue={initial?.paymentProfileStatus ?? "PENDING_REVIEW"}>
+          <option value="PENDING_REVIEW">{labels.paymentPendingReview}</option>
+          <option value="VERIFIED">{labels.paymentVerified}</option>
+          <option value="REJECTED">{labels.paymentRejected}</option>
+        </select>
+        <input name="paymentProfileRejectReason" placeholder={labels.paymentRejectReason} defaultValue={initial?.paymentProfileRejectReason ?? ""} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select name="payNowType" defaultValue={initial?.payNowType ?? ""}>
             <option value="">{labels.payNowType}</option>
@@ -218,11 +251,20 @@ export default function TeacherCreateForm({
         </div>
         <input name="payNowNote" placeholder={labels.payNowNote} defaultValue={initial?.payNowNote ?? ""} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input name="bankName" placeholder={labels.bankName} defaultValue={initial?.bankName ?? ""} />
-          <input name="bankAccountName" placeholder={labels.bankAccountName} defaultValue={initial?.bankAccountName ?? ""} />
-          <input name="bankAccountNumber" placeholder={labels.bankAccountNumber} defaultValue={initial?.bankAccountNumber ?? ""} />
+          <input name="wiseAccountName" placeholder={labels.wiseAccountName} defaultValue={initial?.wiseAccountName ?? ""} />
+          <input name="wiseEmail" placeholder={labels.wiseEmail} defaultValue={initial?.wiseEmail ?? ""} />
+          <input name="wisePhone" placeholder={labels.wisePhone} defaultValue={initial?.wisePhone ?? ""} />
+          <input name="wiseTag" placeholder={labels.wiseTag} defaultValue={initial?.wiseTag ?? ""} />
+          <input name="wiseCountry" placeholder={labels.wiseCountry} defaultValue={initial?.wiseCountry ?? ""} />
+          <input name="wiseCurrency" placeholder={labels.wiseCurrency} defaultValue={initial?.wiseCurrency ?? ""} />
         </div>
-        <input name="bankBranchCode" placeholder={labels.bankBranchCode} defaultValue={initial?.bankBranchCode ?? ""} />
+        <input name="wiseNote" placeholder={labels.wiseNote} defaultValue={initial?.wiseNote ?? ""} />
+        {(initial?.bankName || initial?.bankAccountName || initial?.bankAccountNumber || initial?.bankBranchCode) ? (
+          <div style={{ border: "1px dashed #cbd5e1", borderRadius: 8, padding: 8, color: "#475569", fontSize: 12 }}>
+            <b>{labels.legacyBankDetails}</b>
+            <div>{initial?.bankName ?? "-"} {initial?.bankAccountName ?? ""} {initial?.bankAccountNumber ?? ""} {initial?.bankBranchCode ?? ""}</div>
+          </div>
+        ) : null}
       </fieldset>
       <div style={{ color: "#666", fontSize: 12 }}>{labels.almaMaterRule}</div>
       <textarea name="intro" rows={3} placeholder={labels.teacherIntro} defaultValue={initial?.intro ?? ""} />

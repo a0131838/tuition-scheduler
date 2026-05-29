@@ -8,7 +8,7 @@ function bad(message: string, status = 400, extra?: Record<string, unknown>) {
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id } = await ctx.params;
   if (!id) return bad("Missing teacher id", 409);
 
@@ -66,10 +66,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         payNowValue: paymentProfile.payNowValue,
         payNowName: paymentProfile.payNowName,
         payNowNote: paymentProfile.payNowNote,
-        bankName: paymentProfile.bankName,
-        bankAccountName: paymentProfile.bankAccountName,
-        bankAccountNumber: paymentProfile.bankAccountNumber,
-        bankBranchCode: paymentProfile.bankBranchCode,
+        wiseAccountName: paymentProfile.wiseAccountName,
+        wiseEmail: paymentProfile.wiseEmail,
+        wisePhone: paymentProfile.wisePhone,
+        wiseTag: paymentProfile.wiseTag,
+        wiseCountry: paymentProfile.wiseCountry,
+        wiseCurrency: paymentProfile.wiseCurrency,
+        wiseNote: paymentProfile.wiseNote,
+        paymentProfileStatus: paymentProfile.paymentProfileStatus ?? "PENDING_REVIEW",
+        paymentProfileRejectReason: paymentProfile.paymentProfileRejectReason,
+        paymentProfileVerifiedAt: paymentProfile.paymentProfileStatus === "VERIFIED" ? new Date() : null,
+        paymentProfileVerifiedBy: paymentProfile.paymentProfileStatus === "VERIFIED" ? admin.email : null,
         subjects: { set: subjectIds.map((sid: string) => ({ id: sid })) },
       },
     });

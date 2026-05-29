@@ -6,7 +6,7 @@ import {
   parseMonth,
 } from "@/lib/teacher-payroll";
 import { prisma } from "@/lib/prisma";
-import { formatPayNowType, formatTeacherPaymentMethod } from "@/lib/teacher-payment-profile";
+import { formatPayNowType, formatPaymentProfileStatus, formatTeacherPaymentMethod } from "@/lib/teacher-payment-profile";
 import ExcelJS from "exceljs";
 
 function safeFileName(value: string) {
@@ -76,6 +76,13 @@ export async function GET(req: Request) {
           payNowType: true,
           payNowValue: true,
           payNowName: true,
+          wiseAccountName: true,
+          wiseEmail: true,
+          wisePhone: true,
+          wiseTag: true,
+          wiseCountry: true,
+          wiseCurrency: true,
+          paymentProfileStatus: true,
           bankName: true,
           bankAccountName: true,
           bankAccountNumber: true,
@@ -91,7 +98,7 @@ export async function GET(req: Request) {
   workbook.modified = new Date();
 
   const summary = workbook.addWorksheet("Summary");
-  summary.mergeCells("A1:O1");
+  summary.mergeCells("A1:Y1");
   summary.getCell("A1").value = "Tutor Cost Cut-off Report";
   summary.getCell("A1").font = { bold: true, size: 15, color: { argb: "FF0F172A" } };
   summary.getCell("A2").value = `Period: ${report.periodLabel} (inclusive of the 15th)`;
@@ -107,10 +114,17 @@ export async function GET(req: Request) {
     { header: "PayNow Type", key: "payNowType", width: 14 },
     { header: "PayNow ID / Mobile", key: "payNowValue", width: 22 },
     { header: "PayNow Name", key: "payNowName", width: 22 },
-    { header: "Bank Name", key: "bankName", width: 22 },
-    { header: "Bank Account Name", key: "bankAccountName", width: 22 },
-    { header: "Bank Account Number", key: "bankAccountNumber", width: 22 },
-    { header: "SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
+    { header: "Wise Account Holder", key: "wiseAccountName", width: 22 },
+    { header: "Wise Email", key: "wiseEmail", width: 24 },
+    { header: "Wise Phone", key: "wisePhone", width: 18 },
+    { header: "WiseTag", key: "wiseTag", width: 18 },
+    { header: "Wise Country", key: "wiseCountry", width: 16 },
+    { header: "Wise Currency", key: "wiseCurrency", width: 14 },
+    { header: "Payment Profile Status", key: "paymentProfileStatus", width: 20 },
+    { header: "Legacy Bank Name", key: "bankName", width: 22 },
+    { header: "Legacy Bank Account Name", key: "bankAccountName", width: 22 },
+    { header: "Legacy Bank Account Number", key: "bankAccountNumber", width: 22 },
+    { header: "Legacy SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
     { header: "Sessions", key: "sessionCount", width: 12 },
     { header: "Hours", key: "totalHours", width: 12 },
     { header: "Currency", key: "currencyCode", width: 12 },
@@ -129,6 +143,13 @@ export async function GET(req: Request) {
       payNowType: formatPayNowType(profile?.payNowType),
       payNowValue: profile?.payNowValue ?? "",
       payNowName: profile?.payNowName ?? "",
+      wiseAccountName: profile?.wiseAccountName ?? "",
+      wiseEmail: profile?.wiseEmail ?? "",
+      wisePhone: profile?.wisePhone ?? "",
+      wiseTag: profile?.wiseTag ?? "",
+      wiseCountry: profile?.wiseCountry ?? "",
+      wiseCurrency: profile?.wiseCurrency ?? "",
+      paymentProfileStatus: formatPaymentProfileStatus(profile?.paymentProfileStatus),
       bankName: profile?.bankName ?? "",
       bankAccountName: profile?.bankAccountName ?? "",
       bankAccountNumber: profile?.bankAccountNumber ?? "",
@@ -141,13 +162,13 @@ export async function GET(req: Request) {
     });
   }
   summary.views = [{ state: "frozen", ySplit: 7 }];
-  summary.autoFilter = { from: "A7", to: "O7" };
-  summary.getColumn("L").numFmt = "0.00";
-  summary.getColumn("N").numFmt = "#,##0.00";
+  summary.autoFilter = { from: "A7", to: "Y7" };
+  summary.getColumn("V").numFmt = "0.00";
+  summary.getColumn("X").numFmt = "#,##0.00";
   applyDataBorders(summary, 8);
 
   const details = workbook.addWorksheet("Details");
-  details.mergeCells("A1:W1");
+  details.mergeCells("A1:AG1");
   details.getCell("A1").value = "Completed and Confirmed Session Details";
   details.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF0F172A" } };
   details.getCell("A2").value = `Period: ${report.periodLabel}`;
@@ -162,10 +183,17 @@ export async function GET(req: Request) {
     { header: "PayNow Type", key: "payNowType", width: 14 },
     { header: "PayNow ID / Mobile", key: "payNowValue", width: 22 },
     { header: "PayNow Name", key: "payNowName", width: 22 },
-    { header: "Bank Name", key: "bankName", width: 22 },
-    { header: "Bank Account Name", key: "bankAccountName", width: 22 },
-    { header: "Bank Account Number", key: "bankAccountNumber", width: 22 },
-    { header: "SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
+    { header: "Wise Account Holder", key: "wiseAccountName", width: 22 },
+    { header: "Wise Email", key: "wiseEmail", width: 24 },
+    { header: "Wise Phone", key: "wisePhone", width: 18 },
+    { header: "WiseTag", key: "wiseTag", width: 18 },
+    { header: "Wise Country", key: "wiseCountry", width: 16 },
+    { header: "Wise Currency", key: "wiseCurrency", width: 14 },
+    { header: "Payment Profile Status", key: "paymentProfileStatus", width: 20 },
+    { header: "Legacy Bank Name", key: "bankName", width: 22 },
+    { header: "Legacy Bank Account Name", key: "bankAccountName", width: 22 },
+    { header: "Legacy Bank Account Number", key: "bankAccountNumber", width: 22 },
+    { header: "Legacy SWIFT / Branch Code", key: "bankBranchCode", width: 20 },
     { header: "Student(s)", key: "studentName", width: 32 },
     { header: "Course", key: "courseName", width: 28 },
     { header: "Subject", key: "subjectName", width: 18 },
@@ -192,6 +220,13 @@ export async function GET(req: Request) {
       payNowType: formatPayNowType(profile?.payNowType),
       payNowValue: profile?.payNowValue ?? "",
       payNowName: profile?.payNowName ?? "",
+      wiseAccountName: profile?.wiseAccountName ?? "",
+      wiseEmail: profile?.wiseEmail ?? "",
+      wisePhone: profile?.wisePhone ?? "",
+      wiseTag: profile?.wiseTag ?? "",
+      wiseCountry: profile?.wiseCountry ?? "",
+      wiseCurrency: profile?.wiseCurrency ?? "",
+      paymentProfileStatus: formatPaymentProfileStatus(profile?.paymentProfileStatus),
       bankName: profile?.bankName ?? "",
       bankAccountName: profile?.bankAccountName ?? "",
       bankAccountNumber: profile?.bankAccountNumber ?? "",
@@ -209,10 +244,10 @@ export async function GET(req: Request) {
     });
   }
   details.views = [{ state: "frozen", ySplit: 5 }];
-  details.autoFilter = { from: "A5", to: "W5" };
-  details.getColumn("S").numFmt = "0.00";
-  details.getColumn("T").numFmt = "#,##0.00";
-  details.getColumn("V").numFmt = "#,##0.00";
+  details.autoFilter = { from: "A5", to: "AG5" };
+  details.getColumn("AC").numFmt = "0.00";
+  details.getColumn("AD").numFmt = "#,##0.00";
+  details.getColumn("AF").numFmt = "#,##0.00";
   applyDataBorders(details, 6);
 
   const buffer = await workbook.xlsx.writeBuffer();

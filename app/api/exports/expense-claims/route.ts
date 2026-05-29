@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth';
 import { canFinanceOperateExpense, formatExpensePaymentMethod, getExpenseTypeOption, listExpenseClaims } from '@/lib/expense-claims';
 import { formatUTCDateOnly } from '@/lib/date-only';
 import { prisma } from '@/lib/prisma';
-import { formatPayNowType, formatTeacherPaymentMethod } from '@/lib/teacher-payment-profile';
+import { formatPayNowType, formatPaymentProfileStatus, formatTeacherPaymentMethod } from '@/lib/teacher-payment-profile';
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? '');
@@ -47,6 +47,13 @@ export async function GET(req: Request) {
               payNowType: true,
               payNowValue: true,
               payNowName: true,
+              wiseAccountName: true,
+              wiseEmail: true,
+              wisePhone: true,
+              wiseTag: true,
+              wiseCountry: true,
+              wiseCurrency: true,
+              paymentProfileStatus: true,
               bankName: true,
               bankAccountName: true,
               bankAccountNumber: true,
@@ -65,10 +72,17 @@ export async function GET(req: Request) {
     'PayNow Type',
     'PayNow ID / Mobile',
     'PayNow Name',
-    'Bank Name',
-    'Bank Account Name',
-    'Bank Account Number',
-    'SWIFT / Branch Code',
+    'Wise Account Holder',
+    'Wise Email',
+    'Wise Phone',
+    'WiseTag',
+    'Wise Country',
+    'Wise Currency',
+    'Payment Profile Status',
+    'Legacy Bank Name',
+    'Legacy Bank Account Name',
+    'Legacy Bank Account Number',
+    'Legacy SWIFT / Branch Code',
     'Role',
     'Expense Date',
     'Expense Type',
@@ -101,6 +115,13 @@ export async function GET(req: Request) {
       formatPayNowType(teacher?.payNowType),
       teacher?.payNowValue || '',
       teacher?.payNowName || '',
+      teacher?.wiseAccountName || '',
+      teacher?.wiseEmail || '',
+      teacher?.wisePhone || '',
+      teacher?.wiseTag || '',
+      teacher?.wiseCountry || '',
+      teacher?.wiseCurrency || '',
+      formatPaymentProfileStatus(teacher?.paymentProfileStatus),
       teacher?.bankName || '',
       teacher?.bankAccountName || '',
       teacher?.bankAccountNumber || '',

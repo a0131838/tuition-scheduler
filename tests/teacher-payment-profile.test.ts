@@ -8,6 +8,7 @@ import {
   maskPayNowValue,
   nextTutorCodeFromExisting,
   normalizePayNowType,
+  normalizePaymentProfileStatus,
   normalizeTeacherPaymentMethod,
 } from "../lib/teacher-payment-profile";
 
@@ -20,9 +21,17 @@ test("normalizes supported PayNow types only", () => {
 
 test("normalizes supported teacher payment methods only", () => {
   assert.equal(normalizeTeacherPaymentMethod("paynow"), "PAYNOW");
-  assert.equal(normalizeTeacherPaymentMethod("BANK_TRANSFER"), "BANK_TRANSFER");
+  assert.equal(normalizeTeacherPaymentMethod("wise"), "WISE");
+  assert.equal(normalizeTeacherPaymentMethod("BANK_TRANSFER"), null);
   assert.equal(normalizeTeacherPaymentMethod("cheque"), null);
-  assert.equal(formatTeacherPaymentMethod("BANK_TRANSFER"), "Bank Transfer");
+  assert.equal(formatTeacherPaymentMethod("BANK_TRANSFER"), "Legacy Bank Transfer");
+  assert.equal(formatTeacherPaymentMethod("WISE"), "Wise");
+});
+
+test("normalizes payment profile review status", () => {
+  assert.equal(normalizePaymentProfileStatus("verified"), "VERIFIED");
+  assert.equal(normalizePaymentProfileStatus("PENDING_REVIEW"), "PENDING_REVIEW");
+  assert.equal(normalizePaymentProfileStatus("unknown"), null);
 });
 
 test("masks PayNow values for UI display", () => {
