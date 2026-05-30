@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-30-r162
+
+- Release ID: `2026-05-30-r162`
+- Date/Time (Asia/Shanghai): `2026-05-30`
+- Deployment status: `READY`
+- Scope: allow Teacher Notices to attach an active Shared Docs file so tutors can open or download the specific guide directly from the notice.
+- Key files:
+  - `lib/teacher-notices.ts`
+  - `app/admin/teacher-notices/page.tsx`
+  - `app/teacher/notices/page.tsx`
+  - `app/teacher/TeacherNoticeCardClient.tsx`
+  - `app/api/shared-docs/[id]/file/route.ts`
+  - `tests/teacher-notices.test.ts`
+  - `docs/tasks/TASK-20260530-teacher-notice-shared-doc-attachments.md`
+- Risk impact (if any): Medium. This release changes teacher-notice attachment display and Shared Docs file authorization for notice-bound files only. It does not open the full Shared Docs library to teachers and does not change payroll, attendance, billing, scheduling, package balances, invoices, or receipts.
+- Verification:
+  - `npx tsx --test tests/teacher-notices.test.ts`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-30-r162`.
+
+---
+
 ## 2026-05-29-r161
 
 - Release ID: `2026-05-29-r161`

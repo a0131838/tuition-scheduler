@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-05-29-r161` (tutor payment profiles limited to PayNow or Wise with finance review status), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-05-30-r162` (teacher notices can attach one active Shared Docs file for direct tutor download), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -80,6 +80,7 @@
 - Admin-extra-workspace risk: `2026-05-29-r159` adds `UserWorkspaceAccess` so selected admins can use CS/Sales focused views while remaining `ADMIN`; verify Eva/Jasmine/zhao keep admin access and see only their configured extra workspace shortcuts.
 - Workspace-access-form risk: `2026-05-29-r160` lets the owner manager edit Sales/CS focused workspace access from System User Admin; verify non-owner managers cannot write this endpoint and that main roles remain unchanged.
 - Tutor-Wise-payment-profile risk: `2026-05-29-r161` removes Bank Transfer as a new tutor payment method and adds Wise details plus finance review status; finance should verify PayNow/Wise details before payout exports are used.
+- Teacher-notice-attachment risk: `2026-05-30-r162` lets teachers open only the active Shared Docs file attached to an active teacher notice; verify the notice attachment is intentional before publishing because the full Shared Docs library remains manager/admin controlled.
 
 ## Process Guard (Installed)
 
@@ -100,6 +101,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-05-30-r162 Ready
+
+- Scope: allow Teacher Notices to attach one active Shared Docs file for direct tutor access from the portal and dashboard notice card.
+- Business impact:
+  - Admin/finance users can upload the bilingual tutor guide through Shared Docs, then select that document while creating or editing a Teacher Notice.
+  - Teachers can open or download only the attached document from the active notice.
+  - Teachers do not receive access to the full Shared Docs library.
+  - Payroll, payment amount calculation, expense claims, attendance, scheduling, packages, contracts, invoices, receipts, and OpenClaw are unchanged.
+- Files:
+  - `lib/teacher-notices.ts`
+  - `app/admin/teacher-notices/page.tsx`
+  - `app/teacher/notices/page.tsx`
+  - `app/teacher/TeacherNoticeCardClient.tsx`
+  - `app/api/shared-docs/[id]/file/route.ts`
+  - `tests/teacher-notices.test.ts`
+  - `docs/tasks/TASK-20260530-teacher-notice-shared-doc-attachments.md`
+- Verification before deploy:
+  - `npx tsx --test tests/teacher-notices.test.ts`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Post-deploy verification:
+  - `ssh -i "/Users/zhao111/Documents/sgt系统/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
 
 ## 2026-05-29-r161 Ready
 

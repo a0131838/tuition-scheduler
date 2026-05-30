@@ -57,6 +57,7 @@ function buildNoticeFromForm(fd: FormData, existing?: TeacherNotice): TeacherNot
     important: fd.get("important") === "on",
     requiresAck: fd.get("requiresAck") === "on",
     active: existing ? fd.get("active") === "on" : true,
+    attachmentDocumentId: formString(fd, "attachmentDocumentId"),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
@@ -124,7 +125,14 @@ async function seedDefaultsAction() {
   redirect("/admin/teacher-notices?msg=seeded");
 }
 
-function NoticeForm({ notice }: { notice?: TeacherNotice }) {
+type NoticeAttachmentOption = {
+  id: string;
+  title: string;
+  originalFileName: string;
+  category: { name: string };
+};
+
+function NoticeForm({ notice, attachmentOptions }: { notice?: TeacherNotice; attachmentOptions: NoticeAttachmentOption[] }) {
   const action = notice ? updateNoticeAction : createNoticeAction;
   return (
     <form action={action} style={{ ...cardStyle("#ffffff", "#e2e8f0"), gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
@@ -163,6 +171,17 @@ function NoticeForm({ notice }: { notice?: TeacherNotice }) {
         Expiry date optional / 截止日期可选
         <input name="expiresAt" type="date" defaultValue={notice?.expiresAt ?? ""} style={textInputStyle()} />
       </label>
+      <label style={labelStyle()}>
+        Attachment from Shared Docs / 共享文档附件
+        <select name="attachmentDocumentId" defaultValue={notice?.attachmentDocumentId ?? ""} style={textInputStyle()}>
+          <option value="">No attachment / 不挂附件</option>
+          {attachmentOptions.map((doc) => (
+            <option key={doc.id} value={doc.id}>
+              {doc.title} - {doc.category.name} - {doc.originalFileName}
+            </option>
+          ))}
+        </select>
+      </label>
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
         <label><input name="important" type="checkbox" defaultChecked={notice?.important ?? true} /> Important / 重要</label>
         <label><input name="requiresAck" type="checkbox" defaultChecked={notice?.requiresAck ?? true} /> Require acknowledgement / 需要确认</label>
@@ -185,7 +204,7 @@ export default async function AdminTeacherNoticesPage({
   const sp = await searchParams;
   const msg = sp?.msg ? decodeURIComponent(sp.msg) : "";
   const err = sp?.err ? decodeURIComponent(sp.err) : "";
-  const [{ notices }, readStore, teacherUsers] = await Promise.all([
+  const [{ notices }, readStore, teacherUsers, attachmentOptions] = await Promise.all([
     getAllTeacherNotices(),
     getTeacherNoticeReadStore(),
     prisma.user.findMany({
@@ -193,7 +212,19 @@ export default async function AdminTeacherNoticesPage({
       select: { id: true, name: true, email: true, teacherId: true },
       orderBy: { name: "asc" },
     }),
+    prisma.sharedDocument.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
+        title: true,
+        originalFileName: true,
+        category: { select: { name: true } },
+      },
+      orderBy: [{ createdAt: "desc" }],
+      take: 100,
+    }),
   ]);
+  const attachmentById = new Map(attachmentOptions.map((doc) => [doc.id, doc]));
   const teacherUserCount = teacherUsers.length;
 
   return (
@@ -213,7 +244,7 @@ export default async function AdminTeacherNoticesPage({
 
       <section style={cardStyle("#f8fafc", "#e2e8f0")}>
         <div style={{ fontWeight: 800 }}>{t(lang, "Create Notice", "新建通知")}</div>
-        <NoticeForm />
+        <NoticeForm attachmentOptions={attachmentOptions} />
       </section>
 
       <section style={{ display: "grid", gap: 12 }}>
@@ -230,7 +261,12 @@ export default async function AdminTeacherNoticesPage({
                 Published: {notice.publishedAt || "-"} {notice.expiresAt ? `· Expires: ${notice.expiresAt}` : ""} ·
                 Read/Ack: {readEntries.length}/{teacherUserCount} · Unread: {unreadCount}
               </div>
-              <NoticeForm notice={notice} />
+              {notice.attachmentDocumentId ? (
+                <div style={{ color: "#1d4ed8", fontSize: 13 }}>
+                  Attachment / 附件: {attachmentById.get(notice.attachmentDocumentId)?.title ?? notice.attachmentDocumentId}
+                </div>
+              ) : null}
+              <NoticeForm notice={notice} attachmentOptions={attachmentOptions} />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <form action={archiveNoticeAction}>
                   <input type="hidden" name="id" value={notice.id} />

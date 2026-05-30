@@ -60,6 +60,16 @@ export default async function TeacherNoticesPage() {
                 {notice.expiresAt && notice.expiresAt < today ? ` · ${t(lang, "Expired", "已过期")}` : ""}
               </div>
               <div style={{ color: "#334155", lineHeight: 1.45 }}>{t(lang, notice.bodyEn, notice.bodyZh)}</div>
+              {notice.attachmentDocumentId ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <a href={`/api/shared-docs/${notice.attachmentDocumentId}/file`} target="_blank" rel="noreferrer">
+                    {t(lang, "Open attachment", "打开附件")}
+                  </a>
+                  <a href={`/api/shared-docs/${notice.attachmentDocumentId}/file?download=1`}>
+                    {t(lang, "Download attachment", "下载附件")}
+                  </a>
+                </div>
+              ) : null}
               <div style={{ color: "#64748b", fontSize: 12 }}>
                 {t(lang, "Published", "发布时间")}: {notice.publishedAt}
                 {notice.expiresAt ? ` · ${t(lang, "Expires", "截止")}: ${notice.expiresAt}` : ""}

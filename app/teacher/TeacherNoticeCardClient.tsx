@@ -41,6 +41,16 @@ export default function TeacherNoticeCardClient({
         <div style={{ display: "grid", gap: 6 }}>
           <div style={{ fontWeight: 800, color: notice.important ? "#92400e" : "#1d4ed8" }}>{title}</div>
           <div style={{ color: "#334155", lineHeight: 1.45, maxWidth: 1120 }}>{body}</div>
+          {notice.attachmentDocumentId ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+              <a href={`/api/shared-docs/${notice.attachmentDocumentId}/file`} target="_blank" rel="noreferrer">
+                Open attachment / 打开附件
+              </a>
+              <a href={`/api/shared-docs/${notice.attachmentDocumentId}/file?download=1`}>
+                Download attachment / 下载附件
+              </a>
+            </div>
+          ) : null}
           <div style={{ color: "#64748b", fontSize: 12 }}>
             {publishedLabel}: {notice.publishedAt}
           </div>

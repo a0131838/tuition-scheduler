@@ -13,6 +13,7 @@ export type TeacherNotice = {
   important: boolean;
   requiresAck: boolean;
   active: boolean;
+  attachmentDocumentId: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,6 +40,7 @@ export const DEFAULT_TEACHER_NOTICES: TeacherNotice[] = [
     important: true,
     requiresAck: true,
     active: true,
+    attachmentDocumentId: "",
     createdAt: "2026-05-08T00:00:00.000Z",
     updatedAt: "2026-05-08T00:00:00.000Z",
   },
@@ -79,6 +81,7 @@ export function sanitizeTeacherNotices(input: unknown): TeacherNotice[] {
         important: Boolean(row.important),
         requiresAck: Boolean(row.requiresAck),
         active: row.active !== false,
+        attachmentDocumentId: cleanString(row.attachmentDocumentId),
         createdAt: cleanString(row.createdAt, nowIso),
         updatedAt: cleanString(row.updatedAt, nowIso),
       };
@@ -115,6 +118,10 @@ export function activeTeacherNotices(notices: TeacherNotice[], now = new Date())
       if (a.important !== b.important) return a.important ? -1 : 1;
       return b.publishedAt.localeCompare(a.publishedAt);
     });
+}
+
+export function activeTeacherNoticeAttachments(notices: TeacherNotice[], now = new Date()) {
+  return new Set(activeTeacherNotices(notices, now).map((notice) => notice.attachmentDocumentId).filter(Boolean));
 }
 
 export async function getTeacherNoticeState(userId: string) {

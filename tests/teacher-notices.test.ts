@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeTeacherNotices, sanitizeTeacherNoticeReads, sanitizeTeacherNotices } from "@/lib/teacher-notices";
+import { activeTeacherNoticeAttachments, activeTeacherNotices, sanitizeTeacherNoticeReads, sanitizeTeacherNotices } from "@/lib/teacher-notices";
 
 test("teacher notice sanitizer keeps valid configurable notices", () => {
   const notices = sanitizeTeacherNotices([
@@ -17,6 +17,7 @@ test("teacher notice sanitizer keeps valid configurable notices", () => {
       important: true,
       requiresAck: true,
       active: true,
+      attachmentDocumentId: "doc-1",
     },
   ]);
   assert.equal(notices.length, 1);
@@ -24,6 +25,7 @@ test("teacher notice sanitizer keeps valid configurable notices", () => {
   assert.equal(notices[0].category, "FINANCE");
   assert.equal(notices[0].important, true);
   assert.equal(notices[0].requiresAck, true);
+  assert.equal(notices[0].attachmentDocumentId, "doc-1");
 });
 
 test("teacher notice sanitizer falls back when configured notices are invalid", () => {
@@ -43,6 +45,17 @@ test("teacher notices only show active published notices first by importance", (
     new Date("2026-05-08T00:00:00.000Z"),
   );
   assert.deepEqual(notices.map((x) => x.id), ["important", "normal"]);
+});
+
+test("teacher notice attachments only include active published notices", () => {
+  const notices = sanitizeTeacherNotices([
+    { id: "future", titleEn: "F", titleZh: "F", bodyEn: "F", bodyZh: "F", publishedAt: "2099-01-01", important: true, active: true, attachmentDocumentId: "future-doc" },
+    { id: "active", titleEn: "A", titleZh: "A", bodyEn: "A", bodyZh: "A", publishedAt: "2026-05-01", important: true, active: true, attachmentDocumentId: "active-doc" },
+    { id: "expired", titleEn: "E", titleZh: "E", bodyEn: "E", bodyZh: "E", publishedAt: "2026-05-01", expiresAt: "2026-05-07", important: true, active: true, attachmentDocumentId: "expired-doc" },
+    { id: "inactive", titleEn: "X", titleZh: "X", bodyEn: "X", bodyZh: "X", publishedAt: "2026-05-01", important: true, active: false, attachmentDocumentId: "inactive-doc" },
+  ]);
+  const attachments = activeTeacherNoticeAttachments(notices, new Date("2026-05-08T00:00:00.000Z"));
+  assert.deepEqual(Array.from(attachments), ["active-doc"]);
 });
 
 test("teacher notice read sanitizer drops malformed read rows", () => {
