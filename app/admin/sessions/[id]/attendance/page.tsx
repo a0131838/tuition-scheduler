@@ -311,6 +311,17 @@ export default async function AttendancePage({
                 "开启后，课次记录和反馈会保留，但不会扣减课包分钟数/次数。"
               ),
               waiveReasonPlaceholder: t(lang, "Waive reason", "免扣原因"),
+              convertAssessment: t(lang, "Convert to Assessment", "转为评估课免扣"),
+              convertAssessmentHint: t(
+                lang,
+                "Admin repair for lessons that were accidentally deducted: keep attendance, clear deduction, and roll back package ledger.",
+                "管理员修复误扣评估课：保留点名，清零扣减，并自动冲回课包流水。"
+              ),
+              convertAssessmentConfirm: t(
+                lang,
+                "Convert this row to an assessment lesson and roll back its package deduction?",
+                "确认把这一行转为评估课免扣，并自动冲回已扣课时？"
+              ),
             }}
             rows={attendanceEnrollments.map((e) => {
               const a = map.get(e.studentId);

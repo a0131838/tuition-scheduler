@@ -27,6 +27,9 @@ export default function AdminSessionAttendanceClient({
     waiveDeduction: string;
     waiveHint: string;
     waiveReasonPlaceholder: string;
+    convertAssessment: string;
+    convertAssessmentHint: string;
+    convertAssessmentConfirm: string;
   };
 }) {
   const router = useRouter();
@@ -57,6 +60,9 @@ export default function AdminSessionAttendanceClient({
   const [copyHint, setCopyHint] = useState("");
   const markAllLabel = waiveDeduction ? labels.markAllPresentWaived : labels.markAllPresent;
   const rowByStudent = new Map(rows.map((r) => [r.studentId, r]));
+  const repairableRows = rows.filter(
+    (row) => !row.waiveDeduction && (Number(row.deductedMinutes ?? 0) > 0 || Number(row.deductedCount ?? 0) > 0)
+  );
 
   useEffect(() => {
     if (!review || confirmCountdown <= 0) return;
@@ -374,6 +380,34 @@ export default function AdminSessionAttendanceClient({
     }
   }
 
+  async function convertRowToAssessment(row: AttendanceRow) {
+    if (saving) return;
+    const reason = (waiveReason || "Assessment lesson").trim() || "Assessment lesson";
+    const impact =
+      Number(row.deductedMinutes ?? 0) > 0
+        ? `${row.deductedMinutes} minutes`
+        : `${row.deductedCount} count`;
+    const message =
+      `${labels.convertAssessmentConfirm}\n\n` +
+      `${row.studentName}: ${impact}\n` +
+      `Reason: ${reason}`;
+    if (!window.confirm(message)) return;
+
+    await saveItems([
+      {
+        studentId: row.studentId,
+        status: row.status === "UNMARKED" ? "PRESENT" : row.status,
+        deductedMinutes: 0,
+        deductedCount: 0,
+        note: row.note ?? "",
+        packageId: row.packageId ?? "",
+        excusedCharge: false,
+        waiveDeduction: true,
+        waiveReason: reason,
+      },
+    ]);
+  }
+
   return (
     <div>
       <div
@@ -448,6 +482,64 @@ export default function AdminSessionAttendanceClient({
           style={{ maxWidth: 360 }}
         />
       </div>
+      {repairableRows.length > 0 ? (
+        <div
+          style={{
+            border: "1px solid #f97316",
+            background: "#fff7ed",
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 12,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 800, color: "#9a3412" }}>{labels.convertAssessment}</div>
+          <div style={{ color: "#7c2d12", fontSize: 12, lineHeight: 1.45 }}>{labels.convertAssessmentHint}</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {repairableRows.map((row) => (
+              <div
+                key={row.studentId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  padding: 8,
+                  border: "1px solid #fed7aa",
+                  borderRadius: 8,
+                  background: "#fff",
+                }}
+              >
+                <div style={{ fontSize: 13 }}>
+                  <strong>{row.studentName}</strong>
+                  <span style={{ color: "#7c2d12", marginLeft: 8 }}>
+                    {Number(row.deductedMinutes ?? 0) > 0
+                      ? `${row.deductedMinutes} min deducted`
+                      : `${row.deductedCount} count deducted`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => convertRowToAssessment(row)}
+                  disabled={saving}
+                  style={{
+                    border: "1px solid #ea580c",
+                    background: "#fff7ed",
+                    color: "#9a3412",
+                    borderRadius: 8,
+                    padding: "7px 10px",
+                    fontWeight: 800,
+                  }}
+                >
+                  {labels.convertAssessment}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontWeight: 700 }}>{labels.title}</div>
       </div>

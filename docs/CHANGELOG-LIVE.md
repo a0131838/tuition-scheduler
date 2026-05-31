@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-31-r164
+
+- Release ID: `2026-05-31-r164`
+- Date/Time (Asia/Shanghai): `2026-05-31`
+- Deployment status: `READY`
+- Scope: add an admin-facing `Convert to Assessment` repair action on the attendance page for rows that were accidentally deducted but should be assessment/waive lessons.
+- Key files:
+  - `app/admin/sessions/[id]/attendance/page.tsx`
+  - `app/admin/sessions/[id]/attendance/AdminSessionAttendanceClient.tsx`
+  - `docs/tasks/TASK-20260531-attendance-convert-assessment-button.md`
+- Risk impact (if any): Medium. This adds a new repair trigger on the attendance UI, but it reuses the existing attendance save API and package rollback path instead of editing balances directly.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-05-31-r164`.
+
+---
+
 ## 2026-05-31-r163
 
 - Release ID: `2026-05-31-r163`
