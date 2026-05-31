@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-05-31-r163
+
+- Release ID: `2026-05-31-r163`
+- Date/Time (Asia/Shanghai): `2026-05-31`
+- Deployment status: `READY`
+- Scope: fix attendance ledger consistency checks so assessment/waive saves can reconcile historical auto-repair package transactions that identify the row by `attendanceId` instead of `studentId`.
+- Key files:
+  - `app/api/admin/sessions/[id]/attendance/route.ts`
+  - `app/api/admin/sessions/[id]/attendance/mark-all-present/route.ts`
+  - `docs/tasks/TASK-20260531-attendance-waive-legacy-ledger-check.md`
+- Risk impact (if any): Medium. This touches attendance save ledger verification only; it does not relax package balance checks, change deduction amounts, payroll, invoices, receipts, or scheduling. It lets the existing checker attribute older repair transactions to the correct student before comparing net ledger movement.
+- Verification:
+  - `npx tsc --noEmit`
+  - Simulated the affected legacy pattern: `attendanceId` repair `-30` plus `studentId` rollback `+30` resolves to net `0`.
+  - Read-only production lookup confirmed the failing row used an older repair transaction note with `attendanceId=bc00897f-e395-436f-955d-468ffe75bba5` and no `studentId`.
+- Rollback point: previous production commit before `2026-05-31-r163`.
+
+---
+
 ## 2026-05-30-r162
 
 - Release ID: `2026-05-30-r162`

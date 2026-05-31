@@ -171,6 +171,12 @@ function parseStudentIdFromTxnNote(note: string | null | undefined) {
   return match?.[1] ?? null;
 }
 
+function parseAttendanceIdFromTxnNote(note: string | null | undefined) {
+  if (!note) return null;
+  const match = note.match(/attendanceId=([0-9a-fA-F-]{20,})/);
+  return match?.[1] ?? null;
+}
+
 async function assertTouchedStudentsLedgerConsistency(
   tx: Prisma.TransactionClient,
   opts: { sessionId: string; studentIds: string[] }
@@ -182,6 +188,7 @@ async function assertTouchedStudentsLedgerConsistency(
   const rows = await tx.attendance.findMany({
     where: { sessionId, studentId: { in: studentIds } },
     select: {
+      id: true,
       studentId: true,
       status: true,
       deductedMinutes: true,
@@ -193,6 +200,7 @@ async function assertTouchedStudentsLedgerConsistency(
     },
   });
   const rowMap = new Map(rows.map((r) => [r.studentId, r]));
+  const studentIdByAttendanceId = new Map(rows.map((r) => [r.id, r.studentId]));
 
   const txns = await tx.packageTxn.findMany({
     where: { sessionId },
@@ -200,7 +208,9 @@ async function assertTouchedStudentsLedgerConsistency(
   });
   const actualNetByStudent = new Map<string, number>();
   for (const txn of txns) {
-    const sid = parseStudentIdFromTxnNote(txn.note);
+    const sid =
+      parseStudentIdFromTxnNote(txn.note) ??
+      studentIdByAttendanceId.get(parseAttendanceIdFromTxnNote(txn.note) ?? "");
     if (!sid || !studentIdSet.has(sid)) continue;
     actualNetByStudent.set(sid, (actualNetByStudent.get(sid) ?? 0) + txn.deltaMinutes);
   }
