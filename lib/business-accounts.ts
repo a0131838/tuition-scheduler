@@ -63,6 +63,7 @@ export type BusinessMonthlyDocument = {
   note: string | null;
   status: BusinessMonthlyDocumentStatus;
   receiptNo: string | null;
+  receivedFrom: string | null;
   paidDate: string | null;
   paidAmount: number | null;
   paymentMethod: string | null;
@@ -197,6 +198,7 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         note: textOrNull(x.note),
         status: normalizeDocumentStatus(x.status),
         receiptNo: textOrNull(x.receiptNo),
+        receivedFrom: textOrNull(x.receivedFrom),
         paidDate: normalizeDateOnly(x.paidDate) ?? null,
         paidAmount: x.paidAmount == null || String(x.paidAmount).trim() === "" ? null : roundMoney(x.paidAmount),
         paymentMethod: textOrNull(x.paymentMethod),
@@ -502,6 +504,7 @@ export async function createBusinessMonthlyDocument(input: {
         note: input.note?.trim() || null,
         status: "DRAFT",
         receiptNo: null,
+        receivedFrom: null,
         paidDate: null,
         paidAmount: null,
         paymentMethod: null,
@@ -649,6 +652,8 @@ export async function voidBusinessMonthlyDocument(input: {
 
 export async function recordBusinessMonthlyPayment(input: {
   documentId: string;
+  receiptNo?: string | null;
+  receivedFrom?: string | null;
   paidDate: string;
   paidAmount: number;
   paymentMethod: string;
@@ -671,10 +676,13 @@ export async function recordBusinessMonthlyPayment(input: {
       const paidAmount = Math.max(0, roundMoney(input.paidAmount));
       if (paidAmount <= 0) throw new Error("Paid amount must be greater than zero");
       const now = nowIso();
+      const account = store.accounts.find((x) => x.id === current.accountId);
+      const receiptNo = textOrNull(input.receiptNo) ?? current.receiptNo ?? buildReceiptNo(current.invoiceNo);
       item = {
         ...current,
         status: "PAID",
-        receiptNo: current.receiptNo ?? buildReceiptNo(current.invoiceNo),
+        receiptNo,
+        receivedFrom: textOrNull(input.receivedFrom) ?? account?.legalNameEn ?? account?.legalNameZh ?? null,
         paidDate,
         paidAmount,
         paymentMethod: input.paymentMethod.trim() || "Bank Transfer",

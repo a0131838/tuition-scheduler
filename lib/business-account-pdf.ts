@@ -175,9 +175,10 @@ export function buildBusinessReceiptPdf(account: BusinessAccount, item: Business
   row(doc, "Receipt No. / 收据编号", item.receiptNo ?? "-", 52, 154);
   row(doc, "Invoice No. / 发票编号", item.invoiceNo, 310, 154);
   row(doc, "Payment Date / 付款日期", item.paidDate ?? "-", 52, 198);
-  row(doc, "Payment Method / 付款方式", item.paymentMethod ?? paymentMethodLabel(account.paymentMethod), 310, 198);
-  row(doc, "Payment Reference / 付款备注", item.paymentReference ?? "-", 52, 242);
-  row(doc, "Billing Period / 结算期间", item.monthKey, 310, 242);
+  row(doc, "Paid via / 付款方式", item.paymentMethod ?? paymentMethodLabel(account.paymentMethod), 310, 198);
+  row(doc, "Received From / 收款对象", item.receivedFrom ?? account.legalNameEn, 52, 242);
+  row(doc, "Payment Reference / 付款备注", item.paymentReference ?? "-", 310, 242);
+  row(doc, "Billing Period / 结算期间", item.monthKey, 52, 284);
 
   sectionTitle(doc, "Received From / 付款方", 312);
   row(doc, "English name / 英文名称", account.legalNameEn, 52, 350, 503);

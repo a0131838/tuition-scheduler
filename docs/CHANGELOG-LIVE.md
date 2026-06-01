@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r167
+
+- Release ID: `2026-06-01-r167`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: reorganize Business Accounts into clearer workflow tabs and align its receipt/payment capture with existing student and New Oriental receipt fields.
+- Key files:
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `docs/tasks/TASK-20260601-business-accounts-clean-workflow-receipt-fields.md`
+- Risk impact (if any): Low to medium. This refines the Business Accounts workspace and its AppSetting-backed receipt metadata only. It does not modify New Oriental partner settlement, parent invoice/receipt workflows, package balances, payroll, attendance, or scheduling.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-01-r167`.
+
+---
+
 ## 2026-06-01-r166
 
 - Release ID: `2026-06-01-r166`

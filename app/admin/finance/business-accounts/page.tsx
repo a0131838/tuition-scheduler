@@ -36,6 +36,13 @@ function currentMonth() {
   return formatBusinessDateOnly(new Date()).slice(0, 7);
 }
 
+type BusinessTab = "documents" | "create" | "account" | "new-account";
+
+function parseTab(value: string | null | undefined): BusinessTab {
+  if (value === "create" || value === "account" || value === "new-account") return value;
+  return "documents";
+}
+
 function redirectWith(accountId: string | null, params: Record<string, string>) {
   const sp = new URLSearchParams();
   if (accountId) sp.set("accountId", accountId);
@@ -248,6 +255,8 @@ async function recordPaymentAction(formData: FormData) {
   try {
     await recordBusinessMonthlyPayment({
       documentId: String(formData.get("documentId") ?? ""),
+      receiptNo: String(formData.get("receiptNo") ?? "").trim(),
+      receivedFrom: String(formData.get("receivedFrom") ?? "").trim(),
       paidDate: String(formData.get("paidDate") ?? "").trim(),
       paidAmount: Number(formData.get("paidAmount") ?? 0),
       paymentMethod: String(formData.get("paymentMethod") ?? "").trim(),
@@ -279,6 +288,7 @@ function AccountForm({ account, lang }: { account: BusinessAccount; lang: Lang }
   return (
     <form action={updateAccountAction} style={{ display: "grid", gap: 12 }}>
       <input type="hidden" name="accountId" value={account.id} />
+      <input type="hidden" name="tab" value="account" />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
         <label>{t(lang, "Account type", "账户类型")}<select name="type" defaultValue={account.type} style={fieldStyle()}>{accountOptions(account)}</select></label>
         <label>{t(lang, "Agreement type", "协议类型")}<select name="agreementType" defaultValue={account.agreementType} style={fieldStyle()}>
@@ -334,6 +344,7 @@ export default async function BusinessAccountsPage({
   await requireAdmin();
   const lang = await getLang();
   const sp = await searchParams;
+  const tab = parseTab((sp as any)?.tab);
   const store = await listBusinessAccounts();
   const selected = store.accounts.find((x) => x.id === sp?.accountId) ?? store.accounts.find((x) => x.id === "shanghai-xin-zhuo-si") ?? store.accounts[0];
   const docs = store.monthlyDocuments.filter((x) => x.accountId === selected.id);
@@ -374,7 +385,7 @@ export default async function BusinessAccountsPage({
       {sp?.err ? <div style={{ border: "1px solid #fecaca", background: "#fef2f2", padding: 10, borderRadius: 8, color: "#991b1b" }}>{decodeURIComponent(sp.err)}</div> : null}
       {sp?.msg ? <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", padding: 10, borderRadius: 8, color: "#166534" }}>{t(lang, "Saved.", "已保存。")}</div> : null}
 
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff", display: "grid", gap: 12 }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Select Business Account", "选择企业账户")}</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {store.accounts.map((account) => (
@@ -395,10 +406,34 @@ export default async function BusinessAccountsPage({
             </a>
           ))}
         </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+          {[
+            ["documents", t(lang, "Documents & payment", "单据与收款")],
+            ["create", t(lang, "Create invoice", "创建发票")],
+            ["account", t(lang, "Company profile", "公司资料")],
+            ["new-account", t(lang, "Add company", "新增公司")],
+          ].map(([key, label]) => (
+            <a
+              key={key}
+              href={`/admin/finance/business-accounts?accountId=${encodeURIComponent(selected.id)}&tab=${key}`}
+              style={{
+                border: tab === key ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                background: tab === key ? "#eff6ff" : "#fff",
+                borderRadius: 8,
+                padding: "8px 12px",
+                textDecoration: "none",
+                color: tab === key ? "#1d4ed8" : "#334155",
+                fontWeight: 900,
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
       </section>
 
-      <details style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 12, padding: 14 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900 }}>{t(lang, "Add new business account", "新增企业账户")}</summary>
+      {tab === "new-account" ? <section style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 12, padding: 14 }}>
+        <h3 style={{ marginTop: 0 }}>{t(lang, "Add new business account", "新增企业账户")}</h3>
         <form action={createAccountAction} style={{ display: "grid", gap: 10, marginTop: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
             <label>{t(lang, "Account type", "账户类型")}<select name="type" defaultValue="CORPORATE_CLIENT" style={fieldStyle()}>{accountOptions(selected)}</select></label>
@@ -423,14 +458,14 @@ export default async function BusinessAccountsPage({
           </div>
           <button style={{ ...buttonStyle("primary"), justifySelf: "start" }}>{t(lang, "Create account", "创建企业账户")}</button>
         </form>
-      </details>
+      </section> : null}
 
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
+      {tab === "account" ? <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Business Account Profile", "企业账户资料")}: {selected.legalNameZh || selected.legalNameEn}</h3>
         <AccountForm account={selected} lang={lang} />
-      </section>
+      </section> : null}
 
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
+      {tab === "create" ? <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Create Monthly Service Invoice", "创建月度服务发票")}</h3>
         <form action={createMonthlyDocumentAction} style={{ display: "grid", gap: 12 }}>
           <input type="hidden" name="accountId" value={selected.id} />
@@ -450,10 +485,19 @@ export default async function BusinessAccountsPage({
           <label>{t(lang, "Internal note", "内部备注")}<input name="note" style={fieldStyle()} /></label>
           <button style={{ ...buttonStyle("primary"), justifySelf: "start" }}>{t(lang, "Create draft documents", "创建草稿单据")}</button>
         </form>
-      </section>
+      </section> : null}
 
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
+      {tab === "documents" ? <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Monthly Documents", "月度单据")}</h3>
+        <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 12, marginBottom: 12, display: "grid", gap: 4 }}>
+          <div style={{ fontWeight: 900 }}>{t(lang, "Company payment destination", "公司收款信息")}</div>
+          <div style={{ color: "#334155", fontSize: 13 }}>
+            {t(lang, "Payee", "收款方")}: <b>{selected.payeeName ?? "-"}</b> | {t(lang, "Bank", "银行")}: <b>{selected.bankName ?? "-"}</b> | {t(lang, "Account", "账号")}: <b>{selected.bankAccountNo ?? "-"}</b>
+          </div>
+          <div style={{ color: "#64748b", fontSize: 12 }}>
+            {t(lang, "Edit this in Company profile. Receipt details are recorded per invoice below, same style as student and New Oriental receipts.", "在公司资料中维护这里。每张发票的实际收款信息在下方单独记录，格式与学生和新东方收据一致。")}
+          </div>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -482,7 +526,8 @@ export default async function BusinessAccountsPage({
                     {doc.status === "PAID" ? (
                       <div>
                         <b>{money(doc.paidAmount ?? doc.totalAmount)}</b>
-                        <div style={{ color: "#64748b", fontSize: 12 }}>{doc.paidDate} {doc.paymentReference ? ` / ${doc.paymentReference}` : ""}</div>
+                        <div style={{ color: "#64748b", fontSize: 12 }}>{doc.receivedFrom ?? selected.legalNameEn}</div>
+                        <div style={{ color: "#64748b", fontSize: 12 }}>{doc.paidDate} / {doc.paymentMethod ?? "Bank transfer"} {doc.paymentReference ? ` / ${doc.paymentReference}` : ""}</div>
                       </div>
                     ) : "-"}
                   </td>
@@ -508,14 +553,22 @@ export default async function BusinessAccountsPage({
                     </div>
                     {doc.status !== "VOID" && doc.status !== "PAID" ? (
                       <details style={{ marginTop: 8 }}>
-                        <summary style={{ cursor: "pointer", fontWeight: 800 }}>{t(lang, "Record payment", "记录收款")}</summary>
+                        <summary style={{ cursor: "pointer", fontWeight: 800 }}>{t(lang, "Record receipt/payment", "记录收据/收款")}</summary>
                         <form action={recordPaymentAction} style={{ display: "grid", gap: 8, marginTop: 8, maxWidth: 520 }}>
                           <input type="hidden" name="accountId" value={selected.id} />
                           <input type="hidden" name="documentId" value={doc.id} />
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                            <input name="receiptNo" placeholder={`${doc.invoiceNo}-RC`} style={fieldStyle()} />
+                            <input name="receivedFrom" defaultValue={selected.legalNameEn} placeholder="Received From" style={fieldStyle()} />
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                             <input name="paidDate" type="date" defaultValue={issueDate} style={fieldStyle()} />
                             <input name="paidAmount" type="number" min="0" step="0.01" defaultValue={doc.totalAmount} style={fieldStyle()} />
-                            <input name="paymentMethod" defaultValue="Bank Transfer" style={fieldStyle()} />
+                            <select name="paymentMethod" defaultValue="Bank transfer" style={fieldStyle()}>
+                              <option value="Paynow">Paynow</option>
+                              <option value="Cash">Cash</option>
+                              <option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option>
+                            </select>
                           </div>
                           <input name="paymentReference" placeholder="Payment reference" style={fieldStyle()} />
                           <input name="paymentNote" placeholder="Payment note" style={fieldStyle()} />
@@ -540,7 +593,7 @@ export default async function BusinessAccountsPage({
             </tbody>
           </table>
         </div>
-      </section>
+      </section> : null}
     </div>
   );
 }
