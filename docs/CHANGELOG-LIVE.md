@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r170
+
+- Release ID: `2026-06-01-r170`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: add the same payment-proof-first receipt flow to Business Accounts so company transfers are recorded before a receipt is created.
+- Key files:
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `lib/business-accounts.ts`
+  - `lib/business-file-storage.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260601-business-accounts-payment-proof-receipts.md`
+- Risk impact (if any): Low to medium. This extends only the new Business Accounts AppSetting store with payment records and links receipts to uploaded company payment proofs. Existing parent/student receipts, New Oriental partner receipts, package balances, payroll, attendance, and scheduling logic are not changed.
+- Verification:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-01-r170`.
+
+---
+
 ## 2026-06-01-r169
 
 - Release ID: `2026-06-01-r169`

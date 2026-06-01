@@ -5,6 +5,11 @@ import {
   createParentInvoice,
   createParentReceipt,
 } from "../lib/student-parent-billing";
+import {
+  addBusinessPaymentRecord,
+  createBusinessMonthlyDocument,
+  recordBusinessMonthlyPayment,
+} from "../lib/business-accounts";
 import { getParentReceiptApprovalMap } from "../lib/parent-receipt-approval";
 import { managerRejectPartnerSettlement } from "../lib/partner-settlement-approval";
 import { prisma } from "../lib/prisma";
@@ -172,6 +177,104 @@ test("parent invoice creation retries on optimistic-lock conflict and preserves 
     ["RGT-202603-0001", "RGT-202603-0002"],
   );
   assert.equal(saved.invoiceSeqByMonth["202603"], 2);
+});
+
+test("business account receipt requires an uploaded payment record", async () => {
+  const now = "2026-06-01T10:00:00.000Z";
+  const store = makeAppSettingStub({
+    initialValue: {
+      accounts: [
+        {
+          id: "biz-1",
+          type: "CORPORATE_CLIENT",
+          legalNameEn: "Example Company Pte. Ltd.",
+          legalNameZh: "Example Company",
+          registrationNo: "202600001A",
+          registeredAddress: null,
+          contactName: null,
+          contactEmail: null,
+          currency: "SGD",
+          fixedMonthlyFee: 1000,
+          agreementType: "CUSTOM_INVOICE",
+          agreementTitle: "Service Agreement",
+          agreementDate: null,
+          paymentMethod: "BANK_TRANSFER",
+          paymentTerms: "Due within 14 days",
+          payeeName: "GT Educational Institute Pte. Ltd.",
+          bankName: "OCBC Bank Singapore",
+          bankAddress: "65 Chulia Street #01-40 OCBC Centre Singapore, S049513",
+          bankAccountNo: "595214891001",
+          bankSwiftCode: "OCBCSGSG",
+          bankCode: null,
+          bankBranchCode: null,
+          paymentReferencePrefix: null,
+          paymentInstructions: null,
+          note: null,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      monthlyDocuments: [],
+      paymentRecords: [],
+      invoiceSeqByMonth: {},
+    },
+  });
+
+  await withPrismaStubs(store.api, async () => {
+    const doc = await createBusinessMonthlyDocument({
+      accountId: "biz-1",
+      monthKey: "2026-06",
+      invoiceNo: "RGT-202606-0007",
+      issueDate: "2026-06-01",
+      dueDate: "2026-06-15",
+      variableTutorFee: 400,
+      serviceSummary: "Corporate support",
+      platformsUsed: "SGT Manage",
+      personnelInvolved: "Finance",
+      benefitSummary: "Operational support",
+      tutorCostSummary: "Tutor support",
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+
+    await assert.rejects(
+      recordBusinessMonthlyPayment({
+        documentId: doc.id,
+        paymentRecordId: "",
+        paidDate: "2026-06-02",
+        paidAmount: 1400,
+        paymentMethod: "Bank transfer",
+        actor: { email: "finance@test.com", role: "ADMIN" },
+      }),
+      /Please upload and select a payment record/,
+    );
+
+    const payment = await addBusinessPaymentRecord({
+      accountId: "biz-1",
+      documentId: doc.id,
+      paymentDate: "2026-06-02",
+      paymentMethod: "Bank transfer",
+      paymentAmount: 1400,
+      referenceNo: "BANK-REF-1",
+      originalFileName: "proof.pdf",
+      storedFileName: "proof.pdf",
+      relativePath: "/uploads/business-payment-proofs/biz-1/proof.pdf",
+      uploadedBy: "finance@test.com",
+    });
+
+    const paid = await recordBusinessMonthlyPayment({
+      documentId: doc.id,
+      paymentRecordId: payment.id,
+      paidDate: "2026-06-02",
+      paidAmount: 1400,
+      paymentMethod: "Bank transfer",
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+
+    assert.equal(paid.status, "PAID");
+    assert.equal(paid.paymentRecordId, payment.id);
+    assert.equal(paid.receiptNo, "RGT-202606-0007-RC");
+  });
 });
 
 test("partner settlement manager reject retries on conflict and clears finance approvals on latest state", async () => {

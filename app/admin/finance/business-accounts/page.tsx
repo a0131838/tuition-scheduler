@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { getLang, t, type Lang } from "@/lib/i18n";
 import {
+  addBusinessPaymentRecord,
   createBusinessAccount,
   createBusinessMonthlyDocument,
+  deleteBusinessPaymentRecord,
   deleteDraftBusinessMonthlyDocument,
   issueBusinessMonthlyDocument,
   listBusinessAccounts,
@@ -14,6 +16,7 @@ import {
   type BusinessAccount,
   type BusinessMonthlyDocumentStatus,
 } from "@/lib/business-accounts";
+import { BUSINESS_UPLOAD_PREFIX, deleteStoredBusinessFile, storeBusinessUpload } from "@/lib/business-file-storage";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import {
@@ -35,6 +38,13 @@ function addDays(dateOnly: string, days: number) {
 
 function currentMonth() {
   return formatBusinessDateOnly(new Date()).slice(0, 7);
+}
+
+function parseOptionalAmount(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : null;
 }
 
 type BusinessTab = "documents" | "create" | "account" | "new-account";
@@ -262,6 +272,7 @@ async function recordPaymentAction(formData: FormData) {
   try {
     await recordBusinessMonthlyPayment({
       documentId: String(formData.get("documentId") ?? ""),
+      paymentRecordId: String(formData.get("paymentRecordId") ?? "").trim(),
       receiptNo: String(formData.get("receiptNo") ?? "").trim(),
       receivedFrom: String(formData.get("receivedFrom") ?? "").trim(),
       paidDate: String(formData.get("paidDate") ?? "").trim(),
@@ -275,6 +286,68 @@ async function recordPaymentAction(formData: FormData) {
     nextParams = { msg: "payment-recorded" };
   } catch (error: any) {
     nextParams = { err: error?.message ?? "Record payment failed" };
+  }
+  redirectWith(accountId, nextParams);
+}
+
+async function uploadPaymentRecordAction(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+  const accountId = String(formData.get("accountId") ?? "").trim();
+  const documentId = String(formData.get("documentId") ?? "").trim();
+  let nextParams: Record<string, string> = {};
+  const file = formData.get("paymentProof");
+  if (!(file instanceof File) || !file.size) {
+    redirectWith(accountId, { err: "Please choose a payment proof file" });
+  }
+  const paymentProof = file as File;
+  if (paymentProof.size > 10 * 1024 * 1024) {
+    redirectWith(accountId, { err: "File too large (max 10MB)" });
+  }
+  const stored = await storeBusinessUpload(paymentProof, {
+    allowedPrefix: BUSINESS_UPLOAD_PREFIX.businessPaymentProofs,
+    subdirSegments: [accountId || "business", documentId || "document"],
+    maxBytes: 10 * 1024 * 1024,
+    fallbackOriginalName: "payment-proof",
+  });
+  try {
+    await addBusinessPaymentRecord({
+      accountId,
+      documentId,
+      paymentDate: String(formData.get("paymentDate") ?? "").trim() || null,
+      paymentMethod: String(formData.get("paymentMethod") ?? "").trim() || null,
+      paymentAmount: parseOptionalAmount(formData.get("paymentAmount")),
+      referenceNo: String(formData.get("referenceNo") ?? "").trim() || null,
+      originalFileName: paymentProof.name || "payment-proof",
+      storedFileName: stored.storedFileName,
+      relativePath: stored.relativePath,
+      note: String(formData.get("paymentNote") ?? "").trim() || null,
+      uploadedBy: actor.email ?? "",
+    });
+    revalidatePath("/admin/finance/business-accounts");
+    nextParams = { msg: "payment-proof-uploaded" };
+  } catch (error: any) {
+    await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.businessPaymentProofs);
+    nextParams = { err: error?.message ?? "Upload payment record failed" };
+  }
+  redirectWith(accountId, nextParams);
+}
+
+async function deletePaymentRecordAction(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+  const accountId = String(formData.get("accountId") ?? "").trim();
+  let nextParams: Record<string, string> = {};
+  try {
+    const row = await deleteBusinessPaymentRecord({
+      recordId: String(formData.get("recordId") ?? "").trim(),
+      actorEmail: actor.email ?? "",
+    });
+    await deleteStoredBusinessFile(row.relativePath, BUSINESS_UPLOAD_PREFIX.businessPaymentProofs);
+    revalidatePath("/admin/finance/business-accounts");
+    nextParams = { msg: "payment-proof-deleted" };
+  } catch (error: any) {
+    nextParams = { err: error?.message ?? "Delete payment record failed" };
   }
   redirectWith(accountId, nextParams);
 }
@@ -363,6 +436,8 @@ export default async function BusinessAccountsPage({
   const store = await listBusinessAccounts();
   const selected = store.accounts.find((x) => x.id === sp?.accountId) ?? store.accounts.find((x) => x.id === "shanghai-xin-zhuo-si") ?? store.accounts[0];
   const docs = store.monthlyDocuments.filter((x) => x.accountId === selected.id);
+  const paymentRecords = store.paymentRecords.filter((x) => x.accountId === selected.id);
+  const payableDocs = docs.filter((x) => x.status !== "VOID" && x.status !== "PAID");
   const month = currentMonth();
   const issueDate = formatBusinessDateOnly(new Date());
   const dueDate = addDays(issueDate, 14);
@@ -389,6 +464,10 @@ export default async function BusinessAccountsPage({
           <div style={workbenchMetricCardStyle("emerald")}>
             <div style={workbenchMetricLabelStyle("emerald")}>{t(lang, "Monthly documents", "月度单据")}</div>
             <div style={workbenchMetricValueStyle("emerald")}>{store.monthlyDocuments.length}</div>
+          </div>
+          <div style={workbenchMetricCardStyle("slate")}>
+            <div style={workbenchMetricLabelStyle("slate")}>{t(lang, "Payment proofs", "付款凭证")}</div>
+            <div style={workbenchMetricValueStyle("slate")}>{paymentRecords.length}</div>
           </div>
           <div style={workbenchMetricCardStyle("amber")}>
             <div style={workbenchMetricLabelStyle("amber")}>{t(lang, "Selected fixed fee", "当前固定月费")}</div>
@@ -513,6 +592,87 @@ export default async function BusinessAccountsPage({
             {t(lang, "This is our GT Educational receiving account, not the customer's bank account. Edit it in Company profile if finance updates the remittance details.", "这是我方 GT Educational 的收款账户，不是客户公司的银行账户。如财务更新收款信息，可在公司资料中维护。")}
           </div>
         </div>
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 12, display: "grid", gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 900 }}>{t(lang, "Payment records / proof upload", "付款记录 / 凭证上传")}</div>
+            <div style={{ color: "#64748b", fontSize: 12 }}>
+              {t(
+                lang,
+                "Follow the same receipt flow: upload the incoming transfer proof first, then select that payment record when creating the receipt.",
+                "按原来的收据流程：先上传对方打款凭证，再在创建收据时选择这条付款记录。"
+              )}
+            </div>
+          </div>
+          <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ display: "grid", gap: 8 }}>
+            <input type="hidden" name="accountId" value={selected.id} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+              <label>{t(lang, "Source invoice", "对应发票")}
+                <select name="documentId" required defaultValue={payableDocs[0]?.id ?? ""} style={fieldStyle()}>
+                  <option value="" disabled>{payableDocs.length ? t(lang, "Select invoice", "选择发票") : t(lang, "No unpaid invoice", "暂无未收款发票")}</option>
+                  {payableDocs.map((doc) => (
+                    <option key={doc.id} value={doc.id}>{doc.invoiceNo} / {doc.monthKey} / {money(doc.totalAmount)}</option>
+                  ))}
+                </select>
+              </label>
+              <label>{t(lang, "Payment proof file", "付款凭证文件")}<input name="paymentProof" type="file" required style={fieldStyle()} /></label>
+              <label>{t(lang, "Payment date", "付款日期")}<input name="paymentDate" type="date" style={fieldStyle()} /></label>
+              <label>{t(lang, "Amount", "金额")}<input name="paymentAmount" type="number" min="0" step="0.01" style={fieldStyle()} /></label>
+              <label>{t(lang, "Method", "方式")}
+                <select name="paymentMethod" defaultValue="Bank transfer" style={fieldStyle()}>
+                  <option value="Bank transfer">{t(lang, "Bank transfer", "银行转账")}</option>
+                  <option value="Paynow">Paynow</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label>{t(lang, "Reference", "参考号")}<input name="referenceNo" style={fieldStyle()} /></label>
+            </div>
+            <input name="paymentNote" placeholder={t(lang, "Payment note", "付款备注")} style={fieldStyle()} />
+            <button style={{ ...buttonStyle("primary"), justifySelf: "start" }} disabled={payableDocs.length === 0}>{t(lang, "Upload payment record", "上传付款记录")}</button>
+          </form>
+          {paymentRecords.length ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 900 }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "Invoice", "发票")}</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "Payment date", "付款日期")}</th>
+                    <th style={{ textAlign: "right", padding: 8 }}>{t(lang, "Amount", "金额")}</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "Method / reference", "方式 / 参考号")}</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "File", "文件")}</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "Uploaded by", "上传人")}</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>{t(lang, "Action", "操作")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentRecords.map((record) => {
+                    const linkedDoc = docs.find((doc) => doc.id === record.documentId);
+                    const isLinked = docs.some((doc) => doc.paymentRecordId === record.id);
+                    return (
+                      <tr key={record.id}>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>{linkedDoc?.invoiceNo ?? "-"}</td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>{record.paymentDate ?? "-"}</td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0", textAlign: "right" }}>{record.paymentAmount == null ? "-" : money(record.paymentAmount)}</td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>{record.paymentMethod ?? "-"}{record.referenceNo ? ` / ${record.referenceNo}` : ""}</td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}><a href={record.relativePath} target="_blank" rel="noreferrer">{record.originalFileName}</a></td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>{record.uploadedBy}</td>
+                        <td style={{ padding: 8, borderTop: "1px solid #e2e8f0" }}>
+                          {isLinked ? <span style={{ color: "#15803d", fontWeight: 800 }}>{t(lang, "Linked to receipt", "已关联收据")}</span> : (
+                            <form action={deletePaymentRecordAction}>
+                              <input type="hidden" name="accountId" value={selected.id} />
+                              <input type="hidden" name="recordId" value={record.id} />
+                              <button style={buttonStyle("danger")}>{t(lang, "Delete", "删除")}</button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <div style={{ color: "#64748b", fontSize: 13 }}>{t(lang, "No payment records uploaded yet.", "暂无已上传付款记录。")}</div>}
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -568,10 +728,18 @@ export default async function BusinessAccountsPage({
                     </div>
                     {doc.status !== "VOID" && doc.status !== "PAID" ? (
                       <details style={{ marginTop: 8 }}>
-                        <summary style={{ cursor: "pointer", fontWeight: 800 }}>{t(lang, "Record receipt/payment", "记录收据/收款")}</summary>
+                        <summary style={{ cursor: "pointer", fontWeight: 800 }}>{t(lang, "Create receipt from payment record", "根据付款记录创建收据")}</summary>
                         <form action={recordPaymentAction} style={{ display: "grid", gap: 8, marginTop: 8, maxWidth: 520 }}>
                           <input type="hidden" name="accountId" value={selected.id} />
                           <input type="hidden" name="documentId" value={doc.id} />
+                          <select name="paymentRecordId" required style={fieldStyle()} defaultValue="">
+                            <option value="" disabled>{t(lang, "Select uploaded payment record", "选择已上传付款记录")}</option>
+                            {paymentRecords.filter((record) => record.documentId === doc.id).map((record) => (
+                              <option key={record.id} value={record.id}>
+                                {(record.paymentDate ?? record.uploadedAt.slice(0, 10))} / {record.paymentAmount == null ? money(doc.totalAmount) : money(record.paymentAmount)} / {record.originalFileName}
+                              </option>
+                            ))}
+                          </select>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                             <input name="receiptNo" placeholder={`${doc.invoiceNo}-RC`} style={fieldStyle()} />
                             <input name="receivedFrom" defaultValue={selected.legalNameEn} placeholder="Received From" style={fieldStyle()} />

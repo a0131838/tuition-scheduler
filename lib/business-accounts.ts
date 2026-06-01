@@ -73,6 +73,7 @@ export type BusinessMonthlyDocument = {
   note: string | null;
   status: BusinessMonthlyDocumentStatus;
   receiptNo: string | null;
+  paymentRecordId: string | null;
   receivedFrom: string | null;
   paidDate: string | null;
   paidAmount: number | null;
@@ -89,9 +90,26 @@ export type BusinessMonthlyDocument = {
   updatedAt: string;
 };
 
+export type BusinessPaymentRecordItem = {
+  id: string;
+  accountId: string;
+  documentId: string;
+  paymentDate: string | null;
+  paymentMethod: string | null;
+  paymentAmount: number | null;
+  referenceNo: string | null;
+  uploadedBy: string;
+  uploadedAt: string;
+  originalFileName: string;
+  storedFileName: string;
+  relativePath: string;
+  note: string | null;
+};
+
 export type BusinessAccountsStore = {
   accounts: BusinessAccount[];
   monthlyDocuments: BusinessMonthlyDocument[];
+  paymentRecords: BusinessPaymentRecordItem[];
   invoiceSeqByMonth: Record<string, number>;
 };
 
@@ -100,6 +118,7 @@ const SHANGHAI_ACCOUNT_ID = "shanghai-xin-zhuo-si";
 const EMPTY_STORE: BusinessAccountsStore = {
   accounts: [],
   monthlyDocuments: [],
+  paymentRecords: [],
   invoiceSeqByMonth: {},
 };
 
@@ -156,6 +175,7 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
   const root = input && typeof input === "object" ? (input as any) : {};
   const accounts = Array.isArray(root.accounts) ? root.accounts : [];
   const monthlyDocuments = Array.isArray(root.monthlyDocuments) ? root.monthlyDocuments : [];
+  const paymentRecords = Array.isArray(root.paymentRecords) ? root.paymentRecords : [];
   const invoiceSeqByMonth = root.invoiceSeqByMonth && typeof root.invoiceSeqByMonth === "object" ? root.invoiceSeqByMonth : {};
   return {
     accounts: accounts
@@ -209,6 +229,7 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         note: textOrNull(x.note),
         status: normalizeDocumentStatus(x.status),
         receiptNo: textOrNull(x.receiptNo),
+        paymentRecordId: textOrNull(x.paymentRecordId),
         receivedFrom: textOrNull(x.receivedFrom),
         paidDate: normalizeDateOnly(x.paidDate) ?? null,
         paidAmount: x.paidAmount == null || String(x.paidAmount).trim() === "" ? null : roundMoney(x.paidAmount),
@@ -225,6 +246,23 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         updatedAt: String(x.updatedAt ?? nowIso()),
       }))
       .filter((x: BusinessMonthlyDocument) => x.id && x.accountId && /^\d{4}-\d{2}$/.test(x.monthKey)),
+    paymentRecords: paymentRecords
+      .map((x: any) => ({
+        id: String(x.id ?? "").trim(),
+        accountId: String(x.accountId ?? "").trim(),
+        documentId: String(x.documentId ?? "").trim(),
+        paymentDate: normalizeDateOnly(x.paymentDate) ?? null,
+        paymentMethod: textOrNull(x.paymentMethod),
+        paymentAmount: x.paymentAmount == null || String(x.paymentAmount).trim() === "" ? null : roundMoney(x.paymentAmount),
+        referenceNo: textOrNull(x.referenceNo),
+        uploadedBy: String(x.uploadedBy ?? "").trim().toLowerCase(),
+        uploadedAt: String(x.uploadedAt ?? nowIso()),
+        originalFileName: String(x.originalFileName ?? "").trim() || "payment-proof",
+        storedFileName: String(x.storedFileName ?? "").trim() || "payment-proof",
+        relativePath: String(x.relativePath ?? "").trim(),
+        note: textOrNull(x.note),
+      }))
+      .filter((x: BusinessPaymentRecordItem) => x.id && x.accountId && x.documentId && x.relativePath),
     invoiceSeqByMonth: Object.entries(invoiceSeqByMonth).reduce<Record<string, number>>((acc, [k, v]) => {
       const key = String(k);
       if (/^\d{6}$/.test(key)) acc[key] = Math.max(0, Math.floor(Number(v) || 0));
@@ -521,6 +559,7 @@ export async function createBusinessMonthlyDocument(input: {
         note: input.note?.trim() || null,
         status: "DRAFT",
         receiptNo: null,
+        paymentRecordId: null,
         receivedFrom: null,
         paidDate: null,
         paidAmount: null,
@@ -667,8 +706,75 @@ export async function voidBusinessMonthlyDocument(input: {
   return voidedItem;
 }
 
+export async function addBusinessPaymentRecord(input: {
+  accountId: string;
+  documentId: string;
+  paymentDate?: string | null;
+  paymentMethod?: string | null;
+  paymentAmount?: number | null;
+  referenceNo?: string | null;
+  originalFileName: string;
+  storedFileName: string;
+  relativePath: string;
+  note?: string | null;
+  uploadedBy: string;
+}) {
+  let item: BusinessPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: BUSINESS_ACCOUNTS_KEY,
+    fallback: EMPTY_STORE,
+    sanitize: sanitizeStore,
+    mutate(store) {
+      ensureDefaults(store);
+      const accountId = input.accountId.trim();
+      const documentId = input.documentId.trim();
+      const document = store.monthlyDocuments.find((x) => x.id === documentId && x.accountId === accountId);
+      if (!document) throw new Error("Document not found for selected account");
+      if (document.status === "VOID") throw new Error("Cannot upload payment proof for voided document");
+      item = {
+        id: crypto.randomUUID(),
+        accountId,
+        documentId,
+        paymentDate: normalizeDateOnly(input.paymentDate) ?? null,
+        paymentMethod: textOrNull(input.paymentMethod),
+        paymentAmount: input.paymentAmount == null ? null : roundMoney(input.paymentAmount),
+        referenceNo: textOrNull(input.referenceNo),
+        originalFileName: input.originalFileName.trim() || "payment-proof",
+        storedFileName: input.storedFileName.trim(),
+        relativePath: input.relativePath.trim(),
+        note: textOrNull(input.note),
+        uploadedBy: input.uploadedBy.trim().toLowerCase(),
+        uploadedAt: nowIso(),
+      };
+      store.paymentRecords.unshift(item);
+    },
+  });
+  return item!;
+}
+
+export async function deleteBusinessPaymentRecord(input: { recordId: string; actorEmail: string }) {
+  let row: BusinessPaymentRecordItem | null = null;
+  await mutateJsonAppSetting({
+    key: BUSINESS_ACCOUNTS_KEY,
+    fallback: EMPTY_STORE,
+    sanitize: sanitizeStore,
+    mutate(store) {
+      ensureDefaults(store);
+      const id = input.recordId.trim();
+      row = store.paymentRecords.find((x) => x.id === id) ?? null;
+      if (!row) throw new Error("Payment record not found");
+      if (store.monthlyDocuments.some((x) => x.paymentRecordId === id)) {
+        throw new Error("Cannot delete payment record: linked receipt exists");
+      }
+      store.paymentRecords = store.paymentRecords.filter((x) => x.id !== id);
+    },
+  });
+  return row!;
+}
+
 export async function recordBusinessMonthlyPayment(input: {
   documentId: string;
+  paymentRecordId: string;
   receiptNo?: string | null;
   receivedFrom?: string | null;
   paidDate: string;
@@ -689,6 +795,10 @@ export async function recordBusinessMonthlyPayment(input: {
       if (idx < 0) throw new Error("Document not found");
       const current = store.monthlyDocuments[idx];
       if (current.status === "VOID") throw new Error("Voided documents cannot be marked paid");
+      const paymentRecordId = input.paymentRecordId.trim();
+      if (!paymentRecordId) throw new Error("Please upload and select a payment record before creating receipt");
+      const paymentRecord = store.paymentRecords.find((x) => x.id === paymentRecordId && x.documentId === current.id);
+      if (!paymentRecord) throw new Error("Selected payment record not found for this invoice");
       const paidDate = normalizeDateOnly(input.paidDate) ?? formatBusinessDateOnly(new Date());
       const paidAmount = Math.max(0, roundMoney(input.paidAmount));
       if (paidAmount <= 0) throw new Error("Paid amount must be greater than zero");
@@ -699,6 +809,7 @@ export async function recordBusinessMonthlyPayment(input: {
         ...current,
         status: "PAID",
         receiptNo,
+        paymentRecordId,
         receivedFrom: textOrNull(input.receivedFrom) ?? account?.legalNameEn ?? account?.legalNameZh ?? null,
         paidDate,
         paidAmount,

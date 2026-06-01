@@ -6,6 +6,7 @@ export const BUSINESS_UPLOAD_PREFIX = {
   expenseClaims: "/uploads/expense-claims/",
   paymentProofs: "/uploads/payment-proofs/",
   partnerPaymentProofs: "/uploads/partner-payment-proofs/",
+  businessPaymentProofs: "/uploads/business-payment-proofs/",
   sharedDocs: "/uploads/shared-docs/",
   tickets: "/uploads/tickets/",
   contracts: "/uploads/contracts/",
