@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r166
+
+- Release ID: `2026-06-01-r166`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: upgrade Business Accounts from a Shanghai-only billing page into a reusable company-account workspace with account profiles, bank-transfer payment instructions, draft deletion, issued/paid/void status flow, payment recording, and business receipt PDF export.
+- Key files:
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `app/api/exports/business-accounts/[id]/receipt/route.ts`
+  - `docs/tasks/TASK-20260601-business-accounts-status-payment-receipts.md`
+- Risk impact (if any): Medium. This expands the new Business Accounts AppSetting store and PDF exports only. It remains separate from New Oriental partner settlement, parent invoices, receipts approvals, package balances, payroll, attendance, and scheduling.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Generated local sample Business Accounts invoice, service report, and receipt PDFs; all files were written successfully.
+- Rollback point: previous production commit before `2026-06-01-r166`.
+
+---
+
 ## 2026-06-01-r165
 
 - Release ID: `2026-06-01-r165`

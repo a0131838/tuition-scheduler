@@ -40,6 +40,18 @@ function money(v: number) {
   return `SGD ${Number(v || 0).toFixed(2)}`;
 }
 
+function paymentMethodLabel(value: string | null | undefined) {
+  switch (String(value ?? "").toUpperCase()) {
+    case "PAYNOW":
+      return "PayNow";
+    case "OTHER":
+      return "Other";
+    case "BANK_TRANSFER":
+    default:
+      return "Bank Transfer";
+  }
+}
+
 function drawHeader(doc: PDFDoc, title: string, subtitle: string) {
   try {
     doc.image(LOGO_PATH, 40, 34, { width: 138 });
@@ -83,10 +95,10 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
   row(doc, "Chinese name / 中文名称", account.legalNameZh, 52, 434);
   row(doc, "Unified Social Credit Code / 统一社会信用代码", account.registrationNo, 310, 434);
 
-  sectionTitle(doc, "Fee Breakdown / 费用明细", 504);
+  sectionTitle(doc, "Fee Breakdown / 费用明细", 500);
   const tableX = 52;
   const widths = [280, 90, 120];
-  const y = 542;
+  const y = 536;
   text(doc, "Description / 说明", tableX, y, widths[0], { bold: true, color: MUTED });
   text(doc, "Amount / 金额", tableX + widths[0], y, widths[1] + widths[2], { bold: true, color: MUTED, align: "right" });
   doc.moveTo(tableX, y + 20).lineTo(543, y + 20).strokeColor(BORDER).stroke();
@@ -98,17 +110,30 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
   text(doc, "Total service fee / 服务费合计", tableX, y + 106, widths[0], { bold: true });
   text(doc, money(item.totalAmount), tableX + widths[0], y + 106, widths[1] + widths[2], { bold: true, align: "right" });
 
-  text(doc, "Notes / 备注", 52, 692, 490, { size: 11, bold: true, color: BLUE });
+  sectionTitle(doc, "Payment Instructions / 付款信息", 672);
+  row(doc, "Payment method / 付款方式", paymentMethodLabel(account.paymentMethod), 52, 710);
+  row(doc, "Payee name / 收款方", account.payeeName ?? "GT Educational Institute Pte Ltd", 310, 710);
+  row(doc, "Bank name / 银行名称", account.bankName ?? "-", 52, 752);
+  row(doc, "Bank account no. / 银行账号", account.bankAccountNo ?? "-", 310, 752);
+  row(doc, "SWIFT / Bank code / Branch code", [account.bankSwiftCode, account.bankCode, account.bankBranchCode].filter(Boolean).join(" / ") || "-", 52, 794, 245);
+  row(doc, "Payment reference / 付款备注", item.invoiceNo, 310, 794, 245);
+
+  doc.addPage({ margin: 0 });
+  setPdfFont(doc);
+  drawHeader(doc, "INTERCOMPANY INVOICE", "Payment Notes / 付款备注");
+  text(doc, "Notes / 备注", 52, 128, 490, { size: 11, bold: true, color: BLUE });
   text(
     doc,
     "This invoice is for service fees only and does not include any separate royalty, franchise fee, or standalone intellectual property licence fee. / 本发票仅对应服务费，不包含任何独立特许权使用费、加盟费或独立知识产权许可费。",
     52,
-    714,
+    152,
     490,
     { size: 9, color: MUTED },
   );
-  text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 790, 260, { size: 10 });
-  text(doc, "Date / 日期: ____________________", 330, 790, 210, { size: 10 });
+  text(doc, `Payment terms / 付款期限: ${account.paymentTerms}`, 52, 206, 490, { size: 10 });
+  text(doc, `Additional payment instruction / 其他付款说明: ${account.paymentInstructions ?? "-"}`, 52, 232, 490, { size: 10 });
+  text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 760, 260, { size: 10 });
+  text(doc, "Date / 日期: ____________________", 330, 760, 210, { size: 10 });
   return streamPdf(doc);
 }
 
@@ -138,5 +163,38 @@ export function buildBusinessServiceReportPdf(account: BusinessAccount, item: Bu
   row(doc, "Total service fee / 服务费合计", money(item.totalAmount), 52, 752);
   text(doc, "Prepared by / 编制人: ____________________", 52, 800, 220, { size: 10 });
   text(doc, "Reviewed by / 复核人: ____________________", 310, 800, 230, { size: 10 });
+  return streamPdf(doc);
+}
+
+export function buildBusinessReceiptPdf(account: BusinessAccount, item: BusinessMonthlyDocument) {
+  const doc = new PDFDocument({ size: "A4", margin: 0 });
+  setPdfFont(doc);
+  drawHeader(doc, "BUSINESS RECEIPT", "企业收据");
+
+  sectionTitle(doc, "Receipt Details / 收据信息", 116);
+  row(doc, "Receipt No. / 收据编号", item.receiptNo ?? "-", 52, 154);
+  row(doc, "Invoice No. / 发票编号", item.invoiceNo, 310, 154);
+  row(doc, "Payment Date / 付款日期", item.paidDate ?? "-", 52, 198);
+  row(doc, "Payment Method / 付款方式", item.paymentMethod ?? paymentMethodLabel(account.paymentMethod), 310, 198);
+  row(doc, "Payment Reference / 付款备注", item.paymentReference ?? "-", 52, 242);
+  row(doc, "Billing Period / 结算期间", item.monthKey, 310, 242);
+
+  sectionTitle(doc, "Received From / 付款方", 312);
+  row(doc, "English name / 英文名称", account.legalNameEn, 52, 350, 503);
+  row(doc, "Chinese name / 中文名称", account.legalNameZh, 52, 392);
+  row(doc, "Registration No. / 注册号", account.registrationNo || "-", 310, 392);
+
+  sectionTitle(doc, "Amount Received / 收款金额", 462);
+  row(doc, "Invoice total / 发票金额", money(item.totalAmount), 52, 500);
+  row(doc, "Amount received / 已收金额", money(item.paidAmount ?? item.totalAmount), 310, 500);
+  row(doc, "Payment note / 收款备注", item.paymentNote ?? "-", 52, 548, 503);
+
+  text(doc, "This receipt confirms payment received for the business invoice above. / 本收据确认已收到上述企业发票对应款项。", 52, 650, 490, {
+    size: 10,
+    color: MUTED,
+  });
+  text(doc, "Issued by / 开具方: GT Educational Institute Pte Ltd", 52, 720, 490, { size: 10 });
+  text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 780, 260, { size: 10 });
+  text(doc, "Date / 日期: ____________________", 330, 780, 210, { size: 10 });
   return streamPdf(doc);
 }
