@@ -7,6 +7,7 @@ import type { BusinessAccount, BusinessMonthlyDocument } from "@/lib/business-ac
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
 const BLUE = "#2563eb";
+const ORANGE = "#f97316";
 const DARK = "#111827";
 const MUTED = "#475569";
 const BORDER = "#cbd5e1";
@@ -75,66 +76,118 @@ function row(doc: PDFDoc, label: string, value: string, x: number, y: number, w 
   text(doc, value || "-", x, y + 13, w, { size: 10, lineGap: 1 });
 }
 
+function templateText(
+  doc: PDFDoc,
+  str: string,
+  x: number,
+  y: number,
+  size = 10,
+  bold = false,
+  color = "#111827",
+  width?: number,
+  align: "left" | "right" | "center" = "left",
+  lineBreak = false,
+) {
+  if (bold) setPdfBoldFont(doc);
+  else setPdfFont(doc);
+  doc.fillColor(color).fontSize(size).text(str, x, y, { width, align, lineBreak });
+}
+
+function drawInvoiceOrReceiptFrame(doc: PDFDoc, title: "INVOICE" | "RECEIPT") {
+  const x = 16;
+  const y = 16;
+  const w = 554;
+  const h = 520;
+  doc.lineWidth(1).strokeColor("#111827").rect(x, y, w, h).stroke();
+  try {
+    doc.image(LOGO_PATH, x + 14, y + 10, { width: 155 });
+  } catch {
+    try {
+      doc.image(LOGO_FALLBACK_PATH, x + 14, y + 10, { width: 155 });
+    } catch {}
+  }
+  templateText(doc, title, x + w - 180, y + 18, 30, true, ORANGE, 165, "right");
+  const companyY = y + 78;
+  const leftInfoW = 332;
+  templateText(doc, "Company:  GT Educational Institute Pte. Ltd.", x + 8, companyY, 9, true, "#111827", leftInfoW);
+  templateText(doc, "Address:  150 Orchard Road, #08-15, Orchard Plaza, Singapore 238841", x + 8, companyY + 20, 9, true, "#111827", leftInfoW);
+  templateText(doc, "Phone:  (65) 80421572", x + 8, companyY + 40, 9, true, "#111827", leftInfoW);
+  templateText(doc, "Email:  contact.greatthinkers@gmail.com", x + 8, companyY + 60, 9, true, "#111827", leftInfoW);
+  templateText(doc, "Company Reg No. 202303312G", x + 8, companyY + 80, 9, true, "#111827", leftInfoW);
+  return { x, y, w, h, companyY };
+}
+
 export function buildBusinessInvoicePdf(account: BusinessAccount, item: BusinessMonthlyDocument) {
   const doc = new PDFDocument({ size: "A4", margin: 0 });
   setPdfFont(doc);
-  drawHeader(doc, "INTERCOMPANY INVOICE", "关联服务费发票");
+  const { x, y, w, h, companyY } = drawInvoiceOrReceiptFrame(doc, "INVOICE");
+  const rightPadding = 12;
+  const rightValueW = 96;
+  const rightGap = 4;
+  const rightLabelW = 96;
+  const rightValueX = x + w - rightPadding - rightValueW;
+  const rightLabelX = rightValueX - rightGap - rightLabelW;
+  const rightY = companyY - 2;
+  const rightRows: Array<[string, string]> = [
+    ["Invoice Date", item.issueDate],
+    ["Invoice No.", item.invoiceNo],
+    ["Payment Terms", account.paymentTerms || "Immediate"],
+    ["Due Date", item.dueDate],
+    ["Billing Month", item.monthKey],
+    ["Agreement", account.agreementTitle ?? "-"],
+  ];
+  rightRows.forEach((r, i) => {
+    const yy = rightY + i * 21;
+    templateText(doc, r[0], rightLabelX, yy, 10, true, "#111827", rightLabelW, "right");
+    templateText(doc, r[1], rightValueX, yy, 9, false, "#111827", rightValueW, "right");
+  });
 
-  sectionTitle(doc, "Invoice Details / 发票信息", 116);
-  row(doc, "Invoice No. / 发票编号", item.invoiceNo, 52, 154);
-  row(doc, "Invoice Date / 发票日期", item.issueDate, 310, 154);
-  row(doc, "Billing Period / 结算期间", item.monthKey, 52, 196);
-  row(doc, "Payment Due Date / 付款到期日", item.dueDate, 310, 196);
+  const billY = y + 180;
+  doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
+  templateText(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
+  templateText(doc, `Customer Name   ${account.legalNameEn}`, x + 8, billY + 36, 10, true);
+  templateText(doc, `Registration No.   ${account.registrationNo || "-"}`, x + 8, billY + 56, 9, false, "#111827", 500);
 
-  sectionTitle(doc, "Seller / 开票方", 246);
-  row(doc, "Company", "GT Educational Institute Pte Ltd", 52, 284);
-  row(doc, "UEN", "202303312G", 310, 284);
+  const tableY = y + 258;
+  const colX = [x + 16, x + 76, x + 274, x + 354, x + 432];
+  templateText(doc, "Quantity", colX[0], tableY, 10, true);
+  templateText(doc, "Description", colX[1], tableY, 10, true);
+  templateText(doc, "Amount", colX[2], tableY, 10, true);
+  templateText(doc, "GST", colX[3], tableY, 10, true);
+  templateText(doc, "Total Amount", colX[4], tableY, 10, true);
 
-  sectionTitle(doc, "Customer / 收款对应客户", 354);
-  row(doc, "English name / 英文名称", account.legalNameEn, 52, 392, 503);
-  row(doc, "Chinese name / 中文名称", account.legalNameZh, 52, 434);
-  row(doc, "Unified Social Credit Code / 统一社会信用代码", account.registrationNo, 310, 434);
+  const rowY = tableY + 24;
+  templateText(doc, "1", colX[0] + 16, rowY, 10);
+  templateText(doc, `Corporate service fee for ${item.monthKey}`, colX[1], rowY, 10, false, "#111827", 196, "left", true);
+  templateText(doc, money(item.totalAmount), colX[2], rowY, 10);
+  templateText(doc, money(0), colX[3], rowY, 10);
+  templateText(doc, money(item.totalAmount), colX[4], rowY, 10);
 
-  sectionTitle(doc, "Fee Breakdown / 费用明细", 500);
-  const tableX = 52;
-  const widths = [280, 90, 120];
-  const y = 536;
-  text(doc, "Description / 说明", tableX, y, widths[0], { bold: true, color: MUTED });
-  text(doc, "Amount / 金额", tableX + widths[0], y, widths[1] + widths[2], { bold: true, color: MUTED, align: "right" });
-  doc.moveTo(tableX, y + 20).lineTo(543, y + 20).strokeColor(BORDER).stroke();
-  text(doc, "Fixed monthly corporate services fee / 固定月度企业服务费", tableX, y + 32, widths[0], {});
-  text(doc, money(item.fixedMonthlyFee), tableX + widths[0], y + 32, widths[1] + widths[2], { align: "right" });
-  text(doc, "Variable monthly tutor fee / 浮动月度导师费用", tableX, y + 62, widths[0], {});
-  text(doc, money(item.variableTutorFee), tableX + widths[0], y + 62, widths[1] + widths[2], { align: "right" });
-  doc.moveTo(tableX, y + 94).lineTo(543, y + 94).strokeColor(BORDER).stroke();
-  text(doc, "Total service fee / 服务费合计", tableX, y + 106, widths[0], { bold: true });
-  text(doc, money(item.totalAmount), tableX + widths[0], y + 106, widths[1] + widths[2], { bold: true, align: "right" });
+  const totalBoxX = x + 338;
+  const totalBoxY = y + 442;
+  const totalRows: Array<[string, string]> = [
+    ["Subtotal", money(item.totalAmount)],
+    ["GST Total", money(0)],
+    ["Amount Due", money(item.totalAmount)],
+  ];
+  totalRows.forEach((r, i) => {
+    const yy = totalBoxY + i * 24;
+    templateText(doc, r[0], totalBoxX, yy + 5, 10, true, "#111827", 92, "right");
+    doc.fillColor("#f3dfd1").rect(totalBoxX + 94, yy, 84, 24).fill();
+    templateText(doc, r[1], totalBoxX + 98, yy + 5, 9, false, "#111827", 76, "right");
+  });
 
-  sectionTitle(doc, "Payment Instructions / 付款信息", 672);
-  row(doc, "Payment method / 付款方式", paymentMethodLabel(account.paymentMethod), 52, 710);
-  row(doc, "Payee name / 收款方", account.payeeName ?? "GT Educational Institute Pte. Ltd.", 310, 710);
-  row(doc, "Receiving bank / 收款银行", account.bankName ?? "-", 52, 752);
-  row(doc, "Receiving account no. / 收款账号", account.bankAccountNo ?? "-", 310, 752);
-  row(doc, "SWIFT / Bank code / Branch code", [account.bankSwiftCode, account.bankCode, account.bankBranchCode].filter(Boolean).join(" / ") || "-", 52, 794, 245);
-  row(doc, "Payment reference / 付款备注", item.invoiceNo, 310, 794, 245);
-
-  doc.addPage({ margin: 0 });
-  setPdfFont(doc);
-  drawHeader(doc, "INTERCOMPANY INVOICE", "Payment Notes / 付款备注");
-  text(doc, "Notes / 备注", 52, 128, 490, { size: 11, bold: true, color: BLUE });
-  text(
-    doc,
-    "This invoice is for service fees only and does not include any separate royalty, franchise fee, or standalone intellectual property licence fee. / 本发票仅对应服务费，不包含任何独立特许权使用费、加盟费或独立知识产权许可费。",
-    52,
-    152,
-    490,
-    { size: 9, color: MUTED },
-  );
-  text(doc, `Payment terms / 付款期限: ${account.paymentTerms}`, 52, 206, 490, { size: 10 });
-  text(doc, `Receiving bank address / 收款银行地址: ${account.bankAddress ?? "-"}`, 52, 232, 490, { size: 10 });
-  text(doc, `Additional payment instruction / 其他付款说明: ${account.paymentInstructions ?? "-"}`, 52, 258, 490, { size: 10 });
-  text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 760, 260, { size: 10 });
-  text(doc, "Date / 日期: ____________________", 330, 760, 210, { size: 10 });
+  const noteY = y + h + 18;
+  templateText(doc, "Please note that all remittance fees and charges must be borne by the Payer.", x + 4, noteY, 10, true);
+  templateText(doc, "Your invoice number serves as the bank transfer/wire reference number.", x + 4, noteY + 18, 10, true);
+  templateText(doc, "All payments must be made in Singapore dollars.", x + 4, noteY + 36, 10, true);
+  templateText(doc, 'Please e-mail remittance advice to "sggreatthinker@gmail.com".', x + 4, noteY + 54, 10, true);
+  templateText(doc, `Account name: ${account.payeeName ?? "GT Educational Institute Pte. Ltd."}`, x + 4, noteY + 94, 10);
+  templateText(doc, `Bankname: ${account.bankName ?? "-"}`, x + 4, noteY + 112, 10);
+  templateText(doc, `Bankaddress: ${account.bankAddress ?? "-"}`, x + 4, noteY + 130, 10);
+  templateText(doc, `Account number: ${account.bankAccountNo ?? "-"}`, x + 4, noteY + 148, 10);
+  templateText(doc, `Swift code: ${account.bankSwiftCode ?? "-"}`, x + 4, noteY + 166, 10);
+  templateText(doc, "Currency: SGD", x + 4, noteY + 184, 10);
   return streamPdf(doc);
 }
 
@@ -170,33 +223,59 @@ export function buildBusinessServiceReportPdf(account: BusinessAccount, item: Bu
 export function buildBusinessReceiptPdf(account: BusinessAccount, item: BusinessMonthlyDocument) {
   const doc = new PDFDocument({ size: "A4", margin: 0 });
   setPdfFont(doc);
-  drawHeader(doc, "BUSINESS RECEIPT", "企业收据");
-
-  sectionTitle(doc, "Receipt Details / 收据信息", 116);
-  row(doc, "Receipt No. / 收据编号", item.receiptNo ?? "-", 52, 154);
-  row(doc, "Invoice No. / 发票编号", item.invoiceNo, 310, 154);
-  row(doc, "Payment Date / 付款日期", item.paidDate ?? "-", 52, 198);
-  row(doc, "Paid via / 付款方式", item.paymentMethod ?? paymentMethodLabel(account.paymentMethod), 310, 198);
-  row(doc, "Received From / 收款对象", item.receivedFrom ?? account.legalNameEn, 52, 242);
-  row(doc, "Payment Reference / 付款备注", item.paymentReference ?? "-", 310, 242);
-  row(doc, "Billing Period / 结算期间", item.monthKey, 52, 284);
-
-  sectionTitle(doc, "Received From / 付款方", 312);
-  row(doc, "English name / 英文名称", account.legalNameEn, 52, 350, 503);
-  row(doc, "Chinese name / 中文名称", account.legalNameZh, 52, 392);
-  row(doc, "Registration No. / 注册号", account.registrationNo || "-", 310, 392);
-
-  sectionTitle(doc, "Amount Received / 收款金额", 462);
-  row(doc, "Invoice total / 发票金额", money(item.totalAmount), 52, 500);
-  row(doc, "Amount received / 已收金额", money(item.paidAmount ?? item.totalAmount), 310, 500);
-  row(doc, "Payment note / 收款备注", item.paymentNote ?? "-", 52, 548, 503);
-
-  text(doc, "This receipt confirms payment received for the business invoice above. / 本收据确认已收到上述企业发票对应款项。", 52, 650, 490, {
-    size: 10,
-    color: MUTED,
+  const { x, y, w, companyY } = drawInvoiceOrReceiptFrame(doc, "RECEIPT");
+  const rightPadding = 12;
+  const rightValueW = 96;
+  const rightGap = 4;
+  const rightLabelW = 96;
+  const rightValueX = x + w - rightPadding - rightValueW;
+  const rightLabelX = rightValueX - rightGap - rightLabelW;
+  const rightY = companyY - 2;
+  const rightRows: Array<[string, string]> = [
+    ["Receipt Date", item.paidDate ?? "-"],
+    ["Receipt No.", item.receiptNo ?? "-"],
+    ["Invoice No.", item.invoiceNo],
+    ["Paid By", item.paymentMethod ?? paymentMethodLabel(account.paymentMethod)],
+    ["Billing Month", item.monthKey],
+  ];
+  rightRows.forEach((r, i) => {
+    const yy = rightY + i * 21;
+    templateText(doc, r[0], rightLabelX, yy, 10, true, "#111827", rightLabelW, "right");
+    templateText(doc, r[1], rightValueX, yy, 9, false, "#111827", rightValueW, "right");
   });
-  text(doc, "Issued by / 开具方: GT Educational Institute Pte Ltd", 52, 720, 490, { size: 10 });
-  text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 780, 260, { size: 10 });
-  text(doc, "Date / 日期: ____________________", 330, 780, 210, { size: 10 });
+
+  const billY = y + 180;
+  doc.fillColor(ORANGE).rect(x, billY, w, 18).fill();
+  templateText(doc, "Bill To:", x + 8, billY + 4, 10, true, "#ffffff");
+  templateText(doc, `Received From :   ${item.receivedFrom ?? account.legalNameEn}`, x + 8, billY + 36, 10, true);
+
+  const tableY = y + 258;
+  const colX = [x + 16, x + 76, x + 274, x + 354, x + 432];
+  templateText(doc, "Quantity", colX[0], tableY, 10, true);
+  templateText(doc, "Description", colX[1], tableY, 10, true);
+  templateText(doc, "Amount", colX[2], tableY, 10, true);
+  templateText(doc, "GST", colX[3], tableY, 10, true);
+  templateText(doc, "Total Amount", colX[4], tableY, 10, true);
+
+  const rowY = tableY + 24;
+  templateText(doc, "1", colX[0] + 16, rowY, 10);
+  templateText(doc, `Corporate service fee for ${item.monthKey}`, colX[1], rowY, 10, false, "#111827", 196, "left", true);
+  templateText(doc, money(item.totalAmount), colX[2], rowY, 10);
+  templateText(doc, money(0), colX[3], rowY, 10);
+  templateText(doc, money(item.totalAmount), colX[4], rowY, 10);
+
+  const totalBoxX = x + 338;
+  const totalBoxY = y + 442;
+  const totalRows: Array<[string, string]> = [
+    ["Subtotal", money(item.totalAmount)],
+    ["GST Total", money(0)],
+    ["Amount Received", money(item.paidAmount ?? item.totalAmount)],
+  ];
+  totalRows.forEach((r, i) => {
+    const yy = totalBoxY + i * 24;
+    templateText(doc, r[0], totalBoxX, yy + 5, 10, true, "#111827", 92, "right");
+    doc.fillColor("#f3dfd1").rect(totalBoxX + 94, yy, 84, 24).fill();
+    templateText(doc, r[1], totalBoxX + 98, yy + 5, 9, false, "#111827", 76, "right");
+  });
   return streamPdf(doc);
 }

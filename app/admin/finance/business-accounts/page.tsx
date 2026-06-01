@@ -15,6 +15,7 @@ import {
   type BusinessMonthlyDocumentStatus,
 } from "@/lib/business-accounts";
 import { formatBusinessDateOnly } from "@/lib/date-only";
+import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import {
   workbenchHeroStyle,
   workbenchMetricCardStyle,
@@ -178,10 +179,14 @@ async function createMonthlyDocumentAction(formData: FormData) {
   const accountId = String(formData.get("accountId") ?? "").trim();
   let nextParams: Record<string, string> = {};
   try {
+    const issueDate = String(formData.get("issueDate") ?? "").trim();
+    const invoiceNo = await getNextGlobalInvoiceNo(issueDate);
+    await assertGlobalInvoiceNoAvailable(invoiceNo);
     await createBusinessMonthlyDocument({
       accountId,
+      invoiceNo,
       monthKey: String(formData.get("monthKey") ?? "").trim(),
-      issueDate: String(formData.get("issueDate") ?? "").trim(),
+      issueDate,
       dueDate: String(formData.get("dueDate") ?? "").trim(),
       variableTutorFee: Number(formData.get("variableTutorFee") ?? 0),
       serviceSummary: String(formData.get("serviceSummary") ?? "").trim(),

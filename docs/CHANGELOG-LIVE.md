@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r169
+
+- Release ID: `2026-06-01-r169`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: align Business Accounts invoice numbers and receipt PDFs with the existing student and New Oriental finance document flow.
+- Key files:
+  - `lib/global-invoice-sequence.ts`
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `docs/tasks/TASK-20260601-business-accounts-global-invoice-receipt-template.md`
+- Risk impact (if any): Low to medium. New Business Accounts documents now reserve the same global `RGT-yyyymm-xxxx` invoice sequence used by parent and partner invoices, and Business Accounts receipts now use the same receipt number pattern and PDF layout style. Existing student, New Oriental, partner settlement, package, payroll, attendance, and scheduling logic is not changed.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Generated local sample Business Accounts invoice, receipt, and service report PDFs.
+  - Extracted text from the local sample PDFs to confirm `RGT-202605-0099`, `RGT-202605-0099-RC`, GT Educational, OCBC, account number `595214891001`, Shanghai Xin Zhuo Si, and `SGD 1400.00`.
+- Rollback point: previous production commit before `2026-06-01-r169`.
+
+---
+
 ## 2026-06-01-r168
 
 - Release ID: `2026-06-01-r168`

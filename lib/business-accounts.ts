@@ -472,6 +472,7 @@ function nextInvoiceNo(store: BusinessAccountsStore, issueDate: string) {
 export async function createBusinessMonthlyDocument(input: {
   accountId: string;
   monthKey: string;
+  invoiceNo?: string | null;
   issueDate: string;
   dueDate: string;
   variableTutorFee: number;
@@ -506,7 +507,7 @@ export async function createBusinessMonthlyDocument(input: {
         id: crypto.randomUUID(),
         accountId: account.id,
         monthKey,
-        invoiceNo: nextInvoiceNo(store, issueDate),
+        invoiceNo: input.invoiceNo?.trim() || nextInvoiceNo(store, issueDate),
         issueDate,
         dueDate,
         fixedMonthlyFee,
@@ -552,7 +553,7 @@ export async function createBusinessMonthlyDocument(input: {
 }
 
 function buildReceiptNo(invoiceNo: string) {
-  return `${invoiceNo}-R001`;
+  return `${invoiceNo}-RC`;
 }
 
 export async function issueBusinessMonthlyDocument(input: {

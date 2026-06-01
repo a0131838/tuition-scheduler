@@ -7,12 +7,13 @@ import {
   applyPartnerInvoiceNumberAssignments,
   listPartnerBilling,
 } from "@/lib/partner-billing";
+import { listBusinessAccounts } from "@/lib/business-accounts";
 import { getParentReceiptApprovalMap } from "@/lib/parent-receipt-approval";
 import { getPartnerReceiptApprovalMap } from "@/lib/partner-receipt-approval";
 import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 import { monthKeyFromDateOnly } from "@/lib/date-only";
 
-type InvoiceOwner = "PARENT" | "PARTNER";
+type InvoiceOwner = "PARENT" | "PARTNER" | "BUSINESS";
 
 type GlobalInvoiceRow = {
   owner: InvoiceOwner;
@@ -37,9 +38,10 @@ function formatInvoiceNo(monthKey: string, seq: number) {
 }
 
 async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
-  const [parent, partner, cfg] = await Promise.all([
+  const [parent, partner, business, cfg] = await Promise.all([
     listAllParentBilling(),
     listPartnerBilling(),
+    listBusinessAccounts(),
     getApprovalRoleConfig(),
   ]);
 
@@ -80,6 +82,15 @@ async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
       fixed: Boolean(
         approval && isReceiptFinanceApproved(approval, cfg),
       ),
+    });
+  }
+  for (const inv of business.monthlyDocuments) {
+    out.push({
+      owner: "BUSINESS",
+      id: inv.id,
+      invoiceNo: inv.invoiceNo,
+      createdAt: inv.createdAt,
+      fixed: true,
     });
   }
   return out;
@@ -152,7 +163,7 @@ export async function resequenceGlobalInvoiceNumbersForMonth(monthKey: string) {
     const nextNo = formatInvoiceNo(monthKey, next);
     if (m.row.invoiceNo !== nextNo) {
       if (m.row.owner === "PARENT") parentAssignments.push({ invoiceId: m.row.id, invoiceNo: nextNo });
-      else partnerAssignments.push({ invoiceId: m.row.id, invoiceNo: nextNo });
+      else if (m.row.owner === "PARTNER") partnerAssignments.push({ invoiceId: m.row.id, invoiceNo: nextNo });
     }
     next += 1;
   }
