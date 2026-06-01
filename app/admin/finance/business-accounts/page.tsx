@@ -112,6 +112,7 @@ async function createAccountAction(formData: FormData) {
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim(),
       payeeName: String(formData.get("payeeName") ?? "").trim(),
       bankName: String(formData.get("bankName") ?? "").trim(),
+      bankAddress: String(formData.get("bankAddress") ?? "").trim(),
       bankAccountNo: String(formData.get("bankAccountNo") ?? "").trim(),
       bankSwiftCode: String(formData.get("bankSwiftCode") ?? "").trim(),
       bankCode: String(formData.get("bankCode") ?? "").trim(),
@@ -153,6 +154,7 @@ async function updateAccountAction(formData: FormData) {
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim(),
       payeeName: String(formData.get("payeeName") ?? "").trim(),
       bankName: String(formData.get("bankName") ?? "").trim(),
+      bankAddress: String(formData.get("bankAddress") ?? "").trim(),
       bankAccountNo: String(formData.get("bankAccountNo") ?? "").trim(),
       bankSwiftCode: String(formData.get("bankSwiftCode") ?? "").trim(),
       bankCode: String(formData.get("bankCode") ?? "").trim(),
@@ -312,7 +314,14 @@ function AccountForm({ account, lang }: { account: BusinessAccount; lang: Lang }
         <label>{t(lang, "Agreement date", "协议日期")}<input name="agreementDate" type="date" defaultValue={account.agreementDate ?? ""} style={fieldStyle()} /></label>
       </div>
       <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 10, padding: 12, display: "grid", gap: 10 }}>
-        <b>{t(lang, "Payment information for company transfer", "公司转账付款信息")}</b>
+        <b>{t(lang, "Our receiving account for company transfers", "我方公司收款账户")}</b>
+        <div style={{ color: "#64748b", fontSize: 12 }}>
+          {t(
+            lang,
+            "This is GT Educational's receiving account shown on invoices. Other companies transfer money to this account.",
+            "这里是 GT Educational 的收款账户，会显示在发票上；其他公司向这个账户付款。"
+          )}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
           <label>{t(lang, "Payment method", "付款方式")}<select name="paymentMethod" defaultValue={account.paymentMethod} style={fieldStyle()}>
             <option value="BANK_TRANSFER">Bank Transfer</option>
@@ -320,14 +329,15 @@ function AccountForm({ account, lang }: { account: BusinessAccount; lang: Lang }
             <option value="OTHER">Other</option>
           </select></label>
           <label>{t(lang, "Payment terms", "付款期限")}<input name="paymentTerms" defaultValue={account.paymentTerms} style={fieldStyle()} /></label>
-          <label>{t(lang, "Payee name", "收款方名称")}<input name="payeeName" defaultValue={account.payeeName ?? ""} style={fieldStyle()} /></label>
-          <label>{t(lang, "Bank name", "银行名称")}<input name="bankName" defaultValue={account.bankName ?? ""} style={fieldStyle()} /></label>
-          <label>{t(lang, "Bank account no.", "银行账号")}<input name="bankAccountNo" defaultValue={account.bankAccountNo ?? ""} style={fieldStyle()} /></label>
+          <label>{t(lang, "Payee name (our company)", "收款方名称（我方公司）")}<input name="payeeName" defaultValue={account.payeeName ?? ""} style={fieldStyle()} /></label>
+          <label>{t(lang, "Receiving bank", "收款银行")}<input name="bankName" defaultValue={account.bankName ?? ""} style={fieldStyle()} /></label>
+          <label>{t(lang, "Receiving account no.", "收款账号")}<input name="bankAccountNo" defaultValue={account.bankAccountNo ?? ""} style={fieldStyle()} /></label>
           <label>SWIFT<input name="bankSwiftCode" defaultValue={account.bankSwiftCode ?? ""} style={fieldStyle()} /></label>
           <label>{t(lang, "Bank code", "银行代码")}<input name="bankCode" defaultValue={account.bankCode ?? ""} style={fieldStyle()} /></label>
           <label>{t(lang, "Branch code", "分行代码")}<input name="bankBranchCode" defaultValue={account.bankBranchCode ?? ""} style={fieldStyle()} /></label>
           <label>{t(lang, "Payment reference prefix", "付款备注前缀")}<input name="paymentReferencePrefix" defaultValue={account.paymentReferencePrefix ?? ""} style={fieldStyle()} /></label>
         </div>
+        <label>{t(lang, "Receiving bank address", "收款银行地址")}<input name="bankAddress" defaultValue={account.bankAddress ?? ""} style={fieldStyle()} /></label>
         <label>{t(lang, "Payment instructions", "付款说明")}<textarea name="paymentInstructions" rows={2} defaultValue={account.paymentInstructions ?? ""} style={fieldStyle()} /></label>
       </div>
       <label>{t(lang, "Internal note", "内部备注")}<textarea name="note" rows={2} defaultValue={account.note ?? ""} style={fieldStyle()} /></label>
@@ -451,9 +461,9 @@ export default async function BusinessAccountsPage({
             <label>{t(lang, "Registration/UEN/USCC", "注册号/UEN/统一信用代码")}<input name="registrationNo" style={fieldStyle()} /></label>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
-            <label>{t(lang, "Payee name", "收款方名称")}<input name="payeeName" defaultValue="GT Educational Institute Pte Ltd" style={fieldStyle()} /></label>
-            <label>{t(lang, "Bank name", "银行名称")}<input name="bankName" style={fieldStyle()} /></label>
-            <label>{t(lang, "Bank account no.", "银行账号")}<input name="bankAccountNo" style={fieldStyle()} /></label>
+            <label>{t(lang, "Payee name (our company)", "收款方名称（我方公司）")}<input name="payeeName" defaultValue="GT Educational Institute Pte. Ltd." style={fieldStyle()} /></label>
+            <label>{t(lang, "Receiving bank", "收款银行")}<input name="bankName" defaultValue="OCBC Bank Singapore" style={fieldStyle()} /></label>
+            <label>{t(lang, "Receiving account no.", "收款账号")}<input name="bankAccountNo" defaultValue="595214891001" style={fieldStyle()} /></label>
             <label>{t(lang, "Payment terms", "付款期限")}<input name="paymentTerms" defaultValue="Due within 14 days" style={fieldStyle()} /></label>
           </div>
           <button style={{ ...buttonStyle("primary"), justifySelf: "start" }}>{t(lang, "Create account", "创建企业账户")}</button>
@@ -490,12 +500,12 @@ export default async function BusinessAccountsPage({
       {tab === "documents" ? <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#fff" }}>
         <h3 style={{ marginTop: 0 }}>{t(lang, "Monthly Documents", "月度单据")}</h3>
         <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 10, padding: 12, marginBottom: 12, display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 900 }}>{t(lang, "Company payment destination", "公司收款信息")}</div>
+          <div style={{ fontWeight: 900 }}>{t(lang, "Our receiving account for company transfers", "我方公司收款账户")}</div>
           <div style={{ color: "#334155", fontSize: 13 }}>
-            {t(lang, "Payee", "收款方")}: <b>{selected.payeeName ?? "-"}</b> | {t(lang, "Bank", "银行")}: <b>{selected.bankName ?? "-"}</b> | {t(lang, "Account", "账号")}: <b>{selected.bankAccountNo ?? "-"}</b>
+            {t(lang, "Payee", "收款方")}: <b>{selected.payeeName ?? "-"}</b> | {t(lang, "Bank", "银行")}: <b>{selected.bankName ?? "-"}</b> | {t(lang, "Account", "账号")}: <b>{selected.bankAccountNo ?? "-"}</b> | SWIFT: <b>{selected.bankSwiftCode ?? "-"}</b>
           </div>
           <div style={{ color: "#64748b", fontSize: 12 }}>
-            {t(lang, "Edit this in Company profile. Receipt details are recorded per invoice below, same style as student and New Oriental receipts.", "在公司资料中维护这里。每张发票的实际收款信息在下方单独记录，格式与学生和新东方收据一致。")}
+            {t(lang, "This is our GT Educational receiving account, not the customer's bank account. Edit it in Company profile if finance updates the remittance details.", "这是我方 GT Educational 的收款账户，不是客户公司的银行账户。如财务更新收款信息，可在公司资料中维护。")}
           </div>
         </div>
         <div style={{ overflowX: "auto" }}>

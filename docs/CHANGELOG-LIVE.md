@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r168
+
+- Release ID: `2026-06-01-r168`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: clarify Business Accounts remittance fields as GT Educational's receiving account, and default them to the same OCBC remittance details used by existing student and New Oriental invoice PDFs.
+- Key files:
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `docs/tasks/TASK-20260601-business-accounts-gt-receiving-account.md`
+- Risk impact (if any): Low. This changes labels/defaults for the new Business Accounts remittance fields only. It does not modify New Oriental settlement, parent invoices/receipts, package balances, payroll, attendance, or scheduling.
+- Verification:
+  - Confirmed existing parent and partner invoice PDFs use GT Educational / OCBC remittance details.
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-01-r168`.
+
+---
+
 ## 2026-06-01-r167
 
 - Release ID: `2026-06-01-r167`

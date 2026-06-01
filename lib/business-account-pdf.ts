@@ -112,9 +112,9 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
 
   sectionTitle(doc, "Payment Instructions / 付款信息", 672);
   row(doc, "Payment method / 付款方式", paymentMethodLabel(account.paymentMethod), 52, 710);
-  row(doc, "Payee name / 收款方", account.payeeName ?? "GT Educational Institute Pte Ltd", 310, 710);
-  row(doc, "Bank name / 银行名称", account.bankName ?? "-", 52, 752);
-  row(doc, "Bank account no. / 银行账号", account.bankAccountNo ?? "-", 310, 752);
+  row(doc, "Payee name / 收款方", account.payeeName ?? "GT Educational Institute Pte. Ltd.", 310, 710);
+  row(doc, "Receiving bank / 收款银行", account.bankName ?? "-", 52, 752);
+  row(doc, "Receiving account no. / 收款账号", account.bankAccountNo ?? "-", 310, 752);
   row(doc, "SWIFT / Bank code / Branch code", [account.bankSwiftCode, account.bankCode, account.bankBranchCode].filter(Boolean).join(" / ") || "-", 52, 794, 245);
   row(doc, "Payment reference / 付款备注", item.invoiceNo, 310, 794, 245);
 
@@ -131,7 +131,8 @@ export function buildBusinessInvoicePdf(account: BusinessAccount, item: Business
     { size: 9, color: MUTED },
   );
   text(doc, `Payment terms / 付款期限: ${account.paymentTerms}`, 52, 206, 490, { size: 10 });
-  text(doc, `Additional payment instruction / 其他付款说明: ${account.paymentInstructions ?? "-"}`, 52, 232, 490, { size: 10 });
+  text(doc, `Receiving bank address / 收款银行地址: ${account.bankAddress ?? "-"}`, 52, 232, 490, { size: 10 });
+  text(doc, `Additional payment instruction / 其他付款说明: ${account.paymentInstructions ?? "-"}`, 52, 258, 490, { size: 10 });
   text(doc, "Authorized Signatory / 授权签字人: ____________________", 52, 760, 260, { size: 10 });
   text(doc, "Date / 日期: ____________________", 330, 760, 210, { size: 10 });
   return streamPdf(doc);

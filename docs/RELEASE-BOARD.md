@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-06-01-r167` (Business Accounts workflow is split into clearer tabs and receipt/payment capture now follows the same Received From/Paid via/reference pattern as student and New Oriental receipts), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-06-01-r168` (Business Accounts remittance fields now clearly represent GT Educational's receiving account and default to the same OCBC details used by existing student and New Oriental invoice PDFs), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 

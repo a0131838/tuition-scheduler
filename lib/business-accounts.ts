@@ -5,6 +5,15 @@ import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting
 import { logAudit } from "@/lib/audit-log";
 
 const BUSINESS_ACCOUNTS_KEY = "business_accounts_v1";
+const GT_RECEIVING_ACCOUNT = {
+  payeeName: "GT Educational Institute Pte. Ltd.",
+  bankName: "OCBC Bank Singapore",
+  bankAddress: "65 Chulia Street #01-40 OCBC Centre Singapore, S049513",
+  bankAccountNo: "595214891001",
+  bankSwiftCode: "OCBCSGSG",
+  paymentInstructions:
+    'Please note that all remittance fees and charges must be borne by the payer. Your invoice number serves as the bank transfer/wire reference number. All payments must be made in Singapore dollars. Please e-mail remittance advice to "sggreatthinker@gmail.com".',
+};
 
 export type BusinessAccountType = "INTERCOMPANY" | "EDUCATION_PARTNER" | "SALES_AGENT" | "CHANNEL_PARTNER" | "CORPORATE_CLIENT";
 export type BusinessAgreementType =
@@ -33,6 +42,7 @@ export type BusinessAccount = {
   paymentTerms: string;
   payeeName: string | null;
   bankName: string | null;
+  bankAddress: string | null;
   bankAccountNo: string | null;
   bankSwiftCode: string | null;
   bankCode: string | null;
@@ -165,14 +175,15 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         agreementDate: normalizeDateOnly(x.agreementDate) ?? null,
         paymentMethod: normalizePaymentMethod(x.paymentMethod),
         paymentTerms: String(x.paymentTerms ?? "").trim() || "Due within 14 days",
-        payeeName: textOrNull(x.payeeName),
-        bankName: textOrNull(x.bankName),
-        bankAccountNo: textOrNull(x.bankAccountNo),
-        bankSwiftCode: textOrNull(x.bankSwiftCode),
+        payeeName: textOrNull(x.payeeName) ?? GT_RECEIVING_ACCOUNT.payeeName,
+        bankName: textOrNull(x.bankName) ?? GT_RECEIVING_ACCOUNT.bankName,
+        bankAddress: textOrNull(x.bankAddress) ?? GT_RECEIVING_ACCOUNT.bankAddress,
+        bankAccountNo: textOrNull(x.bankAccountNo) ?? GT_RECEIVING_ACCOUNT.bankAccountNo,
+        bankSwiftCode: textOrNull(x.bankSwiftCode) ?? GT_RECEIVING_ACCOUNT.bankSwiftCode,
         bankCode: textOrNull(x.bankCode),
         bankBranchCode: textOrNull(x.bankBranchCode),
         paymentReferencePrefix: textOrNull(x.paymentReferencePrefix),
-        paymentInstructions: textOrNull(x.paymentInstructions),
+        paymentInstructions: textOrNull(x.paymentInstructions) ?? GT_RECEIVING_ACCOUNT.paymentInstructions,
         note: textOrNull(x.note),
         isActive: x.isActive !== false,
         createdAt: String(x.createdAt ?? nowIso()),
@@ -240,14 +251,15 @@ function defaultShanghaiAccount(): BusinessAccount {
     agreementDate: null,
     paymentMethod: "BANK_TRANSFER",
     paymentTerms: "Due within 14 days",
-    payeeName: "GT Educational Institute Pte Ltd",
-    bankName: null,
-    bankAccountNo: null,
-    bankSwiftCode: null,
+    payeeName: GT_RECEIVING_ACCOUNT.payeeName,
+    bankName: GT_RECEIVING_ACCOUNT.bankName,
+    bankAddress: GT_RECEIVING_ACCOUNT.bankAddress,
+    bankAccountNo: GT_RECEIVING_ACCOUNT.bankAccountNo,
+    bankSwiftCode: GT_RECEIVING_ACCOUNT.bankSwiftCode,
     bankCode: null,
     bankBranchCode: null,
     paymentReferencePrefix: "GTEI",
-    paymentInstructions: "Please pay by bank transfer and quote the invoice number as the payment reference.",
+    paymentInstructions: GT_RECEIVING_ACCOUNT.paymentInstructions,
     note: "Company-level intercompany service billing. Keep separate from New Oriental partner settlement.",
     isActive: true,
     createdAt: now,
@@ -288,6 +300,7 @@ export async function createBusinessAccount(input: {
   paymentTerms?: string | null;
   payeeName?: string | null;
   bankName?: string | null;
+  bankAddress?: string | null;
   bankAccountNo?: string | null;
   bankSwiftCode?: string | null;
   bankCode?: string | null;
@@ -330,14 +343,15 @@ export async function createBusinessAccount(input: {
         agreementDate: normalizeDateOnly(input.agreementDate) ?? null,
         paymentMethod: normalizePaymentMethod(input.paymentMethod),
         paymentTerms: input.paymentTerms?.trim() || "Due within 14 days",
-        payeeName: textOrNull(input.payeeName) ?? "GT Educational Institute Pte Ltd",
-        bankName: textOrNull(input.bankName),
-        bankAccountNo: textOrNull(input.bankAccountNo),
-        bankSwiftCode: textOrNull(input.bankSwiftCode),
+        payeeName: textOrNull(input.payeeName) ?? GT_RECEIVING_ACCOUNT.payeeName,
+        bankName: textOrNull(input.bankName) ?? GT_RECEIVING_ACCOUNT.bankName,
+        bankAddress: textOrNull(input.bankAddress) ?? GT_RECEIVING_ACCOUNT.bankAddress,
+        bankAccountNo: textOrNull(input.bankAccountNo) ?? GT_RECEIVING_ACCOUNT.bankAccountNo,
+        bankSwiftCode: textOrNull(input.bankSwiftCode) ?? GT_RECEIVING_ACCOUNT.bankSwiftCode,
         bankCode: textOrNull(input.bankCode),
         bankBranchCode: textOrNull(input.bankBranchCode),
         paymentReferencePrefix: textOrNull(input.paymentReferencePrefix) ?? "GTEI",
-        paymentInstructions: textOrNull(input.paymentInstructions),
+        paymentInstructions: textOrNull(input.paymentInstructions) ?? GT_RECEIVING_ACCOUNT.paymentInstructions,
         note: textOrNull(input.note),
         isActive: true,
         createdAt: now,
@@ -376,6 +390,7 @@ export async function updateBusinessAccount(input: {
   paymentTerms?: string | null;
   payeeName?: string | null;
   bankName?: string | null;
+  bankAddress?: string | null;
   bankAccountNo?: string | null;
   bankSwiftCode?: string | null;
   bankCode?: string | null;
@@ -412,14 +427,15 @@ export async function updateBusinessAccount(input: {
         agreementDate: normalizeDateOnly(input.agreementDate) ?? null,
         paymentMethod: normalizePaymentMethod(input.paymentMethod),
         paymentTerms: input.paymentTerms?.trim() || "Due within 14 days",
-        payeeName: textOrNull(input.payeeName) ?? "GT Educational Institute Pte Ltd",
-        bankName: textOrNull(input.bankName),
-        bankAccountNo: textOrNull(input.bankAccountNo),
-        bankSwiftCode: textOrNull(input.bankSwiftCode),
+        payeeName: textOrNull(input.payeeName) ?? GT_RECEIVING_ACCOUNT.payeeName,
+        bankName: textOrNull(input.bankName) ?? GT_RECEIVING_ACCOUNT.bankName,
+        bankAddress: textOrNull(input.bankAddress) ?? GT_RECEIVING_ACCOUNT.bankAddress,
+        bankAccountNo: textOrNull(input.bankAccountNo) ?? GT_RECEIVING_ACCOUNT.bankAccountNo,
+        bankSwiftCode: textOrNull(input.bankSwiftCode) ?? GT_RECEIVING_ACCOUNT.bankSwiftCode,
         bankCode: textOrNull(input.bankCode),
         bankBranchCode: textOrNull(input.bankBranchCode),
         paymentReferencePrefix: textOrNull(input.paymentReferencePrefix) ?? "GTEI",
-        paymentInstructions: textOrNull(input.paymentInstructions),
+        paymentInstructions: textOrNull(input.paymentInstructions) ?? GT_RECEIVING_ACCOUNT.paymentInstructions,
         note: textOrNull(input.note),
         updatedAt: nowIso(),
       };
