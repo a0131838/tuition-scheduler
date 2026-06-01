@@ -116,6 +116,10 @@ export default async function AdminHome({
               <div style={{ fontWeight: 800 }}>{t(lang, "Partner Settlement", "合作方结算")}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Review settlement totals and close outstanding partner items.", "核对结算总额并关闭合作方待处理项。")}</div>
             </a>
+            <a href="/admin/finance/business-accounts" style={{ ...tileStyle, background: "#f0fdf4", borderColor: "#86efac" }}>
+              <div style={{ fontWeight: 800 }}>{t(lang, "Business Accounts", "企业账户")}</div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>{t(lang, "Company-level invoices for intercompany and agent billing.", "关联公司和销售代理的公司级开票。")}</div>
+            </a>
           </div>
         </section>
 

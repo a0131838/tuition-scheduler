@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-01-r165
+
+- Release ID: `2026-06-01-r165`
+- Date/Time (Asia/Shanghai): `2026-06-01`
+- Deployment status: `READY`
+- Scope: add a separate Business Accounts workspace for company-level intercompany invoicing, seeded with Shanghai Xin Zhuo Si details and monthly invoice/service-report PDF generation.
+- Key files:
+  - `lib/business-accounts.ts`
+  - `lib/business-account-pdf.ts`
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `app/api/exports/business-accounts/[id]/invoice/route.ts`
+  - `app/api/exports/business-accounts/[id]/service-report/route.ts`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `docs/tasks/TASK-20260601-business-accounts-intercompany-invoicing.md`
+- Risk impact (if any): Medium. This adds a new finance workspace and AppSetting-backed store. It is intentionally separate from New Oriental partner settlement, student package billing, parent invoices, receipts, payroll, and package ledger logic.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - Generated sample Business Accounts invoice and service report PDFs locally; invoice text extraction confirmed the Shanghai Xin Zhuo Si English name and unified social credit code.
+- Rollback point: previous production commit before `2026-06-01-r165`.
+
+---
+
 ## 2026-05-31-r164
 
 - Release ID: `2026-05-31-r164`
