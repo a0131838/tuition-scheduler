@@ -8,7 +8,9 @@ import {
 import {
   addBusinessPaymentRecord,
   createBusinessMonthlyDocument,
+  deleteVoidedBusinessMonthlyDocument,
   recordBusinessMonthlyPayment,
+  voidBusinessMonthlyDocument,
 } from "../lib/business-accounts";
 import { getParentReceiptApprovalMap } from "../lib/parent-receipt-approval";
 import { managerRejectPartnerSettlement } from "../lib/partner-settlement-approval";
@@ -274,7 +276,33 @@ test("business account receipt requires an uploaded payment record", async () =>
     assert.equal(paid.status, "PAID");
     assert.equal(paid.paymentRecordId, payment.id);
     assert.equal(paid.receiptNo, "RGT-202606-0007-RC");
+
+    await assert.rejects(
+      deleteVoidedBusinessMonthlyDocument({
+        documentId: doc.id,
+        actor: { email: "finance@test.com", role: "ADMIN" },
+      }),
+      /Only voided documents can be deleted/,
+    );
+
+    await voidBusinessMonthlyDocument({
+      documentId: doc.id,
+      reason: "Wrong receipt",
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+
+    const deleted = await deleteVoidedBusinessMonthlyDocument({
+      documentId: doc.id,
+      actor: { email: "finance@test.com", role: "ADMIN" },
+    });
+    assert.equal(deleted.document.receiptNo, "RGT-202606-0007-RC");
+    assert.equal(deleted.paymentRecords.length, 1);
+    assert.equal(deleted.paymentRecords[0].id, payment.id);
   });
+
+  const saved = store.getValue();
+  assert.equal(saved.monthlyDocuments.length, 0);
+  assert.equal(saved.paymentRecords.length, 0);
 });
 
 test("partner settlement manager reject retries on conflict and clears finance approvals on latest state", async () => {

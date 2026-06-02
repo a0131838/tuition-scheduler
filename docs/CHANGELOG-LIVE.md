@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-02-r171
+
+- Release ID: `2026-06-02-r171`
+- Date/Time (Asia/Shanghai): `2026-06-02`
+- Deployment status: `READY`
+- Scope: allow Business Accounts voided receipts/documents to be physically deleted so old voided receipt rows do not accumulate.
+- Key files:
+  - `app/admin/finance/business-accounts/page.tsx`
+  - `lib/business-accounts.ts`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260602-business-accounts-delete-voided-receipts.md`
+- Risk impact (if any): Low to medium. Deletion is restricted to Business Accounts documents already marked `VOID`; linked Business Account payment proof records and files are removed with the deleted voided document. Existing parent/student receipts, New Oriental partner receipts, package balances, payroll, attendance, and scheduling logic are not changed.
+- Verification:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-02-r171`.
+
+---
+
 ## 2026-06-01-r170
 
 - Release ID: `2026-06-01-r170`

@@ -8,6 +8,7 @@ import {
   createBusinessMonthlyDocument,
   deleteBusinessPaymentRecord,
   deleteDraftBusinessMonthlyDocument,
+  deleteVoidedBusinessMonthlyDocument,
   issueBusinessMonthlyDocument,
   listBusinessAccounts,
   recordBusinessMonthlyPayment,
@@ -241,6 +242,27 @@ async function deleteDraftDocumentAction(formData: FormData) {
     nextParams = { msg: "draft-deleted" };
   } catch (error: any) {
     nextParams = { err: error?.message ?? "Delete failed" };
+  }
+  redirectWith(accountId, nextParams);
+}
+
+async function deleteVoidedDocumentAction(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+  const accountId = String(formData.get("accountId") ?? "").trim();
+  let nextParams: Record<string, string> = {};
+  try {
+    const deleted = await deleteVoidedBusinessMonthlyDocument({
+      documentId: String(formData.get("documentId") ?? ""),
+      actor,
+    });
+    for (const record of deleted.paymentRecords) {
+      await deleteStoredBusinessFile(record.relativePath, BUSINESS_UPLOAD_PREFIX.businessPaymentProofs);
+    }
+    revalidatePath("/admin/finance/business-accounts");
+    nextParams = { msg: "voided-document-deleted" };
+  } catch (error: any) {
+    nextParams = { err: error?.message ?? "Delete voided document failed" };
   }
   redirectWith(accountId, nextParams);
 }
@@ -769,7 +791,20 @@ export default async function BusinessAccountsPage({
                           <button style={buttonStyle("danger")}>Void</button>
                         </form>
                       </details>
-                    ) : doc.voidReason ? <div style={{ color: "#991b1b", marginTop: 6, fontSize: 12 }}>Void reason: {doc.voidReason}</div> : null}
+                    ) : (
+                      <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                        {doc.voidReason ? <div style={{ color: "#991b1b", fontSize: 12 }}>Void reason: {doc.voidReason}</div> : null}
+                        <details>
+                          <summary style={{ cursor: "pointer", color: "#9f1239", fontWeight: 800 }}>{t(lang, "Delete voided receipt/document", "删除已作废收据/单据")}</summary>
+                          <form action={deleteVoidedDocumentAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+                            <input type="hidden" name="accountId" value={selected.id} />
+                            <input type="hidden" name="documentId" value={doc.id} />
+                            <span style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Only voided documents can be deleted. Linked payment proof records will also be removed.", "只有已作废单据可删除，关联付款凭证记录也会一起移除。")}</span>
+                            <button style={buttonStyle("danger")}>{t(lang, "Delete voided", "删除已作废")}</button>
+                          </form>
+                        </details>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -665,6 +665,46 @@ export async function deleteDraftBusinessMonthlyDocument(input: {
   return deletedItem;
 }
 
+export async function deleteVoidedBusinessMonthlyDocument(input: {
+  documentId: string;
+  actor: { email?: string | null; name?: string | null; role?: string | null };
+}) {
+  let deleted: BusinessMonthlyDocument | null = null;
+  let deletedPaymentRecords: BusinessPaymentRecordItem[] = [];
+  await mutateJsonAppSetting({
+    key: BUSINESS_ACCOUNTS_KEY,
+    fallback: EMPTY_STORE,
+    sanitize: sanitizeStore,
+    mutate: (store) => {
+      ensureDefaults(store);
+      const idx = store.monthlyDocuments.findIndex((x) => x.id === input.documentId);
+      if (idx < 0) throw new Error("Document not found");
+      const current = store.monthlyDocuments[idx];
+      if (current.status !== "VOID") throw new Error("Only voided documents can be deleted");
+      deleted = current;
+      deletedPaymentRecords = store.paymentRecords.filter((x) => x.documentId === current.id);
+      store.monthlyDocuments.splice(idx, 1);
+      store.paymentRecords = store.paymentRecords.filter((x) => x.documentId !== current.id);
+    },
+  });
+  const deletedItem = deleted as BusinessMonthlyDocument | null;
+  if (!deletedItem) throw new Error("Voided document was not deleted");
+  await logAudit({
+    actor: input.actor,
+    module: "BUSINESS_ACCOUNTS",
+    action: "DELETE_VOID_MONTHLY_DOCUMENT",
+    entityType: "BusinessMonthlyDocument",
+    entityId: input.documentId,
+    meta: {
+      invoiceNo: deletedItem.invoiceNo,
+      receiptNo: deletedItem.receiptNo,
+      monthKey: deletedItem.monthKey,
+      paymentRecordCount: deletedPaymentRecords.length,
+    },
+  });
+  return { document: deletedItem, paymentRecords: deletedPaymentRecords };
+}
+
 export async function voidBusinessMonthlyDocument(input: {
   documentId: string;
   reason: string;
