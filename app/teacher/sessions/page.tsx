@@ -7,6 +7,8 @@ import { formatBusinessDateOnly, formatBusinessTimeOnly } from "@/lib/date-only"
 import TeacherWorkspaceHero from "../_components/TeacherWorkspaceHero";
 import { isFeedbackOverdue } from "@/lib/feedback-timing";
 
+const FEEDBACK_RECOVERY_LOOKBACK_DAYS = 90;
+
 type SessionWithMeta = {
   id: string;
   startAt: Date;
@@ -77,6 +79,17 @@ function statCard(bg: string, border: string) {
   } as const;
 }
 
+function uniqueSessionsById(sessions: SessionWithMeta[]) {
+  const seen = new Set<string>();
+  const out: SessionWithMeta[] = [];
+  for (const session of sessions) {
+    if (seen.has(session.id)) continue;
+    seen.add(session.id);
+    out.push(session);
+  }
+  return out;
+}
+
 export default async function TeacherSessionsPage() {
   const lang = await getLang();
   const { teacher } = await requireTeacherProfile();
@@ -89,33 +102,62 @@ export default async function TeacherSessionsPage() {
   start.setDate(start.getDate() - 1);
   const end = new Date(now);
   end.setDate(end.getDate() + 30);
+  const feedbackRecoveryStart = new Date(now);
+  feedbackRecoveryStart.setDate(feedbackRecoveryStart.getDate() - FEEDBACK_RECOVERY_LOOKBACK_DAYS);
 
-  const sessionsRaw = (await prisma.session.findMany({
+  const teacherSessionWhere = {
+    OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+  };
+
+  const sessionInclude = {
+    student: { select: { id: true, name: true } },
+    class: {
+      include: {
+        course: true,
+        subject: true,
+        level: true,
+        campus: true,
+        room: true,
+        oneOnOneStudent: { select: { id: true, name: true } },
+        enrollments: { include: { student: { select: { id: true, name: true } } } },
+      },
+    },
+    attendances: { select: { studentId: true, status: true } },
+    feedbacks: { where: { teacherId: teacher.id }, select: { isProxyDraft: true, status: true } },
+  };
+
+  const [timelineRaw, recoveryRaw] = (await Promise.all([
+    prisma.session.findMany({
     where: {
       startAt: { gte: start, lte: end },
-      OR: [{ teacherId: teacher.id }, { teacherId: null, class: { teacherId: teacher.id } }],
+      ...teacherSessionWhere,
     },
-    include: {
-      student: { select: { id: true, name: true } },
-      class: {
-        include: {
-          course: true,
-          subject: true,
-          level: true,
-          campus: true,
-          room: true,
-          oneOnOneStudent: { select: { id: true, name: true } },
-          enrollments: { include: { student: { select: { id: true, name: true } } } },
-        },
-      },
-      attendances: { select: { studentId: true, status: true } },
-      feedbacks: { where: { teacherId: teacher.id }, select: { isProxyDraft: true, status: true } },
-    },
+    include: sessionInclude,
     orderBy: { startAt: "asc" },
     take: 300,
-  })) as SessionWithMeta[];
+    }),
+    prisma.session.findMany({
+      where: {
+        startAt: { gte: feedbackRecoveryStart, lt: start },
+        AND: [
+          teacherSessionWhere,
+          {
+            OR: [
+              { feedbacks: { none: { teacherId: teacher.id } } },
+              { feedbacks: { some: { teacherId: teacher.id, isProxyDraft: true } } },
+            ],
+          },
+        ],
+      },
+      include: sessionInclude,
+      orderBy: { startAt: "desc" },
+      take: 100,
+    }),
+  ])) as [SessionWithMeta[], SessionWithMeta[]];
 
-  const sessions = sessionsRaw.filter((s) => !isSessionFullyCancelled(s));
+  const timelineSessionIds = new Set(timelineRaw.map((s) => s.id));
+  const sessions = uniqueSessionsById([...recoveryRaw.reverse(), ...timelineRaw]).filter((s) => !isSessionFullyCancelled(s));
+  const recoveryCount = sessions.filter((s) => !timelineSessionIds.has(s.id)).length;
   const todayKey = dayKey(now);
   const todayCount = sessions.filter((s) => dayKey(s.startAt) === todayKey).length;
   const pendingFeedbackCount = sessions.filter((s) => !s.feedbacks[0]).length;
@@ -135,7 +177,7 @@ export default async function TeacherSessionsPage() {
     <div style={{ display: "grid", gap: 14 }}>
       <TeacherWorkspaceHero
         title={t(lang, "My Sessions", "我的课次")}
-        subtitle={t(lang, "Timeline view for today, recent classes, and the next 30 days. Open one session to finish attendance and feedback without hunting across multiple menus.", "在这里集中查看今天、最近以及未来30天的课次时间线。打开单节课后即可完成点名和反馈，不必再到处找入口。")}
+        subtitle={t(lang, "Timeline view for today, recent classes, the next 30 days, and recent past sessions still missing teacher feedback. Open one session to finish attendance and feedback without hunting across multiple menus.", "在这里集中查看今天、最近、未来30天，以及近期仍缺老师反馈的历史课次。打开单节课后即可完成点名和反馈，不必再到处找入口。")}
         actions={[
           { href: "/teacher", label: t(lang, "Back to dashboard", "返回工作台") },
           { href: "/teacher/availability", label: t(lang, "Open availability", "打开可上课时间") },
@@ -149,9 +191,9 @@ export default async function TeacherSessionsPage() {
           <div style={{ color: "#92400e", marginTop: 4 }}>{t(lang, "Classes scheduled today.", "今天安排的课程。")}</div>
         </div>
         <div style={statCard("#eff6ff", "#bfdbfe")}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Next 30 days", "未来30天")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1d4ed8" }}>{t(lang, "Visible sessions", "可见课次")}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#1d4ed8", marginTop: 8 }}>{sessions.length}</div>
-          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Visible sessions in this timeline.", "当前时间线里的可见课次。")}</div>
+          <div style={{ color: "#1e40af", marginTop: 4 }}>{t(lang, "Current timeline plus recent feedback tasks.", "当前时间线加近期反馈任务。")}</div>
         </div>
         <div style={statCard("#fefce8", "#fde68a")}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#a16207" }}>{t(lang, "Feedback pending", "待提交反馈")}</div>
@@ -164,6 +206,19 @@ export default async function TeacherSessionsPage() {
           <div style={{ color: "#991b1b", marginTop: 4 }}>{t(lang, "Past the 12-hour feedback window.", "已经超过课后12小时反馈窗口。")}</div>
         </div>
       </section>
+
+      {recoveryCount > 0 ? (
+        <section style={{ border: "1px solid #fed7aa", background: "#fff7ed", borderRadius: 12, padding: 12, color: "#9a3412" }}>
+          <div style={{ fontWeight: 800 }}>{t(lang, "Past feedback tasks included", "已包含历史待补反馈")}</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>
+            {t(
+              lang,
+              `${recoveryCount} past session(s) from the last ${FEEDBACK_RECOVERY_LOOKBACK_DAYS} days still need your feedback, so they are shown together with your normal timeline.`,
+              `最近 ${FEEDBACK_RECOVERY_LOOKBACK_DAYS} 天内有 ${recoveryCount} 节历史课仍需补老师反馈，因此已和正常时间线一起显示。`
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {sessions.length === 0 ? (
         <div style={{ color: "#999" }}>{t(lang, "No sessions in range.", "当前范围内没有课次。")}</div>

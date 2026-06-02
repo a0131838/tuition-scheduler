@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-02-r173
+
+- Release ID: `2026-06-02-r173`
+- Date/Time (Asia/Shanghai): `2026-06-02`
+- Deployment status: `READY`
+- Scope: show recent historical teacher sessions that still need teacher feedback on the teacher `My Sessions` page, so overdue feedback tasks do not disappear when they fall outside the normal current timeline.
+- Key files:
+  - `app/teacher/sessions/page.tsx`
+  - `docs/tasks/TASK-20260602-teacher-sessions-historical-feedback-recovery.md`
+- Risk impact (if any): Low. This changes only the teacher portal read query and display copy for `My Sessions`; it does not change attendance saves, feedback submission APIs, scheduling, billing, payroll, package balances, or admin workflows.
+- Verification:
+  - Read-only Prisma check confirmed Ahmar's `2026-05-30 17:00-18:30` missing-feedback session is included by the recovery query.
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-02-r173`.
+
+---
+
 ## 2026-06-02-r172
 
 - Release ID: `2026-06-02-r172`
