@@ -348,6 +348,13 @@ async function deleteInvoiceAction(formData: FormData) {
     redirect(buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing invoice id" }));
   }
   try {
+    const linkedContracts = await prisma.studentContract.findMany({
+      where: { invoiceId },
+      select: { id: true, status: true, invoiceNo: true },
+    });
+    if (linkedContracts.length > 0) {
+      throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
+    }
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
     await detachDeletedInvoiceFromStudentContract({
       invoiceId,
@@ -636,6 +643,13 @@ export default async function PackageBillingPage({
   const today = formatDateOnly(new Date());
   const defaultInvoiceNo = await getNextGlobalInvoiceNo(today);
   const invoiceMap = new Map(data.invoices.map((x) => [x.id, x]));
+  const contractLinksByInvoiceId = new Map<string, typeof packageContracts>();
+  for (const contract of packageContracts) {
+    if (!contract.invoiceId) continue;
+    const bucket = contractLinksByInvoiceId.get(contract.invoiceId) ?? [];
+    bucket.push(contract);
+    contractLinksByInvoiceId.set(contract.invoiceId, bucket);
+  }
   const receiptProgressMap = new Map(
     data.invoices.map((invoice) => {
       const linkedReceipts = data.receipts.filter((receipt) => receipt.invoiceId === invoice.id);
@@ -1287,6 +1301,7 @@ export default async function PackageBillingPage({
               <th align="left">Total</th>
               <th align="left">{t(lang, "Receipt progress", "收据进度")}</th>
               <th align="left">{t(lang, "Approval snapshot", "审批快照")}</th>
+              <th align="left">{t(lang, "Contract link", "合同关联")}</th>
               <th align="left">By</th>
               <th align="left">{t(lang, "Action", "操作")}</th>
               <th align="left">PDF</th>
@@ -1306,6 +1321,7 @@ export default async function PackageBillingPage({
                 status: t(lang, "Receipt action needed", "待创建收据"),
               };
               const nextReceiptLabel = progress.nextReceiptNo.split("-").pop() ?? progress.nextReceiptNo;
+              const invoiceContractLinks = contractLinksByInvoiceId.get(r.id) ?? [];
               return (
                 <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                   <td>{r.invoiceNo}</td>
@@ -1333,6 +1349,27 @@ export default async function PackageBillingPage({
                         {t(lang, "Rejected", "已驳回")}: {money(progress.rejectedAmount)}
                       </div>
                     ) : null}
+                  </td>
+                  <td>
+                    <div style={{ display: "grid", gap: 4, fontSize: 12 }}>
+                      <div style={{ fontWeight: 700, color: invoiceContractLinks.length ? "#166534" : "#92400e" }}>
+                        {invoiceContractLinks.length === 0
+                          ? t(lang, "No linked contract", "未关联合同")
+                          : invoiceContractLinks.length === 1
+                          ? t(lang, "Linked contract active", "已关联合同")
+                          : t(lang, "Linked to multiple contracts", "多合同关联")}
+                      </div>
+                      <div style={{ color: String(r.note ?? "").includes("student-contract:") ? "#166534" : "#475569" }}>
+                        {String(r.note ?? "").includes("student-contract:")
+                          ? t(lang, "Auto from contract", "合同自动生成")
+                          : t(lang, "Manual invoice", "手动创建")}
+                      </div>
+                      {invoiceContractLinks.map((contract) => (
+                        <div key={contract.id} style={{ color: contract.status === "VOID" ? "#b91c1c" : "#475569" }}>
+                          {studentContractFlowLabel(contract.flowType)} · {studentContractStatusLabel(contract.status)}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td>{displayCreator(r.createdBy, creatorUserMap)}</td>
                   <td>
@@ -1364,13 +1401,19 @@ export default async function PackageBillingPage({
                   </td>
                   <td><a href={`/api/exports/parent-invoice/${encodeURIComponent(r.id)}`}>Export PDF</a></td>
                   <td>
-                    <form action={deleteInvoiceAction}>
-                      <input type="hidden" name="packageId" value={packageId} />
-                      <input type="hidden" name="invoiceId" value={r.id} />
-                      <input type="hidden" name="source" value={sourceWorkflow} />
-                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
-                      <button type="submit">Delete</button>
-                    </form>
+                    {invoiceContractLinks.length > 0 ? (
+                      <div style={{ fontSize: 12, color: "#92400e" }}>
+                        {t(lang, "Blocked: linked contract", "已阻止：关联合同")}
+                      </div>
+                    ) : (
+                      <form action={deleteInvoiceAction}>
+                        <input type="hidden" name="packageId" value={packageId} />
+                        <input type="hidden" name="invoiceId" value={r.id} />
+                        <input type="hidden" name="source" value={sourceWorkflow} />
+                        <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                        <button type="submit">Delete</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               );

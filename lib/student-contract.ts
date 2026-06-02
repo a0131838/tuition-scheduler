@@ -33,6 +33,7 @@ import {
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
+import { getStudentContractInvoiceChoice } from "@/lib/student-contract-invoice-choice";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
 const CONTRACT_INVOICE_MARKER_PREFIX = "student-contract:";
@@ -190,6 +191,21 @@ function defaultContractTypeLabel(flowType: StudentContractFlowType) {
   return flowType === StudentContractFlowType.RENEWAL
     ? "Renewal tuition agreement / 续费合同"
     : "New purchase tuition agreement / 首购合同";
+}
+
+function packageHasStartedUsage(row: {
+  paid: boolean;
+  paidAt: Date | null;
+  totalMinutes: number | null;
+  remainingMinutes: number | null;
+}) {
+  return Boolean(
+    row.paid ||
+      row.paidAt ||
+      (row.totalMinutes != null &&
+        row.remainingMinutes != null &&
+        row.totalMinutes > row.remainingMinutes)
+  );
 }
 
 function defaultBusinessInfoFromRow(
@@ -524,6 +540,9 @@ export async function createStudentContractDraft(input: {
   assertDirectBillingPackage(pkg);
 
   const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
+  if (flowType === StudentContractFlowType.NEW_PURCHASE && packageHasStartedUsage(pkg)) {
+    throw new Error("This package already has billing or lesson usage. Use the renewal contract flow instead of first purchase.");
+  }
   let replacementSource: StudentContractRow | null = null;
   if (input.replacementFromContractId?.trim()) {
     replacementSource = await getContractRow({ id: input.replacementFromContractId.trim() });
@@ -546,9 +565,6 @@ export async function createStudentContractDraft(input: {
     (flowType === StudentContractFlowType.RENEWAL || Boolean(replacementSource)
       ? await getLatestReusableParentInfoForStudent(input.studentId)
       : null);
-  if (flowType === StudentContractFlowType.RENEWAL && !reusableParentInfo) {
-    throw new Error("Renewal contracts need an existing parent profile. Use the first-purchase info link first.");
-  }
   const reusableBusinessInfo =
     coerceBusinessInfo(replacementSource?.businessInfoJson) ??
     (flowType === StudentContractFlowType.RENEWAL ? defaultBusinessInfo : null);
@@ -691,9 +707,6 @@ export async function refreshStudentContractIntakeLink(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (row.flowType === StudentContractFlowType.RENEWAL) {
-    throw new Error("Renewal contracts do not use the parent info link");
-  }
   if (isTerminalStatus(row.status)) {
     throw new Error("Signed or invoiced contracts cannot be resent for intake");
   }
@@ -837,9 +850,6 @@ export async function submitStudentContractIntake(input: {
   if (canonical === StudentContractStatus.VOID) {
     throw new Error("Contract has been voided");
   }
-  if (current.flowType !== StudentContractFlowType.NEW_PURCHASE) {
-    throw new Error("This contract does not use the parent info step");
-  }
   if (canonical !== StudentContractStatus.INTAKE_PENDING && canonical !== StudentContractStatus.INTAKE_SUBMITTED) {
     throw new Error("Contract intake is no longer available");
   }
@@ -961,6 +971,12 @@ export async function prepareStudentContractForSigning(input: {
   }
   const businessInfo =
     coerceBusinessInfo(current.businessInfoJson) ?? defaultBusinessInfoFromRow(current, current.flowType);
+  if (current.flowType === StudentContractFlowType.RENEWAL) {
+    const invoiceChoice = await getStudentContractInvoiceChoice(current.id);
+    if (!invoiceChoice) {
+      throw new Error("Select whether this renewal should create a new invoice or link an existing invoice before preparing the sign link.");
+    }
+  }
   const { snapshot } = buildStudentContractSnapshot({
     studentId: current.student.id,
     studentName: current.student.name,
@@ -1016,6 +1032,32 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
       invoiceNo: markedInvoice.invoiceNo,
       invoiceCreatedAt: new Date(markedInvoice.createdAt),
       created: false,
+      choiceMode: "EXISTING_LINK" as const,
+      choiceNote: null,
+      choiceSelectedBy: null,
+    };
+  }
+
+  const renewalChoice =
+    row.flowType === StudentContractFlowType.RENEWAL
+      ? await getStudentContractInvoiceChoice(row.id)
+      : null;
+  if (row.flowType === StudentContractFlowType.RENEWAL && !renewalChoice) {
+    throw new Error("Renewal contract needs an invoice choice before the sign link can be used.");
+  }
+  if (renewalChoice?.mode === "LINK_EXISTING") {
+    const selectedInvoice = billing.invoices.find((invoice) => invoice.id === renewalChoice.invoiceId) ?? null;
+    if (!selectedInvoice) {
+      throw new Error("Selected invoice no longer exists. Please choose the renewal invoice again.");
+    }
+    return {
+      invoiceId: selectedInvoice.id,
+      invoiceNo: selectedInvoice.invoiceNo,
+      invoiceCreatedAt: new Date(selectedInvoice.createdAt),
+      created: false,
+      choiceMode: renewalChoice.mode,
+      choiceNote: renewalChoice.confirmationNote,
+      choiceSelectedBy: renewalChoice.selectedBy,
     };
   }
 
@@ -1031,6 +1073,9 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
       invoiceNo: onlyInvoice.invoiceNo,
       invoiceCreatedAt: new Date(onlyInvoice.createdAt),
       created: false,
+      choiceMode: "AUTO_ONLY_INVOICE" as const,
+      choiceNote: null,
+      choiceSelectedBy: null,
     };
   }
 
@@ -1074,6 +1119,9 @@ async function ensureInvoiceForSignedContract(row: StudentContractRow, snapshot:
     invoiceNo: invoice.invoiceNo,
     invoiceCreatedAt: new Date(invoice.createdAt),
     created: true,
+    choiceMode: renewalChoice?.mode ?? "CREATE_NEW",
+    choiceNote: renewalChoice?.confirmationNote ?? null,
+    choiceSelectedBy: renewalChoice?.selectedBy ?? null,
   };
 }
 
@@ -1099,14 +1147,21 @@ async function ensurePackageGateAfterSignedContract(input: {
       submittedBy: "system.contract@sgtmanage.local",
     });
   }
+  const nextStatus =
+    existingApproval?.status === "APPROVED"
+      ? "SCHEDULABLE"
+      : existingApproval?.status === "REJECTED"
+      ? "BLOCKED"
+      : "INVOICE_PENDING_MANAGER";
 
   await prisma.coursePackage.update({
     where: { id: input.row.packageId },
     data: {
-      financeGateStatus: "INVOICE_PENDING_MANAGER",
+      financeGateStatus: nextStatus,
       financeGateReason: buildPackageFinanceGateReason({
-        status: "INVOICE_PENDING_MANAGER",
+        status: nextStatus,
         invoiceNo: input.invoiceNo,
+        rejectReason: existingApproval?.managerRejectReason ?? null,
       }),
       financeGateUpdatedAt: new Date(),
       financeGateUpdatedBy: "system.contract@sgtmanage.local",
@@ -1316,12 +1371,19 @@ export async function signStudentContract(input: {
     contractId: current.id,
     eventType: StudentContractEventType.INVOICE_CREATED,
     actorType: invoice.created ? "SYSTEM" : "ADMIN",
-    actorLabel: invoice.created ? "Auto-created invoice from signed contract" : "Linked existing invoice after signature",
+    actorLabel: invoice.created
+      ? "Auto-created invoice from signed contract"
+      : invoice.choiceSelectedBy
+      ? `Linked existing invoice selected by ${invoice.choiceSelectedBy}`
+      : "Linked existing invoice after signature",
     payloadJson: {
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,
       renewalTopUpMinutes: renewalTopUp.topUpMinutes || null,
       renewalTopUpApplied: renewalTopUp.applied,
+      invoiceChoiceMode: invoice.choiceMode,
+      invoiceChoiceNote: invoice.choiceNote,
+      invoiceChoiceSelectedBy: invoice.choiceSelectedBy,
     },
   });
   await prisma.studentParentIntake.updateMany({
@@ -1342,8 +1404,16 @@ export async function voidStudentContract(input: {
 }) {
   const row = await getContractRow({ id: input.contractId });
   if (!row) throw new Error("Contract not found");
-  if (isTerminalStatus(row.status)) {
-    throw new Error("Signed or invoiced contracts cannot be voided");
+  const canonical = canonicalStudentContractStatus(row.status);
+  if (canonical === StudentContractStatus.VOID) {
+    throw new Error("Contract is already voided");
+  }
+  const reason = trimOrNull(input.reason);
+  if (
+    (canonical === StudentContractStatus.SIGNED || canonical === StudentContractStatus.INVOICE_CREATED) &&
+    !reason
+  ) {
+    throw new Error("Voiding a signed or invoiced contract requires a reason");
   }
   const next = await prisma.studentContract.update({
     where: { id: row.id },
@@ -1359,7 +1429,12 @@ export async function voidStudentContract(input: {
     actorType: input.actorUserId ? "ADMIN" : "SYSTEM",
     actorUserId: input.actorUserId ?? null,
     actorLabel: input.actorLabel ?? "Voided contract",
-    payloadJson: input.reason ? ({ reason: input.reason } as Prisma.JsonValue) : undefined,
+    payloadJson: {
+      reason,
+      invoiceId: row.invoiceId,
+      invoiceNo: row.invoiceNo,
+      hadSignedPdf: Boolean(row.signedPdfPath),
+    } as Prisma.JsonValue,
   });
   return summarize(next);
 }

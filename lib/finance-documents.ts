@@ -40,6 +40,8 @@ export type FinanceDocumentRow = {
   exportHref: string | null;
   openHref: string;
   exportReady: boolean;
+  sourceLabel?: string | null;
+  contractLinkLabel?: string | null;
 };
 
 function roundMoney(value: number) {
@@ -155,6 +157,27 @@ export async function listFinanceDocumentRows() {
       })
     : [];
   const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg] as const));
+  const parentInvoiceIds = parentAll.invoices.map((invoice) => invoice.id);
+  const parentContracts = parentInvoiceIds.length
+    ? await prisma.studentContract.findMany({
+        where: {
+          invoiceId: { in: parentInvoiceIds },
+        },
+        select: {
+          id: true,
+          invoiceId: true,
+          flowType: true,
+          status: true,
+        },
+      })
+    : [];
+  const parentContractsByInvoice = new Map<string, typeof parentContracts>();
+  for (const contract of parentContracts) {
+    if (!contract.invoiceId) continue;
+    const bucket = parentContractsByInvoice.get(contract.invoiceId) ?? [];
+    bucket.push(contract);
+    parentContractsByInvoice.set(contract.invoiceId, bucket);
+  }
 
   const [parentApprovalMap, partnerApprovalMap] = await Promise.all([
     getParentReceiptApprovalMap(parentAll.receipts.map((x) => x.id)),
@@ -194,6 +217,16 @@ export async function listFinanceDocumentRows() {
     }
     const totalAmount = roundMoney(normalizeAmount(invoice.totalAmount));
     const receiptedAmount = roundMoney(approvedTotal);
+    const linkedContracts = parentContractsByInvoice.get(invoice.id) ?? [];
+    const sourceLabel = String(invoice.note ?? "").includes("student-contract:") ? "Auto from contract" : "Manual invoice";
+    const contractLinkLabel =
+      linkedContracts.length === 0
+        ? "No linked contract"
+        : linkedContracts.length > 1
+        ? "Linked to multiple contracts"
+        : linkedContracts[0].status === "VOID"
+        ? "Linked contract voided"
+        : "Linked contract active";
     rows.push({
       id: invoice.id,
       channel: "PARENT",
@@ -218,6 +251,8 @@ export async function listFinanceDocumentRows() {
       exportHref: `/api/exports/parent-invoice/${encodeURIComponent(invoice.id)}`,
       openHref: `/admin/packages/${encodeURIComponent(invoice.packageId)}/billing#invoices`,
       exportReady: true,
+      sourceLabel,
+      contractLinkLabel,
     });
   }
 

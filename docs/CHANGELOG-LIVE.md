@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-02-r174
+
+- Release ID: `2026-06-02-r174`
+- Date/Time (Asia/Shanghai): `2026-06-02`
+- Deployment status: `READY`
+- Scope: add renewal-contract invoice safeguards so staff must choose whether a renewal creates a new invoice or links an existing invoice before the parent sign link is prepared, and make invoice/contract links visible and protected from accidental deletion.
+- Key files:
+  - `lib/student-contract.ts`
+  - `lib/student-contract-invoice-choice.ts`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `lib/finance-documents.ts`
+  - `app/admin/finance/documents/page.tsx`
+  - `docs/tasks/TASK-20260602-renewal-contract-invoice-safeguards.md`
+- Risk impact (if any): Medium. This changes direct-billing student renewal contract signing and parent invoice deletion guards. It does not change attendance deduction, package scheduling logic, payroll, partner settlement, transport billing, Business Accounts, or receipt PDF generation.
+- Verification:
+  - Read-only Prisma check confirmed Coco's `RGT-202605-0011` invoice is receipted and linked to contract history, so the new option/display path identifies it as protected.
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-02-r174`.
+
+---
+
 ## 2026-06-02-r173
 
 - Release ID: `2026-06-02-r173`

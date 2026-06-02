@@ -214,6 +214,7 @@ export default async function FinanceDocumentsPage({
                 <th align="left">{t(lang, "Date", "日期")}</th>
                 <th align="left">{t(lang, "Party", "对象")}</th>
                 <th align="left">{t(lang, "Context", "上下文")}</th>
+                <th align="left">{t(lang, "Source", "来源")}</th>
                 <th align="left">{t(lang, "Amount", "金额")}</th>
                 <th align="left">{t(lang, "Received", "已收")}</th>
                 <th align="left">{t(lang, "Remaining", "未收余额")}</th>
@@ -231,6 +232,14 @@ export default async function FinanceDocumentsPage({
                   <td>{normalizeDateOnly(row.issueDate) ?? "-"}</td>
                   <td>{row.partyLabel}</td>
                   <td>{row.contextLabel}</td>
+                  <td>
+                    <div style={{ display: "grid", gap: 3, fontSize: 12 }}>
+                      <span style={{ fontWeight: 800, color: row.contractLinkLabel === "No linked contract" ? "#92400e" : "#166534" }}>
+                        {row.contractLinkLabel ?? "-"}
+                      </span>
+                      <span style={{ color: "#475569" }}>{row.sourceLabel ?? "-"}</span>
+                    </div>
+                  </td>
                   <td>SGD {money(row.amount)}</td>
                   <td>SGD {money(row.receiptedAmount)}</td>
                   <td>SGD {money(row.remainingAmount)}</td>

@@ -27,6 +27,12 @@ import {
   listDeletedParentInvoicesForPackage,
   listParentBillingForPackage,
 } from "@/lib/student-parent-billing";
+import {
+  findSimilarContractInvoices,
+  getStudentContractInvoiceChoice,
+  listStudentContractInvoiceOptions,
+  saveStudentContractInvoiceChoice,
+} from "@/lib/student-contract-invoice-choice";
 
 function normalizePackageBillingSource(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase() === "receipts" ? "receipts" : "";
@@ -146,6 +152,13 @@ async function deleteInvoiceAction(formData: FormData) {
     redirect(buildPackageContractHref(packageId, { sourceWorkflow, receiptsBack, err: "Missing invoice id" }));
   }
   try {
+    const linkedContracts = await prisma.studentContract.findMany({
+      where: { invoiceId },
+      select: { id: true, status: true, invoiceNo: true },
+    });
+    if (linkedContracts.length > 0) {
+      throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
+    }
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
     await detachDeletedInvoiceFromStudentContract({
       invoiceId,
@@ -228,6 +241,7 @@ async function prepareContractSignAction(formData: FormData) {
   const admin = await requireAdmin();
   const packageId = String(formData.get("packageId") ?? "").trim();
   const contractId = String(formData.get("contractId") ?? "").trim();
+  const flowType = String(formData.get("flowType") ?? "").trim();
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
   if (!packageId || !contractId) {
@@ -245,6 +259,16 @@ async function prepareContractSignAction(formData: FormData) {
         agreementDateIso: String(formData.get("agreementDateIso") ?? "").trim(),
       },
     });
+    if (flowType === "RENEWAL") {
+      await saveStudentContractInvoiceChoice({
+        contractId,
+        packageId,
+        mode: String(formData.get("invoiceChoiceMode") ?? "") === "LINK_EXISTING" ? "LINK_EXISTING" : "CREATE_NEW",
+        invoiceId: String(formData.get("invoiceChoiceInvoiceId") ?? "").trim() || null,
+        confirmationNote: String(formData.get("invoiceChoiceNote") ?? "").trim() || null,
+        selectedBy: admin.email,
+      });
+    }
     await prepareStudentContractForSigning({
       contractId,
       actorUserId: admin.id,
@@ -350,7 +374,7 @@ export default async function PackageContractPage({
   const latestContractInvoiceReceipts = latestContractInvoice
     ? data.receipts.filter((receipt) => receipt.invoiceId === latestContractInvoice.id)
     : [];
-  const canDeleteLatestContractInvoiceDraft = Boolean(latestContractInvoice) && latestContractInvoiceReceipts.length === 0;
+  const canDeleteLatestContractInvoiceDraft = false;
   const baseUrl = appBaseUrl();
   const contractIntakePath = latestContract?.intakeToken ? buildStudentContractIntakePath(latestContract.intakeToken) : "";
   const contractSignPath = latestContract?.signToken ? buildStudentContractSignPath(latestContract.signToken) : "";
@@ -358,6 +382,23 @@ export default async function PackageContractPage({
   const contractSignShare = contractSignPath ? `${baseUrl}${contractSignPath}` || contractSignPath : "";
   const contractBusinessInfo = latestContract?.businessInfo ?? null;
   const contractParentInfo = latestContract?.parentInfo ?? null;
+  const latestContractInvoiceChoice =
+    latestContract?.flowType === "RENEWAL"
+      ? await getStudentContractInvoiceChoice(latestContract.id)
+      : null;
+  const latestContractInvoiceOptions =
+    latestContract?.flowType === "RENEWAL"
+      ? await listStudentContractInvoiceOptions(packageId)
+      : [];
+  const similarRenewalInvoices =
+    latestContract?.flowType === "RENEWAL"
+      ? findSimilarContractInvoices({
+          invoices: data.invoices,
+          receipts: data.receipts,
+          amount: contractBusinessInfo?.feeAmount ?? null,
+          issueDate: contractBusinessInfo?.agreementDateIso ?? null,
+        })
+      : [];
   const likelyLegacyNoContract =
     usesStudentContractFlow &&
     !latestContract &&
@@ -446,7 +487,7 @@ export default async function PackageContractPage({
                     </div>
                   </div>
 
-                  {latestContract.flowType === "NEW_PURCHASE" ? (
+                  {latestContract.flowType === "NEW_PURCHASE" || contractNeedsParentInfo(latestContract.status) ? (
                     <div style={{ border: "1px solid #dbeafe", borderRadius: 12, background: "#fff", padding: "12px 14px", display: "grid", gap: 8 }}>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
                         {contractFromParentIntake ? t(lang, "Parent intake record", "家长资料记录") : t(lang, "Parent info link", "家长资料链接")}
@@ -546,7 +587,7 @@ export default async function PackageContractPage({
                   </div>
                 </div>
 
-                {contractCanEditDraft(latestContract.status) && (latestContract.flowType === "RENEWAL" || contractParentInfo) ? (
+                {contractCanEditDraft(latestContract.status) && contractParentInfo ? (
                   <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", padding: 14, display: "grid", gap: 12 }}>
                     <div style={{ display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 800 }}>{t(lang, "Contract draft details", "合同草稿信息")}</div>
@@ -557,6 +598,7 @@ export default async function PackageContractPage({
                     <form action={prepareContractSignAction} style={{ display: "grid", gap: 12 }}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="contractId" value={latestContract.id} />
+                      <input type="hidden" name="flowType" value={latestContract.flowType} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -577,6 +619,74 @@ export default async function PackageContractPage({
                           <input name="agreementDateIso" type="date" defaultValue={contractBusinessInfo?.agreementDateIso ?? today} style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }} />
                         </label>
                       </div>
+                      {latestContract.flowType === "RENEWAL" ? (
+                        <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, display: "grid", gap: 10 }}>
+                          <div style={{ display: "grid", gap: 4 }}>
+                            <div style={{ fontWeight: 800, color: "#9a3412" }}>{t(lang, "Renewal invoice decision", "续费发票处理方式")}</div>
+                            <div style={{ color: "#9a3412", fontSize: 13, lineHeight: 1.5 }}>
+                              {t(lang, "Choose before sending the sign link. This prevents a renewal contract from silently creating a duplicate invoice when finance has already issued one.", "发送签字链接前必须选择，避免财务已提前开票时，续费合同签署后又静默生成重复发票。")}
+                            </div>
+                          </div>
+                          {similarRenewalInvoices.length > 0 ? (
+                            <div style={{ border: "1px solid #fdba74", borderRadius: 10, background: "#fffbeb", padding: 10, color: "#92400e", fontSize: 13, lineHeight: 1.5 }}>
+                              {t(lang, `Similar invoice exists (${similarRenewalInvoices.map((invoice) => invoice.invoiceNo).join(", ")}). Add a confirmation note if you still create a new invoice.`, `已存在类似发票（${similarRenewalInvoices.map((invoice) => invoice.invoiceNo).join(", ")}）。如果仍要新开发票，请填写确认备注。`)}
+                            </div>
+                          ) : null}
+                          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontWeight: 700 }}>
+                            <input
+                              type="radio"
+                              name="invoiceChoiceMode"
+                              value="CREATE_NEW"
+                              defaultChecked={!latestContractInvoiceChoice || latestContractInvoiceChoice.mode === "CREATE_NEW"}
+                            />
+                            <span>{t(lang, "Create new invoice after parent signs / 家长签署后生成新发票", "Create new invoice after parent signs / 家长签署后生成新发票")}</span>
+                          </label>
+                          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontWeight: 700 }}>
+                            <input
+                              type="radio"
+                              name="invoiceChoiceMode"
+                              value="LINK_EXISTING"
+                              defaultChecked={latestContractInvoiceChoice?.mode === "LINK_EXISTING"}
+                            />
+                            <span>{t(lang, "Link existing invoice / 关联已有发票", "Link existing invoice / 关联已有发票")}</span>
+                          </label>
+                          {latestContractInvoiceOptions.length > 0 ? (
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Existing invoice to link", "选择要关联的已有发票")}</span>
+                              <select
+                                name="invoiceChoiceInvoiceId"
+                                defaultValue={latestContractInvoiceChoice?.invoiceId ?? ""}
+                                style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #fdba74" }}
+                              >
+                                <option value="">{t(lang, "Select invoice if linking existing", "如果关联已有发票，请选择")}</option>
+                                {latestContractInvoiceOptions.map((option) => (
+                                  <option key={option.invoice.id} value={option.invoice.id}>
+                                    {option.invoice.invoiceNo} | {option.invoice.issueDate} | SGD {Number(option.invoice.totalAmount || 0).toFixed(2)} | {option.hasReceipt ? t(lang, "receipt exists", "已有收据") : t(lang, "no receipt", "无收据")} | {option.linkedContracts.length ? t(lang, "linked contract", "已关联合同") : t(lang, "no linked contract", "未关联合同")} | {option.source === "CONTRACT" ? t(lang, "contract-created", "合同生成") : t(lang, "manual", "手动")}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div style={{ color: "#92400e", fontSize: 13 }}>
+                              {t(lang, "No existing invoice is available for this package.", "当前课包没有可关联的已有发票。")}
+                            </div>
+                          )}
+                          <label style={{ display: "grid", gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700 }}>{t(lang, "Confirmation note", "确认备注")}</span>
+                            <textarea
+                              name="invoiceChoiceNote"
+                              defaultValue={latestContractInvoiceChoice?.confirmationNote ?? ""}
+                              placeholder={t(lang, "Required when linking a receipted invoice or creating a new invoice despite a similar one", "关联已有收据的发票，或已有类似发票仍要新开时必填")}
+                              style={{ minHeight: 58, padding: "8px 10px", borderRadius: 10, border: "1px solid #fdba74" }}
+                            />
+                          </label>
+                          {latestContractInvoiceChoice ? (
+                            <div style={{ color: "#64748b", fontSize: 12 }}>
+                              {t(lang, "Last saved", "上次保存")}: {latestContractInvoiceChoice.mode} · {latestContractInvoiceChoice.selectedBy} · {new Date(latestContractInvoiceChoice.selectedAt).toLocaleString(lang === "ZH" ? "zh-CN" : "en-SG")}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 700 }}>
                           {latestContract.status === "READY_TO_SIGN"
@@ -633,7 +743,7 @@ export default async function PackageContractPage({
                 ) : null}
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-                  {latestContract.flowType === "NEW_PURCHASE" && !contractIsTerminal(latestContract.status) && !contractFromParentIntake ? (
+                  {!contractIsTerminal(latestContract.status) && contractNeedsParentInfo(latestContract.status) && !contractFromParentIntake ? (
                     <form action={resendContractIntakeAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="contractId" value={latestContract.id} />
@@ -662,12 +772,31 @@ export default async function PackageContractPage({
                   <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fff7f7", padding: 14, display: "grid", gap: 10 }}>
                     <div style={{ fontWeight: 800, color: "#991b1b" }}>{t(lang, "Need a corrected contract version?", "需要更正这份合同吗？")}</div>
                     <div style={{ color: "#7f1d1d", fontSize: 13, lineHeight: 1.6 }}>
-                      {t(lang, "Signed or invoiced contracts stay in history, so the Void button is no longer available here. Instead of editing or voiding the old one, stop using the old invoice draft and create a replacement version for the parent to sign.", "已经签过或开过票的合同会保留在历史中，所以这里不会再显示作废按钮。不要继续修改或作废旧合同，请先停用旧发票草稿，再创建一份更正版本给家长重新签字。")}
+                      {t(lang, "Signed or invoiced contracts stay in history. If the signed contract is wrong, mark it void with a reason; invoices with receipts stay for finance handling and are not deleted automatically.", "已经签过或开过票的合同会保留在历史中。如果已签合同有误，请填写原因并作废；已有收据的发票会继续保留给财务处理，不会自动删除。")}
                     </div>
+                    {latestContract.invoiceId ? (
+                      <div style={{ border: "1px solid #fecaca", borderRadius: 10, background: "#fff", padding: 10, color: "#7f1d1d", fontSize: 13, lineHeight: 1.5 }}>
+                        {t(lang, "Linked invoice", "关联合同发票")}: <strong>{latestContract.invoiceNo ?? "-"}</strong>
+                        {" · "}
+                        {latestContractInvoiceReceipts.length > 0
+                          ? t(lang, "Receipt exists: invoice cannot be deleted automatically.", "已有收据：发票不能自动删除。")
+                          : t(lang, "No receipt yet: finance can review whether this invoice should be deleted after contract handling.", "暂无收据：处理合同后，财务可再复核是否删除这张发票。")}
+                      </div>
+                    ) : null}
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                       <a href={buildPackageBillingHref(packageId, { sourceWorkflow, receiptsBack }) + "#invoices"}>
                         {t(lang, "Open old invoice lane first", "先打开旧发票区")}
                       </a>
+                      <form action={voidContractAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <input type="hidden" name="packageId" value={packageId} />
+                        <input type="hidden" name="contractId" value={latestContract.id} />
+                        <input type="hidden" name="source" value={sourceWorkflow} />
+                        <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                        <input required name="reason" placeholder={t(lang, "Required void reason", "必填作废原因")} style={{ minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid #fca5a5" }} />
+                        <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 700 }}>
+                          {t(lang, "Void signed contract", "作废已签合同")}
+                        </button>
+                      </form>
                       {hasRenewalContractParentInfo && latestContract.flowType === "NEW_PURCHASE" ? (
                         <form action={createContractDraftAction}>
                           <input type="hidden" name="packageId" value={packageId} />
@@ -700,7 +829,9 @@ export default async function PackageContractPage({
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ color: "#475569", fontSize: 13 }}>
-                  {t(lang, "Use first-purchase flow when the parent still needs to submit profile details. Use renewal only when the student already has a confirmed parent profile from an earlier contract.", "如果家长资料还没收集，请走首购流程；只有学生已经有上一份确认过的家长资料时，才直接走续费合同。")}
+                  {likelyLegacyNoContract
+                    ? t(lang, "This is an existing direct-billing package, so new sales should start as renewal even if parent details need to be collected first.", "这是已有直客课包，所以新的销售应走续费流程；即使还需要先收集家长资料，也不要再走首购。")
+                    : t(lang, "Use first-purchase flow only for a genuinely new package. Existing packages and top-ups should use renewal.", "只有真正新课包才走首购；已有课包和增购续费应走续费。")}
                 </div>
                 {likelyLegacyNoContract ? (
                   <div style={{ border: "1px solid #fed7aa", borderRadius: 12, background: "#fff7ed", padding: 12, color: "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
@@ -708,17 +839,19 @@ export default async function PackageContractPage({
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <form action={createContractDraftAction}>
-                    <input type="hidden" name="packageId" value={packageId} />
-                    <input type="hidden" name="studentId" value={pkg.studentId} />
-                    <input type="hidden" name="flowType" value="NEW_PURCHASE" />
-                    <input type="hidden" name="source" value={sourceWorkflow} />
-                    <input type="hidden" name="receiptsBack" value={receiptsBack} />
-                    <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
-                      {t(lang, "Send parent info link", "发送家长资料链接")}
-                    </button>
-                  </form>
-                  {hasRenewalContractParentInfo ? (
+                  {!likelyLegacyNoContract ? (
+                    <form action={createContractDraftAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
+                      <input type="hidden" name="flowType" value="NEW_PURCHASE" />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
+                        {t(lang, "Send parent info link", "发送家长资料链接")}
+                      </button>
+                    </form>
+                  ) : null}
+                  {hasRenewalContractParentInfo || likelyLegacyNoContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
@@ -726,7 +859,9 @@ export default async function PackageContractPage({
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#fff", color: "#166534", fontWeight: 700 }}>
-                        {t(lang, "Create renewal contract", "创建续费合同")}
+                        {hasRenewalContractParentInfo
+                          ? t(lang, "Create renewal contract", "创建续费合同")
+                          : t(lang, "Start renewal intake", "发起续费资料链接")}
                       </button>
                     </form>
                   ) : (
