@@ -3,12 +3,13 @@ import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { listDeletedParentInvoices } from "@/lib/student-parent-billing";
 import { listDeletedPartnerInvoices } from "@/lib/partner-billing";
+import { listDeletedBusinessInvoices } from "@/lib/business-accounts";
 import { normalizeDateOnly } from "@/lib/date-only";
 import { workbenchFilterPanelStyle, workbenchHeroStyle } from "@/app/admin/_components/workbenchStyles";
 
 type HistoryRow = {
   id: string;
-  channel: "PARENT" | "PARTNER";
+  channel: "PARENT" | "PARTNER" | "BUSINESS";
   invoiceNo: string;
   issueDate: string;
   deletedAt: string;
@@ -42,9 +43,10 @@ export default async function FinanceDeletedInvoicesPage({
   const packageIdFilter = String(sp?.packageId ?? "").trim();
   const monthFilter = String(sp?.month ?? "").trim();
 
-  const [parentDeleted, partnerDeleted] = await Promise.all([
+  const [parentDeleted, partnerDeleted, businessDeleted] = await Promise.all([
     listDeletedParentInvoices(packageIdFilter || null),
     listDeletedPartnerInvoices(monthFilter || null),
+    listDeletedBusinessInvoices(),
   ]);
 
   const packageIds = Array.from(new Set(parentDeleted.map((x) => x.packageId).filter(Boolean)));
@@ -81,6 +83,17 @@ export default async function FinanceDeletedInvoicesPage({
       partyLabel: row.billTo || row.partnerName,
       contextLabel: `${row.partnerName} · ${row.mode}${row.monthKey ? ` · ${row.monthKey}` : ""}`,
       openHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(row.mode)}${row.monthKey ? `&month=${encodeURIComponent(row.monthKey)}` : ""}&tab=invoices`,
+    })),
+    ...businessDeleted.map((row) => ({
+      id: row.id,
+      channel: "BUSINESS" as const,
+      invoiceNo: row.invoiceNo,
+      issueDate: row.issueDate,
+      deletedAt: row.deletedAt,
+      deletedBy: row.deletedBy,
+      partyLabel: row.legalNameZh || row.legalNameEn,
+      contextLabel: `${row.legalNameEn || row.legalNameZh} · ${row.monthKey}${row.receiptNo ? ` · ${row.receiptNo}` : ""}`,
+      openHref: `/admin/finance/business-accounts?accountId=${encodeURIComponent(row.accountId)}`,
     })),
   ]
     .filter((row) => {
@@ -128,6 +141,7 @@ export default async function FinanceDeletedInvoicesPage({
               <option value="">{t(lang, "All", "全部")}</option>
               <option value="PARENT">{t(lang, "Parent", "直客")}</option>
               <option value="PARTNER">{t(lang, "Partner", "合作方")}</option>
+              <option value="BUSINESS">{t(lang, "Business Account", "企业账户")}</option>
             </select>
           </label>
           <label style={{ display: "grid", gap: 6 }}>

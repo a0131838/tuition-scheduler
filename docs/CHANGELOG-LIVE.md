@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-02-r172
+
+- Release ID: `2026-06-02-r172`
+- Date/Time (Asia/Shanghai): `2026-06-02`
+- Deployment status: `READY`
+- Scope: unify invoice number reservation across parent/student, partner, and Business Accounts so deleted invoice numbers remain reserved and are not reused by the global `RGT-yyyymm-xxxx` sequence.
+- Key files:
+  - `lib/global-invoice-sequence.ts`
+  - `lib/business-accounts.ts`
+  - `app/admin/finance/deleted-invoices/page.tsx`
+  - `tests/billing-optimistic-lock.test.ts`
+  - `docs/tasks/TASK-20260602-global-invoice-deleted-number-reservation.md`
+- Risk impact (if any): Medium. This changes the global next-invoice-number calculation to include deleted parent/student invoices, deleted partner invoices, and deleted Business Account invoices as fixed reserved numbers. It does not change package balances, receipt PDFs, attendance, scheduling, payroll, or tutor payments.
+- Verification:
+  - `npx tsx --test tests/billing-optimistic-lock.test.ts`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-02-r172`.
+
+---
+
 ## 2026-06-02-r171
 
 - Release ID: `2026-06-02-r171`

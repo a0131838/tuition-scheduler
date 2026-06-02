@@ -303,6 +303,9 @@ test("business account receipt requires an uploaded payment record", async () =>
   const saved = store.getValue();
   assert.equal(saved.monthlyDocuments.length, 0);
   assert.equal(saved.paymentRecords.length, 0);
+  assert.equal(saved.deletedInvoices.length, 1);
+  assert.equal(saved.deletedInvoices[0].invoiceNo, "RGT-202606-0007");
+  assert.equal(saved.deletedInvoices[0].receiptNo, "RGT-202606-0007-RC");
 });
 
 test("partner settlement manager reject retries on conflict and clears finance approvals on latest state", async () => {

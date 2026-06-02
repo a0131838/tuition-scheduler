@@ -106,10 +106,26 @@ export type BusinessPaymentRecordItem = {
   note: string | null;
 };
 
+export type DeletedBusinessInvoiceItem = {
+  id: string;
+  documentId: string;
+  accountId: string;
+  invoiceNo: string;
+  receiptNo: string | null;
+  legalNameEn: string;
+  legalNameZh: string;
+  monthKey: string;
+  issueDate: string;
+  deletedBy: string;
+  deletedAt: string;
+  deleteReason: string;
+};
+
 export type BusinessAccountsStore = {
   accounts: BusinessAccount[];
   monthlyDocuments: BusinessMonthlyDocument[];
   paymentRecords: BusinessPaymentRecordItem[];
+  deletedInvoices: DeletedBusinessInvoiceItem[];
   invoiceSeqByMonth: Record<string, number>;
 };
 
@@ -119,6 +135,7 @@ const EMPTY_STORE: BusinessAccountsStore = {
   accounts: [],
   monthlyDocuments: [],
   paymentRecords: [],
+  deletedInvoices: [],
   invoiceSeqByMonth: {},
 };
 
@@ -176,6 +193,7 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
   const accounts = Array.isArray(root.accounts) ? root.accounts : [];
   const monthlyDocuments = Array.isArray(root.monthlyDocuments) ? root.monthlyDocuments : [];
   const paymentRecords = Array.isArray(root.paymentRecords) ? root.paymentRecords : [];
+  const deletedInvoices = Array.isArray(root.deletedInvoices) ? root.deletedInvoices : [];
   const invoiceSeqByMonth = root.invoiceSeqByMonth && typeof root.invoiceSeqByMonth === "object" ? root.invoiceSeqByMonth : {};
   return {
     accounts: accounts
@@ -263,6 +281,22 @@ function sanitizeStore(input: unknown): BusinessAccountsStore {
         note: textOrNull(x.note),
       }))
       .filter((x: BusinessPaymentRecordItem) => x.id && x.accountId && x.documentId && x.relativePath),
+    deletedInvoices: deletedInvoices
+      .map((x: any) => ({
+        id: String(x.id ?? "").trim(),
+        documentId: String(x.documentId ?? "").trim(),
+        accountId: String(x.accountId ?? "").trim(),
+        invoiceNo: String(x.invoiceNo ?? "").trim(),
+        receiptNo: textOrNull(x.receiptNo),
+        legalNameEn: String(x.legalNameEn ?? "").trim(),
+        legalNameZh: String(x.legalNameZh ?? "").trim(),
+        monthKey: String(x.monthKey ?? "").trim(),
+        issueDate: normalizeDateOnly(x.issueDate) ?? formatBusinessDateOnly(new Date()),
+        deletedBy: String(x.deletedBy ?? "").trim().toLowerCase(),
+        deletedAt: String(x.deletedAt ?? nowIso()),
+        deleteReason: String(x.deleteReason ?? "").trim() || "Deleted",
+      }))
+      .filter((x: DeletedBusinessInvoiceItem) => x.id && x.documentId && x.accountId && x.invoiceNo && /^\d{4}-\d{2}$/.test(x.monthKey)),
     invoiceSeqByMonth: Object.entries(invoiceSeqByMonth).reduce<Record<string, number>>((acc, [k, v]) => {
       const key = String(k);
       if (/^\d{6}$/.test(key)) acc[key] = Math.max(0, Math.floor(Number(v) || 0));
@@ -315,6 +349,29 @@ export async function listBusinessAccounts() {
   const { store } = await loadJsonAppSettingForDb(prisma as any, BUSINESS_ACCOUNTS_KEY, EMPTY_STORE, sanitizeStore);
   ensureDefaults(store);
   return store;
+}
+
+function buildDeletedInvoiceHistoryItem(
+  store: BusinessAccountsStore,
+  document: BusinessMonthlyDocument,
+  actorEmail: string | null | undefined,
+  reason: string,
+): DeletedBusinessInvoiceItem {
+  const account = store.accounts.find((x) => x.id === document.accountId);
+  return {
+    id: crypto.randomUUID(),
+    documentId: document.id,
+    accountId: document.accountId,
+    invoiceNo: document.invoiceNo,
+    receiptNo: document.receiptNo,
+    legalNameEn: account?.legalNameEn ?? "",
+    legalNameZh: account?.legalNameZh ?? "",
+    monthKey: document.monthKey,
+    issueDate: document.issueDate,
+    deletedBy: String(actorEmail ?? "").trim().toLowerCase(),
+    deletedAt: nowIso(),
+    deleteReason: reason,
+  };
 }
 
 export async function getBusinessAccount(accountId: string) {
@@ -650,6 +707,7 @@ export async function deleteDraftBusinessMonthlyDocument(input: {
       if (current.status !== "DRAFT") throw new Error("Only draft documents can be deleted. Void issued or paid documents instead.");
       deleted = current;
       store.monthlyDocuments.splice(idx, 1);
+      store.deletedInvoices.unshift(buildDeletedInvoiceHistoryItem(store, current, input.actor.email, "Draft deleted"));
     },
   });
   const deletedItem = deleted as BusinessMonthlyDocument | null;
@@ -685,6 +743,7 @@ export async function deleteVoidedBusinessMonthlyDocument(input: {
       deletedPaymentRecords = store.paymentRecords.filter((x) => x.documentId === current.id);
       store.monthlyDocuments.splice(idx, 1);
       store.paymentRecords = store.paymentRecords.filter((x) => x.documentId !== current.id);
+      store.deletedInvoices.unshift(buildDeletedInvoiceHistoryItem(store, current, input.actor.email, "Voided document deleted"));
     },
   });
   const deletedItem = deleted as BusinessMonthlyDocument | null;
@@ -882,4 +941,11 @@ export async function getBusinessMonthlyDocument(id: string) {
   if (!document) return null;
   const account = store.accounts.find((x) => x.id === document.accountId) ?? null;
   return account ? { account, document } : null;
+}
+
+export async function listDeletedBusinessInvoices(accountId?: string | null) {
+  const store = await listBusinessAccounts();
+  return [...store.deletedInvoices]
+    .filter((x) => !accountId || x.accountId === accountId)
+    .sort((a, b) => String(b.deletedAt).localeCompare(String(a.deletedAt)));
 }

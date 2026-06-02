@@ -2,9 +2,11 @@ import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import {
   applyParentInvoiceNumberAssignments,
   listAllParentBilling,
+  listDeletedParentInvoices,
 } from "@/lib/student-parent-billing";
 import {
   applyPartnerInvoiceNumberAssignments,
+  listDeletedPartnerInvoices,
   listPartnerBilling,
 } from "@/lib/partner-billing";
 import { listBusinessAccounts } from "@/lib/business-accounts";
@@ -38,10 +40,12 @@ function formatInvoiceNo(monthKey: string, seq: number) {
 }
 
 async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
-  const [parent, partner, business, cfg] = await Promise.all([
+  const [parent, partner, business, deletedParent, deletedPartner, cfg] = await Promise.all([
     listAllParentBilling(),
     listPartnerBilling(),
     listBusinessAccounts(),
+    listDeletedParentInvoices(),
+    listDeletedPartnerInvoices(),
     getApprovalRoleConfig(),
   ]);
 
@@ -90,6 +94,33 @@ async function loadGlobalInvoices(): Promise<GlobalInvoiceRow[]> {
       id: inv.id,
       invoiceNo: inv.invoiceNo,
       createdAt: inv.createdAt,
+      fixed: true,
+    });
+  }
+  for (const inv of deletedParent) {
+    out.push({
+      owner: "PARENT",
+      id: inv.invoiceId,
+      invoiceNo: inv.invoiceNo,
+      createdAt: inv.deletedAt,
+      fixed: true,
+    });
+  }
+  for (const inv of deletedPartner) {
+    out.push({
+      owner: "PARTNER",
+      id: inv.invoiceId,
+      invoiceNo: inv.invoiceNo,
+      createdAt: inv.deletedAt,
+      fixed: true,
+    });
+  }
+  for (const inv of business.deletedInvoices) {
+    out.push({
+      owner: "BUSINESS",
+      id: inv.documentId,
+      invoiceNo: inv.invoiceNo,
+      createdAt: inv.deletedAt,
       fixed: true,
     });
   }
