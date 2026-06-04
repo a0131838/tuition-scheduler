@@ -5,7 +5,7 @@ import { BUSINESS_UPLOAD_PREFIX, storeBusinessBuffer } from "@/lib/business-file
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import { createParentInvoice } from "@/lib/student-parent-billing";
-import { getSchoolApplicationTarget } from "@/lib/school-application-directory";
+import { getSchoolApplicationTarget, inferSchoolApplicationEquivalentLevel } from "@/lib/school-application-directory";
 import {
   generateSignedSchoolApplicationPdfBuffer,
   generateUnsignedSchoolApplicationPdfBuffer,
@@ -32,6 +32,7 @@ export type SchoolApplicationItem = {
   schoolName: string;
   programme?: string | null;
   grade?: string | null;
+  equivalentLevel?: string | null;
   intake?: string | null;
   serviceFee?: number | null;
   officialFee?: number | null;
@@ -120,6 +121,7 @@ function coerceItems(value: unknown): SchoolApplicationItem[] {
         schoolName: target?.name ?? trim((item as any)?.schoolName),
         programme: trimOrNull((item as any)?.programme) ?? target?.programmes[0] ?? null,
         grade: trimOrNull((item as any)?.grade),
+        equivalentLevel: trimOrNull((item as any)?.equivalentLevel) ?? inferSchoolApplicationEquivalentLevel(trimOrNull((item as any)?.grade)),
         intake: trimOrNull((item as any)?.intake) ?? target?.intakes[0] ?? null,
         serviceFee: money((item as any)?.serviceFee),
         officialFee: money((item as any)?.officialFee) || money(target?.officialFee),
@@ -348,6 +350,7 @@ function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSn
     schoolName: item.schoolName,
     programme: item.programme ?? null,
     grade: item.grade ?? null,
+    equivalentLevel: item.equivalentLevel ?? inferSchoolApplicationEquivalentLevel(item.grade),
     intake: item.intake ?? null,
     serviceFee: money(item.serviceFee),
     officialFee: money(item.officialFee),

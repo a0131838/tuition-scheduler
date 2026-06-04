@@ -12,6 +12,7 @@ import {
 } from "@/lib/school-application";
 import { formatDateOnly } from "@/lib/date-only";
 import {
+  SCHOOL_APPLICATION_EQUIVALENT_LEVELS,
   SCHOOL_APPLICATION_GRADES,
   SCHOOL_APPLICATION_INTAKES,
   SCHOOL_APPLICATION_PROGRAMMES,
@@ -45,6 +46,7 @@ function parseItems(formData: FormData): SchoolApplicationItem[] {
       schoolName: "",
       programme: String(formData.get(`programme_${i}`) ?? "").trim() || null,
       grade: String(formData.get(`grade_${i}`) ?? "").trim() || null,
+      equivalentLevel: String(formData.get(`equivalentLevel_${i}`) ?? "").trim() || null,
       intake: String(formData.get(`intake_${i}`) ?? "").trim() || null,
       serviceFee: Number(formData.get(`serviceFee_${i}`) ?? 0),
       officialFee: Number(formData.get(`officialFee_${i}`) ?? 0),
@@ -271,7 +273,7 @@ export default async function SchoolApplicationsPage({
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "#eff6ff" }}>
-                        {["School / application", "Programme", "Grade", "Intake", "Service fee", "Official fee", "Official fee mode", "Notes"].map((x) => (
+                        {["School / application", "Programme", "School grade", "Equivalent level", "Intake", "Service fee", "Official fee", "Official fee mode", "Notes"].map((x) => (
                           <th key={x} style={{ border: "1px solid #dbeafe", padding: 6, textAlign: "left" }}>{x}</th>
                         ))}
                       </tr>
@@ -304,9 +306,15 @@ export default async function SchoolApplicationsPage({
                               </select>
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={{ ...inputStyle(), minWidth: 160 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={app.status === "INVOICE_CREATED"}>
                                 <option value="">Select</option>
                                 {SCHOOL_APPLICATION_GRADES.map((value) => <option key={value} value={value}>{value}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`equivalentLevel_${i}`} defaultValue={item?.equivalentLevel ?? ""} style={{ ...inputStyle(), minWidth: 170 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Auto/default</option>
+                                {SCHOOL_APPLICATION_EQUIVALENT_LEVELS.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>

@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r178
+
+- Release ID: `2026-06-04-r178`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: split school application level entry into school-facing grade and internal equivalent level so British Year 13 can be shown as Grade 12 equivalent while keeping the school's own level wording on the agreement.
+- Key files:
+  - `lib/school-application-directory.ts`
+  - `lib/school-application.ts`
+  - `lib/school-application-pdf.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/school-application/[token]/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-grade-equivalency.md`
+- Risk impact (if any): Low. This changes school application service display and JSON payloads only. It does not change invoice numbering, receipt approval, lesson balances, attendance, scheduling, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested a temporary no-package student with `Year 13`; confirmed saved item, signing snapshot, and generated PDF all carry `Grade 12 equivalent`. Confirmed remaining temporary students: `0`.
+- Rollback point: previous production commit before `2026-06-04-r178`.
+
+---
+
 ## 2026-06-04-r177
 
 - Release ID: `2026-06-04-r177`

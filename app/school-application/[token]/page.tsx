@@ -19,6 +19,11 @@ function inputStyle() {
   return { padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 10, width: "100%" };
 }
 
+function gradeLabel(item: { grade: string | null; equivalentLevel?: string | null }) {
+  if (item.grade && item.equivalentLevel) return `${item.grade} (${item.equivalentLevel})`;
+  return item.grade ?? item.equivalentLevel ?? null;
+}
+
 async function signAction(formData: FormData) {
   "use server";
   const token = String(formData.get("token") ?? "").trim();
@@ -97,7 +102,7 @@ export default async function SchoolApplicationSignPage({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr style={{ background: "#eff6ff" }}>
-                    {["School", "Programme / Grade / Intake", "Service Fee", "Official Fee", "Notes"].map((x) => (
+                    {["School", "Programme / School Grade / Intake", "Service Fee", "Official Fee", "Notes"].map((x) => (
                       <th key={x} style={{ border: "1px solid #dbeafe", padding: 8, textAlign: "left" }}>{x}</th>
                     ))}
                   </tr>
@@ -106,7 +111,7 @@ export default async function SchoolApplicationSignPage({
                   {snapshot.items.map((item, index) => (
                     <tr key={`${item.schoolName}-${index}`}>
                       <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{item.schoolName}</td>
-                      <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{[item.programme, item.grade, item.intake].filter(Boolean).join(" / ") || "-"}</td>
+                      <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{[item.programme, gradeLabel(item), item.intake].filter(Boolean).join(" / ") || "-"}</td>
                       <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{money(item.serviceFee)}</td>
                       <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{money(item.officialFee)}<br />{item.officialFeeMode ?? ""}</td>
                       <td style={{ border: "1px solid #e5e7eb", padding: 8 }}>{item.notes ?? "-"}</td>

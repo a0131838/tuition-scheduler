@@ -8,6 +8,7 @@ export type SchoolApplicationSnapshotItem = {
   schoolName: string;
   programme: string | null;
   grade: string | null;
+  equivalentLevel: string | null;
   intake: string | null;
   serviceFee: number;
   officialFee: number;
@@ -87,6 +88,11 @@ function money(value: number) {
   return `SGD ${Number(value || 0).toFixed(2)}`;
 }
 
+function gradeLabel(item: SchoolApplicationSnapshotItem) {
+  if (item.grade && item.equivalentLevel) return `${item.grade} (${item.equivalentLevel})`;
+  return item.grade ?? item.equivalentLevel ?? null;
+}
+
 function ensureSpace(doc: PDFDoc, height: number) {
   if (doc.y + height > doc.page.height - 48) doc.addPage();
 }
@@ -149,7 +155,7 @@ function buildDoc(input: SignedPdfInput, signed: boolean) {
   row(doc, [
     { text: "No.", width: 34, bold: true },
     { text: "School / 学校", width: 120, bold: true },
-    { text: "Programme / Grade / Intake", width: 132, bold: true },
+    { text: "Programme / School Grade / Intake", width: 132, bold: true },
     { text: "Service Fee", width: 78, bold: true },
     { text: "Official Fee", width: 78, bold: true },
     { text: "Notes / 备注", width: 73, bold: true },
@@ -159,7 +165,7 @@ function buildDoc(input: SignedPdfInput, signed: boolean) {
     row(doc, [
       { text: String(index + 1), width: 34 },
       { text: item.schoolName, width: 120 },
-      { text: [item.programme, item.grade, item.intake].filter(Boolean).join(" / ") || "-", width: 132 },
+      { text: [item.programme, gradeLabel(item), item.intake].filter(Boolean).join(" / ") || "-", width: 132 },
       { text: money(item.serviceFee), width: 78 },
       { text: `${money(item.officialFee)}${item.officialFeeMode ? `\n${item.officialFeeMode}` : ""}`, width: 78 },
       { text: item.notes ?? "-", width: 73 },
