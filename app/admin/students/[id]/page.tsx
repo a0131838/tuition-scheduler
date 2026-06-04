@@ -4380,6 +4380,17 @@ export default async function StudentDetailPage({
                     </div>
                   </div>
                 )}
+                {!isPartnerSettlementPackage(p.settlementMode) ? (
+                  <div style={{ marginTop: 6, fontSize: 12 }}>
+                    <a href={`/admin/students/${encodeURIComponent(student.id)}/school-applications`}>
+                      {t(lang, "School application service", "学校申请服务")}
+                    </a>
+                    <span style={{ color: "#667085" }}>
+                      {" "}
+                      · {t(lang, "Create parent sign link, invoice, and receipt workflow", "创建家长签字链接、发票和收据流程")}
+                    </span>
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 6 }}>
                   {tl(lang, "Remaining")}:{" "}
                   <span style={{ fontWeight: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? 700 : 400, color: (p.remainingMinutes ?? 0) <= LOW_MINUTES ? "#b00" : undefined }}>

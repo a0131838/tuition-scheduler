@@ -158,25 +158,44 @@ export async function listFinanceDocumentRows() {
     : [];
   const packageMap = new Map(packages.map((pkg) => [pkg.id, pkg] as const));
   const parentInvoiceIds = parentAll.invoices.map((invoice) => invoice.id);
-  const parentContracts = parentInvoiceIds.length
-    ? await prisma.studentContract.findMany({
-        where: {
-          invoiceId: { in: parentInvoiceIds },
-        },
-        select: {
-          id: true,
-          invoiceId: true,
-          flowType: true,
-          status: true,
-        },
-      })
-    : [];
+  const [parentContracts, parentSchoolApplications] = parentInvoiceIds.length
+    ? await Promise.all([
+        prisma.studentContract.findMany({
+          where: {
+            invoiceId: { in: parentInvoiceIds },
+          },
+          select: {
+            id: true,
+            invoiceId: true,
+            flowType: true,
+            status: true,
+          },
+        }),
+        prisma.schoolApplicationService.findMany({
+          where: {
+            invoiceId: { in: parentInvoiceIds },
+          },
+          select: {
+            id: true,
+            invoiceId: true,
+            status: true,
+          },
+        }),
+      ])
+    : [[], []];
   const parentContractsByInvoice = new Map<string, typeof parentContracts>();
   for (const contract of parentContracts) {
     if (!contract.invoiceId) continue;
     const bucket = parentContractsByInvoice.get(contract.invoiceId) ?? [];
     bucket.push(contract);
     parentContractsByInvoice.set(contract.invoiceId, bucket);
+  }
+  const parentSchoolApplicationsByInvoice = new Map<string, typeof parentSchoolApplications>();
+  for (const application of parentSchoolApplications) {
+    if (!application.invoiceId) continue;
+    const bucket = parentSchoolApplicationsByInvoice.get(application.invoiceId) ?? [];
+    bucket.push(application);
+    parentSchoolApplicationsByInvoice.set(application.invoiceId, bucket);
   }
 
   const [parentApprovalMap, partnerApprovalMap] = await Promise.all([
@@ -218,9 +237,21 @@ export async function listFinanceDocumentRows() {
     const totalAmount = roundMoney(normalizeAmount(invoice.totalAmount));
     const receiptedAmount = roundMoney(approvedTotal);
     const linkedContracts = parentContractsByInvoice.get(invoice.id) ?? [];
-    const sourceLabel = String(invoice.note ?? "").includes("student-contract:") ? "Auto from contract" : "Manual invoice";
+    const linkedSchoolApplications = parentSchoolApplicationsByInvoice.get(invoice.id) ?? [];
+    const noteText = String(invoice.note ?? "");
+    const sourceLabel = noteText.includes("school-application:")
+      ? "Auto from school application"
+      : noteText.includes("student-contract:")
+      ? "Auto from contract"
+      : "Manual invoice";
     const contractLinkLabel =
-      linkedContracts.length === 0
+      linkedSchoolApplications.length > 0
+        ? linkedSchoolApplications.length > 1
+          ? "Linked to multiple school applications"
+          : linkedSchoolApplications[0].status === "VOID"
+          ? "Linked school application voided"
+          : "Linked school application active"
+        : linkedContracts.length === 0
         ? "No linked contract"
         : linkedContracts.length > 1
         ? "Linked to multiple contracts"

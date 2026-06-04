@@ -95,6 +95,24 @@ enum StudentParentIntakeStatus {
   VOID
 }
 
+enum SchoolApplicationStatus {
+  DRAFT
+  READY_TO_SIGN
+  SIGNED
+  INVOICE_CREATED
+  VOID
+}
+
+enum SchoolApplicationEventType {
+  GENERATED
+  DRAFT_SAVED
+  SIGN_READY
+  SIGN_VIEWED
+  SIGNED
+  INVOICE_CREATED
+  VOIDED
+}
+
 enum AttendanceStatus {
   UNMARKED
   PRESENT
@@ -663,6 +681,7 @@ model Student {
   parentAvailabilityRequests ParentAvailabilityRequest[]
   contracts          StudentContract[]
   parentIntakes      StudentParentIntake[]
+  schoolApplications SchoolApplicationService[]
   convertedLeads     Lead[]                      @relation("LeadConvertedStudent")
 
   @@index([sourceChannelId])
@@ -758,6 +777,8 @@ model User {
   studentContractsCreated StudentContract[]     @relation("StudentContractCreatedBy")
   studentContractEvents   StudentContractEvent[] @relation("StudentContractEventActor")
   studentParentIntakesCreated StudentParentIntake[] @relation("StudentParentIntakeCreatedBy")
+  schoolApplicationsCreated SchoolApplicationService[] @relation("SchoolApplicationCreatedBy")
+  schoolApplicationEvents    SchoolApplicationEvent[]   @relation("SchoolApplicationEventActor")
   leadsOwned              Lead[]                 @relation("LeadOwner")
   leadFollowUps           LeadFollowUp[]         @relation("LeadFollowUpActor")
   leadAssessmentReopened  LeadAssessmentRequest[] @relation("LeadAssessmentReopenedBy")
@@ -1102,6 +1123,7 @@ model CoursePackage {
   invoiceApprovals PackageInvoiceApproval[]
   contracts      StudentContract[]
   parentIntakes  StudentParentIntake[]
+  schoolApplications SchoolApplicationService[]
 
   @@index([studentId, courseId])
   @@index([studentId, courseId, status, validFrom, validTo])
@@ -1232,6 +1254,70 @@ model StudentParentIntake {
   @@index([status, createdAt])
   @@index([studentId, createdAt])
   @@index([createdByUserId, createdAt])
+}
+
+model SchoolApplicationService {
+  id                   String                  @id @default(uuid())
+  studentId            String
+  packageId            String?
+  status               SchoolApplicationStatus @default(DRAFT)
+  signToken            String?                 @unique
+  signExpiresAt        DateTime?
+  signViewedAt         DateTime?
+  signedAt             DateTime?
+  invoiceCreatedAt     DateTime?
+  voidedAt             DateTime?
+  parentInfoJson       Json?
+  applicationItemsJson Json
+  addOnItemsJson       Json?
+  officialFeesJson     Json?
+  serviceHours         Decimal?                @db.Decimal(10, 2)
+  serviceFeeAmount     Decimal                 @default(0) @db.Decimal(10, 2)
+  officialFeeAmount    Decimal                 @default(0) @db.Decimal(10, 2)
+  addOnFeeAmount       Decimal                 @default(0) @db.Decimal(10, 2)
+  totalAmount          Decimal                 @default(0) @db.Decimal(10, 2)
+  billTo               String
+  agreementDate        DateTime
+  note                 String?
+  contractSnapshotJson Json?
+  signedPdfPath        String?
+  signatureImagePath   String?
+  signerName           String?
+  signerEmail          String?
+  signerPhone          String?
+  signerIp             String?
+  invoiceId            String?
+  invoiceNo            String?
+  createdByUserId      String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package       CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  createdByUser User?          @relation("SchoolApplicationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  events        SchoolApplicationEvent[]
+
+  @@index([studentId, status, createdAt])
+  @@index([packageId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([invoiceId])
+}
+
+model SchoolApplicationEvent {
+  id            String                     @id @default(uuid())
+  applicationId String
+  eventType     SchoolApplicationEventType
+  actorType     String
+  actorUserId   String?
+  actorLabel    String?
+  payloadJson   Json?
+  createdAt     DateTime                   @default(now())
+
+  application SchoolApplicationService @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actorUser   User?                    @relation("SchoolApplicationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model CoursePackageSharedStudent {

@@ -15,6 +15,37 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r175
+
+- Release ID: `2026-06-04-r175`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: add a school application service agreement workflow for parent signing, dynamic 1-5 school fee lines, signed-service PDF export, and automatic parent invoice creation through the existing package billing and receipt process.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260604170000_add_school_application_service/migration.sql`
+  - `lib/school-application.ts`
+  - `lib/school-application-pdf.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/school-application/[token]/page.tsx`
+  - `app/api/exports/school-application/[id]/route.ts`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/admin/packages/[id]/billing/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `lib/finance-documents.ts`
+  - `docs/tasks/TASK-20260604-school-application-service.md`
+- Risk impact (if any): Medium. This adds a new agreement and invoice source that reuses parent package billing and receipt approvals. It does not change lesson package balances, attendance deduction, scheduling, payroll, transport billing, partner settlement, or Business Accounts.
+- Verification:
+  - `npx prisma validate`
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested a temporary student/package through draft creation, 3-school fee entry, sign-link preparation, PDF generation, and cleanup; confirmed `remainingTestStudents: 0`.
+- Rollback point: previous production commit before `2026-06-04-r175`.
+
+---
+
 ## 2026-06-02-r174
 
 - Release ID: `2026-06-02-r174`

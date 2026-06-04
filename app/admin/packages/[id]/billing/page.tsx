@@ -355,6 +355,13 @@ async function deleteInvoiceAction(formData: FormData) {
     if (linkedContracts.length > 0) {
       throw new Error("Invoice is linked to contract history. Void or review the contract link before deleting the invoice.");
     }
+    const linkedSchoolApplications = await prisma.schoolApplicationService.findMany({
+      where: { invoiceId },
+      select: { id: true, status: true, invoiceNo: true },
+    });
+    if (linkedSchoolApplications.length > 0) {
+      throw new Error("Invoice is linked to a school application service agreement. Void or review that agreement before deleting the invoice.");
+    }
     await deleteParentInvoice({ invoiceId, actorEmail: admin.email });
     await detachDeletedInvoiceFromStudentContract({
       invoiceId,
