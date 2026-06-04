@@ -12,10 +12,11 @@ export async function GET(
   const { id } = await params;
   const app = await getSchoolApplicationById(id);
   if (!app) return new NextResponse("Not found", { status: 404 });
-  const buffer = await generateSchoolApplicationPdfBuffer(id);
   const url = new URL(req.url);
+  const withSeal = url.searchParams.get("seal") === "1";
+  const buffer = await generateSchoolApplicationPdfBuffer(id, { companySeal: withSeal });
   const download = url.searchParams.get("download") === "1";
-  const name = `${safeName(app.studentName)}-school-application-${app.id.slice(0, 8)}.pdf`;
+  const name = `${safeName(app.studentName)}-school-application-${app.id.slice(0, 8)}${withSeal ? "-sealed" : ""}.pdf`;
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "content-type": "application/pdf",

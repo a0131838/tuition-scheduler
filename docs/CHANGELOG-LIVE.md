@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r181
+
+- Release ID: `2026-06-04-r181`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: upgrade school application service agreements to remove misleading service-hour wording, keep the contract scoped by application schools and fees, and add sealed contract PDF export after parent signing.
+- Key files:
+  - `lib/school-application-pdf.ts`
+  - `lib/school-application.ts`
+  - `app/api/exports/school-application/[id]/route.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-sealed-contract.md`
+- Risk impact (if any): Low. This changes only school application agreement PDF wording/export and the school application admin form. It does not change receipt approval rules, invoice numbering, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - Generated signed and sealed sample school application agreement PDFs.
+  - Rendered the sealed sample PDF and confirmed `Service Hours`, `service hours`, and `服务时数` are absent; the agreement title and Appendix A are present; the company seal appears in the agency signature box.
+- Rollback point: previous production commit before `2026-06-04-r181`.
+
+---
+
 ## 2026-06-04-r180
 
 - Release ID: `2026-06-04-r180`

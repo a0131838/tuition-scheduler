@@ -91,7 +91,7 @@ async function saveDraftAction(formData: FormData) {
         address: String(formData.get("parentAddress") ?? "").trim() || null,
       },
       items: parseItems(formData),
-      serviceHours: Number(formData.get("serviceHours") ?? 0) || null,
+      serviceHours: null,
       addOnFeeAmount: Number(formData.get("addOnFeeAmount") ?? 0) || 0,
       billTo: String(formData.get("billTo") ?? "").trim(),
       agreementDate: String(formData.get("agreementDate") ?? "").trim(),
@@ -224,6 +224,7 @@ export default async function SchoolApplicationsPage({
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}`} target="_blank" rel="noreferrer">PDF</a>
+                  {app.signedAt ? <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}?seal=1`} target="_blank" rel="noreferrer">Sealed PDF / 盖章版合同</a> : null}
                   {app.invoiceId ? <a href={`/api/exports/parent-invoice/${encodeURIComponent(app.invoiceId)}`} target="_blank" rel="noreferrer">Invoice PDF</a> : null}
                   {app.packageId ? <a href={`/admin/packages/${encodeURIComponent(app.packageId)}/billing`}>Billing</a> : null}
                 </div>
@@ -262,10 +263,6 @@ export default async function SchoolApplicationsPage({
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Agreement date / 合同日期</span>
                     <input name="agreementDate" type="date" defaultValue={formatDateOnly(app.agreementDate)} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
-                  </label>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700 }}>Service hours / 服务时数</span>
-                    <input name="serviceHours" type="number" step="0.1" defaultValue={app.serviceHours ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
                   </label>
                 </div>
                 <label style={{ display: "grid", gap: 6 }}>

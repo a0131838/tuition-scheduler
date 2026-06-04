@@ -593,7 +593,7 @@ export async function deleteVoidedSchoolApplication(input: {
   return { deleted: true };
 }
 
-export async function generateSchoolApplicationPdfBuffer(id: string) {
+export async function generateSchoolApplicationPdfBuffer(id: string, options: { companySeal?: boolean } = {}) {
   const app = await getSchoolApplicationById(id);
   if (!app) throw new Error("School application not found");
   const snapshot = app.contractSnapshot ?? snapshotFromSummary(app);
@@ -603,6 +603,7 @@ export async function generateSchoolApplicationPdfBuffer(id: string) {
       signerName: app.signerName ?? snapshot.parentName,
       signedAtLabel: app.signedAt.toLocaleString("en-SG"),
       signerIp: app.signerIp,
+      companySeal: options.companySeal,
     });
   }
   return generateUnsignedSchoolApplicationPdfBuffer(snapshot);
