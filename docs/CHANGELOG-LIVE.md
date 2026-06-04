@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r180
+
+- Release ID: `2026-06-04-r180`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: make school application services use a separate `School Application Service` billing case for both new and existing students, so application invoices and receipts do not get mixed into normal lesson packages.
+- Key files:
+  - `lib/school-application.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-service-billing-case.md`
+- Risk impact (if any): Low. This changes only how school application service records choose their billing case. It does not change receipt approval rules, invoice numbering, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested with a temporary student that had a normal lesson package: school application draft creation and save both used the separate service billing case, ignored the normal lesson package override, left normal package remaining minutes at `4800`, and cleanup left `0` temporary students.
+- Rollback point: previous production commit before `2026-06-04-r180`.
+
+---
+
 ## 2026-06-04-r179
 
 - Release ID: `2026-06-04-r179`

@@ -254,17 +254,14 @@ export async function createSchoolApplicationDraft(input: {
 }) {
   const student = await prisma.student.findUnique({
     where: { id: input.studentId },
-    include: { packages: { include: { course: true }, orderBy: { createdAt: "desc" } } },
+    select: { id: true, name: true },
   });
   if (!student) throw new Error("Student not found");
-  const pkg =
-    input.packageId
-      ? student.packages.find((item) => item.id === input.packageId) ?? null
-      : student.packages[0] ?? null;
+  const packageId = await ensureServiceBillingPackage(student.id);
   const row = await prisma.schoolApplicationService.create({
     data: {
       studentId: student.id,
-      packageId: pkg?.id ?? null,
+      packageId,
       status: SchoolApplicationStatus.DRAFT,
       applicationItemsJson: [],
       billTo: student.name,
@@ -315,10 +312,11 @@ export async function saveSchoolApplicationDraft(input: {
   const totalAmount = money(serviceFeeAmount + officialFeeAmount + addOnFeeAmount);
   if (totalAmount <= 0) throw new Error("Total amount must be greater than 0");
   const agreementDate = normalizeDateOnly(input.agreementDate, new Date()) ?? formatDateOnly(new Date());
+  const packageId = await ensureServiceBillingPackage(current.studentId);
   const row = await prisma.schoolApplicationService.update({
     where: { id: input.id },
     data: {
-      packageId: input.packageId?.trim() || null,
+      packageId,
       parentInfoJson: parentInfo as unknown as Prisma.InputJsonValue,
       applicationItemsJson: items as unknown as Prisma.InputJsonValue,
       serviceHours: input.serviceHours == null ? null : new Prisma.Decimal(money(input.serviceHours)),

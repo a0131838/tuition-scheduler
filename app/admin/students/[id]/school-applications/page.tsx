@@ -62,12 +62,10 @@ async function createDraftAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
-  const packageId = String(formData.get("packageId") ?? "").trim();
   if (!studentId) redirect("/admin/students?err=Missing+student");
   try {
     const draft = await createSchoolApplicationDraft({
       studentId,
-      packageId: packageId || null,
       createdByUserId: admin.id,
     });
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft created")}&open=${encodeURIComponent(draft.id)}`);
@@ -85,7 +83,6 @@ async function saveDraftAction(formData: FormData) {
   try {
     await saveSchoolApplicationDraft({
       id,
-      packageId: String(formData.get("packageId") ?? "").trim() || null,
       parentInfo: {
         parentName: String(formData.get("parentName") ?? "").trim(),
         parentIdNo: String(formData.get("parentIdNo") ?? "").trim() || null,
@@ -167,7 +164,7 @@ export default async function SchoolApplicationsPage({
   const [student, applications] = await Promise.all([
     prisma.student.findUnique({
       where: { id: studentId },
-      include: { packages: { include: { course: true }, orderBy: { createdAt: "desc" } } },
+      select: { id: true, name: true },
     }),
     listSchoolApplicationsForStudent(studentId),
   ]);
@@ -194,23 +191,18 @@ export default async function SchoolApplicationsPage({
         <h2 style={{ margin: 0, fontSize: 20 }}>Create new service / 新建申请服务</h2>
         <form action={createDraftAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <input type="hidden" name="studentId" value={student.id} />
-          <label style={{ display: "grid", gap: 6, minWidth: 320 }}>
-            <span style={{ fontWeight: 700 }}>Billing package / 收款关联课包</span>
-            <select name="packageId" style={inputStyle()}>
-              <option value="">No lesson package / 新学生或无课包：自动创建服务收款 case</option>
-              {student.packages.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.course.name} · {pkg.type} · remaining {Math.round((pkg.remainingMinutes ?? 0) / 60)}h
-                </option>
-              ))}
-            </select>
-          </label>
+          <div style={{ minWidth: 320, flex: "1 1 360px", display: "grid", gap: 4, padding: "8px 0" }}>
+            <strong>Billing case / 收款 case</strong>
+            <span style={{ color: "#475569", fontSize: 13 }}>
+              The system will use a separate School Application Service billing case for both new and existing students.
+            </span>
+          </div>
           <button type="submit" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 800 }}>
             Create draft / 创建草稿
           </button>
         </form>
         <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
-          If the student has no lesson package, the system will create a service billing case after signing. It does not add or deduct lesson hours.
+          This service billing case is only for invoice, payment proof, receipt creation, and finance approval. It does not add or deduct lesson hours.
         </div>
       </div>
 
@@ -241,15 +233,12 @@ export default async function SchoolApplicationsPage({
                 <input type="hidden" name="studentId" value={student.id} />
                 <input type="hidden" name="applicationId" value={app.id} />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700 }}>Billing package / 收款关联课包</span>
-                    <select name="packageId" defaultValue={app.packageId ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"}>
-                      <option value="">No lesson package / 自动创建服务收款 case</option>
-                      {student.packages.map((pkg) => (
-                        <option key={pkg.id} value={pkg.id}>{pkg.course.name} · {pkg.type}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div style={{ display: "grid", gap: 4, padding: "8px 0" }}>
+                    <strong>Billing case / 收款 case</strong>
+                    <span style={{ color: "#475569", fontSize: 13 }}>
+                      School Application Service case. Use Billing to upload payment proof and create receipts.
+                    </span>
+                  </div>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent name / 家长姓名</span>
                     <input name="parentName" defaultValue={app.parentInfo?.parentName ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
