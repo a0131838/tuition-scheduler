@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r177
+
+- Release ID: `2026-06-04-r177`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: replace free-text school application rows with a selectable school/application directory, including AEIS/S-AEIS options and Singapore international school options, and allow new students with no lesson package to use the school application service by creating a service billing case only when invoice creation is needed.
+- Key files:
+  - `lib/school-application-directory.ts`
+  - `lib/school-application.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-directory-and-service-billing.md`
+- Risk impact (if any): Medium. This changes school application service data entry and no-package billing fallback. It does not change lesson balance deduction, attendance, scheduling, payroll, partner settlement, Business Accounts, transport billing, or existing student contract workflows.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested a temporary no-package student through directory-based AEIS and international-school selection, draft save, sign-link preparation, PDF generation, and cleanup. Confirmed remaining temporary students: `0`.
+- Rollback point: previous production commit before `2026-06-04-r177`.
+
+---
+
 ## 2026-06-04-r176
 
 - Release ID: `2026-06-04-r176`

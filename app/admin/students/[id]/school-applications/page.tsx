@@ -11,6 +11,12 @@ import {
   type SchoolApplicationItem,
 } from "@/lib/school-application";
 import { formatDateOnly } from "@/lib/date-only";
+import {
+  SCHOOL_APPLICATION_GRADES,
+  SCHOOL_APPLICATION_INTAKES,
+  SCHOOL_APPLICATION_PROGRAMMES,
+  SCHOOL_APPLICATION_TARGETS,
+} from "@/lib/school-application-directory";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
 
 function appBaseUrl() {
@@ -32,10 +38,11 @@ function money(value: number) {
 function parseItems(formData: FormData): SchoolApplicationItem[] {
   const items: SchoolApplicationItem[] = [];
   for (let i = 0; i < 5; i += 1) {
-    const schoolName = String(formData.get(`schoolName_${i}`) ?? "").trim();
-    if (!schoolName) continue;
+    const targetId = String(formData.get(`targetId_${i}`) ?? "").trim();
+    if (!targetId) continue;
     items.push({
-      schoolName,
+      targetId,
+      schoolName: "",
       programme: String(formData.get(`programme_${i}`) ?? "").trim() || null,
       grade: String(formData.get(`grade_${i}`) ?? "").trim() || null,
       intake: String(formData.get(`intake_${i}`) ?? "").trim() || null,
@@ -173,7 +180,7 @@ export default async function SchoolApplicationsPage({
           <label style={{ display: "grid", gap: 6, minWidth: 320 }}>
             <span style={{ fontWeight: 700 }}>Billing package / 收款关联课包</span>
             <select name="packageId" style={inputStyle()}>
-              <option value="">Auto pick latest package / 自动使用最新课包</option>
+              <option value="">No lesson package / 新学生或无课包：自动创建服务收款 case</option>
               {student.packages.map((pkg) => (
                 <option key={pkg.id} value={pkg.id}>
                   {pkg.course.name} · {pkg.type} · remaining {Math.round((pkg.remainingMinutes ?? 0) / 60)}h
@@ -186,7 +193,7 @@ export default async function SchoolApplicationsPage({
           </button>
         </form>
         <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
-          First version links the invoice to a selected billing package for receipt workflow only. It does not add or deduct lesson hours.
+          If the student has no lesson package, the system will create a service billing case after signing. It does not add or deduct lesson hours.
         </div>
       </div>
 
@@ -220,7 +227,7 @@ export default async function SchoolApplicationsPage({
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Billing package / 收款关联课包</span>
                     <select name="packageId" defaultValue={app.packageId ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"}>
-                      <option value="">Select package / 请选择</option>
+                      <option value="">No lesson package / 自动创建服务收款 case</option>
                       {student.packages.map((pkg) => (
                         <option key={pkg.id} value={pkg.id}>{pkg.course.name} · {pkg.type}</option>
                       ))}
@@ -264,7 +271,7 @@ export default async function SchoolApplicationsPage({
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "#eff6ff" }}>
-                        {["School", "Programme", "Grade", "Intake", "Service fee", "Official fee", "Official fee mode", "Notes"].map((x) => (
+                        {["School / application", "Programme", "Grade", "Intake", "Service fee", "Official fee", "Official fee mode", "Notes"].map((x) => (
                           <th key={x} style={{ border: "1px solid #dbeafe", padding: 6, textAlign: "left" }}>{x}</th>
                         ))}
                       </tr>
@@ -274,13 +281,51 @@ export default async function SchoolApplicationsPage({
                         const item = app.items[i];
                         return (
                           <tr key={i}>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`schoolName_${i}`} defaultValue={item?.schoolName ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`programme_${i}`} defaultValue={item?.programme ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`intake_${i}`} defaultValue={item?.intake ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`targetId_${i}`} defaultValue={item?.targetId ?? ""} style={{ ...inputStyle(), minWidth: 260 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Select / 请选择</option>
+                                <optgroup label="MOE / AEIS">
+                                  {SCHOOL_APPLICATION_TARGETS.filter((target) => target.kind === "MOE_EXERCISE").map((target) => (
+                                    <option key={target.id} value={target.id}>{target.name}</option>
+                                  ))}
+                                </optgroup>
+                                <optgroup label="International schools">
+                                  {SCHOOL_APPLICATION_TARGETS.filter((target) => target.kind === "INTERNATIONAL_SCHOOL").map((target) => (
+                                    <option key={target.id} value={target.id}>{target.name}</option>
+                                  ))}
+                                </optgroup>
+                              </select>
+                              {item?.schoolName ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{item.schoolName}</div> : null}
+                            </td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`programme_${i}`} defaultValue={item?.programme ?? ""} style={{ ...inputStyle(), minWidth: 150 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Select</option>
+                                {SCHOOL_APPLICATION_PROGRAMMES.map((value) => <option key={value} value={value}>{value}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`grade_${i}`} defaultValue={item?.grade ?? ""} style={{ ...inputStyle(), minWidth: 160 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Select</option>
+                                {SCHOOL_APPLICATION_GRADES.map((value) => <option key={value} value={value}>{value}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`intake_${i}`} defaultValue={item?.intake ?? ""} style={{ ...inputStyle(), minWidth: 140 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Select</option>
+                                {SCHOOL_APPLICATION_INTAKES.map((value) => <option key={value} value={value}>{value}</option>)}
+                              </select>
+                            </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`serviceFee_${i}`} type="number" step="0.01" defaultValue={item?.serviceFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFee_${i}`} type="number" step="0.01" defaultValue={item?.officialFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFeeMode_${i}`} defaultValue={item?.officialFeeMode ?? ""} placeholder="Parent pays school / We collect" style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
+                              <select name={`officialFeeMode_${i}`} defaultValue={item?.officialFeeMode ?? ""} style={{ ...inputStyle(), minWidth: 180 }} disabled={app.status === "INVOICE_CREATED"}>
+                                <option value="">Use directory default</option>
+                                <option value="Parent pays school / official fee varies">Parent pays school / official fee varies</option>
+                                <option value="We collect and pay school">We collect and pay school</option>
+                                <option value="Included in service fee">Included in service fee</option>
+                                <option value="MOE application fee, non-refundable">MOE application fee, non-refundable</option>
+                              </select>
+                            </td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`notes_${i}`} defaultValue={item?.notes ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
                           </tr>
                         );

@@ -5,6 +5,7 @@ import { BUSINESS_UPLOAD_PREFIX, storeBusinessBuffer } from "@/lib/business-file
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/global-invoice-sequence";
 import { createParentInvoice } from "@/lib/student-parent-billing";
+import { getSchoolApplicationTarget } from "@/lib/school-application-directory";
 import {
   generateSignedSchoolApplicationPdfBuffer,
   generateUnsignedSchoolApplicationPdfBuffer,
@@ -27,6 +28,7 @@ const includeApplication = {
 type Row = Prisma.SchoolApplicationServiceGetPayload<{ include: typeof includeApplication }>;
 
 export type SchoolApplicationItem = {
+  targetId?: string | null;
   schoolName: string;
   programme?: string | null;
   grade?: string | null;
@@ -110,16 +112,21 @@ function decimalToNumber(value: Prisma.Decimal | number | null | undefined) {
 function coerceItems(value: unknown): SchoolApplicationItem[] {
   const raw = Array.isArray(value) ? value : [];
   return raw
-    .map((item) => ({
-      schoolName: trim((item as any)?.schoolName),
-      programme: trimOrNull((item as any)?.programme),
-      grade: trimOrNull((item as any)?.grade),
-      intake: trimOrNull((item as any)?.intake),
-      serviceFee: money((item as any)?.serviceFee),
-      officialFee: money((item as any)?.officialFee),
-      officialFeeMode: trimOrNull((item as any)?.officialFeeMode),
-      notes: trimOrNull((item as any)?.notes),
-    }))
+    .map((item) => {
+      const targetId = trimOrNull((item as any)?.targetId);
+      const target = getSchoolApplicationTarget(targetId);
+      return {
+        targetId,
+        schoolName: target?.name ?? trim((item as any)?.schoolName),
+        programme: trimOrNull((item as any)?.programme) ?? target?.programmes[0] ?? null,
+        grade: trimOrNull((item as any)?.grade),
+        intake: trimOrNull((item as any)?.intake) ?? target?.intakes[0] ?? null,
+        serviceFee: money((item as any)?.serviceFee),
+        officialFee: money((item as any)?.officialFee) || money(target?.officialFee),
+        officialFeeMode: trimOrNull((item as any)?.officialFeeMode) ?? target?.officialFeeMode ?? null,
+        notes: trimOrNull((item as any)?.notes) ?? target?.note ?? null,
+      };
+    })
     .filter((item) => item.schoolName);
 }
 
@@ -336,7 +343,6 @@ export async function saveSchoolApplicationDraft(input: {
 function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSnapshot {
   const parentInfo = app.parentInfo;
   if (!parentInfo) throw new Error("Parent information is required before signing");
-  if (!app.packageId) throw new Error("Select a billing package before generating sign link");
   if (app.items.length < 1 || app.items.length > 5) throw new Error("School application must include 1 to 5 schools");
   const items: SchoolApplicationSnapshotItem[] = app.items.map((item) => ({
     schoolName: item.schoolName,
@@ -372,6 +378,39 @@ function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSn
     note: app.note,
     refundPolicyLabel: refundPolicyLabel(items.length),
   };
+}
+
+async function ensureServiceBillingPackage(studentId: string) {
+  const existing = await prisma.coursePackage.findFirst({
+    where: {
+      studentId,
+      note: { contains: "SERVICE_BILLING_CASE:SCHOOL_APPLICATION" },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  if (existing) return existing.id;
+
+  const course =
+    (await prisma.course.findFirst({ where: { name: "School Application Service" } })) ??
+    (await prisma.course.create({ data: { name: "School Application Service" } }));
+  const pkg = await prisma.coursePackage.create({
+    data: {
+      studentId,
+      courseId: course.id,
+      type: "HOURS",
+      status: "PAUSED",
+      financeGateStatus: "EXEMPT",
+      financeGateReason: "Service billing case for school application. Not used for lesson scheduling or balance deduction.",
+      financeGateUpdatedAt: new Date(),
+      financeGateUpdatedBy: "system.school-application",
+      totalMinutes: 0,
+      remainingMinutes: 0,
+      validFrom: new Date(),
+      paid: false,
+      note: "SERVICE_BILLING_CASE:SCHOOL_APPLICATION. For invoice and receipt workflow only; not a lesson package.",
+    },
+  });
+  return pkg.id;
 }
 
 export async function prepareSchoolApplicationSignLink(input: {
@@ -412,13 +451,13 @@ async function ensureInvoiceForSignedApplication(row: SchoolApplicationSummary, 
   if (row.invoiceId && row.invoiceNo) {
     return { invoiceId: row.invoiceId, invoiceNo: row.invoiceNo, createdAt: row.invoiceCreatedAt ?? new Date() };
   }
-  if (!row.packageId) throw new Error("Billing package is required before invoice can be created");
+  const packageId = row.packageId ?? (await ensureServiceBillingPackage(row.studentId));
   const issueDate = normalizeDateOnly(snapshot.agreementDate, new Date()) ?? formatDateOnly(new Date());
   const invoiceNo = await getNextGlobalInvoiceNo(issueDate);
   await assertGlobalInvoiceNoAvailable(invoiceNo);
   const schoolLabel = snapshot.items.map((item) => item.schoolName).join(", ");
   const invoice = await createParentInvoice({
-    packageId: row.packageId,
+    packageId,
     studentId: row.studentId,
     invoiceNo,
     issueDate,
@@ -435,6 +474,12 @@ async function ensureInvoiceForSignedApplication(row: SchoolApplicationSummary, 
     note: `Auto-created from signed school application service ${row.id}. ${INVOICE_MARKER_PREFIX}${row.id}`,
     createdBy: "system.school-application@sgtmanage.local",
   });
+  if (!row.packageId) {
+    await prisma.schoolApplicationService.update({
+      where: { id: row.id },
+      data: { packageId },
+    });
+  }
   return { invoiceId: invoice.id, invoiceNo: invoice.invoiceNo, createdAt: new Date(invoice.createdAt) };
 }
 
