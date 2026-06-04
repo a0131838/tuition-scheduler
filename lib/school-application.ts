@@ -267,7 +267,7 @@ export async function createSchoolApplicationDraft(input: {
       billTo: student.name,
       agreementDate: new Date(),
       parentInfoJson: {
-        parentName: student.name,
+        parentName: "",
         phone: null,
         email: null,
         address: null,

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import LanguageSelectorClient from "./_components/LanguageSelectorClient";
 import AdminSidebarNavClient from "./AdminSidebarNavClient";
+import SidebarScrollMemoryClient from "./_components/SidebarScrollMemoryClient";
 import WorkbenchStickyGuardClient from "./_components/WorkbenchStickyGuardClient";
 import {
   workbenchFilterPanelStyle,
@@ -569,6 +570,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div style={{ fontFamily: "system-ui", margin: 0, fontSize: 12.5 }}>
       <div className="app-shell">
+        <SidebarScrollMemoryClient />
         <aside className="app-sidebar">
           <div
             style={{

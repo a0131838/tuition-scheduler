@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r182
+
+- Release ID: `2026-06-04-r182`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: improve the school application workspace usability by keeping parent name blank by default, preserving the school-application entry context, returning to the school application list when appropriate, and remembering sidebar scroll during form refreshes.
+- Key files:
+  - `lib/school-application.ts`
+  - `app/admin/school-applications/page.tsx`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/_components/SidebarScrollMemoryClient.tsx`
+  - `docs/tasks/TASK-20260604-school-application-workspace-usability.md`
+- Risk impact (if any): Low. This changes only school application workspace defaults, navigation context, and sidebar scroll memory. It does not change invoice numbering, receipt approval, lesson package balances, attendance deduction, scheduling, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Checked local and server code for removal of the school-application service-hours UI and verified parent-name defaults no longer use the student name.
+- Rollback point: previous production state before `2026-06-04-r182`.
+
+---
+
 ## 2026-06-04-r181
 
 - Release ID: `2026-06-04-r181`

@@ -37,6 +37,23 @@ function money(value: number) {
   return `SGD ${Number(value || 0).toFixed(2)}`;
 }
 
+function parentNameDefault(app: { status: string; studentName: string; parentInfo: { parentName: string; phone?: string | null; email?: string | null; address?: string | null; parentIdNo?: string | null } | null }) {
+  const info = app.parentInfo;
+  if (!info) return "";
+  const looksLikeOldStudentDefault =
+    app.status === "DRAFT" &&
+    info.parentName.trim() === app.studentName.trim() &&
+    !info.phone &&
+    !info.email &&
+    !info.address &&
+    !info.parentIdNo;
+  return looksLikeOldStudentDefault ? "" : info.parentName;
+}
+
+function sourceQuery(formData: FormData) {
+  return String(formData.get("from") ?? "").trim() === "school-applications" ? "&from=school-applications" : "";
+}
+
 function parseItems(formData: FormData): SchoolApplicationItem[] {
   const items: SchoolApplicationItem[] = [];
   for (let i = 0; i < 5; i += 1) {
@@ -62,16 +79,17 @@ async function createDraftAction(formData: FormData) {
   "use server";
   const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
+  const source = sourceQuery(formData);
   if (!studentId) redirect("/admin/students?err=Missing+student");
   try {
     const draft = await createSchoolApplicationDraft({
       studentId,
       createdByUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft created")}&open=${encodeURIComponent(draft.id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft created")}&open=${encodeURIComponent(draft.id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create school application draft failed";
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}${source}`);
   }
 }
 
@@ -80,6 +98,7 @@ async function saveDraftAction(formData: FormData) {
   const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
   try {
     await saveSchoolApplicationDraft({
       id,
@@ -98,10 +117,10 @@ async function saveDraftAction(formData: FormData) {
       note: String(formData.get("note") ?? "").trim() || null,
       actorUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft saved")}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft saved")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Save school application failed";
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
 
@@ -110,12 +129,13 @@ async function prepareSignAction(formData: FormData) {
   const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
   try {
     await prepareSchoolApplicationSignLink({ id, actorUserId: admin.id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Sign link ready")}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Sign link ready")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Prepare sign link failed";
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
 
@@ -124,16 +144,17 @@ async function voidAction(formData: FormData) {
   const admin = await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
   try {
     await voidSchoolApplication({
       id,
       reason: String(formData.get("reason") ?? "").trim() || null,
       actorUserId: admin.id,
     });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application voided")}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application voided")}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Void school application failed";
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
 
@@ -142,12 +163,13 @@ async function deleteVoidedAction(formData: FormData) {
   await requireAdmin();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
   try {
     await deleteVoidedSchoolApplication({ id });
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Voided school application deleted")}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Voided school application deleted")}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete school application failed";
-    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
 
@@ -156,7 +178,7 @@ export default async function SchoolApplicationsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ msg?: string; err?: string; open?: string }>;
+  searchParams?: Promise<{ msg?: string; err?: string; open?: string; from?: string }>;
 }) {
   await requireAdmin();
   const { id: studentId } = await params;
@@ -171,6 +193,7 @@ export default async function SchoolApplicationsPage({
   if (!student) redirect("/admin/students?err=Student+not+found");
   const openId = sp?.open ?? applications[0]?.id ?? "";
   const baseUrl = appBaseUrl();
+  const returnToList = sp?.from === "school-applications";
 
   return (
     <main style={{ padding: 24, display: "grid", gap: 16 }}>
@@ -181,7 +204,12 @@ export default async function SchoolApplicationsPage({
             <h1 style={{ margin: "4px 0 0", fontSize: 28 }}>{student.name}</h1>
             <div style={{ color: "#475569", fontSize: 13 }}>Create school application service agreements without changing package hours.</div>
           </div>
-          <a href={`/admin/students/${encodeURIComponent(student.id)}`} style={{ textDecoration: "none", color: "#2563eb", fontWeight: 800 }}>Back to student / 返回学生</a>
+          <a
+            href={returnToList ? "/admin/school-applications" : `/admin/students/${encodeURIComponent(student.id)}`}
+            style={{ textDecoration: "none", color: "#2563eb", fontWeight: 800 }}
+          >
+            {returnToList ? "Back to school applications / 返回学校申请列表" : "Back to student / 返回学生"}
+          </a>
         </div>
         {sp?.msg ? <div style={{ color: "#166534", fontWeight: 700 }}>{decodeURIComponent(sp.msg)}</div> : null}
         {sp?.err ? <div style={{ color: "#b91c1c", fontWeight: 700 }}>{decodeURIComponent(sp.err)}</div> : null}
@@ -191,6 +219,7 @@ export default async function SchoolApplicationsPage({
         <h2 style={{ margin: 0, fontSize: 20 }}>Create new service / 新建申请服务</h2>
         <form action={createDraftAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
           <input type="hidden" name="studentId" value={student.id} />
+          {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
           <div style={{ minWidth: 320, flex: "1 1 360px", display: "grid", gap: 4, padding: "8px 0" }}>
             <strong>Billing case / 收款 case</strong>
             <span style={{ color: "#475569", fontSize: 13 }}>
@@ -233,6 +262,7 @@ export default async function SchoolApplicationsPage({
               <form action={saveDraftAction} style={{ display: "grid", gap: 12 }}>
                 <input type="hidden" name="studentId" value={student.id} />
                 <input type="hidden" name="applicationId" value={app.id} />
+                {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                   <div style={{ display: "grid", gap: 4, padding: "8px 0" }}>
                     <strong>Billing case / 收款 case</strong>
@@ -242,7 +272,7 @@ export default async function SchoolApplicationsPage({
                   </div>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent name / 家长姓名</span>
-                    <input name="parentName" defaultValue={app.parentInfo?.parentName ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent phone / 家长电话</span>
@@ -372,6 +402,7 @@ export default async function SchoolApplicationsPage({
                   <form action={prepareSignAction}>
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />
+                    {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
                     <button type="submit" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 800 }}>
                       Generate sign link / 生成签字链接
                     </button>
@@ -387,6 +418,7 @@ export default async function SchoolApplicationsPage({
                   <form action={voidAction} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />
+                    {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
                     <input name="reason" placeholder="Void reason / 作废原因" style={{ ...inputStyle(), width: 220 }} required={app.status === "INVOICE_CREATED"} />
                     <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 800 }}>
                       Void / 作废
@@ -397,6 +429,7 @@ export default async function SchoolApplicationsPage({
                   <form action={deleteVoidedAction}>
                     <input type="hidden" name="studentId" value={student.id} />
                     <input type="hidden" name="applicationId" value={app.id} />
+                    {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
                     <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 800 }}>
                       Delete voided / 删除已作废
                     </button>

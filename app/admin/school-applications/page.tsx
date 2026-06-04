@@ -113,7 +113,7 @@ export default async function AdminSchoolApplicationsPage({
                       {student.school ?? "-"} · {student.grade ?? "-"} · {student.packages.length > 0 ? t(lang, "has package", "已有课包") : t(lang, "no package yet", "暂无课包")}
                     </div>
                   </div>
-                  <a href={`/admin/students/${encodeURIComponent(student.id)}/school-applications`} style={{ fontWeight: 800 }}>
+                  <a href={`/admin/students/${encodeURIComponent(student.id)}/school-applications?from=school-applications`} style={{ fontWeight: 800 }}>
                     {t(lang, "Open service workspace", "打开申请服务工作区")}
                   </a>
                 </div>
@@ -154,7 +154,7 @@ export default async function AdminSchoolApplicationsPage({
                     <td style={{ padding: 8 }}>{app.invoiceNo ?? "-"}</td>
                     <td style={{ padding: 8 }}>{formatBusinessDateTime(app.createdAt)}</td>
                     <td style={{ padding: 8 }}>
-                      <a href={`/admin/students/${encodeURIComponent(app.studentId)}/school-applications?open=${encodeURIComponent(app.id)}`}>
+                      <a href={`/admin/students/${encodeURIComponent(app.studentId)}/school-applications?from=school-applications&open=${encodeURIComponent(app.id)}`}>
                         {t(lang, "Open", "打开")}
                       </a>
                     </td>
