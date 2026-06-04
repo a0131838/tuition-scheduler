@@ -52,6 +52,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/alerts")) return t(lang, "Risk & Alerts", "风险与告警");
   if (matchesPath(pathname, "/admin/schedule")) return t(lang, "Schedule Operations", "排课操作区");
   if (matchesPath(pathname, "/admin/leads")) return t(lang, "Resource Follow-up", "资源跟进");
+  if (matchesPath(pathname, "/admin/school-applications")) return t(lang, "School Applications", "学校申请服务");
   if (matchesPath(pathname, "/admin/reports/teacher-payroll")) return t(lang, "Payroll Review", "工资处理");
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
   if (matchesPath(pathname, "/admin/approvals")) return t(lang, "Approval Inbox", "审批提醒中心");
@@ -273,6 +274,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/students", label: t(lang, "Students", "学生"), tone: "accent" as const },
         { href: "/admin/leads", label: t(lang, "Resource Follow-up", "资源跟进"), tone: "accent" as const },
+        { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请服务"), tone: "accent" as const },
         { href: "/admin/enrollments", label: t(lang, "Enrollments", "报名"), tone: "success" as const },
         { href: "/admin/packages", label: t(lang, "Packages", "课时包"), tone: "success" as const },
         { href: "/admin/tickets", label: t(lang, "Ticket Center", "工单中心"), tone: "warning" as const },

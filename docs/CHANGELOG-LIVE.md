@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r176
+
+- Release ID: `2026-06-04-r176`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: make the school application service workflow easier to find by adding a dedicated `/admin/school-applications` entry page, a sidebar link, and a first-screen student detail shortcut.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `app/admin/school-applications/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+- Risk impact (if any): Low. This changes navigation and discovery only; it does not change signing, invoice creation, receipt handling, lesson balances, attendance, scheduling, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-04-r176`.
+
+---
+
 ## 2026-06-04-r175
 
 - Release ID: `2026-06-04-r175`

@@ -2708,6 +2708,12 @@ export default async function StudentDetailPage({
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <a
+              href={`/admin/students/${encodeURIComponent(studentId)}/school-applications`}
+              style={{ padding: "8px 12px", border: "1px solid #93c5fd", borderRadius: 10, background: "#eff6ff", color: "#1d4ed8", fontWeight: 800, textDecoration: "none" }}
+            >
+              {t(lang, "School application service", "学校申请服务")}
+            </a>
+            <a
               href={`/api/exports/student-detail/${studentId}`}
               style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#fff", textDecoration: "none" }}
             >
