@@ -106,6 +106,9 @@ enum SchoolApplicationStatus {
 enum SchoolApplicationEventType {
   GENERATED
   DRAFT_SAVED
+  PARENT_INFO_LINK_SENT
+  PARENT_INFO_VIEWED
+  PARENT_INFO_SUBMITTED
   SIGN_READY
   SIGN_VIEWED
   SIGNED
@@ -1261,6 +1264,10 @@ model SchoolApplicationService {
   studentId            String
   packageId            String?
   status               SchoolApplicationStatus @default(DRAFT)
+  parentInfoToken      String?                 @unique
+  parentInfoExpiresAt  DateTime?
+  parentInfoViewedAt   DateTime?
+  parentInfoSubmittedAt DateTime?
   signToken            String?                 @unique
   signExpiresAt        DateTime?
   signViewedAt         DateTime?
@@ -1300,6 +1307,7 @@ model SchoolApplicationService {
   @@index([studentId, status, createdAt])
   @@index([packageId, status, createdAt])
   @@index([status, createdAt])
+  @@index([parentInfoSubmittedAt])
   @@index([invoiceId])
 }
 

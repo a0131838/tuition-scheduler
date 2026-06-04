@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
+  buildSchoolApplicationParentInfoPath,
   buildSchoolApplicationSignPath,
   createSchoolApplicationDraft,
   deleteVoidedSchoolApplication,
   listSchoolApplicationsForStudent,
+  prepareSchoolApplicationParentInfoLink,
   prepareSchoolApplicationSignLink,
   saveSchoolApplicationDraft,
   voidSchoolApplication,
@@ -48,6 +50,13 @@ function parentNameDefault(app: { status: string; studentName: string; parentInf
     !info.address &&
     !info.parentIdNo;
   return looksLikeOldStudentDefault ? "" : info.parentName;
+}
+
+function parentInfoStatus(app: { parentInfoSubmittedAt: Date | null; parentInfoViewedAt: Date | null; parentInfoToken: string | null }) {
+  if (app.parentInfoSubmittedAt) return `Submitted / 已提交 ${app.parentInfoSubmittedAt.toLocaleString("en-SG")}`;
+  if (app.parentInfoViewedAt) return `Opened / 已打开 ${app.parentInfoViewedAt.toLocaleString("en-SG")}`;
+  if (app.parentInfoToken) return "Waiting parent / 等家长填写";
+  return "Not sent / 未发送";
 }
 
 function sourceQuery(formData: FormData) {
@@ -120,6 +129,21 @@ async function saveDraftAction(formData: FormData) {
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application draft saved")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Save school application failed";
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
+  }
+}
+
+async function prepareParentInfoAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const studentId = String(formData.get("studentId") ?? "").trim();
+  const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
+  try {
+    await prepareSchoolApplicationParentInfoLink({ id, actorUserId: admin.id });
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link ready")}&open=${encodeURIComponent(id)}${source}`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Prepare parent info link failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
@@ -240,6 +264,7 @@ export default async function SchoolApplicationsPage({
       ) : (
         applications.map((app) => {
           const signHref = app.signToken ? `${baseUrl}${buildSchoolApplicationSignPath(app.signToken)}` : "";
+          const parentInfoHref = app.parentInfoToken ? `${baseUrl}${buildSchoolApplicationParentInfoPath(app.parentInfoToken)}` : "";
           return (
             <section key={app.id} style={cardStyle(app.id === openId ? "#f8fbff" : "#fff")}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -257,6 +282,33 @@ export default async function SchoolApplicationsPage({
                   {app.invoiceId ? <a href={`/api/exports/parent-invoice/${encodeURIComponent(app.invoiceId)}`} target="_blank" rel="noreferrer">Invoice PDF</a> : null}
                   {app.packageId ? <a href={`/admin/packages/${encodeURIComponent(app.packageId)}/billing`}>Billing</a> : null}
                 </div>
+              </div>
+
+              <div style={{ ...cardStyle(app.parentInfoSubmittedAt ? "#f0fdf4" : "#fff7ed"), gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <div>
+                    <strong>Parent info link / 家长资料链接</strong>
+                    <div style={{ color: "#475569", fontSize: 12 }}>
+                      {parentInfoStatus(app)} · Use this before the formal signing link when parent details need confirmation.
+                    </div>
+                  </div>
+                  {app.status !== "INVOICE_CREATED" && app.status !== "VOID" ? (
+                    <form action={prepareParentInfoAction}>
+                      <input type="hidden" name="studentId" value={student.id} />
+                      <input type="hidden" name="applicationId" value={app.id} />
+                      {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e", fontWeight: 800 }}>
+                        Generate parent info link / 生成家长资料链接
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+                {parentInfoHref ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <a href={parentInfoHref} target="_blank" rel="noreferrer">Open parent info link</a>
+                    <CopyTextButton text={parentInfoHref} label="Copy parent info link / 复制家长资料链接" copiedLabel="Copied" style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
+                  </div>
+                ) : null}
               </div>
 
               <form action={saveDraftAction} style={{ display: "grid", gap: 12 }}>

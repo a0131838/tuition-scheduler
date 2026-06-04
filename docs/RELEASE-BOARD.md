@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-05-28`
+- Last checked: `2026-06-04`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-06-04-r182` (school application workspace keeps parent name blank, preserves list-entry navigation, and remembers sidebar scroll), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-06-04-r183` (school application services now have a dedicated parent information collection link that reuses existing parent details and writes submitted school/grade details back safely), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 

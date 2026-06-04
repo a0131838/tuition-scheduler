@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r183
+
+- Release ID: `2026-06-04-r183`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `DEPLOYED`
+- Scope: add a dedicated parent information collection link for school application services, with reuse from existing student-contract or parent-intake details, parent submission status tracking, and safe write-back to the school application draft and student school/grade details.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260604183000_add_school_application_parent_info_link/migration.sql`
+  - `lib/school-application.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/school-application-info/[token]/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-parent-info-link.md`
+- Risk impact (if any): Low to medium. This adds nullable school-application fields and a new public token page. It does not change normal lesson packages, lesson balance deduction, attendance, invoice numbering, receipt approval, student-contract signing, payroll, partner settlement, transport billing, or Business Accounts.
+- Verification:
+  - `npx prisma generate`
+  - `npx prisma migrate deploy`
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested with a temporary student: created school application draft, generated parent info link, submitted parent details, verified application parent info and `billTo` updated, verified student school/grade/note updated, verified service billing case stayed at `0` total minutes and `0` remaining minutes, then cleaned up the temporary rows.
+- Rollback point: previous production state before `2026-06-04-r183`.
+
+---
+
 ## 2026-06-04-r182
 
 - Release ID: `2026-06-04-r182`

@@ -14,6 +14,7 @@ import {
 } from "@/lib/school-application-pdf";
 
 const DEFAULT_SIGN_TTL_DAYS = 14;
+const DEFAULT_PARENT_INFO_TTL_DAYS = 14;
 const INVOICE_MARKER_PREFIX = "school-application:";
 
 const includeApplication = {
@@ -46,13 +47,24 @@ export type SchoolApplicationParentInfo = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  relationshipToStudent?: string | null;
+  isLegalGuardian?: boolean | null;
+  studentSchool?: string | null;
+  studentGrade?: string | null;
+  applicationNote?: string | null;
 };
+
+export type SchoolApplicationParentInfoForm = SchoolApplicationParentInfo;
 
 export type SchoolApplicationSummary = {
   id: string;
   studentId: string;
   packageId: string | null;
   status: SchoolApplicationStatus;
+  parentInfoToken: string | null;
+  parentInfoExpiresAt: Date | null;
+  parentInfoViewedAt: Date | null;
+  parentInfoSubmittedAt: Date | null;
   signToken: string | null;
   signExpiresAt: Date | null;
   signViewedAt: Date | null;
@@ -142,6 +154,80 @@ function coerceParentInfo(value: unknown): SchoolApplicationParentInfo | null {
     phone: trimOrNull((value as any).phone),
     email: trimOrNull((value as any).email),
     address: trimOrNull((value as any).address),
+    relationshipToStudent: trimOrNull((value as any).relationshipToStudent),
+    isLegalGuardian:
+      typeof (value as any).isLegalGuardian === "boolean" ? Boolean((value as any).isLegalGuardian) : null,
+    studentSchool: trimOrNull((value as any).studentSchool),
+    studentGrade: trimOrNull((value as any).studentGrade),
+    applicationNote: trimOrNull((value as any).applicationNote),
+  };
+}
+
+function coerceParentInfoForm(value: unknown): SchoolApplicationParentInfoForm | null {
+  const parentInfo = coerceParentInfo(value);
+  if (!parentInfo) return null;
+  const row = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return {
+    ...parentInfo,
+    studentSchool: trimOrNull(row.studentSchool),
+    studentGrade: trimOrNull(row.studentGrade),
+    applicationNote: trimOrNull(row.applicationNote),
+  };
+}
+
+function parentInfoFromContract(value: unknown): SchoolApplicationParentInfo | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const parentName = trim(row.parentFullNameEn);
+  if (!parentName) return null;
+  return {
+    parentName,
+    phone: trimOrNull(row.phone),
+    email: trimOrNull(row.email),
+    address: trimOrNull(row.address),
+    relationshipToStudent: trimOrNull(row.relationshipToStudent),
+    isLegalGuardian: typeof row.isLegalGuardian === "boolean" ? Boolean(row.isLegalGuardian) : null,
+  };
+}
+
+function parentInfoFromStudentIntake(value: unknown): SchoolApplicationParentInfoForm | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const parentName = trim(row.parentFullNameEn);
+  if (!parentName) return null;
+  return {
+    parentName,
+    phone: trimOrNull(row.phone),
+    email: trimOrNull(row.email),
+    address: trimOrNull(row.address),
+    relationshipToStudent: trimOrNull(row.relationshipToStudent),
+    isLegalGuardian: typeof row.isLegalGuardian === "boolean" ? Boolean(row.isLegalGuardian) : null,
+    studentSchool: trimOrNull(row.school),
+    studentGrade: trimOrNull(row.grade),
+    applicationNote: trimOrNull(row.note),
+  };
+}
+
+function mergeParentInfoForForm(input: {
+  studentSchool?: string | null;
+  studentGrade?: string | null;
+  current?: SchoolApplicationParentInfoForm | null;
+  previousApplication?: SchoolApplicationParentInfoForm | null;
+  contract?: SchoolApplicationParentInfo | null;
+  intake?: SchoolApplicationParentInfoForm | null;
+}): SchoolApplicationParentInfoForm {
+  const source = input.current ?? input.previousApplication ?? input.contract ?? input.intake ?? null;
+  return {
+    parentName: source?.parentName ?? "",
+    parentIdNo: source?.parentIdNo ?? null,
+    phone: source?.phone ?? null,
+    email: source?.email ?? null,
+    address: source?.address ?? null,
+    relationshipToStudent: source?.relationshipToStudent ?? null,
+    isLegalGuardian: source?.isLegalGuardian ?? false,
+    studentSchool: input.current?.studentSchool ?? input.studentSchool ?? input.intake?.studentSchool ?? input.previousApplication?.studentSchool ?? null,
+    studentGrade: input.current?.studentGrade ?? input.studentGrade ?? input.intake?.studentGrade ?? input.previousApplication?.studentGrade ?? null,
+    applicationNote: input.current?.applicationNote ?? input.intake?.applicationNote ?? input.previousApplication?.applicationNote ?? null,
   };
 }
 
@@ -151,6 +237,10 @@ function summarize(row: Row): SchoolApplicationSummary {
     studentId: row.studentId,
     packageId: row.packageId,
     status: row.status,
+    parentInfoToken: row.parentInfoToken,
+    parentInfoExpiresAt: row.parentInfoExpiresAt,
+    parentInfoViewedAt: row.parentInfoViewedAt,
+    parentInfoSubmittedAt: row.parentInfoSubmittedAt,
     signToken: row.signToken,
     signExpiresAt: row.signExpiresAt,
     signViewedAt: row.signViewedAt,
@@ -215,6 +305,10 @@ export function buildSchoolApplicationSignPath(signToken: string) {
   return `/school-application/${encodeURIComponent(signToken)}`;
 }
 
+export function buildSchoolApplicationParentInfoPath(parentInfoToken: string) {
+  return `/school-application-info/${encodeURIComponent(parentInfoToken)}`;
+}
+
 export async function listSchoolApplicationsForStudent(studentId: string) {
   const rows = await prisma.schoolApplicationService.findMany({
     where: { studentId },
@@ -240,11 +334,75 @@ export async function getSchoolApplicationBySignToken(signToken: string) {
   return row ? summarize(row) : null;
 }
 
+export async function getSchoolApplicationByParentInfoToken(parentInfoToken: string) {
+  const row = await prisma.schoolApplicationService.findUnique({
+    where: { parentInfoToken },
+    include: includeApplication,
+  });
+  return row ? summarize(row) : null;
+}
+
+export async function getSchoolApplicationParentInfoDefaults(applicationId: string) {
+  const app = await prisma.schoolApplicationService.findUnique({
+    where: { id: applicationId },
+    include: includeApplication,
+  });
+  if (!app) throw new Error("School application not found");
+
+  const [previousApplication, contract, intake] = await Promise.all([
+    prisma.schoolApplicationService.findFirst({
+      where: {
+        studentId: app.studentId,
+        id: { not: app.id },
+        parentInfoJson: { not: Prisma.JsonNull },
+      },
+      orderBy: [{ parentInfoSubmittedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      select: { parentInfoJson: true },
+    }),
+    prisma.studentContract.findFirst({
+      where: {
+        studentId: app.studentId,
+        parentInfoJson: { not: Prisma.JsonNull },
+      },
+      orderBy: [{ intakeSubmittedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      select: { parentInfoJson: true },
+    }),
+    prisma.studentParentIntake.findFirst({
+      where: {
+        studentId: app.studentId,
+        payloadJson: { not: Prisma.JsonNull },
+      },
+      orderBy: [{ submittedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      select: { payloadJson: true },
+    }),
+  ]);
+
+  return mergeParentInfoForForm({
+    studentSchool: app.student.school,
+    studentGrade: app.student.grade,
+    current: coerceParentInfoForm(app.parentInfoJson),
+    previousApplication: coerceParentInfoForm(previousApplication?.parentInfoJson),
+    contract: parentInfoFromContract(contract?.parentInfoJson),
+    intake: parentInfoFromStudentIntake(intake?.payloadJson),
+  });
+}
+
 export async function markSchoolApplicationSignViewed(id: string) {
   const row = await prisma.schoolApplicationService.findUnique({ where: { id }, select: { signViewedAt: true } });
   if (!row || row.signViewedAt) return;
   await prisma.schoolApplicationService.update({ where: { id }, data: { signViewedAt: new Date() } });
   await event({ applicationId: id, eventType: SchoolApplicationEventType.SIGN_VIEWED, actorLabel: "Parent viewed sign link" });
+}
+
+export async function markSchoolApplicationParentInfoViewed(id: string) {
+  const row = await prisma.schoolApplicationService.findUnique({ where: { id }, select: { parentInfoViewedAt: true } });
+  if (!row || row.parentInfoViewedAt) return;
+  await prisma.schoolApplicationService.update({ where: { id }, data: { parentInfoViewedAt: new Date() } });
+  await event({
+    applicationId: id,
+    eventType: SchoolApplicationEventType.PARENT_INFO_VIEWED,
+    actorLabel: "Parent viewed school application info link",
+  });
 }
 
 export async function createSchoolApplicationDraft(input: {
@@ -340,6 +498,111 @@ export async function saveSchoolApplicationDraft(input: {
   return summarize(row);
 }
 
+export async function prepareSchoolApplicationParentInfoLink(input: {
+  id: string;
+  actorUserId?: string | null;
+}) {
+  const current = await prisma.schoolApplicationService.findUnique({
+    where: { id: input.id },
+    include: includeApplication,
+  });
+  if (!current) throw new Error("School application not found");
+  if (current.status === SchoolApplicationStatus.INVOICE_CREATED || current.status === SchoolApplicationStatus.VOID) {
+    throw new Error("Parent info link is only available before completion or void");
+  }
+  const defaults = await getSchoolApplicationParentInfoDefaults(current.id);
+  const row = await prisma.schoolApplicationService.update({
+    where: { id: current.id },
+    data: {
+      parentInfoToken: current.parentInfoToken ?? token(),
+      parentInfoExpiresAt: addDays(new Date(), DEFAULT_PARENT_INFO_TTL_DAYS),
+      parentInfoJson: defaults as unknown as Prisma.InputJsonValue,
+      billTo: trim(current.billTo) === trim(current.student.name) && defaults.parentName ? defaults.parentName : current.billTo,
+    },
+    include: includeApplication,
+  });
+  await event({
+    applicationId: current.id,
+    eventType: SchoolApplicationEventType.PARENT_INFO_LINK_SENT,
+    actorUserId: input.actorUserId ?? null,
+    actorLabel: "Prepared school application parent info link",
+  });
+  return summarize(row);
+}
+
+function appendDatedNote(existing: string | null | undefined, text: string) {
+  const clean = trim(text);
+  if (!clean) return existing ?? null;
+  const stamp = formatDateOnly(new Date());
+  const block = `[School application parent info ${stamp}]\n${clean}`;
+  const current = trim(existing);
+  if (!current) return block;
+  if (current.includes(clean)) return current;
+  return `${current}\n\n${block}`;
+}
+
+export async function submitSchoolApplicationParentInfo(input: {
+  parentInfoToken: string;
+  parentInfo: SchoolApplicationParentInfoForm;
+  actorLabel?: string | null;
+}) {
+  const row = await prisma.schoolApplicationService.findUnique({
+    where: { parentInfoToken: input.parentInfoToken },
+    include: includeApplication,
+  });
+  if (!row) throw new Error("School application parent info link not found");
+  if (row.status === SchoolApplicationStatus.INVOICE_CREATED || row.status === SchoolApplicationStatus.VOID) {
+    throw new Error("This school application is no longer open for parent information");
+  }
+  if (row.parentInfoExpiresAt && row.parentInfoExpiresAt.getTime() < Date.now()) {
+    throw new Error("School application parent info link has expired");
+  }
+  const parentInfo = coerceParentInfoForm(input.parentInfo);
+  if (!parentInfo) throw new Error("Parent name is required");
+  if (!trim(parentInfo.phone) || !trim(parentInfo.email)) {
+    throw new Error("Parent phone and email are required");
+  }
+
+  const studentSchool = trimOrNull(parentInfo.studentSchool);
+  const studentGrade = trimOrNull(parentInfo.studentGrade);
+  const submittedAt = new Date();
+  const next = await prisma.$transaction(async (tx) => {
+    await tx.student.update({
+      where: { id: row.studentId },
+      data: {
+        ...(studentSchool ? { school: studentSchool } : {}),
+        ...(studentGrade ? { grade: studentGrade } : {}),
+        ...(parentInfo.applicationNote
+          ? { note: appendDatedNote(row.student.note, parentInfo.applicationNote) }
+          : {}),
+      },
+    });
+    return tx.schoolApplicationService.update({
+      where: { id: row.id },
+      data: {
+        parentInfoJson: parentInfo as unknown as Prisma.InputJsonValue,
+        parentInfoSubmittedAt: submittedAt,
+        billTo: trim(row.billTo) && trim(row.billTo) !== trim(row.student.name) ? row.billTo : parentInfo.parentName,
+        note: trim(row.note) ? row.note : trimOrNull(parentInfo.applicationNote),
+      },
+      include: includeApplication,
+    });
+  });
+  await event({
+    applicationId: row.id,
+    eventType: SchoolApplicationEventType.PARENT_INFO_SUBMITTED,
+    actorLabel: input.actorLabel ?? parentInfo.parentName,
+    payloadJson: {
+      parentName: parentInfo.parentName,
+      phone: parentInfo.phone ?? null,
+      email: parentInfo.email ?? null,
+      studentSchool,
+      studentGrade,
+    },
+  });
+  return summarize(next);
+}
+
 function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSnapshot {
   const parentInfo = app.parentInfo;
   if (!parentInfo) throw new Error("Parent information is required before signing");
@@ -367,8 +630,8 @@ function snapshotFromSummary(app: SchoolApplicationSummary): SchoolApplicationSn
     parentEmail: parentInfo.email ?? null,
     parentAddress: parentInfo.address ?? null,
     studentName: app.studentName,
-    studentGrade: null,
-    studentSchool: null,
+    studentGrade: parentInfo.studentGrade ?? null,
+    studentSchool: parentInfo.studentSchool ?? null,
     items,
     serviceHours: app.serviceHours,
     serviceFeeAmount: app.serviceFeeAmount,
