@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import {
   buildSchoolApplicationSignPath,
   createSchoolApplicationDraft,
+  deleteVoidedSchoolApplication,
   listSchoolApplicationsForStudent,
   prepareSchoolApplicationSignLink,
   saveSchoolApplicationDraft,
@@ -135,6 +136,20 @@ async function voidAction(formData: FormData) {
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("School application voided")}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Void school application failed";
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
+  }
+}
+
+async function deleteVoidedAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const studentId = String(formData.get("studentId") ?? "").trim();
+  const id = String(formData.get("applicationId") ?? "").trim();
+  try {
+    await deleteVoidedSchoolApplication({ id });
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Voided school application deleted")}`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Delete school application failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}`);
   }
 }
@@ -391,6 +406,20 @@ export default async function SchoolApplicationsPage({
                       Void / 作废
                     </button>
                   </form>
+                ) : null}
+                {app.status === "VOID" && !app.invoiceId ? (
+                  <form action={deleteVoidedAction}>
+                    <input type="hidden" name="studentId" value={student.id} />
+                    <input type="hidden" name="applicationId" value={app.id} />
+                    <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #991b1b", background: "#991b1b", color: "#fff", fontWeight: 800 }}>
+                      Delete voided / 删除已作废
+                    </button>
+                  </form>
+                ) : null}
+                {app.status === "VOID" && app.invoiceId ? (
+                  <div style={{ color: "#92400e", fontSize: 12 }}>
+                    Linked invoice records are kept for audit and cannot be deleted.
+                  </div>
                 ) : null}
               </div>
             </section>

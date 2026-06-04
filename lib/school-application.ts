@@ -576,6 +576,25 @@ export async function voidSchoolApplication(input: {
   return summarize(next);
 }
 
+export async function deleteVoidedSchoolApplication(input: {
+  id: string;
+  actorUserId?: string | null;
+}) {
+  const row = await prisma.schoolApplicationService.findUnique({
+    where: { id: input.id },
+    select: { id: true, status: true, invoiceId: true, invoiceNo: true },
+  });
+  if (!row) throw new Error("School application not found");
+  if (row.status !== SchoolApplicationStatus.VOID) {
+    throw new Error("Only voided school application records can be deleted");
+  }
+  if (row.invoiceId || row.invoiceNo) {
+    throw new Error("Voided school application is linked to an invoice and must be kept for audit history");
+  }
+  await prisma.schoolApplicationService.delete({ where: { id: row.id } });
+  return { deleted: true };
+}
+
 export async function generateSchoolApplicationPdfBuffer(id: string) {
   const app = await getSchoolApplicationById(id);
   if (!app) throw new Error("School application not found");

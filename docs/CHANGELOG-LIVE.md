@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-04-r179
+
+- Release ID: `2026-06-04-r179`
+- Date/Time (Asia/Shanghai): `2026-06-04`
+- Deployment status: `READY`
+- Scope: allow admins to delete voided school application service records only when the record is not linked to an invoice, while keeping invoice-linked voided records for audit history.
+- Key files:
+  - `lib/school-application.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `docs/tasks/TASK-20260604-school-application-void-delete.md`
+- Risk impact (if any): Low. This only adds a guarded delete path for voided school application service records without invoice linkage. It does not change invoice numbering, receipts, lesson package balances, signing, attendance, payroll, partner settlement, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested with a temporary student: non-void record delete was blocked, voided record without invoice was deleted, voided record with invoice marker was blocked, and temporary test student cleanup left `0` rows.
+- Rollback point: previous production commit before `2026-06-04-r179`.
+
+---
+
 ## 2026-06-04-r178
 
 - Release ID: `2026-06-04-r178`
