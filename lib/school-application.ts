@@ -530,6 +530,36 @@ export async function prepareSchoolApplicationParentInfoLink(input: {
   return summarize(row);
 }
 
+export async function deleteSchoolApplicationParentInfoLink(input: {
+  id: string;
+  actorUserId?: string | null;
+}) {
+  const current = await prisma.schoolApplicationService.findUnique({
+    where: { id: input.id },
+    include: includeApplication,
+  });
+  if (!current) throw new Error("School application not found");
+  if (!current.parentInfoToken) {
+    return summarize(current);
+  }
+  const row = await prisma.schoolApplicationService.update({
+    where: { id: current.id },
+    data: {
+      parentInfoToken: null,
+      parentInfoExpiresAt: null,
+      parentInfoViewedAt: null,
+    },
+    include: includeApplication,
+  });
+  await event({
+    applicationId: current.id,
+    eventType: SchoolApplicationEventType.PARENT_INFO_LINK_SENT,
+    actorUserId: input.actorUserId ?? null,
+    actorLabel: "Deleted school application parent info link",
+  });
+  return summarize(row);
+}
+
 function appendDatedNote(existing: string | null | undefined, text: string) {
   const clean = trim(text);
   if (!clean) return existing ?? null;

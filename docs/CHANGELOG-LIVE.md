@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-05-r184
+
+- Release ID: `2026-06-05-r184`
+- Date/Time (Asia/Shanghai): `2026-06-05`
+- Deployment status: `DEPLOYED`
+- Scope: add a delete action for school application parent information links so old public tokens can be revoked without removing already submitted parent details.
+- Key files:
+  - `lib/school-application.ts`
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `docs/tasks/TASK-20260605-school-application-parent-info-link-delete.md`
+- Risk impact (if any): Low. This only clears `parentInfoToken`, expiry, and viewed timestamp on school application services. It does not delete parent info, submitted timestamp, contracts, invoices, receipts, lesson packages, attendance, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - Smoke tested with a temporary student: generated a school application parent info link, submitted parent info, deleted the link, verified the old token no longer resolves, verified parent info and submitted timestamp remain, then cleaned up temporary rows.
+- Rollback point: previous production state before `2026-06-05-r184`.
+
+---
+
 ## 2026-06-04-r183
 
 - Release ID: `2026-06-04-r183`

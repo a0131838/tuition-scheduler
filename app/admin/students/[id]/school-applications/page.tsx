@@ -5,6 +5,7 @@ import {
   buildSchoolApplicationParentInfoPath,
   buildSchoolApplicationSignPath,
   createSchoolApplicationDraft,
+  deleteSchoolApplicationParentInfoLink,
   deleteVoidedSchoolApplication,
   listSchoolApplicationsForStudent,
   prepareSchoolApplicationParentInfoLink,
@@ -144,6 +145,21 @@ async function prepareParentInfoAction(formData: FormData) {
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link ready")}&open=${encodeURIComponent(id)}${source}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Prepare parent info link failed";
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
+  }
+}
+
+async function deleteParentInfoAction(formData: FormData) {
+  "use server";
+  const admin = await requireAdmin();
+  const studentId = String(formData.get("studentId") ?? "").trim();
+  const id = String(formData.get("applicationId") ?? "").trim();
+  const source = sourceQuery(formData);
+  try {
+    await deleteSchoolApplicationParentInfoLink({ id, actorUserId: admin.id });
+    redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?msg=${encodeURIComponent("Parent info link deleted")}&open=${encodeURIComponent(id)}${source}`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Delete parent info link failed";
     redirect(`/admin/students/${encodeURIComponent(studentId)}/school-applications?err=${encodeURIComponent(msg)}&open=${encodeURIComponent(id)}${source}`);
   }
 }
@@ -307,6 +323,14 @@ export default async function SchoolApplicationsPage({
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <a href={parentInfoHref} target="_blank" rel="noreferrer">Open parent info link</a>
                     <CopyTextButton text={parentInfoHref} label="Copy parent info link / 复制家长资料链接" copiedLabel="Copied" style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }} />
+                    <form action={deleteParentInfoAction}>
+                      <input type="hidden" name="studentId" value={student.id} />
+                      <input type="hidden" name="applicationId" value={app.id} />
+                      {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
+                      <button type="submit" style={{ padding: "7px 10px", borderRadius: 10, border: "1px solid #dc2626", background: "#fff1f2", color: "#b91c1c", fontWeight: 800 }}>
+                        Delete link / 删除链接
+                      </button>
+                    </form>
                   </div>
                 ) : null}
               </div>
