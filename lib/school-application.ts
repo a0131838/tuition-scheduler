@@ -83,6 +83,7 @@ export type SchoolApplicationSummary = {
   note: string | null;
   contractSnapshot: SchoolApplicationSnapshot | null;
   signedPdfPath: string | null;
+  signatureImagePath: string | null;
   signerName: string | null;
   signerEmail: string | null;
   signerPhone: string | null;
@@ -116,6 +117,17 @@ function money(value: unknown) {
   const n = Number(value ?? 0);
   if (!Number.isFinite(n)) return 0;
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function parseSignatureDataUrl(input: string) {
+  const match = input.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid signature image");
+  const mimeType = match[1];
+  const base64 = match[2];
+  const buffer = Buffer.from(base64, "base64");
+  if (!buffer.byteLength) throw new Error("Signature image is empty");
+  const ext = mimeType.includes("png") ? ".png" : mimeType.includes("jpeg") ? ".jpg" : ".bin";
+  return { buffer, ext };
 }
 
 function decimalToNumber(value: Prisma.Decimal | number | null | undefined) {
@@ -262,6 +274,7 @@ function summarize(row: Row): SchoolApplicationSummary {
         ? (row.contractSnapshotJson as unknown as SchoolApplicationSnapshot)
         : null,
     signedPdfPath: row.signedPdfPath,
+    signatureImagePath: row.signatureImagePath,
     signerName: row.signerName,
     signerEmail: row.signerEmail,
     signerPhone: row.signerPhone,
@@ -783,6 +796,7 @@ export async function signSchoolApplication(input: {
   signerEmail?: string | null;
   signerPhone?: string | null;
   signerIp?: string | null;
+  signatureDataUrl?: string | null;
 }) {
   const app = await getSchoolApplicationBySignToken(input.signToken);
   if (!app) throw new Error("School application sign link not found");
@@ -794,13 +808,27 @@ export async function signSchoolApplication(input: {
   }
   const signerName = trim(input.signerName);
   if (!signerName) throw new Error("Signer name is required");
+  const signatureDataUrl = trimOrNull(input.signatureDataUrl);
+  if (!signatureDataUrl) throw new Error("Handwritten signature is required");
   const now = new Date();
+  const signatureImage = parseSignatureDataUrl(signatureDataUrl);
+  const storedSignature = await storeBusinessBuffer(
+    {
+      content: signatureImage.buffer,
+      originalName: `school-application-signature-${app.id}${signatureImage.ext}`,
+    },
+    {
+      allowedPrefix: BUSINESS_UPLOAD_PREFIX.contractSignatures,
+      subdirSegments: [app.studentId, "school-applications"],
+    }
+  );
   const invoice = await ensureInvoiceForSignedApplication(app, app.contractSnapshot);
   const signedPdf = await generateSignedSchoolApplicationPdfBuffer({
     snapshot: app.contractSnapshot,
     signerName,
     signedAtLabel: now.toLocaleString("en-SG"),
     signerIp: input.signerIp ?? null,
+    signatureImagePath: storedSignature.relativePath,
   });
   const stored = await storeBusinessBuffer(
     { content: signedPdf, originalName: `signed-school-application-${app.id}.pdf` },
@@ -816,6 +844,7 @@ export async function signSchoolApplication(input: {
       signerEmail: trimOrNull(input.signerEmail),
       signerPhone: trimOrNull(input.signerPhone),
       signerIp: trimOrNull(input.signerIp),
+      signatureImagePath: storedSignature.relativePath,
       signedPdfPath: stored.relativePath,
       invoiceId: invoice.invoiceId,
       invoiceNo: invoice.invoiceNo,

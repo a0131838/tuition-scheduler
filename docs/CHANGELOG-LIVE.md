@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-05-r187
+
+- Release ID: `2026-06-05-r187`
+- Date/Time (Asia/Shanghai): `2026-06-05`
+- Deployment status: `DEPLOYED`
+- Scope: make the school application public signing page show the full agreement terms, add agreement PDF preview before signing, require a handwritten signature, store the signature image, and include it in the signed school application PDF.
+- Key files:
+  - `app/school-application/[token]/page.tsx`
+  - `lib/school-application.ts`
+  - `lib/school-application-pdf.ts`
+  - `docs/tasks/TASK-20260605-school-application-full-signature-page.md`
+- Risk impact (if any): Low to medium. This changes only the school application service signing page and signed agreement PDF output. It does not change student tuition contracts, package balances, attendance deductions, receipt approval, invoice numbering rules, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
+- Verification:
+  - `npm run build`
+  - `npx tsc --noEmit --pretty false`
+  - Local smoke tested `signSchoolApplication` without `signatureDataUrl` and confirmed it rejects with `Handwritten signature is required`.
+- Rollback point: previous production state before `2026-06-05-r187`.
+
+---
+
 ## 2026-06-05-r186
 
 - Release ID: `2026-06-05-r186`

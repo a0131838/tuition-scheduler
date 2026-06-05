@@ -48,6 +48,7 @@ type SignedPdfInput = {
   signerName?: string | null;
   signedAtLabel?: string | null;
   signerIp?: string | null;
+  signatureImagePath?: string | null;
   companySeal?: boolean;
 };
 
@@ -466,10 +467,18 @@ function buildDoc(input: SignedPdfInput, signed: boolean) {
   const signatureY = doc.y;
   row(doc, [
     { text: "For and on behalf of GT Educational Institute Pte Ltd\n代表 GT Educational Institute Pte Ltd 签署\n\nName / 姓名: ______________________\nTitle / 职务: ______________________\nSignature / 签名: __________________\nDate / 日期: ______________________", width: 257 },
-    { text: signed ? `Parent / 家长\n\nName / 姓名: ${input.signerName ?? snapshot.parentName}\nSigned at / 签署时间: ${input.signedAtLabel ?? "-"}\nIP: ${input.signerIp ?? "-"}` : "Parent / 家长\n\nName / 姓名: ______________________\nSignature / 签名: __________________\nDate / 日期: ______________________", width: 258 },
+    { text: signed ? `Parent / 家长\n\nName / 姓名: ${input.signerName ?? snapshot.parentName}\nSignature / 签名:\nSigned at / 签署时间: ${input.signedAtLabel ?? "-"}\nIP: ${input.signerIp ?? "-"}` : "Parent / 家长\n\nName / 姓名: ______________________\nSignature / 签名: __________________\nDate / 日期: ______________________", width: 258 },
   ]);
   if (signed && input.companySeal) {
     drawCompanySeal(doc, 174, signatureY + 28);
+  }
+  if (signed && input.signatureImagePath) {
+    try {
+      const absPath = path.join(process.cwd(), "public", input.signatureImagePath.replace(/^\/+/, ""));
+      if (fs.existsSync(absPath)) {
+        doc.image(absPath, 402, signatureY + 52, { fit: [118, 36], align: "right", valign: "center" });
+      }
+    } catch {}
   }
 
   doc.addPage();
