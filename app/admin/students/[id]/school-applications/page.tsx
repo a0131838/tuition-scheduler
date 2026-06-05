@@ -60,6 +60,10 @@ function parentInfoStatus(app: { parentInfoSubmittedAt: Date | null; parentInfoV
   return "Not sent / 未发送";
 }
 
+function canExportAgreementPdf(app: { parentInfo: unknown; items: unknown[] }) {
+  return Boolean(app.parentInfo) && app.items.length >= 1;
+}
+
 function sourceQuery(formData: FormData) {
   return String(formData.get("from") ?? "").trim() === "school-applications" ? "&from=school-applications" : "";
 }
@@ -281,6 +285,7 @@ export default async function SchoolApplicationsPage({
         applications.map((app) => {
           const signHref = app.signToken ? `${baseUrl}${buildSchoolApplicationSignPath(app.signToken)}` : "";
           const parentInfoHref = app.parentInfoToken ? `${baseUrl}${buildSchoolApplicationParentInfoPath(app.parentInfoToken)}` : "";
+          const agreementPdfReady = canExportAgreementPdf(app);
           return (
             <section key={app.id} style={cardStyle(app.id === openId ? "#f8fbff" : "#fff")}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -293,8 +298,14 @@ export default async function SchoolApplicationsPage({
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}`} target="_blank" rel="noreferrer">PDF</a>
-                  {app.signedAt ? <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}?seal=1`} target="_blank" rel="noreferrer">Sealed PDF / 盖章版合同</a> : null}
+                  {agreementPdfReady ? (
+                    <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}`} target="_blank" rel="noreferrer">Agreement PDF / 合同PDF</a>
+                  ) : (
+                    <span style={{ color: "#64748b", fontSize: 12, alignSelf: "center" }}>
+                      Agreement PDF available after parent info and at least 1 school / 填好家长资料和至少1所学校后可导出合同PDF
+                    </span>
+                  )}
+                  {app.signedAt ? <a href={`/api/exports/school-application/${encodeURIComponent(app.id)}?seal=1`} target="_blank" rel="noreferrer">Sealed Agreement PDF / 盖章合同PDF</a> : null}
                   {app.invoiceId ? <a href={`/api/exports/parent-invoice/${encodeURIComponent(app.invoiceId)}`} target="_blank" rel="noreferrer">Invoice PDF</a> : null}
                   {app.packageId ? <a href={`/admin/packages/${encodeURIComponent(app.packageId)}/billing`}>Billing</a> : null}
                 </div>

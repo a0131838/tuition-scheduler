@@ -14,7 +14,13 @@ export async function GET(
   if (!app) return new NextResponse("Not found", { status: 404 });
   const url = new URL(req.url);
   const withSeal = url.searchParams.get("seal") === "1";
-  const buffer = await generateSchoolApplicationPdfBuffer(id, { companySeal: withSeal });
+  let buffer: Buffer;
+  try {
+    buffer = await generateSchoolApplicationPdfBuffer(id, { companySeal: withSeal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "School application agreement PDF is not ready";
+    return new NextResponse(`Agreement PDF is not ready: ${message}`, { status: 400 });
+  }
   const download = url.searchParams.get("download") === "1";
   const name = `${safeName(app.studentName)}-school-application-${app.id.slice(0, 8)}${withSeal ? "-sealed" : ""}.pdf`;
   return new NextResponse(new Uint8Array(buffer), {

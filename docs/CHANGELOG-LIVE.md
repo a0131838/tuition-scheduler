@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-05-r185
+
+- Release ID: `2026-06-05-r185`
+- Date/Time (Asia/Shanghai): `2026-06-05`
+- Deployment status: `DEPLOYED`
+- Scope: clarify school application agreement PDF labels and prevent empty school-application drafts from opening a 500 error when the agreement PDF is not ready.
+- Key files:
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/api/exports/school-application/[id]/route.ts`
+  - `docs/tasks/TASK-20260605-school-application-agreement-pdf-label-and-empty-draft.md`
+- Risk impact (if any): Low. This changes only the school application agreement PDF label and not-ready handling. It does not change contract content, signing, invoice numbering, receipt approval, lesson packages, attendance, scheduling, payroll, partner settlement, transport billing, or Business Accounts.
+- Verification:
+  - `npm run build`
+  - `npx tsc --noEmit --pretty false`
+  - Smoke tested an empty temporary school application draft by calling the PDF export route directly and confirmed it returns `400 Agreement PDF is not ready` instead of `500`.
+- Rollback point: previous production state before `2026-06-05-r185`.
+
+---
+
 ## 2026-06-05-r184
 
 - Release ID: `2026-06-05-r184`
