@@ -23,6 +23,7 @@ import {
   SCHOOL_APPLICATION_TARGETS,
 } from "@/lib/school-application-directory";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
+import SchoolApplicationDraftGuard from "./SchoolApplicationDraftGuard";
 
 function appBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "";
@@ -62,6 +63,10 @@ function parentInfoStatus(app: { parentInfoSubmittedAt: Date | null; parentInfoV
 
 function canExportAgreementPdf(app: { parentInfo: unknown; items: unknown[] }) {
   return Boolean(app.parentInfo) && app.items.length >= 1;
+}
+
+function requiredStar() {
+  return <span style={{ color: "#dc2626" }}>*</span>;
 }
 
 function sourceQuery(formData: FormData) {
@@ -347,9 +352,15 @@ export default async function SchoolApplicationsPage({
               </div>
 
               <form action={saveDraftAction} style={{ display: "grid", gap: 12 }}>
+                <SchoolApplicationDraftGuard />
                 <input type="hidden" name="studentId" value={student.id} />
                 <input type="hidden" name="applicationId" value={app.id} />
                 {returnToList ? <input type="hidden" name="from" value="school-applications" /> : null}
+                {app.status !== "INVOICE_CREATED" ? (
+                  <div style={{ border: "1px solid #fed7aa", background: "#fff7ed", color: "#9a3412", borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5 }}>
+                    Required fields / 必填项: Parent name, agreement date, first school/application, and total amount greater than 0. / 家长姓名、合同日期、第一所学校/申请项目，以及总金额大于 0。
+                  </div>
+                ) : null}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                   <div style={{ display: "grid", gap: 4, padding: "8px 0" }}>
                     <strong>Billing case / 收款 case</strong>
@@ -358,8 +369,8 @@ export default async function SchoolApplicationsPage({
                     </span>
                   </div>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700 }}>Parent name / 家长姓名</span>
-                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <span style={{ fontWeight: 700 }}>Parent name / 家长姓名 {requiredStar()}</span>
+                    <input name="parentName" defaultValue={parentNameDefault(app)} placeholder="Fill parent name / 填写家长姓名" style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} required={app.status !== "INVOICE_CREATED"} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Parent phone / 家长电话</span>
@@ -378,8 +389,8 @@ export default async function SchoolApplicationsPage({
                     <input name="billTo" defaultValue={app.billTo} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
                   </label>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700 }}>Agreement date / 合同日期</span>
-                    <input name="agreementDate" type="date" defaultValue={formatDateOnly(app.agreementDate)} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <span style={{ fontWeight: 700 }}>Agreement date / 合同日期 {requiredStar()}</span>
+                    <input name="agreementDate" type="date" defaultValue={formatDateOnly(app.agreementDate)} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} required={app.status !== "INVOICE_CREATED"} />
                   </label>
                 </div>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -388,11 +399,17 @@ export default async function SchoolApplicationsPage({
                 </label>
 
                 <div style={{ overflowX: "auto" }}>
+                  <div style={{ marginBottom: 6, color: "#475569", fontSize: 12 }}>
+                    Fee total / 费用合计 {requiredStar()}: service fee, official fee, and add-on fee combined must be greater than 0. / 服务费、官方费、增值服务费合计必须大于 0。
+                  </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "#eff6ff" }}>
                         {["School / application", "Programme", "School grade", "Equivalent level", "Intake", "Service fee", "Official fee", "Official fee mode", "Notes"].map((x) => (
-                          <th key={x} style={{ border: "1px solid #dbeafe", padding: 6, textAlign: "left" }}>{x}</th>
+                          <th key={x} style={{ border: "1px solid #dbeafe", padding: 6, textAlign: "left" }}>
+                            {x}
+                            {x === "School / application" ? <> {requiredStar()}</> : null}
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -402,7 +419,7 @@ export default async function SchoolApplicationsPage({
                         return (
                           <tr key={i}>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
-                              <select name={`targetId_${i}`} defaultValue={item?.targetId ?? ""} style={{ ...inputStyle(), minWidth: 260 }} disabled={app.status === "INVOICE_CREATED"}>
+                              <select name={`targetId_${i}`} defaultValue={item?.targetId ?? ""} style={{ ...inputStyle(), minWidth: 260 }} disabled={app.status === "INVOICE_CREATED"} required={i === 0 && app.status !== "INVOICE_CREATED"}>
                                 <option value="">Select / 请选择</option>
                                 <optgroup label="MOE / AEIS">
                                   {SCHOOL_APPLICATION_TARGETS.filter((target) => target.kind === "MOE_EXERCISE").map((target) => (
@@ -441,8 +458,8 @@ export default async function SchoolApplicationsPage({
                                 {SCHOOL_APPLICATION_INTAKES.map((value) => <option key={value} value={value}>{value}</option>)}
                               </select>
                             </td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`serviceFee_${i}`} type="number" step="0.01" defaultValue={item?.serviceFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
-                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFee_${i}`} type="number" step="0.01" defaultValue={item?.officialFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`serviceFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.serviceFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
+                            <td style={{ border: "1px solid #e5e7eb", padding: 4 }}><input name={`officialFee_${i}`} type="number" step="0.01" min="0" defaultValue={item?.officialFee ?? ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} /></td>
                             <td style={{ border: "1px solid #e5e7eb", padding: 4 }}>
                               <select name={`officialFeeMode_${i}`} defaultValue={item?.officialFeeMode ?? ""} style={{ ...inputStyle(), minWidth: 180 }} disabled={app.status === "INVOICE_CREATED"}>
                                 <option value="">Use directory default</option>
@@ -463,7 +480,7 @@ export default async function SchoolApplicationsPage({
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontWeight: 700 }}>Add-on fee / 增值服务费</span>
-                    <input name="addOnFeeAmount" type="number" step="0.01" defaultValue={app.addOnFeeAmount || ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
+                    <input name="addOnFeeAmount" type="number" step="0.01" min="0" defaultValue={app.addOnFeeAmount || ""} style={inputStyle()} disabled={app.status === "INVOICE_CREATED"} />
                   </label>
                   <div style={{ ...cardStyle("#f0fdf4"), gap: 4 }}>
                     <strong>Total / 总额</strong>

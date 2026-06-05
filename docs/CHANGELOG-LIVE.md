@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-05-r186
+
+- Release ID: `2026-06-05-r186`
+- Date/Time (Asia/Shanghai): `2026-06-05`
+- Deployment status: `DEPLOYED`
+- Scope: add required-field markers and a client-side save guard to the school application draft form so missing required fields or zero total amount are caught before a server redirect can refresh the page and lose unsaved input.
+- Key files:
+  - `app/admin/students/[id]/school-applications/page.tsx`
+  - `app/admin/students/[id]/school-applications/SchoolApplicationDraftGuard.tsx`
+  - `docs/tasks/TASK-20260605-school-application-required-fields.md`
+- Risk impact (if any): Low. This only changes the school application draft form validation experience. It does not change saved school application data structures, invoice numbering, receipt approval, package balances, attendance deductions, scheduling, payroll, partner settlement, transport billing, student contracts, or Business Accounts.
+- Verification:
+  - `npm run build`
+  - `npx tsc --noEmit --pretty false`
+- Rollback point: previous production state before `2026-06-05-r186`.
+
+---
+
 ## 2026-06-05-r185
 
 - Release ID: `2026-06-05-r185`
