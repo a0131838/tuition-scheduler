@@ -15,6 +15,22 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-12-r188
+
+- Release ID: `2026-06-12-r188`
+- Date/Time (Asia/Shanghai): `2026-06-12`
+- Deployment status: `DEPLOYED`
+- Scope: prevent the Manager Quality Desk daily manager reflection form from stretching to match the taller right-side quality snapshot column.
+- Key files:
+  - `app/admin/manager/quality/page.tsx`
+  - `docs/tasks/TASK-20260612-manager-quality-reflection-layout.md`
+- Risk impact (if any): Low. This is a layout-only change on the manager quality desk. It does not change saved reflection data, Lead Desk rows, feedback quality logic, report follow-up logic, approvals, billing, receipts, packages, attendance, scheduling, payroll, partner settlement, transport billing, school applications, or Business Accounts.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production state before `2026-06-12-r188`.
+
+---
+
 ## 2026-06-05-r187
 
 - Release ID: `2026-06-05-r187`

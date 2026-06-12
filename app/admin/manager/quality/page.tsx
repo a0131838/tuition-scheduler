@@ -466,8 +466,16 @@ export default async function ManagerQualityPage({
         )}
       </section>
 
-      <section className="no-print" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)", gap: 16 }}>
-        <form action={saveReflectionAction} style={{ ...panelStyle, padding: 18, display: "grid", gap: 16 }}>
+      <section
+        className="no-print"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)",
+          gap: 16,
+          alignItems: "start",
+        }}
+      >
+        <form action={saveReflectionAction} style={{ ...panelStyle, padding: 18, display: "grid", gap: 16, alignSelf: "start" }}>
           <div>
             <h2 style={sectionTitleStyle}>{t(lang, "Daily Manager Reflection Log", "每日管理复盘")}</h2>
             <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
