@@ -160,6 +160,7 @@ export default async function AdminHome({
             <a href="/admin/finance/student-package-invoices">{t(lang, "Student Package Invoices", "学生课时包发票")}</a>
             <a href="/admin/finance/transport-billing">{t(lang, "Transport Billing", "交通费月结")}</a>
             <a href="/admin/finance/student-package-balances">{t(lang, "Student Package Balances", "学生课时包余额报表")}</a>
+            <a href="/admin/finance/student-package-utilization">{t(lang, "Student Package Utilization", "学生课包使用提取")}</a>
             <a href="/admin/expense-claims">{t(lang, "Expense Claims", "报销审批")}</a>
             <a href="/admin/reports/audit-logs">{t(lang, "Audit Logs", "审计日志")}</a>
           </div>

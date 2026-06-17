@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-06-12-r188` (Manager Quality Desk daily reflection layout no longer stretches to the height of the right-side quality snapshot column), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-06-17-r189` (Finance can extract one student's attendance-based package utilization from shared packages), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -73,6 +73,7 @@
 - Tutor-bank-payment-profile risk: `2026-05-27-r152` adds full bank account details to finance payout exports, so CSV/XLSX files now carry both PayNow and bank-transfer sensitive payment data.
 - Manager-quality-history risk: `2026-05-27-r153` reads existing manager reflection entries into a dashboard and incomplete filter; because it does not change the saved reflection format, old entries should remain readable, but managers with no recent submissions will see empty dashboard states.
 - Manager-quality-layout risk: `2026-06-12-r188` changes only the two-column alignment on the Manager Quality Desk reflection section; verify the daily reflection form stays content-height while the right-side quality snapshot still stacks normally.
+- Student-package-utilization risk: `2026-06-17-r189` adds a read-only attendance-based extraction for shared packages; finance should use it for per-student usage splits and avoid using package ledger totals alone when siblings share the same package.
 - Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
 - Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
 - Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.
@@ -102,6 +103,31 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-06-17-r189 Ready
+
+- Scope: add a read-only finance/admin report and Excel export for one student's package utilization, calculated from deducted attendance rows and optionally filtered by package ID.
+- Business impact:
+  - Finance can open `/admin/finance/student-package-utilization` or the Finance Workbench shortcut to calculate one student's attended/deducted hours.
+  - Shared packages can be split by student, so Coco Xu and Eason Xu usage can be separated even when they share the same package.
+  - The report also lists available/shared packages to help finance copy the correct package ID before exporting.
+  - Attendance marking, package balances, package ledger transactions, invoices, receipts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw are unchanged.
+- Files:
+  - `lib/student-package-utilization-report.ts`
+  - `app/admin/finance/student-package-utilization/page.tsx`
+  - `app/api/exports/student-package-utilization/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `docs/tasks/TASK-20260617-student-package-utilization.md`
+- Verification before deploy:
+  - `npm run build`
+  - `npx tsc --noEmit`
+  - Local auth smoke check confirmed `/admin/finance/student-package-utilization` compiles and redirects unauthenticated users to `/admin/login`.
+  - Read-only data check for `Coco Xu` through `2026-06-17` returned 45 deducted attendance rows and 59.5 deducted hours on shared package `1df7bb95-8de1-4c10-bd7a-6a935af6af0e`.
+- Post-deploy verification:
+  - `ssh -i "/Users/zhao111/Documents/sgt系统/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
 
 ## 2026-05-30-r162 Ready
 

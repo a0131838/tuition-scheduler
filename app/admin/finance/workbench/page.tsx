@@ -735,6 +735,13 @@ export default async function FinanceWorkbenchPage({
   ];
   const financeWorkbenchSectionLinks = [
     {
+      href: "/admin/finance/student-package-utilization",
+      label: t(lang, "Student package utilization", "学生课包使用提取"),
+      detail: t(lang, "Split one student's deducted hours from a shared package", "从共享课包中拆出单个学生已扣小时"),
+      background: "#eefdf3",
+      border: "#86efac",
+    },
+    {
       href: "/admin/finance/tutor-cost-export",
       label: t(lang, "Tutor cost export", "老师成本导出"),
       detail: t(lang, "Download 15th-to-month-end completed session cost", "下载 15 号到月底已完成课次成本"),

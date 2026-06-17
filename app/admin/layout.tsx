@@ -64,6 +64,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
   if (matchesPath(pathname, "/admin/teacher-notices")) return t(lang, "Teacher Notices", "老师通知管理");
+  if (matchesPath(pathname, "/admin/finance/student-package-utilization")) return t(lang, "Student Package Utilization", "学生课包使用提取");
   if (matchesPath(pathname, "/admin/finance/individual-student-utility")) return t(lang, "Individual Student Utility", "个人学生课时使用");
   if (matchesPath(pathname, "/admin/finance/tutor-cost-export")) return t(lang, "Tutor Cost Export", "老师成本导出");
   if (matchesPath(pathname, "/admin/finance/student-package-balances")) return t(lang, "Package Balance Reports", "课时包余额报表");
@@ -151,6 +152,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin" ||
     pathname === "/admin/approvals" ||
     pathname === "/admin/finance/workbench" ||
+    pathname === "/admin/finance/student-package-utilization" ||
     pathname === "/admin/finance/individual-student-utility" ||
     pathname === "/admin/finance/tutor-cost-export" ||
     pathname === "/admin/finance/documents" ||
@@ -297,6 +299,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
         { href: "/admin/finance/documents", label: t(lang, "Invoices & Receipts", "完整发票与收据"), tone: "success" as const },
         { href: "/admin/reports/teacher-payroll", label: t(lang, "Teacher Payroll", "老师工资单"), tone: "accent" as const },
+        { href: "/admin/finance/student-package-utilization", label: t(lang, "Student Package Utilization", "学生课包使用提取"), tone: "success" as const },
         { href: "/admin/finance/individual-student-utility", label: t(lang, "Individual Student Utility", "个人学生课时使用"), tone: "success" as const },
         { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },
         { href: "/admin/reports/partner-settlement", label: t(lang, "Partner Settlement", "合作方结算"), tone: "accent" as const },
@@ -380,6 +383,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "success" as const,
         },
         {
+          href: "/admin/finance/student-package-utilization",
+          label: t(lang, "Student Package Utilization", "学生课包使用提取"),
+          description: t(lang, "Split one student's usage from a shared package.", "从共享课包中拆出单个学生使用量。"),
+          tone: "success" as const,
+        },
+        {
           href: "/admin/finance/documents",
           label: t(lang, "Invoices & Receipts", "完整发票与收据"),
           description: t(lang, "Open the cross-workspace document center.", "打开跨工作台的单据总览。"),
@@ -417,6 +426,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/finance/business-accounts", label: t(lang, "Business Accounts", "企业账户"), tone: "accent" as const },
         { href: "/admin/finance/transport-billing", label: t(lang, "Transport Billing", "交通费月结"), tone: "warning" as const },
         { href: "/admin/finance/student-package-balances", label: t(lang, "Student Package Balances", "学生课时包余额报表"), tone: "success" as const },
+        { href: "/admin/finance/student-package-utilization", label: t(lang, "Student Package Utilization", "学生课包使用提取"), tone: "success" as const },
         { href: "/admin/reports/package-balance-audit", label: t(lang, "Package Balance Audit", "课包余额复核"), tone: "warning" as const },
         { href: "/admin/finance/individual-student-utility", label: t(lang, "Individual Student Utility", "个人学生课时使用"), tone: "success" as const },
         { href: "/admin/finance/tutor-cost-export", label: t(lang, "Tutor Cost Export", "老师成本导出"), tone: "success" as const },

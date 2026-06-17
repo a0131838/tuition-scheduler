@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-17-r189
+
+- Release ID: `2026-06-17-r189`
+- Date/Time (Asia/Shanghai): `2026-06-17`
+- Deployment status: `READY`
+- Scope: add a read-only finance report that extracts one student's deducted package utilization from attendance rows, including shared-package cases such as Coco Xu and Eason Xu.
+- Key files:
+  - `lib/student-package-utilization-report.ts`
+  - `app/admin/finance/student-package-utilization/page.tsx`
+  - `app/api/exports/student-package-utilization/route.ts`
+  - `app/admin/finance/workbench/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/page.tsx`
+  - `docs/tasks/TASK-20260617-student-package-utilization.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a read-only finance/admin extraction and Excel export based on existing attendance deductions. It does not change attendance marking, package balances, package ledger transactions, invoice numbering, receipts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npm run build`
+  - `npx tsc --noEmit`
+  - Local auth smoke check confirmed `/admin/finance/student-package-utilization` compiles and redirects unauthenticated users to `/admin/login`.
+  - Read-only data check for `Coco Xu` through `2026-06-17` returned 45 deducted attendance rows and 59.5 deducted hours on shared package `1df7bb95-8de1-4c10-bd7a-6a935af6af0e`.
+- Rollback point: previous production commit before `2026-06-17-r189`.
+
+---
+
 ## 2026-06-12-r188
 
 - Release ID: `2026-06-12-r188`
