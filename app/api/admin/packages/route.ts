@@ -27,6 +27,40 @@ function parseMoney(raw: unknown) {
   return Number.isFinite(value) ? Math.round((value + Number.EPSILON) * 100) / 100 : NaN;
 }
 
+function cleanText(raw: unknown) {
+  return String(raw ?? "").trim();
+}
+
+function parsePositiveInt(raw: unknown) {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : NaN;
+}
+
+function parseYmd(raw: unknown) {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function buildSchedulingExceptionText(input: {
+  approvedBy: string;
+  reason: string;
+  maxMinutes: number | null;
+  followUpDue: string | null;
+}) {
+  return [
+    "Pre-approved scheduling exception / 先上课例外审批",
+    `Approved by / 批准人: ${input.approvedBy}`,
+    `Reason / 原因: ${input.reason}`,
+    input.maxMinutes ? `Max pre-approved minutes / 最多先上分钟数: ${input.maxMinutes}` : null,
+    input.followUpDue ? `Follow-up due / 补齐截止日: ${input.followUpDue}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 type PackageModeKey = "HOURS_MINUTES" | "GROUP_MINUTES" | "GROUP_COUNT" | "MONTHLY";
 
 function modeKeyFromCreateType(typeRaw: string, type: string): PackageModeKey {
@@ -83,6 +117,10 @@ export async function POST(req: Request) {
   const paidAmountRaw = body?.paidAmount;
   const paidNote = String(body?.paidNote ?? "");
   const invoiceGateExempt = !!body?.invoiceGateExempt;
+  const schedulingExceptionApprovedBy = cleanText(body?.schedulingExceptionApprovedBy);
+  const schedulingExceptionReason = cleanText(body?.schedulingExceptionReason);
+  const schedulingExceptionMaxMinutes = parsePositiveInt(body?.schedulingExceptionMaxMinutes);
+  const schedulingExceptionFollowUpDue = parseYmd(body?.schedulingExceptionFollowUpDue);
   const invoiceAmountParsed = parseMoney(body?.invoiceAmount);
   const invoiceGstAmountParsed = parseMoney(body?.invoiceGstAmount);
   const sharedStudentIdsRaw: string[] = Array.isArray(body?.sharedStudentIds)
@@ -141,6 +179,13 @@ export async function POST(req: Request) {
     settlementMode: settlementMode as any,
     invoiceGateExempt,
   });
+  const isManualSchedulingException = invoiceGateExempt && !requiresInvoiceGate && settlementMode == null;
+  if (isManualSchedulingException) {
+    if (!schedulingExceptionApprovedBy) return bad("Scheduling exception requires approvedBy", 409);
+    if (!schedulingExceptionReason) return bad("Scheduling exception requires reason", 409);
+    if (Number.isNaN(schedulingExceptionMaxMinutes)) return bad("Invalid scheduling exception max minutes", 409);
+    if (schedulingExceptionFollowUpDue === "") return bad("Invalid scheduling exception follow-up due date", 409);
+  }
   if (requiresInvoiceGate) {
     if (invoiceAmountParsed == null || !Number.isFinite(invoiceAmountParsed) || invoiceAmountParsed <= 0) {
       return bad("Direct-billing package requires a positive invoice amount", 409);
@@ -173,17 +218,28 @@ export async function POST(req: Request) {
     typeRaw === "GROUP_MINUTES" || typeRaw === "GROUP_COUNT" ? typeRaw : "HOURS_MINUTES",
     noteRaw
   );
+  const schedulingExceptionText = isManualSchedulingException
+    ? buildSchedulingExceptionText({
+        approvedBy: schedulingExceptionApprovedBy,
+        reason: schedulingExceptionReason,
+        maxMinutes: schedulingExceptionMaxMinutes as number | null,
+        followUpDue: schedulingExceptionFollowUpDue,
+      })
+    : "";
+  const packageNoteWithException = [packageNote || null, schedulingExceptionText || null].filter(Boolean).join("\n\n") || null;
   const now = new Date();
   const invoiceIssueDate = validFromStr || now.toISOString().slice(0, 10);
   let createdPackageId: string | null = null;
   let createdInvoiceId: string | null = null;
   const createFinanceGateData = (invoiceNo?: string | null) => ({
     financeGateStatus: requiresInvoiceGate ? ("INVOICE_PENDING_MANAGER" as const) : ("EXEMPT" as const),
-    financeGateReason: buildPackageFinanceGateReason({
-      status: requiresInvoiceGate ? "INVOICE_PENDING_MANAGER" : "EXEMPT",
-      invoiceNo,
-      settlementMode: settlementMode as any,
-    }),
+    financeGateReason: schedulingExceptionText
+      ? schedulingExceptionText
+      : buildPackageFinanceGateReason({
+          status: requiresInvoiceGate ? "INVOICE_PENDING_MANAGER" : "EXEMPT",
+          invoiceNo,
+          settlementMode: settlementMode as any,
+        }),
     financeGateUpdatedAt: now,
     financeGateUpdatedBy: admin.email,
   });
@@ -274,7 +330,7 @@ export async function POST(req: Request) {
           paidAt,
           paidAmount,
           paidNote: paidNote || null,
-          note: packageNote || null,
+          note: packageNoteWithException,
           sharedStudents: sharedStudentIds.length
             ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
             : undefined,
@@ -285,7 +341,7 @@ export async function POST(req: Request) {
             create: buildPurchaseTxnCreates({
               batches: purchaseBatches,
               totalAmount: paidAmount,
-              defaultNote: packageNote || null,
+              defaultNote: packageNoteWithException,
               prefix: "Initial purchase",
             }),
           },
@@ -329,7 +385,7 @@ export async function POST(req: Request) {
         paidAt,
         paidAmount,
         paidNote: paidNote || null,
-        note: packageNote || null,
+        note: packageNoteWithException,
         sharedStudents: sharedStudentIds.length
           ? { createMany: { data: sharedStudentIds.map((sharedStudentId) => ({ studentId: sharedStudentId })) } }
           : undefined,
@@ -341,7 +397,7 @@ export async function POST(req: Request) {
             kind: "PURCHASE",
             deltaMinutes: 0,
             deltaAmount: paidAmount,
-            note: packageNote || null,
+            note: packageNoteWithException,
           },
         },
       },

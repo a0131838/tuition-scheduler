@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-18-r190
+
+- Release ID: `2026-06-18-r190`
+- Date/Time (Asia/Shanghai): `2026-06-18`
+- Deployment status: `READY`
+- Scope: add pre-approved scheduling exception capture to package creation when staff manually exempt a direct-billing package from the invoice-before-scheduling gate.
+- Key files:
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/api/admin/packages/route.ts`
+  - `docs/tasks/TASK-20260618-pre-approved-scheduling-exception.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only adds required approval metadata for manual invoice-gate exemptions at package creation and stores it in existing package finance-gate reason/note fields. It does not change scheduling eligibility rules, attendance deduction, package balances, invoice numbering, receipts, contracts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+  - verified manual invoice-gate exemptions now require approver and reason before submit
+  - verified partner-settlement package exemptions still stay outside the new manual-exception fields
+- Rollback point: previous production commit before `2026-06-18-r190`.
+
+---
+
 ## 2026-06-17-r189
 
 - Release ID: `2026-06-17-r189`

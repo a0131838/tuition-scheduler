@@ -132,6 +132,10 @@ export default function PackageCreateFormClient({
   const [statusValue, setStatusValue] = useState("ACTIVE");
   const [settlementModeValue, setSettlementModeValue] = useState("");
   const [invoiceGateExemptValue, setInvoiceGateExemptValue] = useState(false);
+  const [exceptionApprovedByValue, setExceptionApprovedByValue] = useState("");
+  const [exceptionReasonValue, setExceptionReasonValue] = useState("");
+  const [exceptionMaxMinutesValue, setExceptionMaxMinutesValue] = useState("");
+  const [exceptionFollowUpDueValue, setExceptionFollowUpDueValue] = useState("");
   const [paidValue, setPaidValue] = useState(false);
   const [paidAmountValue, setPaidAmountValue] = useState("");
   const [invoiceAmountValue, setInvoiceAmountValue] = useState("");
@@ -217,9 +221,20 @@ export default function PackageCreateFormClient({
         value: isPartnerSettlement
           ? "Partner flow exempt / 合作方流程豁免"
           : invoiceGateExemptValue
-          ? "Manual exempt / 手动豁免"
+          ? `Pre-approved exception / 先上课例外审批${exceptionApprovedByValue ? ` · ${exceptionApprovedByValue}` : ""}`
           : "Create invoice + manager approval / 创建发票并待管理审批",
       },
+      ...(invoiceGateExemptValue && !isPartnerSettlement
+        ? [
+            {
+              label: "Exception follow-up / 例外跟进",
+              value: [
+                exceptionMaxMinutesValue ? `Limit ${exceptionMaxMinutesValue} min` : "No minute limit",
+                exceptionFollowUpDueValue ? `due ${exceptionFollowUpDueValue}` : "no due date",
+              ].join(" · "),
+            },
+          ]
+        : []),
       {
         label: "Payment / 付款",
         value: paidValue
@@ -240,6 +255,9 @@ export default function PackageCreateFormClient({
       settlementOfflineLabel,
       settlementOnlineLabel,
       invoiceGateExemptValue,
+      exceptionApprovedByValue,
+      exceptionFollowUpDueValue,
+      exceptionMaxMinutesValue,
       isPartnerSettlement,
       statusValue,
       totalMinutesNumber,
@@ -318,6 +336,20 @@ export default function PackageCreateFormClient({
         return "Please enter a valid GST amount. / 请填写有效的 GST 金额。";
       }
     }
+    if (index === 1 && invoiceGateExemptValue && !isPartnerSettlement) {
+      if (!exceptionApprovedByValue.trim()) {
+        return "Please enter who approved this scheduling exception. / 请填写是谁批准先上课例外。";
+      }
+      if (!exceptionReasonValue.trim()) {
+        return "Please enter the reason for this scheduling exception. / 请填写先上课例外原因。";
+      }
+      if (exceptionMaxMinutesValue) {
+        const maxMinutes = Number(exceptionMaxMinutesValue);
+        if (!Number.isFinite(maxMinutes) || maxMinutes <= 0) {
+          return "Please enter a valid exception minute limit. / 请填写有效的例外可先上分钟数。";
+        }
+      }
+    }
     if (index === 2 && !validFromValue) {
       return "Please set validFrom before continuing. / 继续前请先填写生效日期。";
     }
@@ -366,6 +398,10 @@ export default function PackageCreateFormClient({
             paidAmount: String(fd.get("paidAmount") ?? ""),
             paidNote: String(fd.get("paidNote") ?? ""),
             invoiceGateExempt: String(fd.get("invoiceGateExempt") ?? "") === "on",
+            schedulingExceptionApprovedBy: String(fd.get("schedulingExceptionApprovedBy") ?? ""),
+            schedulingExceptionReason: String(fd.get("schedulingExceptionReason") ?? ""),
+            schedulingExceptionMaxMinutes: String(fd.get("schedulingExceptionMaxMinutes") ?? ""),
+            schedulingExceptionFollowUpDue: String(fd.get("schedulingExceptionFollowUpDue") ?? ""),
             invoiceAmount: String(fd.get("invoiceAmount") ?? ""),
             invoiceGstAmount: String(fd.get("invoiceGstAmount") ?? ""),
             sharedStudentIds: fd.getAll("sharedStudentIds").map((v) => String(v)),
@@ -696,8 +732,57 @@ export default function PackageCreateFormClient({
                         <span>Exempt this package from invoice gate / 这个课包不进入发票闸门</span>
                       </label>
                       {invoiceGateExemptValue ? (
-                        <div style={{ fontSize: 13, color: "#92400e" }}>
-                          Use this only for complimentary, internal, migrated, or other approved exceptions. / 只在赠课、内部、迁移或其他获批例外场景下使用。
+                        <div style={{ display: "grid", gap: 12 }}>
+                          <div style={{ fontSize: 13, color: "#92400e" }}>
+                            Use this only for pre-approved scheduling exceptions, complimentary, internal, or migrated packages. / 只在已批准先上课、赠课、内部、迁移等获批例外场景下使用。
+                          </div>
+                          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span>Approved by / 批准人</span>
+                              <input
+                                name="schedulingExceptionApprovedBy"
+                                type="text"
+                                value={exceptionApprovedByValue}
+                                onChange={(e) => setExceptionApprovedByValue(e.target.value)}
+                                placeholder="Zhao / Manager name"
+                                style={{ minHeight: 40 }}
+                              />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span>Follow-up due / 补齐截止日</span>
+                              <input
+                                name="schedulingExceptionFollowUpDue"
+                                type="date"
+                                value={exceptionFollowUpDueValue}
+                                onChange={(e) => setExceptionFollowUpDueValue(e.target.value)}
+                                style={{ minHeight: 40 }}
+                              />
+                            </label>
+                            <label style={{ display: "grid", gap: 6 }}>
+                              <span>Max pre-approved minutes / 最多先上分钟数</span>
+                              <input
+                                name="schedulingExceptionMaxMinutes"
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={exceptionMaxMinutesValue}
+                                onChange={(e) => setExceptionMaxMinutesValue(e.target.value)}
+                                placeholder="Optional / 可选"
+                                style={{ minHeight: 40 }}
+                              />
+                            </label>
+                          </div>
+                          <label style={{ display: "grid", gap: 6 }}>
+                            <span>Exception reason / 例外原因</span>
+                            <textarea
+                              name="schedulingExceptionReason"
+                              value={exceptionReasonValue}
+                              onChange={(e) => setExceptionReasonValue(e.target.value)}
+                              placeholder="Example: Parent confirmed enrollment; contract and invoice to be completed after trial scheduling approval. / 例：家长已确认报名，获批先排课，合同发票后补。"
+                              rows={3}
+                              style={{ width: "100%", minHeight: 88, resize: "vertical" }}
+                            />
+                          </label>
                         </div>
                       ) : (
                         <div style={{ display: "grid", gap: 12 }}>
