@@ -88,10 +88,13 @@ function compactSectionText(
   tone: { bg: string; border: string; title: string } = { bg: "#FFFFFF", border: "#E2E8F0", title: "#0F172A" }
 ) {
   panel(doc, x, y, w, h, label, tone);
+  setPdfBoldFont(doc);
+  doc.fontSize(11.5);
+  const titleH = Math.min(38, doc.heightOfString(label, { width: w - 20, lineGap: 1.2 }));
   const bodyX = x + 9;
-  const bodyY = y + 26;
+  const bodyY = y + 12 + titleH + 6;
   const bodyW = w - 18;
-  const bodyH = h - 34;
+  const bodyH = Math.max(24, h - (bodyY - y) - 8);
   const fontSize = fitBodyFontSize(doc, value, bodyW, bodyH);
 
   doc.save();

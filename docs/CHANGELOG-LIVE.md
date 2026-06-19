@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-19-r191
+
+- Release ID: `2026-06-19-r191`
+- Date/Time (Asia/Shanghai): `2026-06-19`
+- Deployment status: `READY`
+- Scope: fix final report PDF card layout so long bilingual section titles no longer overlap the section body text.
+- Key files:
+  - `app/api/admin/final-reports/[id]/pdf/route.ts`
+  - `docs/tasks/TASK-20260619-final-report-pdf-title-overlap.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes vertical spacing inside final report PDF section cards. It does not change final report data, teacher submission workflow, parent share links, package balances, attendance deduction, invoices, receipts, contracts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - rendered the supplied `final-report-李昱辰-国际学校入学考试.pdf` and confirmed the overlap was caused by fixed body positioning under wrapping bilingual titles
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-19-r191`.
+
+---
+
 ## 2026-06-18-r190
 
 - Release ID: `2026-06-18-r190`
