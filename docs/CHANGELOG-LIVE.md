@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r197
+
+- Release ID: `2026-06-22-r197`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: replace the SSG v4 contract summary template with a locked official Standard PEI-Student Contract Version 4.0 template extracted from the official TPGateway DOCX/PDF sources, while keeping system-filled fields limited to PEI identity, student/contracting-party names, course title, course hours, fees, and placeholders where the current system does not yet hold official Schedule data.
+- Key files:
+  - `lib/ssg-standard-pei-contract-v4.ts`
+  - `lib/student-contract-template.ts`
+  - `tests/student-contract-mode.test.ts`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. SSG v4 contract snapshots now render the official English PEI-Student Contract v4.0 structure instead of the earlier bilingual summary shell. The template is source-tagged and locked, but fields that are not yet captured by the system remain as official blanks/placeholders rather than guessed values. Normal tuition contracts remain unchanged.
+- Verification:
+  - Official source checked: TPGateway Standard PEI-Student Contract Version 4.0 PDF and DOCX.
+  - `npx tsx --test tests/student-contract-mode.test.ts tests/edutrust-student-record.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r197`.
+
+---
+
 ## 2026-06-22-r196
 
 - Release ID: `2026-06-22-r196`

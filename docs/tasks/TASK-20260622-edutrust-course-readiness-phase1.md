@@ -87,7 +87,7 @@ Added the foundation for a separate SSG Standard PEI-Student Contract v4.0 mode 
 - Updated signing preparation so snapshots are generated using the contract's stored mode.
 - Added tests proving:
   - default snapshots still use the existing tuition agreement template
-  - SSG mode snapshots use the separate SSG v4 template slug and include key official-control markers such as 7 working days cooling-off
+  - SSG mode snapshots use the separate SSG v4 template slug and include key official-control markers
 
 This does not yet expose a production UI button for creating SSG v4 contracts. The next phase should connect this mode only to EduTrust-ready/permitted courses after we confirm the official contract fields.
 
@@ -120,6 +120,35 @@ Added the next EduTrust readiness layer for student-level delivery evidence and 
 - Added the same SSG contract guard inside `lib/student-contract.ts` so the UI cannot be bypassed.
 
 This still does not change live teaching delivery, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw. Before issuing SSG v4 contracts externally, the final contract fields should still be checked against the official Standard PEI-Student Contract Version 4.0 template for the exact course and student case.
+
+## 2026-06-22 Follow-up: Locked Official SSG v4 Template
+
+Replaced the earlier SSG v4 summary shell with a locked official Standard PEI-Student Contract Version 4.0 template source.
+
+- Added `lib/ssg-standard-pei-contract-v4.ts`.
+- Extracted the official contract structure from TPGateway's Standard PEI-Student Contract Version 4.0 DOCX/PDF sources.
+- Preserved the official English contract structure and Schedule A-E labels.
+- Source-tagged the template with:
+  - official version `4.0`
+  - official PDF URL
+  - official DOCX URL
+  - locked official template flag
+- Replaced the prior bilingual SSG summary text in `SSG_STANDARD_PEI_V4`.
+- Corrected the official cooling-off wording:
+  - Cooling-Off Period is ten (10) calendar days.
+  - Refund processing references seven (7) working days where stated in the official template.
+- System-filled fields are limited to known values:
+  - PEI legal name
+  - PEI registration number
+  - PEI registered address
+  - contracting party name
+  - student name
+  - course title
+  - course hours
+  - fee amount
+  - first instalment date
+- Fields not yet reliably stored in the system remain official blanks/placeholders rather than guessed values, including identity numbers, course commencement/completion dates, several Schedule A details, miscellaneous fees, and Schedule D refund percentages.
+- Added tests proving the SSG template has official source metadata, the official v4 cooling-off/refund markers, Schedule A-E, and no duplicated Schedule E extraction artifact.
 
 ## Verification
 

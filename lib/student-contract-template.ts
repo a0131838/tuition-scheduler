@@ -1,4 +1,10 @@
 import { normalizeDateOnly } from "@/lib/date-only";
+import {
+  SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML,
+  SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_VERSION,
+  SSG_STANDARD_PEI_CONTRACT_V4_SOURCE_DOCX_URL,
+  SSG_STANDARD_PEI_CONTRACT_V4_SOURCE_URL,
+} from "@/lib/ssg-standard-pei-contract-v4";
 
 export const STUDENT_CONTRACT_TEMPLATE_SLUG = "tuition-agreement";
 export const STUDENT_CONTRACT_TEMPLATE_VERSION = 1;
@@ -69,6 +75,7 @@ export function getStudentContractCompanyInfo() {
     brandName: "GT Educational Institute",
     legalName: "GT Educational Institute Pte. Ltd.",
     regNo: "202303312G",
+    registeredAddress: "150 Orchard Road, Orchard Plaza, #08-15/16, Singapore 238841",
   };
 }
 
@@ -181,51 +188,12 @@ export function getSsgStandardPeiContractTemplateInput() {
     name: "SSG Standard PEI-Student Contract v4.0 / SSG 标准 PEI 学生合同 v4.0",
     slug: SSG_STANDARD_PEI_CONTRACT_TEMPLATE_SLUG,
     version: SSG_STANDARD_PEI_CONTRACT_TEMPLATE_VERSION,
-    languageMode: "BILINGUAL",
-    bodyHtml: `
-      <h1>SSG Standard PEI-Student Contract v4.0 / SSG 标准 PEI 学生合同 v4.0</h1>
-      <p><strong>{{company_brand}}</strong> (Registration No. {{company_reg_no}})</p>
-      <p>
-        Student / 学生: <strong>{{student_name}}</strong><br/>
-        Contracting party / 签约方: <strong>{{parent_full_name_en}}</strong>{{parent_full_name_zh}}<br/>
-        Course / 课程: <strong>{{course_name}}</strong><br/>
-        Course duration / 课程课时: <strong>{{total_hours}}</strong><br/>
-        Fee payable / 应付费用: <strong>{{fee_amount}}</strong><br/>
-        Agreement date / 协议日期: <strong>{{agreement_date_long}}</strong>
-      </p>
-      <h3>1. Official Template Basis / 官方模板依据</h3>
-      <p>This contract mode is reserved for EduTrust-ready courses and must be checked against SSG Standard PEI-Student Contract Version 4.0 before formal issue to students.</p>
-      <p>本合同模式用于 EduTrust 课程，并须在正式发给学生前按 SSG Standard PEI-Student Contract Version 4.0 核对。</p>
-      <h3>2. Course Admission / 课程录取</h3>
-      <p>This contract is for the admission of the named student into one course only. Course information, admission requirements, course duration, learning mode, assessment, award or completion criteria, and student obligations must match the approved course file.</p>
-      <p>本合同仅适用于上述学生的一门课程。课程信息、入学要求、课程时长、授课模式、评估、证书或结课标准及学生义务，须与已批准的 course file 一致。</p>
-      <h3>3. Fees, Receipts and Fee Collection Cap / 费用、收据与收费上限</h3>
-      <p>All fees, including non-refundable fees, discounts, rebates, grants or funding where applicable, must be declared before payment is collected. Course fees excluding application fees may be collected only after the student contract has been executed.</p>
-      <p>所有费用，包括不可退费用、折扣、返还、补助或资助，均须在收款前列明。除报名费外，课程费用须在学生合同签署后方可收取。</p>
-      <h3>4. Fee Protection Scheme / 学费保护计划</h3>
-      <p>Where the course is subject to EduTrust fee protection requirements, FPS insurance certificate and monitoring records must be issued and maintained according to the FPS Instruction Manual.</p>
-      <p>如课程适用 EduTrust 学费保护要求，须按 FPS Instruction Manual 出具并保存 FPS insurance certificate 及监控记录。</p>
-      <h3>5. Cooling-Off Period / 冷静期</h3>
-      <p>The student is entitled to a cooling-off period of at least 7 working days after the contract is executed, in accordance with the applicable SSG Standard PEI-Student Contract terms.</p>
-      <p>学生在合同签署后享有至少 7 个工作日冷静期，具体按适用的 SSG 标准 PEI 学生合同条款执行。</p>
-      <h3>6. Transfer, Deferment, Withdrawal and Refund / 转课、延期、退学与退款</h3>
-      <p>Transfer, deferment, withdrawal and refund requests must be handled under the PEI's written policies, including written outcome notification and refund processing within the required timeline where applicable.</p>
-      <p>转课、延期、退学与退款须按 PEI 书面政策处理，包括书面通知处理结果，并在适用情况下按要求时限处理退款。</p>
-      <h3>7. Attendance, Conduct and Student Support / 出勤、行为规范与学生支持</h3>
-      <p>Attendance and conduct must be monitored for the applicable learning mode. Timely intervention and student support records must be maintained where attendance, conduct or learning concerns arise.</p>
-      <p>学校须按适用授课模式记录并监控出勤及行为规范。如出现出勤、行为或学习问题，须及时干预并保存学生支持记录。</p>
-      <h3>8. Amendments and Addendum / 合同变更与补充协议</h3>
-      <p>Any amendment, repeat module, course transfer or deferment that requires a new contract or addendum must be acknowledged by both the PEI and the student or contracting party.</p>
-      <p>任何合同修改、重修模块、转课或延期，如需新合同或补充协议，须由 PEI 与学生或签约方共同确认。</p>
-      <h3>9. Contact Details / 联系资料</h3>
-      <p>
-        Contact number / 联系电话: {{phone}}<br/>
-        Email / 电邮: {{email}}<br/>
-        {{address_block}}
-        Relationship to student / 与学生关系: {{relationship}}<br/>
-        Legal guardian / 法定监护人: {{legal_guardian}}
-      </p>
-    `.trim(),
+    languageMode: "EN",
+    sourceVersion: SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_VERSION,
+    sourceUrl: SSG_STANDARD_PEI_CONTRACT_V4_SOURCE_URL,
+    sourceDocxUrl: SSG_STANDARD_PEI_CONTRACT_V4_SOURCE_DOCX_URL,
+    lockedOfficialTemplate: true,
+    bodyHtml: SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML,
   };
 }
 
@@ -257,8 +225,14 @@ export function buildStudentContractSnapshot(input: {
   const address = input.parentInfo.address?.trim() || "";
   const html = renderTemplatePlaceholders(template.bodyHtml, {
     company_brand: escapeHtml(company.brandName),
+    company_legal: escapeHtml(company.legalName),
+    company_reg_no: escapeHtml(company.regNo),
+    company_registered_address: escapeHtml(company.registeredAddress),
     parent_full_name_en: escapeHtml(input.parentInfo.parentFullNameEn.trim()),
     parent_full_name_zh: parentZh,
+    contracting_party_name: escapeHtml(input.parentInfo.parentFullNameEn.trim()),
+    contracting_party_identity_no: "______________________",
+    student_identity_no: "______________________",
     student_name: escapeHtml(input.studentName.trim()),
     contract_type_label: escapeHtml(contractTypeLabel),
     course_name: escapeHtml(input.businessInfo.courseName.trim()),
@@ -271,6 +245,24 @@ export function buildStudentContractSnapshot(input: {
     address_block: address ? `Address / 地址: ${escapeHtml(address)}<br/>` : "",
     relationship: escapeHtml(input.parentInfo.relationshipToStudent.trim()),
     legal_guardian: input.parentInfo.isLegalGuardian ? "Yes / 是" : "No / 否",
+    permitted_course_duration_months: "______________________",
+    course_load_mode: escapeHtml(input.businessInfo.lessonMode?.trim() || "Part-time"),
+    course_commencement_date: "______________________",
+    course_completion_date: "______________________",
+    study_commencement_date: "N.A.",
+    qualification: "Certificate of Completion",
+    course_developer: escapeHtml(company.legalName),
+    awarding_organisation: escapeHtml(company.legalName),
+    course_entry_requirements: "______________________",
+    course_schedule: escapeHtml(formatMinutesAsHoursLabel(input.businessInfo.totalMinutes)),
+    scheduled_holidays: "______________________",
+    assessment_periods: "______________________",
+    final_results_release_date: "______________________",
+    qualification_conferment_date: "______________________",
+    industrial_attachment_yes_no: "No",
+    industrial_attachment_duration: "N.A.",
+    first_instalment_due_date: escapeHtml(input.businessInfo.agreementDateIso || ""),
+    miscellaneous_fees: "______________________",
   });
 
   const snapshot: ContractSnapshot = {
@@ -313,6 +305,8 @@ export function stripContractHtmlForPdf(html: string) {
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/h[1-6]>/gi, "\n\n")
     .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/tr>/gi, "\n")
+    .replace(/<\/t[dh]>/gi, "\t")
     .replace(/<\/li>/gi, "\n")
     .replace(/<li>/gi, "• ")
     .replace(/<[^>]+>/g, "")
