@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r192
+
+- Release ID: `2026-06-22-r192`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: fix the student package utilization Excel export so Chinese student names no longer make the download response fail with HTTP 500.
+- Key files:
+  - `app/api/exports/student-package-utilization/route.ts`
+  - `docs/tasks/TASK-20260622-student-package-utilization-excel-filename.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes the `Content-Disposition` filename fallback for one Excel export. It does not change utilization report data, preview calculations, package balances, attendance deduction, invoices, receipts, contracts, scheduling, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - reproduced the production failure for `王玫卓` as HTTP 500 and confirmed the server log error was a non-ASCII `filename` header ByteString failure
+  - `npx tsc --noEmit --pretty false`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r192`.
+
+---
+
 ## 2026-06-19-r191
 
 - Release ID: `2026-06-19-r191`

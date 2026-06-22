@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-06-19-r191` (final report PDF cards now move body text below wrapping bilingual titles to prevent overlap), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-06-22-r192` (student package utilization Excel downloads now use an ASCII fallback filename so Chinese student names do not trigger HTTP 500), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -76,6 +76,7 @@
 - Student-package-utilization risk: `2026-06-17-r189` adds a read-only attendance-based extraction for shared packages; finance should use it for per-student usage splits and avoid using package ledger totals alone when siblings share the same package.
 - Pre-approved-scheduling-exception risk: `2026-06-18-r190` adds required metadata only when staff manually exempt a direct-billing package from the invoice gate; scheduling still sees the same `EXEMPT` gate status, so ops must use the recorded approver/reason/follow-up fields to manage business risk outside the scheduler.
 - Final-report-PDF-title-overlap risk: `2026-06-19-r191` changes only card-internal vertical spacing in final report PDFs; very dense reports still fit by shrinking body text, but bilingual titles should no longer sit on top of body content.
+- Student-package-utilization-filename risk: `2026-06-22-r192` changes only the download filename fallback for the student package utilization Excel export; finance should retry the same export link after deploy, while preview totals and attendance detail rows remain unchanged.
 - Resource-followup-CRM risk: `2026-05-28-r154` adds new Lead, LeadFollowUp, and LeadAssessmentRequest tables plus admin/teacher pages; conversion creates Student rows only after explicit admin action, and no billing, contract, package, attendance, payroll, or OpenClaw behavior is changed.
 - Resource-owner-archive risk: `2026-05-28-r155` adds independent CRM owner records, reversible lead archive state, and a guarded test-resource deletion action; operators should only use physical deletion for known test data, while real inactive resources should be archived.
 - Resource-followup-handoff risk: `2026-05-28-r156` adds quick resource filters, cancellable teacher assessments, and a prefilled Booking Link handoff only after conversion to Student; it does not change booking-link creation APIs, scheduling availability, billing, contracts, packages, payroll, attendance, or OpenClaw behavior.

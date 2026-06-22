@@ -6,6 +6,13 @@ function safeFileName(value: string) {
   return value.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
+function asciiFileName(value: string) {
+  return value
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/"/g, "")
+    .replace(/\s+/g, "_");
+}
+
 function applyHeader(row: ExcelJS.Row) {
   row.font = { bold: true, color: { argb: "FF0F172A" } };
   row.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
@@ -164,12 +171,13 @@ export async function GET(req: Request) {
   const fileName = safeFileName(
     `student-package-utilization-${report.student.name}-${report.query.endDate}.xlsx`
   );
+  const fileNameAscii = asciiFileName(`student-package-utilization-${report.query.endDate}.xlsx`);
   const fileNameUtf8 = encodeURIComponent(fileName);
 
   return new Response(buffer as ArrayBuffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${fileName}"; filename*=UTF-8''${fileNameUtf8}`,
+      "Content-Disposition": `attachment; filename="${fileNameAscii}"; filename*=UTF-8''${fileNameUtf8}`,
     },
   });
 }
