@@ -166,6 +166,9 @@ export default async function EduTrustPage() {
             )}
           </p>
         </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a href="/admin/edutrust/students">{t(lang, "Student records and C7 outcomes", "学生记录与 C7 成果")}</a>
+        </div>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
           <div style={metricStyle}>
             <span style={{ color: "#64748b", fontSize: 12 }}>{t(lang, "Current courses", "当前课程")}</span>

@@ -15,6 +15,39 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r196
+
+- Release ID: `2026-06-22-r196`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: complete the next EduTrust readiness layer by adding student-level delivery evidence records, a C7 outcomes dashboard, a Section A/B evidence-pack checklist, and a guarded SSG Standard PEI-Student Contract v4.0 creation entry for fully ready EduTrust packages only.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260622153000_add_edutrust_student_records/migration.sql`
+  - `lib/edutrust-student-record.ts`
+  - `app/admin/edutrust/students/page.tsx`
+  - `app/admin/edutrust/students/EduTrustStudentRecordsClient.tsx`
+  - `app/api/admin/edutrust/student-records/route.ts`
+  - `app/admin/edutrust/page.tsx`
+  - `app/admin/packages/[id]/contract/page.tsx`
+  - `lib/student-contract.ts`
+  - `app/admin/layout.tsx`
+  - `tests/edutrust-student-record.test.ts`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds a new nullable student evidence table and a new admin-only EduTrust student evidence workspace. It also exposes SSG v4 contract creation only when the course is marked EduTrust, SSG permission is `PERMITTED`, Course File is `APPROVED`, and package hours meet the configured minimum. Normal tuition contracts remain the default path. Scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are not changed.
+- Verification:
+  - Official reference checked: SSG/TPGateway Standard PEI-Student Contract Version 4.0 and EduTrust Guidance Document v4 resources.
+  - `npx prisma format`
+  - `npx prisma migrate deploy`
+  - `npx prisma generate`
+  - `npx tsx --test tests/edutrust-student-record.test.ts tests/student-contract-mode.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r196`.
+
+---
+
 ## 2026-06-22-r195
 
 - Release ID: `2026-06-22-r195`

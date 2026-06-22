@@ -64,6 +64,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/receipts-approvals")) return t(lang, "Receipt Workflow", "收据流程");
   if (matchesPath(pathname, "/admin/expense-claims")) return t(lang, "Expense Workflow", "报销流程");
   if (matchesPath(pathname, "/admin/teacher-notices")) return t(lang, "Teacher Notices", "老师通知管理");
+  if (matchesPath(pathname, "/admin/edutrust/students")) return t(lang, "EduTrust Student Evidence", "EduTrust 学生证据");
   if (matchesPath(pathname, "/admin/edutrust")) return t(lang, "EduTrust Readiness", "EduTrust 合规整改");
   if (matchesPath(pathname, "/admin/finance/student-package-utilization")) return t(lang, "Student Package Utilization", "学生课包使用提取");
   if (matchesPath(pathname, "/admin/finance/individual-student-utility")) return t(lang, "Individual Student Utility", "个人学生课时使用");
@@ -111,6 +112,13 @@ function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFina
       lang,
       "Use this desk to spot missing files, then jump back into the right workflow without rebuilding context.",
       "先在这里定位缺失附件，再直接跳回对应工作流，不要重新拼上下文。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/edutrust/students")) {
+    return t(
+      lang,
+      "Track delivery evidence, PEI contract readiness, and C7 outcomes without changing scheduling or billing.",
+      "记录课程交付证据、PEI 合同准备度和 C7 成果，不改变排课或财务。"
     );
   }
   if (matchesPath(pathname, "/admin/edutrust")) {
@@ -327,6 +335,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/rooms", label: t(lang, "Rooms", "教室"), tone: "neutral" as const },
         { href: "/admin/courses", label: t(lang, "Courses", "课程"), tone: "neutral" as const },
         { href: "/admin/edutrust", label: t(lang, "EduTrust Readiness", "EduTrust 合规整改"), tone: "accent" as const },
+        { href: "/admin/edutrust/students", label: t(lang, "EduTrust Student Evidence", "EduTrust 学生证据"), tone: "accent" as const },
         { href: "/admin/student-sources", label: t(lang, "Student Sources", "学生来源"), tone: "neutral" as const },
         { href: "/admin/student-types", label: t(lang, "Student Types", "学生类型"), tone: "neutral" as const },
         ...(showManagerConsole

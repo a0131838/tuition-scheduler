@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import {
   Prisma,
+  EduTrustCourseFileStatus,
+  EduTrustPermissionStatus,
   StudentContractMode,
   StudentContractEventType,
   StudentContractFlowType,
@@ -35,6 +37,10 @@ import { assertGlobalInvoiceNoAvailable, getNextGlobalInvoiceNo } from "@/lib/gl
 import { createParentInvoice, listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import { getStudentContractInvoiceChoice } from "@/lib/student-contract-invoice-choice";
+import {
+  isEduTrustCourseContractReady,
+  isEduTrustPackageHoursReady,
+} from "@/lib/edutrust-student-record";
 
 const DEFAULT_TOKEN_TTL_DAYS = 14;
 const CONTRACT_INVOICE_MARKER_PREFIX = "student-contract:";
@@ -395,6 +401,26 @@ function assertDirectBillingPackage(pkg: {
   }
 }
 
+function assertSsgContractModeAllowed(pkg: {
+  totalMinutes: number | null;
+  course: {
+    eduTrustProfile?: {
+      isEduTrustCourse: boolean;
+      permissionStatus: EduTrustPermissionStatus;
+      courseFileStatus: EduTrustCourseFileStatus;
+      minTotalHours: number;
+    } | null;
+  };
+}) {
+  const profile = pkg.course.eduTrustProfile;
+  if (!profile || !isEduTrustCourseContractReady(profile)) {
+    throw new Error("SSG Standard PEI contract can only be used after the EduTrust course is PERMITTED and the Course File is APPROVED.");
+  }
+  if (!isEduTrustPackageHoursReady({ totalMinutes: pkg.totalMinutes, minTotalHours: profile.minTotalHours })) {
+    throw new Error("SSG Standard PEI contract requires the package hours to meet the configured EduTrust minimum.");
+  }
+}
+
 async function ensureContractTemplate(mode: StudentContractMode = StudentContractMode.TUITION_AGREEMENT) {
   const template = getStudentContractTemplateInput(mode);
   return prisma.contractTemplate.upsert({
@@ -535,7 +561,7 @@ export async function createStudentContractDraft(input: {
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
-      include: { student: true, course: true },
+      include: { student: true, course: { include: { eduTrustProfile: true } } },
     }),
     ensureContractTemplate(contractMode),
   ]);
@@ -543,6 +569,9 @@ export async function createStudentContractDraft(input: {
     throw new Error("Package not found for this student");
   }
   assertDirectBillingPackage(pkg);
+  if (contractMode === StudentContractMode.SSG_STANDARD_PEI_V4) {
+    assertSsgContractModeAllowed(pkg);
+  }
 
   const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
   if (flowType === StudentContractFlowType.NEW_PURCHASE && packageHasStartedUsage(pkg)) {
@@ -645,7 +674,7 @@ export async function createReadyToSignStudentContract(input: {
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
-      include: { student: true, course: true },
+      include: { student: true, course: { include: { eduTrustProfile: true } } },
     }),
     ensureContractTemplate(contractMode),
   ]);
@@ -653,6 +682,9 @@ export async function createReadyToSignStudentContract(input: {
     throw new Error("Package not found for this student");
   }
   assertDirectBillingPackage(pkg);
+  if (contractMode === StudentContractMode.SSG_STANDARD_PEI_V4) {
+    assertSsgContractModeAllowed(pkg);
+  }
 
   const flowType = input.flowType ?? StudentContractFlowType.NEW_PURCHASE;
   const defaultBusinessInfo = defaultBusinessInfoFromRow(

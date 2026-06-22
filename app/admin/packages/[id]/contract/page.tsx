@@ -1,9 +1,15 @@
+import { StudentContractMode } from "@prisma/client";
 import { getLang, t } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import WorkbenchStatusChip from "@/app/admin/_components/WorkbenchStatusChip";
 import CopyTextButton from "@/app/admin/_components/CopyTextButton";
+import {
+  isEduTrustCourseContractReady,
+  isEduTrustPackageHoursReady,
+  studentContractModeLabel,
+} from "@/lib/edutrust-student-record";
 import {
   buildStudentContractIntakePath,
   buildStudentContractSignPath,
@@ -189,6 +195,7 @@ async function createContractDraftAction(formData: FormData) {
   const packageId = String(formData.get("packageId") ?? "").trim();
   const studentId = String(formData.get("studentId") ?? "").trim();
   const flowTypeRaw = String(formData.get("flowType") ?? "").trim();
+  const contractModeRaw = String(formData.get("contractMode") ?? "").trim();
   const replacementFromContractId = String(formData.get("replacementFromContractId") ?? "").trim() || null;
   const sourceWorkflow = normalizePackageBillingSource(String(formData.get("source") ?? ""));
   const receiptsBack = sanitizeReceiptsBack(String(formData.get("receiptsBack") ?? ""));
@@ -201,6 +208,10 @@ async function createContractDraftAction(formData: FormData) {
       studentId,
       createdByUserId: admin.id,
       flowType: flowTypeRaw === "RENEWAL" ? "RENEWAL" : "NEW_PURCHASE",
+      contractMode:
+        contractModeRaw === StudentContractMode.SSG_STANDARD_PEI_V4
+          ? StudentContractMode.SSG_STANDARD_PEI_V4
+          : StudentContractMode.TUITION_AGREEMENT,
       replacementFromContractId,
     });
   } catch (error) {
@@ -355,7 +366,7 @@ export default async function PackageContractPage({
   const [pkg, data, packageContracts, hasRenewalContractParentInfo, latestParentIntakeForPackage, deletedInvoiceHistory] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: packageId },
-      include: { student: true, course: true },
+      include: { student: true, course: { include: { eduTrustProfile: true } } },
     }),
     listParentBillingForPackage(packageId),
     listStudentContractsForPackage(packageId),
@@ -419,6 +430,13 @@ export default async function PackageContractPage({
   const contractFromParentIntake =
     Boolean(latestContract && latestParentIntakeForPackage && latestParentIntakeForPackage.contractId === latestContract.id);
   const today = new Date().toISOString().slice(0, 10);
+  const eduTrustProfile = pkg.course.eduTrustProfile;
+  const canCreateSsgContract =
+    Boolean(eduTrustProfile && isEduTrustCourseContractReady(eduTrustProfile)) &&
+    isEduTrustPackageHoursReady({
+      totalMinutes: pkg.totalMinutes,
+      minTotalHours: eduTrustProfile?.minTotalHours ?? 50,
+    });
 
   return (
     <div>
@@ -462,6 +480,10 @@ export default async function PackageContractPage({
                   <WorkbenchStatusChip
                     label={`${studentContractFlowLabel(latestContract.flowType)} / ${studentContractFlowLabelZh(latestContract.flowType)}`}
                     tone="neutral"
+                  />
+                  <WorkbenchStatusChip
+                    label={studentContractModeLabel(latestContract.contractMode)}
+                    tone={latestContract.contractMode === "SSG_STANDARD_PEI_V4" ? "success" : "neutral"}
                   />
                 </div>
               ) : (
@@ -809,6 +831,7 @@ export default async function PackageContractPage({
                           <input type="hidden" name="packageId" value={packageId} />
                           <input type="hidden" name="studentId" value={pkg.studentId} />
                           <input type="hidden" name="flowType" value="RENEWAL" />
+                          <input type="hidden" name="contractMode" value={StudentContractMode.TUITION_AGREEMENT} />
                           <input type="hidden" name="source" value={sourceWorkflow} />
                           <input type="hidden" name="receiptsBack" value={receiptsBack} />
                           <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #166534", background: "#f0fdf4", color: "#166534", fontWeight: 700 }}>
@@ -820,6 +843,7 @@ export default async function PackageContractPage({
                         <input type="hidden" name="packageId" value={packageId} />
                         <input type="hidden" name="studentId" value={pkg.studentId} />
                         <input type="hidden" name="flowType" value={latestContract.flowType} />
+                        <input type="hidden" name="contractMode" value={latestContract.contractMode} />
                         <input type="hidden" name="replacementFromContractId" value={latestContract.id} />
                         <input type="hidden" name="source" value={sourceWorkflow} />
                         <input type="hidden" name="receiptsBack" value={receiptsBack} />
@@ -845,16 +869,37 @@ export default async function PackageContractPage({
                     {t(lang, "Legacy direct-billing package without contract history detected. The current package can continue, but the next renewal should use the renewal contract flow instead of manual top-up.", "系统识别到这像是一条历史存量直客课包，目前还没有合同历史。当前课包可继续使用，但下一次续费应改走续费合同流程，而不是手工 top-up。")}
                   </div>
                 ) : null}
+                {eduTrustProfile?.isEduTrustCourse ? (
+                  <div style={{ border: `1px solid ${canCreateSsgContract ? "#bbf7d0" : "#fed7aa"}`, borderRadius: 12, background: canCreateSsgContract ? "#f0fdf4" : "#fff7ed", padding: 12, color: canCreateSsgContract ? "#166534" : "#9a3412", fontSize: 13, lineHeight: 1.6 }}>
+                    {canCreateSsgContract
+                      ? t(lang, "This package is ready for SSG Standard PEI-Student Contract v4.0 creation.", "该课包已满足创建 SSG Standard PEI-Student Contract v4.0 的系统条件。")
+                      : t(lang, "SSG v4 contract is hidden until the course is marked PERMITTED, the Course File is APPROVED, and package hours meet the configured minimum.", "只有课程标记为 PERMITTED、Course File 为 APPROVED，且课包课时达到最低小时数后，才显示 SSG v4 合同入口。")}
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   {!likelyLegacyNoContract ? (
                     <form action={createContractDraftAction}>
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
                       <input type="hidden" name="flowType" value="NEW_PURCHASE" />
+                      <input type="hidden" name="contractMode" value={StudentContractMode.TUITION_AGREEMENT} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700 }}>
                         {t(lang, "Send parent info link", "发送家长资料链接")}
+                      </button>
+                    </form>
+                  ) : null}
+                  {!likelyLegacyNoContract && canCreateSsgContract ? (
+                    <form action={createContractDraftAction}>
+                      <input type="hidden" name="packageId" value={packageId} />
+                      <input type="hidden" name="studentId" value={pkg.studentId} />
+                      <input type="hidden" name="flowType" value="NEW_PURCHASE" />
+                      <input type="hidden" name="contractMode" value={StudentContractMode.SSG_STANDARD_PEI_V4} />
+                      <input type="hidden" name="source" value={sourceWorkflow} />
+                      <input type="hidden" name="receiptsBack" value={receiptsBack} />
+                      <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #0369a1", background: "#eff6ff", color: "#075985", fontWeight: 700 }}>
+                        {t(lang, "Create SSG v4 PEI contract", "创建 SSG v4 PEI 合同")}
                       </button>
                     </form>
                   ) : null}
@@ -863,6 +908,7 @@ export default async function PackageContractPage({
                       <input type="hidden" name="packageId" value={packageId} />
                       <input type="hidden" name="studentId" value={pkg.studentId} />
                       <input type="hidden" name="flowType" value="RENEWAL" />
+                      <input type="hidden" name="contractMode" value={StudentContractMode.TUITION_AGREEMENT} />
                       <input type="hidden" name="source" value={sourceWorkflow} />
                       <input type="hidden" name="receiptsBack" value={receiptsBack} />
                       <button type="submit" style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #16a34a", background: "#fff", color: "#166534", fontWeight: 700 }}>

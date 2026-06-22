@@ -214,6 +214,14 @@ enum EduTrustCourseFileStatus {
   NEEDS_UPDATE
 }
 
+enum EduTrustStudentRecordStatus {
+  DRAFT
+  IN_PROGRESS
+  READY_FOR_REVIEW
+  COMPLETED
+  NEEDS_REVIEW
+}
+
 enum ExpenseClaimStatus {
   SUBMITTED
   APPROVED
@@ -411,6 +419,7 @@ model Course {
   midtermReports  MidtermReport[]
   finalReports    FinalReport[]
   eduTrustProfile EduTrustCourseProfile?
+  eduTrustRecords EduTrustStudentCourseRecord[]
 }
 
 model EduTrustCourseProfile {
@@ -757,15 +766,16 @@ model Student {
   enrollments                Enrollment[]
   appointments               Appointment[]
   packages                   CoursePackage[]
+  eduTrustRecords            EduTrustStudentCourseRecord[]
   sharedPackageLinks         CoursePackageSharedStudent[]
   attendances                Attendance[]
-  oneOnOneTemplates          TeacherOneOnOneTemplate[]    @relation("TeacherOneOnOneTemplateStudent")
-  oneOnOneClasses            Class[]                      @relation("OneOnOneStudentClass")
-  sessions                   Session[]                    @relation("SessionStudent")
+  oneOnOneTemplates          TeacherOneOnOneTemplate[]     @relation("TeacherOneOnOneTemplateStudent")
+  oneOnOneClasses            Class[]                       @relation("OneOnOneStudentClass")
+  sessions                   Session[]                     @relation("SessionStudent")
   midtermReports             MidtermReport[]
   finalReports               FinalReport[]
-  sourceChannel              StudentSourceChannel?        @relation(fields: [sourceChannelId], references: [id])
-  studentType                StudentType?                 @relation(fields: [studentTypeId], references: [id])
+  sourceChannel              StudentSourceChannel?         @relation(fields: [sourceChannelId], references: [id])
+  studentType                StudentType?                  @relation(fields: [studentTypeId], references: [id])
   bookingLinks               StudentBookingLink[]
   bookingRequests            StudentBookingRequest[]
   settlements                PartnerSettlement[]
@@ -774,7 +784,7 @@ model Student {
   contracts                  StudentContract[]
   parentIntakes              StudentParentIntake[]
   schoolApplications         SchoolApplicationService[]
-  convertedLeads             Lead[]                       @relation("LeadConvertedStudent")
+  convertedLeads             Lead[]                        @relation("LeadConvertedStudent")
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -1203,8 +1213,8 @@ model CoursePackage {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  student            Student                      @relation(fields: [studentId], references: [id])
-  course             Course                       @relation(fields: [courseId], references: [id])
+  student            Student                       @relation(fields: [studentId], references: [id])
+  course             Course                        @relation(fields: [courseId], references: [id])
   txns               PackageTxn[]
   attendances        Attendance[]
   sharedStudents     CoursePackageSharedStudent[]
@@ -1214,6 +1224,7 @@ model CoursePackage {
   finalReports       FinalReport[]
   invoiceApprovals   PackageInvoiceApproval[]
   contracts          StudentContract[]
+  eduTrustRecords    EduTrustStudentCourseRecord[]
   parentIntakes      StudentParentIntake[]
   schoolApplications SchoolApplicationService[]
 
@@ -1303,6 +1314,39 @@ model StudentContract {
   @@index([packageId, status, createdAt])
   @@index([status, createdAt])
   @@index([flowType, status, createdAt])
+}
+
+model EduTrustStudentCourseRecord {
+  id                     String                      @id @default(uuid())
+  studentId              String
+  courseId               String
+  packageId              String?
+  status                 EduTrustStudentRecordStatus @default(DRAFT)
+  diagnosticAssessment   String?
+  individualLearningPlan String?
+  progressReview         String?
+  finalAssessment        String?
+  completionRecord       String?
+  attendanceEvidenceNote String?
+  contractEvidenceNote   String?
+  outcomeSummary         String?
+  externalOutcome        String?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  reviewedAt             DateTime?
+  reviewedBy             String?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  package CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, courseId, packageId])
+  @@index([courseId, status, createdAt])
+  @@index([studentId, status, createdAt])
+  @@index([packageId])
+  @@index([status, completedAt])
 }
 
 model StudentContractEvent {

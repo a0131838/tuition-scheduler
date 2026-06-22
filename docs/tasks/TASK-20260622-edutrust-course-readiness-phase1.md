@@ -91,9 +91,40 @@ Added the foundation for a separate SSG Standard PEI-Student Contract v4.0 mode 
 
 This does not yet expose a production UI button for creating SSG v4 contracts. The next phase should connect this mode only to EduTrust-ready/permitted courses after we confirm the official contract fields.
 
+## 2026-06-22 Follow-up: Student Evidence, C7 Outcomes, and Guarded SSG Entry
+
+Added the next EduTrust readiness layer for student-level delivery evidence and outcomes tracking.
+
+- Added `EduTrustStudentCourseRecord` for each EduTrust student/course/package evidence file.
+- Added editable evidence fields for:
+  - diagnostic assessment
+  - individual learning plan
+  - progress review
+  - final assessment
+  - completion record
+  - attendance evidence note
+  - contract/FPS evidence note
+  - outcome summary
+  - external outcome
+  - start and completion dates
+- Added `/admin/edutrust/students` as the student evidence and C7 outcomes workspace.
+- Added a C7 three-year trend summary based on completed EduTrust student records.
+- Added a Section A/B evidence-pack checklist covering course file approval, SSG permission evidence, signed PEI student contract, FPS/fee evidence where applicable, attendance, assessment, learning plan, progress review, completion, withdrawal/refund evidence where applicable, and yearly outcomes.
+- Added `POST /api/admin/edutrust/student-records` to save student evidence records.
+- Added admin sidebar entry for `EduTrust Student Evidence / EduTrust 学生证据`.
+- Connected SSG Standard PEI-Student Contract v4.0 creation to the package contract workspace only when:
+  - the course is marked as an EduTrust course
+  - SSG permission status is `PERMITTED`
+  - Course File status is `APPROVED`
+  - package hours meet the configured EduTrust minimum
+- Added the same SSG contract guard inside `lib/student-contract.ts` so the UI cannot be bypassed.
+
+This still does not change live teaching delivery, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw. Before issuing SSG v4 contracts externally, the final contract fields should still be checked against the official Standard PEI-Student Contract Version 4.0 template for the exact course and student case.
+
 ## Verification
 
 - `npx prisma format`
 - `npx prisma migrate deploy`
 - `npx prisma generate`
+- `npx tsx --test tests/edutrust-student-record.test.ts tests/student-contract-mode.test.ts`
 - `npm run build`
