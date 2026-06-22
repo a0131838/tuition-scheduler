@@ -7,7 +7,42 @@ import {
 } from "@/lib/edutrust-course-profile";
 import EduTrustCourseProfilesClient from "./EduTrustCourseProfilesClient";
 
-function profileDraft(courseId: string, profile: ReturnType<typeof defaultEduTrustProfileForCourse>) {
+function courseFileDraft(file?: {
+  courseWriteup?: string | null;
+  admissionRequirements?: string | null;
+  learningOutcomes?: string | null;
+  syllabus?: string | null;
+  lessonPlan?: string | null;
+  assessmentPlan?: string | null;
+  teacherDeployment?: string | null;
+  academicBoardApproval?: string | null;
+  examinationBoardApproval?: string | null;
+  courseReview?: string | null;
+  evidenceNotes?: string | null;
+  approvedBy?: string | null;
+} | null) {
+  return {
+    courseWriteup: file?.courseWriteup ?? "",
+    admissionRequirements: file?.admissionRequirements ?? "",
+    learningOutcomes: file?.learningOutcomes ?? "",
+    syllabus: file?.syllabus ?? "",
+    lessonPlan: file?.lessonPlan ?? "",
+    assessmentPlan: file?.assessmentPlan ?? "",
+    teacherDeployment: file?.teacherDeployment ?? "",
+    academicBoardApproval: file?.academicBoardApproval ?? "",
+    examinationBoardApproval: file?.examinationBoardApproval ?? "",
+    courseReview: file?.courseReview ?? "",
+    evidenceNotes: file?.evidenceNotes ?? "",
+    approvedBy: file?.approvedBy ?? "",
+  };
+}
+
+function profileDraft(
+  courseId: string,
+  profile: ReturnType<typeof defaultEduTrustProfileForCourse> & {
+    courseFile?: Parameters<typeof courseFileDraft>[0];
+  }
+) {
   return {
     courseId,
     isEduTrustCourse: profile.isEduTrustCourse,
@@ -20,6 +55,7 @@ function profileDraft(courseId: string, profile: ReturnType<typeof defaultEduTru
     permissionStatus: profile.permissionStatus,
     courseFileStatus: profile.courseFileStatus,
     note: profile.note ?? "",
+    courseFile: courseFileDraft(profile.courseFile),
   };
 }
 
@@ -27,7 +63,7 @@ export default async function EduTrustPage() {
   const lang = await getLang();
   const courses = await prisma.course.findMany({
     include: {
-      eduTrustProfile: true,
+      eduTrustProfile: { include: { courseFile: true } },
       subjects: { include: { levels: { orderBy: { name: "asc" } } }, orderBy: { name: "asc" } },
       packages: {
         select: {
@@ -61,6 +97,7 @@ export default async function EduTrustPage() {
           permissionStatus: course.eduTrustProfile.permissionStatus,
           courseFileStatus: course.eduTrustProfile.courseFileStatus,
           note: course.eduTrustProfile.note,
+          courseFile: course.eduTrustProfile.courseFile,
         }
       : null;
     const effective = profile ?? suggested;

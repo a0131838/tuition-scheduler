@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r194
+
+- Release ID: `2026-06-22-r194`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: extend the EduTrust readiness page with a Course File layer so each mapped course can store Criterion 5 evidence fields such as course write-up, admission requirements, learning outcomes, syllabus, lesson plan, assessment plan, teacher deployment, Academic Board approval, Examination Board approval, course review, evidence notes, and approver.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260622133000_add_edutrust_course_files/migration.sql`
+  - `app/admin/edutrust/page.tsx`
+  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
+  - `app/api/admin/edutrust/course-profiles/route.ts`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds a nullable Course File table and editable admin-only text fields for EduTrust readiness. It does not change operational course names, class setup, scheduling, attendance deduction, package balances, tuition contracts, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npx prisma format`
+  - `npx prisma migrate deploy`
+  - `npx prisma generate`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r194`.
+
+---
+
 ## 2026-06-22-r193
 
 - Release ID: `2026-06-22-r193`

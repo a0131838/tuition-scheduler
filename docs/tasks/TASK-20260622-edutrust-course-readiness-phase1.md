@@ -44,11 +44,36 @@ The first implementation keeps existing operational course names unchanged and a
 
 ## Next Phases
 
-1. Add EduTrust course file templates and approval workflow.
-2. Add SSG Standard PEI-Student Contract v4.0 as a separate contract mode.
-3. Add diagnostic assessment, individual learning plan, progress review, final assessment, and completion record for one-to-one EduTrust courses.
-4. Add C7 outcomes dashboard.
-5. Add official evidence folder and Section A/B export pack.
+1. Add SSG Standard PEI-Student Contract v4.0 as a separate contract mode.
+2. Add diagnostic assessment, individual learning plan, progress review, final assessment, and completion record for one-to-one EduTrust courses.
+3. Add C7 outcomes dashboard.
+4. Add official evidence folder and Section A/B export pack.
+
+## 2026-06-22 Follow-up: Course File Layer
+
+Added the first Course File layer under the same `/admin/edutrust` page.
+
+- Added `EduTrustCourseFile` as a one-to-one file for each EduTrust course profile.
+- Added editable fields for:
+  - course write-up
+  - admission requirements
+  - learning outcomes
+  - syllabus
+  - lesson plan
+  - assessment plan
+  - teacher deployment
+  - Academic Board approval
+  - Examination Board approval
+  - course review
+  - evidence notes
+  - approved by
+- Course File fields are folded inside each course row to keep the main mapping page usable.
+- Saving a row now persists both the course mapping and any Course File content.
+- Course File status is inferred automatically:
+  - no file content -> `NOT_STARTED`
+  - partial file content -> `DRAFTING`
+  - core fields filled -> `READY_FOR_REVIEW`
+  - manually selected `APPROVED` / `NEEDS_UPDATE` is respected.
 
 ## Verification
 

@@ -50,6 +50,22 @@ type ProfileDraft = {
   permissionStatus: string;
   courseFileStatus: string;
   note: string;
+  courseFile: CourseFileDraft;
+};
+
+type CourseFileDraft = {
+  courseWriteup: string;
+  admissionRequirements: string;
+  learningOutcomes: string;
+  syllabus: string;
+  lessonPlan: string;
+  assessmentPlan: string;
+  teacherDeployment: string;
+  academicBoardApproval: string;
+  examinationBoardApproval: string;
+  courseReview: string;
+  evidenceNotes: string;
+  approvedBy: string;
 };
 
 type CourseRow = {
@@ -84,6 +100,78 @@ function selectStyle() {
   };
 }
 
+function textareaStyle() {
+  return {
+    ...textInputStyle(),
+    minHeight: 82,
+    resize: "vertical" as const,
+    lineHeight: 1.45,
+  };
+}
+
+const COURSE_FILE_FIELDS: Array<{ key: keyof CourseFileDraft; label: string; hint: string }> = [
+  {
+    key: "courseWriteup",
+    label: "Course write-up / 课程说明",
+    hint: "Purpose, target learners, course duration, delivery mode, and course positioning.",
+  },
+  {
+    key: "admissionRequirements",
+    label: "Admission requirements / 入学要求",
+    hint: "Minimum age, language level, prior learning, placement test, or diagnostic criteria.",
+  },
+  {
+    key: "learningOutcomes",
+    label: "Learning outcomes / 学习成果",
+    hint: "Measurable outcomes students should achieve by course completion.",
+  },
+  {
+    key: "syllabus",
+    label: "Syllabus / 课程大纲",
+    hint: "Modules, topics, hours, sequence, and pathway notes.",
+  },
+  {
+    key: "lessonPlan",
+    label: "Lesson plan / 课时计划",
+    hint: "How the standard syllabus is delivered in one-to-one, group, blended, or online modes.",
+  },
+  {
+    key: "assessmentPlan",
+    label: "Assessment plan / 评估计划",
+    hint: "Assessment modes, frequency, weighting, grading, award or completion criteria.",
+  },
+  {
+    key: "teacherDeployment",
+    label: "Teacher deployment / 老师配置",
+    hint: "Teacher qualification criteria, deployment rules, and Academic Board approval basis.",
+  },
+  {
+    key: "academicBoardApproval",
+    label: "Academic Board approval / 学术委员会审批",
+    hint: "Meeting date, approver, decision, and follow-up actions.",
+  },
+  {
+    key: "examinationBoardApproval",
+    label: "Examination Board approval / 考试委员会审批",
+    hint: "Assessment approval, moderation approach, appeal handling, and decision record.",
+  },
+  {
+    key: "courseReview",
+    label: "Course review / 课程复盘",
+    hint: "Student feedback, assessment results, teacher feedback, trend data, and improvement actions.",
+  },
+  {
+    key: "evidenceNotes",
+    label: "Evidence notes / 证据备注",
+    hint: "Where related attendance, assessment, feedback, contract, or review samples are kept.",
+  },
+  {
+    key: "approvedBy",
+    label: "Approved by / 批准人",
+    hint: "Management representative, Academic Board chair, or authorised approver.",
+  },
+];
+
 export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow[] }) {
   const initialDrafts = useMemo(() => {
     return Object.fromEntries(rows.map((row) => [row.id, row.profile ?? row.suggested]));
@@ -94,6 +182,16 @@ export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow
 
   function patchDraft(courseId: string, patch: Partial<ProfileDraft>) {
     setDrafts((prev) => ({ ...prev, [courseId]: { ...prev[courseId], ...patch } }));
+  }
+
+  function patchCourseFile(courseId: string, patch: Partial<CourseFileDraft>) {
+    setDrafts((prev) => ({
+      ...prev,
+      [courseId]: {
+        ...prev[courseId],
+        courseFile: { ...prev[courseId].courseFile, ...patch },
+      },
+    }));
   }
 
   async function save(row: CourseRow) {
@@ -248,6 +346,33 @@ export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow
                 <input value={draft.note} onChange={(event) => patchDraft(row.id, { note: event.target.value })} style={textInputStyle()} />
               </label>
             </div>
+
+            <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc", padding: 12 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#0f172a" }}>
+                Course File / 课程文件
+                <span style={{ marginLeft: 8, color: "#64748b", fontSize: 12, fontWeight: 500 }}>
+                  GD4 Criterion 5 evidence
+                </span>
+              </summary>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
+                  这里先沉淀官方审核会看的课程文件内容；不会改变排课、课包、老师或学生数据。
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))" }}>
+                  {COURSE_FILE_FIELDS.map((field) => (
+                    <label key={field.key} style={{ display: "grid", gap: 5, fontSize: 12, color: "#475569" }}>
+                      <span>{field.label}</span>
+                      <textarea
+                        value={draft.courseFile[field.key]}
+                        onChange={(event) => patchCourseFile(row.id, { [field.key]: event.target.value })}
+                        placeholder={field.hint}
+                        style={textareaStyle()}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </details>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
               <button

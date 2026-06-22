@@ -424,11 +424,35 @@ model EduTrustCourseProfile {
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course     Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseFile EduTrustCourseFile?
 
   @@index([isEduTrustCourse, courseLine])
   @@index([permissionStatus])
   @@index([courseFileStatus])
+}
+
+model EduTrustCourseFile {
+  id                       String    @id @default(uuid())
+  courseProfileId          String    @unique
+  courseWriteup            String?
+  admissionRequirements    String?
+  learningOutcomes         String?
+  syllabus                 String?
+  lessonPlan               String?
+  assessmentPlan           String?
+  teacherDeployment        String?
+  academicBoardApproval    String?
+  examinationBoardApproval String?
+  courseReview             String?
+  evidenceNotes            String?
+  lastReviewedAt           DateTime?
+  approvedAt               DateTime?
+  approvedBy               String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  profile EduTrustCourseProfile @relation(fields: [courseProfileId], references: [id], onDelete: Cascade)
 }
 
 model Subject {

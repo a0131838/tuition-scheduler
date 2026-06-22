@@ -21,6 +21,39 @@ function trimOrNull(value: unknown) {
   return text || null;
 }
 
+function courseFileData(raw: any) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    courseWriteup: trimOrNull(source.courseWriteup),
+    admissionRequirements: trimOrNull(source.admissionRequirements),
+    learningOutcomes: trimOrNull(source.learningOutcomes),
+    syllabus: trimOrNull(source.syllabus),
+    lessonPlan: trimOrNull(source.lessonPlan),
+    assessmentPlan: trimOrNull(source.assessmentPlan),
+    teacherDeployment: trimOrNull(source.teacherDeployment),
+    academicBoardApproval: trimOrNull(source.academicBoardApproval),
+    examinationBoardApproval: trimOrNull(source.examinationBoardApproval),
+    courseReview: trimOrNull(source.courseReview),
+    evidenceNotes: trimOrNull(source.evidenceNotes),
+    approvedBy: trimOrNull(source.approvedBy),
+  };
+}
+
+function inferCourseFileStatus(input: ReturnType<typeof courseFileData>) {
+  const values = Object.entries(input).filter(([key]) => key !== "approvedBy").map(([, value]) => value);
+  if (values.every((value) => !value)) return EduTrustCourseFileStatus.NOT_STARTED;
+  const readyFields = [
+    input.courseWriteup,
+    input.admissionRequirements,
+    input.learningOutcomes,
+    input.syllabus,
+    input.assessmentPlan,
+    input.teacherDeployment,
+  ];
+  if (readyFields.every(Boolean)) return EduTrustCourseFileStatus.READY_FOR_REVIEW;
+  return EduTrustCourseFileStatus.DRAFTING;
+}
+
 export async function POST(req: Request) {
   await requireAdmin();
 
@@ -49,6 +82,14 @@ export async function POST(req: Request) {
     body?.permissionStatus,
     isEduTrustCourse ? EduTrustPermissionStatus.DRAFT : EduTrustPermissionStatus.NOT_FOR_EDUTRUST
   );
+  const fileData = courseFileData(body?.courseFile);
+  const requestedCourseFileStatus = enumValue(EduTrustCourseFileStatus, body?.courseFileStatus, EduTrustCourseFileStatus.NOT_STARTED);
+  const inferredCourseFileStatus =
+    requestedCourseFileStatus === EduTrustCourseFileStatus.APPROVED ||
+    requestedCourseFileStatus === EduTrustCourseFileStatus.NEEDS_UPDATE
+      ? requestedCourseFileStatus
+      : inferCourseFileStatus(fileData);
+
   const data = {
     isEduTrustCourse,
     courseLine,
@@ -58,7 +99,7 @@ export async function POST(req: Request) {
     minTotalHours: minTotalHours || 50,
     deliveryMode: enumValue(EduTrustDeliveryMode, body?.deliveryMode, EduTrustDeliveryMode.ONE_TO_ONE),
     permissionStatus,
-    courseFileStatus: enumValue(EduTrustCourseFileStatus, body?.courseFileStatus, EduTrustCourseFileStatus.NOT_STARTED),
+    courseFileStatus: inferredCourseFileStatus,
     note: trimOrNull(body?.note),
   };
 
@@ -67,6 +108,24 @@ export async function POST(req: Request) {
     create: { courseId, ...data },
     update: data,
   });
+
+  const hasFileData = Object.values(fileData).some(Boolean);
+  if (hasFileData) {
+    await prisma.eduTrustCourseFile.upsert({
+      where: { courseProfileId: profile.id },
+      create: {
+        courseProfileId: profile.id,
+        ...fileData,
+        lastReviewedAt: new Date(),
+        approvedAt: inferredCourseFileStatus === EduTrustCourseFileStatus.APPROVED ? new Date() : null,
+      },
+      update: {
+        ...fileData,
+        lastReviewedAt: new Date(),
+        approvedAt: inferredCourseFileStatus === EduTrustCourseFileStatus.APPROVED ? new Date() : null,
+      },
+    });
+  }
 
   return Response.json({ ok: true, profile });
 }
