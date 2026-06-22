@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r193
+
+- Release ID: `2026-06-22-r193`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: add the first EduTrust readiness layer so existing operational course names stay unchanged while admin users can map each course to an EduTrust-ready course line, compliance name, public name, delivery mode, permission status, course file status, and minimum-hour threshold.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260622120000_add_edutrust_course_profiles/migration.sql`
+  - `lib/edutrust-course-profile.ts`
+  - `app/admin/edutrust/page.tsx`
+  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
+  - `app/api/admin/edutrust/course-profiles/route.ts`
+  - `app/admin/layout.tsx`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds nullable EduTrust mapping metadata and a new admin-only readiness page. It does not rename existing courses, subjects, levels, classes, packages, or contracts, and it does not change scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npx prisma format`
+  - `npx prisma migrate deploy`
+  - `npx prisma generate`
+  - `npm run build`
+  - local smoke check confirmed `/admin/edutrust` compiles and redirects unauthenticated users to `/admin/login`
+- Rollback point: previous production commit before `2026-06-22-r193`.
+
+---
+
 ## 2026-06-22-r192
 
 - Release ID: `2026-06-22-r192`

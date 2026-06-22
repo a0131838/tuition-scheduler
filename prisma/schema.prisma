@@ -173,6 +173,42 @@ enum FinalReportStatus {
   EXEMPT
 }
 
+enum EduTrustCourseLine {
+  INTERNATIONAL_SCHOOL_ADMISSION
+  AEIS_ADMISSION
+  ACADEMIC_ENGLISH_COMMUNICATION
+  STANDARDIZED_ENGLISH_TESTS
+  ACADEMIC_SUBJECT_BRIDGING
+  SCHOLARSHIP_SELECTION_TESTS
+  HIGHER_EDUCATION_SUPPORT
+  NOT_FOR_EDUTRUST
+}
+
+enum EduTrustPermissionStatus {
+  NOT_FOR_EDUTRUST
+  DRAFT
+  READY_FOR_SSG
+  SUBMITTED
+  PERMITTED
+  RETIRED
+}
+
+enum EduTrustDeliveryMode {
+  ONE_TO_ONE
+  GROUP
+  BLENDED
+  ONLINE
+  OTHER
+}
+
+enum EduTrustCourseFileStatus {
+  NOT_STARTED
+  DRAFTING
+  READY_FOR_REVIEW
+  APPROVED
+  NEEDS_UPDATE
+}
+
 enum ExpenseClaimStatus {
   SUBMITTED
   APPROVED
@@ -209,38 +245,38 @@ model Room {
 }
 
 model Teacher {
-  id   String @id @default(uuid())
-  name String
+  id        String  @id @default(uuid())
+  name      String
   tutorCode String? @unique
 
-  nationality           String?
-  almaMater             String?
-  intro                 String?
-  yearsExperience       Int?
-  teachingLanguage      TeachingLanguage?
-  teachingLanguageOther String?
-  offlineShanghai       Boolean           @default(false)
-  offlineSingapore      Boolean           @default(false)
-  paymentMethod         String?
-  payNowType            String?
-  payNowValue           String?
-  payNowName            String?
-  payNowNote            String?
-  wiseAccountName       String?
-  wiseEmail             String?
-  wisePhone             String?
-  wiseTag               String?
-  wiseCountry           String?
-  wiseCurrency          String?
-  wiseNote              String?
-  paymentProfileStatus  String?
-  paymentProfileVerifiedAt DateTime?
-  paymentProfileVerifiedBy String?
+  nationality                String?
+  almaMater                  String?
+  intro                      String?
+  yearsExperience            Int?
+  teachingLanguage           TeachingLanguage?
+  teachingLanguageOther      String?
+  offlineShanghai            Boolean           @default(false)
+  offlineSingapore           Boolean           @default(false)
+  paymentMethod              String?
+  payNowType                 String?
+  payNowValue                String?
+  payNowName                 String?
+  payNowNote                 String?
+  wiseAccountName            String?
+  wiseEmail                  String?
+  wisePhone                  String?
+  wiseTag                    String?
+  wiseCountry                String?
+  wiseCurrency               String?
+  wiseNote                   String?
+  paymentProfileStatus       String?
+  paymentProfileVerifiedAt   DateTime?
+  paymentProfileVerifiedBy   String?
   paymentProfileRejectReason String?
-  bankName              String?
-  bankAccountName       String?
-  bankAccountNumber     String?
-  bankBranchCode        String?
+  bankName                   String?
+  bankAccountName            String?
+  bankAccountNumber          String?
+  bankBranchCode             String?
 
   subjectCourseId String?
   subjectCourse   Subject?  @relation("SubjectCourse", fields: [subjectCourseId], references: [id])
@@ -361,14 +397,38 @@ model Course {
   id   String @id @default(uuid())
   name String
 
-  subjects       Subject[]
-  classes        Class[]
-  packages       CoursePackage[]
-  sharedPackages CoursePackageSharedCourse[]
-  oneOnOneGroups OneOnOneGroup[]
-  teacherRates   TeacherCourseRate[]
-  midtermReports MidtermReport[]
-  finalReports   FinalReport[]
+  subjects        Subject[]
+  classes         Class[]
+  packages        CoursePackage[]
+  sharedPackages  CoursePackageSharedCourse[]
+  oneOnOneGroups  OneOnOneGroup[]
+  teacherRates    TeacherCourseRate[]
+  midtermReports  MidtermReport[]
+  finalReports    FinalReport[]
+  eduTrustProfile EduTrustCourseProfile?
+}
+
+model EduTrustCourseProfile {
+  id               String                   @id @default(uuid())
+  courseId         String                   @unique
+  isEduTrustCourse Boolean                  @default(false)
+  courseLine       EduTrustCourseLine       @default(NOT_FOR_EDUTRUST)
+  complianceName   String?
+  publicName       String?
+  trackLabel       String?
+  minTotalHours    Int                      @default(50)
+  deliveryMode     EduTrustDeliveryMode     @default(ONE_TO_ONE)
+  permissionStatus EduTrustPermissionStatus @default(DRAFT)
+  courseFileStatus EduTrustCourseFileStatus @default(NOT_STARTED)
+  note             String?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([isEduTrustCourse, courseLine])
+  @@index([permissionStatus])
+  @@index([courseFileStatus])
 }
 
 model Subject {
@@ -376,7 +436,7 @@ model Subject {
   name     String
   courseId String
 
-  course         Course          @relation(fields: [courseId], references: [id])
+  course         Course              @relation(fields: [courseId], references: [id])
   levels         Level[]
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
@@ -396,7 +456,7 @@ model Level {
   name      String
   subjectId String
 
-  subject        Subject         @relation(fields: [subjectId], references: [id])
+  subject        Subject             @relation(fields: [subjectId], references: [id])
   classes        Class[]
   oneOnOneGroups OneOnOneGroup[]
   teacherRates   TeacherCourseRate[]
@@ -550,14 +610,14 @@ model MidtermReport {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher        Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  student        Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher        Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject        Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   package        CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  assignedByUser User?         @relation("MidtermReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
-  exemptedByUser User?         @relation("MidtermReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
-  archivedByUser User?         @relation("MidtermReportArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+  assignedByUser User?          @relation("MidtermReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  exemptedByUser User?          @relation("MidtermReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
+  archivedByUser User?          @relation("MidtermReportArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
@@ -569,49 +629,49 @@ model MidtermReport {
 }
 
 model FinalReport {
-  id                String            @id @default(uuid())
-  status            FinalReportStatus @default(ASSIGNED)
-  studentId         String
-  teacherId         String
-  courseId          String
-  subjectId         String?
-  packageId         String
-  assignedByUserId  String?
-  assignedAt        DateTime          @default(now())
-  submittedAt       DateTime?
-  forwardedAt       DateTime?
-  deliveredAt       DateTime?
-  deliveredByUserId String?
-  deliveryChannel   String?
-  exemptReason      String?
-  exemptedAt        DateTime?
-  exemptedByUserId  String?
-  archivedAt        DateTime?
-  archivedByUserId  String?
-  shareToken        String?           @unique
-  shareEnabledAt    DateTime?
-  shareExpiresAt    DateTime?
-  shareRevokedAt    DateTime?
+  id                 String            @id @default(uuid())
+  status             FinalReportStatus @default(ASSIGNED)
+  studentId          String
+  teacherId          String
+  courseId           String
+  subjectId          String?
+  packageId          String
+  assignedByUserId   String?
+  assignedAt         DateTime          @default(now())
+  submittedAt        DateTime?
+  forwardedAt        DateTime?
+  deliveredAt        DateTime?
+  deliveredByUserId  String?
+  deliveryChannel    String?
+  exemptReason       String?
+  exemptedAt         DateTime?
+  exemptedByUserId   String?
+  archivedAt         DateTime?
+  archivedByUserId   String?
+  shareToken         String?           @unique
+  shareEnabledAt     DateTime?
+  shareExpiresAt     DateTime?
+  shareRevokedAt     DateTime?
   shareFirstViewedAt DateTime?
   shareLastViewedAt  DateTime?
   shareViewCount     Int               @default(0)
-  reportPeriodLabel String?
-  finalLevel        String?
-  overallScore      Decimal?          @db.Decimal(5, 2)
-  recommendation    String?
-  reportJson        Json?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  reportPeriodLabel  String?
+  finalLevel         String?
+  overallScore       Decimal?          @db.Decimal(5, 2)
+  recommendation     String?
+  reportJson         Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher        Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  package        CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  assignedByUser User?         @relation("FinalReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
-  deliveredByUser User?        @relation("FinalReportDeliveredBy", fields: [deliveredByUserId], references: [id], onDelete: SetNull)
-  exemptedByUser User?         @relation("FinalReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
-  archivedByUser User?         @relation("FinalReportArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject         Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  package         CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  assignedByUser  User?         @relation("FinalReportAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  deliveredByUser User?         @relation("FinalReportDeliveredBy", fields: [deliveredByUserId], references: [id], onDelete: SetNull)
+  exemptedByUser  User?         @relation("FinalReportExemptedBy", fields: [exemptedByUserId], references: [id], onDelete: SetNull)
+  archivedByUser  User?         @relation("FinalReportArchivedBy", fields: [archivedByUserId], references: [id], onDelete: SetNull)
 
   @@index([teacherId, status, assignedAt])
   @@index([studentId, createdAt])
@@ -640,52 +700,52 @@ model SessionTeacherChange {
 }
 
 model Student {
-  id              String    @id @default(uuid())
-  name            String
-  school          String?
-  birthDate       DateTime?
-  grade           String?
-  targetSchool    String?
-  currentMajor    String?
-  coachingContent String?
-  note            String?
-  curriculum      String?
-  englishLevel    String?
-  parentExpectation String?
-  mainAnxiety     String?
-  personalityNotes String?
-  academicRiskLevel String?
+  id                 String                 @id @default(uuid())
+  name               String
+  school             String?
+  birthDate          DateTime?
+  grade              String?
+  targetSchool       String?
+  currentMajor       String?
+  coachingContent    String?
+  note               String?
+  curriculum         String?
+  englishLevel       String?
+  parentExpectation  String?
+  mainAnxiety        String?
+  personalityNotes   String?
+  academicRiskLevel  String?
   currentRiskSummary String?
-  nextAction      String?
-  nextActionDue   DateTime?
-  advisorOwner    String?
-  servicePlanType String?
-  sourceChannelId String?
-  studentTypeId   String?
-  settlementMode  PartnerSettlementMode?
-  createdAt       DateTime  @default(now())
+  nextAction         String?
+  nextActionDue      DateTime?
+  advisorOwner       String?
+  servicePlanType    String?
+  sourceChannelId    String?
+  studentTypeId      String?
+  settlementMode     PartnerSettlementMode?
+  createdAt          DateTime               @default(now())
 
-  enrollments        Enrollment[]
-  appointments       Appointment[]
-  packages           CoursePackage[]
-  sharedPackageLinks CoursePackageSharedStudent[]
-  attendances        Attendance[]
-  oneOnOneTemplates  TeacherOneOnOneTemplate[]    @relation("TeacherOneOnOneTemplateStudent")
-  oneOnOneClasses    Class[]                      @relation("OneOnOneStudentClass")
-  sessions           Session[]                    @relation("SessionStudent")
-  midtermReports     MidtermReport[]
-  finalReports       FinalReport[]
-  sourceChannel      StudentSourceChannel?        @relation(fields: [sourceChannelId], references: [id])
-  studentType        StudentType?                 @relation(fields: [studentTypeId], references: [id])
-  bookingLinks       StudentBookingLink[]
-  bookingRequests    StudentBookingRequest[]
-  settlements        PartnerSettlement[]
-  tickets            Ticket[]
+  enrollments                Enrollment[]
+  appointments               Appointment[]
+  packages                   CoursePackage[]
+  sharedPackageLinks         CoursePackageSharedStudent[]
+  attendances                Attendance[]
+  oneOnOneTemplates          TeacherOneOnOneTemplate[]    @relation("TeacherOneOnOneTemplateStudent")
+  oneOnOneClasses            Class[]                      @relation("OneOnOneStudentClass")
+  sessions                   Session[]                    @relation("SessionStudent")
+  midtermReports             MidtermReport[]
+  finalReports               FinalReport[]
+  sourceChannel              StudentSourceChannel?        @relation(fields: [sourceChannelId], references: [id])
+  studentType                StudentType?                 @relation(fields: [studentTypeId], references: [id])
+  bookingLinks               StudentBookingLink[]
+  bookingRequests            StudentBookingRequest[]
+  settlements                PartnerSettlement[]
+  tickets                    Ticket[]
   parentAvailabilityRequests ParentAvailabilityRequest[]
-  contracts          StudentContract[]
-  parentIntakes      StudentParentIntake[]
-  schoolApplications SchoolApplicationService[]
-  convertedLeads     Lead[]                      @relation("LeadConvertedStudent")
+  contracts                  StudentContract[]
+  parentIntakes              StudentParentIntake[]
+  schoolApplications         SchoolApplicationService[]
+  convertedLeads             Lead[]                       @relation("LeadConvertedStudent")
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -696,27 +756,27 @@ model Student {
 }
 
 model PartnerSettlement {
-  id         String                  @id @default(uuid())
-  studentId  String
-  packageId  String?
-  packageTxnId String?
-  monthKey   String?
+  id                         String                  @id @default(uuid())
+  studentId                  String
+  packageId                  String?
+  packageTxnId               String?
+  monthKey                   String?
   onlineSnapshotTotalMinutes Int?
-  mode       PartnerSettlementMode
-  status     PartnerSettlementStatus @default(PENDING)
-  hours      Decimal                 @default(0) @db.Decimal(10, 2)
-  amount     Int                     @default(0)
-  settlementStartAt DateTime?
-  settlementEndAt   DateTime?
-  note       String?
-  revertedAt DateTime?
-  revertedBy String?
-  createdAt  DateTime                @default(now())
-  updatedAt  DateTime                @updatedAt
+  mode                       PartnerSettlementMode
+  status                     PartnerSettlementStatus @default(PENDING)
+  hours                      Decimal                 @default(0) @db.Decimal(10, 2)
+  amount                     Int                     @default(0)
+  settlementStartAt          DateTime?
+  settlementEndAt            DateTime?
+  note                       String?
+  revertedAt                 DateTime?
+  revertedBy                 String?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
 
-  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  package CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  packageTxn PackageTxn? @relation(fields: [packageTxnId], references: [id], onDelete: SetNull)
+  student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package    CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  packageTxn PackageTxn?    @relation(fields: [packageTxnId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, monthKey, mode])
   @@unique([packageTxnId, mode])
@@ -732,8 +792,8 @@ model StudentSourceChannel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  students Student[]
-  convertedLeads Lead[] @relation("LeadConvertedSourceChannel")
+  students       Student[]
+  convertedLeads Lead[]    @relation("LeadConvertedSourceChannel")
 
   @@unique([name])
 }
@@ -762,30 +822,30 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  teacher  Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
-  sessions AuthSession[]
-  midtermReportsAssigned MidtermReport[] @relation("MidtermReportAssignedBy")
-  midtermReportsExempted MidtermReport[] @relation("MidtermReportExemptedBy")
-  midtermReportsArchived MidtermReport[] @relation("MidtermReportArchivedBy")
-  finalReportsAssigned   FinalReport[]   @relation("FinalReportAssignedBy")
-  finalReportsDelivered  FinalReport[]   @relation("FinalReportDeliveredBy")
-  finalReportsExempted   FinalReport[]   @relation("FinalReportExemptedBy")
-  finalReportsArchived   FinalReport[]   @relation("FinalReportArchivedBy")
-  ticketsCompleted       Ticket[]        @relation("TicketCompletedBy")
-  ticketHandovers        TicketHandover[]
-  ticketIntakeTokens     TicketIntakeToken[]
-  expenseClaimsSubmitted ExpenseClaim[]
-  sharedDocumentsUploaded SharedDocument[]      @relation("SharedDocumentUploader")
-  sharedDocumentAudits    SharedDocumentAudit[] @relation("SharedDocumentAuditActor")
-  studentContractsCreated StudentContract[]     @relation("StudentContractCreatedBy")
-  studentContractEvents   StudentContractEvent[] @relation("StudentContractEventActor")
-  studentParentIntakesCreated StudentParentIntake[] @relation("StudentParentIntakeCreatedBy")
-  schoolApplicationsCreated SchoolApplicationService[] @relation("SchoolApplicationCreatedBy")
-  schoolApplicationEvents    SchoolApplicationEvent[]   @relation("SchoolApplicationEventActor")
-  leadsOwned              Lead[]                 @relation("LeadOwner")
-  leadFollowUps           LeadFollowUp[]         @relation("LeadFollowUpActor")
-  leadAssessmentReopened  LeadAssessmentRequest[] @relation("LeadAssessmentReopenedBy")
-  workspaceAccesses       UserWorkspaceAccess[]
+  teacher                     Teacher?                   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  sessions                    AuthSession[]
+  midtermReportsAssigned      MidtermReport[]            @relation("MidtermReportAssignedBy")
+  midtermReportsExempted      MidtermReport[]            @relation("MidtermReportExemptedBy")
+  midtermReportsArchived      MidtermReport[]            @relation("MidtermReportArchivedBy")
+  finalReportsAssigned        FinalReport[]              @relation("FinalReportAssignedBy")
+  finalReportsDelivered       FinalReport[]              @relation("FinalReportDeliveredBy")
+  finalReportsExempted        FinalReport[]              @relation("FinalReportExemptedBy")
+  finalReportsArchived        FinalReport[]              @relation("FinalReportArchivedBy")
+  ticketsCompleted            Ticket[]                   @relation("TicketCompletedBy")
+  ticketHandovers             TicketHandover[]
+  ticketIntakeTokens          TicketIntakeToken[]
+  expenseClaimsSubmitted      ExpenseClaim[]
+  sharedDocumentsUploaded     SharedDocument[]           @relation("SharedDocumentUploader")
+  sharedDocumentAudits        SharedDocumentAudit[]      @relation("SharedDocumentAuditActor")
+  studentContractsCreated     StudentContract[]          @relation("StudentContractCreatedBy")
+  studentContractEvents       StudentContractEvent[]     @relation("StudentContractEventActor")
+  studentParentIntakesCreated StudentParentIntake[]      @relation("StudentParentIntakeCreatedBy")
+  schoolApplicationsCreated   SchoolApplicationService[] @relation("SchoolApplicationCreatedBy")
+  schoolApplicationEvents     SchoolApplicationEvent[]   @relation("SchoolApplicationEventActor")
+  leadsOwned                  Lead[]                     @relation("LeadOwner")
+  leadFollowUps               LeadFollowUp[]             @relation("LeadFollowUpActor")
+  leadAssessmentReopened      LeadAssessmentRequest[]    @relation("LeadAssessmentReopenedBy")
+  workspaceAccesses           UserWorkspaceAccess[]
 }
 
 model UserWorkspaceAccess {
@@ -805,38 +865,38 @@ model UserWorkspaceAccess {
 }
 
 model ExpenseClaim {
-  id                 String             @id @default(uuid())
-  claimRefNo         String             @unique
-  submitterUserId    String
-  submitterName      String
-  submitterRole      String
-  expenseDate        DateTime
-  description        String
-  studentName        String?
-  location           String?
-  amountCents        Int
-  gstAmountCents     Int?
-  currencyCode       String             @default("SGD")
-  expenseTypeCode    String
-  accountCode        String
-  receiptPath        String
+  id                  String             @id @default(uuid())
+  claimRefNo          String             @unique
+  submitterUserId     String
+  submitterName       String
+  submitterRole       String
+  expenseDate         DateTime
+  description         String
+  studentName         String?
+  location            String?
+  amountCents         Int
+  gstAmountCents      Int?
+  currencyCode        String             @default("SGD")
+  expenseTypeCode     String
+  accountCode         String
+  receiptPath         String
   receiptOriginalName String
-  status             ExpenseClaimStatus @default(SUBMITTED)
-  approverEmail      String?
-  approvedAt         DateTime?
-  rejectedAt         DateTime?
-  rejectReason       String?
-  paidByEmail        String?
-  financeRemarks     String?
-  paymentMethod      String?
-  paymentReference   String?
-  paidAt             DateTime?
-  paymentBatchMonth  String?
-  archivedAt         DateTime?
-  archivedByEmail    String?
-  remarks            String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  status              ExpenseClaimStatus @default(SUBMITTED)
+  approverEmail       String?
+  approvedAt          DateTime?
+  rejectedAt          DateTime?
+  rejectReason        String?
+  paidByEmail         String?
+  financeRemarks      String?
+  paymentMethod       String?
+  paymentReference    String?
+  paidAt              DateTime?
+  paymentBatchMonth   String?
+  archivedAt          DateTime?
+  archivedByEmail     String?
+  remarks             String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   submitter User @relation(fields: [submitterUserId], references: [id], onDelete: Cascade)
 
@@ -848,16 +908,16 @@ model ExpenseClaim {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
+  id         String   @id @default(uuid())
   actorEmail String
   actorName  String?
   actorRole  String?
-  module    String
-  action    String
+  module     String
+  action     String
   entityType String?
   entityId   String?
-  meta      Json?
-  createdAt DateTime @default(now())
+  meta       Json?
+  createdAt  DateTime @default(now())
 
   @@index([createdAt])
   @@index([actorEmail, createdAt])
@@ -909,8 +969,8 @@ model SharedDocument {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
-  category DocumentCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  uploader User             @relation("SharedDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  category DocumentCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  uploader User                  @relation("SharedDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
   audits   SharedDocumentAudit[]
 
   @@index([categoryId, status, createdAt])
@@ -1087,12 +1147,12 @@ model StudentBookingRequestSlotLock {
 }
 
 model CoursePackage {
-  id        String        @id @default(uuid())
-  studentId String
-  courseId  String
-  type      PackageType
-  status    PackageStatus @default(ACTIVE)
-  settlementMode PartnerSettlementMode?
+  id                   String                   @id @default(uuid())
+  studentId            String
+  courseId             String
+  type                 PackageType
+  status               PackageStatus            @default(ACTIVE)
+  settlementMode       PartnerSettlementMode?
   financeGateStatus    PackageFinanceGateStatus @default(EXEMPT)
   financeGateReason    String?
   financeGateUpdatedAt DateTime?
@@ -1114,18 +1174,18 @@ model CoursePackage {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  student        Student                      @relation(fields: [studentId], references: [id])
-  course         Course                       @relation(fields: [courseId], references: [id])
-  txns           PackageTxn[]
-  attendances    Attendance[]
-  sharedStudents CoursePackageSharedStudent[]
-  sharedCourses  CoursePackageSharedCourse[]
-  settlements    PartnerSettlement[]
-  midtermReports MidtermReport[]
-  finalReports   FinalReport[]
-  invoiceApprovals PackageInvoiceApproval[]
-  contracts      StudentContract[]
-  parentIntakes  StudentParentIntake[]
+  student            Student                      @relation(fields: [studentId], references: [id])
+  course             Course                       @relation(fields: [courseId], references: [id])
+  txns               PackageTxn[]
+  attendances        Attendance[]
+  sharedStudents     CoursePackageSharedStudent[]
+  sharedCourses      CoursePackageSharedCourse[]
+  settlements        PartnerSettlement[]
+  midtermReports     MidtermReport[]
+  finalReports       FinalReport[]
+  invoiceApprovals   PackageInvoiceApproval[]
+  contracts          StudentContract[]
+  parentIntakes      StudentParentIntake[]
   schoolApplications SchoolApplicationService[]
 
   @@index([studentId, courseId])
@@ -1136,16 +1196,16 @@ model CoursePackage {
 }
 
 model PackageInvoiceApproval {
-  id                 String                       @id @default(uuid())
-  packageId          String
-  invoiceId          String
-  status             PackageInvoiceApprovalStatus @default(PENDING_MANAGER)
-  submittedBy        String
-  submittedAt        DateTime                     @default(now())
-  managerApprovedBy  String?
-  managerApprovedAt  DateTime?
+  id                  String                       @id @default(uuid())
+  packageId           String
+  invoiceId           String
+  status              PackageInvoiceApprovalStatus @default(PENDING_MANAGER)
+  submittedBy         String
+  submittedAt         DateTime                     @default(now())
+  managerApprovedBy   String?
+  managerApprovedAt   DateTime?
   managerRejectReason String?
-  updatedAt          DateTime                     @updatedAt
+  updatedAt           DateTime                     @updatedAt
 
   package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
 
@@ -1172,14 +1232,14 @@ model ContractTemplate {
 }
 
 model StudentContract {
-  id                   String                @id @default(uuid())
+  id                   String                  @id @default(uuid())
   studentId            String
   packageId            String
   templateId           String
   flowType             StudentContractFlowType @default(NEW_PURCHASE)
-  status               StudentContractStatus @default(DRAFT)
-  intakeToken          String                @unique
-  signToken            String?               @unique
+  status               StudentContractStatus   @default(DRAFT)
+  intakeToken          String                  @unique
+  signToken            String?                 @unique
   intakeExpiresAt      DateTime?
   signExpiresAt        DateTime?
   intakeSubmittedAt    DateTime?
@@ -1199,13 +1259,13 @@ model StudentContract {
   invoiceId            String?
   invoiceNo            String?
   createdByUserId      String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
 
-  student       Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  package       CoursePackage    @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  template      ContractTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  createdByUser User?            @relation("StudentContractCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  student       Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package       CoursePackage          @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  template      ContractTemplate       @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  createdByUser User?                  @relation("StudentContractCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   events        StudentContractEvent[]
   parentIntakes StudentParentIntake[]
 
@@ -1260,48 +1320,48 @@ model StudentParentIntake {
 }
 
 model SchoolApplicationService {
-  id                   String                  @id @default(uuid())
-  studentId            String
-  packageId            String?
-  status               SchoolApplicationStatus @default(DRAFT)
-  parentInfoToken      String?                 @unique
-  parentInfoExpiresAt  DateTime?
-  parentInfoViewedAt   DateTime?
+  id                    String                  @id @default(uuid())
+  studentId             String
+  packageId             String?
+  status                SchoolApplicationStatus @default(DRAFT)
+  parentInfoToken       String?                 @unique
+  parentInfoExpiresAt   DateTime?
+  parentInfoViewedAt    DateTime?
   parentInfoSubmittedAt DateTime?
-  signToken            String?                 @unique
-  signExpiresAt        DateTime?
-  signViewedAt         DateTime?
-  signedAt             DateTime?
-  invoiceCreatedAt     DateTime?
-  voidedAt             DateTime?
-  parentInfoJson       Json?
-  applicationItemsJson Json
-  addOnItemsJson       Json?
-  officialFeesJson     Json?
-  serviceHours         Decimal?                @db.Decimal(10, 2)
-  serviceFeeAmount     Decimal                 @default(0) @db.Decimal(10, 2)
-  officialFeeAmount    Decimal                 @default(0) @db.Decimal(10, 2)
-  addOnFeeAmount       Decimal                 @default(0) @db.Decimal(10, 2)
-  totalAmount          Decimal                 @default(0) @db.Decimal(10, 2)
-  billTo               String
-  agreementDate        DateTime
-  note                 String?
-  contractSnapshotJson Json?
-  signedPdfPath        String?
-  signatureImagePath   String?
-  signerName           String?
-  signerEmail          String?
-  signerPhone          String?
-  signerIp             String?
-  invoiceId            String?
-  invoiceNo            String?
-  createdByUserId      String?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
+  signToken             String?                 @unique
+  signExpiresAt         DateTime?
+  signViewedAt          DateTime?
+  signedAt              DateTime?
+  invoiceCreatedAt      DateTime?
+  voidedAt              DateTime?
+  parentInfoJson        Json?
+  applicationItemsJson  Json
+  addOnItemsJson        Json?
+  officialFeesJson      Json?
+  serviceHours          Decimal?                @db.Decimal(10, 2)
+  serviceFeeAmount      Decimal                 @default(0) @db.Decimal(10, 2)
+  officialFeeAmount     Decimal                 @default(0) @db.Decimal(10, 2)
+  addOnFeeAmount        Decimal                 @default(0) @db.Decimal(10, 2)
+  totalAmount           Decimal                 @default(0) @db.Decimal(10, 2)
+  billTo                String
+  agreementDate         DateTime
+  note                  String?
+  contractSnapshotJson  Json?
+  signedPdfPath         String?
+  signatureImagePath    String?
+  signerName            String?
+  signerEmail           String?
+  signerPhone           String?
+  signerIp              String?
+  invoiceId             String?
+  invoiceNo             String?
+  createdByUserId       String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
-  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  package       CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  createdByUser User?          @relation("SchoolApplicationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  student       Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  package       CoursePackage?           @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  createdByUser User?                    @relation("SchoolApplicationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   events        SchoolApplicationEvent[]
 
   @@index([studentId, status, createdAt])
@@ -1364,7 +1424,7 @@ model PackageTxn {
   note         String?
   createdAt    DateTime @default(now())
 
-  package CoursePackage @relation(fields: [packageId], references: [id])
+  package            CoursePackage       @relation(fields: [packageId], references: [id])
   partnerSettlements PartnerSettlement[]
 
   @@index([packageId, createdAt])
@@ -1381,9 +1441,9 @@ model Attendance {
   deductedCount   Int @default(0)
   deductedMinutes Int @default(0)
 
-  packageId     String?
-  note          String?
-  excusedCharge Boolean @default(false)
+  packageId      String?
+  note           String?
+  excusedCharge  Boolean @default(false)
   waiveDeduction Boolean @default(false)
   waiveReason    String?
 
@@ -1416,46 +1476,46 @@ model TicketDailyCounter {
 }
 
 model Ticket {
-  id                 String   @id @default(uuid())
-  ticketNo           String   @unique
-  studentId          String?
-  source             String
-  type               String
-  priority           String
-  studentName        String
-  grade              String?
-  course             String?
-  teacher            String?
-  poc                String?
-  wechat             String?
-  phone              String?
-  parentAvailability String?
+  id                  String    @id @default(uuid())
+  ticketNo            String    @unique
+  studentId           String?
+  source              String
+  type                String
+  priority            String
+  studentName         String
+  grade               String?
+  course              String?
+  teacher             String?
+  poc                 String?
+  wechat              String?
+  phone               String?
+  parentAvailability  String?
   teacherAvailability String?
-  durationMin        Int?
-  mode               String?
-  addressOrLink      String?
-  confirmDeadline    DateTime?
-  slaDue             DateTime?
-  status             String
-  owner              String?
-  version            String?
-  systemUpdated      String?
-  finalSchedule      String?
-  lastUpdateAt       DateTime?
-  summary            String?
-  risksNotes         String?
-  nextAction         String?
-  nextActionDue      DateTime?
-  proof              String?
-  createdByName      String?
-  completedAt        DateTime?
-  completedByUserId  String?
-  isArchived         Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  durationMin         Int?
+  mode                String?
+  addressOrLink       String?
+  confirmDeadline     DateTime?
+  slaDue              DateTime?
+  status              String
+  owner               String?
+  version             String?
+  systemUpdated       String?
+  finalSchedule       String?
+  lastUpdateAt        DateTime?
+  summary             String?
+  risksNotes          String?
+  nextAction          String?
+  nextActionDue       DateTime?
+  proof               String?
+  createdByName       String?
+  completedAt         DateTime?
+  completedByUserId   String?
+  isArchived          Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  student       Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  completedByUser User? @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  student                   Student?                   @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  completedByUser           User?                      @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
   parentAvailabilityRequest ParentAvailabilityRequest?
 
   @@index([status, createdAt])
@@ -1467,20 +1527,20 @@ model Ticket {
 }
 
 model ParentAvailabilityRequest {
-  id          String   @id @default(uuid())
-  ticketId     String   @unique
-  studentId    String
-  courseLabel  String?
-  token        String   @unique
-  isActive     Boolean  @default(true)
-  expiresAt    DateTime?
-  submittedAt  DateTime?
-  payloadJson  Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String    @id @default(uuid())
+  ticketId    String    @unique
+  studentId   String
+  courseLabel String?
+  token       String    @unique
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  submittedAt DateTime?
+  payloadJson Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  ticket   Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  ticket  Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, isActive, createdAt])
   @@index([isActive, submittedAt, createdAt])
@@ -1505,13 +1565,13 @@ model TicketHandover {
 }
 
 model TicketIntakeToken {
-  id              String   @id @default(uuid())
-  token           String   @unique
+  id              String    @id @default(uuid())
+  token           String    @unique
   label           String?
-  isActive        Boolean  @default(true)
+  isActive        Boolean   @default(true)
   createdByUserId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   expiresAt       DateTime?
 
   createdByUser User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1526,8 +1586,8 @@ model LeadDailyCounter {
 }
 
 model Lead {
-  id                       String   @id @default(uuid())
-  leadNo                   String   @unique
+  id                       String    @id @default(uuid())
+  leadNo                   String    @unique
   sourceType               String
   sourcePlatform           String?
   sourceDetail             String?
@@ -1543,8 +1603,8 @@ model Lead {
   preferredCourse          String?
   budgetRange              String?
   urgency                  String?
-  intentLevel              String   @default("Warm")
-  status                   String   @default("New Lead")
+  intentLevel              String    @default("Warm")
+  status                   String    @default("New Lead")
   ownerUserId              String?
   ownerName                String?
   assignedSalesName        String?
@@ -1555,17 +1615,17 @@ model Lead {
   convertedSourceChannelId String?
   schedulingTicketId       String?
   lostReason               String?
-  isArchived               Boolean  @default(false)
+  isArchived               Boolean   @default(false)
   archivedAt               DateTime?
   archivedByName           String?
   createdByUserId          String?
   createdByName            String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  owner                  User?                 @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  convertedStudent       Student?              @relation("LeadConvertedStudent", fields: [convertedStudentId], references: [id], onDelete: SetNull)
-  convertedSourceChannel StudentSourceChannel? @relation("LeadConvertedSourceChannel", fields: [convertedSourceChannelId], references: [id], onDelete: SetNull)
+  owner                  User?                   @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  convertedStudent       Student?                @relation("LeadConvertedStudent", fields: [convertedStudentId], references: [id], onDelete: SetNull)
+  convertedSourceChannel StudentSourceChannel?   @relation("LeadConvertedSourceChannel", fields: [convertedSourceChannelId], references: [id], onDelete: SetNull)
   followUps              LeadFollowUp[]
   assessmentRequests     LeadAssessmentRequest[]
 
@@ -1594,7 +1654,7 @@ model LeadResourceOwner {
 }
 
 model LeadFollowUp {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   leadId           String
   actorUserId      String?
   actorName        String
@@ -1605,7 +1665,7 @@ model LeadFollowUp {
   nextActionDue    DateTime?
   nextStatus       String?
   intentLevelAfter String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
   actor User? @relation("LeadFollowUpActor", fields: [actorUserId], references: [id], onDelete: SetNull)
@@ -1615,11 +1675,11 @@ model LeadFollowUp {
 }
 
 model LeadAssessmentRequest {
-  id                     String   @id @default(uuid())
+  id                     String    @id @default(uuid())
   leadId                 String
   teacherId              String
   teacherName            String
-  status                 String   @default("Pending")
+  status                 String    @default("Pending")
   dueAt                  DateTime?
   studentLevel           String?
   academicProblems       String?
@@ -1634,8 +1694,8 @@ model LeadAssessmentRequest {
   reopenedAt             DateTime?
   reopenedByUserId       String?
   reopenNote             String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   lead       Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   teacher    Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
