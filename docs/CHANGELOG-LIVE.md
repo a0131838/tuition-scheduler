@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r195
+
+- Release ID: `2026-06-22-r195`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: add the foundation for a separate SSG Standard PEI-Student Contract v4.0 mode while keeping all existing tuition contracts on the current tuition agreement mode by default.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260622143000_add_student_contract_mode/migration.sql`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `tests/student-contract-mode.test.ts`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds a defaulted `contractMode` field and an SSG v4 template path, but does not expose a production UI button for SSG contract creation yet. Existing contracts, signing links, invoice creation, package balances, attendance deduction, scheduling, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior remain on the existing path.
+- Verification:
+  - `npx prisma format`
+  - `npx prisma migrate deploy`
+  - `npx prisma generate`
+  - `npx tsx --test tests/student-contract-mode.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r195`.
+
+---
+
 ## 2026-06-22-r194
 
 - Release ID: `2026-06-22-r194`

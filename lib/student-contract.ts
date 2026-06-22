@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import {
   Prisma,
+  StudentContractMode,
   StudentContractEventType,
   StudentContractFlowType,
   StudentContractStatus,
@@ -11,7 +12,7 @@ import {
   type ContractParentInfo,
   type ContractSnapshot,
   buildStudentContractSnapshot,
-  getDefaultStudentContractTemplateInput,
+  getStudentContractTemplateInput,
 } from "@/lib/student-contract-template";
 import {
   BUSINESS_UPLOAD_PREFIX,
@@ -64,6 +65,7 @@ export type StudentContractSummary = {
   packageId: string;
   templateId: string;
   flowType: StudentContractFlowType;
+  contractMode: StudentContractMode;
   status: StudentContractStatus;
   intakeToken: string;
   signToken: string | null;
@@ -355,6 +357,7 @@ function summarize(row: StudentContractRow): StudentContractSummary {
     packageId: row.packageId,
     templateId: row.templateId,
     flowType: row.flowType,
+    contractMode: row.contractMode,
     status: canonicalStudentContractStatus(row.status),
     intakeToken: row.intakeToken,
     signToken: row.signToken ?? null,
@@ -392,8 +395,8 @@ function assertDirectBillingPackage(pkg: {
   }
 }
 
-async function ensureDefaultContractTemplate() {
-  const template = getDefaultStudentContractTemplateInput();
+async function ensureContractTemplate(mode: StudentContractMode = StudentContractMode.TUITION_AGREEMENT) {
+  const template = getStudentContractTemplateInput(mode);
   return prisma.contractTemplate.upsert({
     where: {
       slug_version: {
@@ -513,6 +516,7 @@ export async function createStudentContractDraft(input: {
   createdByUserId?: string | null;
   intakeExpiresAt?: Date | null;
   flowType?: StudentContractFlowType;
+  contractMode?: StudentContractMode;
   replacementFromContractId?: string | null;
 }) {
   const existing = await prisma.studentContract.findFirst({
@@ -527,12 +531,13 @@ export async function createStudentContractDraft(input: {
   });
   if (existing) return summarize(existing);
 
+  const contractMode = input.contractMode ?? StudentContractMode.TUITION_AGREEMENT;
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
       include: { student: true, course: true },
     }),
-    ensureDefaultContractTemplate(),
+    ensureContractTemplate(contractMode),
   ]);
   if (!pkg || pkg.studentId !== input.studentId) {
     throw new Error("Package not found for this student");
@@ -576,6 +581,7 @@ export async function createStudentContractDraft(input: {
       packageId: input.packageId,
       templateId: template.id,
       flowType,
+      contractMode,
       status:
         startsAsDraft
           ? StudentContractStatus.CONTRACT_DRAFT
@@ -606,6 +612,7 @@ export async function createStudentContractDraft(input: {
         : "Created first-purchase intake flow",
     payloadJson: {
       flowType,
+      contractMode,
       replacementFromContractId: replacementSource?.id ?? null,
     },
   });
@@ -620,6 +627,7 @@ export async function createReadyToSignStudentContract(input: {
   createdByUserId?: string | null;
   signExpiresAt?: Date | null;
   flowType?: StudentContractFlowType;
+  contractMode?: StudentContractMode;
 }) {
   const existing = await prisma.studentContract.findFirst({
     where: {
@@ -633,12 +641,13 @@ export async function createReadyToSignStudentContract(input: {
   });
   if (existing) return summarize(existing);
 
+  const contractMode = input.contractMode ?? StudentContractMode.TUITION_AGREEMENT;
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
       include: { student: true, course: true },
     }),
-    ensureDefaultContractTemplate(),
+    ensureContractTemplate(contractMode),
   ]);
   if (!pkg || pkg.studentId !== input.studentId) {
     throw new Error("Package not found for this student");
@@ -661,6 +670,7 @@ export async function createReadyToSignStudentContract(input: {
     businessInfo,
     parentInfo: input.parentInfo,
     agreementDate: businessInfo.agreementDateIso,
+    contractMode,
   });
 
   const row = await prisma.studentContract.create({
@@ -669,6 +679,7 @@ export async function createReadyToSignStudentContract(input: {
       packageId: pkg.id,
       templateId: template.id,
       flowType,
+      contractMode,
       status: StudentContractStatus.READY_TO_SIGN,
       intakeToken: createStudentContractToken(),
       signToken: createStudentContractToken(),
@@ -687,7 +698,7 @@ export async function createReadyToSignStudentContract(input: {
     actorType: input.createdByUserId ? "ADMIN" : "SYSTEM",
     actorUserId: input.createdByUserId ?? null,
     actorLabel: "Created ready-to-sign contract",
-    payloadJson: { flowType, source: "student-parent-intake" },
+    payloadJson: { flowType, contractMode, source: "student-parent-intake" },
   });
   await appendStudentContractEvent({
     contractId: row.id,
@@ -984,6 +995,7 @@ export async function prepareStudentContractForSigning(input: {
     businessInfo,
     parentInfo,
     agreementDate: businessInfo.agreementDateIso,
+    contractMode: current.contractMode,
   });
 
   const next = await prisma.studentContract.update({

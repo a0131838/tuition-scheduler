@@ -75,6 +75,22 @@ Added the first Course File layer under the same `/admin/edutrust` page.
   - core fields filled -> `READY_FOR_REVIEW`
   - manually selected `APPROVED` / `NEEDS_UPDATE` is respected.
 
+## 2026-06-22 Follow-up: SSG Contract Mode Foundation
+
+Added the foundation for a separate SSG Standard PEI-Student Contract v4.0 mode without changing existing tuition contracts.
+
+- Added `StudentContractMode`.
+- Existing and newly created normal contracts default to `TUITION_AGREEMENT`.
+- Added `SSG_STANDARD_PEI_V4` as a separate contract mode.
+- Added a separate SSG v4 template seed path and snapshot mode.
+- Updated contract draft and ready-to-sign creation functions to accept `contractMode`.
+- Updated signing preparation so snapshots are generated using the contract's stored mode.
+- Added tests proving:
+  - default snapshots still use the existing tuition agreement template
+  - SSG mode snapshots use the separate SSG v4 template slug and include key official-control markers such as 7 working days cooling-off
+
+This does not yet expose a production UI button for creating SSG v4 contracts. The next phase should connect this mode only to EduTrust-ready/permitted courses after we confirm the official contract fields.
+
 ## Verification
 
 - `npx prisma format`

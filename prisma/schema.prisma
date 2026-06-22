@@ -87,6 +87,11 @@ enum StudentContractFlowType {
   RENEWAL
 }
 
+enum StudentContractMode {
+  TUITION_AGREEMENT
+  SSG_STANDARD_PEI_V4
+}
+
 enum StudentParentIntakeStatus {
   LINK_SENT
   SUBMITTED
@@ -1261,6 +1266,7 @@ model StudentContract {
   packageId            String
   templateId           String
   flowType             StudentContractFlowType @default(NEW_PURCHASE)
+  contractMode         StudentContractMode     @default(TUITION_AGREEMENT)
   status               StudentContractStatus   @default(DRAFT)
   intakeToken          String                  @unique
   signToken            String?                 @unique
