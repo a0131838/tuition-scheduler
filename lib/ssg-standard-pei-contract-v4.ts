@@ -209,7 +209,7 @@ export const SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML = `
 </tr>
 <tr>
 <td>2.5</td>
-<td>The Contracting Party shall pay the Course Fees in the amount and by the timelines as stated in the instalment schedule in Schedule B and the Miscellaneous Fees as per the timelines stated in each invoice for the Miscellaneous Fees issued by the PEI to the Contracting Party.<br/>The PEI considers a payment made [ ] days/month after the scheduled due date(s) in Schedule B for the Course Fees and [ ] days/month after the scheduled due date(s) in the invoices for the Miscellaneous Fees as late. The PEI will explain to the Student its policy for the late payment of Course Fees and Miscellaneous Fees, and any impact on the Course/module completion (if applicable).</td>
+<td>The Contracting Party shall pay the Course Fees in the amount and by the timelines as stated in the instalment schedule in Schedule B and the Miscellaneous Fees as per the timelines stated in each invoice for the Miscellaneous Fees issued by the PEI to the Contracting Party.<br/>The PEI considers a payment made {{late_payment_grace_value}} {{late_payment_grace_unit}} after the scheduled due date(s) in Schedule B for the Course Fees and {{late_payment_grace_value}} {{late_payment_grace_unit}} after the scheduled due date(s) in the invoices for the Miscellaneous Fees as late. The PEI will explain to the Student its policy for the late payment of Course Fees and Miscellaneous Fees, and any impact on the Course/module completion (if applicable).</td>
 </tr>
 </tbody></table>
 <table class="official-table official-table-4"><tbody>
@@ -295,7 +295,7 @@ export const SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML = `
 </tr>
 <tr>
 <td>Permitted Course Duration (in months)<br/>Note: This does not include the period of the industrial attachment, if any.</td>
-<td></td>
+<td>{{permitted_course_duration_months}}</td>
 </tr>
 <tr>
 <td>Whether the Course is a full-time or part-time Course</td>
@@ -311,11 +311,11 @@ export const SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML = `
 </tr>
 <tr>
 <td>Date of Commencement of studies if later than Course Commencement Date<br/>Note: “N.A.” if both dates are the same</td>
-<td></td>
+<td>{{study_commencement_date}}</td>
 </tr>
 <tr>
 <td>Qualification<br/>(Name of qualification to be conferred on the Student upon the successful completion of the Course)</td>
-<td></td>
+<td>{{qualification}}</td>
 </tr>
 <tr>
 <td>Developer/Proprietor of the Course</td>
@@ -331,19 +331,19 @@ export const SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML = `
 </tr>
 <tr>
 <td>Course schedule (with modules and/or subjects referred to)<br/>Note: Attachment(s) may be included to show the information.</td>
-<td></td>
+<td>{{course_schedule}}</td>
 </tr>
 <tr>
 <td>Scheduled holidays (public and school) and/or semester/term breaks relevant to the Course<br/>Note: Attachment(s) may be included to show the information.</td>
-<td></td>
+<td>{{scheduled_holidays}}</td>
 </tr>
 <tr>
 <td>Examination and/or other assessment and/or assignment period(s)<br/>Note: Attachment(s) may be included to show the information.</td>
-<td></td>
+<td>{{assessment_periods}}</td>
 </tr>
 <tr>
 <td>Expected final examination results release date (DD/MM/YYYY)<br/>Note: The date shall not be more than three (3) months after the completion of the final examination, unless otherwise permitted by SSG.</td>
-<td></td>
+<td>{{final_results_release_date}}</td>
 </tr>
 <tr>
 <td>Expected date of conferment of the qualification (DD/MM/YYYY)</td>
@@ -444,20 +444,20 @@ export const SSG_STANDARD_PEI_CONTRACT_V4_OFFICIAL_HTML = `
 <td>If the Contracting Party’s written notice of withdrawal is received:</td>
 </tr>
 <tr>
-<td>[]</td>
-<td>more than [] working days before the Course Commencement Date</td>
+<td>{{refund_event_1_percent}}</td>
+<td>more than {{refund_event_1_days_before}} working days before the Course Commencement Date</td>
 </tr>
 <tr>
-<td>[]</td>
-<td>on or before, but not more than [] working days before the Course Commencement Date</td>
+<td>{{refund_event_2_percent}}</td>
+<td>on or before, but not more than {{refund_event_2_days_before}} working days before the Course Commencement Date</td>
 </tr>
 <tr>
-<td>[]</td>
-<td>after, but not more than [] working days after the Course Commencement Date</td>
+<td>{{refund_event_3_percent}}</td>
+<td>after, but not more than {{refund_event_3_days_after}} working days after the Course Commencement Date</td>
 </tr>
 <tr>
-<td>[]</td>
-<td>more than [] working days after the Course Commencement Date</td>
+<td>{{refund_event_4_percent}}</td>
+<td>more than {{refund_event_4_days_after}} working days after the Course Commencement Date</td>
 </tr>
 </tbody></table>
 <h2>SCHEDULE E</h2>

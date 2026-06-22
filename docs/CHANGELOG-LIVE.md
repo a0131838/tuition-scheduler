@@ -15,6 +15,36 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-22-r198
+
+- Release ID: `2026-06-22-r198`
+- Date/Time (Asia/Shanghai): `2026-06-22`
+- Deployment status: `READY`
+- Scope: add EduTrust contract Schedule setup defaults so SSG Standard PEI-Student Contract v4.0 can fill official Schedule A-D fields from course-level configuration, and block SSG sign-link preparation when required Schedule data is incomplete.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260622170000_add_edutrust_contract_setup/migration.sql`
+  - `app/admin/edutrust/page.tsx`
+  - `app/admin/edutrust/EduTrustCourseProfilesClient.tsx`
+  - `app/api/admin/edutrust/course-profiles/route.ts`
+  - `lib/ssg-standard-pei-contract-v4.ts`
+  - `lib/student-contract-template.ts`
+  - `lib/student-contract.ts`
+  - `tests/student-contract-mode.test.ts`
+  - `docs/tasks/TASK-20260622-edutrust-course-readiness-phase1.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds a nullable EduTrust contract setup table and extends the admin-only EduTrust readiness page. Existing tuition contracts remain on `TUITION_AGREEMENT`; SSG v4 contracts can still be drafted only for ready EduTrust courses, and sign-link preparation now requires configured Schedule A-D values. Scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npx prisma format`
+  - `npx prisma migrate deploy`
+  - `npx prisma generate`
+  - `npx tsx --test tests/student-contract-mode.test.ts tests/edutrust-student-record.test.ts`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-22-r198`.
+
+---
+
 ## 2026-06-22-r197
 
 - Release ID: `2026-06-22-r197`

@@ -51,6 +51,7 @@ type ProfileDraft = {
   courseFileStatus: string;
   note: string;
   courseFile: CourseFileDraft;
+  contractSetup: ContractSetupDraft;
 };
 
 type CourseFileDraft = {
@@ -66,6 +67,40 @@ type CourseFileDraft = {
   courseReview: string;
   evidenceNotes: string;
   approvedBy: string;
+};
+
+type ContractSetupDraft = {
+  permittedCourseDurationMonths: string;
+  courseLoadMode: string;
+  courseCommencementBasis: string;
+  courseCompletionBasis: string;
+  studyCommencementDate: string;
+  qualification: string;
+  courseDeveloper: string;
+  awardingOrganisation: string;
+  courseEntryRequirements: string;
+  courseSchedule: string;
+  scheduledHolidays: string;
+  assessmentPeriods: string;
+  finalResultsReleaseDate: string;
+  qualificationConfermentDate: string;
+  industrialAttachmentIncluded: boolean;
+  industrialAttachmentDuration: string;
+  miscellaneousFees: string;
+  refundEvent1Percent: string;
+  refundEvent1DaysBefore: string;
+  refundEvent2Percent: string;
+  refundEvent2DaysBefore: string;
+  refundEvent3Percent: string;
+  refundEvent3DaysAfter: string;
+  refundEvent4Percent: string;
+  refundEvent4DaysAfter: string;
+  latePaymentGraceValue: string;
+  latePaymentGraceUnit: string;
+  fpsRequired: boolean;
+  fpsProvider: string;
+  fpsPolicyNumber: string;
+  evidenceNotes: string;
 };
 
 type CourseRow = {
@@ -172,6 +207,38 @@ const COURSE_FILE_FIELDS: Array<{ key: keyof CourseFileDraft; label: string; hin
   },
 ];
 
+const CONTRACT_SETUP_FIELDS: Array<{ key: keyof ContractSetupDraft; label: string; hint: string; area?: boolean }> = [
+  { key: "permittedCourseDurationMonths", label: "Permitted course duration / 获准课程时长", hint: "E.g. 3 months. Use the SSG-approved duration." },
+  { key: "courseLoadMode", label: "Course load / 课程负荷", hint: "Part-time or Full-time." },
+  { key: "courseCommencementBasis", label: "Commencement date basis / 开课日期规则", hint: "How the actual commencement date is confirmed for each student." },
+  { key: "courseCompletionBasis", label: "Completion date basis / 结课日期规则", hint: "How the completion date is calculated or confirmed." },
+  { key: "studyCommencementDate", label: "Study commencement / 学习开始日期", hint: "Use N.A. if not different from course commencement." },
+  { key: "qualification", label: "Qualification / 结业证明", hint: "E.g. Certificate of Completion." },
+  { key: "courseDeveloper", label: "Course developer / 课程开发方", hint: "School or approved developer name." },
+  { key: "awardingOrganisation", label: "Awarding organisation / 颁发机构", hint: "Organisation awarding certificate or completion proof." },
+  { key: "courseEntryRequirements", label: "Entry requirements / 入学要求", hint: "Minimum age, language/academic level, diagnostic test, or placement basis.", area: true },
+  { key: "courseSchedule", label: "Course schedule / 课程安排", hint: "Official schedule description, hours, one-to-one mode, assessment timing.", area: true },
+  { key: "scheduledHolidays", label: "Scheduled holidays / 假期安排", hint: "Public holidays, school closure days, or N.A.", area: true },
+  { key: "assessmentPeriods", label: "Assessment periods / 评估周期", hint: "Diagnostic, progress, final assessment windows.", area: true },
+  { key: "finalResultsReleaseDate", label: "Results release / 成绩发布时间", hint: "E.g. within 7 working days after final assessment." },
+  { key: "qualificationConfermentDate", label: "Conferment date / 证书颁发时间", hint: "E.g. upon successful course completion." },
+  { key: "industrialAttachmentDuration", label: "Industrial attachment duration / 实习时长", hint: "Use N.A. if no industrial attachment." },
+  { key: "miscellaneousFees", label: "Miscellaneous fees / 杂费", hint: "List fees or N.A.", area: true },
+  { key: "refundEvent1Percent", label: "Refund event 1 %", hint: "Refund before the first official threshold." },
+  { key: "refundEvent1DaysBefore", label: "Event 1 days before", hint: "Working days before commencement." },
+  { key: "refundEvent2Percent", label: "Refund event 2 %", hint: "Refund before the second official threshold." },
+  { key: "refundEvent2DaysBefore", label: "Event 2 days before", hint: "Working days before commencement." },
+  { key: "refundEvent3Percent", label: "Refund event 3 %", hint: "Refund after commencement threshold." },
+  { key: "refundEvent3DaysAfter", label: "Event 3 days after", hint: "Working days after commencement." },
+  { key: "refundEvent4Percent", label: "Refund event 4 %", hint: "Usually 0 if later than event 3 threshold." },
+  { key: "refundEvent4DaysAfter", label: "Event 4 days after", hint: "Working days after commencement." },
+  { key: "latePaymentGraceValue", label: "Late payment grace / 逾期宽限", hint: "Number only, e.g. 7." },
+  { key: "latePaymentGraceUnit", label: "Grace unit / 宽限单位", hint: "days, weeks, or months." },
+  { key: "fpsProvider", label: "FPS provider / 保障计划机构", hint: "Insurance or escrow provider if applicable." },
+  { key: "fpsPolicyNumber", label: "FPS policy no. / 保单号", hint: "Policy/certificate number if available." },
+  { key: "evidenceNotes", label: "Contract evidence notes / 合同证据备注", hint: "Where FPS certificate, payment proof, signed contract, and refund evidence are stored.", area: true },
+];
+
 export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow[] }) {
   const initialDrafts = useMemo(() => {
     return Object.fromEntries(rows.map((row) => [row.id, row.profile ?? row.suggested]));
@@ -190,6 +257,16 @@ export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow
       [courseId]: {
         ...prev[courseId],
         courseFile: { ...prev[courseId].courseFile, ...patch },
+      },
+    }));
+  }
+
+  function patchContractSetup(courseId: string, patch: Partial<ContractSetupDraft>) {
+    setDrafts((prev) => ({
+      ...prev,
+      [courseId]: {
+        ...prev[courseId],
+        contractSetup: { ...prev[courseId].contractSetup, ...patch },
       },
     }));
   }
@@ -368,6 +445,64 @@ export default function EduTrustCourseProfilesClient({ rows }: { rows: CourseRow
                         placeholder={field.hint}
                         style={textareaStyle()}
                       />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </details>
+
+            <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc", padding: 12 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#0f172a" }}>
+                Contract Schedule Setup / 合同 Schedule 设置
+                <span style={{ marginLeft: 8, color: "#64748b", fontSize: 12, fontWeight: 500 }}>
+                  SSG Standard PEI Contract v4.0
+                </span>
+              </summary>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
+                  这些字段会填入官方合同 Schedule A-D。固定官方条款不可编辑；这里记录学校必须确认的课程、费用、退款和 FPS 资料。
+                </div>
+                <div style={{ display: "flex", gap: 18, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={draft.contractSetup.industrialAttachmentIncluded}
+                      onChange={(event) => patchContractSetup(row.id, { industrialAttachmentIncluded: event.target.checked })}
+                    />
+                    Industrial attachment included / 包含实习
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={draft.contractSetup.fpsRequired}
+                      onChange={(event) => patchContractSetup(row.id, { fpsRequired: event.target.checked })}
+                    />
+                    FPS required / 需要 Fee Protection Scheme
+                  </label>
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+                  {CONTRACT_SETUP_FIELDS.map((field) => (
+                    <label key={field.key} style={{ display: "grid", gap: 5, fontSize: 12, color: "#475569" }}>
+                      <span>{field.label}</span>
+                      {field.area ? (
+                        <textarea
+                          value={String(draft.contractSetup[field.key] ?? "")}
+                          onChange={(event) =>
+                            patchContractSetup(row.id, { [field.key]: event.target.value } as Partial<ContractSetupDraft>)
+                          }
+                          placeholder={field.hint}
+                          style={textareaStyle()}
+                        />
+                      ) : (
+                        <input
+                          value={String(draft.contractSetup[field.key] ?? "")}
+                          onChange={(event) =>
+                            patchContractSetup(row.id, { [field.key]: event.target.value } as Partial<ContractSetupDraft>)
+                          }
+                          placeholder={field.hint}
+                          style={textInputStyle()}
+                        />
+                      )}
                     </label>
                   ))}
                 </div>

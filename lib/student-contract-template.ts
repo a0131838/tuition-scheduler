@@ -35,6 +35,36 @@ export type ContractBusinessInfo = {
   lessonMode?: string | null;
   campusName?: string | null;
   contractTypeLabel?: string | null;
+  courseCommencementDateIso?: string | null;
+  courseCompletionDateIso?: string | null;
+  permittedCourseDurationMonths?: string | null;
+  courseLoadMode?: string | null;
+  studyCommencementDate?: string | null;
+  qualification?: string | null;
+  courseDeveloper?: string | null;
+  awardingOrganisation?: string | null;
+  courseEntryRequirements?: string | null;
+  courseSchedule?: string | null;
+  scheduledHolidays?: string | null;
+  assessmentPeriods?: string | null;
+  finalResultsReleaseDate?: string | null;
+  qualificationConfermentDate?: string | null;
+  industrialAttachmentIncluded?: boolean | null;
+  industrialAttachmentDuration?: string | null;
+  miscellaneousFees?: string | null;
+  refundEvent1Percent?: string | null;
+  refundEvent1DaysBefore?: string | null;
+  refundEvent2Percent?: string | null;
+  refundEvent2DaysBefore?: string | null;
+  refundEvent3Percent?: string | null;
+  refundEvent3DaysAfter?: string | null;
+  refundEvent4Percent?: string | null;
+  refundEvent4DaysAfter?: string | null;
+  latePaymentGraceValue?: string | null;
+  latePaymentGraceUnit?: string | null;
+  fpsRequired?: boolean | null;
+  fpsProvider?: string | null;
+  fpsPolicyNumber?: string | null;
 };
 
 export type ContractSnapshot = {
@@ -113,6 +143,18 @@ function formatCurrencyLabel(amountValue: number | null | undefined) {
   const amount = Number(amountValue ?? 0);
   if (!Number.isFinite(amount) || amount <= 0) return "To be confirmed / 待确认";
   return `SGD ${amount.toFixed(2)}`;
+}
+
+function formatDateForSsgSchedule(input: Date | string | null | undefined) {
+  const normalized = normalizeDateOnly(input);
+  if (!normalized) return "______________________";
+  const [year, month, day] = normalized.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function scheduleValue(value: string | null | undefined, fallback = "______________________") {
+  const normalized = value?.trim();
+  return normalized || fallback;
 }
 
 function renderTemplatePlaceholders(html: string, values: Record<string, string>) {
@@ -245,24 +287,36 @@ export function buildStudentContractSnapshot(input: {
     address_block: address ? `Address / 地址: ${escapeHtml(address)}<br/>` : "",
     relationship: escapeHtml(input.parentInfo.relationshipToStudent.trim()),
     legal_guardian: input.parentInfo.isLegalGuardian ? "Yes / 是" : "No / 否",
-    permitted_course_duration_months: "______________________",
-    course_load_mode: escapeHtml(input.businessInfo.lessonMode?.trim() || "Part-time"),
-    course_commencement_date: "______________________",
-    course_completion_date: "______________________",
-    study_commencement_date: "N.A.",
-    qualification: "Certificate of Completion",
-    course_developer: escapeHtml(company.legalName),
-    awarding_organisation: escapeHtml(company.legalName),
-    course_entry_requirements: "______________________",
-    course_schedule: escapeHtml(formatMinutesAsHoursLabel(input.businessInfo.totalMinutes)),
-    scheduled_holidays: "______________________",
-    assessment_periods: "______________________",
-    final_results_release_date: "______________________",
-    qualification_conferment_date: "______________________",
-    industrial_attachment_yes_no: "No",
-    industrial_attachment_duration: "N.A.",
-    first_instalment_due_date: escapeHtml(input.businessInfo.agreementDateIso || ""),
-    miscellaneous_fees: "______________________",
+    permitted_course_duration_months: escapeHtml(scheduleValue(input.businessInfo.permittedCourseDurationMonths)),
+    course_load_mode: escapeHtml(
+      scheduleValue(input.businessInfo.courseLoadMode ?? input.businessInfo.lessonMode, "Part-time")
+    ),
+    course_commencement_date: escapeHtml(formatDateForSsgSchedule(input.businessInfo.courseCommencementDateIso)),
+    course_completion_date: escapeHtml(formatDateForSsgSchedule(input.businessInfo.courseCompletionDateIso)),
+    study_commencement_date: escapeHtml(scheduleValue(input.businessInfo.studyCommencementDate, "N.A.")),
+    qualification: escapeHtml(scheduleValue(input.businessInfo.qualification, "Certificate of Completion")),
+    course_developer: escapeHtml(scheduleValue(input.businessInfo.courseDeveloper, company.legalName)),
+    awarding_organisation: escapeHtml(scheduleValue(input.businessInfo.awardingOrganisation, company.legalName)),
+    course_entry_requirements: escapeHtml(scheduleValue(input.businessInfo.courseEntryRequirements)),
+    course_schedule: escapeHtml(scheduleValue(input.businessInfo.courseSchedule, formatMinutesAsHoursLabel(input.businessInfo.totalMinutes))),
+    scheduled_holidays: escapeHtml(scheduleValue(input.businessInfo.scheduledHolidays)),
+    assessment_periods: escapeHtml(scheduleValue(input.businessInfo.assessmentPeriods)),
+    final_results_release_date: escapeHtml(scheduleValue(input.businessInfo.finalResultsReleaseDate)),
+    qualification_conferment_date: escapeHtml(scheduleValue(input.businessInfo.qualificationConfermentDate)),
+    industrial_attachment_yes_no: input.businessInfo.industrialAttachmentIncluded ? "Yes" : "No",
+    industrial_attachment_duration: escapeHtml(scheduleValue(input.businessInfo.industrialAttachmentDuration, "N.A.")),
+    first_instalment_due_date: escapeHtml(formatDateForSsgSchedule(input.businessInfo.agreementDateIso)),
+    miscellaneous_fees: escapeHtml(scheduleValue(input.businessInfo.miscellaneousFees, "N.A.")),
+    refund_event_1_percent: escapeHtml(scheduleValue(input.businessInfo.refundEvent1Percent)),
+    refund_event_1_days_before: escapeHtml(scheduleValue(input.businessInfo.refundEvent1DaysBefore)),
+    refund_event_2_percent: escapeHtml(scheduleValue(input.businessInfo.refundEvent2Percent)),
+    refund_event_2_days_before: escapeHtml(scheduleValue(input.businessInfo.refundEvent2DaysBefore)),
+    refund_event_3_percent: escapeHtml(scheduleValue(input.businessInfo.refundEvent3Percent)),
+    refund_event_3_days_after: escapeHtml(scheduleValue(input.businessInfo.refundEvent3DaysAfter)),
+    refund_event_4_percent: escapeHtml(scheduleValue(input.businessInfo.refundEvent4Percent, "0")),
+    refund_event_4_days_after: escapeHtml(scheduleValue(input.businessInfo.refundEvent4DaysAfter)),
+    late_payment_grace_value: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceValue)),
+    late_payment_grace_unit: escapeHtml(scheduleValue(input.businessInfo.latePaymentGraceUnit, "days/month")),
   });
 
   const snapshot: ContractSnapshot = {

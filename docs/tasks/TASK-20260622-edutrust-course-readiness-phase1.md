@@ -150,6 +150,33 @@ Replaced the earlier SSG v4 summary shell with a locked official Standard PEI-St
 - Fields not yet reliably stored in the system remain official blanks/placeholders rather than guessed values, including identity numbers, course commencement/completion dates, several Schedule A details, miscellaneous fees, and Schedule D refund percentages.
 - Added tests proving the SSG template has official source metadata, the official v4 cooling-off/refund markers, Schedule A-E, and no duplicated Schedule E extraction artifact.
 
+## 2026-06-22 Follow-up: Contract Schedule Setup
+
+Added the missing course-level setup layer for official SSG Standard PEI-Student Contract v4.0 Schedule fields.
+
+- Added `EduTrustContractSetup` as a one-to-one setup record for each EduTrust course profile.
+- Added `/admin/edutrust` folded Contract Schedule Setup fields for:
+  - permitted course duration
+  - course load mode
+  - course commencement/completion basis
+  - qualification, course developer, and awarding organisation
+  - course entry requirements
+  - course schedule, holidays, assessment periods, results release, and qualification conferment
+  - industrial attachment yes/no and duration
+  - miscellaneous fees
+  - Schedule D refund percentages and day thresholds
+  - late-payment grace period
+  - FPS provider and policy number where applicable
+  - evidence notes
+- Extended `POST /api/admin/edutrust/course-profiles` to save the contract setup together with the course mapping and Course File.
+- Updated the official SSG v4 template placeholders so Schedule A-D values are filled from the setup instead of remaining blank where the system now has approved values.
+- Updated contract snapshot generation so SSG contracts inherit course-level setup values plus package start/end dates.
+- Added a sign-link guard for SSG v4 contracts:
+  - staff may still create a draft only after the course is EduTrust-ready/permitted/approved and meets hour minimums
+  - the system will not prepare/send the SSG sign link until required Schedule A-D values are complete
+  - if FPS is marked required, provider and policy number are also required before signing
+- Normal tuition contracts remain unchanged and continue to use `TUITION_AGREEMENT`.
+
 ## Verification
 
 - `npx prisma format`

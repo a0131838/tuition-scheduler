@@ -56,7 +56,16 @@ const studentContractInclude = {
   },
   package: {
     include: {
-      course: true,
+      course: {
+        include: {
+          eduTrustProfile: {
+            include: {
+              courseFile: true,
+              contractSetup: true,
+            },
+          },
+        },
+      },
     },
   },
 } satisfies Prisma.StudentContractInclude;
@@ -220,14 +229,57 @@ function defaultBusinessInfoFromRow(
   row: {
     student: { name: string };
     package: {
-      course: { name: string };
+      course: {
+        name: string;
+        eduTrustProfile?: {
+          courseFile?: {
+            admissionRequirements: string | null;
+            assessmentPlan: string | null;
+          } | null;
+          contractSetup?: {
+            permittedCourseDurationMonths: string | null;
+            courseLoadMode: string | null;
+            studyCommencementDate: string | null;
+            qualification: string | null;
+            courseDeveloper: string | null;
+            awardingOrganisation: string | null;
+            courseEntryRequirements: string | null;
+            courseSchedule: string | null;
+            scheduledHolidays: string | null;
+            assessmentPeriods: string | null;
+            finalResultsReleaseDate: string | null;
+            qualificationConfermentDate: string | null;
+            industrialAttachmentIncluded: boolean;
+            industrialAttachmentDuration: string | null;
+            miscellaneousFees: string | null;
+            refundEvent1Percent: string | null;
+            refundEvent1DaysBefore: string | null;
+            refundEvent2Percent: string | null;
+            refundEvent2DaysBefore: string | null;
+            refundEvent3Percent: string | null;
+            refundEvent3DaysAfter: string | null;
+            refundEvent4Percent: string | null;
+            refundEvent4DaysAfter: string | null;
+            latePaymentGraceValue: string | null;
+            latePaymentGraceUnit: string | null;
+            fpsRequired: boolean;
+            fpsProvider: string | null;
+            fpsPolicyNumber: string | null;
+          } | null;
+        } | null;
+      };
       type: string;
       totalMinutes: number | null;
       paidAmount: number | null;
+      validFrom?: Date | null;
+      validTo?: Date | null;
     };
   },
   flowType: StudentContractFlowType
 ): ContractBusinessInfo {
+  const profile = "eduTrustProfile" in row.package.course ? row.package.course.eduTrustProfile : null;
+  const setup = profile?.contractSetup ?? null;
+  const courseFile = profile?.courseFile ?? null;
   return {
     courseName: row.package.course.name,
     packageType: row.package.type === "MONTHLY" ? "Monthly package / 月卡" : "Hours package / 课时包",
@@ -235,9 +287,39 @@ function defaultBusinessInfoFromRow(
     feeAmount: row.package.paidAmount ?? null,
     billTo: row.student.name,
     agreementDateIso: formatDateOnly(new Date()),
-    lessonMode: null,
+    lessonMode: setup?.courseLoadMode ?? null,
     campusName: null,
     contractTypeLabel: defaultContractTypeLabel(flowType),
+    courseCommencementDateIso: row.package.validFrom ? formatDateOnly(row.package.validFrom) : null,
+    courseCompletionDateIso: row.package.validTo ? formatDateOnly(row.package.validTo) : null,
+    permittedCourseDurationMonths: setup?.permittedCourseDurationMonths ?? null,
+    courseLoadMode: setup?.courseLoadMode ?? null,
+    studyCommencementDate: setup?.studyCommencementDate ?? null,
+    qualification: setup?.qualification ?? null,
+    courseDeveloper: setup?.courseDeveloper ?? null,
+    awardingOrganisation: setup?.awardingOrganisation ?? null,
+    courseEntryRequirements: setup?.courseEntryRequirements ?? courseFile?.admissionRequirements ?? null,
+    courseSchedule: setup?.courseSchedule ?? null,
+    scheduledHolidays: setup?.scheduledHolidays ?? null,
+    assessmentPeriods: setup?.assessmentPeriods ?? courseFile?.assessmentPlan ?? null,
+    finalResultsReleaseDate: setup?.finalResultsReleaseDate ?? null,
+    qualificationConfermentDate: setup?.qualificationConfermentDate ?? null,
+    industrialAttachmentIncluded: setup?.industrialAttachmentIncluded ?? false,
+    industrialAttachmentDuration: setup?.industrialAttachmentDuration ?? null,
+    miscellaneousFees: setup?.miscellaneousFees ?? null,
+    refundEvent1Percent: setup?.refundEvent1Percent ?? null,
+    refundEvent1DaysBefore: setup?.refundEvent1DaysBefore ?? null,
+    refundEvent2Percent: setup?.refundEvent2Percent ?? null,
+    refundEvent2DaysBefore: setup?.refundEvent2DaysBefore ?? null,
+    refundEvent3Percent: setup?.refundEvent3Percent ?? null,
+    refundEvent3DaysAfter: setup?.refundEvent3DaysAfter ?? null,
+    refundEvent4Percent: setup?.refundEvent4Percent ?? null,
+    refundEvent4DaysAfter: setup?.refundEvent4DaysAfter ?? null,
+    latePaymentGraceValue: setup?.latePaymentGraceValue ?? null,
+    latePaymentGraceUnit: setup?.latePaymentGraceUnit ?? null,
+    fpsRequired: setup?.fpsRequired ?? false,
+    fpsProvider: setup?.fpsProvider ?? null,
+    fpsPolicyNumber: setup?.fpsPolicyNumber ?? null,
   };
 }
 
@@ -346,6 +428,36 @@ function coerceBusinessInfo(raw: unknown): ContractBusinessInfo | null {
     lessonMode: trimOrNull(row.lessonMode),
     campusName: trimOrNull(row.campusName),
     contractTypeLabel: trimOrNull(row.contractTypeLabel),
+    courseCommencementDateIso: normalizeDateOnly(row.courseCommencementDateIso as string | Date | null | undefined) ?? null,
+    courseCompletionDateIso: normalizeDateOnly(row.courseCompletionDateIso as string | Date | null | undefined) ?? null,
+    permittedCourseDurationMonths: trimOrNull(row.permittedCourseDurationMonths),
+    courseLoadMode: trimOrNull(row.courseLoadMode),
+    studyCommencementDate: trimOrNull(row.studyCommencementDate),
+    qualification: trimOrNull(row.qualification),
+    courseDeveloper: trimOrNull(row.courseDeveloper),
+    awardingOrganisation: trimOrNull(row.awardingOrganisation),
+    courseEntryRequirements: trimOrNull(row.courseEntryRequirements),
+    courseSchedule: trimOrNull(row.courseSchedule),
+    scheduledHolidays: trimOrNull(row.scheduledHolidays),
+    assessmentPeriods: trimOrNull(row.assessmentPeriods),
+    finalResultsReleaseDate: trimOrNull(row.finalResultsReleaseDate),
+    qualificationConfermentDate: trimOrNull(row.qualificationConfermentDate),
+    industrialAttachmentIncluded: Boolean(row.industrialAttachmentIncluded),
+    industrialAttachmentDuration: trimOrNull(row.industrialAttachmentDuration),
+    miscellaneousFees: trimOrNull(row.miscellaneousFees),
+    refundEvent1Percent: trimOrNull(row.refundEvent1Percent),
+    refundEvent1DaysBefore: trimOrNull(row.refundEvent1DaysBefore),
+    refundEvent2Percent: trimOrNull(row.refundEvent2Percent),
+    refundEvent2DaysBefore: trimOrNull(row.refundEvent2DaysBefore),
+    refundEvent3Percent: trimOrNull(row.refundEvent3Percent),
+    refundEvent3DaysAfter: trimOrNull(row.refundEvent3DaysAfter),
+    refundEvent4Percent: trimOrNull(row.refundEvent4Percent),
+    refundEvent4DaysAfter: trimOrNull(row.refundEvent4DaysAfter),
+    latePaymentGraceValue: trimOrNull(row.latePaymentGraceValue),
+    latePaymentGraceUnit: trimOrNull(row.latePaymentGraceUnit),
+    fpsRequired: Boolean(row.fpsRequired),
+    fpsProvider: trimOrNull(row.fpsProvider),
+    fpsPolicyNumber: trimOrNull(row.fpsPolicyNumber),
   };
 }
 
@@ -418,6 +530,45 @@ function assertSsgContractModeAllowed(pkg: {
   }
   if (!isEduTrustPackageHoursReady({ totalMinutes: pkg.totalMinutes, minTotalHours: profile.minTotalHours })) {
     throw new Error("SSG Standard PEI contract requires the package hours to meet the configured EduTrust minimum.");
+  }
+}
+
+function assertSsgBusinessInfoCompleteForSigning(businessInfo: ContractBusinessInfo) {
+  const required: Array<[keyof ContractBusinessInfo, string]> = [
+    ["courseCommencementDateIso", "Course Commencement Date"],
+    ["courseCompletionDateIso", "Course Completion Date"],
+    ["permittedCourseDurationMonths", "Permitted Course Duration"],
+    ["courseLoadMode", "Course load mode"],
+    ["studyCommencementDate", "Date of Commencement of studies"],
+    ["qualification", "Qualification"],
+    ["courseDeveloper", "Developer/Proprietor of the Course"],
+    ["awardingOrganisation", "Awarding organisation"],
+    ["courseEntryRequirements", "Course entry requirements"],
+    ["courseSchedule", "Course schedule"],
+    ["scheduledHolidays", "Scheduled holidays"],
+    ["assessmentPeriods", "Assessment periods"],
+    ["finalResultsReleaseDate", "Expected final results release date"],
+    ["qualificationConfermentDate", "Expected qualification conferment date"],
+    ["industrialAttachmentDuration", "Industrial attachment duration"],
+    ["miscellaneousFees", "Miscellaneous Fees"],
+    ["refundEvent1Percent", "Schedule D refund event 1 percentage"],
+    ["refundEvent1DaysBefore", "Schedule D refund event 1 days"],
+    ["refundEvent2Percent", "Schedule D refund event 2 percentage"],
+    ["refundEvent2DaysBefore", "Schedule D refund event 2 days"],
+    ["refundEvent3Percent", "Schedule D refund event 3 percentage"],
+    ["refundEvent3DaysAfter", "Schedule D refund event 3 days"],
+    ["refundEvent4Percent", "Schedule D refund event 4 percentage"],
+    ["refundEvent4DaysAfter", "Schedule D refund event 4 days"],
+    ["latePaymentGraceValue", "Late payment grace value"],
+    ["latePaymentGraceUnit", "Late payment grace unit"],
+  ];
+  const missing = required.filter(([key]) => !String(businessInfo[key] ?? "").trim()).map(([, label]) => label);
+  if (businessInfo.fpsRequired) {
+    if (!businessInfo.fpsProvider?.trim()) missing.push("FPS provider");
+    if (!businessInfo.fpsPolicyNumber?.trim()) missing.push("FPS policy number");
+  }
+  if (missing.length) {
+    throw new Error(`Complete EduTrust contract setup before preparing SSG sign link: ${missing.join(", ")}.`);
   }
 }
 
@@ -561,7 +712,10 @@ export async function createStudentContractDraft(input: {
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
-      include: { student: true, course: { include: { eduTrustProfile: true } } },
+      include: {
+        student: true,
+        course: { include: { eduTrustProfile: { include: { courseFile: true, contractSetup: true } } } },
+      },
     }),
     ensureContractTemplate(contractMode),
   ]);
@@ -674,7 +828,10 @@ export async function createReadyToSignStudentContract(input: {
   const [pkg, template] = await Promise.all([
     prisma.coursePackage.findUnique({
       where: { id: input.packageId },
-      include: { student: true, course: { include: { eduTrustProfile: true } } },
+      include: {
+        student: true,
+        course: { include: { eduTrustProfile: { include: { courseFile: true, contractSetup: true } } } },
+      },
     }),
     ensureContractTemplate(contractMode),
   ]);
@@ -695,6 +852,9 @@ export async function createReadyToSignStudentContract(input: {
     flowType
   );
   const businessInfo = normalizeBusinessInfoInput(input.businessInfo, defaultBusinessInfo);
+  if (contractMode === StudentContractMode.SSG_STANDARD_PEI_V4) {
+    assertSsgBusinessInfoCompleteForSigning(businessInfo);
+  }
   const { snapshot } = buildStudentContractSnapshot({
     studentId: pkg.studentId,
     studentName: pkg.student.name,
@@ -935,6 +1095,7 @@ function normalizeBusinessInfoInput(
   const totalMinutes = Number.isFinite(totalMinutesRaw) && totalMinutesRaw > 0 ? Math.round(totalMinutesRaw) : null;
   const feeAmountRaw = Number(input.feeAmount ?? defaults.feeAmount ?? 0);
   const feeAmount = Number.isFinite(feeAmountRaw) && feeAmountRaw > 0 ? roundMoney(feeAmountRaw) : null;
+  const text = (key: keyof ContractBusinessInfo) => trimOrNull(input[key] ?? defaults[key]);
   return {
     courseName,
     packageType,
@@ -945,6 +1106,38 @@ function normalizeBusinessInfoInput(
     lessonMode: trimOrNull(input.lessonMode ?? defaults.lessonMode),
     campusName: trimOrNull(input.campusName ?? defaults.campusName),
     contractTypeLabel: trimOrNull(input.contractTypeLabel ?? defaults.contractTypeLabel),
+    courseCommencementDateIso:
+      normalizeDateOnly(input.courseCommencementDateIso ?? defaults.courseCommencementDateIso) ?? null,
+    courseCompletionDateIso:
+      normalizeDateOnly(input.courseCompletionDateIso ?? defaults.courseCompletionDateIso) ?? null,
+    permittedCourseDurationMonths: text("permittedCourseDurationMonths"),
+    courseLoadMode: text("courseLoadMode"),
+    studyCommencementDate: text("studyCommencementDate"),
+    qualification: text("qualification"),
+    courseDeveloper: text("courseDeveloper"),
+    awardingOrganisation: text("awardingOrganisation"),
+    courseEntryRequirements: text("courseEntryRequirements"),
+    courseSchedule: text("courseSchedule"),
+    scheduledHolidays: text("scheduledHolidays"),
+    assessmentPeriods: text("assessmentPeriods"),
+    finalResultsReleaseDate: text("finalResultsReleaseDate"),
+    qualificationConfermentDate: text("qualificationConfermentDate"),
+    industrialAttachmentIncluded: Boolean(input.industrialAttachmentIncluded ?? defaults.industrialAttachmentIncluded),
+    industrialAttachmentDuration: text("industrialAttachmentDuration"),
+    miscellaneousFees: text("miscellaneousFees"),
+    refundEvent1Percent: text("refundEvent1Percent"),
+    refundEvent1DaysBefore: text("refundEvent1DaysBefore"),
+    refundEvent2Percent: text("refundEvent2Percent"),
+    refundEvent2DaysBefore: text("refundEvent2DaysBefore"),
+    refundEvent3Percent: text("refundEvent3Percent"),
+    refundEvent3DaysAfter: text("refundEvent3DaysAfter"),
+    refundEvent4Percent: text("refundEvent4Percent"),
+    refundEvent4DaysAfter: text("refundEvent4DaysAfter"),
+    latePaymentGraceValue: text("latePaymentGraceValue"),
+    latePaymentGraceUnit: text("latePaymentGraceUnit"),
+    fpsRequired: Boolean(input.fpsRequired ?? defaults.fpsRequired),
+    fpsProvider: text("fpsProvider"),
+    fpsPolicyNumber: text("fpsPolicyNumber"),
   };
 }
 
@@ -1014,6 +1207,10 @@ export async function prepareStudentContractForSigning(input: {
   }
   const businessInfo =
     coerceBusinessInfo(current.businessInfoJson) ?? defaultBusinessInfoFromRow(current, current.flowType);
+  if (current.contractMode === StudentContractMode.SSG_STANDARD_PEI_V4) {
+    assertSsgContractModeAllowed(current.package);
+    assertSsgBusinessInfoCompleteForSigning(businessInfo);
+  }
   if (current.flowType === StudentContractFlowType.RENEWAL) {
     const invoiceChoice = await getStudentContractInvoiceChoice(current.id);
     if (!invoiceChoice) {

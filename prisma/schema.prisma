@@ -438,8 +438,9 @@ model EduTrustCourseProfile {
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
 
-  course     Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseFile EduTrustCourseFile?
+  course        Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseFile    EduTrustCourseFile?
+  contractSetup EduTrustContractSetup?
 
   @@index([isEduTrustCourse, courseLine])
   @@index([permissionStatus])
@@ -465,6 +466,46 @@ model EduTrustCourseFile {
   approvedBy               String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
+
+  profile EduTrustCourseProfile @relation(fields: [courseProfileId], references: [id], onDelete: Cascade)
+}
+
+model EduTrustContractSetup {
+  id                            String   @id @default(uuid())
+  courseProfileId               String   @unique
+  permittedCourseDurationMonths String?
+  courseLoadMode                String?
+  courseCommencementBasis       String?
+  courseCompletionBasis         String?
+  studyCommencementDate         String?
+  qualification                 String?
+  courseDeveloper               String?
+  awardingOrganisation          String?
+  courseEntryRequirements       String?
+  courseSchedule                String?
+  scheduledHolidays             String?
+  assessmentPeriods             String?
+  finalResultsReleaseDate       String?
+  qualificationConfermentDate   String?
+  industrialAttachmentIncluded  Boolean  @default(false)
+  industrialAttachmentDuration  String?
+  miscellaneousFees             String?
+  refundEvent1Percent           String?
+  refundEvent1DaysBefore        String?
+  refundEvent2Percent           String?
+  refundEvent2DaysBefore        String?
+  refundEvent3Percent           String?
+  refundEvent3DaysAfter         String?
+  refundEvent4Percent           String?
+  refundEvent4DaysAfter         String?
+  latePaymentGraceValue         String?
+  latePaymentGraceUnit          String?
+  fpsRequired                   Boolean  @default(false)
+  fpsProvider                   String?
+  fpsPolicyNumber               String?
+  evidenceNotes                 String?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
 
   profile EduTrustCourseProfile @relation(fields: [courseProfileId], references: [id], onDelete: Cascade)
 }

@@ -39,6 +39,43 @@ function courseFileData(raw: any) {
   };
 }
 
+function contractSetupData(raw: any) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    permittedCourseDurationMonths: trimOrNull(source.permittedCourseDurationMonths),
+    courseLoadMode: trimOrNull(source.courseLoadMode),
+    courseCommencementBasis: trimOrNull(source.courseCommencementBasis),
+    courseCompletionBasis: trimOrNull(source.courseCompletionBasis),
+    studyCommencementDate: trimOrNull(source.studyCommencementDate),
+    qualification: trimOrNull(source.qualification),
+    courseDeveloper: trimOrNull(source.courseDeveloper),
+    awardingOrganisation: trimOrNull(source.awardingOrganisation),
+    courseEntryRequirements: trimOrNull(source.courseEntryRequirements),
+    courseSchedule: trimOrNull(source.courseSchedule),
+    scheduledHolidays: trimOrNull(source.scheduledHolidays),
+    assessmentPeriods: trimOrNull(source.assessmentPeriods),
+    finalResultsReleaseDate: trimOrNull(source.finalResultsReleaseDate),
+    qualificationConfermentDate: trimOrNull(source.qualificationConfermentDate),
+    industrialAttachmentIncluded: Boolean(source.industrialAttachmentIncluded),
+    industrialAttachmentDuration: trimOrNull(source.industrialAttachmentDuration),
+    miscellaneousFees: trimOrNull(source.miscellaneousFees),
+    refundEvent1Percent: trimOrNull(source.refundEvent1Percent),
+    refundEvent1DaysBefore: trimOrNull(source.refundEvent1DaysBefore),
+    refundEvent2Percent: trimOrNull(source.refundEvent2Percent),
+    refundEvent2DaysBefore: trimOrNull(source.refundEvent2DaysBefore),
+    refundEvent3Percent: trimOrNull(source.refundEvent3Percent),
+    refundEvent3DaysAfter: trimOrNull(source.refundEvent3DaysAfter),
+    refundEvent4Percent: trimOrNull(source.refundEvent4Percent),
+    refundEvent4DaysAfter: trimOrNull(source.refundEvent4DaysAfter),
+    latePaymentGraceValue: trimOrNull(source.latePaymentGraceValue),
+    latePaymentGraceUnit: trimOrNull(source.latePaymentGraceUnit),
+    fpsRequired: Boolean(source.fpsRequired),
+    fpsProvider: trimOrNull(source.fpsProvider),
+    fpsPolicyNumber: trimOrNull(source.fpsPolicyNumber),
+    evidenceNotes: trimOrNull(source.evidenceNotes),
+  };
+}
+
 function inferCourseFileStatus(input: ReturnType<typeof courseFileData>) {
   const values = Object.entries(input).filter(([key]) => key !== "approvedBy").map(([, value]) => value);
   if (values.every((value) => !value)) return EduTrustCourseFileStatus.NOT_STARTED;
@@ -83,6 +120,7 @@ export async function POST(req: Request) {
     isEduTrustCourse ? EduTrustPermissionStatus.DRAFT : EduTrustPermissionStatus.NOT_FOR_EDUTRUST
   );
   const fileData = courseFileData(body?.courseFile);
+  const setupData = contractSetupData(body?.contractSetup);
   const requestedCourseFileStatus = enumValue(EduTrustCourseFileStatus, body?.courseFileStatus, EduTrustCourseFileStatus.NOT_STARTED);
   const inferredCourseFileStatus =
     requestedCourseFileStatus === EduTrustCourseFileStatus.APPROVED ||
@@ -124,6 +162,21 @@ export async function POST(req: Request) {
         lastReviewedAt: new Date(),
         approvedAt: inferredCourseFileStatus === EduTrustCourseFileStatus.APPROVED ? new Date() : null,
       },
+    });
+  }
+
+  const hasSetupData = Object.entries(setupData).some(([key, value]) => {
+    if (key === "industrialAttachmentIncluded" || key === "fpsRequired") return value === true;
+    return Boolean(value);
+  });
+  if (hasSetupData) {
+    await prisma.eduTrustContractSetup.upsert({
+      where: { courseProfileId: profile.id },
+      create: {
+        courseProfileId: profile.id,
+        ...setupData,
+      },
+      update: setupData,
     });
   }
 

@@ -37,10 +37,79 @@ function courseFileDraft(file?: {
   };
 }
 
+function contractSetupDraft(setup?: {
+  permittedCourseDurationMonths?: string | null;
+  courseLoadMode?: string | null;
+  courseCommencementBasis?: string | null;
+  courseCompletionBasis?: string | null;
+  studyCommencementDate?: string | null;
+  qualification?: string | null;
+  courseDeveloper?: string | null;
+  awardingOrganisation?: string | null;
+  courseEntryRequirements?: string | null;
+  courseSchedule?: string | null;
+  scheduledHolidays?: string | null;
+  assessmentPeriods?: string | null;
+  finalResultsReleaseDate?: string | null;
+  qualificationConfermentDate?: string | null;
+  industrialAttachmentIncluded?: boolean | null;
+  industrialAttachmentDuration?: string | null;
+  miscellaneousFees?: string | null;
+  refundEvent1Percent?: string | null;
+  refundEvent1DaysBefore?: string | null;
+  refundEvent2Percent?: string | null;
+  refundEvent2DaysBefore?: string | null;
+  refundEvent3Percent?: string | null;
+  refundEvent3DaysAfter?: string | null;
+  refundEvent4Percent?: string | null;
+  refundEvent4DaysAfter?: string | null;
+  latePaymentGraceValue?: string | null;
+  latePaymentGraceUnit?: string | null;
+  fpsRequired?: boolean | null;
+  fpsProvider?: string | null;
+  fpsPolicyNumber?: string | null;
+  evidenceNotes?: string | null;
+} | null) {
+  return {
+    permittedCourseDurationMonths: setup?.permittedCourseDurationMonths ?? "",
+    courseLoadMode: setup?.courseLoadMode ?? "Part-time",
+    courseCommencementBasis: setup?.courseCommencementBasis ?? "",
+    courseCompletionBasis: setup?.courseCompletionBasis ?? "",
+    studyCommencementDate: setup?.studyCommencementDate ?? "N.A.",
+    qualification: setup?.qualification ?? "Certificate of Completion",
+    courseDeveloper: setup?.courseDeveloper ?? "GT Educational Institute Pte. Ltd.",
+    awardingOrganisation: setup?.awardingOrganisation ?? "GT Educational Institute Pte. Ltd.",
+    courseEntryRequirements: setup?.courseEntryRequirements ?? "",
+    courseSchedule: setup?.courseSchedule ?? "",
+    scheduledHolidays: setup?.scheduledHolidays ?? "",
+    assessmentPeriods: setup?.assessmentPeriods ?? "",
+    finalResultsReleaseDate: setup?.finalResultsReleaseDate ?? "",
+    qualificationConfermentDate: setup?.qualificationConfermentDate ?? "",
+    industrialAttachmentIncluded: Boolean(setup?.industrialAttachmentIncluded),
+    industrialAttachmentDuration: setup?.industrialAttachmentDuration ?? "N.A.",
+    miscellaneousFees: setup?.miscellaneousFees ?? "N.A.",
+    refundEvent1Percent: setup?.refundEvent1Percent ?? "",
+    refundEvent1DaysBefore: setup?.refundEvent1DaysBefore ?? "",
+    refundEvent2Percent: setup?.refundEvent2Percent ?? "",
+    refundEvent2DaysBefore: setup?.refundEvent2DaysBefore ?? "",
+    refundEvent3Percent: setup?.refundEvent3Percent ?? "",
+    refundEvent3DaysAfter: setup?.refundEvent3DaysAfter ?? "",
+    refundEvent4Percent: setup?.refundEvent4Percent ?? "0",
+    refundEvent4DaysAfter: setup?.refundEvent4DaysAfter ?? "",
+    latePaymentGraceValue: setup?.latePaymentGraceValue ?? "",
+    latePaymentGraceUnit: setup?.latePaymentGraceUnit ?? "days",
+    fpsRequired: Boolean(setup?.fpsRequired),
+    fpsProvider: setup?.fpsProvider ?? "",
+    fpsPolicyNumber: setup?.fpsPolicyNumber ?? "",
+    evidenceNotes: setup?.evidenceNotes ?? "",
+  };
+}
+
 function profileDraft(
   courseId: string,
   profile: ReturnType<typeof defaultEduTrustProfileForCourse> & {
     courseFile?: Parameters<typeof courseFileDraft>[0];
+    contractSetup?: Parameters<typeof contractSetupDraft>[0];
   }
 ) {
   return {
@@ -56,6 +125,7 @@ function profileDraft(
     courseFileStatus: profile.courseFileStatus,
     note: profile.note ?? "",
     courseFile: courseFileDraft(profile.courseFile),
+    contractSetup: contractSetupDraft(profile.contractSetup),
   };
 }
 
@@ -63,7 +133,7 @@ export default async function EduTrustPage() {
   const lang = await getLang();
   const courses = await prisma.course.findMany({
     include: {
-      eduTrustProfile: { include: { courseFile: true } },
+      eduTrustProfile: { include: { courseFile: true, contractSetup: true } },
       subjects: { include: { levels: { orderBy: { name: "asc" } } }, orderBy: { name: "asc" } },
       packages: {
         select: {
@@ -98,6 +168,7 @@ export default async function EduTrustPage() {
           courseFileStatus: course.eduTrustProfile.courseFileStatus,
           note: course.eduTrustProfile.note,
           courseFile: course.eduTrustProfile.courseFile,
+          contractSetup: course.eduTrustProfile.contractSetup,
         }
       : null;
     const effective = profile ?? suggested;

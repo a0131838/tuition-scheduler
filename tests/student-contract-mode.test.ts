@@ -34,6 +34,37 @@ const businessInfo = {
   contractTypeLabel: "EduTrust PEI-Student Contract",
 };
 
+const ssgBusinessInfo = {
+  ...businessInfo,
+  courseCommencementDateIso: "2026-07-01",
+  courseCompletionDateIso: "2026-09-30",
+  permittedCourseDurationMonths: "3 months",
+  courseLoadMode: "Part-time",
+  studyCommencementDate: "N.A.",
+  qualification: "Certificate of Completion",
+  courseDeveloper: "GT Educational Institute Pte. Ltd.",
+  awardingOrganisation: "GT Educational Institute Pte. Ltd.",
+  courseEntryRequirements: "Placement interview and diagnostic assessment",
+  courseSchedule: "50 hours of one-to-one lessons with diagnostic, progress, and final assessment",
+  scheduledHolidays: "Singapore public holidays and school closure dates",
+  assessmentPeriods: "Diagnostic assessment at intake, progress review mid-course, final assessment at completion",
+  finalResultsReleaseDate: "Within 7 working days after final assessment",
+  qualificationConfermentDate: "Upon successful course completion",
+  industrialAttachmentIncluded: false,
+  industrialAttachmentDuration: "N.A.",
+  miscellaneousFees: "N.A.",
+  refundEvent1Percent: "100%",
+  refundEvent1DaysBefore: "30",
+  refundEvent2Percent: "50%",
+  refundEvent2DaysBefore: "7",
+  refundEvent3Percent: "20%",
+  refundEvent3DaysAfter: "7",
+  refundEvent4Percent: "0%",
+  refundEvent4DaysAfter: "7",
+  latePaymentGraceValue: "7",
+  latePaymentGraceUnit: "days",
+};
+
 test("student contract snapshots default to the existing tuition agreement mode", () => {
   const { snapshot } = buildStudentContractSnapshot({
     studentId: "student-1",
@@ -52,7 +83,7 @@ test("student contract snapshots can use the SSG standard PEI contract mode", ()
     studentId: "student-1",
     studentName: "Student A",
     packageId: "package-1",
-    businessInfo,
+    businessInfo: ssgBusinessInfo,
     parentInfo,
     contractMode: "SSG_STANDARD_PEI_V4",
   });
@@ -69,6 +100,12 @@ test("student contract snapshots can use the SSG standard PEI contract mode", ()
   assert.match(snapshot.agreementHtml, /SCHEDULE E/);
   assert.ok(snapshot.agreementHtml.includes("GT Educational Institute Pte. Ltd."));
   assert.ok(snapshot.agreementHtml.includes("202303312G"));
+  assert.match(snapshot.agreementHtml, /3 months/);
+  assert.match(snapshot.agreementHtml, /01\/07\/2026/);
+  assert.match(snapshot.agreementHtml, /30\/09\/2026/);
+  assert.match(snapshot.agreementHtml, /100%/);
+  assert.match(snapshot.agreementHtml, /more than 30 working days before/);
+  assert.match(snapshot.agreementHtml, /7 days after the scheduled due date/);
 });
 
 test("SSG standard PEI template is locked to official v4 source metadata", () => {
