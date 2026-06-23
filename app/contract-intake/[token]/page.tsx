@@ -88,17 +88,6 @@ export default async function ContractIntakePage({
     );
   }
 
-  if (contract.flowType === "RENEWAL") {
-    return (
-      <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
-        <h1 style={{ margin: 0 }}>No intake needed / 无需填写资料</h1>
-        <div style={{ color: "#475569" }}>
-          This renewal contract reuses the parent details already on file. Please use the formal contract link from the school team instead.
-        </div>
-      </div>
-    );
-  }
-
   if (contract.status === "EXPIRED") {
     return (
       <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
@@ -138,6 +127,19 @@ export default async function ContractIntakePage({
         <h1 style={{ margin: 0 }}>Contract Closed / 合同已关闭</h1>
         <div style={{ color: "#475569" }}>
           This contract request is no longer active. Please contact the school team if you need a new link.
+        </div>
+      </div>
+    );
+  }
+
+  const canSubmitParentProfile = contract.status === "INTAKE_PENDING" || contract.status === "INFO_PENDING";
+  const renewalNeedsParentProfile = contract.flowType === "RENEWAL" && canSubmitParentProfile && !contract.parentInfo;
+  if (contract.flowType === "RENEWAL" && !renewalNeedsParentProfile) {
+    return (
+      <div style={{ maxWidth: 860, margin: "40px auto", padding: "0 16px", display: "grid", gap: 14 }}>
+        <h1 style={{ margin: 0 }}>No intake needed / 无需填写资料</h1>
+        <div style={{ color: "#475569" }}>
+          This renewal contract reuses the parent details already on file. Please use the formal contract link from the school team instead.
         </div>
       </div>
     );

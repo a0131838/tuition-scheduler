@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-23-r201
+
+- Release ID: `2026-06-23-r201`
+- Date/Time (Asia/Shanghai): `2026-06-23`
+- Deployment status: `READY`
+- Scope: fix renewal contract parent-intake links for existing students who do not have reusable parent profile data yet. These renewal contracts now keep the parent profile form open until parent details are submitted, instead of showing `No intake needed / 无需填写资料`.
+- Key files:
+  - `app/contract-intake/[token]/page.tsx`
+  - `docs/tasks/TASK-20260623-renewal-intake-without-parent-profile.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes the public intake page guard for renewal contracts that are still waiting for parent info and have no parent profile saved. Renewal contracts with reusable parent info, formal sign links, signed contracts, invoices, receipts, scheduling, attendance deduction, package balances, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-23-r201`.
+
+---
+
 ## 2026-06-23-r200
 
 - Release ID: `2026-06-23-r200`
