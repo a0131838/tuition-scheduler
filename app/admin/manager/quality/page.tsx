@@ -228,10 +228,15 @@ export default async function ManagerQualityPage({
       teacherName: group.teacherName,
     })),
   );
-  const selectedTeacherId = sp?.teacherId && teachers.some((teacher) => teacher.id === sp.teacherId) ? sp.teacherId : teachers[0]?.id ?? "";
-  const selectedSessionId = sp?.sessionId && leadDeskRows.some((row) => row.id === sp.sessionId) ? sp.sessionId : "";
+  const selectedSessionRow = sp?.sessionId ? leadDeskRows.find((row) => row.id === sp.sessionId) ?? null : null;
+  const selectedTeacherId =
+    selectedSessionRow?.teacherId && teachers.some((teacher) => teacher.id === selectedSessionRow.teacherId)
+      ? selectedSessionRow.teacherId
+      : sp?.teacherId && teachers.some((teacher) => teacher.id === sp.teacherId)
+        ? sp.teacherId
+        : teachers[0]?.id ?? "";
+  const selectedSessionId = selectedSessionRow?.id ?? "";
   const selectedTeacherSessions = leadDeskRows.filter((row) => row.teacherId === selectedTeacherId);
-  const selectedSessionRow = selectedSessionId ? leadDeskRows.find((row) => row.id === selectedSessionId) ?? null : null;
 
   return (
     <main style={{ padding: "24px 24px 48px", display: "grid", gap: 18 }}>
@@ -473,7 +478,7 @@ export default async function ManagerQualityPage({
             {selectedSessionRow.teacherName} · {selectedSessionRow.timeRange} · {selectedSessionRow.course || "-"} · {selectedSessionRow.students}
           </div>
         ) : null}
-        <form action={sendTeacherFeedbackAction} style={{ display: "grid", gap: 12 }}>
+        <form key={`${selectedTeacherId}:${selectedSessionId || "none"}`} action={sendTeacherFeedbackAction} style={{ display: "grid", gap: 12 }}>
           <input type="hidden" name="date" value={data.date} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             <label style={{ display: "grid", gap: 6 }}>

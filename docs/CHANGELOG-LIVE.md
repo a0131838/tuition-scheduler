@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-23-r202
+
+- Release ID: `2026-06-23-r202`
+- Date/Time (Asia/Shanghai): `2026-06-23`
+- Deployment status: `READY`
+- Scope: fix the Manager Quality Desk feedback form so selecting `Give feedback / 给反馈` from a Lead Desk session refreshes the teacher and related-session dropdowns to match the selected course.
+- Key files:
+  - `app/admin/manager/quality/page.tsx`
+  - `docs/tasks/TASK-20260623-manager-feedback-selected-session-defaults.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only changes default UI selection for the manager feedback form. Feedback storage, teacher acknowledgement, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-23-r202`.
+
+---
+
 ## 2026-06-23-r201
 
 - Release ID: `2026-06-23-r201`
