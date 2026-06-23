@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-23-r199
+
+- Release ID: `2026-06-23-r199`
+- Date/Time (Asia/Shanghai): `2026-06-23`
+- Deployment status: `READY`
+- Scope: add a private Manager Feedback workflow so managers can send classroom quality comments to individual teachers from Manager Quality Desk, and teachers can review and acknowledge their own feedback in the teacher portal.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260623110000_add_manager_teacher_feedback/migration.sql`
+  - `lib/manager-teacher-feedback.ts`
+  - `lib/manager-quality-workspace.ts`
+  - `app/admin/manager/quality/page.tsx`
+  - `app/teacher/page.tsx`
+  - `app/teacher/layout.tsx`
+  - `app/teacher/manager-feedback/page.tsx`
+  - `docs/tasks/TASK-20260623-manager-teacher-feedback.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds a new isolated feedback table and teacher-facing read/acknowledge view. It does not change scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npx prisma generate`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-23-r199`.
+
+---
+
 ## 2026-06-22-r198
 
 - Release ID: `2026-06-22-r198`

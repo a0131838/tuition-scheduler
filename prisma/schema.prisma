@@ -305,6 +305,7 @@ model Teacher {
   sessionFeedbacks          SessionFeedback[]
   sessionTeacherChangesFrom SessionTeacherChange[]           @relation("SessionTeacherChangeFrom")
   sessionTeacherChangesTo   SessionTeacherChange[]           @relation("SessionTeacherChangeTo")
+  managerFeedbacks          ManagerTeacherFeedback[]
   users                     User[]
   bookingLinks              StudentBookingLinkTeacher[]
   bookingRequests           StudentBookingRequest[]
@@ -585,14 +586,15 @@ model Session {
   teacherId String?
   studentId String?
 
-  class           Class                   @relation(fields: [classId], references: [id])
-  teacher         Teacher?                @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
-  student         Student?                @relation("SessionStudent", fields: [studentId], references: [id])
-  attendances     Attendance[]
-  feedbacks       SessionFeedback[]
-  teacherChanges  SessionTeacherChange[]
-  bookingRequests StudentBookingRequest[]
-  signInAlerts    SignInAlert[]
+  class            Class                    @relation(fields: [classId], references: [id])
+  teacher          Teacher?                 @relation("SessionTeacherOverride", fields: [teacherId], references: [id])
+  student          Student?                 @relation("SessionStudent", fields: [studentId], references: [id])
+  attendances      Attendance[]
+  feedbacks        SessionFeedback[]
+  teacherChanges   SessionTeacherChange[]
+  bookingRequests  StudentBookingRequest[]
+  signInAlerts     SignInAlert[]
+  managerFeedbacks ManagerTeacherFeedback[]
 
   @@unique([classId, startAt, endAt])
   @@index([studentId])
@@ -925,6 +927,7 @@ model User {
   leadsOwned                  Lead[]                     @relation("LeadOwner")
   leadFollowUps               LeadFollowUp[]             @relation("LeadFollowUpActor")
   leadAssessmentReopened      LeadAssessmentRequest[]    @relation("LeadAssessmentReopenedBy")
+  managerTeacherFeedbacks     ManagerTeacherFeedback[]   @relation("ManagerTeacherFeedbackCreatedBy")
   workspaceAccesses           UserWorkspaceAccess[]
 }
 
@@ -1582,6 +1585,29 @@ model TeacherFeedbackRead {
 
   @@unique([userId, feedbackId])
   @@index([userId, studentId, readAt])
+}
+
+model ManagerTeacherFeedback {
+  id                   String    @id @default(uuid())
+  teacherId            String
+  managerUserId        String?
+  sessionId            String?
+  category             String
+  body                 String
+  requiresAck          Boolean   @default(true)
+  acknowledgedAt       DateTime?
+  acknowledgedByUserId String?
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  managerUser User?    @relation("ManagerTeacherFeedbackCreatedBy", fields: [managerUserId], references: [id], onDelete: SetNull)
+  session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, archivedAt, createdAt])
+  @@index([managerUserId, createdAt])
+  @@index([sessionId])
 }
 
 model TicketDailyCounter {

@@ -273,6 +273,7 @@ export async function loadManagerQualityWorkspace(input: {
   }
 
   const leadDeskRows = sessions.map((session) => {
+    const teacherId = session.teacherId ?? session.class.teacherId;
     const teacherName = session.teacher?.name ?? session.class.teacher.name;
     const studentNames =
       session.student?.name
@@ -282,6 +283,7 @@ export async function loadManagerQualityWorkspace(input: {
           : enrollmentsByClass.get(session.classId) ?? [];
     return {
       id: session.id,
+      teacherId,
       teacherName,
       startTime: formatBusinessTimeOnly(new Date(session.startAt)),
       endTime: formatBusinessTimeOnly(new Date(session.endAt)),

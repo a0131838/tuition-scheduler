@@ -8,6 +8,7 @@ import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only"
 import { ExpenseClaimStatus } from "@prisma/client";
 import { getTeacherPayrollPublishForTeacher } from "@/lib/teacher-payroll";
 import { getTeacherNoticeState } from "@/lib/teacher-notices";
+import { getTeacherManagerFeedbackState } from "@/lib/manager-teacher-feedback";
 import TeacherNoticeCardClient from "./TeacherNoticeCardClient";
 
 const TEACHER_SELF_CONFIRM_TODAY = "TEACHER_SELF_CONFIRM_TODAY";
@@ -83,6 +84,7 @@ export default async function TeacherHomePage({
     rejectedExpenseClaims,
     payrollPublish,
     teacherNoticeState,
+    managerFeedbackState,
   ] = await Promise.all([
     prisma.session.findMany({
       where: {
@@ -193,6 +195,7 @@ export default async function TeacherHomePage({
     }),
     getTeacherPayrollPublishForTeacher({ teacherId: teacher.id, month: currentMonthKey, scope: "all" }),
     getTeacherNoticeState(user.id),
+    getTeacherManagerFeedbackState(teacher.id),
   ]);
   const todaySessionsVisible = todaySessions.filter((s) => sessionStudentNames(s).length > 0);
   const tomorrowSessionsVisible = tomorrowSessions.filter((s) => sessionStudentNames(s).length > 0);
@@ -222,6 +225,17 @@ export default async function TeacherHomePage({
       note: t(lang, "Rejected claims that need updates or re-submission.", "需要补件或重提的已驳回报销。"),
       background: "#fef2f2",
       border: "#fecaca",
+    },
+    {
+      href: "/teacher/manager-feedback",
+      title: t(lang, "Manager feedback", "管理反馈"),
+      value: managerFeedbackState.pendingAckCount,
+      note:
+        managerFeedbackState.pendingAckCount > 0
+          ? t(lang, "Quality comments are waiting for your acknowledgement.", "有质量反馈等待你确认已读。")
+          : t(lang, "Review recent quality comments from management.", "查看管理给你的课堂质量反馈。"),
+      background: "#eef2ff",
+      border: "#c7d2fe",
     },
     {
       href: "/teacher/payroll",

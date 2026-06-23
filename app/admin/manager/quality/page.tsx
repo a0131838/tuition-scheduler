@@ -4,6 +4,13 @@ import { redirect } from "next/navigation";
 import { getLang, t } from "@/lib/i18n";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { requireManager } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  createManagerTeacherFeedback,
+  getRecentManagerTeacherFeedback,
+  MANAGER_TEACHER_FEEDBACK_CATEGORIES,
+  categoryLabel,
+} from "@/lib/manager-teacher-feedback";
 import {
   loadManagerQualityWorkspace,
   MANAGER_REFLECTION_CHECKLIST,
@@ -77,6 +84,30 @@ async function saveReflectionAction(formData: FormData) {
 
   revalidatePath("/admin/manager/quality");
   redirect(`/admin/manager/quality?date=${encodeURIComponent(date)}&saved=1`);
+}
+
+async function sendTeacherFeedbackAction(formData: FormData) {
+  "use server";
+  const user = await requireManager();
+  const date = readString(formData, "date") || formatBusinessDateOnly(new Date());
+  try {
+    await createManagerTeacherFeedback({
+      teacherId: readString(formData, "teacherId"),
+      managerUserId: user.id,
+      sessionId: readString(formData, "sessionId"),
+      category: readString(formData, "category"),
+      body: readString(formData, "body"),
+      requiresAck: formData.get("requiresAck") === "on",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to send feedback";
+    redirect(`/admin/manager/quality?date=${encodeURIComponent(date)}&feedbackErr=${encodeURIComponent(message)}`);
+  }
+
+  revalidatePath("/admin/manager/quality");
+  revalidatePath("/teacher");
+  revalidatePath("/teacher/manager-feedback");
+  redirect(`/admin/manager/quality?date=${encodeURIComponent(date)}&feedbackSaved=1`);
 }
 
 function MetricCard({
@@ -170,7 +201,7 @@ function ProgressBar({ value }: { value: number }) {
 export default async function ManagerQualityPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; saved?: string; historyDays?: string; incompleteOnly?: string }>;
+  searchParams?: Promise<{ date?: string; saved?: string; feedbackSaved?: string; feedbackErr?: string; teacherId?: string; sessionId?: string; historyDays?: string; incompleteOnly?: string }>;
 }) {
   const user = await requireManager();
   const lang = await getLang();
@@ -184,6 +215,10 @@ export default async function ManagerQualityPage({
     historyDays,
   });
   const entry = data.currentEntry;
+  const [teachers, recentManagerFeedbacks] = await Promise.all([
+    prisma.teacher.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, tutorCode: true } }),
+    getRecentManagerTeacherFeedback(12),
+  ]);
   const shownReflectionEntries = incompleteOnly
     ? data.recentEntries.filter((item) => checklistDoneCount(item) < MANAGER_REFLECTION_CHECKLIST.length)
     : data.recentEntries;
@@ -193,6 +228,9 @@ export default async function ManagerQualityPage({
       teacherName: group.teacherName,
     })),
   );
+  const selectedTeacherId = sp?.teacherId && teachers.some((teacher) => teacher.id === sp.teacherId) ? sp.teacherId : teachers[0]?.id ?? "";
+  const selectedSessionId = sp?.sessionId && leadDeskRows.some((row) => row.id === sp.sessionId) ? sp.sessionId : "";
+  const selectedTeacherSessions = leadDeskRows.filter((row) => row.teacherId === selectedTeacherId);
 
   return (
     <main style={{ padding: "24px 24px 48px", display: "grid", gap: 18 }}>
@@ -362,6 +400,7 @@ export default async function ManagerQualityPage({
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {sp?.saved === "1" ? <StatusPill tone="success">{t(lang, "Saved", "已保存")}</StatusPill> : null}
+            {sp?.feedbackSaved === "1" ? <StatusPill tone="success">{t(lang, "Feedback sent", "反馈已发送")}</StatusPill> : null}
             <Link
               href="/admin/manager"
               style={{
@@ -407,6 +446,89 @@ export default async function ManagerQualityPage({
         </form>
       </section>
 
+      <section className="no-print" style={{ ...panelStyle, padding: 18, display: "grid", gap: 14 }}>
+        <div>
+          <h2 style={sectionTitleStyle}>{t(lang, "Manager Feedback to Teacher", "给老师的管理反馈")}</h2>
+          <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
+            {t(
+              lang,
+              "Send private quality comments to one teacher. Teachers see only their own feedback and can acknowledge it.",
+              "给单个老师发送内部质量反馈。老师只能看到自己的反馈，并可确认已读。",
+            )}
+          </p>
+        </div>
+        {sp?.feedbackErr ? (
+          <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, fontWeight: 800 }}>
+            {sp.feedbackErr}
+          </div>
+        ) : null}
+        <form action={sendTeacherFeedbackAction} style={{ display: "grid", gap: 12 }}>
+          <input type="hidden" name="date" value={data.date} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#334155" }}>{t(lang, "Teacher", "老师")}</span>
+              <select
+                name="teacherId"
+                defaultValue={selectedTeacherId}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", font: "inherit" }}
+              >
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.tutorCode ? `${teacher.tutorCode} · ` : ""}
+                    {teacher.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#334155" }}>{t(lang, "Related session", "关联课程")}</span>
+              <select
+                name="sessionId"
+                defaultValue={selectedSessionId}
+                style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", font: "inherit" }}
+              >
+                <option value="">{t(lang, "No specific session", "不关联具体课程")}</option>
+                {selectedTeacherSessions.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.timeRange} · {row.course || "-"} · {row.students}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#334155" }}>{t(lang, "Category", "类型")}</span>
+              <select name="category" defaultValue="OBSERVATION" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", font: "inherit" }}>
+                {MANAGER_TEACHER_FEEDBACK_CATEGORIES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {t(lang, item.en, item.zh)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <TextAreaField name="body" label={t(lang, "Feedback comment", "反馈内容")} />
+          <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13, color: "#334155", fontWeight: 800 }}>
+            <input type="checkbox" name="requiresAck" defaultChecked />
+            {t(lang, "Require teacher acknowledgement", "需要老师确认已读")}
+          </label>
+          <button
+            type="submit"
+            style={{
+              justifySelf: "start",
+              border: "1px solid #4f46e5",
+              background: "#4f46e5",
+              color: "#ffffff",
+              borderRadius: 8,
+              padding: "11px 16px",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            {t(lang, "Send Feedback", "发送反馈")}
+          </button>
+        </form>
+      </section>
+
       <section className="no-print" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
         <MetricCard label={t(lang, "Lead Desk sessions", "Lead Desk 课次")} value={data.leadDeskTotals.sessions} detail={`${data.leadDeskTotals.teachers} teachers / 老师`} />
         <MetricCard label={t(lang, "Students scheduled", "当日学生")} value={data.leadDeskTotals.students} detail={data.date} />
@@ -444,6 +566,7 @@ export default async function ManagerQualityPage({
                         <th style={thStyle}>{t(lang, "Campus", "校区")}</th>
                         <th style={thStyle}>{t(lang, "Room", "教室")}</th>
                         <th style={thStyle}>{t(lang, "Mode", "模式")}</th>
+                        <th style={thStyle}>{t(lang, "Feedback", "反馈")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -455,6 +578,14 @@ export default async function ManagerQualityPage({
                           <td style={tdStyle}>{row.campus}</td>
                           <td style={tdStyle}>{row.room || "-"}</td>
                           <td style={tdStyle}>{row.mode}</td>
+                          <td style={tdStyle}>
+                            <Link
+                              href={`/admin/manager/quality?date=${encodeURIComponent(data.date)}&teacherId=${encodeURIComponent(row.teacherId)}&sessionId=${encodeURIComponent(row.id)}`}
+                              style={{ color: "#4f46e5", fontWeight: 800, whiteSpace: "nowrap" }}
+                            >
+                              {t(lang, "Give feedback", "给反馈")}
+                            </Link>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -530,6 +661,31 @@ export default async function ManagerQualityPage({
         </form>
 
         <aside style={{ display: "grid", gap: 16, alignContent: "start" }}>
+          <section style={{ ...panelStyle, padding: 16, display: "grid", gap: 12 }}>
+            <h2 style={sectionTitleStyle}>{t(lang, "Recent Manager Feedback", "最近管理反馈")}</h2>
+            {recentManagerFeedbacks.length === 0 ? (
+              <p style={{ ...mutedStyle, margin: 0 }}>{t(lang, "No manager feedback has been sent yet.", "暂时还没有发送过管理反馈。")}</p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {recentManagerFeedbacks.slice(0, 6).map((row) => (
+                  <div key={row.id} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 10, display: "grid", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+                      <strong style={{ color: "#0f172a" }}>{row.teacherName}</strong>
+                      <StatusPill tone={row.requiresAck && !row.acknowledgedAt ? "warning" : "success"}>
+                        {row.requiresAck && !row.acknowledgedAt ? t(lang, "Pending ack", "待确认") : t(lang, "Clear", "已处理")}
+                      </StatusPill>
+                    </div>
+                    <div style={mutedStyle}>
+                      {categoryLabel(row.category, lang)} · {row.createdAt}
+                    </div>
+                    {row.sessionSummary ? <div style={mutedStyle}>{row.sessionSummary}</div> : null}
+                    <div style={{ color: "#334155", fontSize: 13, lineHeight: 1.45 }}>{row.body}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section style={{ ...panelStyle, padding: 16, display: "grid", gap: 12 }}>
             <h2 style={sectionTitleStyle}>{t(lang, "Quality Snapshot", "质量快照")}</h2>
             <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
