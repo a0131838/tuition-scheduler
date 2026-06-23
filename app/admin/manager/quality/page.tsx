@@ -231,6 +231,7 @@ export default async function ManagerQualityPage({
   const selectedTeacherId = sp?.teacherId && teachers.some((teacher) => teacher.id === sp.teacherId) ? sp.teacherId : teachers[0]?.id ?? "";
   const selectedSessionId = sp?.sessionId && leadDeskRows.some((row) => row.id === sp.sessionId) ? sp.sessionId : "";
   const selectedTeacherSessions = leadDeskRows.filter((row) => row.teacherId === selectedTeacherId);
+  const selectedSessionRow = selectedSessionId ? leadDeskRows.find((row) => row.id === selectedSessionId) ?? null : null;
 
   return (
     <main style={{ padding: "24px 24px 48px", display: "grid", gap: 18 }}>
@@ -446,7 +447,11 @@ export default async function ManagerQualityPage({
         </form>
       </section>
 
-      <section className="no-print" style={{ ...panelStyle, padding: 18, display: "grid", gap: 14 }}>
+      <section
+        id="manager-feedback-form"
+        className="no-print"
+        style={{ ...panelStyle, padding: 18, display: "grid", gap: 14, scrollMarginTop: 16 }}
+      >
         <div>
           <h2 style={sectionTitleStyle}>{t(lang, "Manager Feedback to Teacher", "给老师的管理反馈")}</h2>
           <p style={{ ...mutedStyle, margin: "4px 0 0" }}>
@@ -460,6 +465,12 @@ export default async function ManagerQualityPage({
         {sp?.feedbackErr ? (
           <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, fontWeight: 800 }}>
             {sp.feedbackErr}
+          </div>
+        ) : null}
+        {selectedSessionRow ? (
+          <div style={{ border: "1px solid #86efac", background: "#f0fdf4", color: "#166534", borderRadius: 8, padding: 10, fontSize: 13, lineHeight: 1.45 }}>
+            <strong>{t(lang, "Selected from Lead Desk", "已从 Lead Desk 选择课程")}:</strong>{" "}
+            {selectedSessionRow.teacherName} · {selectedSessionRow.timeRange} · {selectedSessionRow.course || "-"} · {selectedSessionRow.students}
           </div>
         ) : null}
         <form action={sendTeacherFeedbackAction} style={{ display: "grid", gap: 12 }}>
@@ -580,7 +591,7 @@ export default async function ManagerQualityPage({
                           <td style={tdStyle}>{row.mode}</td>
                           <td style={tdStyle}>
                             <Link
-                              href={`/admin/manager/quality?date=${encodeURIComponent(data.date)}&teacherId=${encodeURIComponent(row.teacherId)}&sessionId=${encodeURIComponent(row.id)}`}
+                              href={`/admin/manager/quality?date=${encodeURIComponent(data.date)}&teacherId=${encodeURIComponent(row.teacherId)}&sessionId=${encodeURIComponent(row.id)}#manager-feedback-form`}
                               style={{ color: "#4f46e5", fontWeight: 800, whiteSpace: "nowrap" }}
                             >
                               {t(lang, "Give feedback", "给反馈")}

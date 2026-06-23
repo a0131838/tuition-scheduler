@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-06-23-r200
+
+- Release ID: `2026-06-23-r200`
+- Date/Time (Asia/Shanghai): `2026-06-23`
+- Deployment status: `READY`
+- Scope: improve the Manager Quality Desk `Give feedback / 给反馈` action so clicking from the Lead Desk table jumps directly to the feedback form and shows the selected teacher/session context.
+- Key files:
+  - `app/admin/manager/quality/page.tsx`
+  - `docs/tasks/TASK-20260623-manager-feedback-link-scroll.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This is a UI navigation and context hint improvement only. It does not change feedback storage, teacher acknowledgement, scheduling, attendance deduction, package balances, invoices, receipts, payroll, partner settlement, transport billing, Business Accounts, school applications, or OpenClaw behavior.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-06-23-r200`.
+
+---
+
 ## 2026-06-23-r199
 
 - Release ID: `2026-06-23-r199`
