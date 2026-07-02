@@ -22,6 +22,8 @@ import {
 } from "../_components/workbenchStyles";
 
 const FEEDBACK_LOOKBACK_DAYS = 90;
+const FEEDBACK_OVERDUE_SCAN_LIMIT = 2000;
+const FEEDBACK_OVERDUE_DISPLAY_LIMIT = 500;
 const FEEDBACK_QUEUE_COOKIE = "adminFeedbacksPreferredQueue";
 const FEEDBACK_QUEUE_OPTIONS = ["missing", "proxy", "pending", "forwarded", "all"] as const;
 
@@ -288,7 +290,7 @@ export default async function AdminFeedbacksPage({
       feedbacks: true,
     },
     orderBy: { endAt: "desc" },
-    take: 600,
+    take: FEEDBACK_OVERDUE_SCAN_LIMIT,
   });
 
   const overdueItems = overdueSessions
@@ -307,7 +309,7 @@ export default async function AdminFeedbacksPage({
       };
     })
     .filter((x): x is NonNullable<typeof x> => !!x)
-    .slice(0, 500);
+    .slice(0, FEEDBACK_OVERDUE_DISPLAY_LIMIT);
 
   const missingRows = overdueItems.filter((x) => x.kind === "missing");
   const overdueProxyRows = overdueItems.filter((x) => x.kind === "proxy");

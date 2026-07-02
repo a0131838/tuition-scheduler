@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-02-r204
+
+- Release ID: `2026-07-02-r204`
+- Date/Time (Asia/Shanghai): `2026-07-02`
+- Deployment status: `READY`
+- Scope: widen the Teacher Feedback Desk overdue-session scan so older valid missing-feedback sessions inside the 90-day lookback are included in `Missing > 12h`, while keeping excused/no-effective-student sessions excluded.
+- Key files:
+  - `app/admin/feedbacks/page.tsx`
+  - `docs/tasks/TASK-20260702-feedback-desk-overdue-scan-limit.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This only increases the read-side scan limit for the admin feedback workbench and keeps the display cap in place. Feedback writes, proxy drafts, forwarded records, teacher submissions, attendance, package balances, payroll, billing, scheduling, and OpenClaw behavior are unchanged.
+- Verification:
+  - read-only Prisma check confirmed the restored overdue queue now includes 13 valid missing-feedback sessions instead of 10 under the same 90-day lookback.
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-02-r204`.
+
+---
+
 ## 2026-07-02-r203
 
 - Release ID: `2026-07-02-r203`

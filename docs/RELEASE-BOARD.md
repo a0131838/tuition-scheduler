@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-02-r203` (Teacher Feedback Desk no longer exposes or accepts the bulk overdue-forward action that can clear missing/proxy queues), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-02-r204` (Teacher Feedback Desk scans a wider overdue-session window so older valid missing-feedback sessions inside the 90-day lookback are not hidden by the read limit), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Teacher-feedback scan risk: `2026-07-02-r204` increases the read-side overdue scan from 600 to 2000 sessions, while keeping the visible work item cap at 500; monitor page load if historical session volume grows substantially.
 - Human memory risk: changes were spread across multiple sessions.
 - Finance menu perception risk: role-based sidebar can look like "missing features" for FINANCE users.
 - New process risk: deploy will fail if release docs are not included in the deploy commit.
