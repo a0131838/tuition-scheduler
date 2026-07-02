@@ -10,7 +10,6 @@ import WorkbenchActionBanner from "../_components/WorkbenchActionBanner";
 import WorkbenchScrollMemoryClient from "../_components/WorkbenchScrollMemoryClient";
 import ProxyDraftFormClient from "./ProxyDraftFormClient";
 import MarkForwardedFormClient from "./MarkForwardedFormClient";
-import BulkMarkOverdueForwardedClient from "./BulkMarkOverdueForwardedClient";
 import { formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { getFeedbackOverdueCutoff } from "@/lib/feedback-timing";
 import { buildWeChatFeedbackText } from "@/lib/feedback-forward-text";
@@ -789,22 +788,6 @@ export default async function AdminFeedbacksPage({
           </div>
         ) : (
           <div id="feedback-work-items" style={{ display: "grid", gap: 10 }}>
-            <BulkMarkOverdueForwardedClient
-              filterStudentId={studentId}
-              labels={{
-                notePlaceholder: t(lang, "Batch note (optional)", "批量备注(可选)"),
-                submit: t(lang, "Batch mark as WeChat forwarded", "批量标记已微信反馈"),
-                saving: t(lang, "Saving...", "保存中..."),
-                donePrefix: t(lang, "Done", "完成"),
-                errorPrefix: t(lang, "Error", "错误"),
-                confirmText: t(
-                  lang,
-                  "Process all overdue items in current filter and mark as WeChat forwarded?",
-                  "确认处理当前筛选下所有超时项并标记为微信已反馈？"
-                ),
-              }}
-            />
-
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(520px, 1fr))" }}>
               {shownOverdueRows.map((r) => {
                 const studentNames = getStudentNames(r.session);

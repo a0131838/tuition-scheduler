@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-02-r203
+
+- Release ID: `2026-07-02-r203`
+- Date/Time (Asia/Shanghai): `2026-07-02`
+- Deployment status: `READY`
+- Scope: remove the dangerous bulk overdue-feedback forwarding action from Teacher Feedback Desk and disable its API endpoint, so `Missing > 12h` and `Proxy draft pending teacher` queues cannot be accidentally cleared as manually forwarded feedback.
+- Key files:
+  - `app/admin/feedbacks/page.tsx`
+  - `app/api/admin/feedbacks/bulk-forward-overdue/route.ts`
+  - `docs/tasks/TASK-20260702-feedback-desk-disable-bulk-overdue-forward.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This removes a broad admin cleanup shortcut from the live feedback desk and keeps the safer per-item workflow: create/update proxy drafts from overdue queues, then mark completed teacher feedback from Pending Forward. Existing feedback records, teacher submission, forwarded history, attendance, package balances, payroll, billing, scheduling, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-02-r203`.
+
+---
+
 ## 2026-06-23-r202
 
 - Release ID: `2026-06-23-r202`
