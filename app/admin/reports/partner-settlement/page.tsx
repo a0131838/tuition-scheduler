@@ -147,43 +147,6 @@ function buildSettlementPageUrl(
   return `/admin/reports/partner-settlement?${params.toString()}`;
 }
 
-async function updateRateSettingsAction(formData: FormData) {
-  "use server";
-  const user = await requireAdmin();
-  if (user.role === "FINANCE") {
-    redirect("/admin/reports/partner-settlement?err=forbidden");
-  }
-
-  const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
-  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
-  const onlineRaw = typeof formData.get("onlineRatePer45") === "string" ? String(formData.get("onlineRatePer45")) : "";
-  const offlineRaw = typeof formData.get("offlineRatePer45") === "string" ? String(formData.get("offlineRatePer45")) : "";
-  const onlineRate = Number(onlineRaw);
-  const offlineRate = Number(offlineRaw);
-  if (!Number.isFinite(onlineRate) || onlineRate < 0 || !Number.isFinite(offlineRate) || offlineRate < 0) {
-    redirect(buildSettlementPageUrl(month, { partnerId, err: "invalid-rate" }));
-  }
-  const partner = await getPartnerByIdOrDefault(partnerId);
-  if (!partner) {
-    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
-  }
-
-  await prisma.partner.update({
-    where: { id: partner.id },
-    data: { onlineRatePer45: Math.round(onlineRate), offlineRatePer45: Math.round(offlineRate) },
-  });
-
-  revalidatePath("/admin/reports/partner-settlement");
-  redirect(
-    buildSettlementPageUrl(month, {
-      partnerId: partner.id,
-      msg: "rate-updated",
-      settlementFlow: "rate-updated",
-      panel: "setup",
-    })
-  );
-}
-
 async function createOnlineSettlementAction(formData: FormData) {
   "use server";
   const user = await requireAdmin();
@@ -928,9 +891,7 @@ export default async function PartnerSettlementPage({
     return `/admin/reports/partner-settlement/billing?${params.toString()}`;
   };
   const translatedMsg =
-    msg === "rate-updated"
-      ? t(lang, "Settlement rates updated.", "结算费率已更新。")
-      : msg === "online-created"
+    msg === "online-created"
       ? t(lang, "Online settlement record created.", "线上结算记录已创建。")
       : msg === "offline-created"
       ? t(lang, "Offline settlement record created.", "线下结算记录已创建。")
@@ -1006,16 +967,6 @@ export default async function PartnerSettlementPage({
             { href: "#action-queue-online", label: t(lang, "Back to online queue", "回到线上队列") },
             { href: "#action-queue-offline", label: t(lang, "Back to offline queue", "回到线下队列") },
           ].filter((item): item is { href: string; label: string } => Boolean(item)),
-        }
-      : settlementFlow === "rate-updated"
-      ? {
-          tone: "blue" as const,
-          title: t(lang, "Settlement rates updated.", "结算费率已更新。"),
-          detail: t(lang, "The new rates will apply to future settlement records. Return to the active queue when you are ready to keep working.", "新的费率会应用到后续结算记录。确认后可以回到当前队列继续处理。"),
-          links: [
-            { href: "#settlement-setup", label: t(lang, "Jump to setup", "跳到结算配置") },
-            { href: "#action-queue-records", label: t(lang, "Back to live queue", "回到实时队列") },
-          ],
         }
       : settlementFlow === "settlements-cleared"
       ? {
@@ -1296,7 +1247,7 @@ export default async function PartnerSettlementPage({
       ) : null}
       {flowCard ? (
         <WorkbenchActionBanner
-          tone={flowCard.tone === "green" ? "success" : flowCard.tone === "blue" ? "info" : "warn"}
+          tone={flowCard.tone === "green" ? "success" : "warn"}
           title={flowCard.title}
           description={flowCard.detail}
           actions={flowCard.links.map((link, index) => ({
@@ -1970,29 +1921,29 @@ export default async function PartnerSettlementPage({
             "这些配置会影响后续结算记录的生成。默认折叠，避免干扰日常操作。"
           )}
         </div>
-        {!isFinanceOnlyUser ? <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14 }}>
           <h3 style={sectionTitleStyle}>{t(lang, "Rate Settings", "费率设置")}</h3>
-          <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-            <input type="hidden" name="month" value={month} />
-                      <input type="hidden" name="partnerId" value={partnerId} />
-            <label>
-              {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
-              <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={selectedPartner.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
-            </label>
-            <label>
-              {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
-              <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={selectedPartner.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
-            </label>
-            <button type="submit" style={primaryBtn}>{t(lang, "Save Rates", "保存费率")}</button>
-          </form>
-          <div style={{ marginTop: -8, marginBottom: 16, color: "#666", fontSize: 13 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <span style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "8px 10px", background: "#f8fafc" }}>
+              {t(lang, "Online rate per 45min", "线上每45分钟单价")}: <b>{selectedPartner.onlineRatePer45}</b>
+            </span>
+            <span style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "8px 10px", background: "#f8fafc" }}>
+              {t(lang, "Offline rate per 45min", "线下每45分钟单价")}: <b>{selectedPartner.offlineRatePer45}</b>
+            </span>
+            {!isFinanceOnlyUser ? (
+              <a href="/admin/partners" style={secondaryBtn}>
+                {t(lang, "Edit in Partner Setup", "去合作方配置修改")}
+              </a>
+            ) : null}
+          </div>
+          <div style={{ marginBottom: 16, color: "#666", fontSize: 13 }}>
             {t(
               lang,
-              "Bill amount formula: amount = (minutes / 45) x rate.",
-              "账单金额公式：金额 = （总分钟 / 45）x 单价。"
+              "Bill amount formula: amount = (minutes / 45) x rate. Rate changes apply to future settlement records; existing records keep their saved amount.",
+              "账单金额公式：金额 = （总分钟 / 45）x 单价。费率变更只影响后续生成的结算记录，已生成记录保留当时保存的金额。"
             )}
           </div>
-        </div> : null}
+        </div>
 
         <div>
           <h3 style={sectionTitleStyle}>{t(lang, "Package Mode Config", "课包结算模式配置")}</h3>

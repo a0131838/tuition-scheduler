@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-08-r206
+
+- Release ID: `2026-07-08-r206`
+- Date/Time (Asia/Shanghai): `2026-07-08`
+- Deployment status: `READY`
+- Scope: make the Partner Settlement rate section read-only and route rate edits to Partner Setup, so settlement operators cannot accidentally overwrite partner master rates from the settlement workbench.
+- Key files:
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `docs/tasks/TASK-20260708-partner-settlement-rate-readonly.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This removes only the settlement-page rate update action and keeps settlement amount calculation unchanged. Future settlement records still use the selected partner's saved rates, while existing generated settlement records keep their stored amounts.
+- Verification:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-08-r206`.
+
+---
+
 ## 2026-07-08-r205
 
 - Release ID: `2026-07-08-r205`

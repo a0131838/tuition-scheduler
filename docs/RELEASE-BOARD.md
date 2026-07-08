@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-08-r205` (multi-partner settlement configuration keeps New Oriental as the legacy partner while adding Shanghai Xin Zhuo Si and future partner setup), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-08-r206` (partner settlement now displays rates read-only and sends rate edits to Partner Setup), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Partner-rate-entry risk: `2026-07-08-r206` removes the rate save action from Partner Settlement so operators must edit master rates in Partner Setup; existing settlement records keep their saved amounts and are not automatically recalculated.
 - Multi-partner settlement risk: `2026-07-08-r205` adds `Partner` configuration and `partnerId` filtering to settlement, billing, receipts, payment proofs, and top-up snapshots; verify operators select the correct partner before creating invoices.
 - Teacher-feedback scan risk: `2026-07-02-r204` increases the read-side overdue scan from 600 to 2000 sessions, while keeping the visible work item cap at 500; monitor page load if historical session volume grows substantially.
 - Human memory risk: changes were spread across multiple sessions.
