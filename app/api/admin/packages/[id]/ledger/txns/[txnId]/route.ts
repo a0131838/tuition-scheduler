@@ -8,15 +8,6 @@ import {
   validateAbnormalLedgerFields,
 } from "@/lib/package-ledger-guard";
 
-const PARTNER_SOURCE_NAME = "新东方学生";
-
-function isPartnerOnlinePackage(pkg: {
-  settlementMode: string | null;
-  student?: { sourceChannel?: { name: string | null } | null } | null;
-}) {
-  return pkg.settlementMode === "ONLINE_PACKAGE_END" && pkg.student?.sourceChannel?.name === PARTNER_SOURCE_NAME;
-}
-
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
 }
@@ -76,10 +67,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
       remainingMinutes: true,
       totalMinutes: true,
       settlementMode: true,
-      student: { select: { sourceChannel: { select: { name: true } } } },
+      student: { select: { sourceChannelId: true } },
     },
   });
   if (!pkg) return bad("Package not found", 404);
+  const partner = pkg.student?.sourceChannelId
+    ? await prisma.partner.findUnique({ where: { sourceChannelId: pkg.student.sourceChannelId }, select: { id: true } })
+    : null;
+  const isPartnerOnlinePackage = pkg.settlementMode === "ONLINE_PACKAGE_END" && Boolean(partner);
 
   const diff = Math.round(deltaMinutes) - txn.deltaMinutes;
   const ledgerRemaining = await getPackageLedgerRemaining(packageId);
@@ -91,7 +86,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
   if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
   let settlementIdsToDelete: string[] = [];
-  if (isPurchase && diff < 0 && isPartnerOnlinePackage(pkg)) {
+  if (isPurchase && diff < 0 && isPartnerOnlinePackage) {
     const overSnapshots = await prisma.partnerSettlement.findMany({
       where: {
         packageId,
@@ -102,7 +97,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; t
     });
     if (overSnapshots.length > 0) {
       const removeIds = overSnapshots.map((x) => x.id);
-      const billing = await listPartnerBilling();
+      const billing = await listPartnerBilling(partner?.id);
       const linkedInvoices = billing.invoices.filter((inv) => inv.settlementIds.some((sid) => removeIds.includes(sid)));
       if (linkedInvoices.length > 0) {
         return bad(
@@ -189,10 +184,14 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
       remainingMinutes: true,
       totalMinutes: true,
       settlementMode: true,
-      student: { select: { sourceChannel: { select: { name: true } } } },
+      student: { select: { sourceChannelId: true } },
     },
   });
   if (!pkg) return bad("Package not found", 404);
+  const partner = pkg.student?.sourceChannelId
+    ? await prisma.partner.findUnique({ where: { sourceChannelId: pkg.student.sourceChannelId }, select: { id: true } })
+    : null;
+  const isPartnerOnlinePackage = pkg.settlementMode === "ONLINE_PACKAGE_END" && Boolean(partner);
 
   const ledgerRemaining = await getPackageLedgerRemaining(packageId);
   const nextRemaining = ledgerRemaining - txn.deltaMinutes;
@@ -203,7 +202,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
   if (isPurchase && nextTotal < 0) return bad("Total minutes cannot be negative", 409);
 
   let settlementIdsToDelete: string[] = [];
-  if (isPurchase && isPartnerOnlinePackage(pkg)) {
+  if (isPurchase && isPartnerOnlinePackage) {
     const overSnapshots = await prisma.partnerSettlement.findMany({
       where: {
         packageId,
@@ -214,7 +213,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     });
     if (overSnapshots.length > 0) {
       const removeIds = overSnapshots.map((x) => x.id);
-      const billing = await listPartnerBilling();
+      const billing = await listPartnerBilling(partner?.id);
       const linkedInvoices = billing.invoices.filter((inv) => inv.settlementIds.some((sid) => removeIds.includes(sid)));
       if (linkedInvoices.length > 0) {
         return bad(

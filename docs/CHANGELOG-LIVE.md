@@ -15,6 +15,36 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-08-r205
+
+- Release ID: `2026-07-08-r205`
+- Date/Time (Asia/Shanghai): `2026-07-08`
+- Deployment status: `READY`
+- Scope: add multi-partner settlement configuration so New Oriental remains the legacy partner while Shanghai Xin Zhuo Si and future partners can be configured, billed, receipted, and settled independently.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260708120000_add_multi_partner_config/migration.sql`
+  - `lib/partners.ts`
+  - `lib/partner-billing.ts`
+  - `app/admin/partners/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `docs/tasks/TASK-20260708-multi-partner-settlement-config.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds a Partner configuration table and threads `partnerId` through partner settlement, invoice, receipt, payment-proof, top-up snapshot, and billing workbench flows. Legacy New Oriental data is backfilled and old partner-billing JSON without `partnerId` is treated as New Oriental only. Parent billing, direct-billing contracts, attendance deduction, scheduling, teacher payroll, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend`
+  - `npx prisma migrate deploy`
+  - read-only Prisma check confirmed `新东方` and `上海新卓思` Partner configs exist and 32 legacy New Oriental settlement records are bound to `legacy-xdf-partner`.
+  - local smoke checks compiled `/admin/reports/partner-settlement`, `/admin/reports/partner-settlement/billing`, and `/admin/partners`.
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-08-r205`.
+
+---
+
 ## 2026-07-02-r204
 
 - Release ID: `2026-07-02-r204`

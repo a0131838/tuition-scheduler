@@ -839,6 +839,7 @@ model Student {
 
 model PartnerSettlement {
   id                         String                  @id @default(uuid())
+  partnerId                  String?
   studentId                  String
   packageId                  String?
   packageTxnId               String?
@@ -857,14 +858,41 @@ model PartnerSettlement {
   updatedAt                  DateTime                @updatedAt
 
   student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  partner    Partner?       @relation(fields: [partnerId], references: [id], onDelete: SetNull)
   package    CoursePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
   packageTxn PackageTxn?    @relation(fields: [packageTxnId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, monthKey, mode])
   @@unique([packageTxnId, mode])
+  @@index([partnerId, mode, status, createdAt])
   @@index([mode, status, createdAt])
   @@index([studentId, createdAt])
   @@index([packageTxnId, createdAt])
+}
+
+model Partner {
+  id                       String   @id @default(uuid())
+  name                     String
+  sourceChannelId          String   @unique
+  billTo                   String
+  invoiceDisplayName       String?
+  onlineRatePer45          Int      @default(70)
+  offlineRatePer45         Int      @default(90)
+  lessonMinutes            Int      @default(45)
+  defaultPackageMinutes    Int      @default(450)
+  defaultTopUpMinutes      Int      @default(270)
+  supportsOnlineSettlement Boolean  @default(true)
+  supportsOfflineMonthly   Boolean  @default(true)
+  intakeEnabled            Boolean  @default(false)
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  sourceChannel StudentSourceChannel @relation(fields: [sourceChannelId], references: [id], onDelete: Restrict)
+  settlements   PartnerSettlement[]
+
+  @@unique([name])
+  @@index([isActive, name])
 }
 
 model StudentSourceChannel {
@@ -876,6 +904,7 @@ model StudentSourceChannel {
 
   students       Student[]
   convertedLeads Lead[]    @relation("LeadConvertedSourceChannel")
+  partner        Partner?
 
   @@unique([name])
 }

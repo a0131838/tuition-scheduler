@@ -336,6 +336,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/courses", label: t(lang, "Courses", "课程"), tone: "neutral" as const },
         { href: "/admin/edutrust", label: t(lang, "EduTrust Readiness", "EduTrust 合规整改"), tone: "accent" as const },
         { href: "/admin/edutrust/students", label: t(lang, "EduTrust Student Evidence", "EduTrust 学生证据"), tone: "accent" as const },
+        { href: "/admin/partners", label: t(lang, "Partners", "合作方配置"), tone: "accent" as const },
         { href: "/admin/student-sources", label: t(lang, "Student Sources", "学生来源"), tone: "neutral" as const },
         { href: "/admin/student-types", label: t(lang, "Student Types", "学生类型"), tone: "neutral" as const },
         ...(showManagerConsole

@@ -590,6 +590,7 @@ function buildCalendarDays(monthDate: Date) {
 function resolveTicketSourceFromStudent(student: { sourceChannel?: { name?: string | null } | null }) {
   const raw = String(student.sourceChannel?.name ?? "").trim();
   if (raw.includes("新东方")) return "新东方外包";
+  if (raw.includes("上海新卓思")) return "上海新卓思外包";
   return "自营学生";
 }
 

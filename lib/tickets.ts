@@ -27,6 +27,7 @@ export type TicketTypeTemplate = {
 
 export const TICKET_SOURCE_OPTIONS: OptionItem[] = [
   { value: "新东方外包", zh: "新东方外包", en: "New Oriental Outsourced" },
+  { value: "上海新卓思外包", zh: "上海新卓思外包", en: "Shanghai Xin Zhuo Si Outsourced" },
   { value: "自营学生", zh: "自营学生", en: "In-house Student" },
 ];
 

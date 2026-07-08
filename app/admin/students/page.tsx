@@ -19,8 +19,8 @@ import {
   deleteStudentParentIntakeLink,
   listRecentStudentParentIntakes,
 } from "@/lib/student-parent-intake";
+import { listActivePartners } from "@/lib/partners";
 
-const PARTNER_SOURCE_NAME = "新东方学生";
 const PARTNER_TYPE_NAME = "合作方学生";
 const STUDENT_VIEW_COOKIE = "adminStudentsPreferredView";
 type StudentView = "today" | "today_partner" | "all";
@@ -215,10 +215,11 @@ export default async function StudentsPage({
     redirect(`/admin/students?msg=${encodeURIComponent("Parent intake link deleted")}`);
   }
 
-  const [sources, types, recentParentIntakes] = await Promise.all([
+  const [sources, types, recentParentIntakes, activePartners] = await Promise.all([
     prisma.studentSourceChannel.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.studentType.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     listRecentStudentParentIntakes(8),
+    listActivePartners(),
   ]);
 
   const activeParentIntakes = recentParentIntakes.filter(
@@ -228,7 +229,7 @@ export default async function StudentsPage({
     (intake) => intake.studentId || intake.packageId || intake.contractId
   );
 
-  const partnerSourceId = sources.find((s) => s.name === PARTNER_SOURCE_NAME)?.id ?? "";
+  const partnerSourceIds = activePartners.map((partner) => partner.sourceChannelId).filter(Boolean);
   const partnerTypeId = types.find((x) => x.name === PARTNER_TYPE_NAME)?.id ?? "";
 
   const where: Record<string, unknown> = {};
@@ -238,7 +239,7 @@ export default async function StudentsPage({
     where.createdAt = { gte: todayStart, lt: todayEnd };
   }
   if (view === "today_partner") {
-    if (partnerSourceId) where.sourceChannelId = partnerSourceId;
+    if (partnerSourceIds.length > 0) where.sourceChannelId = { in: partnerSourceIds };
     if (partnerTypeId) where.studentTypeId = partnerTypeId;
   }
   if (q) {
@@ -261,7 +262,7 @@ export default async function StudentsPage({
     prisma.student.count({
       where: {
         createdAt: { gte: todayStart, lt: todayEnd },
-        ...(partnerSourceId ? { sourceChannelId: partnerSourceId } : {}),
+        ...(partnerSourceIds.length > 0 ? { sourceChannelId: { in: partnerSourceIds } } : {}),
         ...(partnerTypeId ? { studentTypeId: partnerTypeId } : {}),
       },
     }),

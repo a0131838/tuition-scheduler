@@ -36,6 +36,11 @@ const XDF_LESSON_PRESETS = [
   { minutes: 1800, label: "40 lessons / 40课时" },
 ] as const;
 
+function isKnownPartnerSource(sourceName?: string | null) {
+  const name = String(sourceName ?? "");
+  return name.includes("新东方") || name.includes("上海新卓思");
+}
+
 function preserveRefresh(router: ReturnType<typeof useRouter>) {
   const y = window.scrollY;
   router.refresh();
@@ -156,7 +161,7 @@ export default function PackageCreateFormClient({
   const isPartnerSettlement = settlementModeValue === "ONLINE_PACKAGE_END" || settlementModeValue === "OFFLINE_MONTHLY";
   const requiresInvoiceGate = !isPartnerSettlement && !invoiceGateExemptValue;
   const totalMinutesNumber = Number(totalMinutesValue || 0);
-  const isXdfPartnerStudent = (selectedStudent?.sourceChannelName ?? "").includes("新东方");
+  const isXdfPartnerStudent = isKnownPartnerSource(selectedStudent?.sourceChannelName);
   const sameCourseActive =
     selectedStudent && selectedCourseId
       ? (selectedStudent.courseIds ?? []).filter((id) => id === selectedCourseId).length
@@ -599,7 +604,7 @@ export default function PackageCreateFormClient({
                     </div>
                     {isXdfPartnerStudent ? (
                       <div style={{ color: "#92400e", fontSize: 13 }}>
-                        XDF partner default: 1 lesson = 45 minutes. / 新东方合作方默认按 45 分钟 = 1 课时。
+                        Partner default: 1 lesson = 45 minutes. / 合作方默认按 45 分钟 = 1 课时。
                       </div>
                     ) : (
                       <div style={{ color: "#475569", fontSize: 13 }}>

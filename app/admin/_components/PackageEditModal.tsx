@@ -75,6 +75,11 @@ const XDF_TOP_UP_PRESETS = [
   { minutes: 1800, label: "40 lessons / 40课时" },
 ] as const;
 
+function isKnownPartnerSource(sourceName?: string | null) {
+  const name = String(sourceName ?? "");
+  return name.includes("新东方") || name.includes("上海新卓思");
+}
+
 export default function PackageEditModal({
   pkg,
   students,
@@ -102,7 +107,7 @@ export default function PackageEditModal({
   const [editPaidValue, setEditPaidValue] = useState(pkg.paid);
   const [showEditAdvanced, setShowEditAdvanced] = useState(false);
   const [topUpMinutesValue, setTopUpMinutesValue] = useState(
-    () => (((pkg.sourceChannelName ?? "").includes("新东方") ? "270" : "600"))
+    () => (isKnownPartnerSource(pkg.sourceChannelName) ? "270" : "600")
   );
   const [useTopUpBatches, setUseTopUpBatches] = useState(false);
   const [topUpBatchRows, setTopUpBatchRows] = useState(() => buildXdfBatchDraftsFromTotalMinutes(270));
@@ -122,7 +127,7 @@ export default function PackageEditModal({
   const settlementNoneLabel = labels.settlementNone ?? "Not Included";
   const settlementOnlineLabel = labels.settlementOnline ?? "Online: Package End";
   const settlementOfflineLabel = labels.settlementOffline ?? "Offline: Monthly";
-  const isXdfPartner = (pkg.sourceChannelName ?? "").includes("新东方");
+  const isXdfPartner = isKnownPartnerSource(pkg.sourceChannelName);
   const isDirectBillingPackage = pkg.settlementMode == null;
   const topUpPresets = isXdfPartner ? XDF_TOP_UP_PRESETS : STANDARD_TOP_UP_PRESETS;
   const currentRemaining = pkg.remainingMinutes ?? 0;
@@ -219,7 +224,7 @@ export default function PackageEditModal({
   const topUpPatternHint = isDirectBillingPackage
     ? "Direct-billing renewals should normally be signed first so the system can auto-create the invoice and add the renewal hours for you. / 直客续费正常应先签续费合同，让系统自动开票并自动增加续费课时。"
     : isXdfPartner
-      ? "New Oriental partner packages usually follow 45-minute lesson bundles. / 新东方合作方课包通常按 45 分钟课时打包。"
+      ? "Partner packages usually follow 45-minute lesson bundles. / 合作方课包通常按 45 分钟课时打包。"
       : "Regular top-ups usually follow 10h / 20h / 40h / 100h package sizes. / 常规增购通常按 10 / 20 / 40 / 100 小时录入。";
 
   const preserveRefresh = (

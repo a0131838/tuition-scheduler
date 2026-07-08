@@ -28,6 +28,7 @@ import {
 } from "@/lib/partner-receipt-approval";
 import { getApprovalRoleConfig } from "@/lib/approval-flow";
 import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
+import { getPartnerByIdOrDefault, listActivePartners } from "@/lib/partners";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatDateOnly, normalizeDateOnly } from "@/lib/date-only";
 import {
   workbenchFilterPanelStyle,
@@ -38,8 +39,6 @@ import {
 } from "../../../_components/workbenchStyles";
 
 const SUPER_ADMIN_EMAIL = "zhaohongwei0880@gmail.com";
-const PARTNER_SOURCE_NAME = "新东方学生";
-const PARTNER_CUSTOMER_NAME = "北京新东方前途出国咨询有限公司";
 
 type Mode = PartnerBillingMode;
 type BillingTab = "invoice" | "payments" | "receipt" | "invoices" | "receipts";
@@ -110,8 +109,8 @@ function billingSectionLinkStyle(background: string, border: string) {
   } as const;
 }
 
-function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null) {
-  const q = `mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
+function withQuery(base: string, mode: Mode, month: string, tab?: BillingTab | null, partnerId?: string | null) {
+  const q = `${partnerId ? `partnerId=${encodeURIComponent(partnerId)}&` : ""}mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}${tab ? `&tab=${encodeURIComponent(tab)}` : ""}`;
   return base.includes("?") ? `${base}&${q}` : `${base}?${q}`;
 }
 
@@ -137,6 +136,9 @@ async function createPartnerInvoiceAction(formData: FormData) {
   const admin = await requireAdmin();
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const selectedSettlementIds = Array.from(
     new Set(
       formData
@@ -146,17 +148,17 @@ async function createPartnerInvoiceAction(formData: FormData) {
     )
   );
 
-  const source = await prisma.studentSourceChannel.findFirst({ where: { name: PARTNER_SOURCE_NAME }, select: { id: true } });
-  if (!source) redirect(withQuery("/admin/reports/partner-settlement/billing?err=source-not-found", mode, month));
-
   const [billedSet, settlementRows] = await Promise.all([
-    getPartnerBilledSettlementIdSet(),
+    getPartnerBilledSettlementIdSet(partner.id),
     prisma.partnerSettlement.findMany({
       where: {
         mode,
         status: "PENDING",
         ...(mode === "OFFLINE_MONTHLY" ? { monthKey: month } : {}),
-        student: { sourceChannelId: source.id },
+        OR: [
+          { partnerId: partner.id },
+          { partnerId: null, student: { sourceChannelId: partner.sourceChannelId } },
+        ],
       },
       include: { student: { select: { name: true } }, package: { include: { course: { select: { name: true } } } } },
       orderBy: [{ createdAt: "asc" }],
@@ -170,10 +172,10 @@ async function createPartnerInvoiceAction(formData: FormData) {
   const candidatesAmount = selectedCandidates.reduce((a, b) => a + Number(b.amount || 0), 0);
   const manualItems = parseManualItems(String(formData.get("manualItems") ?? ""));
   if (mode === "ONLINE_PACKAGE_END" && selectedCandidates.length === 0 && manualItems.length === 0) {
-    redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-settlement-items", mode, month));
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-settlement-items", mode, month, null, partner.id));
   }
   if (mode === "OFFLINE_MONTHLY" && candidates.length === 0 && manualItems.length === 0) {
-    redirect(withQuery("/admin/reports/partner-settlement/billing?err=no-settlement-items", mode, month));
+    redirect(withQuery("/admin/reports/partner-settlement/billing?err=no-settlement-items", mode, month, null, partner.id));
   }
 
   const issueDate = normalizeDateOnly(String(formData.get("issueDate") ?? "").trim(), new Date()) ?? formatDateOnly(new Date());
@@ -183,7 +185,7 @@ async function createPartnerInvoiceAction(formData: FormData) {
     await assertGlobalInvoiceNoAvailable(invoiceNo);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Invoice No. already exists";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
 
   const settlementLines = selectedCandidates.map((r) => {
@@ -237,14 +239,15 @@ async function createPartnerInvoiceAction(formData: FormData) {
 
   try {
     const invoice = await createPartnerInvoice({
-      partnerName: PARTNER_SOURCE_NAME,
+      partnerId: partner.id,
+      partnerName: partner.name,
       mode,
       monthKey: mode === "OFFLINE_MONTHLY" ? month : null,
       settlementIds: selectedCandidates.map((x) => x.id),
       invoiceNo,
       issueDate,
       dueDate: normalizeDateOnly(String(formData.get("dueDate") ?? "").trim(), new Date()) ?? issueDate,
-      billTo: String(formData.get("billTo") ?? "").trim() || PARTNER_CUSTOMER_NAME,
+      billTo: String(formData.get("billTo") ?? "").trim() || partner.billTo,
       paymentTerms: String(formData.get("paymentTerms") ?? "").trim() || "Immediate",
       courseStartDate: onlineCourseStartDate ? formatBusinessDateOnly(onlineCourseStartDate) : null,
       courseEndDate: onlineCourseEndDate ? formatBusinessDateOnly(onlineCourseEndDate) : null,
@@ -258,10 +261,10 @@ async function createPartnerInvoiceAction(formData: FormData) {
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create invoice failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
 
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=invoice-created", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=invoice-created", mode, month, null, partner.id));
 }
 
 async function uploadPaymentRecordAction(formData: FormData) {
@@ -270,12 +273,15 @@ async function uploadPaymentRecordAction(formData: FormData) {
   if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
 
   const file = formData.get("paymentProof");
-  if (!(file instanceof File) || !file.size) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-file", mode, month));
-  if (file.size > 10 * 1024 * 1024) redirect(withQuery("/admin/reports/partner-settlement/billing?err=file-too-large", mode, month));
+  if (!(file instanceof File) || !file.size) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-file", mode, month, null, partner.id));
+  if (file.size > 10 * 1024 * 1024) redirect(withQuery("/admin/reports/partner-settlement/billing?err=file-too-large", mode, month, null, partner.id));
 
-  const dirKey = mode === "OFFLINE_MONTHLY" ? `${mode}_${month}` : mode;
+  const dirKey = mode === "OFFLINE_MONTHLY" ? `${partner.id}_${mode}_${month}` : `${partner.id}_${mode}`;
   const stored = await storeBusinessUpload(file, {
     allowedPrefix: BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs,
     subdirSegments: [dirKey],
@@ -292,24 +298,24 @@ async function uploadPaymentRecordAction(formData: FormData) {
   if (replaceRecordId) {
     try {
       const { oldItem } = await replacePartnerPaymentRecord({
-        recordId: replaceRecordId, mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
+        recordId: replaceRecordId, partnerId: partner.id, mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
         originalFileName: file.name || "payment-proof", storedFileName: stored.storedFileName, relativePath: stored.relativePath, note: paymentNote, uploadedBy: admin.email,
       });
       await deleteStoredBusinessFile(oldItem.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
-      redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-replaced", mode, month));
+      redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-replaced", mode, month, null, partner.id));
     } catch (e) {
       if (isNextRedirectError(e)) throw e;
       await deleteStoredBusinessFile(stored.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
       const msg = e instanceof Error ? e.message : "Replace payment record failed";
-      redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+      redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
     }
   }
 
   await addPartnerPaymentRecord({
-    mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
+    partnerId: partner.id, mode, monthKey: mode === "OFFLINE_MONTHLY" ? month : null, paymentDate, paymentMethod, referenceNo,
     originalFileName: file.name || "payment-proof", storedFileName: stored.storedFileName, relativePath: stored.relativePath, note: paymentNote, uploadedBy: admin.email,
   });
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-uploaded", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-uploaded", mode, month, null, partner.id));
 }
 async function createReceiptAction(formData: FormData) {
   "use server";
@@ -317,16 +323,19 @@ async function createReceiptAction(formData: FormData) {
   if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
-  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-invoice", mode, month));
+  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=choose-invoice", mode, month, null, partner.id));
   const linkedInvoice = await getPartnerInvoiceById(invoiceId);
-  if (!linkedInvoice) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month));
+  if (!linkedInvoice || (linkedInvoice.partnerId && linkedInvoice.partnerId !== partner.id)) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, null, partner.id));
   const receiptNoInput = String(formData.get("receiptNo") ?? "").trim();
   const receiptNo = receiptNoInput || (await buildPartnerReceiptNoForInvoice(invoiceId));
   const receivedFrom = String(formData.get("receivedFrom") ?? "").trim();
   const paidBy = String(formData.get("paidBy") ?? "").trim();
-  if (!receivedFrom) redirect(withQuery("/admin/reports/partner-settlement/billing?err=received-from-required", mode, month));
-  if (!paidBy) redirect(withQuery("/admin/reports/partner-settlement/billing?err=paid-by-required", mode, month));
+  if (!receivedFrom) redirect(withQuery("/admin/reports/partner-settlement/billing?err=received-from-required", mode, month, null, partner.id));
+  if (!paidBy) redirect(withQuery("/admin/reports/partner-settlement/billing?err=paid-by-required", mode, month, null, partner.id));
   try {
     await createPartnerReceipt({
       invoiceId,
@@ -346,9 +355,9 @@ async function createReceiptAction(formData: FormData) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create receipt failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-created", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-created", mode, month, null, partner.id));
 }
 
 async function deleteInvoiceAction(formData: FormData) {
@@ -356,9 +365,13 @@ async function deleteInvoiceAction(formData: FormData) {
   const admin = await requireAdmin();
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const invoiceId = String(formData.get("invoiceId") ?? "").trim();
-  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-invoice", mode, month));
+  if (!invoiceId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-invoice", mode, month, null, partner.id));
   const inv = await getPartnerInvoiceById(invoiceId);
+  if (inv?.partnerId && inv.partnerId !== partner.id) redirect(withQuery("/admin/reports/partner-settlement/billing?err=invoice-not-found", mode, month, null, partner.id));
   try {
     await deletePartnerInvoice({ invoiceId, actorEmail: admin.email });
     if (inv?.settlementIds?.length) {
@@ -366,9 +379,9 @@ async function deleteInvoiceAction(formData: FormData) {
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete invoice failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=invoice-deleted", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=invoice-deleted", mode, month, null, partner.id));
 }
 
 async function deleteReceiptAction(formData: FormData) {
@@ -376,16 +389,19 @@ async function deleteReceiptAction(formData: FormData) {
   const admin = await requireAdmin();
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const receiptId = String(formData.get("receiptId") ?? "").trim();
-  if (!receiptId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-receipt", mode, month));
+  if (!receiptId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-receipt", mode, month, null, partner.id));
   try {
     await deletePartnerReceipt({ receiptId, actorEmail: admin.email });
     await deletePartnerReceiptApproval(receiptId);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete receipt failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-deleted", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=receipt-deleted", mode, month, null, partner.id));
 }
 
 async function deletePaymentRecordAction(formData: FormData) {
@@ -394,22 +410,25 @@ async function deletePaymentRecordAction(formData: FormData) {
   if (!canFinanceOperate(admin.email, admin.role)) redirect("/admin/reports/partner-settlement/billing?err=only-finance");
   const mode = parseMode(String(formData.get("mode") ?? ""));
   const month = String(formData.get("month") ?? "").trim() || monthKey(new Date());
+  const partnerIdInput = String(formData.get("partnerId") ?? "").trim();
+  const partner = await getPartnerByIdOrDefault(partnerIdInput);
+  if (!partner) redirect(withQuery("/admin/reports/partner-settlement/billing?err=partner-not-found", mode, month, null, partnerIdInput));
   const recordId = String(formData.get("recordId") ?? "").trim();
-  if (!recordId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-payment-record", mode, month));
+  if (!recordId) redirect(withQuery("/admin/reports/partner-settlement/billing?err=missing-payment-record", mode, month, null, partner.id));
   try {
     const row = await deletePartnerPaymentRecord({ recordId, actorEmail: admin.email });
     await deleteStoredBusinessFile(row.relativePath, BUSINESS_UPLOAD_PREFIX.partnerPaymentProofs);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete payment record failed";
-    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month));
+    redirect(withQuery(`/admin/reports/partner-settlement/billing?err=${encodeURIComponent(msg)}`, mode, month, null, partner.id));
   }
-  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-record-deleted", mode, month));
+  redirect(withQuery("/admin/reports/partner-settlement/billing?msg=payment-record-deleted", mode, month, null, partner.id));
 }
 
 export default async function PartnerBillingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ mode?: string; month?: string; tab?: string; msg?: string; err?: string; settlementIds?: string }>;
+  searchParams?: Promise<{ partnerId?: string; mode?: string; month?: string; tab?: string; msg?: string; err?: string; settlementIds?: string }>;
 }) {
   const admin = await requireAdmin();
   const current = await getCurrentUser();
@@ -417,6 +436,14 @@ export default async function PartnerBillingPage({
   const sp = await searchParams;
   const mode = parseMode(sp?.mode ?? "ONLINE_PACKAGE_END");
   const month = String(sp?.month ?? monthKey(new Date())).trim();
+  const partnerIdParam = String(sp?.partnerId ?? "").trim();
+  const [activePartners, selectedPartner] = await Promise.all([
+    listActivePartners(),
+    getPartnerByIdOrDefault(partnerIdParam),
+  ]);
+  const partner = selectedPartner ?? activePartners[0] ?? null;
+  if (!partner) return <div style={{ color: "#b00" }}>Partner config not found / 未找到合作方配置</div>;
+  const partnerId = partner.id;
   const requestedTab = parseBillingTab(sp?.tab ?? null);
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
@@ -430,25 +457,30 @@ export default async function PartnerBillingPage({
   );
   const today = formatDateOnly(new Date());
 
-  const source = await prisma.studentSourceChannel.findFirst({ where: { name: PARTNER_SOURCE_NAME }, select: { id: true, name: true } });
-  if (!source) return <div style={{ color: "#b00" }}>Partner source not found: {PARTNER_SOURCE_NAME}</div>;
-
   const financeOpsEnabled = canFinanceOperate(current?.email ?? admin.email, current?.role ?? admin.role);
   const roleCfg = await getApprovalRoleConfig();
   const defaultTab: BillingTab = financeOpsEnabled ? "payments" : "receipts";
   const activeTab: BillingTab = requestedTab ?? defaultTab;
   const tabHref = (tab: BillingTab) =>
-    `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}&tab=${encodeURIComponent(tab)}`;
+    `/admin/reports/partner-settlement/billing?partnerId=${encodeURIComponent(partnerId)}&mode=${encodeURIComponent(mode)}&month=${encodeURIComponent(month)}&tab=${encodeURIComponent(tab)}`;
 
   const [billedSet, settlementRows, billing, deletedInvoiceHistory] = await Promise.all([
-    getPartnerBilledSettlementIdSet(),
+    getPartnerBilledSettlementIdSet(partnerId),
     prisma.partnerSettlement.findMany({
-      where: { mode, status: "PENDING", ...(mode === "OFFLINE_MONTHLY" ? { monthKey: month } : {}), student: { sourceChannelId: source.id } },
+      where: {
+        mode,
+        status: "PENDING",
+        ...(mode === "OFFLINE_MONTHLY" ? { monthKey: month } : {}),
+        OR: [
+          { partnerId },
+          { partnerId: null, student: { sourceChannelId: partner.sourceChannelId } },
+        ],
+      },
       include: { student: { select: { name: true } }, package: { include: { course: { select: { name: true } } } } },
       orderBy: [{ createdAt: "asc" }],
     }),
-    listPartnerBillingByMode(mode, mode === "OFFLINE_MONTHLY" ? month : null),
-    listDeletedPartnerInvoices(mode === "OFFLINE_MONTHLY" ? month : null),
+    listPartnerBillingByMode(mode, mode === "OFFLINE_MONTHLY" ? month : null, partnerId),
+    listDeletedPartnerInvoices(mode === "OFFLINE_MONTHLY" ? month : null, partnerId),
   ]);
   const candidates = settlementRows.filter((x) => !billedSet.has(x.id));
   const selectedSettlementIds =
@@ -502,7 +534,7 @@ export default async function PartnerBillingPage({
               "这里集中处理待结算项目、开票、付款记录和收据跟进。先看摘要，再从工作地图直接跳到当前步骤。"
             )}
           </div>
-          <div><a href="/admin/reports/partner-settlement">{t(lang, "Back to Settlement Center", "返回合作方结算中心")}</a></div>
+          <div><a href={`/admin/reports/partner-settlement?partnerId=${encodeURIComponent(partnerId)}&month=${encodeURIComponent(month)}`}>{t(lang, "Back to Settlement Center", "返回合作方结算中心")}</a></div>
         </div>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
           <div style={workbenchMetricCardStyle("blue")}>
@@ -589,6 +621,7 @@ export default async function PartnerBillingPage({
 
       <div id="partner-billing-controls" style={{ ...cardStyle, position: "sticky", top: 124, zIndex: 5 }}>
         <form method="get" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <label>{t(lang, "Partner", "合作方")}<select name="partnerId" defaultValue={partnerId} style={{ marginLeft: 6 }}>{activePartners.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}</select></label>
           <label>{t(lang, "Mode", "模式")}<select name="mode" defaultValue={mode} style={{ marginLeft: 6 }}><option value="ONLINE_PACKAGE_END">{t(lang, "Online: Package End", "线上：课包结束")}</option><option value="OFFLINE_MONTHLY">{t(lang, "Offline: Monthly", "线下：按月")}</option></select></label>
           <label>{t(lang, "Month", "月份")}<input name="month" type="month" defaultValue={month} style={{ marginLeft: 6 }} /></label>
           <input type="hidden" name="tab" value={activeTab} />
@@ -617,7 +650,7 @@ export default async function PartnerBillingPage({
       <div id="partner-billing-invoice-create" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create partner invoice batch", "创建合作方批量发票")}</h3>
       <form action={createPartnerInvoiceAction}>
-        <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
+        <input type="hidden" name="partnerId" value={partnerId} /><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
         {mode === "ONLINE_PACKAGE_END" ? (
           <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "#f8fbff", padding: 12, marginBottom: 12 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>{t(lang, "Selected online settlement items", "已选线上结算项")}</div>
@@ -670,7 +703,7 @@ export default async function PartnerBillingPage({
           <label>{t(lang, "Issue Date", "开票日期")}<input name="issueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>{t(lang, "Due Date", "到期日期")}<input name="dueDate" type="date" defaultValue={today} style={{ width: "100%" }} /></label>
           <label>{t(lang, "Payment Terms", "付款条款")}<input name="paymentTerms" defaultValue="Immediate" style={{ width: "100%" }} /></label>
-          <label>{t(lang, "Bill To", "账单对象")}<input name="billTo" defaultValue={PARTNER_CUSTOMER_NAME} style={{ width: "100%" }} /></label>
+          <label>{t(lang, "Bill To", "账单对象")}<input name="billTo" defaultValue={partner.billTo} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 3" }}>{t(lang, "Description", "描述")}<input name="description" defaultValue={mode === "OFFLINE_MONTHLY" ? `星辅优学${Number(String(month).split("-")[1] || "0") || month}月线下一对一产品服务费` : "Partner settlement Online batch"} style={{ width: "100%" }} /></label>
           <label style={{ gridColumn: "span 4" }}>
             {t(lang, "Manual extra items (one per line: description | amount)", "手动附加项目（每行一条：描述 | 金额）")}
@@ -692,8 +725,8 @@ export default async function PartnerBillingPage({
       <div id="partner-billing-payments" style={cardStyle}>
       <h3 style={{ marginTop: 0 }}>{t(lang, "Payment records", "付款记录")}</h3>
       {financeOpsEnabled ? (
-        <form action={uploadPaymentRecordAction} encType="multipart/form-data" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
-          <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
+        <form action={uploadPaymentRecordAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <input type="hidden" name="partnerId" value={partnerId} /><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
             <label>{t(lang, "Payment proof file", "付款凭证文件")}<input name="paymentProof" type="file" required style={{ width: "100%" }} /></label>
             <label>{t(lang, "Payment Date", "付款日期")}<input name="paymentDate" type="date" style={{ width: "100%" }} /></label>
@@ -738,6 +771,7 @@ export default async function PartnerBillingPage({
                 <td>{r.uploadedBy}</td>
                 <td>
                   <form action={deletePaymentRecordAction}>
+                    <input type="hidden" name="partnerId" value={partnerId} />
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="recordId" value={r.id} />
@@ -758,7 +792,7 @@ export default async function PartnerBillingPage({
       <h3 style={{ marginTop: 0 }}>{t(lang, "Create Receipt", "创建收据")}</h3>
       {financeOpsEnabled ? (
         <form action={createReceiptAction} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 0 }}>
-          <input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
+          <input type="hidden" name="partnerId" value={partnerId} /><input type="hidden" name="mode" value={mode} /><input type="hidden" name="month" value={month} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
             <label>{t(lang, "Source Invoice", "来源发票")}<select name="invoiceId" defaultValue={availableInvoices[0]?.id ?? ""} required style={{ width: "100%" }}><option value="" disabled>{availableInvoices.length === 0 ? t(lang, "(No available invoice)", "（无可用发票）") : t(lang, "Select an invoice", "请选择发票")}</option>{availableInvoices.map((inv) => (<option key={inv.id} value={inv.id}>{inv.invoiceNo} / {money(inv.totalAmount)}</option>))}</select></label>
             <label>{t(lang, "Receipt number", "收据号")}<input name="receiptNo" placeholder={t(lang, "Leave blank to auto-generate: InvoiceNo-RC", "留空自动生成：InvoiceNo-RC")} style={{ width: "100%" }} /></label>
@@ -860,7 +894,8 @@ export default async function PartnerBillingPage({
               </td>
               <td>
                 <form action={deleteInvoiceAction}>
-                  <input type="hidden" name="mode" value={mode} />
+                  <input type="hidden" name="partnerId" value={partnerId} />
+                    <input type="hidden" name="mode" value={mode} />
                   <input type="hidden" name="month" value={month} />
                   <input type="hidden" name="invoiceId" value={r.id} />
                   <button type="submit" style={dangerBtn}>{t(lang, "Delete", "删除")}</button>
@@ -934,6 +969,7 @@ export default async function PartnerBillingPage({
                 </td>
                 <td>
                   <form action={deleteReceiptAction}>
+                    <input type="hidden" name="partnerId" value={partnerId} />
                     <input type="hidden" name="mode" value={mode} />
                     <input type="hidden" name="month" value={month} />
                     <input type="hidden" name="receiptId" value={r.id} />

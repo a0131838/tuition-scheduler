@@ -5,6 +5,7 @@ import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNulla
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
 
 const PARTNER_BILLING_KEY = "partner_billing_v1";
+const LEGACY_XDF_PARTNER_ID = "legacy-xdf-partner";
 
 export type PartnerBillingMode = "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY";
 
@@ -21,6 +22,7 @@ export type PartnerInvoiceLine = {
 
 export type PartnerInvoiceItem = {
   id: string;
+  partnerId: string | null;
   partnerName: string;
   mode: PartnerBillingMode;
   monthKey: string | null;
@@ -45,6 +47,7 @@ export type PartnerInvoiceItem = {
 
 export type PartnerPaymentRecordItem = {
   id: string;
+  partnerId: string | null;
   mode: PartnerBillingMode;
   monthKey: string | null;
   paymentDate: string | null;
@@ -60,6 +63,7 @@ export type PartnerPaymentRecordItem = {
 
 export type PartnerReceiptItem = {
   id: string;
+  partnerId: string | null;
   mode: PartnerBillingMode;
   monthKey: string | null;
   invoiceId: string;
@@ -88,6 +92,7 @@ type PartnerBillingStore = {
     id: string;
     invoiceId: string;
     invoiceNo: string;
+    partnerId: string | null;
     partnerName: string;
     mode: PartnerBillingMode;
     monthKey: string | null;
@@ -157,6 +162,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
     const mode = String(x.mode ?? "") === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END";
     out.invoices.push({
       id,
+      partnerId: String(x.partnerId ?? "").trim() || null,
       partnerName: String(x.partnerName ?? "").trim() || "Partner",
       mode,
       monthKey: String(x.monthKey ?? "").trim() || null,
@@ -192,6 +198,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
     const mode = String(x.mode ?? "") === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END";
     out.paymentRecords.push({
       id,
+      partnerId: String(x.partnerId ?? "").trim() || null,
       mode,
       monthKey: String(x.monthKey ?? "").trim() || null,
       paymentDate: normalizeNullableDateOnly(x.paymentDate as string | Date | null | undefined),
@@ -217,6 +224,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
     const mode = String(x.mode ?? "") === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END";
     out.receipts.push({
       id,
+      partnerId: String(x.partnerId ?? "").trim() || null,
       mode,
       monthKey: String(x.monthKey ?? "").trim() || null,
       invoiceId,
@@ -250,6 +258,7 @@ function sanitizeStore(input: unknown): PartnerBillingStore {
       id,
       invoiceId,
       invoiceNo,
+      partnerId: String(x.partnerId ?? "").trim() || null,
       partnerName: String(x.partnerName ?? "").trim() || "Partner",
       mode: String(x.mode ?? "") === "OFFLINE_MONTHLY" ? "OFFLINE_MONTHLY" : "ONLINE_PACKAGE_END",
       monthKey: String(x.monthKey ?? "").trim() || null,
@@ -284,6 +293,13 @@ async function loadStore(): Promise<PartnerBillingStore> {
 
 function byNewest<T>(rows: T[], pickTime: (row: T) => string) {
   return [...rows].sort((a, b) => +new Date(pickTime(b)) - +new Date(pickTime(a)));
+}
+
+function partnerMatches(itemPartnerId: string | null | undefined, partnerId?: string | null) {
+  const filter = String(partnerId ?? "").trim();
+  if (!filter) return true;
+  const item = String(itemPartnerId ?? "").trim();
+  return item === filter || (!item && filter === LEGACY_XDF_PARTNER_ID);
 }
 
 function monthKeyFromDate(input: string | Date | null | undefined) {
@@ -351,33 +367,33 @@ export async function getNextPartnerInvoiceNo(issueDate?: string | Date | null) 
   return nextInvoiceNoFromStore(store, monthKeyFromDate(issueDate));
 }
 
-export async function listPartnerBilling() {
+export async function listPartnerBilling(partnerId?: string | null) {
   const store = await loadStore();
   return {
-    invoices: byNewest(store.invoices, (x) => x.createdAt),
-    paymentRecords: byNewest(store.paymentRecords, (x) => x.uploadedAt),
-    receipts: byNewest(store.receipts, (x) => x.createdAt),
+    invoices: byNewest(store.invoices.filter((x) => partnerMatches(x.partnerId, partnerId)), (x) => x.createdAt),
+    paymentRecords: byNewest(store.paymentRecords.filter((x) => partnerMatches(x.partnerId, partnerId)), (x) => x.uploadedAt),
+    receipts: byNewest(store.receipts.filter((x) => partnerMatches(x.partnerId, partnerId)), (x) => x.createdAt),
   };
 }
 
-export async function getPartnerBilledSettlementIdSet() {
+export async function getPartnerBilledSettlementIdSet(partnerId?: string | null) {
   const store = await loadStore();
-  return new Set(store.invoices.flatMap((x) => x.settlementIds));
+  return new Set(store.invoices.filter((x) => partnerMatches(x.partnerId, partnerId)).flatMap((x) => x.settlementIds));
 }
 
-export async function listPartnerBillingByMode(mode: PartnerBillingMode, monthKey?: string | null) {
+export async function listPartnerBillingByMode(mode: PartnerBillingMode, monthKey?: string | null, partnerId?: string | null) {
   const store = await loadStore();
   return {
     invoices: byNewest(
-      store.invoices.filter((x) => x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
+      store.invoices.filter((x) => partnerMatches(x.partnerId, partnerId) && x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
       (x) => x.createdAt,
     ),
     paymentRecords: byNewest(
-      store.paymentRecords.filter((x) => x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
+      store.paymentRecords.filter((x) => partnerMatches(x.partnerId, partnerId) && x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
       (x) => x.uploadedAt,
     ),
     receipts: byNewest(
-      store.receipts.filter((x) => x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
+      store.receipts.filter((x) => partnerMatches(x.partnerId, partnerId) && x.mode === mode && (mode === "ONLINE_PACKAGE_END" ? true : x.monthKey === (monthKey ?? null))),
       (x) => x.createdAt,
     ),
   };
@@ -399,6 +415,7 @@ export async function getPartnerPaymentRecordById(recordId: string) {
 }
 
 export async function createPartnerInvoice(input: {
+  partnerId?: string | null;
   partnerName: string;
   mode: PartnerBillingMode;
   monthKey?: string | null;
@@ -439,6 +456,7 @@ export async function createPartnerInvoice(input: {
 
   const item: PartnerInvoiceItem = {
     id: crypto.randomUUID(),
+    partnerId: input.partnerId?.trim() || null,
     partnerName: input.partnerName.trim() || "Partner",
     mode: input.mode,
     monthKey: input.mode === "OFFLINE_MONTHLY" ? (input.monthKey?.trim() || null) : null,
@@ -487,6 +505,7 @@ export async function createPartnerInvoice(input: {
 }
 
 export async function addPartnerPaymentRecord(input: {
+  partnerId?: string | null;
   mode: PartnerBillingMode;
   monthKey?: string | null;
   paymentDate?: string | null;
@@ -500,6 +519,7 @@ export async function addPartnerPaymentRecord(input: {
 }) {
   const item: PartnerPaymentRecordItem = {
     id: crypto.randomUUID(),
+    partnerId: input.partnerId?.trim() || null,
     mode: input.mode,
     monthKey: input.mode === "OFFLINE_MONTHLY" ? (input.monthKey?.trim() || null) : null,
     paymentDate: normalizeNullableDateOnly(input.paymentDate),
@@ -525,6 +545,7 @@ export async function addPartnerPaymentRecord(input: {
 
 export async function replacePartnerPaymentRecord(input: {
   recordId: string;
+  partnerId?: string | null;
   mode: PartnerBillingMode;
   monthKey?: string | null;
   paymentDate?: string | null;
@@ -546,6 +567,7 @@ export async function replacePartnerPaymentRecord(input: {
       const idx = store.paymentRecords.findIndex((x) => x.id === input.recordId.trim());
       if (idx < 0) throw new Error("Payment record not found");
       oldItem = store.paymentRecords[idx];
+      if (!partnerMatches(oldItem.partnerId, input.partnerId)) throw new Error("Payment record partner mismatch");
       if (oldItem.mode !== input.mode) throw new Error("Payment record mode mismatch");
       if (input.mode === "OFFLINE_MONTHLY" && oldItem.monthKey !== (input.monthKey?.trim() || null)) {
         throw new Error("Payment record month mismatch");
@@ -617,6 +639,14 @@ export async function createPartnerReceipt(input: {
       if (store.receipts.some((x) => x.invoiceId === invoiceId)) {
         throw new Error("This invoice already has a receipt");
       }
+      const paymentRecordId = input.paymentRecordId?.trim() || null;
+      if (paymentRecordId) {
+        const paymentRecord = store.paymentRecords.find((x) => x.id === paymentRecordId);
+        if (!paymentRecord) throw new Error("Payment record not found");
+        if (!partnerMatches(paymentRecord.partnerId, invoice.partnerId)) {
+          throw new Error("Payment record partner mismatch");
+        }
+      }
 
       ensureUniqueReceiptNo(store, normalizedReceiptNo);
       const expectedReceiptNo = `${invoice.invoiceNo}-RC`;
@@ -626,10 +656,11 @@ export async function createPartnerReceipt(input: {
 
       item = {
         id: crypto.randomUUID(),
+        partnerId: invoice.partnerId,
         mode: invoice.mode,
         monthKey: invoice.monthKey,
         invoiceId,
-        paymentRecordId: input.paymentRecordId?.trim() || null,
+        paymentRecordId,
         receiptNo: normalizedReceiptNo,
         receiptDate: normalizeDateOnly(input.receiptDate, new Date()) ?? formatDateOnly(new Date()),
         receivedFrom: input.receivedFrom.trim(),
@@ -689,6 +720,7 @@ export async function deletePartnerInvoice(input: { invoiceId: string; actorEmai
         id: crypto.randomUUID(),
         invoiceId: row.id,
         invoiceNo: row.invoiceNo,
+        partnerId: row.partnerId,
         partnerName: row.partnerName,
         mode: row.mode,
         monthKey: row.monthKey,
@@ -790,10 +822,10 @@ export async function deletePartnerReceipt(input: { receiptId: string; actorEmai
   });
 }
 
-export async function listDeletedPartnerInvoices(monthKey?: string | null) {
+export async function listDeletedPartnerInvoices(monthKey?: string | null, partnerId?: string | null) {
   const store = await loadStore();
   return byNewest(
-    store.deletedInvoices.filter((x) => !monthKey || x.monthKey === monthKey),
+    store.deletedInvoices.filter((x) => partnerMatches(x.partnerId, partnerId) && (!monthKey || x.monthKey === monthKey)),
     (x) => x.deletedAt,
   );
 }

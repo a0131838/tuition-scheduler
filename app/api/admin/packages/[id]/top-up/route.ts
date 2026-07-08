@@ -3,10 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { buildTopUpMinutesUpdate } from "@/lib/package-top-up";
 import { buildPurchaseTxnCreates, normalizePurchaseBatches, sumPurchaseBatchMinutes } from "@/lib/package-purchase-batches";
-
-const PARTNER_SOURCE_NAME = "新东方学生";
-const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
-const DEFAULT_ONLINE_RATE_PER_45 = 70;
+import { DEFAULT_PARTNER_ONLINE_RATE_PER_45 } from "@/lib/partners";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -86,7 +83,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         remainingMinutes: true,
         totalMinutes: true,
         course: { select: { name: true } },
-        student: { select: { sourceChannel: { select: { name: true } } } },
+        student: { select: { sourceChannelId: true } },
       },
     });
     if (!pkgNow) {
@@ -95,11 +92,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const curRemain = pkgNow.remainingMinutes ?? 0;
     const curTotal = pkgNow.totalMinutes ?? pkgNow.remainingMinutes ?? 0;
-    const isPartnerOnlinePackage =
-      pkgNow.settlementMode === "ONLINE_PACKAGE_END" && pkgNow.student?.sourceChannel?.name === PARTNER_SOURCE_NAME;
+    const partner = pkgNow.student?.sourceChannelId
+      ? await tx.partner.findUnique({
+          where: { sourceChannelId: pkgNow.student.sourceChannelId },
+          select: { id: true, onlineRatePer45: true },
+        })
+      : null;
+    const isPartnerOnlinePackage = pkgNow.settlementMode === "ONLINE_PACKAGE_END" && Boolean(partner);
     if (isPartnerOnlinePackage && curRemain <= 0) {
       const totalMinutesNow = Math.max(0, Number(curTotal));
-      const [latestSnapshot, sameSnapshot, rateRow] = await Promise.all([
+      const [latestSnapshot, sameSnapshot] = await Promise.all([
         tx.partnerSettlement.findFirst({
           where: {
             packageId: id,
@@ -117,16 +119,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           },
           select: { id: true },
         }),
-        tx.appSetting.findUnique({ where: { key: ONLINE_RATE_KEY }, select: { value: true } }),
       ]);
       const settledUpTo = Math.max(0, Number(latestSnapshot?.onlineSnapshotTotalMinutes ?? 0));
       const deltaMinutes = Math.max(0, totalMinutesNow - settledUpTo);
-      const rate = Number(rateRow?.value ?? DEFAULT_ONLINE_RATE_PER_45);
-      const ratePer45 = Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_ONLINE_RATE_PER_45;
+      const rate = Number(partner?.onlineRatePer45 ?? DEFAULT_PARTNER_ONLINE_RATE_PER_45);
+      const ratePer45 = Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_PARTNER_ONLINE_RATE_PER_45;
       if (!sameSnapshot && deltaMinutes > 0) {
         try {
           await tx.partnerSettlement.create({
             data: {
+              partnerId: partner!.id,
               studentId: pkgNow.studentId,
               packageId: id,
               onlineSnapshotTotalMinutes: totalMinutesNow,

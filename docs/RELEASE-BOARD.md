@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-02-r204` (Teacher Feedback Desk scans a wider overdue-session window so older valid missing-feedback sessions inside the 90-day lookback are not hidden by the read limit), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-08-r205` (multi-partner settlement configuration keeps New Oriental as the legacy partner while adding Shanghai Xin Zhuo Si and future partner setup), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Multi-partner settlement risk: `2026-07-08-r205` adds `Partner` configuration and `partnerId` filtering to settlement, billing, receipts, payment proofs, and top-up snapshots; verify operators select the correct partner before creating invoices.
 - Teacher-feedback scan risk: `2026-07-02-r204` increases the read-side overdue scan from 600 to 2000 sessions, while keeping the visible work item cap at 500; monitor page load if historical session volume grows substantially.
 - Human memory risk: changes were spread across multiple sessions.
 - Finance menu perception risk: role-based sidebar can look like "missing features" for FINANCE users.
@@ -118,6 +119,46 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-08-r205 Ready
+
+- Scope: add multi-partner settlement configuration, including a Partner setup page, New Oriental legacy backfill, Shanghai Xin Zhuo Si config, and partner-scoped settlement/billing/receipt flows.
+- Business impact:
+  - Admins can open `/admin/partners` to create or update partners, student-source binding, invoice Bill To, online/offline rates, default package minutes, and enabled settlement modes.
+  - Partner settlement and billing pages now include a partner selector so New Oriental and Shanghai Xin Zhuo Si settlement items, invoices, payment proofs, and receipts stay separated.
+  - Existing New Oriental settlement records are preserved and bound to the New Oriental Partner config; old partner-billing JSON without `partnerId` remains visible only in the New Oriental view.
+  - Parent billing, direct-billing contracts, attendance deduction, scheduling, teacher payroll, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260708120000_add_multi_partner_config/migration.sql`
+  - `lib/partners.ts`
+  - `lib/partner-billing.ts`
+  - `app/admin/partners/page.tsx`
+  - `app/admin/reports/partner-settlement/page.tsx`
+  - `app/admin/reports/partner-settlement/billing/page.tsx`
+  - `app/admin/layout.tsx`
+  - `app/admin/packages/PackageCreateFormClient.tsx`
+  - `app/admin/_components/PackageEditModal.tsx`
+  - `app/admin/_components/PurchaseBatchEditor.tsx`
+  - `app/admin/students/page.tsx`
+  - `app/admin/students/[id]/page.tsx`
+  - `app/api/admin/packages/[id]/top-up/route.ts`
+  - `app/api/admin/packages/[id]/ledger/txns/[txnId]/route.ts`
+  - `app/api/exports/partner-invoice-detail/[id]/route.ts`
+  - `lib/tickets.ts`
+  - `docs/tasks/TASK-20260708-multi-partner-settlement-config.md`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend`
+  - `npx prisma migrate deploy`
+  - read-only Prisma check confirmed `新东方` and `上海新卓思` Partner configs exist and 32 legacy New Oriental settlements are bound to `legacy-xdf-partner`.
+  - local smoke checks compiled `/admin/reports/partner-settlement`, `/admin/reports/partner-settlement/billing`, and `/admin/partners`.
+  - `npm run build`
+- Post-deploy verification:
+  - `ssh -i "/Users/zhao111/Documents/sgt系统/.ssh/tuition_scheduler888.pem" -o StrictHostKeyChecking=no ubuntu@43.128.46.115 'cd /home/ubuntu/apps/tuition-scheduler && git rev-parse HEAD && pm2 status tuition-scheduler --no-color'`
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/partners | sed -n '1,12p'`
 
 ## 2026-06-17-r189 Ready
 

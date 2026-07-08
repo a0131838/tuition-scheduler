@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { getPartnerInvoiceById } from "@/lib/partner-billing";
+import { DEFAULT_PARTNER_OFFLINE_RATE_PER_45 } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import { readFile } from "fs/promises";
@@ -7,7 +8,6 @@ import path from "path";
 
 const ATTENDED_STATUSES = new Set(["PRESENT", "LATE"]);
 const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
-const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const TZ = "Asia/Shanghai";
 const SEAL_PATH = path.join(process.cwd(), "public", "gt_edu_seal.png");
 
@@ -59,9 +59,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const range = toBizMonthRangeByMonthKey(monthKey ?? "");
   if (!range) return new Response("Invalid invoice month", { status: 400 });
 
-  const setting = await prisma.appSetting.findUnique({ where: { key: OFFLINE_RATE_KEY }, select: { value: true } });
-  const ratePer45 = Number(setting?.value ?? DEFAULT_OFFLINE_RATE_PER_45);
-  const unitRate = Number.isFinite(ratePer45) && ratePer45 >= 0 ? ratePer45 : DEFAULT_OFFLINE_RATE_PER_45;
+  const [partner, setting] = await Promise.all([
+    invoice.partnerId ? prisma.partner.findUnique({ where: { id: invoice.partnerId }, select: { offlineRatePer45: true } }) : null,
+    prisma.appSetting.findUnique({ where: { key: OFFLINE_RATE_KEY }, select: { value: true } }),
+  ]);
+  const ratePer45 = Number(partner?.offlineRatePer45 ?? setting?.value ?? DEFAULT_PARTNER_OFFLINE_RATE_PER_45);
+  const unitRate = Number.isFinite(ratePer45) && ratePer45 >= 0 ? ratePer45 : DEFAULT_PARTNER_OFFLINE_RATE_PER_45;
 
   const settlementIds = Array.from(new Set(invoice.settlementIds.map((x) => String(x ?? "").trim()).filter(Boolean)));
   const settlements = settlementIds.length

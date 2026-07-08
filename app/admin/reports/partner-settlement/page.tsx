@@ -2,6 +2,7 @@
 import { getLang, t } from "@/lib/i18n";
 import { listPartnerBilling } from "@/lib/partner-billing";
 import { listOnlinePartnerSettlementCandidates } from "@/lib/partner-settlement";
+import { getPartnerByIdOrDefault, listActivePartners, type PartnerConfig } from "@/lib/partners";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { Prisma } from "@prisma/client";
@@ -35,11 +36,6 @@ function settlementSectionLinkStyle(background: string, border: string) {
 }
 
 const BIZ_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
-const PARTNER_SOURCE_NAME = "\u65b0\u4e1c\u65b9\u5b66\u751f";
-const ONLINE_RATE_KEY = "partner_settlement_online_rate_per_45";
-const OFFLINE_RATE_KEY = "partner_settlement_offline_rate_per_45";
-const DEFAULT_ONLINE_RATE_PER_45 = 70;
-const DEFAULT_OFFLINE_RATE_PER_45 = 90;
 const ATTENDED_STATUSES = ["PRESENT", "LATE"] as const;
 const PARTNER_SETTLEMENT_COOKIE = "adminPartnerSettlementPreferredView";
 
@@ -83,14 +79,17 @@ function parseRememberedPartnerSettlementView(raw: string, fallbackMonth: string
   const params = new URLSearchParams(normalizedRaw);
   const monthRaw = String(params.get("month") ?? "").trim();
   const month = parseMonth(monthRaw) ? monthRaw : fallbackMonth;
+  const partnerId = String(params.get("partnerId") ?? "").trim();
   const history = normalizeSettlementHistory(String(params.get("history") ?? "").trim());
   const panel = normalizeSettlementPanel(String(params.get("panel") ?? "").trim());
   const normalized = new URLSearchParams();
+  if (partnerId) normalized.set("partnerId", partnerId);
   if (month !== fallbackMonth) normalized.set("month", month);
   if (history !== "all") normalized.set("history", history);
   if (panel) normalized.set("panel", panel);
   return {
     month,
+    partnerId,
     history,
     panel,
     value: normalized.toString(),
@@ -125,31 +124,6 @@ function isSchemaNotReadyError(err: unknown) {
   return err.code === "P2021" || err.code === "P2022";
 }
 
-function readRateSetting(raw: string | null | undefined, fallback: number) {
-  const n = Number(raw ?? "");
-  if (!Number.isFinite(n) || n < 0) return fallback;
-  return n;
-}
-
-async function getSettlementRates() {
-  const rows = await prisma.appSetting.findMany({
-    where: { key: { in: [ONLINE_RATE_KEY, OFFLINE_RATE_KEY] } },
-    select: { key: true, value: true },
-  });
-  const map = new Map(rows.map((x) => [x.key, x.value]));
-  return {
-    onlineRatePer45: readRateSetting(map.get(ONLINE_RATE_KEY), DEFAULT_ONLINE_RATE_PER_45),
-    offlineRatePer45: readRateSetting(map.get(OFFLINE_RATE_KEY), DEFAULT_OFFLINE_RATE_PER_45),
-  };
-}
-
-async function findPartnerSource() {
-  return prisma.studentSourceChannel.findFirst({
-    where: { name: PARTNER_SOURCE_NAME },
-    select: { id: true, name: true },
-  });
-}
-
 function modeLabel(m: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY" | null) {
   if (m === "ONLINE_PACKAGE_END") return "Online: Package End / 线上：课包完结";
   if (m === "OFFLINE_MONTHLY") return "Offline: Monthly / 线下：按月";
@@ -181,30 +155,28 @@ async function updateRateSettingsAction(formData: FormData) {
   }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
   const onlineRaw = typeof formData.get("onlineRatePer45") === "string" ? String(formData.get("onlineRatePer45")) : "";
   const offlineRaw = typeof formData.get("offlineRatePer45") === "string" ? String(formData.get("offlineRatePer45")) : "";
   const onlineRate = Number(onlineRaw);
   const offlineRate = Number(offlineRaw);
   if (!Number.isFinite(onlineRate) || onlineRate < 0 || !Number.isFinite(offlineRate) || offlineRate < 0) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-rate`);
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "invalid-rate" }));
+  }
+  const partner = await getPartnerByIdOrDefault(partnerId);
+  if (!partner) {
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
   }
 
-  await prisma.$transaction([
-    prisma.appSetting.upsert({
-      where: { key: ONLINE_RATE_KEY },
-      create: { key: ONLINE_RATE_KEY, value: String(onlineRate) },
-      update: { value: String(onlineRate) },
-    }),
-    prisma.appSetting.upsert({
-      where: { key: OFFLINE_RATE_KEY },
-      create: { key: OFFLINE_RATE_KEY, value: String(offlineRate) },
-      update: { value: String(offlineRate) },
-    }),
-  ]);
+  await prisma.partner.update({
+    where: { id: partner.id },
+    data: { onlineRatePer45: Math.round(onlineRate), offlineRatePer45: Math.round(offlineRate) },
+  });
 
   revalidatePath("/admin/reports/partner-settlement");
   redirect(
     buildSettlementPageUrl(month, {
+      partnerId: partner.id,
       msg: "rate-updated",
       settlementFlow: "rate-updated",
       panel: "setup",
@@ -221,24 +193,24 @@ async function createOnlineSettlementAction(formData: FormData) {
 
   const packageTxnId = typeof formData.get("packageTxnId") === "string" ? String(formData.get("packageTxnId")).trim() : "";
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
   if (!packageTxnId) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-package`);
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "invalid-package" }));
   }
 
-  const source = await findPartnerSource();
-  if (!source) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=source-not-found`);
+  const partner = await getPartnerByIdOrDefault(partnerId);
+  if (!partner) {
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
   }
 
   const [candidate] = await listOnlinePartnerSettlementCandidates({
-    sourceChannelId: source.id,
+    sourceChannelId: partner.sourceChannelId,
     packageTxnIds: [packageTxnId],
   });
   if (!candidate) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
+    redirect(buildSettlementPageUrl(month, { partnerId: partner.id, msg: "already-settled" }));
   }
 
-  const rates = await getSettlementRates();
   const closeoutNote = candidate.isPartialCloseout
     ? ` | Partial closeout: forfeited ${candidate.forfeitedMinutes} mins`
     : "";
@@ -257,6 +229,7 @@ async function createOnlineSettlementAction(formData: FormData) {
       created = await prisma.partnerSettlement.update({
         where: { id: existingReverted.id },
         data: {
+          partnerId: partner.id,
           studentId: candidate.studentId,
           packageId: candidate.packageId,
           packageTxnId: candidate.packageTxnId,
@@ -264,7 +237,7 @@ async function createOnlineSettlementAction(formData: FormData) {
           mode: "ONLINE_PACKAGE_END",
           status: "PENDING",
           hours: Number(candidate.purchasedHours.toFixed(2)),
-          amount: calcAmountByRatePer45(candidate.purchasedMinutes, rates.onlineRatePer45),
+          amount: calcAmountByRatePer45(candidate.purchasedMinutes, partner.onlineRatePer45),
           settlementStartAt: candidate.settlementStartAt,
           settlementEndAt: candidate.settlementEndAt,
           revertedAt: null,
@@ -276,6 +249,7 @@ async function createOnlineSettlementAction(formData: FormData) {
     } else {
       created = await prisma.partnerSettlement.create({
         data: {
+          partnerId: partner.id,
           studentId: candidate.studentId,
           packageId: candidate.packageId,
           packageTxnId: candidate.packageTxnId,
@@ -283,7 +257,7 @@ async function createOnlineSettlementAction(formData: FormData) {
           mode: "ONLINE_PACKAGE_END",
           status: "PENDING",
           hours: Number(candidate.purchasedHours.toFixed(2)),
-          amount: calcAmountByRatePer45(candidate.purchasedMinutes, rates.onlineRatePer45),
+          amount: calcAmountByRatePer45(candidate.purchasedMinutes, partner.onlineRatePer45),
           settlementStartAt: candidate.settlementStartAt,
           settlementEndAt: candidate.settlementEndAt,
           note: `Online package tranche settled: ${candidate.courseName} | packageId=${candidate.packageId} | packageTxnId=${candidate.packageTxnId} | ${formatBusinessDateOnly(candidate.settlementStartAt)} -> ${formatBusinessDateOnly(candidate.settlementEndAt)}${closeoutNote}`,
@@ -293,7 +267,7 @@ async function createOnlineSettlementAction(formData: FormData) {
     }
   } catch (err) {
     if (isSchemaNotReadyError(err)) {
-      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+      redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "schema-not-ready" }));
     }
     throw err;
   }
@@ -301,6 +275,7 @@ async function createOnlineSettlementAction(formData: FormData) {
   revalidatePath("/admin/reports/partner-settlement");
   redirect(
     buildSettlementPageUrl(month, {
+      partnerId: partner.id,
       msg: "online-created",
       settlementFlow: "online-created",
       focusType: "record",
@@ -318,10 +293,15 @@ async function createOfflineSettlementAction(formData: FormData) {
 
   const studentId = typeof formData.get("studentId") === "string" ? String(formData.get("studentId")) : "";
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
   const range = toBizMonthRange(month);
 
   if (!studentId || !range) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-offline-input`);
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "invalid-offline-input" }));
+  }
+  const partner = await getPartnerByIdOrDefault(partnerId);
+  if (!partner) {
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
   }
 
   let existed: Awaited<ReturnType<typeof prisma.partnerSettlement.findFirst>>;
@@ -331,13 +311,13 @@ async function createOfflineSettlementAction(formData: FormData) {
     });
   } catch (err) {
     if (isSchemaNotReadyError(err)) {
-      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+      redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "schema-not-ready" }));
     }
     throw err;
   }
 
   if (existed) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&msg=already-settled`);
+    redirect(buildSettlementPageUrl(month, { partnerId: partner.id, msg: "already-settled" }));
   }
 
   const rows = await prisma.attendance.findMany({
@@ -366,18 +346,18 @@ async function createOfflineSettlementAction(formData: FormData) {
     if (courseName) courseNames.add(courseName);
   }
   const courseNote = Array.from(courseNames).join(", ");
-  const rates = await getSettlementRates();
 
   let created: { id: string };
   try {
     created = await prisma.partnerSettlement.create({
       data: {
+        partnerId: partner.id,
         studentId,
         monthKey: month,
         mode: "OFFLINE_MONTHLY",
         status: "PENDING",
         hours: Number(toHours(totalMinutes).toFixed(2)),
-        amount: calcAmountByRatePer45(totalMinutes, rates.offlineRatePer45),
+        amount: calcAmountByRatePer45(totalMinutes, partner.offlineRatePer45),
         note: `Offline monthly settlement ${month}${courseNote ? ` | Courses: ${courseNote}` : ""}${
           chargedExcusedCount > 0 ? ` | Charged excused sessions: ${chargedExcusedCount}` : ""
         }`,
@@ -385,7 +365,7 @@ async function createOfflineSettlementAction(formData: FormData) {
     });
   } catch (err) {
     if (isSchemaNotReadyError(err)) {
-      redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=schema-not-ready`);
+      redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "schema-not-ready" }));
     }
     throw err;
   }
@@ -393,6 +373,7 @@ async function createOfflineSettlementAction(formData: FormData) {
   revalidatePath("/admin/reports/partner-settlement");
   redirect(
     buildSettlementPageUrl(month, {
+      partnerId: partner.id,
       msg: "offline-created",
       settlementFlow: "offline-created",
       focusType: "record",
@@ -409,18 +390,20 @@ async function clearSettlementRecordsAction(formData: FormData) {
   }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
-  const source = await findPartnerSource();
-  if (!source) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=source-not-found`);
+  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
+  const partner = await getPartnerByIdOrDefault(partnerId);
+  if (!partner) {
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
   }
 
   await prisma.partnerSettlement.deleteMany({
-    where: { student: { sourceChannelId: source.id } },
+    where: { OR: [{ partnerId: partner.id }, { partnerId: null, student: { sourceChannelId: partner.sourceChannelId } }] },
   });
 
   revalidatePath("/admin/reports/partner-settlement");
   redirect(
     buildSettlementPageUrl(month, {
+      partnerId: partner.id,
       msg: "settlements-cleared",
       settlementFlow: "settlements-cleared",
       focusType: null,
@@ -437,28 +420,30 @@ async function revertSettlementRecordAction(formData: FormData) {
   }
 
   const month = typeof formData.get("month") === "string" ? String(formData.get("month")) : monthKey(new Date());
+  const partnerId = typeof formData.get("partnerId") === "string" ? String(formData.get("partnerId")).trim() : "";
   const settlementId = typeof formData.get("settlementId") === "string" ? String(formData.get("settlementId")).trim() : "";
   if (!settlementId) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-settlement`);
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "invalid-settlement" }));
   }
 
-  const source = await findPartnerSource();
-  if (!source) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=source-not-found`);
+  const partner = await getPartnerByIdOrDefault(partnerId);
+  if (!partner) {
+    redirect(buildSettlementPageUrl(month, { partnerId, err: "partner-not-found" }));
   }
 
   const row = await prisma.partnerSettlement.findUnique({
     where: { id: settlementId },
-    select: { id: true, student: { select: { sourceChannelId: true } } },
+    select: { id: true, partnerId: true, student: { select: { sourceChannelId: true } } },
   });
-  if (!row || row.student?.sourceChannelId !== source.id) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=invalid-settlement`);
+  const belongsToPartner = row?.partnerId === partner.id || (!row?.partnerId && row?.student?.sourceChannelId === partner.sourceChannelId);
+  if (!row || !belongsToPartner) {
+    redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "invalid-settlement" }));
   }
 
-  const billing = await listPartnerBilling();
+  const billing = await listPartnerBilling(partnerId);
   const linked = billing.invoices.some((inv) => inv.settlementIds.includes(settlementId));
   if (linked) {
-    redirect(`/admin/reports/partner-settlement?month=${encodeURIComponent(month)}&err=settlement-invoiced`);
+    redirect(buildSettlementPageUrl(month, { partnerId: partner.id, err: "settlement-invoiced" }));
   }
 
   await prisma.partnerSettlement.update({
@@ -472,6 +457,7 @@ async function revertSettlementRecordAction(formData: FormData) {
   revalidatePath("/admin/reports/partner-settlement");
   redirect(
     buildSettlementPageUrl(month, {
+      partnerId: partner.id,
       msg: "settlement-reverted",
       settlementFlow: "settlement-reverted",
       focusType: null,
@@ -493,6 +479,7 @@ export default async function PartnerSettlementPage({
     history?: string;
     panel?: string;
     settlementFlow?: string;
+    partnerId?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -502,9 +489,11 @@ export default async function PartnerSettlementPage({
   const defaultMonth = monthKey(new Date());
   const clearView = String(sp?.clearView ?? "").trim() === "1";
   const hasMonthParam = typeof sp?.month === "string";
+  const hasPartnerParam = typeof sp?.partnerId === "string";
   const hasHistoryParam = typeof sp?.history === "string";
   const hasPanelParam = typeof sp?.panel === "string";
   const monthParam = hasMonthParam ? String(sp.month ?? "") : "";
+  const partnerParam = hasPartnerParam ? String(sp.partnerId ?? "").trim() : "";
   const msg = sp?.msg ?? "";
   const err = sp?.err ?? "";
   const focusType = sp?.focusType ?? "";
@@ -515,6 +504,7 @@ export default async function PartnerSettlementPage({
   const canResumeRememberedView =
     !clearView &&
     !hasMonthParam &&
+    !hasPartnerParam &&
     !hasHistoryParam &&
     !hasPanelParam &&
     !focusType &&
@@ -527,22 +517,29 @@ export default async function PartnerSettlementPage({
     ? parseRememberedPartnerSettlementView(cookieStore.get(PARTNER_SETTLEMENT_COOKIE)?.value ?? "", defaultMonth)
     : {
         month: defaultMonth,
+        partnerId: "",
         history: "all" as const,
         panel: "",
         value: "",
       };
   const month = hasMonthParam ? (parseMonth(monthParam) ? monthParam : defaultMonth) : rememberedView.month;
+  const activePartners = await listActivePartners();
+  const selectedPartner =
+    (hasPartnerParam ? await getPartnerByIdOrDefault(partnerParam) : await getPartnerByIdOrDefault(rememberedView.partnerId)) ??
+    activePartners[0] ??
+    null;
+  const partnerId = selectedPartner?.id ?? "";
   const historyFilter = hasHistoryParam ? normalizeSettlementHistory(historyParam) : rememberedView.history;
   const openPanel = hasPanelParam ? normalizeSettlementPanel(panelParam) : rememberedView.panel;
   const resumedRememberedView = canResumeRememberedView && Boolean(rememberedView.value);
   const rememberedViewValue = (() => {
     const params = new URLSearchParams();
+    if (partnerId) params.set("partnerId", partnerId);
     if (month !== defaultMonth) params.set("month", month);
     if (historyFilter !== "all") params.set("history", historyFilter);
     if (openPanel) params.set("panel", openPanel);
     return params.toString();
   })();
-  const rates = await getSettlementRates();
   const isFinanceOnlyUser = (current?.role ?? admin.role) === "FINANCE";
 
   const monthRange = toBizMonthRange(month);
@@ -555,12 +552,11 @@ export default async function PartnerSettlementPage({
     );
   }
 
-  const source = await findPartnerSource();
-  if (!source) {
+  if (!selectedPartner) {
     return (
       <div>
         <h2>{t(lang, "Partner Settlement", "合作方结算中心")}</h2>
-        <div style={{ color: "#b00" }}>{t(lang, "Source channel not found.", "未找到来源渠道。")}</div>
+        <div style={{ color: "#b00" }}>{t(lang, "Partner config not found.", "未找到合作方配置。")}</div>
       </div>
     );
   }
@@ -632,7 +628,7 @@ export default async function PartnerSettlementPage({
 
   try {
     modePackages = await prisma.coursePackage.findMany({
-      where: { student: { sourceChannelId: source.id } },
+      where: { student: { sourceChannelId: selectedPartner.sourceChannelId } },
       orderBy: [{ updatedAt: "desc" }],
       select: {
         id: true,
@@ -646,16 +642,16 @@ export default async function PartnerSettlementPage({
       take: 500,
     });
 
-    onlinePending = (await listOnlinePartnerSettlementCandidates({ sourceChannelId: source.id })).map((row) => ({
+    onlinePending = (await listOnlinePartnerSettlementCandidates({ sourceChannelId: selectedPartner.sourceChannelId })).map((row) => ({
       ...row,
-      amount: calcAmountByRatePer45(row.purchasedMinutes, rates.onlineRatePer45),
+      amount: calcAmountByRatePer45(row.purchasedMinutes, selectedPartner.onlineRatePer45),
     }));
 
     const [offlineAttendanceRows, offlineSettledRows, offlineAuditRows] = await Promise.all([
       prisma.attendance.findMany({
         where: {
           package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
-          student: { sourceChannelId: source.id },
+          student: { sourceChannelId: selectedPartner.sourceChannelId },
           session: {
             startAt: { gte: monthRange.start, lt: monthRange.end },
             feedbacks: { some: { content: { not: "" } } },
@@ -683,14 +679,17 @@ export default async function PartnerSettlementPage({
         where: {
           mode: "OFFLINE_MONTHLY",
           monthKey: month,
-          student: { sourceChannelId: source.id },
+          OR: [
+            { partnerId },
+            { partnerId: null, student: { sourceChannelId: selectedPartner.sourceChannelId } },
+          ],
         },
         select: { id: true, studentId: true },
       }),
       prisma.attendance.findMany({
         where: {
           package: { is: { settlementMode: "OFFLINE_MONTHLY" } },
-          student: { sourceChannelId: source.id },
+          student: { sourceChannelId: selectedPartner.sourceChannelId },
           session: {
             startAt: { gte: monthRange.start, lt: monthRange.end },
           },
@@ -777,12 +776,15 @@ export default async function PartnerSettlementPage({
       .map(([studentId, agg]) => ({ studentId, ...agg }))
       .sort((a, b) => a.studentName.localeCompare(b.studentName));
 
-    const billing = await listPartnerBilling();
+    const billing = await listPartnerBilling(partnerId);
     const settlementIdList = Array.from(new Set(billing.invoices.flatMap((x) => x.settlementIds)));
     recentPendingSettlements = await prisma.partnerSettlement.findMany({
       where: {
         status: "PENDING",
-        student: { sourceChannelId: source.id },
+        OR: [
+          { partnerId },
+          { partnerId: null, student: { sourceChannelId: selectedPartner.sourceChannelId } },
+        ],
         ...(settlementIdList.length ? { id: { notIn: settlementIdList } } : {}),
       },
       select: {
@@ -821,7 +823,13 @@ export default async function PartnerSettlementPage({
 
     const settlementRows = settlementIdList.length
       ? await prisma.partnerSettlement.findMany({
-          where: { id: { in: settlementIdList }, student: { sourceChannelId: source.id } },
+          where: {
+            id: { in: settlementIdList },
+            OR: [
+              { partnerId },
+              { partnerId: null, student: { sourceChannelId: selectedPartner.sourceChannelId } },
+            ],
+          },
           select: {
             id: true,
             hours: true,
@@ -859,7 +867,7 @@ export default async function PartnerSettlementPage({
       schemaNotReady = true;
       modePackages = await prisma.coursePackage
         .findMany({
-          where: { student: { sourceChannelId: source.id } },
+          where: { student: { sourceChannelId: selectedPartner.sourceChannelId } },
           orderBy: [{ updatedAt: "desc" }],
           select: {
             id: true,
@@ -879,7 +887,7 @@ export default async function PartnerSettlementPage({
 
   const onlinePendingTotalAmount = onlinePending.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
   const offlinePendingTotalAmount = offlinePending.reduce(
-    (acc, r) => acc + calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45),
+    (acc, r) => acc + calcAmountByRatePer45(r.totalMinutes, selectedPartner.offlineRatePer45),
     0,
   );
   const cardStyle = { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 14, background: "#fff" };
@@ -893,6 +901,7 @@ export default async function PartnerSettlementPage({
   const sectionHintStyle = { color: "#6b7280", fontSize: 13, marginTop: -4, marginBottom: 12 } as const;
   const buildPageHref = (overrides: Record<string, string | null | undefined>) => {
     const params = new URLSearchParams();
+    params.set("partnerId", partnerId);
     params.set("month", month);
     if (historyFilter && historyFilter !== "all") params.set("history", historyFilter);
     if (focusType) params.set("focusType", focusType);
@@ -903,6 +912,20 @@ export default async function PartnerSettlementPage({
       else params.set(key, value);
     }
     return `/admin/reports/partner-settlement?${params.toString()}`;
+  };
+  const buildBillingHref = (
+    mode: "ONLINE_PACKAGE_END" | "OFFLINE_MONTHLY",
+    targetMonth: string,
+    extras?: Record<string, string | null | undefined>,
+  ) => {
+    const params = new URLSearchParams();
+    params.set("partnerId", partnerId);
+    params.set("mode", mode);
+    params.set("month", targetMonth);
+    for (const [key, value] of Object.entries(extras ?? {})) {
+      if (value) params.set(key, value);
+    }
+    return `/admin/reports/partner-settlement/billing?${params.toString()}`;
   };
   const translatedMsg =
     msg === "rate-updated"
@@ -945,8 +968,8 @@ export default async function PartnerSettlementPage({
               ? { href: "#partner-record-" + focusedRecordRow.id, label: t(lang, "Jump to new record", "跳到新记录") }
               : null,
             focusedRecordRow
-              ? { href: `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}&settlementIds=${encodeURIComponent(focusedRecordRow.id)}`, label: t(lang, "Open billing workspace", "打开账单工作区") }
-              : { href: `/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`, label: t(lang, "Open billing workspace", "打开账单工作区") },
+              ? { href: buildBillingHref("ONLINE_PACKAGE_END", month, { settlementIds: focusedRecordRow.id }), label: t(lang, "Open billing workspace", "打开账单工作区") }
+              : { href: buildBillingHref("ONLINE_PACKAGE_END", month), label: t(lang, "Open billing workspace", "打开账单工作区") },
             onlinePending[0]
               ? { href: buildPageHref({ focusType: "online", focusId: onlinePending[0].id }) + "#partner-online-" + onlinePending[0].id, label: t(lang, "Open next online item", "打开下一条线上项") }
               : null,
@@ -963,7 +986,7 @@ export default async function PartnerSettlementPage({
             focusedRecordRow
               ? { href: "#partner-record-" + focusedRecordRow.id, label: t(lang, "Jump to new record", "跳到新记录") }
               : null,
-            { href: `/admin/reports/partner-settlement/billing?mode=OFFLINE_MONTHLY&month=${encodeURIComponent(month)}`, label: t(lang, "Open billing workspace", "打开账单工作区") },
+            { href: buildBillingHref("OFFLINE_MONTHLY", month), label: t(lang, "Open billing workspace", "打开账单工作区") },
             offlinePending[0]
               ? { href: buildPageHref({ focusType: "offline", focusId: offlinePending[0].studentId }) + "#partner-offline-" + offlinePending[0].studentId, label: t(lang, "Open next offline item", "打开下一条线下项") }
               : null,
@@ -1036,7 +1059,7 @@ export default async function PartnerSettlementPage({
           hours: row.hours,
           note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
           actionKind: "link" as const,
-          actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(row.mode)}&month=${encodeURIComponent(row.monthKey ?? month)}${row.mode === "ONLINE_PACKAGE_END" ? `&settlementIds=${encodeURIComponent(row.id)}` : ""}`,
+          actionHref: buildBillingHref(row.mode, row.monthKey ?? month, row.mode === "ONLINE_PACKAGE_END" ? { settlementIds: row.id } : undefined),
           actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
           hiddenMonth: row.monthKey ?? month,
         };
@@ -1067,7 +1090,7 @@ export default async function PartnerSettlementPage({
           title: t(lang, "Offline settlement candidate", "线下结算候选"),
           name: row.studentName,
           summary: month,
-          amount: calcAmountByRatePer45(row.totalMinutes, rates.offlineRatePer45),
+          amount: calcAmountByRatePer45(row.totalMinutes, selectedPartner.offlineRatePer45),
           hours: row.hours,
           note: t(lang, "Next step: confirm attendance and feedback, then create the monthly settlement.", "下一步：确认点名与反馈后，生成该学生的月度结算。"),
           actionKind: "create-offline" as const,
@@ -1109,7 +1132,7 @@ export default async function PartnerSettlementPage({
         hours: defaultRecord.hours,
         note: t(lang, "Next step: review this record in billing workspace or revert it if it should not proceed.", "下一步：到账单工作区处理，或在确认不应继续时撤回。"),
         actionKind: "link" as const,
-        actionHref: `/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(defaultRecord.mode)}&month=${encodeURIComponent(defaultRecord.monthKey ?? month)}${defaultRecord.mode === "ONLINE_PACKAGE_END" ? `&settlementIds=${encodeURIComponent(defaultRecord.id)}` : ""}`,
+        actionHref: buildBillingHref(defaultRecord.mode, defaultRecord.monthKey ?? month, defaultRecord.mode === "ONLINE_PACKAGE_END" ? { settlementIds: defaultRecord.id } : undefined),
         actionLabel: t(lang, "Review billing record", "处理这条开票记录"),
         hiddenMonth: defaultRecord.monthKey ?? month,
       };
@@ -1147,8 +1170,8 @@ export default async function PartnerSettlementPage({
           <div style={{ color: "#666" }}>
             {t(
               lang,
-              `Only students with source channel = ${PARTNER_SOURCE_NAME} are included.`,
-              `仅纳入来源为${PARTNER_SOURCE_NAME}的学生。`
+              `Partner: ${selectedPartner.name} · Source channel: ${selectedPartner.sourceChannelName}`,
+              `合作方：${selectedPartner.name} · 学生来源：${selectedPartner.sourceChannelName}`
             )}
           </div>
           <div style={{ color: "#475569", maxWidth: 940 }}>
@@ -1287,11 +1310,19 @@ export default async function PartnerSettlementPage({
       <div style={{ ...cardStyle, position: "sticky", top: 118, zIndex: 5 }}>
         <form method="GET" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label>
+            {t(lang, "Partner", "合作方")}:
+            <select name="partnerId" defaultValue={partnerId} style={{ marginLeft: 6 }}>
+              {activePartners.map((partner) => (
+                <option key={partner.id} value={partner.id}>{partner.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
             {t(lang, "Month", "月份")}: <input type="month" name="month" defaultValue={month} style={{ marginLeft: 6 }} />
           </label>
           <button type="submit" data-apply-submit="1" style={primaryBtn}>{t(lang, "Apply", "应用")}</button>
           <a
-            href={`/admin/reports/partner-settlement/billing?mode=ONLINE_PACKAGE_END&month=${encodeURIComponent(month)}`}
+            href={buildBillingHref("ONLINE_PACKAGE_END", month)}
             style={{ ...secondaryBtn, marginLeft: 8, textDecoration: "none", display: "inline-block" }}
           >
             {t(lang, "Open Billing Workspace", "打开账单工作区")}
@@ -1442,6 +1473,7 @@ export default async function PartnerSettlementPage({
                   !isFinanceOnlyUser ? (
                     <form action={createOnlineSettlementAction}>
                       <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
                       <input type="hidden" name="packageTxnId" value={selectedItem.packageTxnId} />
                       <button type="submit" style={primaryBtn}>
                         {selectedItem.actionLabel}
@@ -1453,6 +1485,7 @@ export default async function PartnerSettlementPage({
                 ) : !isFinanceOnlyUser ? (
                   <form action={createOfflineSettlementAction}>
                     <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
                     <input type="hidden" name="studentId" value={selectedItem.studentId} />
                     <button type="submit" style={primaryBtn}>
                       {selectedItem.actionLabel}
@@ -1493,6 +1526,7 @@ export default async function PartnerSettlementPage({
         </div>
         {!isFinanceOnlyUser ? <form action={clearSettlementRecordsAction} style={{ marginBottom: 8 }}>
           <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
           <button type="submit" style={dangerBtn}>
             {t(lang, "Clear Test Records", "清空测试结算记录")}
           </button>
@@ -1557,7 +1591,7 @@ export default async function PartnerSettlementPage({
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <a
-                        href={`/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(r.mode)}&month=${encodeURIComponent(r.monthKey ?? month)}${r.mode === "ONLINE_PACKAGE_END" ? `&settlementIds=${encodeURIComponent(r.id)}` : ""}`}
+                        href={buildBillingHref(r.mode, r.monthKey ?? month, r.mode === "ONLINE_PACKAGE_END" ? { settlementIds: r.id } : undefined)}
                         style={{ ...secondaryBtn, textDecoration: "none", display: "inline-block" }}
                       >
                         {t(lang, "Open billing", "打开账单")}
@@ -1565,6 +1599,7 @@ export default async function PartnerSettlementPage({
                       {!isFinanceOnlyUser ? (
                         <form action={revertSettlementRecordAction}>
                           <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
                           <input type="hidden" name="settlementId" value={r.id} />
                           <button type="submit" style={dangerBtn}>{t(lang, "Return to queue", "退回队列")}</button>
                         </form>
@@ -1664,6 +1699,7 @@ export default async function PartnerSettlementPage({
                   {!isFinanceOnlyUser ? (
                     <form action={createOnlineSettlementAction}>
                       <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
                       <input type="hidden" name="packageTxnId" value={p.packageTxnId} />
                       <button type="submit" style={primaryBtn}>{t(lang, "Create Bill", "生成账单")}</button>
                     </form>
@@ -1807,7 +1843,7 @@ export default async function PartnerSettlementPage({
                 <td>{r.sessions}</td>
                 <td style={{ color: r.chargedExcusedSessions > 0 ? "#9a3412" : "#64748b", fontWeight: 700 }}>{r.chargedExcusedSessions}</td>
                 <td>{r.hours}</td>
-                <td>{calcAmountByRatePer45(r.totalMinutes, rates.offlineRatePer45)}</td>
+                <td>{calcAmountByRatePer45(r.totalMinutes, selectedPartner.offlineRatePer45)}</td>
                 <td>
                   <a href={buildPageHref({ focusType: "offline", focusId: r.studentId })} style={{ fontWeight: 700 }}>
                     {t(lang, "Focus", "聚焦")}
@@ -1818,6 +1854,7 @@ export default async function PartnerSettlementPage({
                     <form action={createOfflineSettlementAction}>
                       <input type="hidden" name="studentId" value={r.studentId} />
                       <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
                       <button type="submit" style={primaryBtn}>{t(lang, "Create Bill", "生成账单")}</button>
                     </form>
                   ) : (
@@ -1900,7 +1937,7 @@ export default async function PartnerSettlementPage({
                       <td>{formatBusinessDateTime(new Date(r.createdAt))}</td>
                       <td>
                         <a
-                          href={`/admin/reports/partner-settlement/billing?mode=${encodeURIComponent(r.mode)}&month=${encodeURIComponent(r.monthKey ?? month)}`}
+                          href={buildBillingHref(r.mode, r.monthKey ?? month)}
                         >
                           {r.invoiceNo}
                         </a>
@@ -1937,13 +1974,14 @@ export default async function PartnerSettlementPage({
           <h3 style={sectionTitleStyle}>{t(lang, "Rate Settings", "费率设置")}</h3>
           <form action={updateRateSettingsAction} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
             <input type="hidden" name="month" value={month} />
+                      <input type="hidden" name="partnerId" value={partnerId} />
             <label>
               {t(lang, "Online rate per 45min", "线上每45分钟单价")}:
-              <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+              <input name="onlineRatePer45" type="number" min={0} step={0.01} defaultValue={selectedPartner.onlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
             </label>
             <label>
               {t(lang, "Offline rate per 45min", "线下每45分钟单价")}:
-              <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={rates.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
+              <input name="offlineRatePer45" type="number" min={0} step={0.01} defaultValue={selectedPartner.offlineRatePer45} style={{ marginLeft: 6, width: 110 }} />
             </label>
             <button type="submit" style={primaryBtn}>{t(lang, "Save Rates", "保存费率")}</button>
           </form>

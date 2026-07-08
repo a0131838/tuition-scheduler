@@ -89,7 +89,7 @@ export default function PurchaseBatchEditor({
       {isXdfPartner ? (
         <div style={{ display: "grid", gap: 8 }}>
           <div style={{ fontSize: 13, color: "#92400e" }}>
-            New Oriental bundles use lessons first. 1 lesson = 45 minutes. / 新东方课包按课时记录，1课时 = 45分钟。
+            Partner bundles use lessons first. 1 lesson = 45 minutes. / 合作方课包按课时记录，1课时 = 45分钟。
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {XDF_LESSON_BATCH_PRESETS.map((lessons) => (
