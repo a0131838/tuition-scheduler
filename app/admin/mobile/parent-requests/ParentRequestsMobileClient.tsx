@@ -13,6 +13,7 @@ type ParentRequest = {
   title: string;
   content: string;
   requestedAction: string;
+  completionResult?: string | null;
   updatedAt: string;
 };
 
@@ -58,13 +59,21 @@ export default function ParentRequestsMobileClient() {
   }, [owner, status]);
 
   async function updateStatus(row: ParentRequest, nextStatus: string) {
+    let finalSchedule = "";
+    if (nextStatus === "Completed") {
+      finalSchedule = window.prompt("请填写给家长看的处理结果，再标记完成。", row.completionResult || "")?.trim() || "";
+      if (!finalSchedule) {
+        setMessage("标记完成前必须填写对外处理结果。");
+        return;
+      }
+    }
     setLoading(true);
     setMessage("");
     try {
       const res = await fetch(`/api/admin/ops/parent-requests/${row.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify(nextStatus === "Completed" ? { status: nextStatus, finalSchedule } : { status: nextStatus }),
       });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.message || "更新失败");
@@ -106,6 +115,9 @@ export default function ParentRequestsMobileClient() {
           </div>
           <div style={{ fontWeight: 800 }}>{row.title || row.ticketNo}</div>
           <div style={{ color: "#64748b", fontSize: 13, whiteSpace: "pre-wrap" }}>{row.content || row.requestedAction || "-"}</div>
+          {row.completionResult ? (
+            <div style={{ color: "#166534", fontSize: 13, whiteSpace: "pre-wrap" }}>处理结果：{row.completionResult}</div>
+          ) : null}
           <div style={{ color: "#64748b", fontSize: 12 }}>负责人：{row.owner || "-"} · {row.updatedAt}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" disabled={loading || row.status === "Waiting Parent"} onClick={() => updateStatus(row, "Waiting Parent")} style={btn}>等家长</button>

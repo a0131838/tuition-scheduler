@@ -5,7 +5,8 @@ Page({
     id: "",
     request: {},
     hasAttachments: false,
-    loading: false
+    loading: false,
+    completionResult: ""
   },
 
   onLoad(options) {
@@ -30,22 +31,33 @@ Page({
             communicationSourceText: request.communicationSource || "",
             createdByNameText: request.createdByName || "",
             requestedActionText: request.requestedAction || "-",
+            completionResultText: request.completionResult || "",
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"
           }),
-          hasAttachments: attachmentUrls.length > 0
+          hasAttachments: attachmentUrls.length > 0,
+          completionResult: request.completionResult || ""
         });
       })
       .catch((err) => api.toast(err.message));
   },
 
+  onCompletionResultInput(e) {
+    this.setData({ completionResult: e.detail.value });
+  },
+
   updateStatus(e) {
     const status = e.currentTarget.dataset.status;
     if (!status || !this.data.id) return;
+    const completionResult = this.data.completionResult.trim();
+    if (status === "Completed" && !completionResult) {
+      api.toast("请先填写对外处理结果");
+      return;
+    }
     this.setData({ loading: true });
     api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id, {
       method: "PATCH",
-      data: { status }
+      data: status === "Completed" ? { status, finalSchedule: completionResult } : { status }
     })
       .then((data) => {
         const request = data.request || this.data.request;
@@ -60,6 +72,7 @@ Page({
             communicationSourceText: request.communicationSource || "",
             createdByNameText: request.createdByName || "",
             requestedActionText: request.requestedAction || "-",
+            completionResultText: request.completionResult || "",
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"
           })

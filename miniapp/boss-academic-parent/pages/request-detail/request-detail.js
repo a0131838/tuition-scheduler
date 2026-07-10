@@ -32,6 +32,7 @@ Page({
             statusLabelText: request.statusLabel || "-",
             contentText: request.content || request.title || "-",
             requestedActionText: request.requestedAction || "-",
+            completionResultText: request.completionResult || "",
             ownerText: (request.owner || request.mainOwner || "-") + " · 关闭负责人 " + (request.closeOwner || "-")
           })
         });

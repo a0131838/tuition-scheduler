@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r214` (staff-assisted parent-request visibility sanitization), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r215` (parent-request completion result requirement), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Parent-request-completion-result risk: `2026-07-10-r215` blocks staff/admin from marking parent requests completed unless a parent-visible completion result is provided; verify Eva/Jasmine understand the result will be visible to parents.
 - Staff-assisted-request-visibility risk: `2026-07-10-r214` changes parent-request DTO projection. Verify parents only see the public summary, while staff/admin still see internal original notes and communication source for assisted requests.
 - Student-schedule-PDF-teacher risk: `2026-07-10-r213` changes only the student monthly schedule PDF teacher label to use per-session replacement teachers when present; scheduling, replacement history, attendance, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw behavior remain unchanged.
 - Staff-assisted-parent-request risk: `2026-07-10-r212` adds a staff-authenticated Ticket creation path for WeChat-group-style parent requests. Verify Emily/Eva can select the intended student and that parent-visible summaries are written carefully before completing requests.

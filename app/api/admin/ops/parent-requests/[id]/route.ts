@@ -53,6 +53,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const nextAction = cleanString((body as any).nextAction, 1000);
   const risksNotes = cleanString((body as any).risksNotes, 2000);
   const finalSchedule = cleanString((body as any).finalSchedule, 1000);
+  const completionResult = finalSchedule !== undefined ? finalSchedule : ticket.finalSchedule;
+  if (nextStatus === "Completed" && !completionResult) {
+    return bad("Completion result is required before marking the request completed", 409);
+  }
   const nextActionDueRaw = typeof (body as any).nextActionDue === "string" ? (body as any).nextActionDue.trim() : "";
   const nextActionDue = nextActionDueRaw ? new Date(nextActionDueRaw) : undefined;
   if (nextActionDue && Number.isNaN(nextActionDue.getTime())) return bad("Invalid nextActionDue", 409);

@@ -24,10 +24,19 @@
       <view class="label">希望处理</view>
       <view class="subtitle">{{request.requestedActionText}}</view>
     </view>
+    <view class="field" wx:if="{{request.completionResultText}}">
+      <view class="label">对外处理结果</view>
+      <view class="subtitle">{{request.completionResultText}}</view>
+    </view>
     <view class="field">
       <view class="label">负责人</view>
       <view class="subtitle">{{request.ownerText}} · 关闭负责人 {{request.closeOwnerText}}</view>
     </view>
+  </view>
+
+  <view class="card">
+    <view class="label">完成前给家长看的处理结果</view>
+    <textarea class="textarea" value="{{completionResult}}" placeholder="例如：已和老师确认，本周课程取消并保留补课安排，后续由 Eva 跟进具体时间。" bindinput="onCompletionResultInput" />
   </view>
 
   <view class="card actions">

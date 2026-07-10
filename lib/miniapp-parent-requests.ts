@@ -59,6 +59,7 @@ export function miniappRequestDto(ticket: Pick<
   | "owner"
   | "summary"
   | "nextAction"
+  | "finalSchedule"
   | "proof"
   | "createdByName"
   | "createdAt"
@@ -92,6 +93,7 @@ export function miniappRequestDto(ticket: Pick<
     title,
     content: parentContent,
     requestedAction: parsed.requiredAction,
+    completionResult: ticket.finalSchedule,
     latestDeadlineText: parsed.latestDeadlineText,
     attachmentUrls: includeInternal || !assisted ? attachmentUrls : [],
     createdByName: includeInternal ? ticket.createdByName : null,

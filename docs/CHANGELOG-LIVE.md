@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r215
+
+- Release ID: `2026-07-10-r215`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: require a parent-visible completion result before staff/admin can mark parent requests as completed, and show that result in the parent miniapp request detail.
+- Key files:
+  - `lib/miniapp-parent-requests.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
+  - `app/api/admin/ops/parent-requests/[id]/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `miniapp/boss-academic-parent/pages/request-detail/*`
+  - `app/admin/mobile/parent-requests/ParentRequestsMobileClient.tsx`
+  - `docs/tasks/TASK-20260710-parent-request-completion-result-required.md`
+- Risk impact (if any): Medium. Completing a parent request now requires staff/admin to write a parent-facing result. This reduces vague closures, but staff need to understand the result is visible to parents.
+- Verification:
+  - `npx tsc --noEmit`
+  - miniapp JS syntax and JSON parse checks
+  - parent/staff request-detail WXML complex-expression scan
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r215`.
+
+---
+
 ## 2026-07-10-r214
 
 - Release ID: `2026-07-10-r214`

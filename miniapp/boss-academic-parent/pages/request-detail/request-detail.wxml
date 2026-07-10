@@ -12,6 +12,10 @@
       <view class="label">希望处理</view>
       <view class="subtitle">{{request.requestedActionText}}</view>
     </view>
+    <view class="field" wx:if="{{request.completionResultText}}">
+      <view class="label">处理结果</view>
+      <view class="subtitle">{{request.completionResultText}}</view>
+    </view>
     <view class="field">
       <view class="label">负责人</view>
       <view class="subtitle">{{request.ownerText}}</view>
