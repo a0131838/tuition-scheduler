@@ -6,6 +6,23 @@
   </view>
 
   <view class="card">
+    <view class="section-title">移动点名</view>
+    <view wx:if="{{attendanceRows.length}}">
+      <view wx:for="{{attendanceRows}}" wx:key="studentId" class="attendance-row">
+        <view class="attendance-head">
+          <view class="label">{{item.studentName}}</view>
+          <picker mode="selector" range="{{attendanceStatusOptions}}" range-key="label" value="{{item.statusIndex}}" bindchange="changeAttendanceStatus" data-index="{{index}}">
+            <view class="status-pill">{{item.statusLabel}}</view>
+          </picker>
+        </view>
+        <input value="{{item.note}}" bindinput="inputAttendanceNote" data-index="{{index}}" placeholder="备注，可不填" />
+      </view>
+    </view>
+    <view wx:else class="hint">暂无可点名学生</view>
+    <button class="secondary-action" loading="{{attendanceSaving}}" disabled="{{attendanceSaving}}" bindtap="saveAttendance">保存点名</button>
+  </view>
+
+  <view class="card">
     <view class="label">重点学生</view>
     <input value="{{focusStudentName}}" bindinput="inputFocusStudent" placeholder="可不填，默认全班" />
   </view>

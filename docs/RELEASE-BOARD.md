@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r210` (staff miniapp WXML render fix), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r211` (staff miniapp mobile attendance marking), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Staff-miniapp-attendance risk: `2026-07-10-r211` adds a miniapp write path for teacher attendance marking; it preserves existing deduction/package fields and only lets a linked teacher write attendance for their own sessions.
 - Staff-miniapp-WXML-render risk: `2026-07-10-r210` removes complex WXML fallback expressions from staff pages and prevents optional staff-home count API timeouts from blanking the workbench after the WeChat Developer Tool showed a blank staff workbench; this should improve miniapp rendering compatibility without changing backend behavior.
 - Staff-miniapp-feedback risk: `2026-07-10-r209` adds a miniapp write path for teacher after-class feedback; it reuses the existing five-section parent-facing feedback requirements and checks that the staff user is linked to the lesson teacher before writing.
 - Staff-miniapp-schedule risk: `2026-07-10-r208` adds read-side daily schedule access for mobile staff; teacher-role accounts are constrained to their linked teacher schedule, while ops/management can see all lessons for same-day coordination.
@@ -126,6 +127,27 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r211 Ready
+
+- Scope: add mobile attendance marking to the staff miniapp course detail page.
+- Business impact:
+  - Teachers can open a course from the staff miniapp schedule and mark each visible student as unmarked, present, absent, late, or excused.
+  - Teachers can add attendance notes from mobile.
+  - The server requires a linked teacher profile and permits writes only for sessions assigned to that teacher.
+  - Existing package deduction, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
+- Files:
+  - `app/api/miniapp/staff/schedule/[sessionId]/attendance/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-attendance.md`
+- Verification before deploy:
+  - miniapp JS syntax and JSON parse checks
+  - staff WXML complex-expression scan
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Post-deploy verification:
+  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule/test/attendance`
+  - verify the attendance route returns `Unauthorized` instead of `404`.
 
 ## 2026-07-10-r210 Ready
 

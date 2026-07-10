@@ -8,16 +8,38 @@ const sections = [
   { key: "parentNote", label: "家长需要知道", hint: "家长应该如何理解孩子目前的状态，避免误判？" }
 ];
 
+const attendanceStatusOptions = [
+  { value: "UNMARKED", label: "未点名" },
+  { value: "PRESENT", label: "出勤" },
+  { value: "ABSENT", label: "缺席" },
+  { value: "LATE", label: "迟到" },
+  { value: "EXCUSED", label: "请假" }
+];
+
 function sectionList(values) {
   const source = values || {};
   return sections.map((item) => Object.assign({}, item, { value: source[item.key] || "" }));
 }
 
+function attendanceList(rows) {
+  return (rows || []).map((row) => {
+    const statusIndex = Math.max(0, attendanceStatusOptions.findIndex((item) => item.value === row.status));
+    return Object.assign({}, row, {
+      statusIndex,
+      statusLabel: attendanceStatusOptions[statusIndex].label,
+      note: row.note || ""
+    });
+  });
+}
+
 Page({
   data: {
+    attendanceStatusOptions,
     sessionId: "",
     session: null,
     sessionTeacherName: "-",
+    attendanceRows: [],
+    attendanceSaving: false,
     focusStudentName: "",
     parentFeedbackSections: sectionList({}),
     homework: "",
@@ -36,7 +58,7 @@ Page({
   load() {
     if (!this.data.sessionId) return Promise.resolve();
     this.setData({ loading: true });
-    return api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback")
+    const feedbackTask = api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback")
       .then((data) => {
         const feedback = data.feedback || {};
         this.setData({
@@ -50,8 +72,54 @@ Page({
           submitDisabled: false
         });
       })
-      .catch((err) => api.toast(err.message))
+      .catch((err) => api.toast(err.message));
+
+    const attendanceTask = api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/attendance")
+      .then((data) => this.setData({ attendanceRows: attendanceList(data.rows) }))
+      .catch((err) => api.toast(err.message));
+
+    return Promise.allSettled([feedbackTask, attendanceTask])
       .finally(() => this.setData({ loading: false }));
+  },
+
+  changeAttendanceStatus(e) {
+    const index = Number(e.currentTarget.dataset.index || 0);
+    const statusIndex = Number(e.detail.value || 0);
+    const rows = this.data.attendanceRows.slice();
+    rows[index] = Object.assign({}, rows[index], {
+      statusIndex,
+      status: attendanceStatusOptions[statusIndex].value,
+      statusLabel: attendanceStatusOptions[statusIndex].label
+    });
+    this.setData({ attendanceRows: rows });
+  },
+
+  inputAttendanceNote(e) {
+    const index = Number(e.currentTarget.dataset.index || 0);
+    const rows = this.data.attendanceRows.slice();
+    rows[index] = Object.assign({}, rows[index], { note: e.detail.value });
+    this.setData({ attendanceRows: rows });
+  },
+
+  saveAttendance() {
+    if (this.data.attendanceSaving) return;
+    this.setData({ attendanceSaving: true });
+    api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/attendance", {
+      method: "POST",
+      data: {
+        items: this.data.attendanceRows.map((row) => ({
+          studentId: row.studentId,
+          status: row.status,
+          note: row.note
+        }))
+      }
+    })
+      .then((data) => {
+        this.setData({ attendanceRows: attendanceList(data.rows) });
+        wx.showToast({ title: "点名已保存", icon: "success" });
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ attendanceSaving: false }));
   },
 
   inputFocusStudent(e) {

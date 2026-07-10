@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r211
+
+- Release ID: `2026-07-10-r211`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: add teacher mobile attendance marking to the staff miniapp course detail page.
+- Key files:
+  - `app/api/miniapp/staff/schedule/[sessionId]/attendance/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-attendance.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds a new miniapp write path to `Attendance`, using the same teacher/session permission rule as the existing teacher portal and preserving deduction/package fields on updates. It does not deduct packages, reschedule lessons, change billing, payroll, partner settlement, or OpenClaw behavior.
+- Verification:
+  - miniapp JS syntax and JSON parse checks
+  - staff WXML complex-expression scan
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r211`.
+
+---
+
 ## 2026-07-10-r210
 
 - Release ID: `2026-07-10-r210`

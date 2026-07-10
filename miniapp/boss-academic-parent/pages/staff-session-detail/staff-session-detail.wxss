@@ -44,6 +44,33 @@
   margin-bottom: 22rpx;
 }
 
+.attendance-row {
+  border-top: 1rpx solid #e5eadf;
+  padding: 18rpx 0;
+}
+
+.attendance-row:first-child {
+  border-top: 0;
+}
+
+.attendance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 12rpx;
+}
+
+.status-pill {
+  min-width: 120rpx;
+  text-align: center;
+  border-radius: 999rpx;
+  background: #edf2ea;
+  color: #123d2b;
+  font-weight: 800;
+  padding: 10rpx 18rpx;
+}
+
 .label {
   font-weight: 700;
   color: #20352b;
@@ -79,4 +106,12 @@ textarea {
   border-radius: 8rpx;
   font-weight: 800;
   margin-top: 24rpx;
+}
+
+.secondary-action {
+  background: #edf2ea;
+  color: #123d2b;
+  border-radius: 8rpx;
+  font-weight: 800;
+  margin-top: 16rpx;
 }
