@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r216
+
+- Release ID: `2026-07-10-r216`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: preserve WeChat miniapp credentials when the production deploy script rewrites `.env`.
+- Key files:
+  - `ops/server/scripts/deploy_app.sh`
+  - `docs/tasks/TASK-20260710-deploy-preserve-miniapp-credentials.md`
+- Risk impact (if any): Low. This changes deploy-time environment rendering only. It prevents future deploys from dropping `WECHAT_MINIAPP_APPID` and `WECHAT_MINIAPP_SECRET` after they are configured in `ops/server/.deploy.env`.
+- Verification:
+  - release doc gate
+  - production `.env` contains the miniapp variable names after deploy without printing secret values
+  - `/admin/login` health check
+  - miniapp unauthenticated endpoints still return `Unauthorized`
+- Rollback point: previous production commit before `2026-07-10-r216`.
+
+---
+
 ## 2026-07-10-r215
 
 - Release ID: `2026-07-10-r215`
