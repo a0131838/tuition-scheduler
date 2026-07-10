@@ -9,6 +9,9 @@
     <picker mode="selector" range="{{owners}}" value="{{ownerIndex}}" bindchange="changeOwner">
       <view class="picker">{{owners[ownerIndex]}}</view>
     </picker>
+    <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="changeType">
+      <view class="picker">{{types[typeIndex]}}</view>
+    </picker>
     <picker mode="selector" range="{{statuses}}" range-key="label" value="{{statusIndex}}" bindchange="changeStatus">
       <view class="picker">{{statuses[statusIndex].label}}</view>
     </picker>

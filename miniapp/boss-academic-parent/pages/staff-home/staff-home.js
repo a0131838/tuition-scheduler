@@ -5,6 +5,7 @@ Page({
     staffName: "",
     role: "",
     pendingCount: 0,
+    todaySessionCount: 0,
     loading: false
   },
 
@@ -20,13 +21,15 @@ Page({
     this.setData({ loading: true });
     return Promise.all([
       api.requestStaff("/api/miniapp/staff/me"),
-      api.requestStaff("/api/miniapp/staff/parent-requests?limit=200")
+      api.requestStaff("/api/miniapp/staff/parent-requests?limit=200"),
+      api.requestStaff("/api/miniapp/staff/schedule")
     ])
-      .then(([me, requests]) => {
+      .then(([me, requests, schedule]) => {
         this.setData({
           staffName: me.staff ? me.staff.name : "",
           role: me.staff ? me.staff.role : "",
-          pendingCount: requests.total || 0
+          pendingCount: requests.total || 0,
+          todaySessionCount: schedule.summary ? schedule.summary.visibleSessions : 0
         });
       })
       .catch((err) => {
@@ -40,6 +43,10 @@ Page({
 
   goRequests() {
     wx.navigateTo({ url: "/pages/staff-requests/staff-requests" });
+  },
+
+  goSchedule() {
+    wx.navigateTo({ url: "/pages/staff-schedule/staff-schedule" });
   },
 
   logout() {

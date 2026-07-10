@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r208
+
+- Release ID: `2026-07-10-r208`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: add the staff miniapp daily schedule view so ops/management can see all same-day lessons and teachers can see their own lessons, with request type filtering for scheduling coordination.
+- Key files:
+  - `lib/miniapp-staff-schedule.ts`
+  - `app/api/miniapp/staff/schedule/route.ts`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-schedule.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low to medium. This adds read-side staff miniapp schedule access and type filtering for miniapp request queues. Teacher accounts are forced to their linked teacher schedule. Scheduling writes, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
+- Verification:
+  - miniapp JS syntax and JSON parse checks
+  - `npx tsc --noEmit`
+  - staff schedule API smoke check for unauthorized access, admin/all schedule access, and teacher-only schedule scoping
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r208`.
+
+---
+
 ## 2026-07-10-r207
 
 - Release ID: `2026-07-10-r207`

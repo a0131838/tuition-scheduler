@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r207` (native miniapp parent/staff foundation and production-domain miniapp configuration), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r208` (staff miniapp daily schedule and request type filtering), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Staff-miniapp-schedule risk: `2026-07-10-r208` adds read-side daily schedule access for mobile staff; teacher-role accounts are constrained to their linked teacher schedule, while ops/management can see all lessons for same-day coordination.
+- Staff-request-filter risk: `2026-07-10-r208` adds miniapp request type filtering only; parent request creation, ownership, status transitions, and notifications remain unchanged.
 - Miniapp-domain risk: `2026-07-10-r207` switches the native miniapp default API base to `https://sgtmanage.com`; WeChat public platform must whitelist this domain for request, uploadFile, and downloadFile before formal-device testing.
 - Miniapp-auth risk: `2026-07-10-r207` adds parent/staff miniapp sessions and binding tables; production use still depends on configuring `WECHAT_MINIAPP_SECRET` and WeChat subscription template IDs.
 - Partner-rate-entry risk: `2026-07-08-r206` removes the rate save action from Partner Settlement so operators must edit master rates in Partner Setup; existing settlement records keep their saved amounts and are not automatically recalculated.
@@ -122,6 +124,33 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r208 Ready
+
+- Scope: add staff miniapp daily schedule access and request type filtering for mobile coordination.
+- Business impact:
+  - 教务和管理 can open the staff miniapp workbench and see today's course count plus a daily lesson list for coordination while away from desktop.
+  - Teachers can open the staff miniapp schedule page, but their account is forced to their linked teacher schedule even if the client asks for all lessons.
+  - Staff can filter parent requests by type, including schedule requests, leave/cancel, finance, complaints, feedback, school matters, and teacher messages.
+  - Existing scheduling writes, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
+- Files:
+  - `lib/miniapp-staff-schedule.ts`
+  - `app/api/miniapp/staff/schedule/route.ts`
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-schedule.md`
+- Verification before deploy:
+  - miniapp JS syntax and JSON parse checks
+  - `npx tsc --noEmit`
+  - local staff schedule API smoke checks for unauthorized access, admin/all schedule access, and teacher-only schedule scoping
+  - `npm run build`
+- Post-deploy verification:
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
+  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule`
+  - verify `/api/miniapp/staff/schedule` returns `Unauthorized` instead of `404`.
 
 ## 2026-07-10-r207 Ready
 

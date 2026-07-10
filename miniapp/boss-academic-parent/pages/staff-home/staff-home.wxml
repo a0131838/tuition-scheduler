@@ -2,7 +2,15 @@
   <view class="top">
     <view class="eyebrow">{{role || "STAFF"}}</view>
     <view class="title">{{staffName || "员工工作台"}}</view>
-    <view class="subtitle">先处理家长请求；课表、学生搜索和老师任务会作为下一批加进来。</view>
+    <view class="subtitle">查看当天课程，处理家长请求和排课协调。</view>
+  </view>
+
+  <view class="card work-card" bindtap="goSchedule">
+    <view>
+      <view class="label">今日课程</view>
+      <view class="value">{{todaySessionCount}} 节待查看</view>
+    </view>
+    <view class="arrow">›</view>
   </view>
 
   <view class="card work-card" bindtap="goRequests">

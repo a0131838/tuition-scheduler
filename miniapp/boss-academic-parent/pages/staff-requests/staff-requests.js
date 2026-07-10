@@ -9,13 +9,16 @@ const statuses = [
   { label: "已确认", value: "Confirmed" },
   { label: "已完成", value: "Completed" }
 ];
+const types = ["全部类型", "排课要求", "请假/取消", "给老师的话", "投诉", "普通反馈", "财务问题", "学校事务", "其他"];
 
 Page({
   data: {
     owners,
     statuses,
+    types,
     ownerIndex: 0,
     statusIndex: 0,
+    typeIndex: 0,
     requests: [],
     loading: false
   },
@@ -31,9 +34,11 @@ Page({
   load() {
     const owner = this.data.ownerIndex > 0 ? owners[this.data.ownerIndex] : "";
     const status = statuses[this.data.statusIndex].value;
+    const type = this.data.typeIndex > 0 ? types[this.data.typeIndex] : "";
     const query = [];
     if (owner) query.push("owner=" + encodeURIComponent(owner));
     if (status) query.push("status=" + encodeURIComponent(status));
+    if (type) query.push("type=" + encodeURIComponent(type));
     if (status) query.push("includeDone=true");
     query.push("limit=100");
 
@@ -51,6 +56,11 @@ Page({
 
   changeStatus(e) {
     this.setData({ statusIndex: Number(e.detail.value || 0) });
+    this.load();
+  },
+
+  changeType(e) {
+    this.setData({ typeIndex: Number(e.detail.value || 0) });
     this.load();
   },
 

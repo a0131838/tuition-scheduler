@@ -1,0 +1,22 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.small {
+  min-height: 72rpx;
+  padding: 0 22rpx;
+}
+
+.date-picker {
+  min-width: 240rpx;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}

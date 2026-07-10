@@ -1,0 +1,56 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">员工工作台</view>
+    <view class="title">当天课程</view>
+    <view class="subtitle">教务/管理可看全部课程；老师只显示自己的课程。</view>
+  </view>
+
+  <view class="toolbar">
+    <button class="btn secondary small" bindtap="setToday">今天</button>
+    <button class="btn secondary small" bindtap="setTomorrow">明天</button>
+    <picker mode="date" value="{{date}}" bindchange="changeDate">
+      <view class="picker date-picker">{{date}}</view>
+    </picker>
+  </view>
+
+  <view class="toolbar" wx:if="{{!teacherOnly}}">
+    <picker mode="selector" range="{{scopes}}" range-key="label" value="{{scopeIndex}}" bindchange="changeScope">
+      <view class="picker">{{scopes[scopeIndex].label}}</view>
+    </picker>
+  </view>
+
+  <view class="summary">
+    <view class="metric">
+      <view class="label">课程</view>
+      <view class="value">{{summary.visibleSessions || 0}}</view>
+    </view>
+    <view class="metric">
+      <view class="label">学生</view>
+      <view class="value">{{summary.visibleStudentCount || 0}}</view>
+    </view>
+  </view>
+
+  <block wx:if="{{sessions.length}}">
+    <view wx:for="{{sessions}}" wx:key="id" class="card">
+      <view class="row">
+        <view class="pill">{{item.campusLabel}}</view>
+        <view class="pill">{{item.feedbackLabel}}</view>
+      </view>
+      <view class="value">{{item.courseLabel}}</view>
+      <view class="subtitle">{{item.startText}} - {{item.endText}}</view>
+      <view class="field">
+        <view class="label">老师</view>
+        <view class="subtitle">{{item.teacher.name}}</view>
+      </view>
+      <view class="field">
+        <view class="label">学生</view>
+        <view class="subtitle">{{item.studentText}}</view>
+      </view>
+      <view class="field">
+        <view class="label">地点</view>
+        <view class="subtitle">{{item.locationText}}</view>
+      </view>
+    </view>
+  </block>
+  <view wx:else class="empty">当天暂无课程</view>
+</view>
