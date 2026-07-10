@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r208` (staff miniapp daily schedule and request type filtering), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r209` (staff miniapp teacher feedback submission), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Staff-miniapp-feedback risk: `2026-07-10-r209` adds a miniapp write path for teacher after-class feedback; it reuses the existing five-section parent-facing feedback requirements and checks that the staff user is linked to the lesson teacher before writing.
 - Staff-miniapp-schedule risk: `2026-07-10-r208` adds read-side daily schedule access for mobile staff; teacher-role accounts are constrained to their linked teacher schedule, while ops/management can see all lessons for same-day coordination.
 - Staff-request-filter risk: `2026-07-10-r208` adds miniapp request type filtering only; parent request creation, ownership, status transitions, and notifications remain unchanged.
 - Miniapp-domain risk: `2026-07-10-r207` switches the native miniapp default API base to `https://sgtmanage.com`; WeChat public platform must whitelist this domain for request, uploadFile, and downloadFile before formal-device testing.
@@ -124,6 +125,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r209 Ready
+
+- Scope: add staff miniapp course detail feedback submission for teachers.
+- Business impact:
+  - Teachers can tap a course from the staff miniapp schedule and submit or update parent-facing after-class feedback from mobile.
+  - The miniapp form keeps the existing five required parent-readable sections plus homework and previous-homework completion state.
+  - The server requires a linked teacher profile and only permits writing feedback for sessions assigned to that teacher.
+  - Existing scheduling writes, attendance deduction, package ledger, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
+- Files:
+  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-feedback.md`
+- Verification before deploy:
+  - miniapp JS syntax and JSON parse checks
+  - `npx tsc --noEmit`
+  - staff feedback route included in Next production build
+  - `npm run build`
+- Post-deploy verification:
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
+  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/schedule/test/feedback`
+  - verify the feedback route returns `Unauthorized` instead of `404`.
 
 ## 2026-07-10-r208 Ready
 

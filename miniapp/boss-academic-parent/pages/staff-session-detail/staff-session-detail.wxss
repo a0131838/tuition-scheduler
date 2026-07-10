@@ -1,0 +1,82 @@
+.page {
+  padding: 28rpx;
+  background: #f7f9f4;
+  min-height: 100vh;
+}
+
+.top {
+  margin-bottom: 24rpx;
+}
+
+.eyebrow,
+.hint {
+  color: #6b7280;
+  font-size: 24rpx;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #123d2b;
+  margin-top: 8rpx;
+}
+
+.subtitle {
+  color: #4b5563;
+  margin-top: 8rpx;
+}
+
+.card {
+  background: #fff;
+  border: 1rpx solid #dce5d8;
+  border-radius: 8rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-weight: 800;
+  color: #123d2b;
+  margin-bottom: 18rpx;
+}
+
+.field {
+  margin-bottom: 22rpx;
+}
+
+.label {
+  font-weight: 700;
+  color: #20352b;
+  margin-bottom: 8rpx;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1rpx solid #d6ded2;
+  border-radius: 8rpx;
+  padding: 18rpx;
+  background: #fbfcfa;
+}
+
+textarea {
+  min-height: 150rpx;
+  margin-top: 12rpx;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+
+.primary {
+  background: #0b3d2a;
+  color: #fff;
+  border-radius: 8rpx;
+  font-weight: 800;
+  margin-top: 24rpx;
+}

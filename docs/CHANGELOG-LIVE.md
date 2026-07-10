@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r209
+
+- Release ID: `2026-07-10-r209`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: add staff miniapp course detail feedback submission so teachers can submit or update parent-facing after-class feedback from the native miniapp.
+- Key files:
+  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-feedback.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds a new teacher-facing miniapp write path to `SessionFeedback`, reusing the same five-section parent-facing feedback rules and server-side teacher/session permission checks as the existing teacher portal. Scheduling, attendance deduction, package ledger, billing, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
+- Verification:
+  - miniapp JS syntax and JSON parse checks
+  - `npx tsc --noEmit`
+  - staff feedback route included in Next production build
+  - post-deploy unauthorized route smoke check
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r209`.
+
+---
+
 ## 2026-07-10-r208
 
 - Release ID: `2026-07-10-r208`

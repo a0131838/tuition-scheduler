@@ -31,7 +31,7 @@
   </view>
 
   <block wx:if="{{sessions.length}}">
-    <view wx:for="{{sessions}}" wx:key="id" class="card">
+    <view wx:for="{{sessions}}" wx:key="id" class="card" bindtap="openSession" data-id="{{item.id}}">
       <view class="row">
         <view class="pill">{{item.campusLabel}}</view>
         <view class="pill">{{item.feedbackLabel}}</view>

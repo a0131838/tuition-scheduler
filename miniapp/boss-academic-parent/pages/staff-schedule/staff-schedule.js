@@ -68,5 +68,9 @@ Page({
   changeDate(e) {
     this.setData({ date: e.detail.value });
     this.load();
+  },
+
+  openSession(e) {
+    wx.navigateTo({ url: "/pages/staff-session-detail/staff-session-detail?id=" + e.currentTarget.dataset.id });
   }
 });

@@ -5,6 +5,7 @@
     "pages/staff-bind/staff-bind",
     "pages/staff-home/staff-home",
     "pages/staff-schedule/staff-schedule",
+    "pages/staff-session-detail/staff-session-detail",
     "pages/staff-requests/staff-requests",
     "pages/staff-request-detail/staff-request-detail",
     "pages/bind/bind",
