@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{studentName}}</view>
+    <view class="title">课程安排</view>
+    <view class="subtitle">显示近期课程与出勤状态。</view>
+  </view>
+
+  <block wx:if="{{sessions.length}}">
+    <view wx:for="{{sessions}}" wx:key="id" class="card">
+      <view class="row">
+        <view class="value">{{item.startText}}</view>
+        <view class="pill">{{item.attendanceStatus || "待上课"}}</view>
+      </view>
+      <view class="subtitle">{{item.courseLabel}}</view>
+      <view class="label">{{item.teacherName || "老师未定"}} · {{item.mode === "ONLINE" ? "线上" : "线下"}} · {{item.campusName || ""}} {{item.roomName || ""}}</view>
+    </view>
+  </block>
+  <view wx:else class="empty">暂无课程安排</view>
+</view>

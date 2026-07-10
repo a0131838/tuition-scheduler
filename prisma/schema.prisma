@@ -828,6 +828,10 @@ model Student {
   parentIntakes              StudentParentIntake[]
   schoolApplications         SchoolApplicationService[]
   convertedLeads             Lead[]                        @relation("LeadConvertedStudent")
+  parentLinks                ParentStudentLink[]
+  parentBindInvites          ParentBindInvite[]
+  parentPortalAudits         ParentPortalAudit[]
+  miniappNotifications       MiniappNotificationOutbox[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -958,6 +962,10 @@ model User {
   leadAssessmentReopened      LeadAssessmentRequest[]    @relation("LeadAssessmentReopenedBy")
   managerTeacherFeedbacks     ManagerTeacherFeedback[]   @relation("ManagerTeacherFeedbackCreatedBy")
   workspaceAccesses           UserWorkspaceAccess[]
+  staffMiniappBindings        StaffMiniappBinding[]
+  staffMiniappSessions        StaffMiniappSession[]
+  staffMiniappBindInvites     StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteUser")
+  staffMiniappInvitesCreated  StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
 }
 
 model UserWorkspaceAccess {
@@ -1116,6 +1124,177 @@ model AuthSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model ParentAccount {
+  id            String   @id @default(uuid())
+  name          String?
+  phone         String?
+  phoneCountry  String?
+  wechatOpenId  String?  @unique
+  wechatUnionId String?
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  studentLinks  ParentStudentLink[]
+  sessions      ParentPortalSession[]
+  audits        ParentPortalAudit[]
+  notifications MiniappNotificationOutbox[]
+
+  @@index([phone])
+  @@index([wechatUnionId])
+  @@index([status, createdAt])
+}
+
+model ParentStudentLink {
+  id                String   @id @default(uuid())
+  parentId          String
+  studentId         String
+  relationship      String?
+  isPrimary         Boolean  @default(false)
+  canViewSchedule   Boolean  @default(true)
+  canViewFeedback   Boolean  @default(true)
+  canViewFinance    Boolean  @default(true)
+  canViewReports    Boolean  @default(true)
+  canCreateRequests Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  parent  ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@index([studentId])
+  @@index([parentId])
+}
+
+model ParentPortalSession {
+  id        String   @id @default(uuid())
+  parentId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  parent ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([expiresAt])
+}
+
+model ParentBindInvite {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  studentId String
+  createdBy String?
+  expiresAt DateTime?
+  usedAt    DateTime?
+  usedById  String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, isActive])
+  @@index([usedById])
+}
+
+model StaffMiniappBinding {
+  id            String    @id @default(uuid())
+  userId        String
+  wechatOpenId  String    @unique
+  wechatUnionId String?
+  status        String    @default("ACTIVE")
+  boundAt       DateTime  @default(now())
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([wechatUnionId])
+}
+
+model StaffMiniappSession {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model StaffMiniappBindInvite {
+  id           String    @id @default(uuid())
+  token        String    @unique
+  userId       String
+  createdBy    String?
+  expiresAt    DateTime?
+  usedAt       DateTime?
+  usedByOpenId String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user    User  @relation("StaffMiniappBindInviteUser", fields: [userId], references: [id], onDelete: Cascade)
+  creator User? @relation("StaffMiniappBindInviteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdBy])
+  @@index([isActive, createdAt])
+}
+
+model ParentPortalAudit {
+  id         String   @id @default(uuid())
+  parentId   String?
+  studentId  String?
+  action     String
+  targetType String?
+  targetId   String?
+  metaJson   Json?
+  createdAt  DateTime @default(now())
+
+  parent  ParentAccount? @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  student Student?       @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([parentId, createdAt])
+  @@index([studentId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+}
+
+model MiniappNotificationOutbox {
+  id          String    @id @default(uuid())
+  parentId    String
+  studentId   String?
+  openId      String?
+  templateKey String
+  eventType   String
+  targetType  String?
+  targetId    String?
+  payloadJson Json?
+  status      String    @default("PENDING")
+  scheduledAt DateTime  @default(now())
+  sentAt      DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  parent  ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@unique([parentId, templateKey, targetType, targetId])
+  @@index([status, scheduledAt])
+  @@index([parentId, createdAt])
+  @@index([studentId, createdAt])
+  @@index([templateKey, createdAt])
+  @@index([targetType, targetId])
 }
 
 model Enrollment {

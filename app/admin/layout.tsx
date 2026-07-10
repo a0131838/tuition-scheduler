@@ -50,6 +50,7 @@ function matchesPath(pathname: string, href: string) {
 
 function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/todos")) return t(lang, "Today Workbench", "今日工作台");
+  if (matchesPath(pathname, "/admin/mobile")) return t(lang, "Mobile Workbench", "员工移动端");
   if (matchesPath(pathname, "/admin/alerts")) return t(lang, "Risk & Alerts", "风险与告警");
   if (matchesPath(pathname, "/admin/schedule")) return t(lang, "Schedule Operations", "排课操作区");
   if (matchesPath(pathname, "/admin/leads")) return t(lang, "Resource Follow-up", "资源跟进");
@@ -57,6 +58,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/reports/teacher-payroll")) return t(lang, "Payroll Review", "工资处理");
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
   if (matchesPath(pathname, "/admin/approvals")) return t(lang, "Approval Inbox", "审批提醒中心");
+  if (matchesPath(pathname, "/admin/miniapp-notifications")) return t(lang, "Miniapp Notifications", "小程序通知队列");
   if (matchesPath(pathname, "/admin/receipts-approvals/queue")) return t(lang, "Receipt Queue", "收据审批队列");
   if (matchesPath(pathname, "/admin/receipts-approvals/package")) return t(lang, "Package Finance Workspace", "课包财务工作区");
   if (matchesPath(pathname, "/admin/receipts-approvals/repairs")) return t(lang, "Proof Repair Desk", "凭证修复台");
@@ -105,6 +107,27 @@ function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFina
       lang,
       "Start with today's attendance and overdue follow-ups, then open system checks only if something looks off.",
       "先处理今天点名和超时跟进，再在有异常时打开系统巡检。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/mobile")) {
+    return t(
+      lang,
+      "Use this compact view for mobile-first parent request handling and daily operations.",
+      "用这个紧凑视图在手机上处理家长请求和日常运营。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/miniapp-notifications")) {
+    return t(
+      lang,
+      "Review queued miniapp subscription messages before the WeChat sender is enabled.",
+      "在微信订阅消息发送器启用前，先在这里检查小程序待发送提醒。"
+    );
+  }
+  if (matchesPath(pathname, "/admin/miniapp-staff")) {
+    return t(
+      lang,
+      "Generate staff miniapp binding codes and check which employees have connected WeChat.",
+      "生成员工小程序绑定码，并检查哪些员工已经绑定微信。"
     );
   }
   if (matchesPath(pathname, "/admin/recovery/uploads")) {
@@ -228,6 +251,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           tone: "warning" as const,
         },
         {
+          href: "/admin/mobile",
+          label: t(lang, "Mobile Workbench", "员工移动端"),
+          description: t(lang, "Compact phone-first operations entry.", "手机优先的紧凑运营入口。"),
+          tone: "accent" as const,
+        },
+        {
           href: "/admin/alerts",
           label: t(lang, "Sign-in Alerts", "签到警告"),
           description: t(lang, "Escalations and sign-in anomalies.", "签到异常和需要升级处理的事项。"),
@@ -301,6 +330,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/classes", label: t(lang, "Classes", "班级"), tone: "neutral" as const },
         { href: "/admin/booking-links", label: t(lang, "Booking Links", "学生选课链接"), tone: "neutral" as const },
         { href: "/admin/feedbacks", label: t(lang, "Teacher Feedbacks", "老师课后反馈"), tone: "accent" as const },
+        { href: "/admin/miniapp-staff", label: t(lang, "Miniapp Staff", "员工小程序"), tone: "accent" as const },
+        { href: "/admin/miniapp-notifications", label: t(lang, "Miniapp Notifications", "小程序通知"), tone: "accent" as const },
         { href: "/admin/tickets/handover", label: t(lang, "Daily Handover", "每日交接"), tone: "warning" as const },
         { href: "/admin/tickets/sop", label: t(lang, "SOP One Pager", "SOP一页纸"), tone: "neutral" as const },
       ],

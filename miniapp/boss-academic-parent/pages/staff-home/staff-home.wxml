@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{role || "STAFF"}}</view>
+    <view class="title">{{staffName || "员工工作台"}}</view>
+    <view class="subtitle">先处理家长请求；课表、学生搜索和老师任务会作为下一批加进来。</view>
+  </view>
+
+  <view class="card work-card" bindtap="goRequests">
+    <view>
+      <view class="label">家长请求</view>
+      <view class="value">{{pendingCount}} 条待查看</view>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+
+  <button class="btn secondary" bindtap="logout">退出员工登录</button>
+</view>

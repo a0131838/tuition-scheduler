@@ -14,13 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-08-r206` (partner settlement now displays rates read-only and sends rate edits to Partner Setup), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r207` (native miniapp parent/staff foundation and production-domain miniapp configuration), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-domain risk: `2026-07-10-r207` switches the native miniapp default API base to `https://sgtmanage.com`; WeChat public platform must whitelist this domain for request, uploadFile, and downloadFile before formal-device testing.
+- Miniapp-auth risk: `2026-07-10-r207` adds parent/staff miniapp sessions and binding tables; production use still depends on configuring `WECHAT_MINIAPP_SECRET` and WeChat subscription template IDs.
 - Partner-rate-entry risk: `2026-07-08-r206` removes the rate save action from Partner Settlement so operators must edit master rates in Partner Setup; existing settlement records keep their saved amounts and are not automatically recalculated.
 - Multi-partner settlement risk: `2026-07-08-r205` adds `Partner` configuration and `partnerId` filtering to settlement, billing, receipts, payment proofs, and top-up snapshots; verify operators select the correct partner before creating invoices.
 - Teacher-feedback scan risk: `2026-07-02-r204` increases the read-side overdue scan from 600 to 2000 sessions, while keeping the visible work item cap at 500; monitor page load if historical session volume grows substantially.
@@ -120,6 +122,41 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r207 Ready
+
+- Scope: ship native miniapp parent access APIs, staff miniapp request handling, notification queue foundation, admin miniapp opening tools, and set the miniapp default API base to `https://sgtmanage.com`.
+- Business impact:
+  - Parents can bind students, view schedule/feedback/finance, submit requests, upload attachments, and download finance PDFs once the miniapp is formally configured.
+  - Staff can bind WeChat, open the miniapp staff workbench, view parent requests, and update request status from mobile.
+  - Existing scheduling, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw flows are intentionally unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260709110000_add_parent_portal/migration.sql`
+  - `prisma/migrations/20260709123000_add_miniapp_notification_outbox/migration.sql`
+  - `prisma/migrations/20260710103000_add_staff_miniapp/migration.sql`
+  - `app/api/miniapp/**`
+  - `app/api/admin/miniapp-staff/**`
+  - `app/api/admin/miniapp-notifications/**`
+  - `app/api/admin/ops/parent-requests/**`
+  - `app/api/admin/students/[id]/parent-portal/**`
+  - `app/admin/miniapp-staff/**`
+  - `app/admin/miniapp-notifications/**`
+  - `app/admin/mobile/**`
+  - `miniapp/boss-academic-parent/**`
+  - `docs/tasks/TASK-20260710-miniapp-parent-staff-foundation.md`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx prisma validate`
+  - `npx prisma migrate status`
+  - `npx tsc --noEmit`
+  - miniapp JS syntax and JSON parse checks
+  - mock staff miniapp binding/login/request-list/status-update smoke checks against local dev server
+  - `npm run build`
+- Post-deploy verification:
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login | sed -n '1,12p'`
+  - `curl -sS --max-time 20 https://sgtmanage.com/api/miniapp/staff/me`
+  - verify `/api/miniapp/staff/me` returns `Unauthorized` instead of `404`.
 
 ## 2026-07-08-r205 Ready
 

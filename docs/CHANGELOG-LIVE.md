@@ -15,6 +15,42 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r207
+
+- Release ID: `2026-07-10-r207`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: ship the native miniapp backend foundation for parent access, staff mobile request handling, notification queueing, and production-domain miniapp configuration.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260709110000_add_parent_portal/migration.sql`
+  - `prisma/migrations/20260709123000_add_miniapp_notification_outbox/migration.sql`
+  - `prisma/migrations/20260710103000_add_staff_miniapp/migration.sql`
+  - `app/api/miniapp/**`
+  - `app/api/admin/miniapp-staff/**`
+  - `app/api/admin/miniapp-notifications/**`
+  - `app/api/admin/ops/parent-requests/**`
+  - `app/api/admin/students/[id]/parent-portal/**`
+  - `app/admin/miniapp-staff/**`
+  - `app/admin/miniapp-notifications/**`
+  - `app/admin/mobile/**`
+  - `miniapp/boss-academic-parent/**`
+  - `docs/tasks/TASK-20260710-miniapp-parent-staff-foundation.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium. This adds new miniapp-facing auth/session/binding tables and routes, plus staff request handling. Existing admin login, scheduling, attendance deduction, package ledger, receipts, payroll, partner settlement, transport billing, Business Accounts, and OpenClaw behavior are unchanged.
+- Verification:
+  - `npx prisma generate`
+  - `npx prisma validate`
+  - `npx prisma migrate status`
+  - `npx tsc --noEmit`
+  - miniapp JS syntax and JSON parse checks
+  - mock staff miniapp binding/login/request-list/status-update smoke checks against local dev server
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r207`.
+
+---
+
 ## 2026-07-08-r206
 
 - Release ID: `2026-07-08-r206`

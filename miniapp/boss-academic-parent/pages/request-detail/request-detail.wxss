@@ -1,0 +1,3 @@
+.subtitle {
+  word-break: break-word;
+}

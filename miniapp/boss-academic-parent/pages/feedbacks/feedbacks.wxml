@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{studentName}}</view>
+    <view class="title">课后反馈</view>
+    <view class="subtitle">老师发布后会直接展示给家长。</view>
+  </view>
+
+  <block wx:if="{{feedbacks.length}}">
+    <view wx:for="{{feedbacks}}" wx:key="id" class="card">
+      <view class="label">{{item.sessionStartText || item.sessionStartAt}}</view>
+      <view class="value">{{item.teacherName || "老师"}}</view>
+      <view class="subtitle">{{item.summary || item.content}}</view>
+    </view>
+  </block>
+  <view wx:else class="empty">暂无课后反馈</view>
+</view>

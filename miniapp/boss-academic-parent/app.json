@@ -1,0 +1,61 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/staff-login/staff-login",
+    "pages/staff-bind/staff-bind",
+    "pages/staff-home/staff-home",
+    "pages/staff-requests/staff-requests",
+    "pages/staff-request-detail/staff-request-detail",
+    "pages/bind/bind",
+    "pages/students/students",
+    "pages/home/home",
+    "pages/schedule/schedule",
+    "pages/feedbacks/feedbacks",
+    "pages/finance/finance",
+    "pages/requests/requests",
+    "pages/request-detail/request-detail",
+    "pages/request-new/request-new"
+  ],
+  "window": {
+    "navigationBarTitleText": "博思学业管家",
+    "navigationBarBackgroundColor": "#123524",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f6f7f3",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#718072",
+    "selectedColor": "#123524",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/students/students",
+        "text": "学生"
+      },
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/schedule/schedule",
+        "text": "课表"
+      },
+      {
+        "pagePath": "pages/finance/finance",
+        "text": "财务"
+      },
+      {
+        "pagePath": "pages/requests/requests",
+        "text": "请求"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {
+    "scope.writePhotosAlbum": {
+      "desc": "用于保存或查看发票、收据文件。"
+    }
+  }
+}

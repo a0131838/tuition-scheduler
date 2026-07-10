@@ -1,0 +1,161 @@
+page {
+  min-height: 100%;
+  background: #f6f7f3;
+  color: #17251d;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 28rpx;
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 28rpx;
+}
+
+.top {
+  padding: 24rpx 0 20rpx;
+}
+
+.eyebrow {
+  color: #6e7d70;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.title {
+  margin-top: 10rpx;
+  font-size: 44rpx;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  margin-top: 12rpx;
+  color: #617064;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.card {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  background: #ffffff;
+  border: 1rpx solid #e1e7dc;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.label {
+  color: #708072;
+  font-size: 24rpx;
+}
+
+.value {
+  margin-top: 8rpx;
+  font-size: 30rpx;
+  font-weight: 750;
+  word-break: break-word;
+}
+
+.muted {
+  color: #748174;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  border-radius: 8rpx;
+  background: #123524;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.btn.secondary {
+  background: #edf2ea;
+  color: #123524;
+}
+
+.btn.warn {
+  background: #9d3b30;
+}
+
+.btn.staff {
+  background: #22324a;
+  color: #ffffff;
+}
+
+.btn + .btn {
+  margin-top: 16rpx;
+}
+
+.input,
+.textarea,
+.picker {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 86rpx;
+  padding: 20rpx;
+  border: 1rpx solid #dbe3d7;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #17251d;
+  font-size: 28rpx;
+}
+
+.textarea {
+  min-height: 220rpx;
+  line-height: 1.5;
+}
+
+.field {
+  margin-top: 22rpx;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #edf2ea;
+  color: #244a35;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.list-gap {
+  height: 14rpx;
+}
+
+.empty {
+  padding: 72rpx 24rpx;
+  text-align: center;
+  color: #788579;
+}
+
+.grid-2 {
+  display: flex;
+  gap: 18rpx;
+}
+
+.metric {
+  flex: 1;
+  min-width: 0;
+  padding: 20rpx;
+  border-radius: 8rpx;
+  background: #f8faf6;
+  border: 1rpx solid #e4eadf;
+}

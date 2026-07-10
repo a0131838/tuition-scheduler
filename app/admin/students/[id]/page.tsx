@@ -17,6 +17,7 @@ import SessionCancelRestoreClient from "./_components/SessionCancelRestoreClient
 import StudentEditClient from "./_components/StudentEditClient";
 import SessionReplaceTeacherClient from "./_components/SessionReplaceTeacherClient";
 import StudentDetailHashStateClient from "./_components/StudentDetailHashStateClient";
+import ParentPortalCardClient from "./_components/ParentPortalCardClient";
 import {
   isExactSessionTimeslot,
   pickStudentSessionConflict,
@@ -2836,6 +2837,8 @@ export default async function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      <ParentPortalCardClient studentId={studentId} />
 
       {sourceWorkflow === "students" ? (
         <WorkflowSourceBanner

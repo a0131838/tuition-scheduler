@@ -1,0 +1,14 @@
+.small {
+  min-height: 60rpx;
+  padding: 0 20rpx;
+  font-size: 24rpx;
+}
+
+.doc-row {
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #eef2eb;
+}
+
+.payment-row {
+  padding-top: 14rpx;
+}

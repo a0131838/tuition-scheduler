@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{studentName}}</view>
+    <view class="title">服务请求</view>
+    <view class="subtitle">投诉、反馈、给老师的话、排课、请假和财务问题都可以在这里提交。</view>
+  </view>
+
+  <button class="btn" bindtap="goNew">提交新请求</button>
+
+  <block wx:if="{{requests.length}}">
+    <view wx:for="{{requests}}" wx:key="id" class="card" bindtap="openDetail" data-id="{{item.id}}">
+      <view class="row">
+        <view class="pill">{{item.type}}</view>
+        <view class="pill">{{item.statusLabel}}</view>
+      </view>
+      <view class="value">{{item.title || item.ticketNo}}</view>
+      <view class="subtitle">负责人：{{item.owner || item.mainOwner}} · 关闭：{{item.closeOwner}}</view>
+      <view class="label">{{item.updatedAt}}</view>
+    </view>
+  </block>
+  <view wx:else class="empty">暂无请求记录</view>
+</view>

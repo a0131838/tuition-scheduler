@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{student.name || "博思学业管家"}}</view>
+    <view class="title">学习状态和服务进展</view>
+    <view class="subtitle">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}}</view>
+  </view>
+
+  <view class="grid-2">
+    <view class="metric">
+      <view class="label">服务类型</view>
+      <view class="value">{{student.servicePlanLabel || "-"}}</view>
+    </view>
+    <view class="metric">
+      <view class="label">风险等级</view>
+      <view class="value">{{student.academicRiskLabel || "-"}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{nextSession}}">
+    <view class="label">下一节课</view>
+    <view class="value">{{nextSession.startText}}</view>
+    <view class="subtitle">{{nextSession.courseLabel}} · {{nextSession.teacherName || "老师未定"}}</view>
+  </view>
+
+  <view class="card" wx:if="{{latestFeedback}}">
+    <view class="row">
+      <view class="label">最新课后反馈</view>
+      <view class="pill" bindtap="goFeedbacks">查看全部</view>
+    </view>
+    <view class="value">{{latestFeedback.teacherName}}</view>
+    <view class="subtitle">{{latestFeedback.summary}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">财务概览</view>
+    <view class="grid-2">
+      <view class="metric">
+        <view class="label">剩余课时</view>
+        <view class="value">{{financeSummary.totalRemainingMinutes || 0}} 分钟</view>
+      </view>
+      <view class="metric">
+        <view class="label">待处理请求</view>
+        <view class="value">{{requestSummary.openCount || 0}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <button class="btn" bindtap="goNewRequest">提交请求</button>
+    <button class="btn secondary" bindtap="goStudents">切换学生</button>
+  </view>
+</view>

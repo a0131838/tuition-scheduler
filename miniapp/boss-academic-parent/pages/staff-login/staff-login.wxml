@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">员工入口</view>
+    <view class="title">出差时处理高频事务</view>
+    <view class="subtitle">第一版先支持查看和处理家长请求，后续再加入今日课表、学生搜索和老师待办。</view>
+  </view>
+
+  <view class="card">
+    <button class="btn staff" loading="{{loading}}" bindtap="handleLogin">员工微信登录</button>
+    <button class="btn secondary" bindtap="goBind">我有员工绑定码</button>
+  </view>
+</view>

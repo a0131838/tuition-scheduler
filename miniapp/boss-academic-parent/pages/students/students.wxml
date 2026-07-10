@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">我的学生</view>
+    <view class="title">选择要查看的孩子</view>
+    <view class="subtitle">一个家长可以绑定多个学生，一个学生也可以绑定多个家长。</view>
+  </view>
+
+  <block wx:if="{{students.length}}">
+    <view wx:for="{{students}}" wx:key="id" class="card" bindtap="selectStudent" data-index="{{index}}">
+      <view class="row">
+        <view>
+          <view class="value">{{item.name}}</view>
+          <view class="label">{{item.school || "学校未填写"}} · {{item.grade || "年级未填写"}}</view>
+        </view>
+        <view class="pill" wx:if="{{item.id === currentStudentId}}">当前</view>
+      </view>
+      <view class="subtitle">{{item.servicePlanLabel || "普通课程"}} · {{item.academicRiskLabel || "风险未设置"}}</view>
+    </view>
+  </block>
+  <view wx:else class="empty">还没有绑定学生</view>
+
+  <button class="btn secondary" bindtap="goBind">绑定新学生</button>
+</view>

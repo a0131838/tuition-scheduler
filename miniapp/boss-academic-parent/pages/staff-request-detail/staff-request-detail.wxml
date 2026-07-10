@@ -1,0 +1,31 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">{{request.ticketNo || "请求处理"}}</view>
+    <view class="title">{{request.studentName || "-"}}</view>
+    <view class="subtitle">{{request.type || "-"}} · {{request.statusLabel || "-"}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">请求内容</view>
+    <view class="value">{{request.content || request.title || "-"}}</view>
+    <view class="field">
+      <view class="label">希望处理</view>
+      <view class="subtitle">{{request.requestedAction || "-"}}</view>
+    </view>
+    <view class="field">
+      <view class="label">负责人</view>
+      <view class="subtitle">{{request.owner || request.mainOwner}} · 关闭负责人 {{request.closeOwner}}</view>
+    </view>
+  </view>
+
+  <view class="card actions">
+    <button class="btn secondary" loading="{{loading}}" data-status="Waiting Parent" bindtap="updateStatus">等家长补充</button>
+    <button class="btn secondary" loading="{{loading}}" data-status="Confirmed" bindtap="updateStatus">标记已确认</button>
+    <button class="btn staff" loading="{{loading}}" data-status="Completed" bindtap="updateStatus">标记完成</button>
+  </view>
+
+  <view class="card" wx:if="{{request.attachmentUrls && request.attachmentUrls.length}}">
+    <view class="label">附件</view>
+    <view wx:for="{{request.attachmentUrls}}" wx:key="*this" class="subtitle">{{item}}</view>
+  </view>
+</view>
