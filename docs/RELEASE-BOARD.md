@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r212` (staff miniapp assisted parent-request creation), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r213` (student schedule PDF teacher override fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Student-schedule-PDF-teacher risk: `2026-07-10-r213` changes only the student monthly schedule PDF teacher label to use per-session replacement teachers when present; scheduling, replacement history, attendance, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw behavior remain unchanged.
 - Staff-assisted-parent-request risk: `2026-07-10-r212` adds a staff-authenticated Ticket creation path for WeChat-group-style parent requests. Verify Emily/Eva can select the intended student and that parent-visible summaries are written carefully before completing requests.
 - Staff-miniapp-attendance risk: `2026-07-10-r211` adds a miniapp write path for teacher attendance marking; it preserves existing deduction/package fields and only lets a linked teacher write attendance for their own sessions.
 - Staff-miniapp-WXML-render risk: `2026-07-10-r210` removes complex WXML fallback expressions from staff pages and prevents optional staff-home count API timeouts from blanking the workbench after the WeChat Developer Tool showed a blank staff workbench; this should improve miniapp rendering compatibility without changing backend behavior.
@@ -128,6 +129,27 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r213 Ready
+
+- Scope: fix student monthly schedule PDF exports to show the per-session replacement teacher when a lesson has been changed from the class default teacher.
+- Business impact:
+  - Student detail pages already showed replacement teachers correctly; exported student schedule PDFs now match that same rule.
+  - The reported 2026-07-12 王钰澄 lesson has class teacher Jasmine and session teacher Zoe, so the export should show Zoe.
+  - Scheduling writes, teacher replacement history, attendance deduction, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw flows are intentionally unchanged.
+- Files:
+  - `app/api/exports/student-schedule/[id]/route.ts`
+  - `lib/student-schedule-export.ts`
+  - `tests/student-schedule-export.test.ts`
+  - `package.json`
+  - `docs/tasks/TASK-20260710-student-schedule-export-teacher-override.md`
+- Verification before deploy:
+  - read-only DB check for the reported 2026-07-12 lesson
+  - `npm run test:backend`
+  - `npx tsc --noEmit`
+- Post-deploy verification:
+  - `curl -I -sS --max-time 20 https://sgtmanage.com/admin/login`
+  - verify production commit hash matches the deployed r213 commit.
 
 ## 2026-07-10-r211 Ready
 

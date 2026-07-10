@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r213
+
+- Release ID: `2026-07-10-r213`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: fix student monthly schedule PDF exports so lessons with a per-session replacement teacher show the replacement teacher instead of the class default teacher.
+- Key files:
+  - `app/api/exports/student-schedule/[id]/route.ts`
+  - `lib/student-schedule-export.ts`
+  - `tests/student-schedule-export.test.ts`
+  - `package.json`
+  - `docs/tasks/TASK-20260710-student-schedule-export-teacher-override.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes only the read-side student schedule PDF teacher label. Scheduling writes, teacher replacement history, attendance deduction, package balances, payroll, billing, partner settlement, miniapp, and OpenClaw behavior are unchanged.
+- Verification:
+  - read-only DB check confirmed the 2026-07-12 王钰澄 lesson has class teacher Jasmine, session teacher Zoe, and effective teacher Zoe
+  - `npm run test:backend`
+  - `npx tsc --noEmit`
+- Rollback point: previous production commit before `2026-07-10-r213`.
+
+---
+
 ## 2026-07-10-r212
 
 - Release ID: `2026-07-10-r212`

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { setPdfBoldFont, setPdfFont } from "@/lib/pdf-font";
 import { formatBusinessDateOnly, formatBusinessDateTime, formatBusinessTimeOnly } from "@/lib/date-only";
 import { isDirectBillingStudentTypeName } from "@/lib/student-type-semantics";
+import { studentScheduleTeacherName } from "@/lib/student-schedule-export";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 import PDFDocument from "pdfkit";
@@ -144,6 +145,7 @@ function drawMonthCalendar(
     id: string;
     startAt: Date;
     endAt: Date;
+    teacher?: { name: string } | null;
     class: {
       course: { name: string };
       subject?: { name: string } | null;
@@ -228,7 +230,7 @@ function drawMonthCalendar(
         ).padStart(2, "0")}`;
         const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
         const subjectInitial = subjectText ? subjectText.trim().charAt(0) : "";
-        return { s, line: `${time} ${subjectInitial} ${s.class.teacher.name}` };
+        return { s, line: `${time} ${subjectInitial} ${studentScheduleTeacherName(s)}` };
       });
 
       const needsOverflowMarker = entries.length > lineSlots;
@@ -328,6 +330,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         },
         include: {
           class: { include: { course: true, subject: true, level: true, teacher: true, campus: true, room: true } },
+          teacher: true,
         },
         orderBy: { startAt: "asc" },
       })
@@ -386,7 +389,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           for (const s of list) {
             const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
             const line1 = `${formatDateTime(new Date(s.startAt))} - ${formatBusinessTimeOnly(new Date(s.endAt))} | ${subjectText}`;
-            const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
+            const line2 = `${studentScheduleTeacherName(s)} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
             doc.fontSize(9).text(line1);
             doc.fontSize(8).text(line2);
             doc.moveDown(0.2);
@@ -456,7 +459,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           for (const s of list) {
             const subjectText = s.class.subject?.name ?? s.class.course.name ?? "";
             const line1 = `${formatDateTime(new Date(s.startAt))} - ${formatBusinessTimeOnly(new Date(s.endAt))} | ${subjectText}`;
-            const line2 = `${s.class.teacher.name} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
+            const line2 = `${studentScheduleTeacherName(s)} | ${s.class.campus.name}${s.class.room ? ` / ${s.class.room.name}` : ""}`;
             doc.fontSize(9).text(line1);
             doc.fontSize(8).text(line2);
             doc.moveDown(0.2);
