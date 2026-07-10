@@ -1,0 +1,49 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.input {
+  min-height: 76rpx;
+  border: 1rpx solid #d8ded4;
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.textarea {
+  min-height: 180rpx;
+}
+
+.textarea.small {
+  min-height: 130rpx;
+}
+
+.hint {
+  color: #718072;
+  font-size: 24rpx;
+  margin-top: 8rpx;
+}
+
+.selected {
+  margin-top: 12rpx;
+  color: #123524;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.result {
+  border: 1rpx solid #e0e6dc;
+  border-radius: 8rpx;
+  padding: 16rpx;
+  margin-top: 12rpx;
+  background: #fbfcfa;
+}
+
+.result-title {
+  color: #223028;
+  font-size: 28rpx;
+  font-weight: 800;
+}

@@ -1,0 +1,169 @@
+const api = require("../../utils/api");
+
+const types = ["投诉", "普通反馈", "给老师的话", "排课要求", "请假/取消", "财务问题", "学校事务", "其他"];
+const communicationSources = ["微信群", "电话", "线下", "老师转达", "内部发现", "家长小程序", "其他"];
+const priorities = ["普通", "1小时紧急", "6小时紧急", "24小时紧急"];
+const owners = ["自动分配", "Jasmine", "Eva", "Emily"];
+
+let searchTimer = null;
+
+Page({
+  data: {
+    types,
+    communicationSources,
+    priorities,
+    owners,
+    typeIndex: 1,
+    communicationSourceIndex: 0,
+    priorityIndex: 0,
+    ownerIndex: 0,
+    studentQuery: "",
+    studentResults: [],
+    selectedStudentId: "",
+    selectedStudentLabel: "",
+    sourceDetail: "",
+    originalContent: "",
+    publicSummary: "",
+    requiredAction: "",
+    latestDeadlineText: "",
+    files: [],
+    searching: false,
+    loading: false
+  },
+
+  onUnload() {
+    if (searchTimer) clearTimeout(searchTimer);
+  },
+
+  onTypeChange(e) {
+    this.setData({ typeIndex: Number(e.detail.value || 0) });
+  },
+
+  onSourceChange(e) {
+    this.setData({ communicationSourceIndex: Number(e.detail.value || 0) });
+  },
+
+  onPriorityChange(e) {
+    this.setData({ priorityIndex: Number(e.detail.value || 0) });
+  },
+
+  onOwnerChange(e) {
+    this.setData({ ownerIndex: Number(e.detail.value || 0) });
+  },
+
+  onStudentInput(e) {
+    const value = e.detail.value || "";
+    this.setData({
+      studentQuery: value,
+      selectedStudentId: "",
+      selectedStudentLabel: ""
+    });
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => this.searchStudents(), 450);
+  },
+
+  searchStudents() {
+    const query = this.data.studentQuery.trim();
+    if (query.length < 2) {
+      this.setData({ studentResults: [], searching: false });
+      return;
+    }
+    this.setData({ searching: true });
+    api.requestStaff("/api/miniapp/staff/students?q=" + encodeURIComponent(query), { timeout: 12000 })
+      .then((data) => {
+        this.setData({ studentResults: data.students || [] });
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ searching: false }));
+  },
+
+  selectStudent(e) {
+    const id = e.currentTarget.dataset.id;
+    const label = e.currentTarget.dataset.label;
+    this.setData({
+      selectedStudentId: id,
+      selectedStudentLabel: label,
+      studentQuery: label,
+      studentResults: []
+    });
+  },
+
+  onSourceDetailInput(e) {
+    this.setData({ sourceDetail: e.detail.value });
+  },
+
+  onOriginalInput(e) {
+    this.setData({ originalContent: e.detail.value });
+  },
+
+  onPublicInput(e) {
+    this.setData({ publicSummary: e.detail.value });
+  },
+
+  onActionInput(e) {
+    this.setData({ requiredAction: e.detail.value });
+  },
+
+  onDeadlineInput(e) {
+    this.setData({ latestDeadlineText: e.detail.value });
+  },
+
+  chooseFiles() {
+    wx.chooseMessageFile({
+      count: 9,
+      type: "all",
+      success: (res) => {
+        this.setData({ files: res.tempFiles || [] });
+      },
+      fail: () => {}
+    });
+  },
+
+  submit() {
+    if (!this.data.selectedStudentId) {
+      api.toast("请先搜索并选择学生");
+      return;
+    }
+    if (!this.data.originalContent.trim()) {
+      api.toast("请填写微信群原话摘要");
+      return;
+    }
+    if (!this.data.publicSummary.trim()) {
+      api.toast("请填写对家长可见摘要");
+      return;
+    }
+
+    this.setData({ loading: true });
+    api.requestStaff("/api/miniapp/staff/parent-requests", {
+      method: "POST",
+      data: {
+        studentId: this.data.selectedStudentId,
+        type: types[this.data.typeIndex],
+        communicationSource: communicationSources[this.data.communicationSourceIndex],
+        sourceDetail: this.data.sourceDetail.trim(),
+        originalContent: this.data.originalContent.trim(),
+        publicSummary: this.data.publicSummary.trim(),
+        requiredAction: this.data.requiredAction.trim(),
+        latestDeadlineText: this.data.latestDeadlineText.trim(),
+        priority: priorities[this.data.priorityIndex],
+        owner: this.data.ownerIndex > 0 ? owners[this.data.ownerIndex] : ""
+      },
+      timeout: 20000
+    })
+      .then((data) => {
+        const req = data.request;
+        const paths = this.data.files.map((file) => file.path).filter(Boolean);
+        if (!req || !req.id || paths.length === 0) return data;
+        return api.uploadFiles(`/api/miniapp/staff/parent-requests/${req.id}/attachments`, paths, { staff: true }).then(() => data);
+      })
+      .then((data) => {
+        wx.showToast({ title: "已创建", icon: "success" });
+        setTimeout(() => {
+          const id = data.request && data.request.id;
+          wx.redirectTo({ url: id ? `/pages/staff-request-detail/staff-request-detail?id=${id}` : "/pages/staff-requests/staff-requests" });
+        }, 500);
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ loading: false }));
+  }
+});

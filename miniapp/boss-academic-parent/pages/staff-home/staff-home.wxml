@@ -21,5 +21,13 @@
     <view class="arrow">›</view>
   </view>
 
+  <view class="card work-card" bindtap="goNewRequest">
+    <view>
+      <view class="label">代录工单</view>
+      <view class="value">微信群消息整理成请求</view>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+
   <button class="btn secondary" bindtap="logout">退出员工登录</button>
 </view>

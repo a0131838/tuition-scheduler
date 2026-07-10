@@ -17,6 +17,8 @@
     </picker>
   </view>
 
+  <button class="btn" bindtap="newRequest">代家长创建工单</button>
+
   <block wx:if="{{requests.length}}">
     <view wx:for="{{requests}}" wx:key="id" class="card" bindtap="openDetail" data-id="{{item.id}}">
       <view class="row">

@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r212
+
+- Release ID: `2026-07-10-r212`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: add staff miniapp assisted parent-request creation so Emily-style operators can turn WeChat group messages into existing Ticket-based parent requests.
+- Key files:
+  - `app/api/miniapp/staff/parent-requests/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/attachments/route.ts`
+  - `app/api/miniapp/staff/students/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-request-new/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `miniapp/boss-academic-parent/utils/api.js`
+  - `docs/tasks/TASK-20260710-miniapp-staff-assisted-parent-request.md`
+- Risk impact (if any): Medium. This adds a new staff-authenticated Ticket creation path for parent requests. It reuses existing parent request ownership/status rules and stores screenshots as ticket files; it does not change package deduction, scheduling writes, finance, payroll, or parent binding.
+- Verification:
+  - miniapp JS syntax and JSON parse checks
+  - staff WXML complex-expression scan
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r212`.
+
+---
+
 ## 2026-07-10-r211
 
 - Release ID: `2026-07-10-r211`

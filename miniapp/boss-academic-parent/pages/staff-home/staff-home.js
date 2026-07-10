@@ -60,6 +60,10 @@ Page({
     wx.navigateTo({ url: "/pages/staff-requests/staff-requests" });
   },
 
+  goNewRequest() {
+    wx.navigateTo({ url: "/pages/staff-request-new/staff-request-new" });
+  },
+
   goSchedule() {
     wx.navigateTo({ url: "/pages/staff-schedule/staff-schedule" });
   },

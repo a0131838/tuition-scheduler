@@ -8,6 +8,7 @@
     "pages/staff-session-detail/staff-session-detail",
     "pages/staff-requests/staff-requests",
     "pages/staff-request-detail/staff-request-detail",
+    "pages/staff-request-new/staff-request-new",
     "pages/bind/bind",
     "pages/students/students",
     "pages/home/home",

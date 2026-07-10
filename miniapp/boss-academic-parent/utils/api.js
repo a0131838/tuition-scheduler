@@ -165,8 +165,10 @@ function downloadPdf(path) {
   });
 }
 
-function uploadFiles(path, filePaths) {
+function uploadFiles(path, filePaths, options) {
   const list = filePaths || [];
+  const opts = options || {};
+  const authToken = opts.staff ? staffToken() : token();
   let chain = Promise.resolve([]);
   list.forEach((filePath) => {
     chain = chain.then((acc) =>
@@ -175,7 +177,7 @@ function uploadFiles(path, filePaths) {
           url: config.apiBaseUrl + path,
           filePath,
           name: "files",
-          header: token() ? { Authorization: "Bearer " + token() } : {},
+          header: authToken ? { Authorization: "Bearer " + authToken } : {},
           success(res) {
             let data = {};
             try {

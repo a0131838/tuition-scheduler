@@ -1,0 +1,83 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">员工工作台</view>
+    <view class="title">代录工单</view>
+    <view class="subtitle">把微信群、电话或线下沟通整理成系统请求。</view>
+  </view>
+
+  <view class="card">
+    <view class="field">
+      <view class="label">学生</view>
+      <input class="input" value="{{studentQuery}}" placeholder="输入至少两个字搜索学生" bindinput="onStudentInput" />
+      <view class="hint" wx:if="{{searching}}">搜索中...</view>
+      <view class="selected" wx:if="{{selectedStudentLabel}}">已选择：{{selectedStudentLabel}}</view>
+      <view wx:for="{{studentResults}}" wx:key="id" class="result" bindtap="selectStudent" data-id="{{item.id}}" data-label="{{item.label}}">
+        <view class="result-title">{{item.label}}</view>
+        <view class="hint">{{item.school}}</view>
+      </view>
+    </view>
+
+    <view class="grid">
+      <view class="field">
+        <view class="label">请求类型</view>
+        <picker mode="selector" range="{{types}}" value="{{typeIndex}}" bindchange="onTypeChange">
+          <view class="picker">{{types[typeIndex]}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <view class="label">沟通入口</view>
+        <picker mode="selector" range="{{communicationSources}}" value="{{communicationSourceIndex}}" bindchange="onSourceChange">
+          <view class="picker">{{communicationSources[communicationSourceIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="label">群名/补充来源</view>
+      <input class="input" value="{{sourceDetail}}" placeholder="例如：G9数学家长群，可选" bindinput="onSourceDetailInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">原话摘要（内部看）</view>
+      <textarea class="textarea" value="{{originalContent}}" placeholder="整理微信群里的原始诉求、情绪、截图背景" bindinput="onOriginalInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">对家长可见摘要</view>
+      <textarea class="textarea" value="{{publicSummary}}" placeholder="写成正式、克制、可给家长看的描述" bindinput="onPublicInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">下一步动作</view>
+      <textarea class="textarea small" value="{{requiredAction}}" placeholder="例如：Eva 确认排课并在今天内回复家长" bindinput="onActionInput" />
+    </view>
+
+    <view class="grid">
+      <view class="field">
+        <view class="label">紧急程度</view>
+        <picker mode="selector" range="{{priorities}}" value="{{priorityIndex}}" bindchange="onPriorityChange">
+          <view class="picker">{{priorities[priorityIndex]}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <view class="label">负责人</view>
+        <picker mode="selector" range="{{owners}}" value="{{ownerIndex}}" bindchange="onOwnerChange">
+          <view class="picker">{{owners[ownerIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="label">截止说明</view>
+      <input class="input" value="{{latestDeadlineText}}" placeholder="例如：今天18:00前，可选" bindinput="onDeadlineInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">聊天截图/附件</view>
+      <button class="btn secondary" bindtap="chooseFiles">选择图片/文件</button>
+      <view class="hint" wx:if="{{files.length}}">已选择 {{files.length}} 个附件</view>
+    </view>
+
+    <button class="btn" loading="{{loading}}" bindtap="submit">创建工单</button>
+  </view>
+</view>

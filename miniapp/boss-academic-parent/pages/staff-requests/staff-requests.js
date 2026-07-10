@@ -73,5 +73,9 @@ Page({
 
   openDetail(e) {
     wx.navigateTo({ url: "/pages/staff-request-detail/staff-request-detail?id=" + e.currentTarget.dataset.id });
+  },
+
+  newRequest() {
+    wx.navigateTo({ url: "/pages/staff-request-new/staff-request-new" });
   }
 });

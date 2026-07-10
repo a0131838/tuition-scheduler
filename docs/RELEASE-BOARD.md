@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r211` (staff miniapp mobile attendance marking), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r212` (staff miniapp assisted parent-request creation), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Staff-assisted-parent-request risk: `2026-07-10-r212` adds a staff-authenticated Ticket creation path for WeChat-group-style parent requests. Verify Emily/Eva can select the intended student and that parent-visible summaries are written carefully before completing requests.
 - Staff-miniapp-attendance risk: `2026-07-10-r211` adds a miniapp write path for teacher attendance marking; it preserves existing deduction/package fields and only lets a linked teacher write attendance for their own sessions.
 - Staff-miniapp-WXML-render risk: `2026-07-10-r210` removes complex WXML fallback expressions from staff pages and prevents optional staff-home count API timeouts from blanking the workbench after the WeChat Developer Tool showed a blank staff workbench; this should improve miniapp rendering compatibility without changing backend behavior.
 - Staff-miniapp-feedback risk: `2026-07-10-r209` adds a miniapp write path for teacher after-class feedback; it reuses the existing five-section parent-facing feedback requirements and checks that the staff user is linked to the lesson teacher before writing.
