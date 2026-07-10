@@ -4,7 +4,13 @@ Page({
   data: {
     id: "",
     request: {
-      attachmentUrls: []
+      attachmentUrls: [],
+      ticketNoText: "请求详情",
+      typeText: "-",
+      statusLabelText: "-",
+      contentText: "-",
+      requestedActionText: "-",
+      ownerText: "-"
     }
   },
 
@@ -16,7 +22,20 @@ Page({
   load() {
     if (!this.data.id) return;
     api.request(`/api/miniapp/requests/${this.data.id}`)
-      .then((data) => this.setData({ request: data.request || { attachmentUrls: [] } }))
+      .then((data) => {
+        const request = data.request || {};
+        this.setData({
+          request: Object.assign({}, request, {
+            attachmentUrls: request.attachmentUrls || [],
+            ticketNoText: request.ticketNo || "请求详情",
+            typeText: request.type || "-",
+            statusLabelText: request.statusLabel || "-",
+            contentText: request.content || request.title || "-",
+            requestedActionText: request.requestedAction || "-",
+            ownerText: (request.owner || request.mainOwner || "-") + " · 关闭负责人 " + (request.closeOwner || "-")
+          })
+        });
+      })
       .catch((err) => api.toast(err.message));
   }
 });

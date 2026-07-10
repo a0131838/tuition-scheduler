@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const ticket = await getParentRequestTicket(id);
   if (!ticket) return bad("Parent request not found", 404);
-  return ok({ request: miniappRequestDto(ticket) });
+  return ok({ request: miniappRequestDto(ticket, { includeInternal: true }) });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -81,7 +81,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   return ok({
-    request: miniappRequestDto(updated),
+    request: miniappRequestDto(updated, { includeInternal: true }),
     notifyParent: Boolean(nextStatus),
   });
 }

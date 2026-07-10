@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     take: 100,
   });
 
-  return ok({ requests: tickets.map(miniappRequestDto) });
+  return ok({ requests: tickets.map((ticket) => miniappRequestDto(ticket)) });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ studentId: string }> }) {

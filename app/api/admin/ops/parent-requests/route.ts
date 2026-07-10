@@ -47,6 +47,6 @@ export async function GET(req: Request) {
       limit,
     },
     total: tickets.length,
-    requests: tickets.map(miniappRequestDto),
+    requests: tickets.map((ticket) => miniappRequestDto(ticket, { includeInternal: true })),
   });
 }

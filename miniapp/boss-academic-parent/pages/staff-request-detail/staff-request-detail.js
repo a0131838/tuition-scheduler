@@ -26,6 +26,9 @@ Page({
             typeText: request.type || "-",
             statusLabelText: request.statusLabel || "-",
             contentText: request.content || request.title || "-",
+            internalContentText: request.internalContent || "",
+            communicationSourceText: request.communicationSource || "",
+            createdByNameText: request.createdByName || "",
             requestedActionText: request.requestedAction || "-",
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"
@@ -53,6 +56,9 @@ Page({
             typeText: request.type || "-",
             statusLabelText: request.statusLabel || "-",
             contentText: request.content || request.title || "-",
+            internalContentText: request.internalContent || "",
+            communicationSourceText: request.communicationSource || "",
+            createdByNameText: request.createdByName || "",
             requestedActionText: request.requestedAction || "-",
             ownerText: request.owner || request.mainOwner || "-",
             closeOwnerText: request.closeOwner || "-"

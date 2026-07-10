@@ -6,8 +6,20 @@
   </view>
 
   <view class="card">
-    <view class="label">请求内容</view>
+    <view class="label">对家长可见摘要</view>
     <view class="value">{{request.contentText}}</view>
+    <view class="field" wx:if="{{request.internalContentText}}">
+      <view class="label">内部原话摘要</view>
+      <view class="subtitle">{{request.internalContentText}}</view>
+    </view>
+    <view class="field" wx:if="{{request.communicationSourceText}}">
+      <view class="label">沟通入口</view>
+      <view class="subtitle">{{request.communicationSourceText}}</view>
+    </view>
+    <view class="field" wx:if="{{request.createdByNameText}}">
+      <view class="label">录入人</view>
+      <view class="subtitle">{{request.createdByNameText}}</view>
+    </view>
     <view class="field">
       <view class="label">希望处理</view>
       <view class="subtitle">{{request.requestedActionText}}</view>

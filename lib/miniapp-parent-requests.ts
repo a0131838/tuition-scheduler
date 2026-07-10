@@ -60,16 +60,22 @@ export function miniappRequestDto(ticket: Pick<
   | "summary"
   | "nextAction"
   | "proof"
+  | "createdByName"
   | "createdAt"
   | "updatedAt"
   | "completedAt"
->) {
+>, options?: { includeInternal?: boolean }) {
   const parsed = parseTicketSituationSummary(ticket.summary);
   const cfg = miniappRequestConfig(ticket.type);
+  const includeInternal = Boolean(options?.includeInternal);
+  const assisted = isStaffAssistedRequest(ticket);
+  const visibility = parseAssistedRequestVisibility(parsed.currentIssue);
   const attachmentUrls = String(ticket.proof ?? "")
     .split(/\n+/)
     .map((x) => x.trim())
     .filter((x) => x.startsWith("/"));
+  const parentContent = visibility.publicSummary || parsed.currentIssue;
+  const title = parentContent || ticket.nextAction || ticket.type;
 
   return {
     id: ticket.id,
@@ -83,13 +89,47 @@ export function miniappRequestDto(ticket: Pick<
     owner: ticket.owner,
     mainOwner: "Jasmine",
     closeOwner: cfg.closer,
-    title: parsed.currentIssue || ticket.nextAction || ticket.type,
-    content: parsed.currentIssue,
+    title,
+    content: parentContent,
     requestedAction: parsed.requiredAction,
     latestDeadlineText: parsed.latestDeadlineText,
-    attachmentUrls,
+    attachmentUrls: includeInternal || !assisted ? attachmentUrls : [],
+    createdByName: includeInternal ? ticket.createdByName : null,
+    isStaffAssisted: assisted,
+    communicationSource: includeInternal ? visibility.communicationSource : null,
+    internalContent: includeInternal ? visibility.internalOriginal : null,
+    parentVisibleSummary: visibility.publicSummary || parentContent,
     createdAt: ticket.createdAt.toISOString(),
     updatedAt: ticket.updatedAt.toISOString(),
     completedAt: ticket.completedAt ? ticket.completedAt.toISOString() : null,
+  };
+}
+
+function isStaffAssistedRequest(ticket: Pick<Ticket, "createdByName" | "summary">) {
+  const createdBy = String(ticket.createdByName ?? "");
+  const summary = String(ticket.summary ?? "");
+  return createdBy.startsWith("员工代录：") || summary.includes("【员工代录原始摘要】");
+}
+
+function readBracketBlock(src: string, tag: string, nextTags: string[]) {
+  const start = src.indexOf(tag);
+  if (start < 0) return "";
+  const contentStart = start + tag.length;
+  const endCandidates = nextTags
+    .map((nextTag) => src.indexOf(nextTag, contentStart))
+    .filter((idx) => idx >= 0);
+  const end = endCandidates.length ? Math.min(...endCandidates) : src.length;
+  return src.slice(contentStart, end).trim();
+}
+
+function parseAssistedRequestVisibility(currentIssue: string) {
+  const src = String(currentIssue ?? "");
+  const publicSummary = readBracketBlock(src, "【对外摘要】", ["【员工代录原始摘要】", "【沟通入口】"]);
+  const internalOriginal = readBracketBlock(src, "【员工代录原始摘要】", ["【沟通入口】"]);
+  const communicationSource = readBracketBlock(src, "【沟通入口】", []);
+  return {
+    publicSummary,
+    internalOriginal,
+    communicationSource,
   };
 }

@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const ticket = await prisma.ticket.findUnique({ where: { id } });
   if (!ticket || ticket.source !== "家长小程序") return bad("Parent request not found", 404);
 
-  return Response.json({ ok: true, request: miniappRequestDto(ticket) });
+  return Response.json({ ok: true, request: miniappRequestDto(ticket, { includeInternal: true }) });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -90,7 +90,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return Response.json({
     ok: true,
-    request: miniappRequestDto(updated),
+    request: miniappRequestDto(updated, { includeInternal: true }),
     notifyParent: Boolean(nextStatus),
     notifyReason: nextStatus ? "请求状态已更新，第一版规则为全部状态变化提醒家长。" : null,
   });

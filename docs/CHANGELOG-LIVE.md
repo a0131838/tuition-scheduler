@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r214
+
+- Release ID: `2026-07-10-r214`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: sanitize staff-assisted parent request visibility so parent miniapp views only receive the parent-facing summary while staff/admin views can still see internal original notes and communication source.
+- Key files:
+  - `lib/miniapp-parent-requests.ts`
+  - `app/api/miniapp/staff/parent-requests/*`
+  - `app/api/admin/ops/parent-requests/*`
+  - `app/api/miniapp/students/[studentId]/requests/route.ts`
+  - `miniapp/boss-academic-parent/pages/request-detail/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `docs/tasks/TASK-20260710-miniapp-staff-assisted-request-visibility.md`
+- Risk impact (if any): Medium. This changes the DTO projection for parent-request tickets. It intentionally hides staff-assisted internal original notes and screenshots from parent miniapp responses while preserving them for staff/admin responses.
+- Verification:
+  - miniapp JS syntax and JSON parse checks
+  - parent/staff request-detail WXML complex-expression scan
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-10-r214`.
+
+---
+
 ## 2026-07-10-r213
 
 - Release ID: `2026-07-10-r213`

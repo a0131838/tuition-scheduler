@@ -54,7 +54,7 @@ export async function GET(req: Request) {
   return ok({
     generatedAt: new Date().toISOString(),
     total: tickets.length,
-    requests: tickets.map(miniappRequestDto),
+    requests: tickets.map((ticket) => miniappRequestDto(ticket, { includeInternal: true })),
   });
 }
 
@@ -131,6 +131,6 @@ export async function POST(req: Request) {
 
   return ok({
     message: "已代家长创建工单。",
-    request: miniappRequestDto(ticket),
+    request: miniappRequestDto(ticket, { includeInternal: true }),
   });
 }
