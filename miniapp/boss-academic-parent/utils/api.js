@@ -15,11 +15,13 @@ function staffToken() {
 function request(path, options) {
   const opts = options || {};
   const authToken = opts.staff ? staffToken() : token();
+  const timeout = opts.timeout || 20000;
   return new Promise((resolve, reject) => {
     wx.request({
       url: config.apiBaseUrl + path,
       method: opts.method || "GET",
       data: opts.data || undefined,
+      timeout,
       header: Object.assign(
         {
           "content-type": "application/json"

@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-10-r210
+
+- Release ID: `2026-07-10-r210`
+- Date/Time (Asia/Shanghai): `2026-07-10`
+- Deployment status: `READY`
+- Scope: fix native miniapp staff-page blank rendering by removing complex WXML expressions from staff pages, moving display fallbacks into page JavaScript data, and making the staff home page resilient to slow miniapp API requests.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `miniapp/boss-academic-parent/utils/api.js`
+  - `miniapp/boss-academic-parent/app.json`
+  - `docs/tasks/TASK-20260710-miniapp-staff-wxml-render-fix.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Low. This changes only native miniapp presentation binding and request timeout behavior for staff pages. Backend routes, authentication, schedule reading, request updates, feedback writes, scheduling, attendance deduction, package ledger, billing, payroll, and OpenClaw behavior are unchanged.
+- Verification:
+  - staff WXML complex-expression scan
+  - miniapp JS syntax and JSON parse checks
+  - staff home remains renderable when optional count APIs time out
+- Rollback point: previous production commit before `2026-07-10-r210`.
+
+---
+
 ## 2026-07-10-r209
 
 - Release ID: `2026-07-10-r209`

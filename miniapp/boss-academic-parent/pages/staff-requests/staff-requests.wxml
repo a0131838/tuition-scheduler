@@ -23,8 +23,8 @@
         <view class="pill">{{item.type}}</view>
         <view class="pill">{{item.statusLabel}}</view>
       </view>
-      <view class="value">{{item.studentName}} · {{item.title || item.ticketNo}}</view>
-      <view class="subtitle">负责人：{{item.owner || item.mainOwner}} · {{item.updatedAt}}</view>
+      <view class="value">{{item.studentNameText}} · {{item.displayTitle}}</view>
+      <view class="subtitle">负责人：{{item.displayOwner}} · {{item.updatedAt}}</view>
     </view>
   </block>
   <view wx:else class="empty">暂无请求</view>

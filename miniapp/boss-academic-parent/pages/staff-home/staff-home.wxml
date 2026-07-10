@@ -1,7 +1,7 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">{{role || "STAFF"}}</view>
-    <view class="title">{{staffName || "员工工作台"}}</view>
+    <view class="eyebrow">{{roleText}}</view>
+    <view class="title">{{staffNameText}}</view>
     <view class="subtitle">查看当天课程，处理家长请求和排课协调。</view>
   </view>
 

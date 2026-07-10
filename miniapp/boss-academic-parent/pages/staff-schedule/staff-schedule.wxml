@@ -22,11 +22,11 @@
   <view class="summary">
     <view class="metric">
       <view class="label">课程</view>
-      <view class="value">{{summary.visibleSessions || 0}}</view>
+      <view class="value">{{summaryVisibleSessions}}</view>
     </view>
     <view class="metric">
       <view class="label">学生</view>
-      <view class="value">{{summary.visibleStudentCount || 0}}</view>
+      <view class="value">{{summaryVisibleStudentCount}}</view>
     </view>
   </view>
 
@@ -40,15 +40,15 @@
       <view class="subtitle">{{item.startText}} - {{item.endText}}</view>
       <view class="field">
         <view class="label">老师</view>
-        <view class="subtitle">{{item.teacher.name}}</view>
+        <view class="subtitle">{{item.teacherNameText}}</view>
       </view>
       <view class="field">
         <view class="label">学生</view>
-        <view class="subtitle">{{item.studentText}}</view>
+        <view class="subtitle">{{item.studentTextValue}}</view>
       </view>
       <view class="field">
         <view class="label">地点</view>
-        <view class="subtitle">{{item.locationText}}</view>
+        <view class="subtitle">{{item.locationTextValue}}</view>
       </view>
     </view>
   </block>

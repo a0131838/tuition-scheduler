@@ -17,10 +17,13 @@ Page({
   data: {
     sessionId: "",
     session: null,
+    sessionTeacherName: "-",
     focusStudentName: "",
     parentFeedbackSections: sectionList({}),
     homework: "",
     previousHomeworkDone: "",
+    previousHomeworkDoneChecked: false,
+    submitDisabled: false,
     loading: false,
     saving: false
   },
@@ -38,10 +41,13 @@ Page({
         const feedback = data.feedback || {};
         this.setData({
           session: data.session || null,
+          sessionTeacherName: data.session && data.session.teacherName ? data.session.teacherName : "-",
           focusStudentName: feedback.focusStudentName || "",
           parentFeedbackSections: sectionList(feedback.parentFeedbackSections),
           homework: feedback.homework || "",
-          previousHomeworkDone: feedback.previousHomeworkDone || ""
+          previousHomeworkDone: feedback.previousHomeworkDone || "",
+          previousHomeworkDoneChecked: feedback.previousHomeworkDone === "yes",
+          submitDisabled: false
         });
       })
       .catch((err) => api.toast(err.message))
@@ -64,7 +70,10 @@ Page({
   },
 
   changePreviousHomework(e) {
-    this.setData({ previousHomeworkDone: e.detail.value ? "yes" : "no" });
+    this.setData({
+      previousHomeworkDone: e.detail.value ? "yes" : "no",
+      previousHomeworkDoneChecked: Boolean(e.detail.value)
+    });
   },
 
   submit() {
@@ -84,7 +93,7 @@ Page({
       return;
     }
 
-    this.setData({ saving: true });
+    this.setData({ saving: true, submitDisabled: true });
     api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback", {
       method: "POST",
       data: {
@@ -99,6 +108,6 @@ Page({
         this.load();
       })
       .catch((err) => api.toast(err.message))
-      .finally(() => this.setData({ saving: false }));
+      .finally(() => this.setData({ saving: false, submitDisabled: false }));
   }
 });

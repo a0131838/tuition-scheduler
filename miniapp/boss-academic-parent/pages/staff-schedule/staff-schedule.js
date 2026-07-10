@@ -21,6 +21,8 @@ Page({
     date: todayStr(0),
     sessions: [],
     summary: {},
+    summaryVisibleSessions: 0,
+    summaryVisibleStudentCount: 0,
     teacherOnly: false,
     loading: false
   },
@@ -39,9 +41,20 @@ Page({
     this.setData({ loading: true });
     return api.requestStaff("/api/miniapp/staff/schedule?" + qs)
       .then((data) => {
+        const summary = data.summary || {};
+        const sessions = (data.sessions || []).map((item) => {
+          const teacher = item.teacher || {};
+          return Object.assign({}, item, {
+            teacherNameText: teacher.name || "-",
+            studentTextValue: item.studentText || "-",
+            locationTextValue: item.locationText || "-"
+          });
+        });
         this.setData({
-          sessions: data.sessions || [],
-          summary: data.summary || {},
+          sessions,
+          summary,
+          summaryVisibleSessions: summary.visibleSessions || 0,
+          summaryVisibleStudentCount: summary.visibleStudentCount || 0,
           teacherOnly: Boolean(data.teacherOnly),
           scopeIndex: data.teacherOnly ? 1 : this.data.scopeIndex
         });

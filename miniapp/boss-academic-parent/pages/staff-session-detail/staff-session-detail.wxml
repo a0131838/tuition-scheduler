@@ -2,7 +2,7 @@
   <view class="top" wx:if="{{session}}">
     <view class="eyebrow">{{session.startText}}</view>
     <view class="title">{{session.courseLabel}}</view>
-    <view class="subtitle">老师：{{session.teacherName || "-"}}</view>
+    <view class="subtitle">老师：{{sessionTeacherName}}</view>
   </view>
 
   <view class="card">
@@ -27,9 +27,9 @@
         <view class="label">之前作业完成</view>
         <view class="hint">开启为 yes，关闭为 no</view>
       </view>
-      <switch checked="{{previousHomeworkDone === 'yes'}}" bindchange="changePreviousHomework" />
+      <switch checked="{{previousHomeworkDoneChecked}}" bindchange="changePreviousHomework" />
     </view>
   </view>
 
-  <button class="primary" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="submit">提交反馈</button>
+  <button class="primary" loading="{{saving}}" disabled="{{submitDisabled}}" bindtap="submit">提交反馈</button>
 </view>

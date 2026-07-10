@@ -44,7 +44,14 @@ Page({
 
     this.setData({ loading: true });
     return api.requestStaff("/api/miniapp/staff/parent-requests?" + query.join("&"))
-      .then((data) => this.setData({ requests: data.requests || [] }))
+      .then((data) => {
+        const requests = (data.requests || []).map((item) => Object.assign({}, item, {
+          displayTitle: item.title || item.ticketNo || "-",
+          displayOwner: item.owner || item.mainOwner || "-",
+          studentNameText: item.studentName || "-"
+        }));
+        this.setData({ requests });
+      })
       .catch((err) => api.toast(err.message))
       .finally(() => this.setData({ loading: false }));
   },

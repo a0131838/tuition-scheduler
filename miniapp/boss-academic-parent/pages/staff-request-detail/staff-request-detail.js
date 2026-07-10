@@ -4,6 +4,7 @@ Page({
   data: {
     id: "",
     request: {},
+    hasAttachments: false,
     loading: false
   },
 
@@ -15,7 +16,23 @@ Page({
   load() {
     if (!this.data.id) return Promise.resolve();
     return api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id)
-      .then((data) => this.setData({ request: data.request || {} }))
+      .then((data) => {
+        const request = data.request || {};
+        const attachmentUrls = request.attachmentUrls || [];
+        this.setData({
+          request: Object.assign({}, request, {
+            ticketNoText: request.ticketNo || "请求处理",
+            studentNameText: request.studentName || "-",
+            typeText: request.type || "-",
+            statusLabelText: request.statusLabel || "-",
+            contentText: request.content || request.title || "-",
+            requestedActionText: request.requestedAction || "-",
+            ownerText: request.owner || request.mainOwner || "-",
+            closeOwnerText: request.closeOwner || "-"
+          }),
+          hasAttachments: attachmentUrls.length > 0
+        });
+      })
       .catch((err) => api.toast(err.message));
   },
 
@@ -28,7 +45,19 @@ Page({
       data: { status }
     })
       .then((data) => {
-        this.setData({ request: data.request || this.data.request });
+        const request = data.request || this.data.request;
+        this.setData({
+          request: Object.assign({}, request, {
+            ticketNoText: request.ticketNo || "请求处理",
+            studentNameText: request.studentName || "-",
+            typeText: request.type || "-",
+            statusLabelText: request.statusLabel || "-",
+            contentText: request.content || request.title || "-",
+            requestedActionText: request.requestedAction || "-",
+            ownerText: request.owner || request.mainOwner || "-",
+            closeOwnerText: request.closeOwner || "-"
+          })
+        });
         wx.showToast({ title: "已更新", icon: "success" });
       })
       .catch((err) => api.toast(err.message))

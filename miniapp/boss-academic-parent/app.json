@@ -54,10 +54,5 @@
     ]
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents",
-  "permission": {
-    "scope.writePhotosAlbum": {
-      "desc": "用于保存或查看发票、收据文件。"
-    }
-  }
+  "lazyCodeLoading": "requiredComponents"
 }

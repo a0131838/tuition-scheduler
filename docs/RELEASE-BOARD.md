@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r209` (staff miniapp teacher feedback submission), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-10-r210` (staff miniapp WXML render fix), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Staff-miniapp-WXML-render risk: `2026-07-10-r210` removes complex WXML fallback expressions from staff pages and prevents optional staff-home count API timeouts from blanking the workbench after the WeChat Developer Tool showed a blank staff workbench; this should improve miniapp rendering compatibility without changing backend behavior.
 - Staff-miniapp-feedback risk: `2026-07-10-r209` adds a miniapp write path for teacher after-class feedback; it reuses the existing five-section parent-facing feedback requirements and checks that the staff user is linked to the lesson teacher before writing.
 - Staff-miniapp-schedule risk: `2026-07-10-r208` adds read-side daily schedule access for mobile staff; teacher-role accounts are constrained to their linked teacher schedule, while ops/management can see all lessons for same-day coordination.
 - Staff-request-filter risk: `2026-07-10-r208` adds miniapp request type filtering only; parent request creation, ownership, status transitions, and notifications remain unchanged.
@@ -125,6 +126,31 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-10-r210 Ready
+
+- Scope: fix native miniapp staff page blank rendering by simplifying WXML bindings and making staff-home API loading non-blocking.
+- Business impact:
+  - Employee workbench, daily schedule, request queue, request detail, and course feedback pages avoid complex WXML expressions that can fail in WeChat Developer Tool rendering.
+  - Display fallback values are now computed in page JavaScript before binding.
+  - Employee workbench renders its main action cards before optional request-count and course-count APIs finish; timeout leaves the count at 0 instead of blanking the page.
+  - Unused `scope.writePhotosAlbum` permission was removed from `app.json`.
+  - Backend routes, staff login, parent request updates, schedule reads, feedback writes, scheduling, attendance deduction, package ledger, billing, payroll, and OpenClaw flows are unchanged.
+- Files:
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-requests/*`
+  - `miniapp/boss-academic-parent/pages/staff-request-detail/*`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `miniapp/boss-academic-parent/utils/api.js`
+  - `miniapp/boss-academic-parent/app.json`
+  - `docs/tasks/TASK-20260710-miniapp-staff-wxml-render-fix.md`
+- Verification before deploy:
+  - staff WXML complex-expression scan
+  - miniapp JS syntax and JSON parse checks
+  - staff home non-blocking timeout behavior checked by code inspection
+- Post-deploy verification:
+  - Recompile the miniapp in WeChat Developer Tool and open `pages/staff-home/staff-home`.
 
 ## 2026-07-10-r209 Ready
 
