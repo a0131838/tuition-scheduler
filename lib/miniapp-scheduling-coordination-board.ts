@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 
 export const COORDINATION_BOARD_STATUSES = [
+  { value: "Need Info", label: "待补信息" },
   { value: "Waiting Parent", label: "等待家长" },
   { value: "Waiting Teacher", label: "等待老师" },
   { value: "Confirmed", label: "双方已确认" },

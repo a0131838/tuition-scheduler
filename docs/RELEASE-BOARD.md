@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r222` (align the mobile scheduling board with all web Ticket Center scheduling categories), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r223` (mobile scheduling owner assignment and Need Info workflow), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-scheduling-owner risk: `2026-07-11-r223` allows permitted staff to change scheduling Ticket owner. Allowed values are restricted to unassigned, Jasmine, Eva, and Emily; every change is audited and older clients preserve the current owner when omitting the field.
 - Miniapp-scheduling-board-scope risk: `2026-07-11-r222` broadens the r221 board from exact `排课协调` Tickets to all six scheduling-related web Ticket Center categories. Existing permission, transition, and audit controls remain; verify operators notice each Ticket's original type label before updating it.
 - Miniapp-coordination-board risk: `2026-07-11-r221` exposes all open scheduling-coordination Tickets to ADMIN, CS, and CS-workspace staff and allows communication/status/follow-up updates. It does not complete Tickets or write Sessions; monitor the first Eva/Jasmine updates for correct owner, next action, and due date usage.
 - Miniapp-scheduling-ticket-closure risk: `2026-07-11-r220` can complete open scheduling-coordination Tickets together with a mobile scheduling write. Selection defaults empty, is restricted to same-student/same-course preview results, and is revalidated in the same transaction; monitor the first real closure before broadening automatic workflow actions.
@@ -139,7 +140,27 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r222 Ready
+## 2026-07-11-r223 Ready
+
+- Scope: make the 13-item mobile scheduling queue assignable and expose its existing `Need Info` work explicitly.
+- Business impact:
+  - The board adds a `待补信息` filter and summary count; production currently has 3 matching Tickets.
+  - Detail adds an owner selector for unassigned, Jasmine, Eva, and Emily.
+  - Owner changes are written with the communication/status/follow-up update and audit record in one transaction.
+  - Existing state-transition rules remain unchanged; this release does not complete Tickets or write Sessions.
+- Verification before deploy:
+  - authenticated `Need Info` filter returns 3 production Tickets
+  - detail returns four allowed owner options
+  - invalid owner returns 409 and leaves Ticket unchanged
+  - `npx tsc --noEmit`
+  - miniapp JavaScript checks
+  - `npm run build`
+- Post-deploy verification:
+  - ADMIN board summary reports `needInfo=3`
+  - invalid owner PATCH remains 409/no-write
+  - PM2, `/admin/login`, and commit alignment checks
+
+## 2026-07-11-r222 Live
 
 - Scope: fix the misleading mobile count caused by filtering only the exact `排课协调` Ticket type.
 - Business impact:

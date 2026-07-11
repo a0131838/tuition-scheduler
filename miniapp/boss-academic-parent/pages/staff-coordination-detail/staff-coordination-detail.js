@@ -19,6 +19,8 @@ Page({
     targetIndex: 0,
     statusOptions: [],
     statusIndex: 0,
+    ownerOptions: [],
+    ownerIndex: 0,
     communicationResult: "",
     nextAction: "",
     nextActionDue: tomorrow(),
@@ -40,12 +42,17 @@ Page({
       .then((data) => {
         const ticket = data.ticket || null;
         const statusOptions = data.statusOptions || [];
+        const ownerOptions = data.ownerOptions || [];
         let statusIndex = statusOptions.findIndex((item) => item.value === (ticket ? ticket.status : ""));
         if (statusIndex < 0) statusIndex = 0;
+        let ownerIndex = ownerOptions.findIndex((item) => item.value === (ticket && ticket.owner !== "-" ? ticket.owner : ""));
+        if (ownerIndex < 0) ownerIndex = 0;
         this.setData({
           ticket,
           statusOptions,
           statusIndex,
+          ownerOptions,
+          ownerIndex,
           nextAction: ticket ? ticket.nextAction : "",
           nextActionDue: ticket && ticket.nextActionDueDate ? ticket.nextActionDueDate : tomorrow(),
           hasAvailabilityUrl: Boolean(ticket && ticket.availabilityUrl),
@@ -63,6 +70,10 @@ Page({
 
   changeStatus(e) {
     this.setData({ statusIndex: Number(e.detail.value || 0) });
+  },
+
+  changeOwner(e) {
+    this.setData({ ownerIndex: Number(e.detail.value || 0) });
   },
 
   inputResult(e) {
@@ -87,6 +98,7 @@ Page({
     const communicationResult = this.data.communicationResult.trim();
     const nextAction = this.data.nextAction.trim();
     const selectedStatus = this.data.statusOptions[this.data.statusIndex];
+    const selectedOwner = this.data.ownerOptions[this.data.ownerIndex];
     if (!communicationResult) {
       api.toast("请填写本次沟通结果");
       return;
@@ -99,6 +111,10 @@ Page({
       api.toast("请选择工单状态");
       return;
     }
+    if (!selectedOwner) {
+      api.toast("请选择负责人");
+      return;
+    }
     this.setData({ saving: true });
     api.requestStaff("/api/miniapp/staff/scheduling-coordination/" + encodeURIComponent(this.data.id), {
       method: "PATCH",
@@ -106,6 +122,7 @@ Page({
         communicationTarget: communicationTargets[this.data.targetIndex],
         communicationResult,
         status: selectedStatus.value,
+        owner: selectedOwner.value,
         nextAction,
         nextActionDue: this.data.nextActionDue
       }

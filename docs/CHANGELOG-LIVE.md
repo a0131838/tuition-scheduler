@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r223
+
+- Release ID: `2026-07-11-r223`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: add a dedicated `Need Info` board filter/count and allow permitted mobile staff to assign scheduling Tickets to Jasmine, Eva, Emily, or unassigned from the detail workflow.
+- Key files:
+  - `lib/miniapp-scheduling-coordination-board.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination/staff-coordination.js`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
+  - `docs/tasks/TASK-20260711-miniapp-scheduling-owner-assignment.md`
+- Risk impact (if any): Low to medium. This changes only Ticket owner, coordination status/history, next action, and due date through the existing permission and transition checks. Older miniapp clients that omit owner preserve the existing owner. Session, package, attendance, finance, payroll, and completion behavior are unchanged.
+- Verification:
+  - production-data `Need Info` count is 3
+  - owner option and invalid-owner rejection checks
+  - invalid owner PATCH leaves the real Ticket unchanged
+  - TypeScript, miniapp JavaScript, full build, and diff checks
+- Rollback point: previous production commit before `2026-07-11-r223`.
+
+---
+
 ## 2026-07-11-r222
 
 - Release ID: `2026-07-11-r222`

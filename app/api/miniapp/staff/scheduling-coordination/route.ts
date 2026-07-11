@@ -10,7 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { TICKET_OWNER_OPTIONS } from "@/lib/tickets";
 
-const FILTER_STATUSES = ["Waiting Parent", "Waiting Teacher", "Confirmed", "Exception"];
+const FILTER_STATUSES = ["Need Info", "Waiting Parent", "Waiting Teacher", "Confirmed", "Exception"];
 
 function clean(value: string | null, maxLen = 100) {
   return String(value ?? "").trim().slice(0, maxLen);
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
       : {}),
   };
 
-  const [tickets, totalOpen, overdue, waitingParent, waitingTeacher, confirmed, exception] = await Promise.all([
+  const [tickets, totalOpen, overdue, needInfo, waitingParent, waitingTeacher, confirmed, exception] = await Promise.all([
     prisma.ticket.findMany({
       where,
       include: coordinationBoardTicketInclude,
@@ -62,6 +62,7 @@ export async function GET(req: Request) {
     }),
     prisma.ticket.count({ where: openWhere }),
     prisma.ticket.count({ where: { ...openWhere, nextActionDue: { lt: new Date() } } }),
+    prisma.ticket.count({ where: { ...openWhere, status: "Need Info" } }),
     prisma.ticket.count({ where: { ...openWhere, status: "Waiting Parent" } }),
     prisma.ticket.count({ where: { ...openWhere, status: "Waiting Teacher" } }),
     prisma.ticket.count({ where: { ...openWhere, status: "Confirmed" } }),
@@ -70,6 +71,6 @@ export async function GET(req: Request) {
 
   return ok({
     tickets: tickets.map(coordinationBoardTicketDto),
-    summary: { totalOpen, overdue, waitingParent, waitingTeacher, confirmed, exception },
+    summary: { totalOpen, overdue, needInfo, waitingParent, waitingTeacher, confirmed, exception },
   });
 }

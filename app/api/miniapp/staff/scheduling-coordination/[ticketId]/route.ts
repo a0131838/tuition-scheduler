@@ -12,7 +12,7 @@ import {
 } from "@/lib/miniapp-scheduling-coordination-board";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
-import { canTransitionTicketStatus } from "@/lib/tickets";
+import { canTransitionTicketStatus, TICKET_OWNER_OPTIONS } from "@/lib/tickets";
 
 function clean(value: unknown, maxLen: number) {
   return String(value ?? "").trim().slice(0, maxLen);
@@ -43,11 +43,19 @@ function statusOptions(currentStatus: string) {
   return COORDINATION_BOARD_STATUSES.filter((item) => canTransitionTicketStatus(currentStatus, item.value));
 }
 
+function ownerOptions() {
+  return [{ value: "", label: "未分配" }, ...TICKET_OWNER_OPTIONS.map((item) => ({ value: item.value, label: item.zh }))];
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await ctx.params;
   const access = await requireTicketAccess(req, ticketId);
   if (!access.ok) return access.response;
-  return ok({ ticket: coordinationBoardTicketDto(access.ticket), statusOptions: statusOptions(access.ticket.status) });
+  return ok({
+    ticket: coordinationBoardTicketDto(access.ticket),
+    statusOptions: statusOptions(access.ticket.status),
+    ownerOptions: ownerOptions(),
+  });
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: string }> }) {
@@ -63,6 +71,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
   const communicationTarget = clean((body as any).communicationTarget, 30);
   const communicationResult = clean((body as any).communicationResult, 2000);
   const status = clean((body as any).status, 40);
+  const ownerProvided = Object.prototype.hasOwnProperty.call(body, "owner");
+  const owner = ownerProvided ? clean((body as any).owner, 40) : String(access.ticket.owner ?? "");
   const nextAction = clean((body as any).nextAction, 1000) || defaultCoordinationNextAction(status);
   const nextActionDue = parseFollowUpDate((body as any).nextActionDue);
   if (!COORDINATION_COMMUNICATION_TARGETS.includes(communicationTarget as any)) {
@@ -70,6 +80,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
   }
   if (!communicationResult) return bad("Communication result is required", 409);
   if (!COORDINATION_BOARD_STATUSES.some((item) => item.value === status)) return bad("Invalid status", 409);
+  if (owner && !TICKET_OWNER_OPTIONS.some((item) => item.value === owner)) return bad("Invalid owner", 409);
   if (!canTransitionTicketStatus(access.ticket.status, status)) {
     return bad("Invalid coordination status transition", 409, { from: access.ticket.status, to: status });
   }
@@ -84,6 +95,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
       where: { id: access.ticket.id },
       data: {
         status,
+        ...(ownerProvided ? { owner: owner || null } : {}),
         nextAction,
         nextActionDue,
         risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
@@ -100,7 +112,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
         action: "MINIAPP_COORDINATION_BOARD_UPDATE",
         entityType: "Ticket",
         entityId: saved.id,
-        meta: { communicationTarget, fromStatus: access.ticket.status, toStatus: status },
+        meta: {
+          communicationTarget,
+          fromStatus: access.ticket.status,
+          toStatus: status,
+          fromOwner: access.ticket.owner,
+          toOwner: owner || null,
+        },
       },
     });
     return saved;
@@ -118,5 +136,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ ticketId: str
     }).catch(() => null);
   }
 
-  return ok({ message: "排课协调记录已更新。", ticket: coordinationBoardTicketDto(updated), statusOptions: statusOptions(updated.status) });
+  return ok({
+    message: "排课协调记录已更新。",
+    ticket: coordinationBoardTicketDto(updated),
+    statusOptions: statusOptions(updated.status),
+    ownerOptions: ownerOptions(),
+  });
 }

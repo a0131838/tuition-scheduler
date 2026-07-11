@@ -16,6 +16,12 @@
 
   <view class="card">
     <view class="field">
+      <view class="label">负责人</view>
+      <picker mode="selector" range="{{ownerOptions}}" range-key="label" value="{{ownerIndex}}" bindchange="changeOwner">
+        <view class="picker">{{ownerOptions[ownerIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
       <view class="label">本次联系对象</view>
       <picker mode="selector" range="{{communicationTargets}}" value="{{targetIndex}}" bindchange="changeTarget">
         <view class="picker">{{communicationTargets[targetIndex]}}</view>

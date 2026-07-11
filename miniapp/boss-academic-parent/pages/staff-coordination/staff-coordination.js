@@ -3,6 +3,7 @@ const api = require("../../utils/api");
 const scopes = [
   { label: "全部开放", status: "", overdue: false },
   { label: "已逾期", status: "", overdue: true },
+  { label: "待补信息", status: "Need Info", overdue: false },
   { label: "等待家长", status: "Waiting Parent", overdue: false },
   { label: "等待老师", status: "Waiting Teacher", overdue: false },
   { label: "双方已确认", status: "Confirmed", overdue: false },
