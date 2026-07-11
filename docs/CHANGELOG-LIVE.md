@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r219
+
+- Release ID: `2026-07-11-r219`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: allow Eva and management ADMIN accounts to create a same-class lesson or reschedule one future lesson from the staff miniapp after a signed conflict-check preview.
+- Key files:
+  - `lib/miniapp-session-scheduling.ts`
+  - `lib/miniapp-staff-session.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260711-miniapp-scheduling-writes.md`
+- Risk impact (if any): High. This adds production Session writes from the native miniapp, restricted to ADMIN staff and to one lesson per confirmed operation. It revalidates student, teacher, room, availability, package, duplicate, attendance-lock, and future-time rules immediately before writing. Billing, attendance deduction, package ledger mutation, payroll, and OpenClaw are unchanged.
+- Verification:
+  - ADMIN/CS/TEACHER permission checks
+  - signed preview token and tamper checks
+  - read-only real-data reschedule preview through the staff route
+  - apply-without-preview rejection check
+  - miniapp JavaScript and affected WXML checks
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-11-r219`.
+
+---
+
 ## 2026-07-11-r218
 
 - Release ID: `2026-07-11-r218`

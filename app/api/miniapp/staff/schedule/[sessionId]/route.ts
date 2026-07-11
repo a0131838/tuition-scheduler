@@ -3,6 +3,7 @@ import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
 import {
   canAccessMiniappStaffSession,
   canManageMiniappSchedulingCoordination,
+  canManageMiniappSchedulingWrites,
   canTeachMiniappSession,
   getMiniappStaffSessionContext,
   miniappStaffSessionDto,
@@ -23,6 +24,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sessionId: stri
     capabilities: {
       canTeachSession: canTeachMiniappSession(auth.user, session),
       canManageCoordination: canManageMiniappSchedulingCoordination(auth.user),
+      canManageSchedule: canManageMiniappSchedulingWrites(auth.user),
     },
   });
 }

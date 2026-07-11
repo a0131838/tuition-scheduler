@@ -104,6 +104,42 @@ textarea,
   margin-bottom: 20rpx;
 }
 
+.mode-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rpx;
+  margin-bottom: 22rpx;
+}
+
+.mode-button {
+  min-height: 72rpx;
+  border-radius: 8rpx;
+  background: #edf2ea;
+  color: #20352b;
+  font-weight: 700;
+  font-size: 26rpx;
+}
+
+.mode-button.active {
+  background: #0b3d2a;
+  color: #fff;
+}
+
+.schedule-preview {
+  border-top: 1rpx solid #dce5d8;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: 150rpx minmax(0, 1fr);
+  gap: 16rpx;
+  padding: 12rpx 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .history {
   border-top: 1rpx solid #e5eadf;
   margin-top: 24rpx;

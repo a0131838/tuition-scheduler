@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r218` (staff miniapp scheduling-coordination communication loop), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r219` (ADMIN-only miniapp lesson creation and single-lesson rescheduling), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-scheduling-write risk: `2026-07-11-r219` adds real Session creation/rescheduling from the miniapp. Each operation is ADMIN-only, single-session, preview-signed, revalidated immediately before apply, and audited; monitor Eva/management's first real operations before expanding to teacher/room changes or future-series updates.
 - Miniapp-scheduling-coordination risk: `2026-07-11-r218` lets ADMIN/CS staff create or update internal scheduling-coordination Tickets from lesson detail and append communication notes. It intentionally stops before changing lesson times; staff must still use the desktop scheduling workflow for the final timetable write.
 - Parent-request-formal-fields risk: `2026-07-11-r217` adds a Ticket migration and structured parent-request fields. Existing `家长小程序` Tickets are marked parent-visible and receive best-effort backfill; confirm a historical Emily-assisted request still shows only its external summary to a parent and its internal note to staff.
 - Deploy-env-miniapp-credentials risk: `2026-07-10-r216` changes only deploy env rendering so future deploys preserve WeChat miniapp credentials in `.env`; verify miniapp login does not regress after deploy.
@@ -134,6 +135,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-11-r219 Ready
+
+- Scope: let Eva and management schedule an additional same-class lesson or reschedule one future lesson from the staff miniapp with mandatory conflict preview and confirmation.
+- Business impact:
+  - ADMIN staff can choose date, time, and duration from lesson detail, then run a no-write conflict check before confirming the operation.
+  - The new lesson keeps the current class, effective teacher, campus, and room; rescheduling changes only the selected lesson's time and duration.
+  - Apply requires a short-lived signed preview token and rechecks student, teacher, appointment, room, availability, package, duplicate, attendance-lock, and future-time rules.
+  - CS, teachers, finance, and sales cannot call the scheduling-write route. No package ledger, attendance deduction, billing, receipt, payroll, or OpenClaw behavior changes.
+- Files:
+  - `lib/miniapp-session-scheduling.ts`
+  - `lib/miniapp-staff-session.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - permission, signed-preview, tamper, real-data preview, and missing-preview rejection checks
+  - miniapp JavaScript/JSON and affected WXML checks
+  - `npm run build`
+- Post-deploy verification:
+  - authenticated ADMIN preview returns 200 without changing a Session
+  - apply without a valid preview token returns 409
+  - PM2, `/admin/login`, and commit alignment checks
 
 ## 2026-07-11-r218 Ready
 

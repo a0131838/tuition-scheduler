@@ -52,6 +52,10 @@ export function canManageMiniappSchedulingCoordination(user: StaffUser) {
   return (user.workspaceAccesses ?? []).some((row) => row.workspace === "CS");
 }
 
+export function canManageMiniappSchedulingWrites(user: StaffUser) {
+  return user.role === "ADMIN";
+}
+
 export function miniappStaffSessionCourseLabel(session: MiniappStaffSessionContext) {
   return [session.class.course?.name, session.class.subject?.name, session.class.level?.name].filter(Boolean).join(" / ") || "-";
 }

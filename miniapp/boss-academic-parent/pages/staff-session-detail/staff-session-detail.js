@@ -33,6 +33,25 @@ function followUpDate() {
   return `${y}-${m}-${day}`;
 }
 
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function schedulingDefaults(session, action) {
+  const original = session && session.startAt ? new Date(session.startAt) : new Date();
+  const duration = session && session.startAt && session.endAt
+    ? Math.max(15, Math.round((new Date(session.endAt).getTime() - original.getTime()) / 60000))
+    : 60;
+  const target = new Date(original);
+  if (action === "create") target.setDate(target.getDate() + 7);
+  while (target.getTime() <= Date.now()) target.setDate(target.getDate() + 1);
+  return {
+    date: `${target.getFullYear()}-${pad2(target.getMonth() + 1)}-${pad2(target.getDate())}`,
+    time: `${pad2(target.getHours())}:${pad2(target.getMinutes())}`,
+    duration: String(duration)
+  };
+}
+
 function sectionList(values) {
   const source = values || {};
   return sections.map((item) => Object.assign({}, item, { value: source[item.key] || "" }));
@@ -61,6 +80,7 @@ Page({
     sessionLocationText: "-",
     canTeachSession: false,
     canManageCoordination: false,
+    canManageSchedule: false,
     readOnlySession: false,
     attendanceRows: [],
     attendanceSaving: false,
@@ -88,7 +108,24 @@ Page({
     hasCoordinationTicket: false,
     hasCoordinationHistory: false,
     hasAvailabilityUrl: false,
-    coordinationSaving: false
+    coordinationSaving: false,
+    scheduleAction: "reschedule",
+    scheduleCreateClass: "mode-button",
+    scheduleRescheduleClass: "mode-button active",
+    scheduleDate: "",
+    scheduleTime: "",
+    scheduleDuration: "60",
+    schedulePreview: null,
+    schedulePreviewToken: "",
+    schedulePreviewBeforeText: "",
+    schedulePreviewAfterText: "",
+    schedulePreviewCourseText: "",
+    schedulePreviewPeopleText: "",
+    schedulePreviewLocationText: "",
+    scheduleConfirmText: "确认改课",
+    hasSchedulePreview: false,
+    scheduleChecking: false,
+    scheduleSaving: false
   },
 
   onLoad(query) {
@@ -106,6 +143,8 @@ Page({
         const capabilities = data.capabilities || {};
         const canTeachSession = Boolean(capabilities.canTeachSession);
         const canManageCoordination = Boolean(capabilities.canManageCoordination);
+        const canManageSchedule = Boolean(capabilities.canManageSchedule);
+        const defaults = schedulingDefaults(session, this.data.scheduleAction);
         this.setData({
           session,
           sessionTeacherName: session && session.teacherName ? session.teacherName : "-",
@@ -113,7 +152,14 @@ Page({
           sessionLocationText: session && session.locationText ? session.locationText : "-",
           canTeachSession,
           canManageCoordination,
-          readOnlySession: !canTeachSession && !canManageCoordination
+          canManageSchedule,
+          readOnlySession: !canTeachSession && !canManageCoordination && !canManageSchedule,
+          scheduleDate: defaults.date,
+          scheduleTime: defaults.time,
+          scheduleDuration: defaults.duration,
+          schedulePreview: null,
+          schedulePreviewToken: "",
+          hasSchedulePreview: false
         });
 
         const tasks = [];
@@ -257,6 +303,113 @@ Page({
   copyAvailabilityLink() {
     if (!this.data.availabilityUrl) return;
     wx.setClipboardData({ data: this.data.availabilityUrl });
+  },
+
+  setSchedulingMode(e) {
+    const action = e.currentTarget.dataset.mode === "create" ? "create" : "reschedule";
+    const defaults = schedulingDefaults(this.data.session, action);
+    this.setData({
+      scheduleAction: action,
+      scheduleCreateClass: action === "create" ? "mode-button active" : "mode-button",
+      scheduleRescheduleClass: action === "reschedule" ? "mode-button active" : "mode-button",
+      scheduleDate: defaults.date,
+      scheduleTime: defaults.time,
+      scheduleDuration: defaults.duration,
+      scheduleConfirmText: action === "create" ? "确认排课" : "确认改课",
+      schedulePreview: null,
+      schedulePreviewToken: "",
+      hasSchedulePreview: false
+    });
+  },
+
+  invalidateSchedulingPreview(values) {
+    this.setData(Object.assign({}, values, {
+      schedulePreview: null,
+      schedulePreviewToken: "",
+      hasSchedulePreview: false
+    }));
+  },
+
+  changeScheduleDate(e) {
+    this.invalidateSchedulingPreview({ scheduleDate: e.detail.value });
+  },
+
+  changeScheduleTime(e) {
+    this.invalidateSchedulingPreview({ scheduleTime: e.detail.value });
+  },
+
+  inputScheduleDuration(e) {
+    this.invalidateSchedulingPreview({ scheduleDuration: e.detail.value });
+  },
+
+  schedulePayload(mode) {
+    return {
+      mode,
+      action: this.data.scheduleAction,
+      startAt: `${this.data.scheduleDate}T${this.data.scheduleTime}:00+08:00`,
+      durationMin: Number(this.data.scheduleDuration),
+      previewToken: this.data.schedulePreviewToken
+    };
+  },
+
+  showSchedulingError(err) {
+    wx.showModal({
+      title: "无法执行",
+      content: String(err && err.message ? err.message : "排课检查失败"),
+      showCancel: false
+    });
+  },
+
+  previewScheduling() {
+    if (!this.data.scheduleDate || !this.data.scheduleTime) {
+      api.toast("请选择日期和时间");
+      return;
+    }
+    const duration = Number(this.data.scheduleDuration);
+    if (!Number.isFinite(duration) || duration < 15 || duration > 360) {
+      api.toast("时长需为 15-360 分钟");
+      return;
+    }
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/manage";
+    this.setData({ scheduleChecking: true });
+    api.requestStaff(path, { method: "POST", data: this.schedulePayload("preview"), timeout: 30000 })
+      .then((data) => {
+        const preview = data.preview || {};
+        this.setData({
+          schedulePreview: preview,
+          schedulePreviewToken: data.previewToken || "",
+          schedulePreviewBeforeText: preview.beforeText || "-",
+          schedulePreviewAfterText: preview.afterText || "-",
+          schedulePreviewCourseText: preview.courseLabel || "-",
+          schedulePreviewPeopleText: (preview.teacherName || "-") + " · " + (preview.studentText || "-"),
+          schedulePreviewLocationText: preview.locationText || "-",
+          hasSchedulePreview: Boolean(data.previewToken)
+        });
+      })
+      .catch((err) => this.showSchedulingError(err))
+      .finally(() => this.setData({ scheduleChecking: false }));
+  },
+
+  applyScheduling() {
+    if (!this.data.schedulePreviewToken || this.data.scheduleSaving) return;
+    const actionText = this.data.scheduleAction === "create" ? "新增课程" : "修改课程时间";
+    wx.showModal({
+      title: "确认" + actionText,
+      content: this.data.schedulePreviewAfterText,
+      confirmText: "确认执行",
+      success: (result) => {
+        if (!result.confirm) return;
+        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/manage";
+        this.setData({ scheduleSaving: true });
+        api.requestStaff(path, { method: "POST", data: this.schedulePayload("apply"), timeout: 30000 })
+          .then(() => {
+            wx.showToast({ title: this.data.scheduleAction === "create" ? "已排课" : "已改课", icon: "success" });
+            return this.load();
+          })
+          .catch((err) => this.showSchedulingError(err))
+          .finally(() => this.setData({ scheduleSaving: false }));
+      }
+    });
   },
 
   changeAttendanceStatus(e) {
