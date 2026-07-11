@@ -1,0 +1,52 @@
+<view class="page" wx:if="{{ticket}}">
+  <view class="top">
+    <view class="eyebrow">{{ticket.ticketNo}}</view>
+    <view class="title">{{ticket.studentName}}</view>
+    <view class="subtitle">{{ticket.course}} · {{ticket.teacher}}</view>
+  </view>
+
+  <view class="status-band">
+    <view>
+      <view class="label">{{ticket.statusLabel}}</view>
+      <view class="hint">负责人：{{ticket.owner}}</view>
+    </view>
+    <view class="overdue" wx:if="{{ticket.isOverdue}}">已逾期</view>
+    <view class="hint" wx:else>{{ticket.nextActionDueText}}</view>
+  </view>
+
+  <view class="card">
+    <view class="field">
+      <view class="label">本次联系对象</view>
+      <picker mode="selector" range="{{communicationTargets}}" value="{{targetIndex}}" bindchange="changeTarget">
+        <view class="picker">{{communicationTargets[targetIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">本次沟通结果</view>
+      <textarea value="{{communicationResult}}" bindinput="inputResult" placeholder="记录已确认的信息" />
+    </view>
+    <view class="field">
+      <view class="label">工单状态</view>
+      <picker mode="selector" range="{{statusOptions}}" range-key="label" value="{{statusIndex}}" bindchange="changeStatus">
+        <view class="picker">{{statusOptions[statusIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">下一步动作</view>
+      <textarea value="{{nextAction}}" bindinput="inputNextAction" placeholder="填写下一步" />
+    </view>
+    <view class="field">
+      <view class="label">下次跟进日期</view>
+      <picker mode="date" value="{{nextActionDue}}" bindchange="changeDueDate">
+        <view class="picker">{{nextActionDue}}</view>
+      </picker>
+    </view>
+    <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存协调记录</button>
+    <button class="secondary" wx:if="{{hasAvailabilityUrl}}" bindtap="copyAvailabilityLink">复制家长时间表链接</button>
+  </view>
+
+  <view class="history" wx:if="{{hasHistory}}">
+    <view class="label">历史沟通记录</view>
+    <view class="history-text">{{ticket.communicationHistory}}</view>
+  </view>
+</view>

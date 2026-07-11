@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r220` (optional scheduling-coordination Ticket closure after a confirmed mobile scheduling write), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r221` (staff-miniapp scheduling-coordination board and detail workflow), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-coordination-board risk: `2026-07-11-r221` exposes all open scheduling-coordination Tickets to ADMIN, CS, and CS-workspace staff and allows communication/status/follow-up updates. It does not complete Tickets or write Sessions; monitor the first Eva/Jasmine updates for correct owner, next action, and due date usage.
 - Miniapp-scheduling-ticket-closure risk: `2026-07-11-r220` can complete open scheduling-coordination Tickets together with a mobile scheduling write. Selection defaults empty, is restricted to same-student/same-course preview results, and is revalidated in the same transaction; monitor the first real closure before broadening automatic workflow actions.
 - Miniapp-scheduling-write risk: `2026-07-11-r219` adds real Session creation/rescheduling from the miniapp. Each operation is ADMIN-only, single-session, preview-signed, revalidated immediately before apply, and audited; monitor Eva/management's first real operations before expanding to teacher/room changes or future-series updates.
 - Miniapp-scheduling-coordination risk: `2026-07-11-r218` lets ADMIN/CS staff create or update internal scheduling-coordination Tickets from lesson detail and append communication notes. It intentionally stops before changing lesson times; staff must still use the desktop scheduling workflow for the final timetable write.
@@ -137,7 +138,34 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r220 Ready
+## 2026-07-11-r221 Ready
+
+- Scope: give Eva/Jasmine one mobile queue for all open scheduling-coordination work instead of requiring entry through an individual lesson.
+- Business impact:
+  - The staff home shows open and overdue coordination counts for permitted roles.
+  - The board supports all-open, overdue, waiting-parent, waiting-teacher, confirmed, and exception views, plus owner filtering and student/course/ticket search.
+  - Detail supports communication target/result, valid status transitions, next action, follow-up date, history, and copying the active parent availability link.
+  - Teachers cannot access the board. Completion remains inside the signed mobile scheduling confirmation workflow.
+- Files:
+  - `lib/miniapp-scheduling-coordination-board.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - miniapp JavaScript and JSON checks
+  - authenticated real-data list/detail reads
+  - invalid PATCH/no-write verification
+  - permission and unauthenticated checks
+  - `npm run build`
+- Post-deploy verification:
+  - ADMIN list/detail return 200 and summary matches production open Tickets
+  - unauthenticated access returns 401
+  - invalid PATCH returns 409 without changing the Ticket
+  - PM2, `/admin/login`, and commit alignment checks
+
+## 2026-07-11-r220 Live
 
 - Scope: remove duplicate follow-up work after Eva/management finishes a mobile scheduling operation by optionally completing matching scheduling-coordination Tickets at final confirmation.
 - Business impact:

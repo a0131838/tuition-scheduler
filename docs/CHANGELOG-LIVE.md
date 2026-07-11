@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r221
+
+- Release ID: `2026-07-11-r221`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: add a dedicated staff-miniapp scheduling-coordination board with open/overdue counts, filters, search, detail access, communication history updates, and follow-up management.
+- Key files:
+  - `lib/miniapp-scheduling-coordination-board.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
+  - `miniapp/boss-academic-parent/app.json`
+  - `docs/tasks/TASK-20260711-miniapp-coordination-board.md`
+- Risk impact (if any): Medium. ADMIN, CS, and active CS-workspace staff can update open scheduling-coordination Ticket status, communication history, next action, and due date from the miniapp. Teachers and other staff cannot access the board. Ticket completion remains tied to the guarded mobile scheduling workflow; this board cannot directly complete a Ticket or write Sessions.
+- Verification:
+  - ADMIN/CS/teacher/CS-workspace permission checks
+  - authenticated real-data board and detail GET checks
+  - invalid PATCH rejection with unchanged Ticket verification
+  - unauthenticated 401 check
+  - miniapp JavaScript/JSON checks
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-11-r221`.
+
+---
+
 ## 2026-07-11-r220
 
 - Release ID: `2026-07-11-r220`

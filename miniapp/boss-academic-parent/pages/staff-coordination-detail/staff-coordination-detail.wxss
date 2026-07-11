@@ -1,0 +1,101 @@
+.page {
+  padding: 28rpx;
+  min-height: 100vh;
+  background: #f7f9f4;
+}
+
+.top {
+  margin-bottom: 22rpx;
+}
+
+.eyebrow,
+.hint,
+.subtitle {
+  color: #6b7280;
+  font-size: 24rpx;
+}
+
+.title {
+  color: #123d2b;
+  font-size: 36rpx;
+  font-weight: 800;
+  margin: 8rpx 0;
+}
+
+.status-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  border-top: 1rpx solid #dce5d8;
+  border-bottom: 1rpx solid #dce5d8;
+  padding: 20rpx 0;
+  margin-bottom: 20rpx;
+}
+
+.overdue {
+  color: #b42318;
+  font-weight: 800;
+}
+
+.card {
+  background: #fff;
+  border: 1rpx solid #dce5d8;
+  border-radius: 8rpx;
+  padding: 24rpx;
+}
+
+.field {
+  margin-bottom: 22rpx;
+}
+
+.label {
+  color: #20352b;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+
+.picker,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1rpx solid #d6ded2;
+  border-radius: 8rpx;
+  background: #fbfcfa;
+  padding: 18rpx;
+}
+
+textarea {
+  min-height: 150rpx;
+}
+
+.primary,
+.secondary {
+  border-radius: 8rpx;
+  font-weight: 800;
+  margin-top: 16rpx;
+}
+
+.primary {
+  background: #0b3d2a;
+  color: #fff;
+}
+
+.secondary {
+  background: #edf2ea;
+  color: #123d2b;
+}
+
+.history {
+  border-top: 1rpx solid #dce5d8;
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+}
+
+.history-text {
+  color: #4b5563;
+  font-size: 25rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

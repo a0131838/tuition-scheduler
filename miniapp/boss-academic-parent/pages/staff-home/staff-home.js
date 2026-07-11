@@ -8,6 +8,9 @@ Page({
     roleText: "STAFF",
     pendingCount: 0,
     todaySessionCount: 0,
+    coordinationCount: 0,
+    coordinationOverdueCount: 0,
+    canManageCoordination: false,
     loading: false
   },
 
@@ -52,7 +55,15 @@ Page({
       .then((schedule) => this.setData({ todaySessionCount: schedule.summary ? schedule.summary.visibleSessions : 0 }))
       .catch(() => this.setData({ todaySessionCount: 0 }));
 
-    return Promise.allSettled([meTask, requestsTask, scheduleTask])
+    const coordinationTask = api.requestStaff("/api/miniapp/staff/scheduling-coordination?limit=1", { timeout: 12000 })
+      .then((data) => this.setData({
+        canManageCoordination: true,
+        coordinationCount: data.summary ? data.summary.totalOpen : 0,
+        coordinationOverdueCount: data.summary ? data.summary.overdue : 0
+      }))
+      .catch(() => this.setData({ canManageCoordination: false, coordinationCount: 0, coordinationOverdueCount: 0 }));
+
+    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask])
       .finally(() => this.setData({ loading: false }));
   },
 
@@ -66,6 +77,10 @@ Page({
 
   goSchedule() {
     wx.navigateTo({ url: "/pages/staff-schedule/staff-schedule" });
+  },
+
+  goCoordination() {
+    wx.navigateTo({ url: "/pages/staff-coordination/staff-coordination" });
   },
 
   logout() {
