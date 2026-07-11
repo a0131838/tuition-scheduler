@@ -40,6 +40,7 @@ This file is the single source of truth for what changed in production.
   - route-level apply rejection checks with unchanged Session, Attendance, Package, and Ticket data
   - production deployment at commit `888a0a9`, PM2 online, `/admin/login` 200
   - production authenticated previews return 200 for first scheduling, leave/cancellation, and one-session teacher replacement; unauthenticated access returns 401 and invalid apply tokens return 409
+  - production verification documentation synchronized after the live checks
 - Rollback point: previous production commit before `2026-07-11-r224`.
 
 ---

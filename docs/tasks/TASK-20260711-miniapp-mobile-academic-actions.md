@@ -31,3 +31,8 @@ Let Eva and management complete the most frequent single-lesson academic operati
 - Token tampering and unpreviewed Ticket selections are rejected.
 - Ticket `20260709-009` uniquely resolves its legacy student name and passes first-scheduling preview.
 - Route-level rejected applies leave Session, Attendance, Package, teacher-change history, and Ticket rows unchanged.
+
+## Production Result
+
+- Feature commit `888a0a9` deployed successfully; PM2 is online and `/admin/login` returns 200.
+- All three authenticated real-data previews returned 200, unauthenticated access returned 401, and invalid apply tokens returned 409 without executing a business write.

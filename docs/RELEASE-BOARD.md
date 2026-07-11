@@ -166,6 +166,7 @@
   - authenticated valid real-data previews return 200 for all three workflows
   - invalid apply tokens return 409 `PREVIEW_REQUIRED`; first-scheduling Ticket/session count and cancellation Attendance/package-ledger snapshots remain unchanged
   - teacher replacement listed 15 qualified candidates and previewed Yunfeng successfully without applying the change
+  - release documentation and the persistent miniapp plan were synchronized after production verification
 
 ## 2026-07-11-r223 Ready
 
