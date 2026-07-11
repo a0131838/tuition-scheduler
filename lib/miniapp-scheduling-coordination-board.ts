@@ -10,6 +10,15 @@ export const COORDINATION_BOARD_STATUSES = [
 
 export const COORDINATION_COMMUNICATION_TARGETS = ["家长", "老师", "家长和老师", "内部协调"] as const;
 
+export const MOBILE_SCHEDULING_TICKET_TYPES = [
+  "排课协调",
+  "改课程时间",
+  "新排课",
+  "补课加课",
+  "临时取消&请假课程",
+  "改上课老师",
+] as const;
+
 export const coordinationBoardTicketInclude = Prisma.validator<Prisma.TicketInclude>()({
   parentAvailabilityRequest: true,
 });
@@ -38,6 +47,7 @@ export function coordinationBoardTicketDto(ticket: CoordinationBoardTicket) {
   return {
     id: ticket.id,
     ticketNo: ticket.ticketNo,
+    type: ticket.type,
     studentId: ticket.studentId,
     studentName: ticket.studentName,
     course: ticket.parentAvailabilityRequest?.courseLabel || ticket.course || "-",

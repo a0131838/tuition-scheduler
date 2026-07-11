@@ -102,6 +102,12 @@ input {
   margin-bottom: 14rpx;
 }
 
+.ticket-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
 .pill {
   background: #edf2ea;
   color: #123d2b;
@@ -109,6 +115,11 @@ input {
   padding: 8rpx 14rpx;
   font-size: 23rpx;
   font-weight: 700;
+}
+
+.status-pill {
+  background: #f0f2f5;
+  color: #374151;
 }
 
 .due {

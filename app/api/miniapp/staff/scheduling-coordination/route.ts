@@ -5,9 +5,10 @@ import { canManageMiniappSchedulingCoordination } from "@/lib/miniapp-staff-sess
 import {
   coordinationBoardTicketDto,
   coordinationBoardTicketInclude,
+  MOBILE_SCHEDULING_TICKET_TYPES,
 } from "@/lib/miniapp-scheduling-coordination-board";
 import { prisma } from "@/lib/prisma";
-import { SCHEDULING_COORDINATION_TICKET_TYPE, TICKET_OWNER_OPTIONS } from "@/lib/tickets";
+import { TICKET_OWNER_OPTIONS } from "@/lib/tickets";
 
 const FILTER_STATUSES = ["Waiting Parent", "Waiting Teacher", "Confirmed", "Exception"];
 
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
   if (owner && !TICKET_OWNER_OPTIONS.some((item) => item.value === owner)) return bad("Invalid owner", 409);
 
   const openWhere: Prisma.TicketWhereInput = {
-    type: SCHEDULING_COORDINATION_TICKET_TYPE,
+    type: { in: [...MOBILE_SCHEDULING_TICKET_TYPES] },
     isArchived: false,
     status: { notIn: ["Completed", "Cancelled"] },
   };

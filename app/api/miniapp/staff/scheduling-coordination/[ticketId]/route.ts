@@ -8,10 +8,11 @@ import {
   coordinationBoardTicketDto,
   coordinationBoardTicketInclude,
   defaultCoordinationNextAction,
+  MOBILE_SCHEDULING_TICKET_TYPES,
 } from "@/lib/miniapp-scheduling-coordination-board";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
-import { canTransitionTicketStatus, SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
+import { canTransitionTicketStatus } from "@/lib/tickets";
 
 function clean(value: unknown, maxLen: number) {
   return String(value ?? "").trim().slice(0, maxLen);
@@ -31,7 +32,7 @@ async function requireTicketAccess(req: Request, ticketId: string) {
     return { ok: false as const, response: bad("Scheduling coordination permission required", 403) };
   }
   const ticket = await prisma.ticket.findFirst({
-    where: { id: ticketId, type: SCHEDULING_COORDINATION_TICKET_TYPE, isArchived: false },
+    where: { id: ticketId, type: { in: [...MOBILE_SCHEDULING_TICKET_TYPES] }, isArchived: false },
     include: coordinationBoardTicketInclude,
   });
   if (!ticket) return { ok: false as const, response: bad("Coordination ticket not found", 404) };

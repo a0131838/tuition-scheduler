@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r221` (staff-miniapp scheduling-coordination board and detail workflow), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r222` (align the mobile scheduling board with all web Ticket Center scheduling categories), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-scheduling-board-scope risk: `2026-07-11-r222` broadens the r221 board from exact `排课协调` Tickets to all six scheduling-related web Ticket Center categories. Existing permission, transition, and audit controls remain; verify operators notice each Ticket's original type label before updating it.
 - Miniapp-coordination-board risk: `2026-07-11-r221` exposes all open scheduling-coordination Tickets to ADMIN, CS, and CS-workspace staff and allows communication/status/follow-up updates. It does not complete Tickets or write Sessions; monitor the first Eva/Jasmine updates for correct owner, next action, and due date usage.
 - Miniapp-scheduling-ticket-closure risk: `2026-07-11-r220` can complete open scheduling-coordination Tickets together with a mobile scheduling write. Selection defaults empty, is restricted to same-student/same-course preview results, and is revalidated in the same transaction; monitor the first real closure before broadening automatic workflow actions.
 - Miniapp-scheduling-write risk: `2026-07-11-r219` adds real Session creation/rescheduling from the miniapp. Each operation is ADMIN-only, single-session, preview-signed, revalidated immediately before apply, and audited; monitor Eva/management's first real operations before expanding to teacher/room changes or future-series updates.
@@ -138,7 +139,26 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r221 Ready
+## 2026-07-11-r222 Ready
+
+- Scope: fix the misleading mobile count caused by filtering only the exact `排课协调` Ticket type.
+- Business impact:
+  - The board now includes `排课协调`, `改课程时间`, `新排课`, `补课加课`, `临时取消&请假课程`, and `改上课老师`.
+  - Production reconciliation changes the open board count from 1 to 13 without changing or reclassifying any Ticket data.
+  - Each card and detail header displays the original Ticket type so staff can distinguish the workflow.
+  - Archived, completed, cancelled, and non-scheduling Tickets remain outside the open scheduling board.
+- Verification before deploy:
+  - production read-only reconciliation: 428 total, 414 archived, 13 open scheduling-related Tickets
+  - authenticated local production-data API returns all 13 with exact per-type counts
+  - `npx tsc --noEmit`
+  - miniapp syntax/JSON checks
+  - `npm run build`
+- Post-deploy verification:
+  - authenticated ADMIN board returns `totalOpen=13`
+  - returned per-type counts match production database
+  - unauthenticated access remains 401
+
+## 2026-07-11-r221 Live
 
 - Scope: give Eva/Jasmine one mobile queue for all open scheduling-coordination work instead of requiring entry through an individual lesson.
 - Business impact:

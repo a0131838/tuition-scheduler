@@ -1,6 +1,6 @@
 <view class="page" wx:if="{{ticket}}">
   <view class="top">
-    <view class="eyebrow">{{ticket.ticketNo}}</view>
+    <view class="eyebrow">{{ticket.ticketNo}} · {{ticket.type}}</view>
     <view class="title">{{ticket.studentName}}</view>
     <view class="subtitle">{{ticket.course}} · {{ticket.teacher}}</view>
   </view>

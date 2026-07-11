@@ -23,7 +23,7 @@
 
   <view class="card work-card" wx:if="{{canManageCoordination}}" bindtap="goCoordination">
     <view>
-      <view class="label">排课协调</view>
+      <view class="label">排课与调课</view>
       <view class="value">{{coordinationCount}} 条开放 · {{coordinationOverdueCount}} 条逾期</view>
     </view>
     <view class="arrow">›</view>

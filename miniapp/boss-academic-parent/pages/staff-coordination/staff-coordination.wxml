@@ -1,7 +1,7 @@
 <view class="page">
   <view class="top">
     <view class="eyebrow">员工工作台</view>
-    <view class="title">排课协调</view>
+    <view class="title">排课与调课</view>
   </view>
 
   <view class="summary-band">
@@ -33,7 +33,10 @@
   <block wx:if="{{tickets.length}}">
     <view wx:for="{{tickets}}" wx:key="id" class="card ticket-card" bindtap="openDetail" data-id="{{item.id}}">
       <view class="ticket-head">
-        <view class="pill">{{item.statusLabel}}</view>
+        <view class="ticket-tags">
+          <view class="pill">{{item.type}}</view>
+          <view class="pill status-pill">{{item.statusLabel}}</view>
+        </view>
         <view class="due overdue" wx:if="{{item.isOverdue}}">已逾期</view>
         <view class="due" wx:else>{{item.nextActionDueText}}</view>
       </view>
@@ -42,5 +45,5 @@
       <view class="subtitle">{{item.ticketNo}} · {{item.owner}} · {{item.teacher}}</view>
     </view>
   </block>
-  <view wx:else class="empty">暂无匹配的排课协调工单</view>
+  <view wx:else class="empty">暂无匹配的排课工单</view>
 </view>

@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r222
+
+- Release ID: `2026-07-11-r222`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: align the staff-miniapp scheduling board with the web Ticket Center by including all six active scheduling-related Ticket types instead of only the exact `排课协调` type.
+- Key files:
+  - `lib/miniapp-scheduling-coordination-board.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/staff-home.wxml`
+  - `miniapp/boss-academic-parent/pages/staff-coordination/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/staff-coordination-detail.wxml`
+  - `docs/tasks/TASK-20260711-miniapp-scheduling-board-scope.md`
+- Risk impact (if any): Low to medium. This broadens read/update scope to existing open Tickets of `排课协调`, `改课程时间`, `新排课`, `补课加课`, `临时取消&请假课程`, and `改上课老师`. Permissions, state-transition validation, auditing, Session writes, and Ticket completion rules are unchanged.
+- Verification:
+  - production-data category reconciliation
+  - authenticated board count changed from 1 exact coordination Ticket to 13 open scheduling-related Tickets
+  - per-type count verification
+  - TypeScript, miniapp syntax/JSON, and full build
+- Rollback point: previous production commit before `2026-07-11-r222`.
+
+---
+
 ## 2026-07-11-r221
 
 - Release ID: `2026-07-11-r221`
