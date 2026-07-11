@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     where: {
       studentId,
       source: "家长小程序",
+      parentVisible: true,
       isArchived: false,
       ...(status ? { status } : {}),
     },
@@ -78,6 +79,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ student
         systemUpdated: "N",
         lastUpdateAt: new Date(),
         summary,
+        parentVisible: true,
+        parentPublicSummary: content,
+        parentCommunicationSource: "家长小程序",
         nextAction: "工作人员跟进家长请求",
         proof: null,
         createdByName: `家长小程序：${parentLabel}`,

@@ -73,7 +73,7 @@ export default function ParentRequestsMobileClient() {
       const res = await fetch(`/api/admin/ops/parent-requests/${row.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(nextStatus === "Completed" ? { status: nextStatus, finalSchedule } : { status: nextStatus }),
+        body: JSON.stringify(nextStatus === "Completed" ? { status: nextStatus, completionResult: finalSchedule } : { status: nextStatus }),
       });
       const data = await res.json();
       if (!res.ok || data.ok === false) throw new Error(data.message || "更新失败");

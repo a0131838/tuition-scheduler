@@ -60,6 +60,13 @@ export function miniappRequestDto(ticket: Pick<
   | "summary"
   | "nextAction"
   | "finalSchedule"
+  | "parentVisible"
+  | "parentPublicSummary"
+  | "parentInternalNote"
+  | "parentCommunicationSource"
+  | "parentCompletionResult"
+  | "parentAssistedByUserId"
+  | "parentAssistedByName"
   | "proof"
   | "createdByName"
   | "createdAt"
@@ -70,7 +77,12 @@ export function miniappRequestDto(ticket: Pick<
   const cfg = miniappRequestConfig(ticket.type);
   const includeInternal = Boolean(options?.includeInternal);
   const assisted = isStaffAssistedRequest(ticket);
-  const visibility = parseAssistedRequestVisibility(parsed.currentIssue);
+  const legacyVisibility = parseAssistedRequestVisibility(parsed.currentIssue);
+  const visibility = {
+    publicSummary: ticket.parentPublicSummary?.trim() || legacyVisibility.publicSummary,
+    internalNote: ticket.parentInternalNote?.trim() || legacyVisibility.internalOriginal,
+    communicationSource: ticket.parentCommunicationSource?.trim() || legacyVisibility.communicationSource,
+  };
   const attachmentUrls = String(ticket.proof ?? "")
     .split(/\n+/)
     .map((x) => x.trim())
@@ -93,13 +105,13 @@ export function miniappRequestDto(ticket: Pick<
     title,
     content: parentContent,
     requestedAction: parsed.requiredAction,
-    completionResult: ticket.finalSchedule,
+    completionResult: ticket.parentCompletionResult ?? ticket.finalSchedule,
     latestDeadlineText: parsed.latestDeadlineText,
     attachmentUrls: includeInternal || !assisted ? attachmentUrls : [],
-    createdByName: includeInternal ? ticket.createdByName : null,
+    createdByName: includeInternal ? ticket.parentAssistedByName || ticket.createdByName : null,
     isStaffAssisted: assisted,
     communicationSource: includeInternal ? visibility.communicationSource : null,
-    internalContent: includeInternal ? visibility.internalOriginal : null,
+    internalContent: includeInternal ? visibility.internalNote : null,
     parentVisibleSummary: visibility.publicSummary || parentContent,
     createdAt: ticket.createdAt.toISOString(),
     updatedAt: ticket.updatedAt.toISOString(),
@@ -107,7 +119,8 @@ export function miniappRequestDto(ticket: Pick<
   };
 }
 
-function isStaffAssistedRequest(ticket: Pick<Ticket, "createdByName" | "summary">) {
+function isStaffAssistedRequest(ticket: Pick<Ticket, "createdByName" | "summary" | "parentAssistedByUserId" | "parentAssistedByName">) {
+  if (ticket.parentAssistedByUserId || ticket.parentAssistedByName) return true;
   const createdBy = String(ticket.createdByName ?? "");
   const summary = String(ticket.summary ?? "");
   return createdBy.startsWith("员工代录：") || summary.includes("【员工代录原始摘要】");

@@ -57,7 +57,7 @@ Page({
     this.setData({ loading: true });
     api.requestStaff("/api/miniapp/staff/parent-requests/" + this.data.id, {
       method: "PATCH",
-      data: status === "Completed" ? { status, finalSchedule: completionResult } : { status }
+      data: status === "Completed" ? { status, completionResult } : { status }
     })
       .then((data) => {
         const request = data.request || this.data.request;

@@ -15,6 +15,32 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r217
+
+- Release ID: `2026-07-11-r217`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: move parent-request visibility, internal intake notes, communication source, assisted-entry identity, and parent-facing completion result from temporary Ticket text conventions into formal Ticket fields.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260711103000_add_parent_request_visibility_fields/migration.sql`
+  - `lib/miniapp-parent-requests.ts`
+  - `app/api/miniapp/staff/parent-requests/*`
+  - `app/api/miniapp/students/[studentId]/requests/route.ts`
+  - `app/api/miniapp/requests/[ticketId]/route.ts`
+  - `app/api/admin/ops/parent-requests/[id]/route.ts`
+  - `docs/tasks/TASK-20260711-parent-request-formal-fields.md`
+- Risk impact (if any): Medium. The migration marks existing `家长小程序` Tickets parent-visible and backfills structured values where their legacy tagged summary contains them. API reads retain a legacy fallback, while scheduling, attendance, package balance, finance, receipt, payroll, and normal Ticket flows are unchanged.
+- Verification:
+  - `npx prisma generate`
+  - `npx tsc --noEmit`
+  - miniapp JavaScript and JSON parse checks
+  - `npm run build`
+  - production migration, health, and version-alignment checks
+- Rollback point: previous production commit before `2026-07-11-r217`.
+
+---
+
 ## 2026-07-10-r216
 
 - Release ID: `2026-07-10-r216`

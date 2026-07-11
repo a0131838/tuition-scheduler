@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-10-r216` (deploy script preserves miniapp credentials), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r217` (formal parent-request visibility and completion fields), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Parent-request-formal-fields risk: `2026-07-11-r217` adds a Ticket migration and structured parent-request fields. Existing `家长小程序` Tickets are marked parent-visible and receive best-effort backfill; confirm a historical Emily-assisted request still shows only its external summary to a parent and its internal note to staff.
 - Deploy-env-miniapp-credentials risk: `2026-07-10-r216` changes only deploy env rendering so future deploys preserve WeChat miniapp credentials in `.env`; verify miniapp login does not regress after deploy.
 - Parent-request-completion-result risk: `2026-07-10-r215` blocks staff/admin from marking parent requests completed unless a parent-visible completion result is provided; verify Eva/Jasmine understand the result will be visible to parents.
 - Staff-assisted-request-visibility risk: `2026-07-10-r214` changes parent-request DTO projection. Verify parents only see the public summary, while staff/admin still see internal original notes and communication source for assisted requests.
@@ -132,6 +133,31 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-11-r217 Ready
+
+- Scope: formalize parent-request visibility, public summary, internal note, communication source, assisted-entry identity, and parent-facing completion result on Ticket records.
+- Business impact:
+  - Emily's WeChat-group-assisted requests now keep internal original notes and parent-facing content as independent data, while parents remain restricted to the external summary, status, next action, and completion result.
+  - Existing `家长小程序` Tickets receive a best-effort backfill and keep legacy text fallbacks, so historic request visibility is preserved.
+  - Scheduling, attendance deduction, package balances, finance, receipts, payroll, normal Ticket Center flows, and OpenClaw behavior are intentionally unchanged.
+- Files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260711103000_add_parent_request_visibility_fields/migration.sql`
+  - `lib/miniapp-parent-requests.ts`
+  - `app/api/miniapp/staff/parent-requests/*`
+  - `app/api/miniapp/students/[studentId]/requests/route.ts`
+  - `app/api/admin/ops/parent-requests/[id]/route.ts`
+- Verification before deploy:
+  - `npx prisma generate`
+  - `npx tsc --noEmit`
+  - miniapp JavaScript/JSON and request-detail WXML checks
+  - formal-field and legacy-summary DTO compatibility smoke check
+  - `npm run build`
+- Post-deploy verification:
+  - `npx prisma migrate status` on the server
+  - PM2 process and `/admin/login` health checks
+  - local/origin/server commit alignment
 
 ## 2026-07-10-r213 Ready
 

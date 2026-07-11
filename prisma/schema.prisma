@@ -1825,43 +1825,50 @@ model TicketDailyCounter {
 }
 
 model Ticket {
-  id                  String    @id @default(uuid())
-  ticketNo            String    @unique
-  studentId           String?
-  source              String
-  type                String
-  priority            String
-  studentName         String
-  grade               String?
-  course              String?
-  teacher             String?
-  poc                 String?
-  wechat              String?
-  phone               String?
-  parentAvailability  String?
-  teacherAvailability String?
-  durationMin         Int?
-  mode                String?
-  addressOrLink       String?
-  confirmDeadline     DateTime?
-  slaDue              DateTime?
-  status              String
-  owner               String?
-  version             String?
-  systemUpdated       String?
-  finalSchedule       String?
-  lastUpdateAt        DateTime?
-  summary             String?
-  risksNotes          String?
-  nextAction          String?
-  nextActionDue       DateTime?
-  proof               String?
-  createdByName       String?
-  completedAt         DateTime?
-  completedByUserId   String?
-  isArchived          Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                        String    @id @default(uuid())
+  ticketNo                  String    @unique
+  studentId                 String?
+  source                    String
+  type                      String
+  priority                  String
+  studentName               String
+  grade                     String?
+  course                    String?
+  teacher                   String?
+  poc                       String?
+  wechat                    String?
+  phone                     String?
+  parentAvailability        String?
+  teacherAvailability       String?
+  durationMin               Int?
+  mode                      String?
+  addressOrLink             String?
+  confirmDeadline           DateTime?
+  slaDue                    DateTime?
+  status                    String
+  owner                     String?
+  version                   String?
+  systemUpdated             String?
+  finalSchedule             String?
+  parentVisible             Boolean   @default(false)
+  parentPublicSummary       String?
+  parentInternalNote        String?
+  parentCommunicationSource String?
+  parentCompletionResult    String?
+  parentAssistedByUserId    String?
+  parentAssistedByName      String?
+  lastUpdateAt              DateTime?
+  summary                   String?
+  risksNotes                String?
+  nextAction                String?
+  nextActionDue             DateTime?
+  proof                     String?
+  createdByName             String?
+  completedAt               DateTime?
+  completedByUserId         String?
+  isArchived                Boolean   @default(false)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   student                   Student?                   @relation(fields: [studentId], references: [id], onDelete: SetNull)
   completedByUser           User?                      @relation("TicketCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
@@ -1872,6 +1879,7 @@ model Ticket {
   @@index([priority, createdAt])
   @@index([studentName, createdAt])
   @@index([studentId, isArchived, createdAt])
+  @@index([parentVisible, studentId, isArchived, createdAt])
   @@index([type, createdAt])
 }
 
