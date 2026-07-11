@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r220
+
+- Release ID: `2026-07-11-r220`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: let an ADMIN explicitly complete matching open scheduling-coordination Tickets in the same transaction as a successful miniapp lesson create/reschedule operation.
+- Key files:
+  - `lib/miniapp-session-scheduling.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260711-miniapp-scheduling-ticket-closure.md`
+- Risk impact (if any): Medium. Ticket completion is optional and defaults to no selection. Only open scheduling-coordination Tickets for the same lesson students and matching course returned by the signed preview can be selected; eligibility is checked again inside the Session write transaction. No teacher, room, campus, package ledger, attendance deduction, billing, receipt, payroll, or OpenClaw behavior changes.
+- Verification:
+  - TypeScript and miniapp JavaScript syntax checks
+  - preview-token eligible-ticket binding and unpreviewed-ticket rejection checks
+  - read-only real-data scheduling preview
+  - no-selection/no-write route smoke check
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-11-r220`.
+
+---
+
 ## 2026-07-11-r219
 
 - Release ID: `2026-07-11-r219`

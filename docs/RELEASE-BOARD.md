@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r219` (ADMIN-only miniapp lesson creation and single-lesson rescheduling), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r220` (optional scheduling-coordination Ticket closure after a confirmed mobile scheduling write), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-scheduling-ticket-closure risk: `2026-07-11-r220` can complete open scheduling-coordination Tickets together with a mobile scheduling write. Selection defaults empty, is restricted to same-student/same-course preview results, and is revalidated in the same transaction; monitor the first real closure before broadening automatic workflow actions.
 - Miniapp-scheduling-write risk: `2026-07-11-r219` adds real Session creation/rescheduling from the miniapp. Each operation is ADMIN-only, single-session, preview-signed, revalidated immediately before apply, and audited; monitor Eva/management's first real operations before expanding to teacher/room changes or future-series updates.
 - Miniapp-scheduling-coordination risk: `2026-07-11-r218` lets ADMIN/CS staff create or update internal scheduling-coordination Tickets from lesson detail and append communication notes. It intentionally stops before changing lesson times; staff must still use the desktop scheduling workflow for the final timetable write.
 - Parent-request-formal-fields risk: `2026-07-11-r217` adds a Ticket migration and structured parent-request fields. Existing `家长小程序` Tickets are marked parent-visible and receive best-effort backfill; confirm a historical Emily-assisted request still shows only its external summary to a parent and its internal note to staff.
@@ -136,7 +137,30 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r219 Ready
+## 2026-07-11-r220 Ready
+
+- Scope: remove duplicate follow-up work after Eva/management finishes a mobile scheduling operation by optionally completing matching scheduling-coordination Tickets at final confirmation.
+- Business impact:
+  - A successful conflict preview lists only open `排课协调` Tickets for the same lesson students and matching course.
+  - No Ticket is selected by default. ADMIN staff explicitly choose which resolved Tickets to complete before the final scheduling confirmation.
+  - Session creation/rescheduling, Ticket completion, parent-availability-link deactivation, final result, completion identity, and audit records are committed atomically.
+  - Parent-visible completed Tickets enter the existing notification outbox; internal-only Tickets do not notify parents.
+- Files:
+  - `lib/miniapp-session-scheduling.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/manage/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - miniapp JavaScript and affected WXML checks
+  - signed-preview eligible Ticket checks
+  - read-only real-data preview and no-write route checks
+  - `npm run build`
+- Post-deploy verification:
+  - authenticated ADMIN preview returns 200 and only matching open Ticket candidates
+  - unpreviewed Ticket selection returns 409 without changing Session or Ticket
+  - PM2, `/admin/login`, and commit alignment checks
+
+## 2026-07-11-r219 Live
 
 - Scope: let Eva and management schedule an additional same-class lesson or reschedule one future lesson from the staff miniapp with mandatory conflict preview and confirmation.
 - Business impact:

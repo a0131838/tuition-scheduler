@@ -122,6 +122,9 @@ Page({
     schedulePreviewCourseText: "",
     schedulePreviewPeopleText: "",
     schedulePreviewLocationText: "",
+    scheduleCoordinationTickets: [],
+    scheduleCoordinationTicketIds: [],
+    hasScheduleCoordinationTickets: false,
     scheduleConfirmText: "确认改课",
     hasSchedulePreview: false,
     scheduleChecking: false,
@@ -159,6 +162,9 @@ Page({
           scheduleDuration: defaults.duration,
           schedulePreview: null,
           schedulePreviewToken: "",
+          scheduleCoordinationTickets: [],
+          scheduleCoordinationTicketIds: [],
+          hasScheduleCoordinationTickets: false,
           hasSchedulePreview: false
         });
 
@@ -318,6 +324,9 @@ Page({
       scheduleConfirmText: action === "create" ? "确认排课" : "确认改课",
       schedulePreview: null,
       schedulePreviewToken: "",
+      scheduleCoordinationTickets: [],
+      scheduleCoordinationTicketIds: [],
+      hasScheduleCoordinationTickets: false,
       hasSchedulePreview: false
     });
   },
@@ -326,6 +335,9 @@ Page({
     this.setData(Object.assign({}, values, {
       schedulePreview: null,
       schedulePreviewToken: "",
+      scheduleCoordinationTickets: [],
+      scheduleCoordinationTicketIds: [],
+      hasScheduleCoordinationTickets: false,
       hasSchedulePreview: false
     }));
   },
@@ -348,7 +360,8 @@ Page({
       action: this.data.scheduleAction,
       startAt: `${this.data.scheduleDate}T${this.data.scheduleTime}:00+08:00`,
       durationMin: Number(this.data.scheduleDuration),
-      previewToken: this.data.schedulePreviewToken
+      previewToken: this.data.schedulePreviewToken,
+      completeCoordinationTicketIds: mode === "apply" ? this.data.scheduleCoordinationTicketIds : []
     };
   },
 
@@ -375,6 +388,13 @@ Page({
     api.requestStaff(path, { method: "POST", data: this.schedulePayload("preview"), timeout: 30000 })
       .then((data) => {
         const preview = data.preview || {};
+        const coordinationTickets = (preview.coordinationTickets || []).map((ticket) => {
+          const status = coordinationStatuses.find((item) => item.value === ticket.status);
+          return Object.assign({}, ticket, {
+            label: ticket.ticketNo + " · " + ticket.studentName,
+            statusText: status ? status.label : ticket.status
+          });
+        });
         this.setData({
           schedulePreview: preview,
           schedulePreviewToken: data.previewToken || "",
@@ -383,6 +403,9 @@ Page({
           schedulePreviewCourseText: preview.courseLabel || "-",
           schedulePreviewPeopleText: (preview.teacherName || "-") + " · " + (preview.studentText || "-"),
           schedulePreviewLocationText: preview.locationText || "-",
+          scheduleCoordinationTickets: coordinationTickets,
+          scheduleCoordinationTicketIds: [],
+          hasScheduleCoordinationTickets: coordinationTickets.length > 0,
           hasSchedulePreview: Boolean(data.previewToken)
         });
       })
@@ -390,12 +413,17 @@ Page({
       .finally(() => this.setData({ scheduleChecking: false }));
   },
 
+  changeScheduleCoordinationTickets(e) {
+    this.setData({ scheduleCoordinationTicketIds: e.detail.value || [] });
+  },
+
   applyScheduling() {
     if (!this.data.schedulePreviewToken || this.data.scheduleSaving) return;
     const actionText = this.data.scheduleAction === "create" ? "新增课程" : "修改课程时间";
+    const completionCount = this.data.scheduleCoordinationTicketIds.length;
     wx.showModal({
       title: "确认" + actionText,
-      content: this.data.schedulePreviewAfterText,
+      content: this.data.schedulePreviewAfterText + (completionCount ? "\n同时完成 " + completionCount + " 个排课协调工单" : ""),
       confirmText: "确认执行",
       success: (result) => {
         if (!result.confirm) return;

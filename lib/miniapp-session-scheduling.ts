@@ -4,9 +4,11 @@ import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
 import { getSchedulablePackageDecision } from "@/lib/scheduling-package";
+import { schedulingCoordinationCourseLabelsMatch } from "@/lib/scheduling-coordination";
 import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/session-conflict";
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
+import { SCHEDULING_COORDINATION_TICKET_TYPE } from "@/lib/tickets";
 
 export type MiniappSchedulingAction = "create" | "reschedule";
 
@@ -20,6 +22,7 @@ type SchedulingInput = {
 };
 
 type SchedulingActor = {
+  userId: string;
   email: string;
   name: string | null;
   role: string;
@@ -31,6 +34,7 @@ export type MiniappSchedulingPreviewTokenPayload = {
   sessionId: string;
   startAt: string;
   durationMin: number;
+  coordinationTicketIds: string[];
   expiresAt: number;
 };
 
@@ -117,6 +121,35 @@ async function getSessionContext(db: DbClient, sessionId: string) {
   const session = await db.session.findUnique({ where: { id: sessionId }, include: sessionContextInclude });
   if (!session) throw new MiniappSchedulingError("课程不存在或已被删除。", 404, "SESSION_NOT_FOUND");
   return session;
+}
+
+async function openCoordinationTickets(db: DbClient, studentIds: string[], expectedCourseLabel: string) {
+  const rows = await db.ticket.findMany({
+    where: {
+      studentId: { in: studentIds },
+      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      isArchived: false,
+      status: { notIn: ["Completed", "Cancelled"] },
+    },
+    select: {
+      id: true,
+      ticketNo: true,
+      studentId: true,
+      studentName: true,
+      status: true,
+      course: true,
+      parentVisible: true,
+      risksNotes: true,
+      parentAvailabilityRequest: { select: { courseLabel: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.filter((ticket) =>
+    schedulingCoordinationCourseLabelsMatch(
+      ticket.parentAvailabilityRequest?.courseLabel ?? ticket.course,
+      expectedCourseLabel
+    )
+  );
 }
 
 async function validateScheduling(db: DbClient, input: SchedulingInput) {
@@ -243,6 +276,9 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
     }
   }
 
+  const expectedCourseLabel = courseLabel(session);
+  const coordinationTickets = await openCoordinationTickets(db, studentIds, expectedCourseLabel);
+
   return {
     session,
     startAt: input.startAt,
@@ -254,12 +290,19 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
       actionLabel: input.action === "create" ? "新增课程" : "修改本节课",
       beforeText: input.action === "reschedule" ? `${formatBusinessDateTime(session.startAt)} - ${formatBusinessDateTime(session.endAt)}` : "新增一节课程",
       afterText: `${formatBusinessDateTime(input.startAt)} - ${formatBusinessDateTime(endAt)}`,
-      courseLabel: courseLabel(session),
+      courseLabel: expectedCourseLabel,
       teacherName: session.teacher?.name ?? session.class.teacher.name,
       studentText: students.map((student) => student.name).filter(Boolean).join("、") || "-",
       locationText: locationText(session),
       durationMin: input.durationMin,
+      coordinationTickets: coordinationTickets.map((ticket) => ({
+        id: ticket.id,
+        ticketNo: ticket.ticketNo,
+        studentName: ticket.studentName,
+        status: ticket.status,
+      })),
     },
+    coordinationTickets,
   };
 }
 
@@ -267,11 +310,24 @@ export async function previewMiniappSessionScheduling(input: SchedulingInput) {
   return validateScheduling(prisma, input);
 }
 
-export async function applyMiniappSessionScheduling(input: SchedulingInput, actor: SchedulingActor) {
+export async function applyMiniappSessionScheduling(
+  input: SchedulingInput,
+  actor: SchedulingActor,
+  completeCoordinationTicketIds: string[] = []
+) {
   try {
     return await prisma.$transaction(
       async (tx) => {
         const checked = await validateScheduling(tx, input);
+        const requestedTicketIds = Array.from(new Set(completeCoordinationTicketIds));
+        const eligibleTicketIds = new Set(checked.coordinationTickets.map((ticket) => ticket.id));
+        if (requestedTicketIds.some((ticketId) => !eligibleTicketIds.has(ticketId))) {
+          throw new MiniappSchedulingError(
+            "排课协调工单已变化，请重新检查冲突。",
+            409,
+            "COORDINATION_PREVIEW_STALE"
+          );
+        }
         let writtenSessionId: string;
         if (input.action === "reschedule") {
           const updated = await tx.session.update({
@@ -310,7 +366,54 @@ export async function applyMiniappSessionScheduling(input: SchedulingInput, acto
             },
           },
         });
-        return { ...checked, writtenSessionId };
+        const completedCoordinationTickets = [];
+        if (requestedTicketIds.length) {
+          const now = new Date();
+          const actorName = actor.name?.trim() || actor.email;
+          const completionResult = `已完成排课：${checked.preview.afterText}；老师：${checked.preview.teacherName}；地点：${checked.preview.locationText}。`;
+          for (const ticket of checked.coordinationTickets.filter((row) => requestedTicketIds.includes(row.id))) {
+            const coordinationLog = `[${formatBusinessDateTime(now)}] ${actorName} · 移动排课\n${completionResult}`;
+            const previousNotes = String(ticket.risksNotes ?? "").trim();
+            await tx.ticket.update({
+              where: { id: ticket.id },
+              data: {
+                status: "Completed",
+                systemUpdated: "Y",
+                finalSchedule: completionResult,
+                parentCompletionResult: completionResult,
+                nextAction: "排课已完成，无需继续跟进。",
+                nextActionDue: null,
+                risksNotes: previousNotes ? `${previousNotes}\n\n${coordinationLog}` : coordinationLog,
+                lastUpdateAt: now,
+                completedAt: now,
+                completedByUserId: actor.userId,
+              },
+            });
+            await tx.parentAvailabilityRequest.updateMany({
+              where: { ticketId: ticket.id },
+              data: { isActive: false },
+            });
+            await tx.auditLog.create({
+              data: {
+                actorEmail: actor.email.trim().toLowerCase(),
+                actorName: actor.name?.trim() || null,
+                actorRole: actor.role,
+                module: "TICKETS",
+                action: "MINIAPP_COORDINATION_COMPLETE_AFTER_SCHEDULING",
+                entityType: "Ticket",
+                entityId: ticket.id,
+                meta: { sessionId: writtenSessionId, sourceSessionId: input.sessionId },
+              },
+            });
+            completedCoordinationTickets.push({
+              id: ticket.id,
+              ticketNo: ticket.ticketNo,
+              studentId: ticket.studentId,
+              parentVisible: ticket.parentVisible,
+            });
+          }
+        }
+        return { ...checked, writtenSessionId, completedCoordinationTickets };
       },
       { maxWait: 5000, timeout: 20000 }
     );

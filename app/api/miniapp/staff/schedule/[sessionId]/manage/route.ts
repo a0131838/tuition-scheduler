@@ -13,6 +13,7 @@ import {
   canManageMiniappSchedulingWrites,
   getMiniappStaffSessionContext,
 } from "@/lib/miniapp-staff-session";
+import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 
 function schedulingSecret() {
   return String(process.env.CRON_SECRET || process.env.WECHAT_MINIAPP_SECRET || "").trim();
@@ -26,6 +27,11 @@ function parseAction(value: unknown): MiniappSchedulingAction | null {
 function parseStartAt(value: unknown) {
   const parsed = new Date(String(value ?? ""));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseTicketIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => String(item ?? "").trim()).filter(Boolean))).slice(0, 20);
 }
 
 function sameTokenPayload(
@@ -82,6 +88,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
           sessionId,
           startAt: startAt.toISOString(),
           durationMin,
+          coordinationTicketIds: checked.preview.coordinationTickets.map((ticket) => ticket.id),
         },
         secret
       );
@@ -94,16 +101,46 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       return bad("排课预览已失效，请重新检查冲突。", 409, { code: "PREVIEW_REQUIRED" });
     }
 
-    const applied = await applyMiniappSessionScheduling(input, {
-      email: access.auth.user.email,
-      name: access.auth.user.name,
-      role: access.auth.user.role,
-    });
+    const completeCoordinationTicketIds = parseTicketIds((body as any).completeCoordinationTicketIds);
+    const eligibleTicketIds = new Set(tokenPayload.coordinationTicketIds ?? []);
+    if (completeCoordinationTicketIds.some((ticketId) => !eligibleTicketIds.has(ticketId))) {
+      return bad("排课协调工单不在本次预检范围内，请重新检查冲突。", 409, {
+        code: "COORDINATION_PREVIEW_REQUIRED",
+      });
+    }
+
+    const applied = await applyMiniappSessionScheduling(
+      input,
+      {
+        userId: access.auth.user.id,
+        email: access.auth.user.email,
+        name: access.auth.user.name,
+        role: access.auth.user.role,
+      },
+      completeCoordinationTicketIds
+    );
+
+    await Promise.all(
+      applied.completedCoordinationTickets
+        .filter((ticket) => ticket.parentVisible && ticket.studentId)
+        .map((ticket) =>
+          queueMiniappNotificationsForStudent({
+            studentId: ticket.studentId as string,
+            templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
+            eventType: "REQUEST_STATUS_CHANGED",
+            targetType: "Ticket",
+            targetId: ticket.id,
+            permission: "canCreateRequests",
+            payload: { ticketNo: ticket.ticketNo, type: "排课协调", status: "Completed" },
+          }).catch(() => null)
+        )
+    );
 
     return ok({
       message: action === "create" ? "课程已排入系统。" : "课程时间已更新。",
       sessionId: applied.writtenSessionId,
       result: applied.preview,
+      completedCoordinationCount: applied.completedCoordinationTickets.length,
     });
   } catch (error) {
     if (error instanceof MiniappSchedulingError) {

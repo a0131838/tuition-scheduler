@@ -57,6 +57,19 @@
         <view class="hint">地点</view>
         <view>{{schedulePreviewLocationText}}</view>
       </view>
+      <view class="coordination-close" wx:if="{{hasScheduleCoordinationTickets}}">
+        <view class="label">同步完成排课协调工单（可选）</view>
+        <view class="hint">只勾选已经通过本次排课解决的工单；未勾选的工单保持原状态。</view>
+        <checkbox-group bindchange="changeScheduleCoordinationTickets">
+          <label class="ticket-choice" wx:for="{{scheduleCoordinationTickets}}" wx:key="id">
+            <checkbox value="{{item.id}}" color="#0b3d2a" />
+            <view>
+              <view>{{item.label}}</view>
+              <view class="hint">当前状态：{{item.statusText}}</view>
+            </view>
+          </label>
+        </checkbox-group>
+      </view>
       <button class="primary" loading="{{scheduleSaving}}" disabled="{{scheduleSaving}}" bindtap="applyScheduling">{{scheduleConfirmText}}</button>
     </view>
   </view>

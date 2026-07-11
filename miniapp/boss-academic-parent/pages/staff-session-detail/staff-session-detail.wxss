@@ -140,6 +140,22 @@ textarea,
   overflow-wrap: anywhere;
 }
 
+.coordination-close {
+  border-top: 1rpx solid #dce5d8;
+  margin-top: 16rpx;
+  padding-top: 20rpx;
+}
+
+.ticket-choice {
+  display: grid;
+  grid-template-columns: 44rpx minmax(0, 1fr);
+  align-items: start;
+  gap: 14rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #e5eadf;
+  overflow-wrap: anywhere;
+}
+
 .history {
   border-top: 1rpx solid #e5eadf;
   margin-top: 24rpx;
