@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { miniappSubscriptionConfiguration } from "@/lib/miniapp-subscription-config";
 
 function toInt(v: string | null, fallback: number) {
   const n = Number(v ?? "");
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
   return Response.json({
     ok: true,
     query: { status, limit },
+    configuration: miniappSubscriptionConfiguration(),
     summary: summaryRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.status] = row._count._all;
       return acc;

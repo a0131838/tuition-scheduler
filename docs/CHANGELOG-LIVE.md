@@ -15,6 +15,34 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r225
+
+- Release ID: `2026-07-11-r225`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: begin the second staff-miniapp phase with one-session location changes, atomic 2-12 week scheduling, teacher-originated reschedule Tickets, and subscription-message configuration/consent readiness.
+- Key files:
+  - `lib/miniapp-session-location-change.ts`
+  - `lib/miniapp-session-scheduling.ts`
+  - `lib/miniapp-subscription-config.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/*`
+  - `app/api/miniapp/subscriptions/intent/route.ts`
+  - `app/api/admin/miniapp-notifications/route.ts`
+  - `app/admin/miniapp-notifications/MiniappNotificationsClient.tsx`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `miniapp/boss-academic-parent/pages/home/*`
+  - `docs/tasks/TASK-20260711-miniapp-phase-two-operations.md`
+- Risk impact (if any): High but constrained. Location change creates a same-course/same-student branch Class and moves only the selected future Session, preserving the original Class and every other Session. Series scheduling is ADMIN-only, capped at 12 weeks, and all-or-nothing after per-week package and conflict checks. Teacher requests create or update internal `改课程时间` Tickets but never change a Session directly. Subscription controls remain hidden from parents until template IDs are configured; this release records consent but does not claim outbound WeChat delivery is enabled.
+- Verification:
+  - TypeScript, miniapp JavaScript/WXML, diff, and full Next.js build checks
+  - real-data no-write location and two-week series previews with signed-token tamper rejection
+  - route-level unauthenticated 401, valid preview 200, invalid apply 409, and unchanged Class/Session/Ticket snapshots
+  - teacher-owned future Session request GET 200 and invalid-student POST 409/no-write
+  - parent subscription configuration GET 200 with all five currently missing template IDs correctly reported
+- Rollback point: previous production commit before `2026-07-11-r225`.
+
+---
+
 ## 2026-07-11-r224
 
 - Release ID: `2026-07-11-r224`

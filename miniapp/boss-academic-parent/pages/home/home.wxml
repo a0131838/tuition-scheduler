@@ -45,6 +45,14 @@
     </view>
   </view>
 
+  <view class="notification-band" wx:if="{{hasSubscriptionGroups}}">
+    <view class="label">微信提醒</view>
+    <view class="subtitle">按需开启课程、请求和财务进度提醒。</view>
+    <view class="notification-actions">
+      <button class="reminder-button" wx:for="{{subscriptionGroups}}" wx:key="key" data-key="{{item.key}}" disabled="{{subscriptionLoading}}" bindtap="requestSubscription">{{item.label}}</button>
+    </view>
+  </view>
+
   <view class="card">
     <button class="btn" bindtap="goNewRequest">提交请求</button>
     <button class="btn secondary" bindtap="goStudents">切换学生</button>

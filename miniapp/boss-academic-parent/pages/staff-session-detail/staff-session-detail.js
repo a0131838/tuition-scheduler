@@ -43,7 +43,7 @@ function schedulingDefaults(session, action) {
     ? Math.max(15, Math.round((new Date(session.endAt).getTime() - original.getTime()) / 60000))
     : 60;
   const target = new Date(original);
-  if (action === "create") target.setDate(target.getDate() + 7);
+  if (action !== "reschedule") target.setDate(target.getDate() + 7);
   while (target.getTime() <= Date.now()) target.setDate(target.getDate() + 1);
   return {
     date: `${target.getFullYear()}-${pad2(target.getMonth() + 1)}-${pad2(target.getDate())}`,
@@ -112,6 +112,9 @@ Page({
     scheduleAction: "reschedule",
     scheduleCreateClass: "mode-button",
     scheduleRescheduleClass: "mode-button active",
+    scheduleSeriesClass: "mode-button",
+    scheduleSeriesMode: false,
+    scheduleWeeks: "4",
     scheduleDate: "",
     scheduleTime: "",
     scheduleDuration: "60",
@@ -160,7 +163,34 @@ Page({
     hasReplacementPreview: false,
     hasReplacementTickets: false,
     replacementChecking: false,
-    replacementSaving: false
+    replacementSaving: false,
+    locationCampuses: [],
+    locationCampusIndex: 0,
+    locationCampusName: "",
+    locationRooms: [],
+    locationRoomIndex: 0,
+    locationRoomName: "",
+    locationRequiresRoom: false,
+    hasLocationRooms: false,
+    currentLocationText: "",
+    locationReason: "",
+    locationPreview: null,
+    locationPreviewToken: "",
+    locationPreviewFromText: "",
+    locationPreviewToText: "",
+    hasLocationPreview: false,
+    locationChecking: false,
+    locationSaving: false,
+    canRequestReschedule: false,
+    teacherRequestStudents: [],
+    teacherRequestStudentIndex: 0,
+    teacherRequestStudentName: "",
+    teacherRequestReason: "",
+    teacherRequestDate: "",
+    teacherRequestTime: "",
+    teacherRequestExisting: null,
+    hasTeacherRequestExisting: false,
+    teacherRequestSaving: false
   },
 
   onLoad(query) {
@@ -180,6 +210,7 @@ Page({
         const canManageCoordination = Boolean(capabilities.canManageCoordination);
         const canManageSchedule = Boolean(capabilities.canManageSchedule);
         const defaults = schedulingDefaults(session, this.data.scheduleAction);
+        const canRequestReschedule = canTeachSession && Boolean(session && session.startAt && new Date(session.startAt).getTime() > Date.now());
         const cancellationStudents = session && session.students ? session.students : [];
         this.setData({
           session,
@@ -189,6 +220,7 @@ Page({
           canTeachSession,
           canManageCoordination,
           canManageSchedule,
+          canRequestReschedule,
           readOnlySession: !canTeachSession && !canManageCoordination && !canManageSchedule,
           scheduleDate: defaults.date,
           scheduleTime: defaults.time,
@@ -229,6 +261,7 @@ Page({
               })
               .catch((err) => api.toast(err.message))
           );
+          if (canRequestReschedule) tasks.push(this.loadTeacherRescheduleRequest(defaults));
           tasks.push(
             api.requestStaff(basePath + "/attendance")
               .then((attendanceData) => this.setData({ attendanceRows: attendanceList(attendanceData.rows) }))
@@ -236,7 +269,10 @@ Page({
           );
         }
         if (canManageCoordination) tasks.push(this.loadCoordination());
-        if (canManageSchedule) tasks.push(this.loadReplacementTeachers());
+        if (canManageSchedule) {
+          tasks.push(this.loadReplacementTeachers());
+          tasks.push(this.loadLocationOptions());
+        }
         return Promise.allSettled(tasks);
       })
       .catch((err) => api.toast(err.message))
@@ -357,16 +393,19 @@ Page({
   },
 
   setSchedulingMode(e) {
-    const action = e.currentTarget.dataset.mode === "create" ? "create" : "reschedule";
+    const rawMode = e.currentTarget.dataset.mode;
+    const action = rawMode === "create" || rawMode === "series" ? rawMode : "reschedule";
     const defaults = schedulingDefaults(this.data.session, action);
     this.setData({
       scheduleAction: action,
       scheduleCreateClass: action === "create" ? "mode-button active" : "mode-button",
       scheduleRescheduleClass: action === "reschedule" ? "mode-button active" : "mode-button",
+      scheduleSeriesClass: action === "series" ? "mode-button active" : "mode-button",
+      scheduleSeriesMode: action === "series",
       scheduleDate: defaults.date,
       scheduleTime: defaults.time,
       scheduleDuration: defaults.duration,
-      scheduleConfirmText: action === "create" ? "确认排课" : "确认改课",
+      scheduleConfirmText: action === "create" ? "确认排课" : action === "series" ? "确认连续排课" : "确认改课",
       schedulePreview: null,
       schedulePreviewToken: "",
       scheduleCoordinationTickets: [],
@@ -399,12 +438,17 @@ Page({
     this.invalidateSchedulingPreview({ scheduleDuration: e.detail.value });
   },
 
+  inputScheduleWeeks(e) {
+    this.invalidateSchedulingPreview({ scheduleWeeks: e.detail.value });
+  },
+
   schedulePayload(mode) {
     return {
       mode,
       action: this.data.scheduleAction,
       startAt: `${this.data.scheduleDate}T${this.data.scheduleTime}:00+08:00`,
       durationMin: Number(this.data.scheduleDuration),
+      weeks: Number(this.data.scheduleWeeks),
       previewToken: this.data.schedulePreviewToken,
       completeCoordinationTicketIds: mode === "apply" ? this.data.scheduleCoordinationTicketIds : []
     };
@@ -428,7 +472,14 @@ Page({
       api.toast("时长需为 15-360 分钟");
       return;
     }
-    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/manage";
+    if (this.data.scheduleSeriesMode) {
+      const weeks = Number(this.data.scheduleWeeks);
+      if (!Number.isInteger(weeks) || weeks < 2 || weeks > 12) {
+        api.toast("连续排课需为 2-12 周");
+        return;
+      }
+    }
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + (this.data.scheduleSeriesMode ? "/series" : "/manage");
     this.setData({ scheduleChecking: true });
     api.requestStaff(path, { method: "POST", data: this.schedulePayload("preview"), timeout: 30000 })
       .then((data) => {
@@ -443,8 +494,8 @@ Page({
         this.setData({
           schedulePreview: preview,
           schedulePreviewToken: data.previewToken || "",
-          schedulePreviewBeforeText: preview.beforeText || "-",
-          schedulePreviewAfterText: preview.afterText || "-",
+          schedulePreviewBeforeText: preview.beforeText || (this.data.scheduleSeriesMode ? "连续新增 " + (preview.weeks || 0) + " 周" : "-"),
+          schedulePreviewAfterText: preview.afterText || (preview.firstText && preview.lastText ? preview.firstText + " 至 " + preview.lastText : "-"),
           schedulePreviewCourseText: preview.courseLabel || "-",
           schedulePreviewPeopleText: (preview.teacherName || "-") + " · " + (preview.studentText || "-"),
           schedulePreviewLocationText: preview.locationText || "-",
@@ -464,7 +515,7 @@ Page({
 
   applyScheduling() {
     if (!this.data.schedulePreviewToken || this.data.scheduleSaving) return;
-    const actionText = this.data.scheduleAction === "create" ? "新增课程" : "修改课程时间";
+    const actionText = this.data.scheduleAction === "create" ? "新增课程" : this.data.scheduleSeriesMode ? "连续排课" : "修改课程时间";
     const completionCount = this.data.scheduleCoordinationTicketIds.length;
     wx.showModal({
       title: "确认" + actionText,
@@ -472,11 +523,11 @@ Page({
       confirmText: "确认执行",
       success: (result) => {
         if (!result.confirm) return;
-        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/manage";
+        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + (this.data.scheduleSeriesMode ? "/series" : "/manage");
         this.setData({ scheduleSaving: true });
         api.requestStaff(path, { method: "POST", data: this.schedulePayload("apply"), timeout: 30000 })
           .then(() => {
-            wx.showToast({ title: this.data.scheduleAction === "create" ? "已排课" : "已改课", icon: "success" });
+            wx.showToast({ title: this.data.scheduleSeriesMode ? "已连续排课" : this.data.scheduleAction === "create" ? "已排课" : "已改课", icon: "success" });
             return this.load();
           })
           .catch((err) => this.showSchedulingError(err))
@@ -696,6 +747,190 @@ Page({
           })
           .catch((err) => this.showSchedulingError(err))
           .finally(() => this.setData({ replacementSaving: false }));
+      }
+    });
+  },
+
+  loadLocationOptions() {
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/change-location";
+    return api.requestStaff(path)
+      .then((data) => {
+        const campuses = data.campuses || [];
+        let index = campuses.findIndex((item) => item.id === data.currentCampusId);
+        if (index < 0) index = 0;
+        this.setData({
+          locationCampuses: campuses,
+          currentLocationText: data.currentLocationText || this.data.sessionLocationText,
+          locationReason: "",
+          locationPreview: null,
+          locationPreviewToken: "",
+          hasLocationPreview: false
+        });
+        this.applyLocationCampus(index, data.currentRoomId || "");
+      })
+      .catch((err) => api.toast(err.message));
+  },
+
+  applyLocationCampus(index, preferredRoomId) {
+    const campus = this.data.locationCampuses[index] || null;
+    const rooms = campus && campus.requiresRoom ? (campus.rooms || []) : [{ id: "", name: "无需教室" }];
+    let roomIndex = rooms.findIndex((item) => item.id === preferredRoomId);
+    if (roomIndex < 0) roomIndex = 0;
+    const room = rooms[roomIndex] || null;
+    this.invalidateLocationPreview({
+      locationCampusIndex: index,
+      locationCampusName: campus ? campus.name : "",
+      locationRooms: rooms,
+      locationRoomIndex: roomIndex,
+      locationRoomName: room ? room.name : "",
+      locationRequiresRoom: Boolean(campus && campus.requiresRoom),
+      hasLocationRooms: rooms.length > 0
+    });
+  },
+
+  invalidateLocationPreview(values) {
+    this.setData(Object.assign({}, values || {}, {
+      locationPreview: null,
+      locationPreviewToken: "",
+      hasLocationPreview: false
+    }));
+  },
+
+  changeLocationCampus(e) {
+    this.applyLocationCampus(Number(e.detail.value || 0), "");
+  },
+
+  changeLocationRoom(e) {
+    const index = Number(e.detail.value || 0);
+    const room = this.data.locationRooms[index];
+    this.invalidateLocationPreview({ locationRoomIndex: index, locationRoomName: room ? room.name : "" });
+  },
+
+  inputLocationReason(e) {
+    this.invalidateLocationPreview({ locationReason: e.detail.value });
+  },
+
+  locationPayload(mode) {
+    const campus = this.data.locationCampuses[this.data.locationCampusIndex];
+    const room = this.data.locationRooms[this.data.locationRoomIndex];
+    return {
+      mode,
+      campusId: campus ? campus.id : "",
+      roomId: room ? room.id : "",
+      reason: String(this.data.locationReason || "").trim(),
+      previewToken: this.data.locationPreviewToken
+    };
+  },
+
+  previewLocationChange() {
+    const payload = this.locationPayload("preview");
+    if (!payload.campusId) return api.toast("请选择校区");
+    if (this.data.locationRequiresRoom && !payload.roomId) return api.toast("请选择教室");
+    if (!payload.reason) return api.toast("请填写换地点原因");
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/change-location";
+    this.setData({ locationChecking: true });
+    api.requestStaff(path, { method: "POST", data: payload, timeout: 30000 })
+      .then((data) => {
+        const preview = data.preview || {};
+        this.setData({
+          locationPreview: preview,
+          locationPreviewToken: data.previewToken || "",
+          locationPreviewFromText: preview.fromLocationText || "-",
+          locationPreviewToText: preview.toLocationText || "-",
+          hasLocationPreview: Boolean(data.previewToken)
+        });
+      })
+      .catch((err) => this.showSchedulingError(err))
+      .finally(() => this.setData({ locationChecking: false }));
+  },
+
+  applyLocationChange() {
+    if (!this.data.locationPreviewToken || this.data.locationSaving) return;
+    wx.showModal({
+      title: "确认更换本节课地点",
+      content: this.data.locationPreviewFromText + "\n改为：" + this.data.locationPreviewToText + "\n其他课次不受影响。",
+      confirmText: "确认更换",
+      success: (result) => {
+        if (!result.confirm) return;
+        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/change-location";
+        this.setData({ locationSaving: true });
+        api.requestStaff(path, { method: "POST", data: this.locationPayload("apply"), timeout: 30000 })
+          .then((data) => {
+            wx.showToast({ title: data.message || "已更新", icon: "success" });
+            return this.load();
+          })
+          .catch((err) => this.showSchedulingError(err))
+          .finally(() => this.setData({ locationSaving: false }));
+      }
+    });
+  },
+
+  loadTeacherRescheduleRequest(defaults) {
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/reschedule-request";
+    return api.requestStaff(path)
+      .then((data) => {
+        const students = data.students || [];
+        this.setData({
+          teacherRequestStudents: students,
+          teacherRequestStudentIndex: 0,
+          teacherRequestStudentName: students[0] ? students[0].name : "",
+          teacherRequestDate: this.data.teacherRequestDate || defaults.date,
+          teacherRequestTime: this.data.teacherRequestTime || defaults.time,
+          teacherRequestExisting: data.existing || null,
+          hasTeacherRequestExisting: Boolean(data.existing)
+        });
+      })
+      .catch((err) => api.toast(err.message));
+  },
+
+  changeTeacherRequestStudent(e) {
+    const index = Number(e.detail.value || 0);
+    const student = this.data.teacherRequestStudents[index];
+    this.setData({ teacherRequestStudentIndex: index, teacherRequestStudentName: student ? student.name : "" });
+  },
+
+  inputTeacherRequestReason(e) {
+    this.setData({ teacherRequestReason: e.detail.value });
+  },
+
+  changeTeacherRequestDate(e) {
+    this.setData({ teacherRequestDate: e.detail.value });
+  },
+
+  changeTeacherRequestTime(e) {
+    this.setData({ teacherRequestTime: e.detail.value });
+  },
+
+  submitTeacherRescheduleRequest() {
+    if (this.data.teacherRequestSaving) return;
+    const student = this.data.teacherRequestStudents[this.data.teacherRequestStudentIndex];
+    const reason = String(this.data.teacherRequestReason || "").trim();
+    if (!student) return api.toast("请选择学生");
+    if (!reason) return api.toast("请填写调课原因");
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/reschedule-request";
+    wx.showModal({
+      title: "提交调课申请",
+      content: "申请会进入 Jasmine/Eva 的排课与调课看板，不会直接修改课程。",
+      confirmText: "确认提交",
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ teacherRequestSaving: true });
+        api.requestStaff(path, {
+          method: "POST",
+          data: {
+            studentId: student.id,
+            reason,
+            preferredDate: this.data.teacherRequestDate,
+            preferredTime: this.data.teacherRequestTime
+          }
+        })
+          .then((data) => {
+            wx.showToast({ title: "已提交", icon: "success" });
+            this.setData({ teacherRequestReason: "" });
+            return this.loadTeacherRescheduleRequest({ date: this.data.teacherRequestDate, time: this.data.teacherRequestTime });
+          })
+          .catch((err) => api.toast(err.message))
+          .finally(() => this.setData({ teacherRequestSaving: false }));
       }
     });
   },

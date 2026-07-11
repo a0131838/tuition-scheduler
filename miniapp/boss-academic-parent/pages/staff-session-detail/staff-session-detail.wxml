@@ -11,11 +11,43 @@
     <view class="hint">当前账号可查看课程信息；排课协调由教务/管理处理，点名和反馈由本节课老师处理。</view>
   </view>
 
+  <view class="card" wx:if="{{canRequestReschedule}}">
+    <view class="section-title">老师调课申请</view>
+    <view class="request-existing" wx:if="{{hasTeacherRequestExisting}}">
+      <view class="label">已有开放申请：{{teacherRequestExisting.ticketNo}}</view>
+      <view class="hint">状态：{{teacherRequestExisting.status}} · 负责人：{{teacherRequestExisting.owner}}</view>
+      <view class="hint">再次提交会补充到同一张工单，不会重复创建。</view>
+    </view>
+    <view class="field">
+      <view class="label">学生</view>
+      <picker mode="selector" range="{{teacherRequestStudents}}" range-key="name" value="{{teacherRequestStudentIndex}}" bindchange="changeTeacherRequestStudent">
+        <view class="picker">{{teacherRequestStudentName}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">调课原因</view>
+      <textarea value="{{teacherRequestReason}}" bindinput="inputTeacherRequestReason" placeholder="填写为什么需要调整本节课" />
+    </view>
+    <view class="field-row">
+      <view class="field grow">
+        <view class="label">建议日期</view>
+        <picker mode="date" value="{{teacherRequestDate}}" bindchange="changeTeacherRequestDate"><view class="picker">{{teacherRequestDate}}</view></picker>
+      </view>
+      <view class="field grow">
+        <view class="label">建议时间</view>
+        <picker mode="time" value="{{teacherRequestTime}}" bindchange="changeTeacherRequestTime"><view class="picker">{{teacherRequestTime}}</view></picker>
+      </view>
+    </view>
+    <view class="hint">提交后不会直接改课，由 Jasmine/Eva 联系家长并完成正式调整。</view>
+    <button class="secondary-action" loading="{{teacherRequestSaving}}" disabled="{{teacherRequestSaving}}" bindtap="submitTeacherRescheduleRequest">提交给教务</button>
+  </view>
+
   <view class="card" wx:if="{{canManageSchedule}}">
     <view class="section-title">移动排课</view>
     <view class="mode-control">
       <button class="{{scheduleRescheduleClass}}" data-mode="reschedule" bindtap="setSchedulingMode">改本节课</button>
       <button class="{{scheduleCreateClass}}" data-mode="create" bindtap="setSchedulingMode">新增一节</button>
+      <button class="{{scheduleSeriesClass}}" data-mode="series" bindtap="setSchedulingMode">连续排课</button>
     </view>
     <view class="field">
       <view class="label">上课日期</view>
@@ -32,6 +64,11 @@
     <view class="field">
       <view class="label">课程时长（分钟）</view>
       <input type="number" value="{{scheduleDuration}}" bindinput="inputScheduleDuration" placeholder="60" />
+    </view>
+    <view class="field" wx:if="{{scheduleSeriesMode}}">
+      <view class="label">连续周数</view>
+      <input type="number" value="{{scheduleWeeks}}" bindinput="inputScheduleWeeks" placeholder="4" />
+      <view class="hint">每周同一时间，最多 12 周；任何一周冲突都会整批停止。</view>
     </view>
     <view class="hint">老师与地点沿用当前课程；正式执行前会检查学生、老师、教室、availability 和课包。</view>
     <button class="secondary-action" loading="{{scheduleChecking}}" disabled="{{scheduleChecking}}" bindtap="previewScheduling">检查冲突</button>
@@ -150,6 +187,36 @@
         </checkbox-group>
       </view>
       <button class="primary" loading="{{replacementSaving}}" disabled="{{replacementSaving}}" bindtap="applyReplacement">确认更换老师</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{canManageSchedule}}">
+    <view class="section-title">更换本节课地点</view>
+    <view class="hint location-current">当前地点：{{currentLocationText}}</view>
+    <view class="field">
+      <view class="label">新校区 / 授课方式</view>
+      <picker mode="selector" range="{{locationCampuses}}" range-key="name" value="{{locationCampusIndex}}" bindchange="changeLocationCampus">
+        <view class="picker">{{locationCampusName}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">新教室</view>
+      <picker wx:if="{{hasLocationRooms}}" mode="selector" range="{{locationRooms}}" range-key="name" value="{{locationRoomIndex}}" bindchange="changeLocationRoom">
+        <view class="picker">{{locationRoomName}}</view>
+      </picker>
+      <view class="picker" wx:else>当前校区没有可用教室</view>
+    </view>
+    <view class="field">
+      <view class="label">更换原因</view>
+      <textarea value="{{locationReason}}" bindinput="inputLocationReason" placeholder="填写临时教室调整、转线上或校区变更原因" />
+    </view>
+    <view class="hint">只更改这一节课；其他历史和未来课次保持原地点。</view>
+    <button class="secondary-action" loading="{{locationChecking}}" disabled="{{locationChecking}}" bindtap="previewLocationChange">检查新地点</button>
+    <view class="schedule-preview" wx:if="{{hasLocationPreview}}">
+      <view class="label">检查通过</view>
+      <view class="preview-row"><view class="hint">原地点</view><view>{{locationPreviewFromText}}</view></view>
+      <view class="preview-row"><view class="hint">新地点</view><view>{{locationPreviewToText}}</view></view>
+      <button class="primary" loading="{{locationSaving}}" disabled="{{locationSaving}}" bindtap="applyLocationChange">确认只改本节课</button>
     </view>
   </view>
 

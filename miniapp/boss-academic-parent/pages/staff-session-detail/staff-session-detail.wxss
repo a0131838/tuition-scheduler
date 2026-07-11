@@ -106,7 +106,7 @@ textarea,
 
 .mode-control {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12rpx;
   margin-bottom: 22rpx;
 }
@@ -208,4 +208,27 @@ textarea {
   border-radius: 8rpx;
   font-weight: 800;
   margin-top: 20rpx;
+}
+
+.location-current {
+  border-left: 6rpx solid #2f6b4f;
+  margin-bottom: 18rpx;
+  padding-left: 14rpx;
+}
+
+.request-existing {
+  background: #edf2ea;
+  border-left: 6rpx solid #2f6b4f;
+  margin-bottom: 18rpx;
+  padding: 16rpx;
+}
+
+.field-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.field-row .grow {
+  flex: 1;
+  min-width: 0;
 }

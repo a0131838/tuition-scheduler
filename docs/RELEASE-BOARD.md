@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r224` (guarded mobile leave/cancellation, one-session teacher replacement, future-lesson linkage, and Ticket-originated first scheduling), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r225` (one-session location changes, atomic weekly series scheduling, teacher reschedule requests, and subscription-message readiness), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-phase-two risk: `2026-07-11-r225` adds ADMIN-only location and series scheduling writes plus teacher-originated Ticket creation. Location changes move one Session to a cloned same-course Class, series writes are all-or-nothing for 2-12 weeks, and teacher requests do not modify schedules. Monitor the first real action in each path and confirm reports retain the expected course/student context.
 - Miniapp-mobile-academic-actions risk: `2026-07-11-r224` adds ADMIN-only writes for leave/cancellation, one-session teacher replacement, and first scheduling from a Ticket. Every write requires a fresh signed preview and transaction revalidation; monitor Eva/Jasmine's first real action in each workflow and confirm the matching Ticket completion result before wider daily use.
 - Miniapp-scheduling-owner risk: `2026-07-11-r223` allows permitted staff to change scheduling Ticket owner. Allowed values are restricted to unassigned, Jasmine, Eva, and Emily; every change is audited and older clients preserve the current owner when omitting the field.
 - Miniapp-scheduling-board-scope risk: `2026-07-11-r222` broadens the r221 board from exact `排课协调` Tickets to all six scheduling-related web Ticket Center categories. Existing permission, transition, and audit controls remain; verify operators notice each Ticket's original type label before updating it.
@@ -140,6 +141,29 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-11-r225 Ready
+
+- Scope: start the second mobile-operations phase while preserving existing desktop scheduling ownership and Ticket workflows.
+- Business impact:
+  - ADMIN can change the campus/online mode and room for one future Session only.
+  - The original Class, historical Sessions, and all other future Sessions keep their original location.
+  - ADMIN can schedule the same lesson weekly for 2-12 weeks; every week must pass package, availability, student, teacher, appointment, duplicate, and room checks before any Session is created.
+  - Matching scheduling Tickets remain optional and can be completed in the same atomic series transaction.
+  - Assigned teachers can submit a reason and preferred time from their own future lesson. The request creates or updates one internal `改课程时间` Ticket owned by Jasmine and visible to Eva/management in the existing mobile board.
+  - The notification admin page reports AppID/Secret and five template-ID configuration states. Parent reminder buttons appear only for configured template groups and record the result of `wx.requestSubscribeMessage`.
+- Safety boundaries:
+  - No location change for started/attended/deducted Sessions.
+  - No partial weekly scheduling, more than 12 weeks, teacher direct schedule writes, or automatic Ticket completion for teacher requests.
+  - Subscription consent storage is enabled, but outbound WeChat sending remains blocked until official template IDs and template-field mappings are completed.
+- Verification before deploy:
+  - `npx tsc --noEmit`, miniapp syntax/WXML, `git diff --check`, and `npm run build`
+  - local route checks: 401 unauthenticated, 200 valid previews/reads, 409 invalid applies, unchanged database snapshots
+  - configuration check currently reports 0/5 WeChat template IDs
+- Post-deploy verification:
+  - repeat all three staff workflow route checks against `sgtmanage.com`
+  - verify subscription configuration remains hidden in the parent miniapp while template IDs are absent
+  - confirm PM2, `/admin/login`, and local/origin/server commit alignment
 
 ## 2026-07-11-r224 Live
 

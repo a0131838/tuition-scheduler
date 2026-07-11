@@ -17,6 +17,14 @@ type NotificationRow = {
   payloadJson: unknown;
 };
 
+type NotificationConfiguration = {
+  appIdConfigured: boolean;
+  secretConfigured: boolean;
+  configuredCount: number;
+  requiredCount: number;
+  templates: Array<{ key: string; envKey: string; configured: boolean }>;
+};
+
 const statuses = ["PENDING", "SENT", "FAILED", "SKIPPED", "ALL"];
 
 const buttonStyle: React.CSSProperties = {
@@ -34,6 +42,7 @@ export default function MiniappNotificationsClient() {
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [configuration, setConfiguration] = useState<NotificationConfiguration | null>(null);
 
   const total = useMemo(() => Object.values(summary).reduce((sum, n) => sum + n, 0), [summary]);
 
@@ -48,6 +57,7 @@ export default function MiniappNotificationsClient() {
       if (!res.ok || data.ok === false) throw new Error(data.message || "加载失败");
       setRows(data.notifications || []);
       setSummary(data.summary || {});
+      setConfiguration(data.configuration || null);
     } catch (error: any) {
       setMessage(error?.message || "加载失败");
     } finally {
@@ -120,6 +130,21 @@ export default function MiniappNotificationsClient() {
             </button>
           ))}
         </div>
+        {configuration ? (
+          <div style={{ borderTop: "1px solid #c7d2fe", paddingTop: 12, display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 900 }}>微信订阅消息配置体检</div>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              AppID {configuration.appIdConfigured ? "已配置" : "未配置"} · Secret {configuration.secretConfigured ? "已配置" : "未配置"} · 模板 {configuration.configuredCount}/{configuration.requiredCount}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {configuration.templates.map((item) => (
+                <span key={item.key} style={{ border: `1px solid ${item.configured ? "#86efac" : "#fca5a5"}`, background: item.configured ? "#f0fdf4" : "#fef2f2", color: item.configured ? "#166534" : "#b91c1c", borderRadius: 6, padding: "5px 8px", fontSize: 12 }}>
+                  {item.envKey}: {item.configured ? "已配置" : "缺少"}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {message ? <div style={{ color: message.includes("失败") ? "#b91c1c" : "#166534" }}>{message}</div> : null}
       </section>
 

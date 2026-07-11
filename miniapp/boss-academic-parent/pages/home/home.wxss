@@ -1,3 +1,27 @@
 .grid-2 {
   margin-top: 18rpx;
 }
+
+.notification-band {
+  border-top: 1rpx solid #dce5d8;
+  border-bottom: 1rpx solid #dce5d8;
+  margin: 22rpx 0;
+  padding: 22rpx 0;
+}
+
+.notification-actions {
+  display: grid;
+  gap: 12rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16rpx;
+}
+
+.reminder-button {
+  background: #edf2ea;
+  border-radius: 8rpx;
+  color: #123d2b;
+  font-size: 25rpx;
+  font-weight: 700;
+  min-height: 72rpx;
+  overflow-wrap: anywhere;
+}

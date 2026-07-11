@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { campusRequiresRoom } from "@/lib/campus";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +34,23 @@ export type MiniappSchedulingPreviewTokenPayload = {
   sessionId: string;
   startAt: string;
   durationMin: number;
+  coordinationTicketIds: string[];
+  expiresAt: number;
+};
+
+export type MiniappSeriesSchedulingInput = {
+  sessionId: string;
+  startAt: Date;
+  durationMin: number;
+  weeks: number;
+};
+
+export type MiniappSeriesSchedulingTokenPayload = {
+  userId: string;
+  sessionId: string;
+  startAt: string;
+  durationMin: number;
+  weeks: number;
   coordinationTicketIds: string[];
   expiresAt: number;
 };
@@ -461,6 +478,143 @@ export function verifyMiniappSchedulingPreviewToken(token: string, secret: strin
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as MiniappSchedulingPreviewTokenPayload;
     if (!payload.expiresAt || payload.expiresAt < Date.now()) return null;
     return payload;
+  } catch {
+    return null;
+  }
+}
+
+function seriesRows(input: MiniappSeriesSchedulingInput) {
+  if (!Number.isInteger(input.weeks) || input.weeks < 2 || input.weeks > 12) {
+    throw new MiniappSchedulingError("连续排课周数必须在 2 到 12 周之间。", 409, "INVALID_WEEKS");
+  }
+  return Array.from({ length: input.weeks }, (_, index) => ({
+    action: "create" as const,
+    sessionId: input.sessionId,
+    startAt: new Date(input.startAt.getTime() + index * 7 * 24 * 60 * 60 * 1000),
+    durationMin: input.durationMin,
+  }));
+}
+
+export async function previewMiniappSessionSeries(input: MiniappSeriesSchedulingInput) {
+  const checkedRows = [];
+  for (const row of seriesRows(input)) checkedRows.push(await validateScheduling(prisma, row));
+  const first = checkedRows[0];
+  const last = checkedRows[checkedRows.length - 1];
+  return {
+    checkedRows,
+    preview: {
+      actionLabel: "连续新增课程",
+      courseLabel: first.preview.courseLabel,
+      teacherName: first.preview.teacherName,
+      studentText: first.preview.studentText,
+      locationText: first.preview.locationText,
+      weeks: input.weeks,
+      durationMin: input.durationMin,
+      firstText: first.preview.afterText,
+      lastText: last.preview.afterText,
+      rows: checkedRows.map((row, index) => ({ index: index + 1, timeText: row.preview.afterText })),
+      coordinationTickets: first.preview.coordinationTickets,
+    },
+  };
+}
+
+export async function applyMiniappSessionSeries(
+  input: MiniappSeriesSchedulingInput,
+  actor: SchedulingActor,
+  completeCoordinationTicketIds: string[] = []
+) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const checkedRows = [];
+      for (const row of seriesRows(input)) checkedRows.push(await validateScheduling(tx, row));
+      const first = checkedRows[0];
+      const requestedTicketIds = Array.from(new Set(completeCoordinationTicketIds));
+      const eligibleIds = new Set(first.coordinationTickets.map((ticket) => ticket.id));
+      if (requestedTicketIds.some((ticketId) => !eligibleIds.has(ticketId))) {
+        throw new MiniappSchedulingError("排课工单已变化，请重新检查整批课程。", 409, "COORDINATION_PREVIEW_STALE");
+      }
+      const sessionIds: string[] = [];
+      for (const checked of checkedRows) {
+        const teacherOverride = checked.teacherId === checked.session.class.teacherId ? null : checked.teacherId;
+        const created = await tx.session.create({
+          data: {
+            classId: checked.session.classId,
+            startAt: checked.startAt,
+            endAt: checked.endAt,
+            teacherId: teacherOverride,
+            studentId: checked.session.class.capacity === 1 ? checked.students[0]?.id ?? null : null,
+          },
+        });
+        sessionIds.push(created.id);
+        await tx.auditLog.create({
+          data: {
+            actorEmail: actor.email.trim().toLowerCase(),
+            actorName: actor.name?.trim() || null,
+            actorRole: actor.role,
+            module: "SCHEDULING",
+            action: "MINIAPP_SESSION_SERIES_CREATE",
+            entityType: "Session",
+            entityId: created.id,
+            meta: { sourceSessionId: input.sessionId, weeks: input.weeks, startAt: checked.startAt.toISOString(), endAt: checked.endAt.toISOString() },
+          },
+        });
+      }
+      const completedCoordinationTickets = [];
+      if (requestedTicketIds.length) {
+        const now = new Date();
+        const actorName = actor.name?.trim() || actor.email;
+        const firstText = checkedRows[0].preview.afterText;
+        const lastText = checkedRows[checkedRows.length - 1].preview.afterText;
+        const completionResult = `已连续排课 ${input.weeks} 周：首节 ${firstText}；末节 ${lastText}；老师：${first.preview.teacherName}；地点：${first.preview.locationText}。`;
+        for (const ticket of first.coordinationTickets.filter((row) => requestedTicketIds.includes(row.id))) {
+          const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动连续排课\n${completionResult}`;
+          const previousNotes = String(ticket.risksNotes ?? "").trim();
+          await tx.ticket.update({
+            where: { id: ticket.id },
+            data: {
+              status: "Completed", systemUpdated: "Y", finalSchedule: completionResult,
+              parentCompletionResult: completionResult, nextAction: "连续排课已完成，无需继续跟进。",
+              nextActionDue: null, risksNotes: previousNotes ? `${previousNotes}\n\n${log}` : log,
+              lastUpdateAt: now, completedAt: now, completedByUserId: actor.userId,
+            },
+          });
+          await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: ticket.id }, data: { isActive: false } });
+          await tx.auditLog.create({
+            data: {
+              actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
+              module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_SERIES_SCHEDULING",
+              entityType: "Ticket", entityId: ticket.id, meta: { sessionIds, sourceSessionId: input.sessionId },
+            },
+          });
+          completedCoordinationTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, parentVisible: ticket.parentVisible });
+        }
+      }
+      return { sessionIds, checkedRows, completedCoordinationTickets };
+    }, { maxWait: 5000, timeout: 30000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (isSessionDuplicateError(error)) throw new MiniappSchedulingError("连续排课中存在重复课程。", 409, "DUPLICATE");
+    throw error;
+  }
+}
+
+export function createMiniappSeriesSchedulingToken(
+  payload: Omit<MiniappSeriesSchedulingTokenPayload, "expiresAt">,
+  secret: string
+) {
+  const encoded = Buffer.from(JSON.stringify({ ...payload, expiresAt: Date.now() + 10 * 60_000 })).toString("base64url");
+  return `${encoded}.${signPart(encoded, secret)}`;
+}
+
+export function verifyMiniappSeriesSchedulingToken(token: string, secret: string): MiniappSeriesSchedulingTokenPayload | null {
+  const [encoded, signature] = String(token ?? "").split(".");
+  if (!encoded || !signature) return null;
+  const expected = signPart(encoded, secret);
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as MiniappSeriesSchedulingTokenPayload;
+    return payload.expiresAt > Date.now() ? payload : null;
   } catch {
     return null;
   }
