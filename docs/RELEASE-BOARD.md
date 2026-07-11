@@ -142,7 +142,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r225 Ready
+## 2026-07-11-r225 Live
 
 - Scope: start the second mobile-operations phase while preserving existing desktop scheduling ownership and Ticket workflows.
 - Business impact:
@@ -161,9 +161,12 @@
   - local route checks: 401 unauthenticated, 200 valid previews/reads, 409 invalid applies, unchanged database snapshots
   - configuration check currently reports 0/5 WeChat template IDs
 - Post-deploy verification:
-  - repeat all three staff workflow route checks against `sgtmanage.com`
-  - verify subscription configuration remains hidden in the parent miniapp while template IDs are absent
-  - confirm PM2, `/admin/login`, and local/origin/server commit alignment
+  - deployed feature commit `b09147b`; PM2 is online and `/admin/login` returns 200
+  - location options and valid preview return 200; invalid apply returns 409
+  - valid two-week series preview returns 200; invalid apply returns 409
+  - teacher-owned request GET returns 200; invalid student POST returns 409 and Ticket count remains unchanged
+  - parent subscription configuration GET returns 200 and all groups remain unconfigured/hidden with 0/5 template IDs
+  - no `MINIAPP_SESSION_CHANGE_LOCATION`, `MINIAPP_SESSION_SERIES_CREATE`, or teacher-request audit writes were created by verification
 
 ## 2026-07-11-r224 Live
 

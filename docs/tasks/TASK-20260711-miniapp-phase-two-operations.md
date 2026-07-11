@@ -30,3 +30,10 @@ Extend the native staff miniapp beyond first-phase single-lesson operations whil
 - Invalid apply tokens return 409 and leave Class, Session, and Ticket counts unchanged.
 - Teacher-owned request GET returns 200; invalid student submission returns 409/no-write.
 - Parent subscription configuration returns 200 and currently reports no configured template groups.
+
+## Production Result
+
+- Feature commit `b09147b` deployed successfully; PM2 is online and `/admin/login` returns 200.
+- Location and two-week series previews returned 200; invalid confirmation tokens returned 409.
+- Teacher and parent route permission checks passed, invalid teacher submission produced no Ticket, and verification produced no new workflow audit writes.
+- Subscription configuration correctly remains hidden from parents because all five official template IDs are still missing.
