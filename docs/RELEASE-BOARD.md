@@ -141,7 +141,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-11-r224 Ready
+## 2026-07-11-r224 Live
 
 - Scope: finish the first mobile academic-operations batch without requiring staff to return to the desktop for common single-lesson changes.
 - Business impact:
@@ -161,10 +161,11 @@
   - `npm run build`
   - read-only production-data previews and token tamper checks for all three write workflows
 - Post-deploy verification:
-  - unauthenticated endpoints return 401
-  - authenticated preview endpoints return 200 on valid real-data inputs
-  - apply requests with stale/unpreviewed selections return 409 and leave data unchanged
-  - PM2, `/admin/login`, and commit alignment checks
+  - deployed code commit `888a0a9`; PM2 is online and `/admin/login` returns 200
+  - unauthenticated first-scheduling, cancellation, and teacher-replacement endpoints return 401
+  - authenticated valid real-data previews return 200 for all three workflows
+  - invalid apply tokens return 409 `PREVIEW_REQUIRED`; first-scheduling Ticket/session count and cancellation Attendance/package-ledger snapshots remain unchanged
+  - teacher replacement listed 15 qualified candidates and previewed Yunfeng successfully without applying the change
 
 ## 2026-07-11-r223 Ready
 

@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-11-r224`
 - Date/Time (Asia/Shanghai): `2026-07-11`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: complete the first mobile academic-operations set: link scheduling Tickets to future lessons, handle leave/cancellation with an explicit charge decision, replace the teacher for one future lesson, and create the first one-on-one lesson directly from an open scheduling Ticket when no lesson anchor exists.
 - Key files:
   - `lib/miniapp-session-cancellation.ts`
@@ -38,6 +38,8 @@ This file is the single source of truth for what changed in production.
   - real-data read-only teacher replacement preview and signed-token tamper rejection
   - real-data read-only first-scheduling preview for Ticket `20260709-009`, including unique legacy student matching
   - route-level apply rejection checks with unchanged Session, Attendance, Package, and Ticket data
+  - production deployment at commit `888a0a9`, PM2 online, `/admin/login` 200
+  - production authenticated previews return 200 for first scheduling, leave/cancellation, and one-session teacher replacement; unauthenticated access returns 401 and invalid apply tokens return 409
 - Rollback point: previous production commit before `2026-07-11-r224`.
 
 ---
