@@ -14,6 +14,85 @@
     <view class="hint" wx:else>{{ticket.nextActionDueText}}</view>
   </view>
 
+  <view class="upcoming" wx:if="{{hasUpcomingSessions}}">
+    <view class="section-title">未来课程</view>
+    <view class="session-row" wx:for="{{upcomingSessions}}" wx:key="id" bindtap="openSession" data-id="{{item.id}}">
+      <view>
+        <view class="label">{{item.startText}}</view>
+        <view class="session-course">{{item.courseLabel}}</view>
+        <view class="hint">{{item.teacherName}} · {{item.locationText}}</view>
+      </view>
+      <view class="session-status excused" wx:if="{{item.isExcused}}">{{item.attendanceLabel}}</view>
+      <view class="session-status" wx:else>{{item.attendanceLabel}}</view>
+    </view>
+  </view>
+
+  <view class="schedule-tool" wx:if="{{canCreateNewSession}}">
+    <view class="section-title">从工单直接新排课</view>
+    <view class="hint tool-hint">适用于学生还没有历史课程的情况。确认前会检查课包、老师 availability、学生/老师/教室冲突。</view>
+    <view class="empty-options" wx:if="{{!hasNewScheduleOptions}}">当前学生没有可用于排课的有效课程科目，或系统还没有配置校区。</view>
+    <block wx:else>
+      <view class="schedule-grid">
+        <view class="field wide">
+          <view class="label">课程科目</view>
+          <picker mode="selector" range="{{newScheduleSubjects}}" range-key="label" value="{{newScheduleSubjectIndex}}" bindchange="changeNewScheduleSubject">
+            <view class="picker">{{newScheduleSubjectName}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <view class="label">级别</view>
+          <picker mode="selector" range="{{newScheduleLevels}}" range-key="name" value="{{newScheduleLevelIndex}}" bindchange="changeNewScheduleLevel">
+            <view class="picker">{{newScheduleLevelName}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <view class="label">老师</view>
+          <picker wx:if="{{hasNewScheduleTeachers}}" mode="selector" range="{{newScheduleTeachers}}" range-key="name" value="{{newScheduleTeacherIndex}}" bindchange="changeNewScheduleTeacher">
+            <view class="picker">{{newScheduleTeacherName}}</view>
+          </picker>
+          <view class="picker muted" wx:else>没有具备该科目资质的老师</view>
+        </view>
+        <view class="field">
+          <view class="label">校区</view>
+          <picker mode="selector" range="{{newScheduleCampuses}}" range-key="name" value="{{newScheduleCampusIndex}}" bindchange="changeNewScheduleCampus">
+            <view class="picker">{{newScheduleCampusName}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <view class="label">教室</view>
+          <picker wx:if="{{hasNewScheduleRooms}}" mode="selector" range="{{newScheduleRooms}}" range-key="name" value="{{newScheduleRoomIndex}}" bindchange="changeNewScheduleRoom">
+            <view class="picker">{{newScheduleRoomName}}</view>
+          </picker>
+          <view class="picker muted" wx:else>该校区没有可选教室</view>
+        </view>
+        <view class="field">
+          <view class="label">日期</view>
+          <picker mode="date" value="{{newScheduleDate}}" bindchange="changeNewScheduleDate">
+            <view class="picker">{{newScheduleDate}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <view class="label">时间</view>
+          <picker mode="time" value="{{newScheduleTime}}" bindchange="changeNewScheduleTime">
+            <view class="picker">{{newScheduleTime}}</view>
+          </picker>
+        </view>
+        <view class="field wide">
+          <view class="label">时长（分钟）</view>
+          <input class="picker" type="number" value="{{newScheduleDuration}}" bindinput="inputNewScheduleDuration" />
+        </view>
+      </view>
+      <button class="secondary" loading="{{newScheduleChecking}}" disabled="{{newScheduleChecking}}" bindtap="previewNewSchedule">检查冲突</button>
+      <view class="schedule-preview" wx:if="{{hasNewSchedulePreview}}">
+        <view class="preview-title">检查通过</view>
+        <view>{{newSchedulePreview.scheduleText}}</view>
+        <view>{{newSchedulePreview.courseLabel}}</view>
+        <view>{{newSchedulePreview.teacherName}} · {{newSchedulePreview.locationText}}</view>
+        <button class="danger-action" loading="{{newScheduleSaving}}" disabled="{{newScheduleSaving}}" bindtap="applyNewSchedule">确认排课并完成工单</button>
+      </view>
+    </block>
+  </view>
+
   <view class="card">
     <view class="field">
       <view class="label">负责人</view>

@@ -15,6 +15,33 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r224
+
+- Release ID: `2026-07-11-r224`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: complete the first mobile academic-operations set: link scheduling Tickets to future lessons, handle leave/cancellation with an explicit charge decision, replace the teacher for one future lesson, and create the first one-on-one lesson directly from an open scheduling Ticket when no lesson anchor exists.
+- Key files:
+  - `lib/miniapp-session-cancellation.ts`
+  - `lib/miniapp-session-teacher-replacement.ts`
+  - `lib/miniapp-ticket-new-session.ts`
+  - `lib/miniapp-session-scheduling.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/*`
+  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/*`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/*`
+  - `docs/tasks/TASK-20260711-miniapp-mobile-academic-actions.md`
+- Risk impact (if any): High but constrained. New writes are ADMIN-only, future-session-only, signed-preview-confirmed, transactionally revalidated, and audited. Cancellation cannot proceed after attendance/deduction records exist; charge and no-charge are explicit. Teacher replacement affects one Session only. Ticket-originated first scheduling requires an active package, a qualified and available teacher, no student/teacher/room conflict, and an exact unique student-name match when a legacy Ticket lacks `studentId`.
+- Verification:
+  - TypeScript, miniapp JavaScript, WXML compatibility, diff, and full Next.js build checks
+  - real-data read-only cancellation previews for charge and no-charge paths
+  - real-data read-only teacher replacement preview and signed-token tamper rejection
+  - real-data read-only first-scheduling preview for Ticket `20260709-009`, including unique legacy student matching
+  - route-level apply rejection checks with unchanged Session, Attendance, Package, and Ticket data
+- Rollback point: previous production commit before `2026-07-11-r224`.
+
+---
+
 ## 2026-07-11-r223
 
 - Release ID: `2026-07-11-r223`

@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r223` (mobile scheduling owner assignment and Need Info workflow), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r224` (guarded mobile leave/cancellation, one-session teacher replacement, future-lesson linkage, and Ticket-originated first scheduling), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-mobile-academic-actions risk: `2026-07-11-r224` adds ADMIN-only writes for leave/cancellation, one-session teacher replacement, and first scheduling from a Ticket. Every write requires a fresh signed preview and transaction revalidation; monitor Eva/Jasmine's first real action in each workflow and confirm the matching Ticket completion result before wider daily use.
 - Miniapp-scheduling-owner risk: `2026-07-11-r223` allows permitted staff to change scheduling Ticket owner. Allowed values are restricted to unassigned, Jasmine, Eva, and Emily; every change is audited and older clients preserve the current owner when omitting the field.
 - Miniapp-scheduling-board-scope risk: `2026-07-11-r222` broadens the r221 board from exact `排课协调` Tickets to all six scheduling-related web Ticket Center categories. Existing permission, transition, and audit controls remain; verify operators notice each Ticket's original type label before updating it.
 - Miniapp-coordination-board risk: `2026-07-11-r221` exposes all open scheduling-coordination Tickets to ADMIN, CS, and CS-workspace staff and allows communication/status/follow-up updates. It does not complete Tickets or write Sessions; monitor the first Eva/Jasmine updates for correct owner, next action, and due date usage.
@@ -139,6 +140,31 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-11-r224 Ready
+
+- Scope: finish the first mobile academic-operations batch without requiring staff to return to the desktop for common single-lesson changes.
+- Business impact:
+  - Scheduling Ticket detail lists the student's next 30 lessons and opens lesson detail directly.
+  - ADMIN can process future leave/cancellation with an explicit charge/no-charge choice and optionally complete matching `临时取消&请假课程` Tickets.
+  - ADMIN can replace the qualified teacher for one future Session and optionally complete matching `改上课老师` Tickets; the Class default teacher and other Sessions do not change.
+  - `新排课`, `补课加课`, and `排课协调` Tickets can create a first one-on-one Session without an existing lesson anchor.
+  - Legacy Tickets with no `studentId` are resolved only when `studentName` has exactly one Student match; ambiguous names remain blocked.
+  - Create/reschedule closure matching now respects the action's Ticket types instead of only the exact `排课协调` type.
+- Safety boundaries:
+  - ADMIN-only writes, future lessons only, single Session only, 10-minute signed previews, and SERIALIZABLE transaction revalidation.
+  - No batch future-series edits, Class default-teacher changes, automatic charge choice, finance writes, payroll writes, or OpenClaw changes.
+  - Existing attendance or package-deduction evidence blocks cancellation or teacher replacement.
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - miniapp JavaScript/WXML checks and `git diff --check`
+  - `npm run build`
+  - read-only production-data previews and token tamper checks for all three write workflows
+- Post-deploy verification:
+  - unauthenticated endpoints return 401
+  - authenticated preview endpoints return 200 on valid real-data inputs
+  - apply requests with stale/unpreviewed selections return 409 and leave data unchanged
+  - PM2, `/admin/login`, and commit alignment checks
 
 ## 2026-07-11-r223 Ready
 

@@ -123,11 +123,20 @@ async function getSessionContext(db: DbClient, sessionId: string) {
   return session;
 }
 
-async function openCoordinationTickets(db: DbClient, studentIds: string[], expectedCourseLabel: string) {
+async function openCoordinationTickets(
+  db: DbClient,
+  studentIds: string[],
+  expectedCourseLabel: string,
+  action: MiniappSchedulingAction
+) {
+  const ticketTypes =
+    action === "create"
+      ? [SCHEDULING_COORDINATION_TICKET_TYPE, "新排课", "补课加课"]
+      : [SCHEDULING_COORDINATION_TICKET_TYPE, "改课程时间"];
   const rows = await db.ticket.findMany({
     where: {
       studentId: { in: studentIds },
-      type: SCHEDULING_COORDINATION_TICKET_TYPE,
+      type: { in: ticketTypes },
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
@@ -277,7 +286,7 @@ async function validateScheduling(db: DbClient, input: SchedulingInput) {
   }
 
   const expectedCourseLabel = courseLabel(session);
-  const coordinationTickets = await openCoordinationTickets(db, studentIds, expectedCourseLabel);
+  const coordinationTickets = await openCoordinationTickets(db, studentIds, expectedCourseLabel, input.action);
 
   return {
     session,

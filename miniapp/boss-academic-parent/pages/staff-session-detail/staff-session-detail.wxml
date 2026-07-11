@@ -74,6 +74,85 @@
     </view>
   </view>
 
+  <view class="card" wx:if="{{canShowCancellation}}">
+    <view class="section-title">请假 / 取消</view>
+    <view class="field">
+      <view class="label">学生</view>
+      <picker mode="selector" range="{{cancellationStudents}}" range-key="name" value="{{cancellationStudentIndex}}" bindchange="changeCancellationStudent">
+        <view class="picker">{{cancellationStudentName}}</view>
+      </picker>
+    </view>
+    <view class="switch-row">
+      <view>
+        <view class="label">扣除本节课时</view>
+        <view class="hint">关闭时不扣课时</view>
+      </view>
+      <switch checked="{{cancellationCharge}}" color="#b42318" bindchange="changeCancellationCharge" />
+    </view>
+    <view class="field cancellation-note">
+      <view class="label">原因</view>
+      <textarea value="{{cancellationNote}}" bindinput="inputCancellationNote" placeholder="填写家长请假、取消或特殊处理原因" />
+    </view>
+    <button class="secondary-action" loading="{{cancellationChecking}}" disabled="{{cancellationChecking}}" bindtap="previewCancellation">预检请假 / 取消</button>
+    <view class="schedule-preview" wx:if="{{hasCancellationPreview}}">
+      <view class="label">预检通过</view>
+      <view class="preview-row">
+        <view class="hint">课程时间</view>
+        <view>{{cancellationPreviewTimeText}}</view>
+      </view>
+      <view class="preview-row">
+        <view class="hint">课时处理</view>
+        <view>{{cancellationPreviewChargeText}}</view>
+      </view>
+      <view class="coordination-close" wx:if="{{hasCancellationTickets}}">
+        <view class="label">同步完成请假工单（可选）</view>
+        <checkbox-group bindchange="changeCancellationTickets">
+          <label class="ticket-choice" wx:for="{{cancellationTickets}}" wx:key="id">
+            <checkbox value="{{item.id}}" color="#b42318" />
+            <view>{{item.label}}</view>
+          </label>
+        </checkbox-group>
+      </view>
+      <button class="danger-action" loading="{{cancellationSaving}}" disabled="{{cancellationSaving}}" bindtap="applyCancellation">确认请假 / 取消</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{hasReplacementTeachers}}">
+    <view class="section-title">更换本节课老师</view>
+    <view class="field">
+      <view class="label">新老师</view>
+      <picker mode="selector" range="{{replacementTeachers}}" range-key="name" value="{{replacementTeacherIndex}}" bindchange="changeReplacementTeacher">
+        <view class="picker">{{replacementTeacherName}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">更换原因</view>
+      <textarea value="{{replacementReason}}" bindinput="inputReplacementReason" placeholder="填写家长确认、老师请假或内部安排原因" />
+    </view>
+    <button class="secondary-action" loading="{{replacementChecking}}" disabled="{{replacementChecking}}" bindtap="previewReplacement">检查新老师</button>
+    <view class="schedule-preview" wx:if="{{hasReplacementPreview}}">
+      <view class="label">检查通过</view>
+      <view class="preview-row">
+        <view class="hint">课程时间</view>
+        <view>{{replacementPreviewTimeText}}</view>
+      </view>
+      <view class="preview-row">
+        <view class="hint">老师变更</view>
+        <view>{{replacementPreviewTeacherText}}</view>
+      </view>
+      <view class="coordination-close" wx:if="{{hasReplacementTickets}}">
+        <view class="label">同步完成换老师工单（可选）</view>
+        <checkbox-group bindchange="changeReplacementTickets">
+          <label class="ticket-choice" wx:for="{{replacementTickets}}" wx:key="id">
+            <checkbox value="{{item.id}}" color="#0b3d2a" />
+            <view>{{item.label}}</view>
+          </label>
+        </checkbox-group>
+      </view>
+      <button class="primary" loading="{{replacementSaving}}" disabled="{{replacementSaving}}" bindtap="applyReplacement">确认更换老师</button>
+    </view>
+  </view>
+
   <view class="card" wx:if="{{canManageCoordination}}">
     <view class="section-title">排课协调沟通</view>
     <view class="field">

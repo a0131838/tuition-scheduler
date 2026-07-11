@@ -38,6 +38,97 @@
   font-weight: 800;
 }
 
+.upcoming {
+  margin-bottom: 22rpx;
+}
+
+.section-title {
+  color: #123d2b;
+  font-weight: 800;
+  margin-bottom: 10rpx;
+}
+
+.session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16rpx;
+  border-bottom: 1rpx solid #dce5d8;
+  padding: 18rpx 0;
+}
+
+.session-course {
+  color: #374151;
+  margin: 6rpx 0;
+  overflow-wrap: anywhere;
+}
+
+.session-status {
+  color: #123d2b;
+  font-size: 23rpx;
+  font-weight: 700;
+  text-align: right;
+  max-width: 180rpx;
+}
+
+.session-status.excused {
+  color: #b42318;
+}
+
+.schedule-tool {
+  border-top: 1rpx solid #dce5d8;
+  border-bottom: 1rpx solid #dce5d8;
+  padding: 22rpx 0;
+  margin-bottom: 22rpx;
+}
+
+.tool-hint {
+  line-height: 1.55;
+  margin-bottom: 18rpx;
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 16rpx;
+}
+
+.schedule-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.muted,
+.empty-options {
+  color: #8a938b;
+}
+
+.empty-options {
+  padding: 20rpx 0;
+  line-height: 1.55;
+}
+
+.schedule-preview {
+  border-left: 6rpx solid #2f6b4f;
+  background: #edf4ee;
+  color: #20352b;
+  line-height: 1.65;
+  margin-top: 18rpx;
+  padding: 18rpx;
+}
+
+.preview-title {
+  color: #123d2b;
+  font-weight: 800;
+}
+
+.danger-action {
+  background: #a53025;
+  border-radius: 8rpx;
+  color: #fff;
+  font-weight: 800;
+  margin-top: 16rpx;
+}
+
 .card {
   background: #fff;
   border: 1rpx solid #dce5d8;

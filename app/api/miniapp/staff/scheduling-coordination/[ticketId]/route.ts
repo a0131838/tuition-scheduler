@@ -47,14 +47,74 @@ function ownerOptions() {
   return [{ value: "", label: "未分配" }, ...TICKET_OWNER_OPTIONS.map((item) => ({ value: item.value, label: item.zh }))];
 }
 
+async function upcomingStudentSessions(studentId: string | null, studentName: string) {
+  let resolvedStudentId = studentId;
+  if (!resolvedStudentId) {
+    const matches = await prisma.student.findMany({ where: { name: studentName }, select: { id: true }, take: 2 });
+    if (matches.length === 1) resolvedStudentId = matches[0].id;
+  }
+  if (!resolvedStudentId) return [];
+  const sessions = await prisma.session.findMany({
+    where: {
+      startAt: { gte: new Date() },
+      OR: [
+        { studentId: resolvedStudentId },
+        { class: { oneOnOneStudentId: resolvedStudentId } },
+        { class: { enrollments: { some: { studentId: resolvedStudentId } } } },
+        { attendances: { some: { studentId: resolvedStudentId } } },
+      ],
+    },
+    include: {
+      teacher: { select: { name: true } },
+      attendances: { where: { studentId: resolvedStudentId }, select: { status: true, excusedCharge: true } },
+      class: {
+        include: {
+          course: { select: { name: true } },
+          subject: { select: { name: true } },
+          level: { select: { name: true } },
+          teacher: { select: { name: true } },
+          campus: { select: { name: true, isOnline: true } },
+          room: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { startAt: "asc" },
+    take: 30,
+  });
+  return sessions.map((session) => {
+    const attendance = session.attendances[0] ?? null;
+    const isExcused = attendance?.status === "EXCUSED";
+    const campusName = session.class.campus.name;
+    const roomName = session.class.room?.name ?? "";
+    return {
+      id: session.id,
+      startText: formatBusinessDateTime(session.startAt),
+      endText: formatBusinessDateTime(session.endAt),
+      courseLabel: [session.class.course.name, session.class.subject?.name, session.class.level?.name]
+        .filter(Boolean)
+        .join(" / "),
+      teacherName: session.teacher?.name ?? session.class.teacher.name,
+      locationText: session.class.campus.isOnline ? campusName : roomName ? `${campusName} · ${roomName}` : campusName,
+      isExcused,
+      attendanceLabel: isExcused ? (attendance?.excusedCharge ? "已请假（扣课时）" : "已请假（不扣课时）") : "已安排",
+    };
+  });
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await ctx.params;
   const access = await requireTicketAccess(req, ticketId);
   if (!access.ok) return access.response;
+  const upcomingSessions = await upcomingStudentSessions(access.ticket.studentId, access.ticket.studentName);
   return ok({
     ticket: coordinationBoardTicketDto(access.ticket),
     statusOptions: statusOptions(access.ticket.status),
     ownerOptions: ownerOptions(),
+    upcomingSessions,
+    capabilities: {
+      canCreateNewSession:
+        access.auth.user.role === "ADMIN" && ["新排课", "补课加课", "排课协调"].includes(access.ticket.type),
+    },
   });
 }
 

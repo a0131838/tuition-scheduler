@@ -128,7 +128,39 @@ Page({
     scheduleConfirmText: "确认改课",
     hasSchedulePreview: false,
     scheduleChecking: false,
-    scheduleSaving: false
+    scheduleSaving: false,
+    cancellationStudents: [],
+    cancellationStudentIndex: 0,
+    cancellationStudentName: "",
+    hasCancellationStudents: false,
+    canShowCancellation: false,
+    cancellationCharge: false,
+    cancellationNote: "",
+    cancellationPreview: null,
+    cancellationPreviewToken: "",
+    cancellationPreviewTimeText: "",
+    cancellationPreviewChargeText: "",
+    cancellationTickets: [],
+    cancellationTicketIds: [],
+    hasCancellationPreview: false,
+    hasCancellationTickets: false,
+    cancellationChecking: false,
+    cancellationSaving: false,
+    replacementTeachers: [],
+    replacementTeacherIndex: 0,
+    replacementTeacherName: "",
+    hasReplacementTeachers: false,
+    replacementReason: "",
+    replacementPreview: null,
+    replacementPreviewToken: "",
+    replacementPreviewTimeText: "",
+    replacementPreviewTeacherText: "",
+    replacementTickets: [],
+    replacementTicketIds: [],
+    hasReplacementPreview: false,
+    hasReplacementTickets: false,
+    replacementChecking: false,
+    replacementSaving: false
   },
 
   onLoad(query) {
@@ -148,6 +180,7 @@ Page({
         const canManageCoordination = Boolean(capabilities.canManageCoordination);
         const canManageSchedule = Boolean(capabilities.canManageSchedule);
         const defaults = schedulingDefaults(session, this.data.scheduleAction);
+        const cancellationStudents = session && session.students ? session.students : [];
         this.setData({
           session,
           sessionTeacherName: session && session.teacherName ? session.teacherName : "-",
@@ -165,7 +198,18 @@ Page({
           scheduleCoordinationTickets: [],
           scheduleCoordinationTicketIds: [],
           hasScheduleCoordinationTickets: false,
-          hasSchedulePreview: false
+          hasSchedulePreview: false,
+          cancellationStudents,
+          cancellationStudentIndex: 0,
+          cancellationStudentName: cancellationStudents[0] ? cancellationStudents[0].name : "",
+          hasCancellationStudents: cancellationStudents.length > 0,
+          canShowCancellation: canManageSchedule && cancellationStudents.length > 0,
+          cancellationPreview: null,
+          cancellationPreviewToken: "",
+          cancellationTickets: [],
+          cancellationTicketIds: [],
+          hasCancellationPreview: false,
+          hasCancellationTickets: false
         });
 
         const tasks = [];
@@ -192,6 +236,7 @@ Page({
           );
         }
         if (canManageCoordination) tasks.push(this.loadCoordination());
+        if (canManageSchedule) tasks.push(this.loadReplacementTeachers());
         return Promise.allSettled(tasks);
       })
       .catch((err) => api.toast(err.message))
@@ -436,6 +481,221 @@ Page({
           })
           .catch((err) => this.showSchedulingError(err))
           .finally(() => this.setData({ scheduleSaving: false }));
+      }
+    });
+  },
+
+  invalidateCancellationPreview(values) {
+    this.setData(Object.assign({}, values, {
+      cancellationPreview: null,
+      cancellationPreviewToken: "",
+      cancellationTickets: [],
+      cancellationTicketIds: [],
+      hasCancellationPreview: false,
+      hasCancellationTickets: false
+    }));
+  },
+
+  changeCancellationStudent(e) {
+    const index = Number(e.detail.value || 0);
+    const student = this.data.cancellationStudents[index];
+    this.invalidateCancellationPreview({
+      cancellationStudentIndex: index,
+      cancellationStudentName: student ? student.name : ""
+    });
+  },
+
+  changeCancellationCharge(e) {
+    this.invalidateCancellationPreview({ cancellationCharge: Boolean(e.detail.value) });
+  },
+
+  inputCancellationNote(e) {
+    this.invalidateCancellationPreview({ cancellationNote: e.detail.value });
+  },
+
+  changeCancellationTickets(e) {
+    this.setData({ cancellationTicketIds: e.detail.value || [] });
+  },
+
+  cancellationPayload(mode) {
+    const student = this.data.cancellationStudents[this.data.cancellationStudentIndex];
+    return {
+      mode,
+      studentId: student ? student.id : "",
+      charge: this.data.cancellationCharge,
+      note: String(this.data.cancellationNote || "").trim(),
+      previewToken: this.data.cancellationPreviewToken,
+      completeTicketIds: mode === "apply" ? this.data.cancellationTicketIds : []
+    };
+  },
+
+  previewCancellation() {
+    const payload = this.cancellationPayload("preview");
+    if (!payload.studentId) {
+      api.toast("请选择学生");
+      return;
+    }
+    if (!payload.note) {
+      api.toast("请填写请假/取消原因");
+      return;
+    }
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/cancel";
+    this.setData({ cancellationChecking: true });
+    api.requestStaff(path, { method: "POST", data: payload, timeout: 30000 })
+      .then((data) => {
+        const preview = data.preview || {};
+        const tickets = (preview.tickets || []).map((ticket) => Object.assign({}, ticket, {
+          label: ticket.ticketNo + " · 请假/取消"
+        }));
+        this.setData({
+          cancellationPreview: preview,
+          cancellationPreviewToken: data.previewToken || "",
+          cancellationPreviewTimeText: preview.timeText || "-",
+          cancellationPreviewChargeText: preview.chargeLabel || "-",
+          cancellationTickets: tickets,
+          cancellationTicketIds: [],
+          hasCancellationPreview: Boolean(data.previewToken),
+          hasCancellationTickets: tickets.length > 0
+        });
+      })
+      .catch((err) => this.showSchedulingError(err))
+      .finally(() => this.setData({ cancellationChecking: false }));
+  },
+
+  applyCancellation() {
+    if (!this.data.cancellationPreviewToken || this.data.cancellationSaving) return;
+    const ticketCount = this.data.cancellationTicketIds.length;
+    wx.showModal({
+      title: "确认请假/取消",
+      content: this.data.cancellationPreviewTimeText + "\n" + this.data.cancellationPreviewChargeText + (ticketCount ? "\n同时完成 " + ticketCount + " 个请假工单" : ""),
+      confirmText: "确认处理",
+      confirmColor: "#b42318",
+      success: (result) => {
+        if (!result.confirm) return;
+        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/cancel";
+        this.setData({ cancellationSaving: true });
+        api.requestStaff(path, { method: "POST", data: this.cancellationPayload("apply"), timeout: 30000 })
+          .then((data) => {
+            wx.showToast({ title: data.message || "已处理", icon: "success" });
+            return this.load();
+          })
+          .catch((err) => this.showSchedulingError(err))
+          .finally(() => this.setData({ cancellationSaving: false }));
+      }
+    });
+  },
+
+  loadReplacementTeachers() {
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/replace-teacher";
+    return api.requestStaff(path, { timeout: 20000 })
+      .then((data) => {
+        const teachers = data.teachers || [];
+        this.setData({
+          replacementTeachers: teachers,
+          replacementTeacherIndex: 0,
+          replacementTeacherName: teachers[0] ? teachers[0].name : "",
+          hasReplacementTeachers: teachers.length > 0,
+          replacementPreview: null,
+          replacementPreviewToken: "",
+          replacementTickets: [],
+          replacementTicketIds: [],
+          hasReplacementPreview: false,
+          hasReplacementTickets: false
+        });
+      })
+      .catch(() => this.setData({ replacementTeachers: [], hasReplacementTeachers: false }));
+  },
+
+  invalidateReplacementPreview(values) {
+    this.setData(Object.assign({}, values, {
+      replacementPreview: null,
+      replacementPreviewToken: "",
+      replacementTickets: [],
+      replacementTicketIds: [],
+      hasReplacementPreview: false,
+      hasReplacementTickets: false
+    }));
+  },
+
+  changeReplacementTeacher(e) {
+    const index = Number(e.detail.value || 0);
+    const teacher = this.data.replacementTeachers[index];
+    this.invalidateReplacementPreview({
+      replacementTeacherIndex: index,
+      replacementTeacherName: teacher ? teacher.name : ""
+    });
+  },
+
+  inputReplacementReason(e) {
+    this.invalidateReplacementPreview({ replacementReason: e.detail.value });
+  },
+
+  changeReplacementTickets(e) {
+    this.setData({ replacementTicketIds: e.detail.value || [] });
+  },
+
+  replacementPayload(mode) {
+    const teacher = this.data.replacementTeachers[this.data.replacementTeacherIndex];
+    return {
+      mode,
+      newTeacherId: teacher ? teacher.id : "",
+      reason: String(this.data.replacementReason || "").trim(),
+      previewToken: this.data.replacementPreviewToken,
+      completeTicketIds: mode === "apply" ? this.data.replacementTicketIds : []
+    };
+  },
+
+  previewReplacement() {
+    const payload = this.replacementPayload("preview");
+    if (!payload.newTeacherId) {
+      api.toast("请选择老师");
+      return;
+    }
+    if (!payload.reason) {
+      api.toast("请填写换老师原因");
+      return;
+    }
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/replace-teacher";
+    this.setData({ replacementChecking: true });
+    api.requestStaff(path, { method: "POST", data: payload, timeout: 30000 })
+      .then((data) => {
+        const preview = data.preview || {};
+        const tickets = (preview.tickets || []).map((ticket) => Object.assign({}, ticket, {
+          label: ticket.ticketNo + " · " + ticket.studentName
+        }));
+        this.setData({
+          replacementPreview: preview,
+          replacementPreviewToken: data.previewToken || "",
+          replacementPreviewTimeText: preview.timeText || "-",
+          replacementPreviewTeacherText: (preview.fromTeacherName || "-") + " → " + (preview.toTeacherName || "-"),
+          replacementTickets: tickets,
+          replacementTicketIds: [],
+          hasReplacementPreview: Boolean(data.previewToken),
+          hasReplacementTickets: tickets.length > 0
+        });
+      })
+      .catch((err) => this.showSchedulingError(err))
+      .finally(() => this.setData({ replacementChecking: false }));
+  },
+
+  applyReplacement() {
+    if (!this.data.replacementPreviewToken || this.data.replacementSaving) return;
+    const ticketCount = this.data.replacementTicketIds.length;
+    wx.showModal({
+      title: "确认更换老师",
+      content: this.data.replacementPreviewTimeText + "\n" + this.data.replacementPreviewTeacherText + (ticketCount ? "\n同时完成 " + ticketCount + " 个换老师工单" : ""),
+      confirmText: "确认更换",
+      success: (result) => {
+        if (!result.confirm) return;
+        const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/replace-teacher";
+        this.setData({ replacementSaving: true });
+        api.requestStaff(path, { method: "POST", data: this.replacementPayload("apply"), timeout: 30000 })
+          .then((data) => {
+            wx.showToast({ title: data.message || "已更换", icon: "success" });
+            return this.load();
+          })
+          .catch((err) => this.showSchedulingError(err))
+          .finally(() => this.setData({ replacementSaving: false }));
       }
     });
   },
