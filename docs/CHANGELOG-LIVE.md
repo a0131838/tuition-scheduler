@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-11-r218
+
+- Release ID: `2026-07-11-r218`
+- Date/Time (Asia/Shanghai): `2026-07-11`
+- Deployment status: `READY`
+- Scope: add a role-aware staff miniapp lesson detail and a mobile scheduling-coordination communication loop that creates or reuses the existing Ticket workflow.
+- Key files:
+  - `lib/miniapp-staff-session.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/coordination/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+  - `docs/tasks/TASK-20260711-miniapp-scheduling-coordination.md`
+- Risk impact (if any): Medium. Admin/CS staff can now create or update scheduling-coordination Tickets and append internal communication records from a lesson detail. Teachers remain restricted to their assigned lesson and do not receive coordination-write access. This release does not change lesson times, scheduling execution, attendance deduction, package balances, finance, receipts, payroll, or OpenClaw.
+- Verification:
+  - role-capability unit smoke checks
+  - read-only production-data lesson-detail check
+  - authenticated admin staff detail/coordination GET route smoke check
+  - miniapp JavaScript, JSON, and affected WXML checks
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Rollback point: previous production commit before `2026-07-11-r218`.
+
+---
+
 ## 2026-07-11-r217
 
 - Release ID: `2026-07-11-r217`

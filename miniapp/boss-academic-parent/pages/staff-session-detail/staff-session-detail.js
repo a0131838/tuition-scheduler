@@ -16,6 +16,23 @@ const attendanceStatusOptions = [
   { value: "EXCUSED", label: "请假" }
 ];
 
+const coordinationTargets = ["家长", "老师", "家长和老师", "内部协调"];
+const coordinationStatuses = [
+  { value: "Waiting Parent", label: "等待家长", nextAction: "等待家长回复可上课时间或确认候选时段。" },
+  { value: "Waiting Teacher", label: "等待老师", nextAction: "等待老师回复可排时间或确认特殊时间。" },
+  { value: "Confirmed", label: "双方已确认", nextAction: "进入后台完成正式排课并复核课程安排。" },
+  { value: "Exception", label: "异常升级", nextAction: "由 Jasmine 跟进排课异常并确认下一步方案。" }
+];
+
+function followUpDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function sectionList(values) {
   const source = values || {};
   return sections.map((item) => Object.assign({}, item, { value: source[item.key] || "" }));
@@ -35,9 +52,16 @@ function attendanceList(rows) {
 Page({
   data: {
     attendanceStatusOptions,
+    coordinationTargets,
+    coordinationStatuses,
     sessionId: "",
     session: null,
     sessionTeacherName: "-",
+    sessionStudentText: "-",
+    sessionLocationText: "-",
+    canTeachSession: false,
+    canManageCoordination: false,
+    readOnlySession: false,
     attendanceRows: [],
     attendanceSaving: false,
     focusStudentName: "",
@@ -47,7 +71,24 @@ Page({
     previousHomeworkDoneChecked: false,
     submitDisabled: false,
     loading: false,
-    saving: false
+    saving: false,
+    coordinationStudents: [],
+    coordinationStudentIndex: 0,
+    coordinationStudentName: "",
+    coordinationTargetIndex: 0,
+    coordinationStatusIndex: 0,
+    coordinationResult: "",
+    coordinationNextAction: coordinationStatuses[0].nextAction,
+    coordinationDueDate: followUpDate(),
+    coordinationTicket: null,
+    coordinationTicketNoText: "尚未创建协调工单",
+    coordinationStatusText: "",
+    coordinationHistoryText: "",
+    availabilityUrl: "",
+    hasCoordinationTicket: false,
+    hasCoordinationHistory: false,
+    hasAvailabilityUrl: false,
+    coordinationSaving: false
   },
 
   onLoad(query) {
@@ -58,28 +99,164 @@ Page({
   load() {
     if (!this.data.sessionId) return Promise.resolve();
     this.setData({ loading: true });
-    const feedbackTask = api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/feedback")
+    const basePath = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId);
+    return api.requestStaff(basePath)
       .then((data) => {
-        const feedback = data.feedback || {};
+        const session = data.session || null;
+        const capabilities = data.capabilities || {};
+        const canTeachSession = Boolean(capabilities.canTeachSession);
+        const canManageCoordination = Boolean(capabilities.canManageCoordination);
         this.setData({
-          session: data.session || null,
-          sessionTeacherName: data.session && data.session.teacherName ? data.session.teacherName : "-",
-          focusStudentName: feedback.focusStudentName || "",
-          parentFeedbackSections: sectionList(feedback.parentFeedbackSections),
-          homework: feedback.homework || "",
-          previousHomeworkDone: feedback.previousHomeworkDone || "",
-          previousHomeworkDoneChecked: feedback.previousHomeworkDone === "yes",
-          submitDisabled: false
+          session,
+          sessionTeacherName: session && session.teacherName ? session.teacherName : "-",
+          sessionStudentText: session && session.studentText ? session.studentText : "-",
+          sessionLocationText: session && session.locationText ? session.locationText : "-",
+          canTeachSession,
+          canManageCoordination,
+          readOnlySession: !canTeachSession && !canManageCoordination
         });
+
+        const tasks = [];
+        if (canTeachSession) {
+          tasks.push(
+            api.requestStaff(basePath + "/feedback")
+              .then((feedbackData) => {
+                const feedback = feedbackData.feedback || {};
+                this.setData({
+                  focusStudentName: feedback.focusStudentName || "",
+                  parentFeedbackSections: sectionList(feedback.parentFeedbackSections),
+                  homework: feedback.homework || "",
+                  previousHomeworkDone: feedback.previousHomeworkDone || "",
+                  previousHomeworkDoneChecked: feedback.previousHomeworkDone === "yes",
+                  submitDisabled: false
+                });
+              })
+              .catch((err) => api.toast(err.message))
+          );
+          tasks.push(
+            api.requestStaff(basePath + "/attendance")
+              .then((attendanceData) => this.setData({ attendanceRows: attendanceList(attendanceData.rows) }))
+              .catch((err) => api.toast(err.message))
+          );
+        }
+        if (canManageCoordination) tasks.push(this.loadCoordination());
+        return Promise.allSettled(tasks);
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ loading: false }));
+  },
+
+  loadCoordination() {
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/coordination";
+    return api.requestStaff(path)
+      .then((data) => {
+        const students = data.students || [];
+        const currentId = this.data.coordinationStudents[this.data.coordinationStudentIndex]
+          ? this.data.coordinationStudents[this.data.coordinationStudentIndex].id
+          : "";
+        let index = students.findIndex((row) => row.id === currentId);
+        if (index < 0) index = 0;
+        this.setData({ coordinationStudents: students, coordinationStudentIndex: index });
+        this.applyCoordinationStudent(index);
       })
       .catch((err) => api.toast(err.message));
+  },
 
-    const attendanceTask = api.requestStaff("/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/attendance")
-      .then((data) => this.setData({ attendanceRows: attendanceList(data.rows) }))
-      .catch((err) => api.toast(err.message));
+  applyCoordinationStudent(index) {
+    const student = this.data.coordinationStudents[index] || null;
+    const ticket = student ? student.coordination : null;
+    let statusIndex = ticket ? coordinationStatuses.findIndex((row) => row.value === ticket.status) : 0;
+    if (statusIndex < 0) statusIndex = 0;
+    const history = ticket && ticket.communicationHistory ? ticket.communicationHistory : "";
+    const availabilityUrl = ticket && ticket.availabilityUrl ? ticket.availabilityUrl : "";
+    this.setData({
+      coordinationStudentName: student ? student.name : "",
+      coordinationTicket: ticket,
+      coordinationTicketNoText: ticket ? ticket.ticketNo : "尚未创建协调工单",
+      coordinationStatusText: ticket ? ticket.statusLabel : "",
+      coordinationStatusIndex: statusIndex,
+      coordinationNextAction: ticket && ticket.nextAction ? ticket.nextAction : coordinationStatuses[statusIndex].nextAction,
+      coordinationDueDate: ticket && ticket.nextActionDueDate ? ticket.nextActionDueDate : followUpDate(),
+      coordinationHistoryText: history,
+      availabilityUrl,
+      hasCoordinationTicket: Boolean(ticket),
+      hasCoordinationHistory: Boolean(history),
+      hasAvailabilityUrl: Boolean(availabilityUrl),
+      coordinationResult: ""
+    });
+  },
 
-    return Promise.allSettled([feedbackTask, attendanceTask])
-      .finally(() => this.setData({ loading: false }));
+  changeCoordinationStudent(e) {
+    const index = Number(e.detail.value || 0);
+    this.setData({ coordinationStudentIndex: index });
+    this.applyCoordinationStudent(index);
+  },
+
+  changeCoordinationTarget(e) {
+    this.setData({ coordinationTargetIndex: Number(e.detail.value || 0) });
+  },
+
+  changeCoordinationStatus(e) {
+    const index = Number(e.detail.value || 0);
+    this.setData({
+      coordinationStatusIndex: index,
+      coordinationNextAction: coordinationStatuses[index].nextAction
+    });
+  },
+
+  inputCoordinationResult(e) {
+    this.setData({ coordinationResult: e.detail.value });
+  },
+
+  inputCoordinationNextAction(e) {
+    this.setData({ coordinationNextAction: e.detail.value });
+  },
+
+  changeCoordinationDueDate(e) {
+    this.setData({ coordinationDueDate: e.detail.value });
+  },
+
+  saveCoordination() {
+    const student = this.data.coordinationStudents[this.data.coordinationStudentIndex];
+    if (!student) {
+      api.toast("当前课程没有可协调学生");
+      return;
+    }
+    const result = String(this.data.coordinationResult || "").trim();
+    if (!result) {
+      api.toast("请填写本次沟通结果");
+      return;
+    }
+    const nextAction = String(this.data.coordinationNextAction || "").trim();
+    if (!nextAction) {
+      api.toast("请填写下一步动作");
+      return;
+    }
+
+    const path = "/api/miniapp/staff/schedule/" + encodeURIComponent(this.data.sessionId) + "/coordination";
+    this.setData({ coordinationSaving: true });
+    api.requestStaff(path, {
+      method: "POST",
+      data: {
+        studentId: student.id,
+        communicationTarget: coordinationTargets[this.data.coordinationTargetIndex],
+        communicationResult: result,
+        status: coordinationStatuses[this.data.coordinationStatusIndex].value,
+        nextAction,
+        nextActionDue: this.data.coordinationDueDate
+      }
+    })
+      .then((data) => {
+        wx.showToast({ title: data.message || "已保存", icon: "success" });
+        return this.loadCoordination();
+      })
+      .catch((err) => api.toast(err.message))
+      .finally(() => this.setData({ coordinationSaving: false }));
+  },
+
+  copyAvailabilityLink() {
+    if (!this.data.availabilityUrl) return;
+    wx.setClipboardData({ data: this.data.availabilityUrl });
   },
 
   changeAttendanceStatus(e) {

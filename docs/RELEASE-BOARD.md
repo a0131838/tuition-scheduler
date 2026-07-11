@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current release line on this branch: `2026-07-11-r217` (formal parent-request visibility and completion fields), intended for the next production deploy from this branch.
+- Current release line on this branch: `2026-07-11-r218` (staff miniapp scheduling-coordination communication loop), intended for the next production deploy from this branch.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp-scheduling-coordination risk: `2026-07-11-r218` lets ADMIN/CS staff create or update internal scheduling-coordination Tickets from lesson detail and append communication notes. It intentionally stops before changing lesson times; staff must still use the desktop scheduling workflow for the final timetable write.
 - Parent-request-formal-fields risk: `2026-07-11-r217` adds a Ticket migration and structured parent-request fields. Existing `家长小程序` Tickets are marked parent-visible and receive best-effort backfill; confirm a historical Emily-assisted request still shows only its external summary to a parent and its internal note to staff.
 - Deploy-env-miniapp-credentials risk: `2026-07-10-r216` changes only deploy env rendering so future deploys preserve WeChat miniapp credentials in `.env`; verify miniapp login does not regress after deploy.
 - Parent-request-completion-result risk: `2026-07-10-r215` blocks staff/admin from marking parent requests completed unless a parent-visible completion result is provided; verify Eva/Jasmine understand the result will be visible to parents.
@@ -133,6 +134,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-11-r218 Ready
+
+- Scope: make staff lesson detail role-aware and add a mobile scheduling-coordination communication workflow backed by the existing Ticket and parent-availability-link models.
+- Business impact:
+  - 教务/管理 can select a lesson student, record who was contacted and the result, set the coordination status/next action/follow-up date, and copy the parent availability link.
+  - An open Ticket for the same student and course is reused; otherwise a formal `排课协调` Ticket and parent availability request are created.
+  - Teachers continue to see only assigned-lesson attendance and feedback tools. Other staff can read lesson detail but do not receive coordination-write access unless their role/workspace permits it.
+  - Final rescheduling writes, attendance deduction, package balances, finance, receipts, payroll, and OpenClaw remain unchanged.
+- Files:
+  - `lib/miniapp-staff-session.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/coordination/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-session-detail/*`
+- Verification before deploy:
+  - `npx tsc --noEmit`
+  - role-capability and authenticated GET-route smoke checks
+  - read-only real lesson-detail check
+  - miniapp JavaScript/JSON and affected WXML checks
+  - `npm run build`
+- Post-deploy verification:
+  - PM2 process and `/admin/login` health checks
+  - unauthenticated lesson-detail route returns 401
+  - local/origin/server commit alignment
 
 ## 2026-07-11-r217 Ready
 

@@ -78,13 +78,43 @@
 }
 
 input,
-textarea {
+textarea,
+.picker {
   width: 100%;
   box-sizing: border-box;
   border: 1rpx solid #d6ded2;
   border-radius: 8rpx;
   padding: 18rpx;
   background: #fbfcfa;
+}
+
+.picker {
+  min-height: 44rpx;
+  color: #20352b;
+}
+
+.coordination-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  background: #edf2ea;
+  border-radius: 8rpx;
+  padding: 18rpx;
+  margin-bottom: 20rpx;
+}
+
+.history {
+  border-top: 1rpx solid #e5eadf;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+}
+
+.history-text {
+  white-space: pre-wrap;
+  color: #4b5563;
+  line-height: 1.7;
+  font-size: 25rpx;
 }
 
 textarea {

@@ -2,10 +2,63 @@
   <view class="top" wx:if="{{session}}">
     <view class="eyebrow">{{session.startText}}</view>
     <view class="title">{{session.courseLabel}}</view>
-    <view class="subtitle">老师：{{sessionTeacherName}}</view>
+    <view class="subtitle">老师：{{sessionTeacherName}} · 学生：{{sessionStudentText}}</view>
+    <view class="subtitle">{{sessionLocationText}}</view>
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{readOnlySession}}">
+    <view class="section-title">课程查看</view>
+    <view class="hint">当前账号可查看课程信息；排课协调由教务/管理处理，点名和反馈由本节课老师处理。</view>
+  </view>
+
+  <view class="card" wx:if="{{canManageCoordination}}">
+    <view class="section-title">排课协调沟通</view>
+    <view class="field">
+      <view class="label">学生</view>
+      <picker mode="selector" range="{{coordinationStudents}}" range-key="name" value="{{coordinationStudentIndex}}" bindchange="changeCoordinationStudent">
+        <view class="picker">{{coordinationStudentName}}</view>
+      </picker>
+    </view>
+    <view class="coordination-summary" wx:if="{{hasCoordinationTicket}}">
+      <view class="label">{{coordinationTicketNoText}}</view>
+      <view class="hint">{{coordinationStatusText}}</view>
+    </view>
+    <view class="hint" wx:else>{{coordinationTicketNoText}}</view>
+    <view class="field">
+      <view class="label">本次联系对象</view>
+      <picker mode="selector" range="{{coordinationTargets}}" value="{{coordinationTargetIndex}}" bindchange="changeCoordinationTarget">
+        <view class="picker">{{coordinationTargets[coordinationTargetIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">本次沟通结果</view>
+      <textarea value="{{coordinationResult}}" bindinput="inputCoordinationResult" placeholder="例如：家长只能周三 18:00 后上课，已告知会继续与老师确认。" />
+    </view>
+    <view class="field">
+      <view class="label">工单状态</view>
+      <picker mode="selector" range="{{coordinationStatuses}}" range-key="label" value="{{coordinationStatusIndex}}" bindchange="changeCoordinationStatus">
+        <view class="picker">{{coordinationStatuses[coordinationStatusIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="label">下一步动作</view>
+      <textarea value="{{coordinationNextAction}}" bindinput="inputCoordinationNextAction" placeholder="请输入下一步" />
+    </view>
+    <view class="field">
+      <view class="label">下次跟进日期</view>
+      <picker mode="date" value="{{coordinationDueDate}}" bindchange="changeCoordinationDueDate">
+        <view class="picker">{{coordinationDueDate}}</view>
+      </picker>
+    </view>
+    <button class="primary" loading="{{coordinationSaving}}" disabled="{{coordinationSaving}}" bindtap="saveCoordination">保存协调记录</button>
+    <button class="secondary-action" wx:if="{{hasAvailabilityUrl}}" bindtap="copyAvailabilityLink">复制家长时间表链接</button>
+    <view class="field history" wx:if="{{hasCoordinationHistory}}">
+      <view class="label">历史沟通记录</view>
+      <view class="history-text">{{coordinationHistoryText}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{canTeachSession}}">
     <view class="section-title">移动点名</view>
     <view wx:if="{{attendanceRows.length}}">
       <view wx:for="{{attendanceRows}}" wx:key="studentId" class="attendance-row">
@@ -22,12 +75,12 @@
     <button class="secondary-action" loading="{{attendanceSaving}}" disabled="{{attendanceSaving}}" bindtap="saveAttendance">保存点名</button>
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{canTeachSession}}">
     <view class="label">重点学生</view>
     <input value="{{focusStudentName}}" bindinput="inputFocusStudent" placeholder="可不填，默认全班" />
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{canTeachSession}}">
     <view class="section-title">家长可见课后反馈</view>
     <view wx:for="{{parentFeedbackSections}}" wx:key="key" class="field">
       <view class="label">{{item.label}}</view>
@@ -36,7 +89,7 @@
     </view>
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{canTeachSession}}">
     <view class="label">课后作业</view>
     <textarea value="{{homework}}" bindinput="inputHomework" placeholder="请输入本次课后作业" />
     <view class="switch-row">
@@ -48,5 +101,5 @@
     </view>
   </view>
 
-  <button class="primary" loading="{{saving}}" disabled="{{submitDisabled}}" bindtap="submit">提交反馈</button>
+  <button class="primary" wx:if="{{canTeachSession}}" loading="{{saving}}" disabled="{{submitDisabled}}" bindtap="submit">提交反馈</button>
 </view>
