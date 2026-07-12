@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r231`. Release `2026-07-12-r232` is ready to split the four service/document consent actions after real-phone grouped-consent evidence.
+- Current production release: `2026-07-12-r232`. Four independent service/document consent actions are live and all four official templates passed production delivery.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -150,13 +150,13 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-12-r232 Ready
+## 2026-07-12-r232 Live
 
 - Scope: make all four request/finance template authorizations independently visible and auditable.
 - Evidence: the real parent audit recorded request `accept` and invoice `accept`, but finance and receipt were missing from the callback on repeated grouped attempts.
 - Parent experience: keep the three-template course button, then show separate buttons for request status, unpaid, invoice, and receipt reminders.
 - Safety: no server delivery, queue, business data, permission, or cron changes.
-- Validation: miniapp JavaScript syntax, diff check, full build, production release, then real-phone authorization of the two still-missing templates.
+- Validation: miniapp JavaScript syntax, diff check, and local/production 186-page builds passed. Production `60fe07f` is healthy with 101 migrations current and one cron. Independent authorization produced accepted quota for all four templates; four marked test notifications each reached `SENT` with no retry or failure. Phone display confirmation is the final human check.
 
 ## 2026-07-12-r231 Live
 

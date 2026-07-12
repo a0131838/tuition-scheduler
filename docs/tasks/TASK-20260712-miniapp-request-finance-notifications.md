@@ -67,3 +67,11 @@ Complete one production-ready WeChat subscription-message block for parent reque
 - The parent tapped both two-template groups and allowed the displayed prompts, but production audits recorded only request `accept` and invoice `accept`; unpaid and receipt were absent from the WeChat callback.
 - The frontend now keeps the proven three-template course action but splits service/document consent into four one-template actions: request status, unpaid, invoice, and receipt.
 - This removes ambiguity from the WeChat prompt and lets each accepted quota be verified independently without changing backend audit or delivery rules.
+
+## Split-Consent Production Result
+
+- Production `60fe07f` exposes the four independent actions and remains healthy with one cron and 7/7 template configuration.
+- The test parent now has accepted quota for request, unpaid, invoice, and receipt templates.
+- Four `MiniappNotificationTest` rows, clearly labeled as system tests and not backed by business documents, were queued for the linked test student.
+- The production sender scanned 6 rows, sent the 4 controlled tests, left 2 unrelated no-consent rows waiting, and recorded zero retries, failures, or skips.
+- All four controlled rows persist as `SENT` with the exact delivered template ID.

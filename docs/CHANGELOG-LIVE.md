@@ -19,14 +19,14 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-12-r232`
 - Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: split request, unpaid, invoice, and receipt subscription authorization into four explicit one-template actions after real-phone evidence showed WeChat returned only the first template from each two-template group.
 - Key files:
   - `miniapp/boss-academic-parent/pages/home/home.js`
   - `docs/tasks/TASK-20260712-miniapp-request-finance-notifications.md`
   - `docs/小程序与家长端全程托管规划-20260709.md`
 - Risk impact (if any): Low. Delivery, template IDs, backend consent audit, queueing, finance/request writes, and cron behavior are unchanged. The parent now makes one clear click per service template so the WeChat result is unambiguous.
-- Verification: latest production consent audit showed request and invoice `accept`, while finance and receipt were absent despite two grouped approval attempts. Miniapp JavaScript syntax, diff check, and full production build remain required before deployment.
+- Verification: production consent audit first showed request and invoice `accept` while finance and receipt were absent from grouped callbacks. After the split UI, the test parent recorded request 4, unpaid 1, invoice 2, and receipt 1 accepted quotas. Miniapp syntax, diff check, and local/production 186-page builds passed; production deployed at `60fe07f` with 101 migrations current, one cron, PM2 online, and health 200. Four clearly marked test outbox rows then sent successfully through the production sender with `SENT` 4, retry 0, failure 0, and skip 0; two unrelated no-consent rows remained waiting.
 - Rollback point: `2026-07-12-r231`.
 
 ---
