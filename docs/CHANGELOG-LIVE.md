@@ -30,7 +30,7 @@ This file is the single source of truth for what changed in production.
   - `tests/wechat-miniapp-subscription.test.ts`
   - `docs/tasks/TASK-20260712-three-template-course-reminder-bundle.md`
 - Risk impact (if any): Medium and constrained. Three official course templates are requested together, but each accepted quota is counted and consumed separately. Existing 24-hour timing, stale-window, retry, and deduplication rules remain unchanged.
-- Verification: exact WeChat fields fetched from the account; three mapping tests, TypeScript, shell syntax, diff check, and full build passed; production deployed at `884e945`; runtime reports 3 configured course templates, joint label `开启未来 3 节课提醒`, one cron entry, PM2 online, and `/admin/login` 200. Joint real-device consent remains the final user check.
+- Verification: exact WeChat fields fetched from the account; three mapping tests, TypeScript, shell syntax, diff check, and full build passed; production deployed at `884e945`; runtime reports 3 configured course templates, joint label `开启未来 3 节课提醒`, one cron entry, PM2 online, and `/admin/login` 200. Real-phone preview returned `accept` for all three template IDs; after the earlier smoke send, the test parent has 7 accumulated course-message quotas available.
 - Rollback point: `2026-07-12-r227`.
 
 ---
