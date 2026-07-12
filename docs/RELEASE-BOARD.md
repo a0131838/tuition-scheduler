@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r227` at `7aca10c`; automatic consent-gated 24-hour course reminders and the five-minute server cron are live.
+- Current production release: `2026-07-12-r227`. Release `2026-07-12-r228` bundles three official course templates into one authorization action and is ready for deployment.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Three-template consent risk: `2026-07-12-r228` requests three course templates together and tracks consumption per delivered template ID. Verify the first joint authorization returns three `accept` results before relying on three-lesson coverage.
 - Automatic course-reminder risk: `2026-07-12-r227` sends only due 24-hour reminders when accepted consent exceeds prior sends. Monitor the first real parent reminder; 6-hour automation remains disabled.
 - Course-reminder template risk: `2026-07-12-r226` enables the parent consent entry for the official course template, but outbound delivery remains disabled until the template keyword IDs and payload mapping are confirmed on a real device.
 - Deploy branch-fetch risk: the first r226 deploy attempt remained on the previous remote-tracking commit because the server's narrow fetch refspec did not update the requested feature branch; r226 now fetches that branch into its exact remote-tracking ref before reset/build.

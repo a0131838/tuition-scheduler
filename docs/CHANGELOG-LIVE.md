@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r228
+
+- Release ID: `2026-07-12-r228`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: bundle three legitimate one-time course templates into one parent authorization action and consume their quotas independently across future lessons.
+- Key files:
+  - `lib/miniapp-subscription-config.ts`
+  - `lib/wechat-miniapp-subscription.ts`
+  - `scripts/queue-miniapp-course-reminders.ts`
+  - `scripts/send-miniapp-course-reminders.ts`
+  - `ops/server/scripts/deploy_app.sh`
+  - `tests/wechat-miniapp-subscription.test.ts`
+  - `docs/tasks/TASK-20260712-three-template-course-reminder-bundle.md`
+- Risk impact (if any): Medium and constrained. Three official course templates are requested together, but each accepted quota is counted and consumed separately. Existing 24-hour timing, stale-window, retry, and deduplication rules remain unchanged.
+- Verification: exact WeChat fields fetched from the account; three mapping tests, TypeScript, shell syntax, diff check, and full build passed; production verification pending.
+- Rollback point: `2026-07-12-r227`.
+
+---
+
 ## 2026-07-12-r227
 
 - Release ID: `2026-07-12-r227`

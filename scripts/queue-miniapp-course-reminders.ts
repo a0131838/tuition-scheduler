@@ -29,14 +29,14 @@ async function main() {
           subject: true,
           level: true,
           teacher: { select: { name: true } },
-          enrollments: { select: { studentId: true } },
-          oneOnOneStudent: { select: { id: true } },
+          enrollments: { select: { studentId: true, student: { select: { name: true } } } },
+          oneOnOneStudent: { select: { id: true, name: true } },
           campus: { select: { name: true, isOnline: true } },
           room: { select: { name: true } },
         },
       },
       teacher: { select: { name: true } },
-      student: { select: { id: true } },
+      student: { select: { id: true, name: true } },
     },
     orderBy: { startAt: "asc" },
     take: 1000,
@@ -53,6 +53,10 @@ async function main() {
       ].filter((id): id is string => Boolean(id)))
     );
     if (studentIds.length === 0) continue;
+    const studentNames = new Map<string, string>();
+    if (session.student) studentNames.set(session.student.id, session.student.name);
+    if (session.class.oneOnOneStudent) studentNames.set(session.class.oneOnOneStudent.id, session.class.oneOnOneStudent.name);
+    session.class.enrollments.forEach((row) => studentNames.set(row.studentId, row.student.name));
 
     const reminders = [{ hours: 24, key: MINIAPP_TEMPLATE_KEYS.courseReminder24h }];
 
@@ -73,10 +77,17 @@ async function main() {
             reminderHours: reminder.hours,
             startAt: session.startAt.toISOString(),
             endAt: session.endAt.toISOString(),
+            courseName: session.class.course.name,
+            subjectName: session.class.subject?.name || session.class.course.name,
             courseLabel: courseLabel(session),
             teacherName: session.teacher?.name || session.class.teacher.name,
+            studentName: studentNames.get(studentId) || "学员",
+            durationMinutes: Math.max(1, Math.round((session.endAt.getTime() - session.startAt.getTime()) / 60000)),
             campusName: session.class.campus.name,
             roomName: session.class.room?.name ?? null,
+            locationLabel: session.class.campus.isOnline
+              ? "线上课程"
+              : [session.class.campus.name, session.class.room?.name].filter(Boolean).join(" · "),
             mode: session.class.campus.isOnline ? "ONLINE" : "OFFLINE",
           },
         });
