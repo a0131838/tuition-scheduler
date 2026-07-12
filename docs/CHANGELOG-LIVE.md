@@ -15,6 +15,22 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r229
+
+- Release ID: `2026-07-12-r229`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: recover automatic course reminders when deploy cleanup removes the untracked cron log directory.
+- Key files:
+  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
+  - `ops/server/scripts/deploy_app.sh`
+  - `docs/tasks/TASK-20260712-miniapp-reminder-cron-log-recovery.md`
+- Risk impact (if any): Low. The cron creates its log directory before redirection and is idempotently reinstalled after deploy. Reminder timing, consent, mapping, retries, and business data are unchanged.
+- Verification: shell syntax and diff checks pending production cron replay.
+- Rollback point: `2026-07-12-r228`.
+
+---
+
 ## 2026-07-12-r228
 
 - Release ID: `2026-07-12-r228`

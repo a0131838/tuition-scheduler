@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r228` at `884e945`; the three-template course authorization bundle is live and joint real-device consent passed for all three templates.
+- Current production release: `2026-07-12-r228`. Release `2026-07-12-r229` fixes the reminder cron log-directory startup failure and is ready for deployment.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Reminder-cron log risk: deploy cleanup removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` creates the directory per run and reinstalls the cron after each deploy.
 - Three-template consent risk: `2026-07-12-r228` joint authorization returned three `accept` results on a real phone. Continue monitoring the first automatic send for each of the two newly added payload formats.
 - Automatic course-reminder risk: `2026-07-12-r227` sends only due 24-hour reminders when accepted consent exceeds prior sends. Monitor the first real parent reminder; 6-hour automation remains disabled.
 - Course-reminder template risk: `2026-07-12-r226` enables the parent consent entry for the official course template, but outbound delivery remains disabled until the template keyword IDs and payload mapping are confirmed on a real device.

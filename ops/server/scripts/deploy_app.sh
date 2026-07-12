@@ -101,4 +101,8 @@ pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
 pm2 start npm --name "$APP_NAME" -- start -- -p "$APP_PORT"
 pm2 save
 
+if [[ -x ops/server/scripts/setup_miniapp_course_reminder_cron.sh ]]; then
+  bash ops/server/scripts/setup_miniapp_course_reminder_cron.sh "$APP_DIR"
+fi
+
 echo "Deploy done: $APP_NAME on port $APP_PORT"
