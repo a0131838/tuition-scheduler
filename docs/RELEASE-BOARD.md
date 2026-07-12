@@ -4,7 +4,7 @@
 
 - Current service: `sgtmanage.com`
 - Process: `pm2 -> tuition-scheduler`
-- Last checked: `2026-06-12`
+- Last checked: `2026-07-12`
 - Health check: `/admin/login` => `200`
 - Version alignment: `ALIGNED`
 - Exact server/local/origin commit hashes: use `bash ops/server/scripts/new_chat_startup_check.sh`
@@ -14,17 +14,17 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r228`. Release `2026-07-12-r229` fixes the reminder cron log-directory startup failure and is ready for deployment.
+- Current production release: `2026-07-12-r229`. It fixes the reminder cron log-directory startup failure and has passed an automatic production queue-and-send replay.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
-- Reminder-cron log risk: deploy cleanup removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` creates the directory per run and reinstalls the cron after each deploy.
-- Three-template consent risk: `2026-07-12-r228` joint authorization returned three `accept` results on a real phone. Continue monitoring the first automatic send for each of the two newly added payload formats.
+- Reminder-cron monitoring: deploy cleanup previously removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` now creates the directory per run and reinstalls the cron after each deploy; the first automatic production replay passed.
+- Three-template consent risk: `2026-07-12-r228` joint authorization returned three `accept` results on a real phone. All three payload mappings have passed direct WeChat sends; continue monitoring normal parent usage and consent replenishment.
 - Automatic course-reminder risk: `2026-07-12-r227` sends only due 24-hour reminders when accepted consent exceeds prior sends. Monitor the first real parent reminder; 6-hour automation remains disabled.
-- Course-reminder template risk: `2026-07-12-r226` enables the parent consent entry for the official course template, but outbound delivery remains disabled until the template keyword IDs and payload mapping are confirmed on a real device.
+- Course-reminder template monitoring: all three official course-template keyword mappings have passed direct sends, and the original template has also passed the automatic cron path. Continue checking consent balance and parent-facing wording during normal use.
 - Deploy branch-fetch risk: the first r226 deploy attempt remained on the previous remote-tracking commit because the server's narrow fetch refspec did not update the requested feature branch; r226 now fetches that branch into its exact remote-tracking ref before reset/build.
 - Miniapp-phase-two risk: `2026-07-11-r225` adds ADMIN-only location and series scheduling writes plus teacher-originated Ticket creation. Location changes move one Session to a cloned same-course Class, series writes are all-or-nothing for 2-12 weeks, and teacher requests do not modify schedules. Monitor the first real action in each path and confirm reports retain the expected course/student context.
 - Miniapp-mobile-academic-actions risk: `2026-07-11-r224` adds ADMIN-only writes for leave/cancellation, one-session teacher replacement, and first scheduling from a Ticket. Every write requires a fresh signed preview and transaction revalidation; monitor Eva/Jasmine's first real action in each workflow and confirm the matching Ticket completion result before wider daily use.
