@@ -25,7 +25,7 @@ type NotificationConfiguration = {
   templates: Array<{ key: string; envKey: string; configured: boolean }>;
 };
 
-const statuses = ["PENDING", "SENT", "FAILED", "SKIPPED", "ALL"];
+const statuses = ["PENDING", "PROCESSING", "SENT", "FAILED", "SKIPPED", "ALL"];
 
 const buttonStyle: React.CSSProperties = {
   border: "1px solid #cbd5e1",

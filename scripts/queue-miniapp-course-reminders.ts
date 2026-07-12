@@ -54,10 +54,7 @@ async function main() {
     );
     if (studentIds.length === 0) continue;
 
-    const reminders = [
-      { hours: 24, key: MINIAPP_TEMPLATE_KEYS.courseReminder24h },
-      { hours: 6, key: MINIAPP_TEMPLATE_KEYS.courseReminder6h },
-    ];
+    const reminders = [{ hours: 24, key: MINIAPP_TEMPLATE_KEYS.courseReminder24h }];
 
     for (const reminder of reminders) {
       const scheduledAt = new Date(session.startAt.getTime() - reminder.hours * 60 * 60 * 1000);

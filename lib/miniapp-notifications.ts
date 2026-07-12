@@ -26,15 +26,19 @@ export async function queueMiniappNotification(input: {
   });
   if (!parent || parent.status !== "ACTIVE") return null;
 
-  return prisma.miniappNotificationOutbox.upsert({
-    where: {
-      parentId_templateKey_targetType_targetId: {
-        parentId: parent.id,
-        templateKey: input.templateKey,
-        targetType: input.targetType || "",
-        targetId: input.targetId || "",
-      },
+  const uniqueWhere = {
+    parentId_templateKey_targetType_targetId: {
+      parentId: parent.id,
+      templateKey: input.templateKey,
+      targetType: input.targetType || "",
+      targetId: input.targetId || "",
     },
+  };
+  const existing = await prisma.miniappNotificationOutbox.findUnique({ where: uniqueWhere });
+  if (existing && ["SENT", "SKIPPED", "PROCESSING"].includes(existing.status)) return existing;
+
+  return prisma.miniappNotificationOutbox.upsert({
+    where: uniqueWhere,
     create: {
       parentId: parent.id,
       studentId: input.studentId || null,

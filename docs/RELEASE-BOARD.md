@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r226` at `e9f5f94`; the official course-reminder template is configured and preserved across deploys. Explicit branch-fetch hardening is committed locally and awaits GitHub connectivity.
+- Current production release: `2026-07-12-r226` at `e9f5f94`. Release `2026-07-12-r227` adds automatic consent-gated 24-hour course reminders and is ready for deployment.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Automatic course-reminder risk: `2026-07-12-r227` sends only due 24-hour reminders when accepted consent exceeds prior sends. Monitor the first real parent reminder; 6-hour automation remains disabled.
 - Course-reminder template risk: `2026-07-12-r226` enables the parent consent entry for the official course template, but outbound delivery remains disabled until the template keyword IDs and payload mapping are confirmed on a real device.
 - Deploy branch-fetch risk: the first r226 deploy attempt remained on the previous remote-tracking commit because the server's narrow fetch refspec did not update the requested feature branch; r226 now fetches that branch into its exact remote-tracking ref before reset/build.
 - Miniapp-phase-two risk: `2026-07-11-r225` adds ADMIN-only location and series scheduling writes plus teacher-originated Ticket creation. Location changes move one Session to a cloned same-course Class, series writes are all-or-nothing for 2-12 weeks, and teacher requests do not modify schedules. Monitor the first real action in each path and confirm reports retain the expected course/student context.

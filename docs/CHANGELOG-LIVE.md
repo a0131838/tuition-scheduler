@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r227
+
+- Release ID: `2026-07-12-r227`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: automatically queue and send verified 24-hour WeChat course reminders with terminal-state deduplication, consent-quota gating, bounded retries, and a five-minute server cron.
+- Key files:
+  - `lib/miniapp-notifications.ts`
+  - `lib/wechat-miniapp-subscription.ts`
+  - `scripts/queue-miniapp-course-reminders.ts`
+  - `scripts/send-miniapp-course-reminders.ts`
+  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
+  - `tests/wechat-miniapp-subscription.test.ts`
+  - `docs/tasks/TASK-20260712-miniapp-automatic-course-reminders.md`
+- Risk impact (if any): Medium and constrained. Only due 24-hour reminders with recorded unused consent can call WeChat. Sent/skipped records are not reset, stale reminders are skipped, and 6-hour automation remains disabled.
+- Verification: local unit tests, TypeScript, shell syntax, diff check, and full build passed; production verification pending.
+- Rollback point: `2026-07-12-r226`.
+
+---
+
 ## 2026-07-12-r226
 
 - Release ID: `2026-07-12-r226`
