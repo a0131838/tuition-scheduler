@@ -25,3 +25,10 @@ Activate the parent miniapp course-reminder consent entry with the official WeCh
 - Subscription configuration check with the provided course template ID.
 - Production runtime configuration reports one of five templates configured after deployment.
 - PM2 and `https://sgtmanage.com/admin/login` remain healthy.
+
+## Production Result
+
+- Production deployed at commit `e9f5f94` after explicitly refreshing the requested remote-tracking branch.
+- Runtime configuration reports 1/5 templates configured: course is enabled; service and document groups remain hidden.
+- PM2 is online and `https://sgtmanage.com/admin/login` returns 200.
+- The follow-up source change that makes explicit branch fetching permanent is committed locally; GitHub synchronization is waiting on restoration of local connectivity to `github.com`.
