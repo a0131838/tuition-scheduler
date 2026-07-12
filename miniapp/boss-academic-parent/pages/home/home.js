@@ -1,5 +1,28 @@
 const api = require("../../utils/api");
 
+function buildSubscriptionActions(groups) {
+  const labels = {
+    service: ["开启请求状态提醒", "开启待付提醒"],
+    documents: ["开启发票提醒", "开启收据提醒"]
+  };
+  return groups.reduce((actions, group) => {
+    if (!group.configured) return actions;
+    if (group.key === "course") {
+      actions.push(Object.assign({}, group, { groupKey: group.key }));
+      return actions;
+    }
+    (group.templateIds || []).forEach((templateId, index) => {
+      actions.push({
+        key: `${group.key}:${index}`,
+        groupKey: group.key,
+        label: (labels[group.key] || [])[index] || group.label,
+        templateIds: [templateId]
+      });
+    });
+    return actions;
+  }, []);
+}
+
 Page({
   data: {
     student: {},
@@ -39,7 +62,8 @@ Page({
     const subscriptionTask = api.request(`/api/miniapp/subscriptions/intent?studentId=${encodeURIComponent(studentId)}`)
       .then((data) => {
         const groups = (data.groups || []).filter((group) => group.configured);
-        this.setData({ subscriptionGroups: groups, courseReminder: data.courseReminder || null, hasSubscriptionGroups: groups.length > 0 });
+        const actions = buildSubscriptionActions(groups);
+        this.setData({ subscriptionGroups: actions, courseReminder: data.courseReminder || null, hasSubscriptionGroups: actions.length > 0 });
       })
       .catch(() => this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false }));
     return Promise.allSettled([homeTask, subscriptionTask]);
@@ -66,7 +90,7 @@ Page({
       tmplIds: group.templateIds.slice(0, 3),
       success: (result) => {
         const studentId = api.currentStudentId();
-        api.request("/api/miniapp/subscriptions/intent", { method: "POST", data: { groupKey: key, studentId, result } })
+        api.request("/api/miniapp/subscriptions/intent", { method: "POST", data: { groupKey: group.groupKey || key, studentId, result } })
           .then((data) => {
             if (data.courseReminder) this.setData({ courseReminder: data.courseReminder });
             api.toast(data.message || "提醒设置已记录");

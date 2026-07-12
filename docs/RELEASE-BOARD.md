@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r231`. Request and finance subscription delivery is live; the first automatic service sender run correctly held two request messages for consent.
+- Current production release: `2026-07-12-r231`. Release `2026-07-12-r232` is ready to split the four service/document consent actions after real-phone grouped-consent evidence.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Service-consent UI risk: WeChat returned only the first ID from each two-template service/document request even when the parent allowed the displayed option. `2026-07-12-r232` changes these to four one-template buttons; verify finance and receipt each record one `accept` after deployment.
 - Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
 - Reminder-coverage rollout risk: `2026-07-12-r230` derives a parent's shared quota across every linked student and assigns it to the earliest future lessons for display. The staff attention list is read-only and permission-restricted; verify the first multi-student family and first no-consent reminder after release.
 - Reminder-cron monitoring: deploy cleanup previously removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` now creates the directory per run and reinstalls the cron after each deploy; the first automatic production replay passed.
@@ -148,6 +149,14 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-12-r232 Ready
+
+- Scope: make all four request/finance template authorizations independently visible and auditable.
+- Evidence: the real parent audit recorded request `accept` and invoice `accept`, but finance and receipt were missing from the callback on repeated grouped attempts.
+- Parent experience: keep the three-template course button, then show separate buttons for request status, unpaid, invoice, and receipt reminders.
+- Safety: no server delivery, queue, business data, permission, or cron changes.
+- Validation: miniapp JavaScript syntax, diff check, full build, production release, then real-phone authorization of the two still-missing templates.
 
 ## 2026-07-12-r231 Live
 

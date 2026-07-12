@@ -61,3 +61,9 @@ Complete one production-ready WeChat subscription-message block for parent reque
 - Authenticated ADMIN attention API returns two current request-status rows waiting for consent.
 - One cron entry is installed. Its automatic service run scanned 2 and recorded waiting consent 2, sent 0, retried 0, failed 0, and skipped 0.
 - PM2 is online and `/admin/login` returns 200.
+
+## Real-Phone Consent Follow-Up
+
+- The parent tapped both two-template groups and allowed the displayed prompts, but production audits recorded only request `accept` and invoice `accept`; unpaid and receipt were absent from the WeChat callback.
+- The frontend now keeps the proven three-template course action but splits service/document consent into four one-template actions: request status, unpaid, invoice, and receipt.
+- This removes ambiguity from the WeChat prompt and lets each accepted quota be verified independently without changing backend audit or delivery rules.
