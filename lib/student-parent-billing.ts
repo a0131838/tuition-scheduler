@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit-log";
 import crypto from "crypto";
 import { formatDateOnly, monthKeyFromDateOnly, normalizeDateOnly, normalizeNullableDateOnly } from "@/lib/date-only";
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
 
 const PARENT_BILLING_KEY = "parent_billing_v1";
 
@@ -453,6 +454,38 @@ export async function createParentInvoice(input: {
     entityId: item.id,
     meta: { packageId: item.packageId, studentId: item.studentId, invoiceNo: item.invoiceNo },
   });
+  await Promise.all([
+    queueMiniappNotificationsForStudent({
+      studentId: item.studentId,
+      templateKey: MINIAPP_TEMPLATE_KEYS.invoiceIssued,
+      eventType: "INVOICE_ISSUED",
+      targetType: "ParentInvoice",
+      targetId: item.id,
+      permission: "canViewFinance",
+      payload: {
+        invoiceId: item.id,
+        invoiceNo: item.invoiceNo,
+        issueDate: `${item.issueDate}T12:00:00+08:00`,
+        note: `发票号 ${item.invoiceNo}`,
+      },
+    }),
+    ...(item.totalAmount > 0
+      ? [queueMiniappNotificationsForStudent({
+          studentId: item.studentId,
+          templateKey: MINIAPP_TEMPLATE_KEYS.financeUnpaid,
+          eventType: "FINANCE_UNPAID",
+          targetType: "ParentInvoice",
+          targetId: item.id,
+          permission: "canViewFinance",
+          payload: {
+            invoiceId: item.id,
+            invoiceNo: item.invoiceNo,
+            dueAt: `${item.dueDate}T23:59:00+08:00`,
+            totalAmount: item.totalAmount,
+          },
+        })]
+      : []),
+  ]).catch(() => null);
   return item;
 }
 

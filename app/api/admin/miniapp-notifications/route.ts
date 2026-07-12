@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { miniappSubscriptionConfiguration } from "@/lib/miniapp-subscription-config";
-import { listCourseReminderConsentAttention } from "@/lib/miniapp-reminder-attention";
+import { listMiniappConsentAttention } from "@/lib/miniapp-reminder-attention";
 
 function toInt(v: string | null, fallback: number) {
   const n = Number(v ?? "");
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const limit = Math.min(Math.max(toInt(url.searchParams.get("limit"), 100), 1), 300);
 
   const [attentionRows, regularRows, summaryRows] = await Promise.all([
-    listCourseReminderConsentAttention(limit),
+    listMiniappConsentAttention(limit),
     prisma.miniappNotificationOutbox.findMany({
       where: status === "ALL" || status === "WAITING_CONSENT" ? {} : { status },
       include: {

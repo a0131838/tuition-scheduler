@@ -63,8 +63,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     await Promise.all(applied.completedCoordinationTickets.filter((ticket) => ticket.parentVisible && ticket.studentId).map((ticket) =>
       queueMiniappNotificationsForStudent({
         studentId: ticket.studentId as string, templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
-        eventType: "REQUEST_STATUS_CHANGED", targetType: "Ticket", targetId: ticket.id,
-        permission: "canCreateRequests", payload: { ticketNo: ticket.ticketNo, type: "排课协调", status: "Completed" },
+        eventType: "REQUEST_STATUS_CHANGED", targetType: "Ticket", targetId: `${ticket.id}:${ticket.updatedAt.toISOString()}`,
+        permission: "canCreateRequests", payload: {
+          ticketNo: ticket.ticketNo, type: "排课协调", status: "Completed",
+          ticketId: ticket.id, studentName: ticket.studentName, updatedAt: ticket.updatedAt.toISOString(),
+        },
       }).catch(() => null)
     ));
     return ok({ message: `已连续排入 ${applied.sessionIds.length} 节课程。`, sessionIds: applied.sessionIds, completedCoordinationCount: applied.completedCoordinationTickets.length });

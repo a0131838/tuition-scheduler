@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r231
+
+- Release ID: `2026-07-12-r231`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: complete official WeChat subscription notifications for parent-visible request status changes, unpaid invoices, issued invoices, and finance-approved receipts; add grouped parent consent actions, bounded delivery, and shared staff consent-attention monitoring.
+- Key files:
+  - `lib/wechat-miniapp-service-subscription.ts`
+  - `scripts/send-miniapp-service-notifications.ts`
+  - `lib/student-parent-billing.ts`
+  - `lib/parent-receipt-approval.ts`
+  - `lib/miniapp-reminder-attention.ts`
+  - `app/api/admin/ops/parent-requests/[id]/route.ts`
+  - `app/api/miniapp/staff/parent-requests/[id]/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/*`
+  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/*`
+  - `ops/server/scripts/setup_miniapp_course_reminder_cron.sh`
+  - `tests/wechat-miniapp-subscription.test.ts`
+  - `docs/tasks/TASK-20260712-miniapp-request-finance-notifications.md`
+- Risk impact (if any): Medium and constrained. Business events only enqueue best-effort notifications for active linked parents with matching permissions. Delivery requires unused consent for the exact official template, claims rows before sending, retries transient failures at most three times, and skips stale rows after seven days. Receipt messages require completed finance approval. No schema or existing business write rule changes.
+- Verification: TypeScript, six WeChat mapping/quota tests, eight billing/approval regression tests, miniapp syntax, cron shell syntax, diff check, and a full 186-page production build passed locally. Production deployment and real-parent authorization remain pending.
+- Rollback point: `2026-07-12-r230`.
+
+---
+
 ## 2026-07-12-r230
 
 - Release ID: `2026-07-12-r230`

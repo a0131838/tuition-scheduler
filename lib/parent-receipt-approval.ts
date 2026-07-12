@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit-log";
 import { loadJsonAppSettingForDb, mutateJsonAppSetting } from "@/lib/app-setting-lock";
+import { getApprovalRoleConfig } from "@/lib/approval-flow";
+import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
+import { getParentReceiptById } from "@/lib/student-parent-billing";
+import { isReceiptFinanceApproved } from "@/lib/receipt-approval-policy";
 
 const PARENT_RECEIPT_APPROVAL_KEY = "parent_receipt_approval_v1";
 
@@ -165,6 +169,31 @@ export async function financeApproveParentReceipt(receiptId: string, approverEma
     entityType: "ParentReceipt",
     entityId: receiptId,
   });
+  const [approvalMap, roleCfg, receipt] = await Promise.all([
+    getParentReceiptApprovalMap([receiptId]),
+    getApprovalRoleConfig(),
+    getParentReceiptById(receiptId),
+  ]);
+  const approval = approvalMap.get(receiptId);
+  if (receipt && isReceiptFinanceApproved(approval, roleCfg)) {
+    const student = await prisma.student.findUnique({ where: { id: receipt.studentId }, select: { name: true } });
+    await queueMiniappNotificationsForStudent({
+      studentId: receipt.studentId,
+      templateKey: MINIAPP_TEMPLATE_KEYS.receiptIssued,
+      eventType: "RECEIPT_ISSUED",
+      targetType: "ParentReceipt",
+      targetId: receipt.id,
+      permission: "canViewFinance",
+      payload: {
+        receiptId: receipt.id,
+        receiptNo: receipt.receiptNo,
+        studentName: student?.name || "学员",
+        amountReceived: receipt.amountReceived,
+        receivingAccount: "博思教育",
+        receiptDate: `${receipt.receiptDate}T12:00:00+08:00`,
+      },
+    }).catch(() => null);
+  }
 }
 
 export async function financeRejectParentReceipt(receiptId: string, approverEmail: string, reason: string) {

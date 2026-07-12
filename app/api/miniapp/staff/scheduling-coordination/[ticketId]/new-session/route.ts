@@ -112,9 +112,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
         templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
         eventType: "REQUEST_STATUS_CHANGED",
         targetType: "Ticket",
-        targetId: applied.ticket.id,
+        targetId: `${applied.ticket.id}:${applied.ticket.updatedAt.toISOString()}`,
         permission: "canCreateRequests",
-        payload: { ticketNo: applied.ticket.ticketNo, type: applied.ticket.type, status: "Completed" },
+        payload: {
+          ticketNo: applied.ticket.ticketNo, type: applied.ticket.type, status: "Completed",
+          ticketId: applied.ticket.id, studentName: applied.ticket.studentName,
+          updatedAt: applied.ticket.updatedAt.toISOString(),
+        },
       }).catch(() => null);
     }
     return ok({ message: "课程已排入系统，工单已完成。", sessionId: applied.sessionId, result: applied.preview });

@@ -31,8 +31,8 @@
 
   <view class="card work-card" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
     <view>
-      <view class="label">待补课程提醒</view>
-      <view class="value">{{reminderAttentionCount}} 位家长需补授权</view>
+      <view class="label">待补微信提醒</view>
+      <view class="value">{{reminderAttentionCount}} 条消息需补授权</view>
     </view>
     <view class="arrow">›</view>
   </view>

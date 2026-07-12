@@ -95,9 +95,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
             templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
             eventType: "REQUEST_STATUS_CHANGED",
             targetType: "Ticket",
-            targetId: ticket.id,
+            targetId: `${ticket.id}:${ticket.updatedAt.toISOString()}`,
             permission: "canCreateRequests",
-            payload: { ticketNo: ticket.ticketNo, type: "临时取消&请假课程", status: "Completed" },
+            payload: {
+              ticketNo: ticket.ticketNo, type: "临时取消&请假课程", status: "Completed",
+              ticketId: ticket.id, studentName: ticket.studentName, updatedAt: ticket.updatedAt.toISOString(),
+            },
           }).catch(() => null)
         )
     );

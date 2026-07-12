@@ -263,7 +263,9 @@ export async function applyMiniappSessionCancellation(
           id: ticket.id,
           ticketNo: ticket.ticketNo,
           studentId: ticket.studentId,
+          studentName: ticket.studentName,
           parentVisible: ticket.parentVisible,
+          updatedAt: now,
         });
       }
 

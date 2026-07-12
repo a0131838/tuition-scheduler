@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">家长提醒补授权</view>
+    <view class="eyebrow">家长微信提醒补授权</view>
     <view class="title">{{total}} 条待跟进</view>
-    <view class="subtitle">这些课程已到 24 小时提醒时间，但家长没有剩余微信授权额度。</view>
+    <view class="subtitle">这些消息已到发送时间，但家长没有对应模板的剩余微信授权额度。</view>
   </view>
 
   <view class="reminder-card" wx:for="{{reminders}}" wx:key="id">
@@ -13,10 +13,11 @@
       </view>
       <button class="phone-button" data-phone="{{item.parentPhone}}" bindtap="callParent">联系</button>
     </view>
-    <view class="course">{{item.sessionStartText}} · {{item.courseLabel}}</view>
-    <view class="teacher">{{item.teacherName}}</view>
+    <view class="course">{{item.categoryLabel}} · {{item.eventTimeText}}</view>
+    <view class="teacher">{{item.subjectLabel}}</view>
+    <view class="teacher" wx:if="{{item.detailLabel}}">{{item.detailLabel}}</view>
     <view class="instruction">{{item.instruction}}</view>
   </view>
 
-  <view class="empty" wx:if="{{!loading && !reminders.length}}">当前没有需补授权的课程提醒</view>
+  <view class="empty" wx:if="{{!loading && !reminders.length}}">当前没有需要补授权的微信提醒</view>
 </view>

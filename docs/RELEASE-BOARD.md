@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r230`. Parent reminder coverage and staff consent-attention views are live and passed authenticated production API checks.
+- Current production release: `2026-07-12-r230`. Release `2026-07-12-r231` is ready to add request and finance subscription delivery after deployment checks.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
 - Reminder-coverage rollout risk: `2026-07-12-r230` derives a parent's shared quota across every linked student and assigns it to the earliest future lessons for display. The staff attention list is read-only and permission-restricted; verify the first multi-student family and first no-consent reminder after release.
 - Reminder-cron monitoring: deploy cleanup previously removed `ops/logs`, causing shell redirection to fail before queue/sender startup. `2026-07-12-r229` now creates the directory per run and reinstalls the cron after each deploy; the first automatic production replay passed.
 - Three-template consent risk: `2026-07-12-r228` joint authorization returned three `accept` results on a real phone. All three payload mappings have passed direct WeChat sends; continue monitoring normal parent usage and consent replenishment.
@@ -147,6 +148,29 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-12-r231 Ready
+
+- Scope: complete the request and finance WeChat subscription-message block.
+- Business impact:
+  - parents can authorize request/unpaid and invoice/receipt notifications in two clear groups
+  - every parent-visible request status update can notify again instead of being suppressed after the first send
+  - invoice creation queues invoice-issued and, when applicable, unpaid messages
+  - receipt messages wait for the configured finance approval to complete
+  - ADMIN/CS staff can find every due notification type that is still missing parent consent
+- Safety boundaries:
+  - exact-template consent quota is checked immediately before send
+  - transient failures retry at most three times and messages older than seven days are skipped
+  - notification failures do not roll back successful request, invoice, or receipt operations
+  - no schema, course reminder, package, attendance, payment, payroll, or permission rule changes
+- Validation before deploy:
+  - TypeScript and full 186-page build
+  - 6 WeChat subscription tests and 8 billing/approval regression tests
+  - miniapp JavaScript/JSON, cron shell syntax, and diff checks
+- Post-deploy checks:
+  - confirm 7/7 template variables, one cron entry, service sender log, PM2, and `/admin/login`
+  - confirm parent home returns both configured groups and staff attention API returns all supported categories
+  - real parent authorization and controlled four-message display test remain the final external check
 
 ## 2026-07-11-r225 Live
 

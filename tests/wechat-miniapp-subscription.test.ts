@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCourseReminderData, countAcceptedTemplate, summarizeCourseTemplateQuota } from "@/lib/wechat-miniapp-subscription";
+import { buildServiceNotificationData } from "@/lib/wechat-miniapp-service-subscription";
 
 test("buildCourseReminderData maps the appointment template", () => {
   assert.deepEqual(buildCourseReminderData("course", { courseName: "English", subjectName: "Grammar", teacherName: "Eva", startAt: "2026-07-13T01:00:00.000Z" }), {
@@ -50,4 +51,41 @@ test("summarizeCourseTemplateQuota keeps template quotas independent", () => {
   assert.equal(quota.consumedCount, 2);
   assert.equal(quota.availableCount, 2);
   assert.deepEqual(quota.byTemplate.map((item) => item.available), [1, 0, 1]);
+});
+
+test("buildServiceNotificationData maps request status fields", () => {
+  assert.deepEqual(buildServiceNotificationData("request", {
+    ticketNo: "20260712-001", studentName: "Amy", status: "Waiting Parent",
+    type: "排课要求", updatedAt: "2026-07-12T06:00:00.000Z",
+  }), {
+    character_string1: { value: "20260712-001" },
+    thing2: { value: "Amy" },
+    thing4: { value: "等待家长补充" },
+    date5: { value: "2026-07-12 14:00:00" },
+    thing6: { value: "排课要求" },
+  });
+});
+
+test("buildServiceNotificationData maps finance and document fields", () => {
+  assert.deepEqual(buildServiceNotificationData("finance", {
+    invoiceNo: "RGT-202607-0001", dueAt: "2026-07-20T15:59:00.000Z",
+  }), {
+    character_string1: { value: "RGT-202607-0001" },
+    time2: { value: "2026-07-20 23:59:00" },
+  });
+  assert.deepEqual(buildServiceNotificationData("invoice", {
+    invoiceNo: "RGT-202607-0001", issueDate: "2026-07-12T04:00:00.000Z",
+  }), {
+    thing1: { value: "发票开具" },
+    time2: { value: "2026-07-12 12:00:00" },
+    thing3: { value: "发票号 RGT-202607-0001" },
+  });
+  assert.deepEqual(buildServiceNotificationData("receipt", {
+    studentName: "Amy", amountReceived: 1200, receiptDate: "2026-07-12T04:00:00.000Z",
+  }), {
+    thing1: { value: "Amy" },
+    amount2: { value: "$1200.00" },
+    thing3: { value: "博思教育" },
+    time5: { value: "2026-07-12 12:00:00" },
+  });
 });

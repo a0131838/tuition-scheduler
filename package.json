@@ -12,6 +12,7 @@
         "audit:availability-integrity": "tsx scripts/report-availability-integrity.ts",
     "miniapp:queue-course-reminders": "tsx scripts/queue-miniapp-course-reminders.ts",
     "miniapp:send-course-reminders": "tsx scripts/send-miniapp-course-reminders.ts",
+    "miniapp:send-service-notifications": "tsx scripts/send-miniapp-service-notifications.ts",
         "cleanup:availability-integrity": "tsx scripts/clean-availability-integrity.ts",
         "test:auth": "tsx --test tests/route-guards.test.ts",
         "test:backend": "tsx --test tests/route-guards.test.ts tests/admin-teacher-availability.test.ts tests/expense-claims.test.ts tests/package-top-up.test.ts tests/quick-schedule-execution.test.ts tests/session-unique.test.ts tests/availability-conflict.test.ts tests/app-setting-lock.test.ts tests/billing-optimistic-lock.test.ts tests/student-schedule-export.test.ts",

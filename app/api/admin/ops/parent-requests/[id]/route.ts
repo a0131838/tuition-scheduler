@@ -82,13 +82,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       templateKey: MINIAPP_TEMPLATE_KEYS.requestStatusChanged,
       eventType: "REQUEST_STATUS_CHANGED",
       targetType: "Ticket",
-      targetId: updated.id,
+      targetId: `${updated.id}:${updated.updatedAt.toISOString()}`,
       permission: "canCreateRequests",
       payload: {
         ticketNo: updated.ticketNo,
         type: updated.type,
         status: updated.status,
         owner: updated.owner,
+        ticketId: updated.id,
+        studentName: updated.studentName,
+        updatedAt: updated.updatedAt.toISOString(),
       },
     }).catch(() => null);
   }

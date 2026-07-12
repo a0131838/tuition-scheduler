@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { courseTemplates, summarizeCourseTemplateQuota } from "@/lib/wechat-miniapp-subscription";
+import { availableCourseTemplate } from "@/lib/wechat-miniapp-subscription";
+import { availableServiceTemplate } from "@/lib/wechat-miniapp-service-subscription";
 
-export async function listCourseReminderConsentAttention(limit = 200) {
+const SUPPORTED_KEYS = ["course_reminder_24h", "request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued"];
+
+export async function listMiniappConsentAttention(limit = 200) {
   const candidates = await prisma.miniappNotificationOutbox.findMany({
     where: {
       status: "PENDING",
-      templateKey: "course_reminder_24h",
+      templateKey: { in: SUPPORTED_KEYS },
       scheduledAt: { lte: new Date() },
     },
     include: {
@@ -15,28 +18,19 @@ export async function listCourseReminderConsentAttention(limit = 200) {
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
     take: Math.min(Math.max(limit, 1), 300),
   });
-  const parentIds = Array.from(new Set(candidates.map((row) => row.parentId)));
-  if (parentIds.length === 0) return [];
-  const [audits, sentRows] = await Promise.all([
-    prisma.parentPortalAudit.findMany({
-      where: { parentId: { in: parentIds }, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: "course" },
-      select: { parentId: true, metaJson: true },
-      take: 5000,
-    }),
-    prisma.miniappNotificationOutbox.findMany({
-      where: { parentId: { in: parentIds }, status: "SENT", eventType: { in: ["COURSE_REMINDER", "COURSE_REMINDER_TEST"] } },
-      select: { parentId: true, templateKey: true, payloadJson: true },
-      take: 5000,
-    }),
-  ]);
-  const templates = courseTemplates();
-  const availableByParent = new Map(parentIds.map((parentId) => {
-    const quota = summarizeCourseTemplateQuota(
-      templates,
-      audits.filter((row) => row.parentId === parentId),
-      sentRows.filter((row) => row.parentId === parentId)
-    );
-    return [parentId, quota.availableCount];
-  }));
-  return candidates.filter((row) => (availableByParent.get(row.parentId) ?? 0) === 0);
+  const checks = new Map<string, Promise<boolean>>();
+  for (const row of candidates) {
+    const key = `${row.parentId}:${row.templateKey}`;
+    if (checks.has(key)) continue;
+    checks.set(key, row.templateKey === "course_reminder_24h"
+      ? availableCourseTemplate(row.parentId).then(Boolean)
+      : availableServiceTemplate(row.parentId, row.templateKey).then(Boolean));
+  }
+  const availability = new Map<string, boolean>();
+  await Promise.all(Array.from(checks.entries()).map(async ([key, check]) => availability.set(key, await check)));
+  return candidates.filter((row) => !availability.get(`${row.parentId}:${row.templateKey}`));
+}
+
+export async function listCourseReminderConsentAttention(limit = 200) {
+  return (await listMiniappConsentAttention(limit)).filter((row) => row.templateKey === "course_reminder_24h");
 }

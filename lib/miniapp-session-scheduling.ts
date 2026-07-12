@@ -435,7 +435,9 @@ export async function applyMiniappSessionScheduling(
               id: ticket.id,
               ticketNo: ticket.ticketNo,
               studentId: ticket.studentId,
+              studentName: ticket.studentName,
               parentVisible: ticket.parentVisible,
+              updatedAt: now,
             });
           }
         }
@@ -586,7 +588,10 @@ export async function applyMiniappSessionSeries(
               entityType: "Ticket", entityId: ticket.id, meta: { sessionIds, sourceSessionId: input.sessionId },
             },
           });
-          completedCoordinationTickets.push({ id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId, parentVisible: ticket.parentVisible });
+          completedCoordinationTickets.push({
+            id: ticket.id, ticketNo: ticket.ticketNo, studentId: ticket.studentId,
+            studentName: ticket.studentName, parentVisible: ticket.parentVisible, updatedAt: now,
+          });
         }
       }
       return { sessionIds, checkedRows, completedCoordinationTickets };
