@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-12-r231`
 - Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: complete official WeChat subscription notifications for parent-visible request status changes, unpaid invoices, issued invoices, and finance-approved receipts; add grouped parent consent actions, bounded delivery, and shared staff consent-attention monitoring.
 - Key files:
   - `lib/wechat-miniapp-service-subscription.ts`
@@ -35,7 +35,7 @@ This file is the single source of truth for what changed in production.
   - `tests/wechat-miniapp-subscription.test.ts`
   - `docs/tasks/TASK-20260712-miniapp-request-finance-notifications.md`
 - Risk impact (if any): Medium and constrained. Business events only enqueue best-effort notifications for active linked parents with matching permissions. Delivery requires unused consent for the exact official template, claims rows before sending, retries transient failures at most three times, and skips stale rows after seven days. Receipt messages require completed finance approval. No schema or existing business write rule changes.
-- Verification: TypeScript, six WeChat mapping/quota tests, eight billing/approval regression tests, miniapp syntax, cron shell syntax, diff check, and a full 186-page production build passed locally. Production deployment and real-parent authorization remain pending.
+- Verification: TypeScript, six WeChat mapping/quota tests, eight billing/approval regression tests, miniapp syntax, cron shell syntax, diff check, and a full 186-page build passed locally and in production. Production deployed at `f28c99d`; runtime reports 7/7 templates and parent API reports configured groups of 3 course, 2 request/finance, and 2 document templates. ADMIN staff API returns 200 with two current request notifications awaiting consent. Exactly one cron is installed; its automatic service run scanned 2, correctly left 2 waiting for consent, and recorded zero sends, retries, failures, or skips. PM2 is online and `/admin/login` returns 200. Real-parent authorization and controlled display tests remain the external follow-up.
 - Rollback point: `2026-07-12-r230`.
 
 ---

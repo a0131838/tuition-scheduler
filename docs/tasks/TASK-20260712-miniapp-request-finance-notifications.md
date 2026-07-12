@@ -53,3 +53,11 @@ Complete one production-ready WeChat subscription-message block for parent reque
 
 - After production deploy, a real parent must authorize both new groups from the miniapp home. This is the only action that cannot be performed by the server.
 - After authorization, use one clearly identified test request/invoice/receipt flow to confirm all four message displays before routine parent use.
+
+## Production Result
+
+- Release `2026-07-12-r231` deployed at `f28c99d`; 101 migrations are current and 186 pages built.
+- Runtime reports 7/7 templates. Authenticated parent configuration returns course 3, service 2, and documents 2.
+- Authenticated ADMIN attention API returns two current request-status rows waiting for consent.
+- One cron entry is installed. Its automatic service run scanned 2 and recorded waiting consent 2, sent 0, retried 0, failed 0, and skipped 0.
+- PM2 is online and `/admin/login` returns 200.

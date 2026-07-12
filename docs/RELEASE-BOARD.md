@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r230`. Release `2026-07-12-r231` is ready to add request and finance subscription delivery after deployment checks.
+- Current production release: `2026-07-12-r231`. Request and finance subscription delivery is live; the first automatic service sender run correctly held two request messages for consent.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -149,7 +149,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-12-r231 Ready
+## 2026-07-12-r231 Live
 
 - Scope: complete the request and finance WeChat subscription-message block.
 - Business impact:
@@ -168,8 +168,10 @@
   - 6 WeChat subscription tests and 8 billing/approval regression tests
   - miniapp JavaScript/JSON, cron shell syntax, and diff checks
 - Post-deploy checks:
-  - confirm 7/7 template variables, one cron entry, service sender log, PM2, and `/admin/login`
-  - confirm parent home returns both configured groups and staff attention API returns all supported categories
+  - production commit `f28c99d`, 101 migrations current, 186 pages built, PM2 online, and `/admin/login` 200
+  - runtime configuration is 7/7; parent API returns configured group sizes 3, 2, and 2
+  - ADMIN staff attention API returns 200 and currently exposes two request-status rows awaiting consent
+  - exactly one cron includes the service sender; its automatic run scanned 2 and safely left both waiting for consent with no send, retry, failure, or skip
   - real parent authorization and controlled four-message display test remain the final external check
 
 ## 2026-07-11-r225 Live
