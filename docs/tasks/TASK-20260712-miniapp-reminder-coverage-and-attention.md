@@ -42,3 +42,11 @@ Finish the operational course-reminder loop after automatic delivery: parents ca
 
 - Emily does not currently have a matching system User account. Create one with role CS or ADMIN before she needs this staff-mobile list.
 - Request-status, unpaid, invoice-issued, and receipt-issued WeChat template IDs and exact keyword fields are still required before those four outbound message types can be completed.
+
+## Production Result
+
+- Release commit `3ffa260` is live; 101 migrations are current and the production build generated 186 pages.
+- Authenticated parent coverage API returned 200 with accepted 8, consumed 4, available 4, and the dedicated test Session marked `SENT`.
+- Authenticated ADMIN staff attention API returned 200 with total 0.
+- PM2 is online, `/admin/login` returns 200, and exactly one course-reminder cron is installed.
+- GitHub was temporarily unreachable during deployment, so the committed Git bundle was transferred over the existing SSH channel and built with the normal release-doc, dependency, migration, build, PM2, and cron checks. GitHub connectivity recovered afterward and `3ffa260` was pushed successfully.

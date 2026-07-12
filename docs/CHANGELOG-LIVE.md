@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-12-r230`
 - Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: show family-shared course-reminder quota and next-three-lesson coverage to parents, add a natural reauthorization action on the schedule, and expose due reminders without consent to admin and permitted staff mobile users.
 - Key files:
   - `lib/wechat-miniapp-subscription.ts`
@@ -35,7 +35,7 @@ This file is the single source of truth for what changed in production.
   - `tests/wechat-miniapp-subscription.test.ts`
   - `docs/tasks/TASK-20260712-miniapp-reminder-coverage-and-attention.md`
 - Risk impact (if any): Low to medium and read-focused. Quota and coverage are derived from existing consent audits, successful sends, linked students, and future Sessions. The new staff list is read-only and restricted to ADMIN, CS, or active CS-workspace users. Sending, scheduling, package, attendance, finance, Ticket, and payroll writes are unchanged.
-- Verification: TypeScript, four quota/mapping tests, miniapp JavaScript/JSON syntax, diff check, and full production build passed. Read-only real-data verification reports 8 accepted, 4 consumed, 4 available, the test Session as `SENT`, and zero current consent-attention rows.
+- Verification: TypeScript, four quota/mapping tests, miniapp JavaScript/JSON syntax, diff check, and full production build passed. Production deployed at `3ffa260` with 101 migrations current and 186 pages built. Parent and permitted-staff production APIs both return 200; the test parent reports 8 accepted, 4 consumed, 4 available and the test Session as `SENT`; staff attention total is 0. PM2 is online, `/admin/login` returns 200, and exactly one reminder cron remains installed.
 - Rollback point: `2026-07-12-r229`.
 
 ---
