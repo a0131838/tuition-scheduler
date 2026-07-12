@@ -156,7 +156,7 @@
 - Evidence: the real parent audit recorded request `accept` and invoice `accept`, but finance and receipt were missing from the callback on repeated grouped attempts.
 - Parent experience: keep the three-template course button, then show separate buttons for request status, unpaid, invoice, and receipt reminders.
 - Safety: no server delivery, queue, business data, permission, or cron changes.
-- Validation: miniapp JavaScript syntax, diff check, and local/production 186-page builds passed. Production `60fe07f` is healthy with 101 migrations current and one cron. Independent authorization produced accepted quota for all four templates; four marked test notifications each reached `SENT` with no retry or failure. Phone display confirmation is the final human check.
+- Validation: miniapp JavaScript syntax, diff check, and local/production 186-page builds passed. Production `60fe07f` is healthy with 101 migrations current and one cron. Independent authorization produced accepted quota for all four templates; four marked test notifications each reached `SENT` with no retry or failure. Phone screenshots confirm all four cards and their expected fields rendered correctly in WeChat service notifications.
 
 ## 2026-07-12-r231 Live
 

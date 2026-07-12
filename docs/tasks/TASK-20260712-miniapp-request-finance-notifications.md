@@ -75,3 +75,4 @@ Complete one production-ready WeChat subscription-message block for parent reque
 - Four `MiniappNotificationTest` rows, clearly labeled as system tests and not backed by business documents, were queued for the linked test student.
 - The production sender scanned 6 rows, sent the 4 controlled tests, left 2 unrelated no-consent rows waiting, and recorded zero retries, failures, or skips.
 - All four controlled rows persist as `SENT` with the exact delivered template ID.
+- Zhao confirmed all four cards in WeChat service notifications with screenshots: service handling result, order payment reminder, service completion, and service-fee receipt confirmation all show their expected values without missing or misplaced fields.
