@@ -11,6 +11,8 @@ Page({
     coordinationCount: 0,
     coordinationOverdueCount: 0,
     canManageCoordination: false,
+    reminderAttentionCount: 0,
+    canViewReminderAttention: false,
     loading: false
   },
 
@@ -63,7 +65,11 @@ Page({
       }))
       .catch(() => this.setData({ canManageCoordination: false, coordinationCount: 0, coordinationOverdueCount: 0 }));
 
-    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask])
+    const reminderTask = api.requestStaff("/api/miniapp/staff/reminder-attention", { timeout: 12000 })
+      .then((data) => this.setData({ canViewReminderAttention: true, reminderAttentionCount: data.total || 0 }))
+      .catch(() => this.setData({ canViewReminderAttention: false, reminderAttentionCount: 0 }));
+
+    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask, reminderTask])
       .finally(() => this.setData({ loading: false }));
   },
 
@@ -81,6 +87,10 @@ Page({
 
   goCoordination() {
     wx.navigateTo({ url: "/pages/staff-coordination/staff-coordination" });
+  },
+
+  goReminderAttention() {
+    wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" });
   },
 
   logout() {

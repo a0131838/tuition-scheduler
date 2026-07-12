@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export type CourseTemplateKind = "course" | "class" | "start";
 
-type CourseTemplate = { kind: CourseTemplateKind; templateId: string };
+export type CourseTemplate = { kind: CourseTemplateKind; templateId: string };
+
+type SubscriptionAudit = { metaJson: unknown };
+type SentCourseNotification = { templateKey: string; payloadJson: unknown };
 
 function clean(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max) || "-";
@@ -35,6 +38,43 @@ export function countAcceptedTemplate(audits: Array<{ metaJson: unknown }>, temp
   }, 0);
 }
 
+export function summarizeCourseTemplateQuota(
+  templates: CourseTemplate[],
+  audits: SubscriptionAudit[],
+  sentRows: SentCourseNotification[]
+) {
+  const byTemplate = templates.map((template) => {
+    const accepted = countAcceptedTemplate(audits, template.templateId);
+    const consumed = sentRows.filter((row) => {
+      const payload = row.payloadJson && typeof row.payloadJson === "object" ? (row.payloadJson as any) : null;
+      if (payload?.deliveredTemplateId) return payload.deliveredTemplateId === template.templateId;
+      return row.templateKey === "course_reminder_test" && template.kind === "course";
+    }).length;
+    return { ...template, accepted, consumed, available: Math.max(0, accepted - consumed) };
+  });
+  return {
+    acceptedCount: byTemplate.reduce((sum, item) => sum + item.accepted, 0),
+    consumedCount: byTemplate.reduce((sum, item) => sum + item.consumed, 0),
+    availableCount: byTemplate.reduce((sum, item) => sum + item.available, 0),
+    byTemplate,
+  };
+}
+
+export async function courseReminderQuota(parentId: string) {
+  const templates = courseTemplates();
+  const [audits, sentRows] = await Promise.all([
+    prisma.parentPortalAudit.findMany({
+      where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: "course" },
+      select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
+    }),
+    prisma.miniappNotificationOutbox.findMany({
+      where: { parentId, status: "SENT", eventType: { in: ["COURSE_REMINDER", "COURSE_REMINDER_TEST"] } },
+      select: { templateKey: true, payloadJson: true }, take: 500,
+    }),
+  ]);
+  return summarizeCourseTemplateQuota(templates, audits, sentRows);
+}
+
 export function buildCourseReminderData(kind: CourseTemplateKind, payload: unknown) {
   const value = payload && typeof payload === "object" ? (payload as any) : {};
   const courseName = value.courseName || value.courseLabel;
@@ -60,25 +100,8 @@ export function buildCourseReminderData(kind: CourseTemplateKind, payload: unkno
 }
 
 export async function availableCourseTemplate(parentId: string) {
-  const templates = courseTemplates();
-  const audits = await prisma.parentPortalAudit.findMany({
-    where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: "course" },
-    select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
-  });
-  const sentRows = await prisma.miniappNotificationOutbox.findMany({
-    where: { parentId, status: "SENT", eventType: { in: ["COURSE_REMINDER", "COURSE_REMINDER_TEST"] } },
-    select: { templateKey: true, payloadJson: true }, take: 500,
-  });
-  for (const template of templates) {
-    const accepted = countAcceptedTemplate(audits, template.templateId);
-    const consumed = sentRows.filter((row) => {
-      const payload = row.payloadJson && typeof row.payloadJson === "object" ? (row.payloadJson as any) : null;
-      if (payload?.deliveredTemplateId) return payload.deliveredTemplateId === template.templateId;
-      return row.templateKey === "course_reminder_test" && template.kind === "course";
-    }).length;
-    if (accepted > consumed) return template;
-  }
-  return null;
+  const quota = await courseReminderQuota(parentId);
+  return quota.byTemplate.find((template) => template.available > 0) ?? null;
 }
 
 async function accessToken() {

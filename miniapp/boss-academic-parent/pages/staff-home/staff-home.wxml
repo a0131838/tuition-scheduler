@@ -29,6 +29,14 @@
     <view class="arrow">›</view>
   </view>
 
+  <view class="card work-card" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
+    <view>
+      <view class="label">待补课程提醒</view>
+      <view class="value">{{reminderAttentionCount}} 位家长需补授权</view>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+
   <view class="card work-card" bindtap="goNewRequest">
     <view>
       <view class="label">代录工单</view>

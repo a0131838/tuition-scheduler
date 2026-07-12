@@ -16,6 +16,40 @@
   margin-top: 16rpx;
 }
 
+.reminder-status {
+  margin-top: 12rpx;
+}
+
+.coverage-list {
+  margin-top: 16rpx;
+  border-top: 1rpx solid #e1e7dc;
+}
+
+.coverage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid #e1e7dc;
+  font-size: 25rpx;
+}
+
+.coverage-main {
+  min-width: 0;
+}
+
+.coverage-state {
+  flex: 0 0 auto;
+  color: #17603a;
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.coverage-state.needs-consent {
+  color: #a33a2b;
+}
+
 .reminder-button {
   background: #edf2ea;
   border-radius: 8rpx;

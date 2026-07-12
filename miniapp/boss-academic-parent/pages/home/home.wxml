@@ -47,7 +47,20 @@
 
   <view class="notification-band" wx:if="{{hasSubscriptionGroups}}">
     <view class="label">微信提醒</view>
-    <view class="subtitle">按需开启课程、请求和财务进度提醒。</view>
+    <view class="reminder-status" wx:if="{{courseReminder}}">
+      <view class="value">{{courseReminder.availableCount}} 条课程提醒额度</view>
+      <view class="subtitle">{{courseReminder.summaryText}}</view>
+      <view class="coverage-list" wx:if="{{courseReminder.selectedStudentSessions.length}}">
+        <view class="coverage-row" wx:for="{{courseReminder.selectedStudentSessions}}" wx:key="sessionId">
+          <view class="coverage-main">
+            <view>{{item.startText}}</view>
+            <view class="label">{{item.courseLabel}}</view>
+          </view>
+          <view class="coverage-state {{item.reminderStatus === 'NEEDS_CONSENT' ? 'needs-consent' : ''}}">{{item.reminderStatusLabel}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="subtitle" wx:else>按需开启课程、请求和财务进度提醒。</view>
     <view class="notification-actions">
       <button class="reminder-button" wx:for="{{subscriptionGroups}}" wx:key="key" data-key="{{item.key}}" disabled="{{subscriptionLoading}}" bindtap="requestSubscription">{{item.label}}</button>
     </view>

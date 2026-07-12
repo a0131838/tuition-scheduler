@@ -15,6 +15,7 @@ type NotificationRow = {
   parent: { name: string | null; phone: string | null; wechatOpenId: string | null; status: string };
   student: { name: string; school: string | null; grade: string | null } | null;
   payloadJson: unknown;
+  attentionReason: string | null;
 };
 
 type NotificationConfiguration = {
@@ -25,7 +26,16 @@ type NotificationConfiguration = {
   templates: Array<{ key: string; envKey: string; configured: boolean }>;
 };
 
-const statuses = ["PENDING", "PROCESSING", "SENT", "FAILED", "SKIPPED", "ALL"];
+const statuses = ["WAITING_CONSENT", "PENDING", "PROCESSING", "SENT", "FAILED", "SKIPPED", "ALL"];
+const statusLabels: Record<string, string> = {
+  WAITING_CONSENT: "待家长授权",
+  PENDING: "待发送",
+  PROCESSING: "发送中",
+  SENT: "已发送",
+  FAILED: "失败",
+  SKIPPED: "已跳过",
+  ALL: "全部",
+};
 
 const buttonStyle: React.CSSProperties = {
   border: "1px solid #cbd5e1",
@@ -37,14 +47,14 @@ const buttonStyle: React.CSSProperties = {
 };
 
 export default function MiniappNotificationsClient() {
-  const [status, setStatus] = useState("PENDING");
+  const [status, setStatus] = useState("WAITING_CONSENT");
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [configuration, setConfiguration] = useState<NotificationConfiguration | null>(null);
 
-  const total = useMemo(() => Object.values(summary).reduce((sum, n) => sum + n, 0), [summary]);
+  const total = useMemo(() => Object.entries(summary).reduce((sum, [key, n]) => key === "WAITING_CONSENT" ? sum : sum + n, 0), [summary]);
 
   async function load(nextStatus = status) {
     setLoading(true);
@@ -126,7 +136,7 @@ export default function MiniappNotificationsClient() {
                 borderColor: status === item ? "#3730a3" : "#cbd5e1",
               }}
             >
-              {item} ({item === "ALL" ? total : summary[item] || 0})
+              {statusLabels[item]} ({item === "ALL" ? total : summary[item] || 0})
             </button>
           ))}
         </div>
@@ -187,6 +197,11 @@ export default function MiniappNotificationsClient() {
               </div>
             </div>
             {row.error ? <div style={{ color: "#b91c1c", fontSize: 13 }}>错误/备注：{row.error}</div> : null}
+            {row.attentionReason === "WAITING_CONSENT" ? (
+              <div style={{ borderTop: "1px solid #fed7aa", paddingTop: 10, color: "#9a3412", fontSize: 13 }}>
+                该课程已到提醒时间，但家长没有剩余授权额度。请通过微信群提醒家长打开小程序再次开启课程提醒。
+              </div>
+            ) : null}
           </div>
         ))}
       </section>

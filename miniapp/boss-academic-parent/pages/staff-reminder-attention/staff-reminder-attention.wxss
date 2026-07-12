@@ -1,0 +1,45 @@
+.reminder-card {
+  margin-top: 16rpx;
+  padding: 22rpx;
+  background: #fff;
+  border: 1rpx solid #dce5d8;
+  border-radius: 8rpx;
+}
+
+.student {
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.parent,
+.teacher {
+  margin-top: 6rpx;
+  color: #68766b;
+  font-size: 24rpx;
+}
+
+.course {
+  margin-top: 18rpx;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.instruction {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e4eadf;
+  color: #8a3a28;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.phone-button {
+  flex: 0 0 auto;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  border-radius: 8rpx;
+  background: #22324a;
+  color: #fff;
+  font-size: 24rpx;
+}

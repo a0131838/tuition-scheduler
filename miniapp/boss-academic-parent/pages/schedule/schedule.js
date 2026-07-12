@@ -3,7 +3,10 @@ const api = require("../../utils/api");
 Page({
   data: {
     studentName: "",
-    sessions: []
+    sessions: [],
+    courseReminder: null,
+    courseGroup: null,
+    subscriptionLoading: false
   },
 
   onShow() {
@@ -18,8 +21,48 @@ Page({
     const studentId = api.requireStudentPage();
     if (!studentId) return Promise.resolve();
     this.setData({ studentName: getApp().globalData.currentStudentName || "当前学生" });
-    return api.request(`/api/miniapp/students/${studentId}/schedule`)
-      .then((data) => this.setData({ sessions: data.sessions || [] }))
+    const scheduleTask = api.request(`/api/miniapp/students/${studentId}/schedule`);
+    const reminderTask = api.request(`/api/miniapp/subscriptions/intent?studentId=${encodeURIComponent(studentId)}`);
+    return Promise.all([scheduleTask, reminderTask])
+      .then(([schedule, reminder]) => {
+        const courseReminder = reminder.courseReminder || null;
+        const statusBySession = {};
+        ((courseReminder && courseReminder.selectedStudentSessions) || []).forEach((item) => {
+          statusBySession[item.sessionId] = item;
+        });
+        const sessions = (schedule.sessions || []).map((item) => Object.assign({}, item, {
+          reminderStatus: statusBySession[item.id] ? statusBySession[item.id].reminderStatus : "",
+          reminderStatusLabel: statusBySession[item.id] ? statusBySession[item.id].reminderStatusLabel : ""
+        }));
+        this.setData({
+          sessions,
+          courseReminder,
+          courseGroup: (reminder.groups || []).find((item) => item.key === "course" && item.configured) || null
+        });
+      })
       .catch((err) => api.toast(err.message));
+  },
+
+  requestCourseReminder() {
+    const group = this.data.courseGroup;
+    if (!group || !group.templateIds || !group.templateIds.length || this.data.subscriptionLoading) return;
+    this.setData({ subscriptionLoading: true });
+    wx.requestSubscribeMessage({
+      tmplIds: group.templateIds.slice(0, 3),
+      success: (result) => {
+        api.request("/api/miniapp/subscriptions/intent", {
+          method: "POST",
+          data: { groupKey: "course", studentId: api.currentStudentId(), result }
+        }).then((data) => {
+          api.toast(data.message || "提醒设置已记录");
+          return this.load();
+        }).catch((err) => api.toast(err.message))
+          .finally(() => this.setData({ subscriptionLoading: false }));
+      },
+      fail: (err) => {
+        api.toast(err.errMsg || "未能打开提醒授权");
+        this.setData({ subscriptionLoading: false });
+      }
+    });
   }
 });

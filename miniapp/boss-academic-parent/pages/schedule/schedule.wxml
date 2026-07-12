@@ -5,11 +5,20 @@
     <view class="subtitle">显示近期课程与出勤状态。</view>
   </view>
 
+  <view class="reminder-band" wx:if="{{courseReminder}}">
+    <view>
+      <view class="label">微信课程提醒</view>
+      <view class="value">剩余 {{courseReminder.availableCount}} 条额度</view>
+      <view class="subtitle">{{courseReminder.summaryText}}</view>
+    </view>
+    <button class="reminder-action" wx:if="{{courseGroup}}" disabled="{{subscriptionLoading}}" bindtap="requestCourseReminder">{{courseGroup.label}}</button>
+  </view>
+
   <block wx:if="{{sessions.length}}">
     <view wx:for="{{sessions}}" wx:key="id" class="card">
       <view class="row">
         <view class="value">{{item.startText}}</view>
-        <view class="pill">{{item.attendanceStatus || "待上课"}}</view>
+        <view class="pill">{{item.reminderStatusLabel || item.attendanceStatus || "待上课"}}</view>
       </view>
       <view class="subtitle">{{item.courseLabel}}</view>
       <view class="label">{{item.teacherName || "老师未定"}} · {{item.mode === "ONLINE" ? "线上" : "线下"}} · {{item.campusName || ""}} {{item.roomName || ""}}</view>

@@ -1,3 +1,25 @@
 .label {
   margin-top: 12rpx;
 }
+.reminder-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18rpx;
+  align-items: center;
+  margin: 8rpx 0 22rpx;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #dce5d8;
+  border-bottom: 1rpx solid #dce5d8;
+}
+
+.reminder-action {
+  margin: 0;
+  max-width: 260rpx;
+  min-height: 72rpx;
+  padding: 0 18rpx;
+  border-radius: 8rpx;
+  background: #123524;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}

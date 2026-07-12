@@ -8,6 +8,7 @@ Page({
     financeSummary: {},
     requestSummary: {},
     subscriptionGroups: [],
+    courseReminder: null,
     hasSubscriptionGroups: false,
     subscriptionLoadingKey: "",
     subscriptionLoading: false
@@ -35,12 +36,12 @@ Page({
         });
       })
       .catch((err) => api.toast(err.message));
-    const subscriptionTask = api.request("/api/miniapp/subscriptions/intent")
+    const subscriptionTask = api.request(`/api/miniapp/subscriptions/intent?studentId=${encodeURIComponent(studentId)}`)
       .then((data) => {
         const groups = (data.groups || []).filter((group) => group.configured);
-        this.setData({ subscriptionGroups: groups, hasSubscriptionGroups: groups.length > 0 });
+        this.setData({ subscriptionGroups: groups, courseReminder: data.courseReminder || null, hasSubscriptionGroups: groups.length > 0 });
       })
-      .catch(() => this.setData({ subscriptionGroups: [], hasSubscriptionGroups: false }));
+      .catch(() => this.setData({ subscriptionGroups: [], courseReminder: null, hasSubscriptionGroups: false }));
     return Promise.allSettled([homeTask, subscriptionTask]);
   },
 
@@ -64,8 +65,12 @@ Page({
     wx.requestSubscribeMessage({
       tmplIds: group.templateIds.slice(0, 3),
       success: (result) => {
-        api.request("/api/miniapp/subscriptions/intent", { method: "POST", data: { groupKey: key, result } })
-          .then((data) => api.toast(data.message || "提醒设置已记录"))
+        const studentId = api.currentStudentId();
+        api.request("/api/miniapp/subscriptions/intent", { method: "POST", data: { groupKey: key, studentId, result } })
+          .then((data) => {
+            if (data.courseReminder) this.setData({ courseReminder: data.courseReminder });
+            api.toast(data.message || "提醒设置已记录");
+          })
           .catch((err) => api.toast(err.message))
           .finally(() => this.setData({ subscriptionLoadingKey: "", subscriptionLoading: false }));
       },

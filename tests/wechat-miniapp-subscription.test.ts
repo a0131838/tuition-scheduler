@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCourseReminderData, countAcceptedTemplate } from "@/lib/wechat-miniapp-subscription";
+import { buildCourseReminderData, countAcceptedTemplate, summarizeCourseTemplateQuota } from "@/lib/wechat-miniapp-subscription";
 
 test("buildCourseReminderData maps the appointment template", () => {
   assert.deepEqual(buildCourseReminderData("course", { courseName: "English", subjectName: "Grammar", teacherName: "Eva", startAt: "2026-07-13T01:00:00.000Z" }), {
@@ -27,4 +27,27 @@ test("countAcceptedTemplate counts only matching accepted IDs", () => {
     { metaJson: { acceptedTemplateIds: ["other"] } },
     { metaJson: null },
   ], "course"), 1);
+});
+
+test("summarizeCourseTemplateQuota keeps template quotas independent", () => {
+  const templates = [
+    { kind: "course" as const, templateId: "course-id" },
+    { kind: "class" as const, templateId: "class-id" },
+    { kind: "start" as const, templateId: "start-id" },
+  ];
+  const quota = summarizeCourseTemplateQuota(
+    templates,
+    [
+      { metaJson: { acceptedTemplateIds: ["course-id", "class-id", "start-id"] } },
+      { metaJson: { acceptedTemplateIds: ["course-id"] } },
+    ],
+    [
+      { templateKey: "course_reminder_24h", payloadJson: { deliveredTemplateId: "course-id" } },
+      { templateKey: "course_reminder_24h", payloadJson: { deliveredTemplateId: "class-id" } },
+    ]
+  );
+  assert.equal(quota.acceptedCount, 4);
+  assert.equal(quota.consumedCount, 2);
+  assert.equal(quota.availableCount, 2);
+  assert.deepEqual(quota.byTemplate.map((item) => item.available), [1, 0, 1]);
 });

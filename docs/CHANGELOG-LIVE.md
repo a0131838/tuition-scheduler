@@ -15,6 +15,31 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r230
+
+- Release ID: `2026-07-12-r230`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: show family-shared course-reminder quota and next-three-lesson coverage to parents, add a natural reauthorization action on the schedule, and expose due reminders without consent to admin and permitted staff mobile users.
+- Key files:
+  - `lib/wechat-miniapp-subscription.ts`
+  - `lib/miniapp-course-reminder-coverage.ts`
+  - `lib/miniapp-reminder-attention.ts`
+  - `app/api/miniapp/subscriptions/intent/route.ts`
+  - `app/api/miniapp/staff/reminder-attention/route.ts`
+  - `app/api/admin/miniapp-notifications/route.ts`
+  - `app/admin/miniapp-notifications/MiniappNotificationsClient.tsx`
+  - `miniapp/boss-academic-parent/pages/home/*`
+  - `miniapp/boss-academic-parent/pages/schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-reminder-attention/*`
+  - `tests/wechat-miniapp-subscription.test.ts`
+  - `docs/tasks/TASK-20260712-miniapp-reminder-coverage-and-attention.md`
+- Risk impact (if any): Low to medium and read-focused. Quota and coverage are derived from existing consent audits, successful sends, linked students, and future Sessions. The new staff list is read-only and restricted to ADMIN, CS, or active CS-workspace users. Sending, scheduling, package, attendance, finance, Ticket, and payroll writes are unchanged.
+- Verification: TypeScript, four quota/mapping tests, miniapp JavaScript/JSON syntax, diff check, and full production build passed. Read-only real-data verification reports 8 accepted, 4 consumed, 4 available, the test Session as `SENT`, and zero current consent-attention rows.
+- Rollback point: `2026-07-12-r229`.
+
+---
+
 ## 2026-07-12-r229
 
 - Release ID: `2026-07-12-r229`

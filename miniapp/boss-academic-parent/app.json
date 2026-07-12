@@ -8,6 +8,7 @@
     "pages/staff-session-detail/staff-session-detail",
     "pages/staff-coordination/staff-coordination",
     "pages/staff-coordination-detail/staff-coordination-detail",
+    "pages/staff-reminder-attention/staff-reminder-attention",
     "pages/staff-requests/staff-requests",
     "pages/staff-request-detail/staff-request-detail",
     "pages/staff-request-new/staff-request-new",
