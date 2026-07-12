@@ -24,4 +24,11 @@ Automatically send the verified WeChat course template 24 hours before a lesson 
 
 - Unit tests cover official field mapping and accepted-template counting.
 - TypeScript, shell syntax, diff, and full Next.js build checks pass.
-- Production cron, no-duplicate queue behavior, consent gating, PM2, and HTTP health require post-deploy verification.
+- Production cron, no-duplicate queue behavior, consent gating, PM2, and HTTP health checks pass.
+
+## Production Result
+
+- Deployed at commit `7aca10c`; PM2 is online and `https://sgtmanage.com/admin/login` returns 200.
+- Manual queue execution scanned 11 upcoming sessions and queued 0 because none currently matched a parent-linked reminder target in the window.
+- Manual sender execution scanned and sent 0, confirming the previously consumed smoke-test consent was not reused.
+- The combined queue/send cron is installed exactly once and runs every five minutes.
