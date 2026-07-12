@@ -11,7 +11,7 @@
     "packNpmManually": false,
     "compileWorklet": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
     "minifyWXML": true,
@@ -28,7 +28,7 @@
     }
   },
   "compileType": "miniprogram",
-  "libVersion": "latest",
+  "libVersion": "3.15.2",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",

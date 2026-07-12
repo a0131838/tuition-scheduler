@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r234
+
+- Release ID: `2026-07-12-r234`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: harden the native miniapp for WeChat review by disabling tracked mock login, pinning the verified base library, disabling source-map upload, adding a repeatable release audit, and producing the privacy/reviewer/upload/submission checklist for version 1.0.0.
+- Key files:
+  - `miniapp/boss-academic-parent/utils/config.js`
+  - `miniapp/boss-academic-parent/project.config.json`
+  - `miniapp/boss-academic-parent/README.md`
+  - `scripts/audit-miniapp-release.ts`
+  - `docs/小程序正式发布准备与审核清单-20260712.md`
+  - `docs/tasks/TASK-20260712-miniapp-release-readiness.md`
+- Risk impact (if any): Low. This release changes miniapp packaging/review defaults and documentation only. Production API, parent/staff authentication, business routes, database, notification delivery, and server runtime are unchanged. Developers must explicitly make any temporary local mock change and restore it before upload.
+- Verification: automated release audit passes with AppID correct, 21 complete pages, base library 3.15.2, production HTTPS API, URL checking on, source maps off, mock login off, and zero errors. Miniapp JavaScript/JSON syntax, TypeScript, diff checks, exact planning-document sync, and the full 186-page production build also pass. Experience-version parent/staff regression remains after upload.
+- Rollback point: `2026-07-12-r233`.
+
+---
+
 ## 2026-07-12-r233
 
 - Release ID: `2026-07-12-r233`

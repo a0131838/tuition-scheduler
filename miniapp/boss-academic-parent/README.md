@@ -41,16 +41,23 @@ npm run dev
 
 ## 登录说明
 
-`utils/config.js` 里默认开启：
+正式版本的 `utils/config.js` 默认关闭 mock 登录：
 
 ```js
-devMockOpenId: "dev-parent-openid"
+devMockOpenId: "",
+devMockStaffOpenId: ""
 ```
 
-这只用于本地开发。后端生产环境会忽略 mockOpenId，正式上线前需要配置：
+需要本地 mock 时只可在未提交的本地副本中临时填写，上传审核前必须恢复为空。生产后端也会忽略 mockOpenId。正式环境需要配置：
 
 - `WECHAT_MINIAPP_APPID`
 - `WECHAT_MINIAPP_SECRET`
+
+上传前在主系统目录运行：
+
+```bash
+npm run miniapp:audit-release
+```
 
 ## 当前页面
 

@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r233`. First-publication after-class feedback notifications passed independent consent, production delivery, and real-phone display verification.
+- Current production release: `2026-07-12-r233`. Release `2026-07-12-r234` is ready to prepare the native miniapp `1.0.0` review build.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Miniapp review-readiness risk: the code is hardened, but privacy contact/retention details and WeChat backend screenshots still require Zhao input before submitting 1.0.0. Do not submit with invented retention promises or a reviewer path that exposes real student data.
 - Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.
 - Service-consent UI risk: WeChat returned only the first ID from each two-template service/document request even when the parent allowed the displayed option. `2026-07-12-r232` changes these to four one-template buttons; verify finance and receipt each record one `accept` after deployment.
 - Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
@@ -150,6 +151,15 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-12-r234 Ready
+
+- Scope: convert the tested miniapp source into a repeatable WeChat review build.
+- Code: mock OpenIDs empty, base library pinned to 3.15.2, source maps disabled, production HTTPS and URL checking retained.
+- Audit: add `npm run miniapp:audit-release` for AppID/config/page completeness and release-safety checks.
+- Compliance: document actual data processing, unused sensitive APIs, privacy fields requiring owner input, and reviewer access using non-real test data.
+- Operations: document upload, experience-version regression, audit submission, publishing, monitoring, Emily binding, and cleanup.
+- Remaining external work: privacy contact/address/retention decisions plus WeChat backend basic-info, certification/filing, domain, and privacy-guide confirmation.
 
 ## 2026-07-12-r233 Live
 
