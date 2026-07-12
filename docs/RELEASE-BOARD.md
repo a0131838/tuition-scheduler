@@ -160,6 +160,7 @@
 - Compliance: document actual data processing, unused sensitive APIs, privacy fields requiring owner input, and reviewer access using non-real test data.
 - Operations: document upload, experience-version regression, audit submission, publishing, monitoring, Emily binding, and cleanup.
 - Remaining external work: privacy contact/address/retention decisions plus WeChat backend basic-info, certification/filing, domain, and privacy-guide confirmation.
+- Privacy intake update: contact and registered address are complete. Indefinite retention with optional super-admin deletion is recorded only as an initial preference; code inspection shows ticket files, finance history, and audit logs do not currently share a universal hard-delete path, so final retention wording still requires minimum-necessary periods and accounting classification.
 
 ## 2026-07-12-r233 Live
 

@@ -29,6 +29,7 @@ This file is the single source of truth for what changed in production.
   - `docs/小程序正式发布准备与审核清单-20260712.md`
   - `docs/tasks/TASK-20260712-miniapp-release-readiness.md`
 - Risk impact (if any): Low. This release changes miniapp packaging/review defaults and documentation only. Production API, parent/staff authentication, business routes, database, notification delivery, and server runtime are unchanged. Developers must explicitly make any temporary local mock change and restore it before upload.
+- Privacy intake: contact owner, email, phone, and registered address are confirmed. The owner's initial indefinite-retention preference is recorded but is not approved as submitted wording because code review found no universal physical-file/finance/audit hard-delete path; minimum-necessary business/upload periods and accounting-record classification remain release gates.
 - Verification: automated release audit passes with AppID correct, 21 complete pages, base library 3.15.2, production HTTPS API, URL checking on, source maps off, mock login off, and zero errors. Miniapp JavaScript/JSON syntax, TypeScript, diff checks, exact planning-document sync, and the full 186-page production build also pass. Experience-version parent/staff regression remains after upload.
 - Rollback point: `2026-07-12-r233`.
 

@@ -33,10 +33,14 @@ Turn the working parent/staff miniapp into a repeatable review-ready build by re
 
 ## External Inputs
 
-- Privacy contact name, email, and phone.
-- Registered company address.
-- Confirmed retention periods for service data, uploaded files, finance documents, and audit records.
+- [x] Privacy contact: Zhao Hongwei / 赵宏伟, `zhaohongwei0880@163.com`, `19117252846`.
+- [x] Registered company address: 上海市宝山区潘泾路5777弄188号3层.
+- [ ] Confirm a minimum-necessary retention period for parent/student service data.
+- [ ] Confirm ticket-attachment retention and implement physical-file deletion with ticket deletion.
+- [ ] Have finance/accounting classify invoices, receipts, payment records, and audit records before assigning statutory retention periods.
 - Current certification, filing, privacy-guide, and basic-info screenshots from the WeChat backend.
+
+The initial owner preference was indefinite retention with optional super-admin deletion. Code review found that this is not yet a truthful system-wide statement: ticket deletion leaves stored files, student deletion is not strict-super-admin-only, and finance/audit history has no universal hard-delete path. Keep that preference as an internal note, not as the submitted privacy wording.
 
 ## Verification
 
