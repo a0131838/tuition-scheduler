@@ -24,4 +24,11 @@ Reduce parent authorization frequency by requesting three legitimate course-remi
 - WeChat `gettemplate` confirmed the exact selected fields for both new template IDs.
 - Unit tests cover all three official payload mappings.
 - TypeScript, diff, deploy shell syntax, and full Next.js build checks pass.
-- Production configuration, joint consent, and one-message smoke checks remain for post-deploy verification.
+- Production configuration and cron checks pass; joint real-device consent remains for user verification.
+
+## Production Result
+
+- Deployed at commit `884e945`; PM2 is online and `https://sgtmanage.com/admin/login` returns 200.
+- Runtime reports three configured course templates and the parent label `开启未来 3 节课提醒`.
+- The existing five-minute course-reminder cron remains installed exactly once.
+- Final acceptance requires Zhao to recompile the miniapp, accept the joint prompt, and confirm the audit contains three accepted template IDs.
