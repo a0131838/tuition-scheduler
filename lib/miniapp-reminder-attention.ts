@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { availableCourseTemplate } from "@/lib/wechat-miniapp-subscription";
 import { availableServiceTemplate } from "@/lib/wechat-miniapp-service-subscription";
 
-const SUPPORTED_KEYS = ["course_reminder_24h", "request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued"];
+const SUPPORTED_KEYS = ["course_reminder_24h", "request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued", "feedback_published"];
 
 export async function listMiniappConsentAttention(limit = 200) {
   const candidates = await prisma.miniappNotificationOutbox.findMany({

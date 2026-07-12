@@ -5,7 +5,7 @@ import {
   servicePayloadWithDeliveredTemplate,
 } from "@/lib/wechat-miniapp-service-subscription";
 
-const TEMPLATE_KEYS = ["request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued"];
+const TEMPLATE_KEYS = ["request_status_changed", "finance_unpaid", "invoice_issued", "receipt_issued", "feedback_published"];
 
 function attemptNumber(error: string | null) {
   return Number(error?.match(/^attempt=(\d+)/)?.[1] ?? 0) + 1;

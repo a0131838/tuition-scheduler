@@ -3,13 +3,13 @@ import { miniappRequestStatusLabel } from "@/lib/miniapp-parent-requests";
 import { countAcceptedTemplate } from "@/lib/wechat-miniapp-subscription";
 import { prisma } from "@/lib/prisma";
 
-export type ServiceNotificationKind = "request" | "finance" | "invoice" | "receipt";
+export type ServiceNotificationKind = "request" | "finance" | "invoice" | "receipt" | "feedback";
 
 type ServiceTemplateDefinition = {
   kind: ServiceNotificationKind;
   templateKey: string;
   templateId: string;
-  groupKey: "service" | "documents";
+  groupKey: "service" | "documents" | "learning";
   page: (payload: Record<string, unknown>) => string;
 };
 
@@ -53,8 +53,24 @@ export function serviceTemplateDefinitions(): ServiceTemplateDefinition[] {
       templateId: String(process.env.WECHAT_TEMPLATE_RECEIPT_ISSUED ?? "").trim(),
       page: () => "/pages/finance/finance",
     },
+    {
+      kind: "feedback", templateKey: "feedback_published", groupKey: "learning",
+      templateId: String(process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED ?? "").trim(),
+      page: () => "/pages/feedbacks/feedbacks",
+    },
   ];
   return definitions.filter((item) => Boolean(item.templateId));
+}
+
+export function serviceConsentGroupKeys(templateKey: string) {
+  const definitions = serviceTemplateDefinitions();
+  const template = definitions.find((item) => item.templateKey === templateKey);
+  if (!template) return [];
+  return Array.from(new Set(
+    definitions
+      .filter((item) => item.templateId === template.templateId)
+      .map((item) => item.groupKey)
+  ));
 }
 
 export function buildServiceNotificationData(kind: ServiceNotificationKind, payload: unknown) {
@@ -81,6 +97,13 @@ export function buildServiceNotificationData(kind: ServiceNotificationKind, payl
       thing3: { value: clean(value.note || `发票号 ${value.invoiceNo || ""}`, 20) },
     };
   }
+  if (kind === "feedback") {
+    return {
+      thing1: { value: "课后反馈" },
+      time2: { value: singaporeDateTime(value.submittedAt) },
+      thing3: { value: clean(`${value.studentName || "学员"}反馈已发布`, 20) },
+    };
+  }
   return {
     thing1: { value: clean(value.studentName, 20, "学员") },
     amount2: { value: amount(value.amountReceived) },
@@ -92,9 +115,10 @@ export function buildServiceNotificationData(kind: ServiceNotificationKind, payl
 export async function availableServiceTemplate(parentId: string, templateKey: string) {
   const template = serviceTemplateDefinitions().find((item) => item.templateKey === templateKey);
   if (!template) return null;
+  const consentGroupKeys = serviceConsentGroupKeys(templateKey);
   const [audits, sentRows] = await Promise.all([
     prisma.parentPortalAudit.findMany({
-      where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: template.groupKey },
+      where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: { in: consentGroupKeys } },
       select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
     }),
     prisma.miniappNotificationOutbox.findMany({

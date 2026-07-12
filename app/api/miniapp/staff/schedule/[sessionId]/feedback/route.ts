@@ -9,6 +9,7 @@ import {
   parseParentFeedbackSections,
 } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
+import { queueFirstPublishedFeedback } from "@/lib/miniapp-feedback-notification";
 
 function previousHomeworkValue(value: boolean | null | undefined) {
   if (value === true) return "yes";
@@ -114,7 +115,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
     `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
-  await prisma.sessionFeedback.upsert({
+  const existingFeedback = session.feedbacks[0] ?? null;
+  const savedFeedback = await prisma.sessionFeedback.upsert({
     where: { sessionId_teacherId: { sessionId, teacherId: auth.user.teacherId } },
     update: {
       content,
@@ -147,6 +149,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sessionId: str
       submittedAt: now,
     },
   });
+  if (!existingFeedback) {
+    await queueFirstPublishedFeedback({
+      sessionId,
+      feedbackId: savedFeedback.id,
+      submittedAt: now,
+    }).catch(() => null);
+  }
 
   return ok({
     status,

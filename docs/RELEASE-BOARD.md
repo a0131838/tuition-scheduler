@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r232`. Four independent service/document consent actions are live and all four official templates passed production delivery.
+- Current production release: `2026-07-12-r232`. Release `2026-07-12-r233` is ready to add first-publication after-class feedback notifications.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
+- Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication and pools consent with invoice completion because both use the same official template ID. Verify the first real feedback and confirm edits do not enqueue duplicates.
 - Service-consent UI risk: WeChat returned only the first ID from each two-template service/document request even when the parent allowed the displayed option. `2026-07-12-r232` changes these to four one-template buttons; verify finance and receipt each record one `accept` after deployment.
 - Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
 - Reminder-coverage rollout risk: `2026-07-12-r230` derives a parent's shared quota across every linked student and assigns it to the earliest future lessons for display. The staff attention list is read-only and permission-restricted; verify the first multi-student family and first no-consent reminder after release.
@@ -149,6 +150,16 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-12-r233 Ready
+
+- Scope: close the parent after-class feedback notification loop.
+- Template decision: no dedicated template exists in category 590; use the semantically valid existing `服务完成通知`, with `课后反馈` as the service name, rather than misusing report or material templates.
+- Event behavior: desktop and staff-miniapp teacher routes queue only the first publication for every student attached to the lesson.
+- Consent behavior: parent home adds `开启课后反馈提醒`; invoice and feedback pool accepted and consumed quota by their shared official template ID.
+- Staff behavior: web and mobile attention lists expose feedback rows waiting for consent.
+- Safety: best-effort notification only, no feedback edit spam, no schema or business workflow change.
+- Validation: TypeScript, mapping/shared-quota tests, miniapp/shell syntax, diff check, full build, deployment, then real-phone consent and display verification.
 
 ## 2026-07-12-r232 Live
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCourseReminderData, countAcceptedTemplate, summarizeCourseTemplateQuota } from "@/lib/wechat-miniapp-subscription";
-import { buildServiceNotificationData } from "@/lib/wechat-miniapp-service-subscription";
+import { buildServiceNotificationData, serviceConsentGroupKeys } from "@/lib/wechat-miniapp-service-subscription";
 
 test("buildCourseReminderData maps the appointment template", () => {
   assert.deepEqual(buildCourseReminderData("course", { courseName: "English", subjectName: "Grammar", teacherName: "Eva", startAt: "2026-07-13T01:00:00.000Z" }), {
@@ -88,4 +88,27 @@ test("buildServiceNotificationData maps finance and document fields", () => {
     thing3: { value: "博思教育" },
     time5: { value: "2026-07-12 12:00:00" },
   });
+  assert.deepEqual(buildServiceNotificationData("feedback", {
+    studentName: "Amy", submittedAt: "2026-07-12T04:00:00.000Z",
+  }), {
+    thing1: { value: "课后反馈" },
+    time2: { value: "2026-07-12 12:00:00" },
+    thing3: { value: "Amy反馈已发布" },
+  });
+});
+
+test("invoice and feedback share consent accounting for the same official template", () => {
+  const previousInvoice = process.env.WECHAT_TEMPLATE_INVOICE_ISSUED;
+  const previousFeedback = process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED;
+  process.env.WECHAT_TEMPLATE_INVOICE_ISSUED = "shared-service-template";
+  process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED = "shared-service-template";
+  try {
+    assert.deepEqual(serviceConsentGroupKeys("invoice_issued").sort(), ["documents", "learning"]);
+    assert.deepEqual(serviceConsentGroupKeys("feedback_published").sort(), ["documents", "learning"]);
+  } finally {
+    if (previousInvoice === undefined) delete process.env.WECHAT_TEMPLATE_INVOICE_ISSUED;
+    else process.env.WECHAT_TEMPLATE_INVOICE_ISSUED = previousInvoice;
+    if (previousFeedback === undefined) delete process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED;
+    else process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED = previousFeedback;
+  }
 });

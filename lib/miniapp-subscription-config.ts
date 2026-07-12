@@ -6,6 +6,7 @@ export const MINIAPP_SUBSCRIPTION_ENV = {
   finance: "WECHAT_TEMPLATE_FINANCE_UNPAID",
   invoice: "WECHAT_TEMPLATE_INVOICE_ISSUED",
   receipt: "WECHAT_TEMPLATE_RECEIPT_ISSUED",
+  feedback: "WECHAT_TEMPLATE_FEEDBACK_PUBLISHED",
 } as const;
 
 export function miniappSubscriptionConfiguration() {
@@ -34,5 +35,6 @@ export function miniappSubscriptionGroups() {
     group("course", "开启未来 3 节课提醒", ["course", "courseClass", "courseStart"]),
     group("service", "请求与财务进度", ["request", "finance"]),
     group("documents", "发票与收据", ["invoice", "receipt"]),
+    group("learning", "课后反馈", ["feedback"]),
   ].map((item) => ({ ...item, configured: item.templateIds.length > 0 }));
 }

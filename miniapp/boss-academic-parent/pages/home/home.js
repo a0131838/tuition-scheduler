@@ -3,7 +3,8 @@ const api = require("../../utils/api");
 function buildSubscriptionActions(groups) {
   const labels = {
     service: ["开启请求状态提醒", "开启待付提醒"],
-    documents: ["开启发票提醒", "开启收据提醒"]
+    documents: ["开启发票提醒", "开启收据提醒"],
+    learning: ["开启课后反馈提醒"]
   };
   return groups.reduce((actions, group) => {
     if (!group.configured) return actions;

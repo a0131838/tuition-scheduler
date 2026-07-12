@@ -8,6 +8,7 @@ export const MINIAPP_TEMPLATE_KEYS = {
   financeUnpaid: "finance_unpaid",
   invoiceIssued: "invoice_issued",
   receiptIssued: "receipt_issued",
+  feedbackPublished: "feedback_published",
 } as const;
 
 export async function queueMiniappNotification(input: {

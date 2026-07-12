@@ -12,6 +12,7 @@ import {
   getMissingParentFeedbackSectionLabels,
   parseParentFeedbackSections,
 } from "@/lib/parent-feedback-format";
+import { queueFirstPublishedFeedback } from "@/lib/miniapp-feedback-notification";
 
 function bad(message: string, status = 400, extra?: Record<string, unknown>) {
   return Response.json({ ok: false, message, ...(extra ?? {}) }, { status });
@@ -58,7 +59,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { class: { include: { course: true, subject: true } } },
+    include: {
+      class: { include: { course: true, subject: true } },
+      feedbacks: { where: { teacherId: teacher.id }, select: { id: true }, take: 1 },
+    },
   });
   if (!session) return bad("Session not found", 404);
 
@@ -99,7 +103,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     `Previous homework done / 之前作业完成情况: ${previousHomeworkText}`,
   ].join("\n");
 
-  await prisma.sessionFeedback.upsert({
+  const existingFeedback = session.feedbacks[0] ?? null;
+  const savedFeedback = await prisma.sessionFeedback.upsert({
     where: { sessionId_teacherId: { sessionId, teacherId: teacher.id } },
     update: {
       content,
@@ -136,6 +141,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       submittedAt: now,
     },
   });
+  if (!existingFeedback) {
+    await queueFirstPublishedFeedback({
+      sessionId,
+      feedbackId: savedFeedback.id,
+      submittedAt: now,
+    }).catch(() => null);
+  }
 
   return Response.json({
     ok: true,

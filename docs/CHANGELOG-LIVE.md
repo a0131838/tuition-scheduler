@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-12-r233
+
+- Release ID: `2026-07-12-r233`
+- Date/Time (Asia/Shanghai): `2026-07-12`
+- Deployment status: `READY`
+- Scope: notify parents when a teacher first publishes after-class feedback from either desktop or staff miniapp, with an independent parent authorization action and shared exact-template quota accounting with invoice completion.
+- Key files:
+  - `lib/miniapp-feedback-notification.ts`
+  - `lib/wechat-miniapp-service-subscription.ts`
+  - `lib/miniapp-subscription-config.ts`
+  - `lib/miniapp-reminder-attention.ts`
+  - `app/api/teacher/sessions/[id]/feedback/route.ts`
+  - `app/api/miniapp/staff/schedule/[sessionId]/feedback/route.ts`
+  - `miniapp/boss-academic-parent/pages/home/home.js`
+  - `scripts/send-miniapp-service-notifications.ts`
+  - `tests/wechat-miniapp-subscription.test.ts`
+  - `docs/tasks/TASK-20260712-miniapp-feedback-published-notification.md`
+- Risk impact (if any): Medium and constrained. Only the first feedback publication queues a message; edits do not notify again. Student resolution covers direct, one-to-one, and enrolled class students, while parent delivery remains permission- and consent-gated. Invoice and feedback intentionally share one official template ID, so accepted and consumed quota are pooled by exact ID across both consent groups.
+- Verification: official category and keyword APIs were checked; no dedicated feedback template exists and duplicate addition of `服务完成通知` was rejected as already added. TypeScript, nine mapping/student-resolution/shared-quota tests, miniapp and shell syntax, diff check, and a full 186-page local build passed. Production deploy and real-phone authorization/delivery checks remain required.
+- Rollback point: `2026-07-12-r232`.
+
+---
+
 ## 2026-07-12-r232
 
 - Release ID: `2026-07-12-r232`
