@@ -9,7 +9,7 @@ Notify linked parents when a teacher publishes the first parent-facing after-cla
 - The `出国留学（590）` public library has 134 one-time templates but no dedicated after-class feedback template.
 - `教育成长规划报告通知` and `专属学习资料推送提醒` are reserved for future report/material features and are not used to mislabel lesson feedback.
 - The official `服务完成通知` template is semantically valid for completed feedback delivery and is already in the account for invoice completion. WeChat does not allow the same public template to be added twice.
-- Invoice and feedback therefore share the exact official template ID and one-time quota ledger. Consent accepted from either the documents or learning action is pooled by template ID, and every successful invoice or feedback send consumes one shared quota.
+- Invoice and feedback share the exact official template ID at WeChat, but product intent remains separate: invoice authorization is recorded under documents and feedback authorization under learning. Each send consumes the matching intent bucket and also records the exact delivered template ID.
 
 ## Event Rules
 
@@ -31,7 +31,7 @@ Notify linked parents when a teacher publishes the first parent-facing after-cla
 - No schema migration.
 - No feedback content, approval rule, attendance, package, finance, Ticket, Session, payroll, or parent-link rule changes.
 - No notification on feedback edits, reducing duplicate parent messages.
-- Shared template quota is calculated by exact template ID across both consent groups and all successful sends.
+- The same official template ID is tracked together for delivery evidence, while accepted and consumed quota stay separated by the parent action's consent group so invoice consent cannot silently authorize feedback.
 
 ## Verification
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCourseReminderData, countAcceptedTemplate, summarizeCourseTemplateQuota } from "@/lib/wechat-miniapp-subscription";
-import { buildServiceNotificationData, serviceConsentGroupKeys } from "@/lib/wechat-miniapp-service-subscription";
+import { buildServiceNotificationData, serviceConsentGroupKey } from "@/lib/wechat-miniapp-service-subscription";
 
 test("buildCourseReminderData maps the appointment template", () => {
   assert.deepEqual(buildCourseReminderData("course", { courseName: "English", subjectName: "Grammar", teacherName: "Eva", startAt: "2026-07-13T01:00:00.000Z" }), {
@@ -97,14 +97,14 @@ test("buildServiceNotificationData maps finance and document fields", () => {
   });
 });
 
-test("invoice and feedback share consent accounting for the same official template", () => {
+test("invoice and feedback keep separate consent intent for the same official template", () => {
   const previousInvoice = process.env.WECHAT_TEMPLATE_INVOICE_ISSUED;
   const previousFeedback = process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED;
   process.env.WECHAT_TEMPLATE_INVOICE_ISSUED = "shared-service-template";
   process.env.WECHAT_TEMPLATE_FEEDBACK_PUBLISHED = "shared-service-template";
   try {
-    assert.deepEqual(serviceConsentGroupKeys("invoice_issued").sort(), ["documents", "learning"]);
-    assert.deepEqual(serviceConsentGroupKeys("feedback_published").sort(), ["documents", "learning"]);
+    assert.equal(serviceConsentGroupKey("invoice_issued"), "documents");
+    assert.equal(serviceConsentGroupKey("feedback_published"), "learning");
   } finally {
     if (previousInvoice === undefined) delete process.env.WECHAT_TEMPLATE_INVOICE_ISSUED;
     else process.env.WECHAT_TEMPLATE_INVOICE_ISSUED = previousInvoice;

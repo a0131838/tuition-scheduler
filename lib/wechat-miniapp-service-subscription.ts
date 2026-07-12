@@ -62,15 +62,8 @@ export function serviceTemplateDefinitions(): ServiceTemplateDefinition[] {
   return definitions.filter((item) => Boolean(item.templateId));
 }
 
-export function serviceConsentGroupKeys(templateKey: string) {
-  const definitions = serviceTemplateDefinitions();
-  const template = definitions.find((item) => item.templateKey === templateKey);
-  if (!template) return [];
-  return Array.from(new Set(
-    definitions
-      .filter((item) => item.templateId === template.templateId)
-      .map((item) => item.groupKey)
-  ));
+export function serviceConsentGroupKey(templateKey: string) {
+  return serviceTemplateDefinitions().find((item) => item.templateKey === templateKey)?.groupKey ?? null;
 }
 
 export function buildServiceNotificationData(kind: ServiceNotificationKind, payload: unknown) {
@@ -115,20 +108,20 @@ export function buildServiceNotificationData(kind: ServiceNotificationKind, payl
 export async function availableServiceTemplate(parentId: string, templateKey: string) {
   const template = serviceTemplateDefinitions().find((item) => item.templateKey === templateKey);
   if (!template) return null;
-  const consentGroupKeys = serviceConsentGroupKeys(templateKey);
   const [audits, sentRows] = await Promise.all([
     prisma.parentPortalAudit.findMany({
-      where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: { in: consentGroupKeys } },
+      where: { parentId, action: "MINIAPP_SUBSCRIPTION_INTENT", targetId: template.groupKey },
       select: { metaJson: true }, orderBy: { createdAt: "desc" }, take: 500,
     }),
     prisma.miniappNotificationOutbox.findMany({
-      where: { parentId, status: "SENT" }, select: { payloadJson: true }, take: 1000,
+      where: { parentId, status: "SENT" }, select: { templateKey: true, payloadJson: true }, take: 1000,
     }),
   ]);
   const accepted = countAcceptedTemplate(audits, template.templateId);
   const consumed = sentRows.filter((row) => {
     const payload = row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson as any : null;
-    return payload?.deliveredTemplateId === template.templateId;
+    const deliveredGroupKey = payload?.deliveredConsentGroupKey || serviceConsentGroupKey(row.templateKey);
+    return payload?.deliveredTemplateId === template.templateId && deliveredGroupKey === template.groupKey;
   }).length;
   return accepted > consumed ? template : null;
 }
@@ -172,7 +165,7 @@ export async function sendServiceNotification(input: {
   return { errcode: 0, errmsg: String(result.errmsg ?? "ok") };
 }
 
-export function servicePayloadWithDeliveredTemplate(payload: unknown, templateId: string): Prisma.InputJsonValue {
+export function servicePayloadWithDeliveredTemplate(payload: unknown, templateId: string, consentGroupKey: string): Prisma.InputJsonValue {
   const base = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
-  return { ...base, deliveredTemplateId: templateId } as Prisma.InputJsonValue;
+  return { ...base, deliveredTemplateId: templateId, deliveredConsentGroupKey: consentGroupKey } as Prisma.InputJsonValue;
 }

@@ -41,7 +41,7 @@ async function main() {
         where: { id: row.id },
         data: {
           status: "SENT", sentAt: new Date(), error: null,
-          payloadJson: servicePayloadWithDeliveredTemplate(row.payloadJson, template.templateId),
+          payloadJson: servicePayloadWithDeliveredTemplate(row.payloadJson, template.templateId, template.groupKey),
         },
       });
       summary.sent += 1;

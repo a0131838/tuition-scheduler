@@ -21,7 +21,7 @@
 ## Open Risks
 
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
-- Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication and pools consent with invoice completion because both use the same official template ID. Verify the first real feedback and confirm edits do not enqueue duplicates.
+- Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.
 - Service-consent UI risk: WeChat returned only the first ID from each two-template service/document request even when the parent allowed the displayed option. `2026-07-12-r232` changes these to four one-template buttons; verify finance and receipt each record one `accept` after deployment.
 - Request/finance notification rollout risk: `2026-07-12-r231` adds four official one-time templates. Delivery is consent-gated and permission-scoped; verify both new parent authorization groups and one controlled display test for request, unpaid, invoice, and receipt messages before broad use.
 - Reminder-coverage rollout risk: `2026-07-12-r230` derives a parent's shared quota across every linked student and assigns it to the earliest future lessons for display. The staff attention list is read-only and permission-restricted; verify the first multi-student family and first no-consent reminder after release.
@@ -156,7 +156,7 @@
 - Scope: close the parent after-class feedback notification loop.
 - Template decision: no dedicated template exists in category 590; use the semantically valid existing `服务完成通知`, with `课后反馈` as the service name, rather than misusing report or material templates.
 - Event behavior: desktop and staff-miniapp teacher routes queue only the first publication for every student attached to the lesson.
-- Consent behavior: parent home adds `开启课后反馈提醒`; invoice and feedback pool accepted and consumed quota by their shared official template ID.
+- Consent behavior: parent home adds `开启课后反馈提醒`; invoice and feedback record the same official delivery ID but keep accepted and consumed intent separate.
 - Staff behavior: web and mobile attention lists expose feedback rows waiting for consent.
 - Safety: best-effort notification only, no feedback edit spam, no schema or business workflow change.
 - Validation: TypeScript, mapping/shared-quota tests, miniapp/shell syntax, diff check, full build, deployment, then real-phone consent and display verification.
