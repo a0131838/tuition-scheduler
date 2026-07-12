@@ -47,4 +47,6 @@ Notify linked parents when a teacher publishes the first parent-facing after-cla
 - Runtime configuration is 8/8 with course 3, service 2, documents 2, and learning 1.
 - PM2 is online, `/admin/login` returns 200, and exactly one cron includes the service sender.
 - Before explicit feedback authorization, the test parent has zero `learning` audits and production has zero `feedback_published` outbox rows. No invoice consent was reused and no historical feedback was backfilled.
-- Final external check: authorize `开启课后反馈提醒`, queue one marked test feedback notification, and confirm the WeChat card display.
+- The test parent explicitly authorized `开启课后反馈提醒`, producing two accepted learning quotas.
+- One marked `FEEDBACK_PUBLISHED_TEST` row sent successfully as `SENT`, with the exact template ID and `deliveredConsentGroupKey=learning`; sender retry, failure, and skip counts were zero.
+- Zhao confirmed the WeChat `服务完成通知` card arrived and displayed the feedback publication normally. The full feedback notification loop is complete.

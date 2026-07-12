@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r233`. First-publication after-class feedback notifications are live and awaiting the controlled real-phone consent/display check.
+- Current production release: `2026-07-12-r233`. First-publication after-class feedback notifications passed independent consent, production delivery, and real-phone display verification.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -159,7 +159,7 @@
 - Consent behavior: parent home adds `开启课后反馈提醒`; invoice and feedback record the same official delivery ID but keep accepted and consumed intent separate.
 - Staff behavior: web and mobile attention lists expose feedback rows waiting for consent.
 - Safety: best-effort notification only, no feedback edit spam, no schema or business workflow change.
-- Validation: TypeScript, nine mapping/student-resolution/consent-intent tests, miniapp/shell syntax, diff check, and local/production 186-page builds passed. Production `5dcd395` reports 8/8 configuration, group sizes 3/2/2/1, one cron, PM2 online, and health 200. No learning audit or feedback outbox row exists before explicit consent/testing. Real-phone consent and display verification remain.
+- Validation: TypeScript, nine mapping/student-resolution/consent-intent tests, miniapp/shell syntax, diff check, and local/production 186-page builds passed. Production `5dcd395` reports 8/8 configuration, group sizes 3/2/2/1, one cron, PM2 online, and health 200. No learning audit or feedback row existed before explicit consent. A marked test then sent as `SENT` under consent group `learning` with no failure/retry, and Zhao confirmed the WeChat card arrived normally.
 
 ## 2026-07-12-r232 Live
 
