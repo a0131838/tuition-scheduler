@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-12-r233`
 - Date/Time (Asia/Shanghai): `2026-07-12`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: notify parents when a teacher first publishes after-class feedback from either desktop or staff miniapp, with an independent parent authorization action and explicit consent-intent accounting despite sharing the official service-completion template with invoices.
 - Key files:
   - `lib/miniapp-feedback-notification.ts`
@@ -33,7 +33,7 @@ This file is the single source of truth for what changed in production.
   - `tests/wechat-miniapp-subscription.test.ts`
   - `docs/tasks/TASK-20260712-miniapp-feedback-published-notification.md`
 - Risk impact (if any): Medium and constrained. Only the first feedback publication queues a message; edits do not notify again. Student resolution covers direct, one-to-one, and enrolled class students, while parent delivery remains permission- and consent-gated. Invoice and feedback share one official template ID but keep separate consent-intent buckets, preventing invoice authorization from silently enabling feedback delivery.
-- Verification: official category and keyword APIs were checked; no dedicated feedback template exists and duplicate addition of `服务完成通知` was rejected as already added. TypeScript, nine mapping/student-resolution/shared-quota tests, miniapp and shell syntax, diff check, and a full 186-page local build passed. Production deploy and real-phone authorization/delivery checks remain required.
+- Verification: official category and keyword APIs were checked; no dedicated feedback template exists and duplicate addition of `服务完成通知` was rejected as already added. TypeScript, nine mapping/student-resolution/consent-intent tests, miniapp and shell syntax, diff check, and local/production 186-page builds passed. Production deployed at `5dcd395` with 101 migrations current, PM2 online, health 200, one cron, and 8/8 configured entries across groups sized 3, 2, 2, and 1. The test parent has zero learning-consent audits and production has zero feedback outbox rows, confirming no historical backfill and no invoice-consent reuse. Real-phone feedback authorization and delivery remain pending.
 - Rollback point: `2026-07-12-r232`.
 
 ---

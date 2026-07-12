@@ -40,3 +40,11 @@ Notify linked parents when a teacher publishes the first parent-facing after-cla
 - Miniapp JavaScript and deploy shell syntax
 - `git diff --check`
 - `npm run build` (186 pages)
+
+## Production Result
+
+- Feature commits `87cc1a4` and `5dcd395` are live; 101 migrations are current and 186 pages built.
+- Runtime configuration is 8/8 with course 3, service 2, documents 2, and learning 1.
+- PM2 is online, `/admin/login` returns 200, and exactly one cron includes the service sender.
+- Before explicit feedback authorization, the test parent has zero `learning` audits and production has zero `feedback_published` outbox rows. No invoice consent was reused and no historical feedback was backfilled.
+- Final external check: authorize `开启课后反馈提醒`, queue one marked test feedback notification, and confirm the WeChat card display.
