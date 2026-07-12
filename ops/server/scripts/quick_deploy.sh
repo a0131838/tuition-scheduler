@@ -38,7 +38,7 @@ SSH_CMD=(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=accept-new -p "$SSH_POR
 echo "Deploy branch: $BRANCH"
 echo "Target: $SSH_USER@$SSH_HOST:$APP_DIR"
 
-"${SSH_CMD[@]}" "set -euo pipefail; cd '$APP_DIR'; git fetch origin; git checkout '$BRANCH'; git reset --hard 'origin/$BRANCH'; bash ops/server/scripts/deploy_app.sh '$DEPLOY_ENV_FILE'"
+"${SSH_CMD[@]}" "set -euo pipefail; cd '$APP_DIR'; git fetch origin '$BRANCH:refs/remotes/origin/$BRANCH'; git checkout '$BRANCH'; git reset --hard 'origin/$BRANCH'; bash ops/server/scripts/deploy_app.sh '$DEPLOY_ENV_FILE'"
 
 echo
 echo "Deploy done. Running quick check..."

@@ -38,7 +38,7 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
 fi
 
 cd "$APP_DIR"
-git fetch origin
+git fetch origin "$BRANCH:refs/remotes/origin/$BRANCH"
 git checkout "$BRANCH"
 # Servers sometimes end up with CRLF/local edits. Reset to the remote branch to keep deploys repeatable.
 git reset --hard "origin/$BRANCH"

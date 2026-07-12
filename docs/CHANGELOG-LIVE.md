@@ -20,12 +20,13 @@ This file is the single source of truth for what changed in production.
 - Release ID: `2026-07-12-r226`
 - Date/Time (Asia/Shanghai): `2026-07-12`
 - Deployment status: `READY`
-- Scope: configure the official course-reminder subscription template and preserve all five template variables across production deploys.
+- Scope: configure the official course-reminder subscription template, preserve all five template variables across production deploys, and make deployment fetch the requested branch explicitly.
 - Key files:
   - `ops/server/scripts/deploy_app.sh`
+  - `ops/server/scripts/quick_deploy.sh`
   - `docs/tasks/TASK-20260712-miniapp-course-template-configuration.md`
   - `docs/小程序与家长端全程托管规划-20260709.md`
-- Risk impact (if any): Low. The parent course-reminder consent entry becomes available when the runtime variable is present, but no outbound WeChat sender is enabled and the other four reminder groups remain hidden.
+- Risk impact (if any): Low. The parent course-reminder consent entry becomes available when the runtime variable is present, but no outbound WeChat sender is enabled and the other four reminder groups remain hidden. The deploy fetch change only makes the requested branch ref explicit.
 - Verification: pending local configuration, production environment, PM2, and health checks.
 - Rollback point: `2026-07-11-r225`.
 
