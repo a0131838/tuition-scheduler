@@ -27,3 +27,11 @@ After entering Full Care and using the sidebar to open Student Sources, the page
 ## Risk
 
 Low and display-only. The route-aware component returns text only and receives the existing language and role context as props. No write path or authorization rule changes.
+
+## Deployment
+
+- Production runtime commit: `d15016a48825f6c61f24917937a19791c9d82c4a`.
+- Backup: `/home/ubuntu/backups/tuition-scheduler/tuition-scheduler_2026-07-13_192426.dump`.
+- Result: 102 migrations current, 192-page server build passed, PM2 online with zero restarts, and login health `200`.
+- Production browser: `Full Care -> Student Sources -> Full Care` passed and the temporary QA session was removed.
+- Data safety: packages, attendance totals, package transactions, partner settlements, protected finance settings, and care counts were unchanged. Four separately audited Eva `delete_safe` lesson removals during the deploy window explain the session-count change from 1895 to 1891.

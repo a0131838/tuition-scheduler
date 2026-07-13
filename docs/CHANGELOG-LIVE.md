@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r243`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: separate parent and employee login journeys, remove invitation binding from the first-screen hierarchy, remember the last-used portal, and retain low-priority switching for dual-role WeChat users.
 - Key files:
   - `miniapp/boss-academic-parent/app.js`
@@ -54,6 +54,8 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Low and display-only. The change moves existing title/hint selection into a client route-aware component. It does not change permissions, navigation destinations, schemas, student data, care records, scheduling, attendance, packages, partner settlement, payroll, invoices, receipts, or finance settings.
 - Verification: TypeScript passes; all 49 backend tests pass; the full 192-page production build passes. A production-mode Playwright flow with one temporary admin session verifies `Full Care -> Student Sources -> Full Care` without page refresh: the top title changes to `Admin Workspace / 管理工作台` on Student Sources, contains no Full Care label there, and restores Full Care on return. Temporary QA sessions were cleaned to zero.
 - Rollback point: `2026-07-13-r241` documentation-aligned head `16afda6` (production runtime `1a553e1`).
+- Production commit: `d15016a48825f6c61f24917937a19791c9d82c4a`.
+- Deployment result: backup `tuition-scheduler_2026-07-13_192426.dump` completed; 102 migrations remain current with none applied; the 192-page server build passed; PM2 is online with zero restarts; `/admin/login` returns `200`. Authenticated production Playwright again passed `Full Care -> Student Sources -> Full Care`, and the temporary session count returned to zero. Packages, attendance totals, package transactions, partner settlements, protected finance-setting hashes, and existing care counts remained unchanged. Session count changed from 1895 to 1891 because Eva separately used the audited `delete_safe` workflow four times between 19:22 and 19:25; the four audit rows exactly account for the difference and are unrelated to this display-only release.
 
 ---
 

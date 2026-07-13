@@ -14,14 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r241` at `1a553e1`, correcting shared-package eligibility plus one-to-one student isolation. `2026-07-13-r242` admin workspace-context navigation repair is ready for server deploy. `2026-07-13-r243` is the latest native-miniapp package and includes the earlier `r239` UI/search refresh plus separated parent/employee login; neither client release is visible to WeChat users until the next experience-version upload.
+- Current production release: `2026-07-13-r242` at runtime commit `d15016a`, repairing admin workspace-context navigation. `2026-07-13-r243` is the latest native-miniapp package and includes the earlier `r239` UI/search refresh plus separated parent/employee login; neither client release is visible to WeChat users until the next experience-version upload.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
 - Login-portal experience risk: `2026-07-13-r243` is ready in native source and passes DevTools visual/navigation checks, but remembered-portal auto-entry and dual-role switching still need one physical-phone pass after uploading the next experience version.
-- Admin-workspace-context risk: the shared server layout previously retained the route used when it first mounted, so client-side navigation away from Full Care could leave the Full Care title and hint above another page. `2026-07-13-r242` delegates only the route-sensitive text to `usePathname`; browser regression covers Full Care to Student Sources and back.
+- Admin-workspace-context monitoring: `2026-07-13-r242` is live. The shared route-sensitive text now follows `usePathname`; authenticated production regression passes Full Care to Student Sources and back without a hard refresh.
 - Shared-package student-scope monitoring: `2026-07-13-r241` is live and its authenticated Daisy/Louis production API check passes. The explicit Session student is authoritative for capacity-one parent schedule, feedback, and reminder reads; package finance documents remain owner-scoped and were intentionally not broadened.
 - Full-care-action monitoring: `2026-07-13-r240` is live. The module-level Server Action helper passed real production-mode submissions before deploy; post-deploy health checks and protected-data baselines pass. No pilot engagement exists yet, and parent publishing remains disabled.
 - Full-care-core monitoring: `2026-07-13-r238` is live with five isolated care tables and `/admin/care`. The latest read-only snapshot shows 1 manually created engagement and 1 activity, with 0 plans and 0 tasks; teaching and finance baselines remain separate and preserved.
