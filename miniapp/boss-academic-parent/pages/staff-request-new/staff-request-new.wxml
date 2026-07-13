@@ -1,15 +1,21 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">员工工作台</view>
+    <view class="eyebrow">家长服务</view>
     <view class="title">代录工单</view>
-    <view class="subtitle">把微信群、电话或线下沟通整理成系统请求。</view>
+    <view class="subtitle">记录家长诉求和后续处理事项。</view>
   </view>
 
   <view class="card">
     <view class="field">
       <view class="label">学生</view>
-      <input class="input" value="{{studentQuery}}" placeholder="输入至少两个字搜索学生" bindinput="onStudentInput" />
-      <view class="hint" wx:if="{{searching}}">搜索中...</view>
+      <view class="search-row">
+        <view class="search-input-wrap">
+          <input class="search-input" value="{{studentQuery}}" placeholder="输入学生姓名或学校" confirm-type="search" bindinput="onStudentInput" bindconfirm="searchStudents" />
+          <view class="search-clear" wx:if="{{studentQuery}}" catchtap="clearStudentSearch">×</view>
+        </view>
+        <view class="search-submit" bindtap="searchStudents">查询</view>
+      </view>
+      <view class="hint" wx:if="{{searching}}">正在查询…</view>
       <view class="selected" wx:if="{{selectedStudentLabel}}">已选择：{{selectedStudentLabel}}</view>
       <view wx:for="{{studentResults}}" wx:key="id" class="result" bindtap="selectStudent" data-id="{{item.id}}" data-label="{{item.label}}">
         <view class="result-title">{{item.label}}</view>
@@ -38,13 +44,13 @@
     </view>
 
     <view class="field">
-      <view class="label">原话摘要（内部看）</view>
-      <textarea class="textarea" value="{{originalContent}}" placeholder="整理微信群里的原始诉求、情绪、截图背景" bindinput="onOriginalInput" />
+      <view class="label">沟通记录（仅内部可见）</view>
+      <textarea class="textarea" value="{{originalContent}}" placeholder="记录原始诉求和必要背景" bindinput="onOriginalInput" />
     </view>
 
     <view class="field">
       <view class="label">对家长可见摘要</view>
-      <textarea class="textarea" value="{{publicSummary}}" placeholder="写成正式、克制、可给家长看的描述" bindinput="onPublicInput" />
+      <textarea class="textarea" value="{{publicSummary}}" placeholder="填写家长可查看的事项摘要" bindinput="onPublicInput" />
     </view>
 
     <view class="field">

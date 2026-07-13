@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">员工绑定</view>
-    <view class="title">输入后台生成的员工绑定码</view>
-    <view class="subtitle">绑定后，这个微信就可以进入员工移动工作台。</view>
+    <view class="eyebrow">员工账号</view>
+    <view class="title">绑定员工账号</view>
+    <view class="subtitle">请输入后台生成的员工绑定码。</view>
   </view>
 
   <view class="card">

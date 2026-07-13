@@ -6,7 +6,7 @@
 
 .doc-row {
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #eef2eb;
+  border-bottom: 1rpx solid #f0f1f3;
 }
 
 .payment-row {

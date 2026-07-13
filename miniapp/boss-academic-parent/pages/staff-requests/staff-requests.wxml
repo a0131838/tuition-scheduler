@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">员工工作台</view>
+    <view class="eyebrow">家长服务</view>
     <view class="title">家长请求</view>
-    <view class="subtitle">Jasmine 和 Eva 看到同一批请求；状态变化会进入家长提醒队列。</view>
+    <view class="subtitle">按状态和负责人查看待处理请求。</view>
   </view>
 
   <view class="filters">

@@ -1,6 +1,6 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">员工工作台</view>
+    <view class="eyebrow">教务排课</view>
     <view class="title">排课与调课</view>
   </view>
 
@@ -25,10 +25,13 @@
   </view>
 
   <view class="search-row">
-    <input value="{{query}}" bindinput="inputQuery" bindconfirm="search" confirm-type="search" placeholder="学生、课程或工单号" />
-    <button class="search-button" bindtap="search">搜索</button>
-    <button class="clear-button" wx:if="{{query}}" bindtap="clearSearch">清除</button>
+    <view class="search-input-wrap">
+      <input class="search-input" value="{{query}}" bindinput="inputQuery" bindconfirm="search" confirm-type="search" placeholder="学生、课程或工单号" />
+      <view class="search-clear" wx:if="{{query}}" catchtap="clearSearch">×</view>
+    </view>
+    <view class="search-submit" bindtap="search">查询</view>
   </view>
+  <view class="search-status" wx:if="{{loading}}">正在查询…</view>
 
   <block wx:if="{{tickets.length}}">
     <view wx:for="{{tickets}}" wx:key="id" class="card ticket-card" bindtap="openDetail" data-id="{{item.id}}">

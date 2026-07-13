@@ -15,6 +15,27 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r239
+
+- Release ID: `2026-07-13-r239`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: refresh the native miniapp visual language around the official Boss/GTIA logo, remove internal rollout-style copy, and repair all three staff search experiences so typing, keyboard confirmation, explicit query, clearing, and overlapping requests behave consistently.
+- Key files:
+  - `miniapp/boss-academic-parent/assets/boss-logo.png`
+  - `miniapp/boss-academic-parent/app.json`
+  - `miniapp/boss-academic-parent/app.wxss`
+  - `miniapp/boss-academic-parent/pages/**/*.{wxml,wxss,js}`
+  - `miniapp/boss-academic-parent/README.md`
+  - `scripts/audit-miniapp-release.ts`
+  - `docs/tasks/TASK-20260713-miniapp-ui-search-brand-refresh.md`
+  - `docs/小程序与家长端全程托管规划-20260709.md`
+- Risk impact (if any): Low and client-side only. This release does not change APIs, permissions, schedules, attendance, packages, finance, notifications, database schema, or server business logic. The main remaining risk is visual/interaction variance on physical WeChat devices; employee data could not be reloaded during one DevTools pass because the existing remote request timed out, so experience-version search regression remains required before upload.
+- Verification: all miniapp JavaScript syntax and JSON parsing pass; the 26-page release audit passes with AppID, production HTTPS, logo-orange navigation, standard search controls, stale-request protection, mock login off, URL checking on, source maps off, and zero errors; 11 focused scheduling/teacher tests, TypeScript, the full 192-page production build, diff checks, and WeChat DevTools compilation with 0 errors/0 warnings pass. Login visual inspection confirms the official logo and orange/charcoal/gray palette render correctly.
+- Rollback point: `2026-07-13-r238` (`f6b5519`).
+
+---
+
 ## 2026-07-13-r238
 
 - Release ID: `2026-07-13-r238`

@@ -2,7 +2,7 @@
   <view class="top">
     <view class="eyebrow">{{studentName}}</view>
     <view class="title">服务请求</view>
-    <view class="subtitle">投诉、反馈、给老师的话、排课、请假和财务问题都可以在这里提交。</view>
+    <view class="subtitle">查看处理进度，或提交新请求。</view>
   </view>
 
   <button class="btn" bindtap="goNew">提交新请求</button>

@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">老师移动工作台</view>
+    <view class="eyebrow">教学事务</view>
     <view class="title">我的可用时间</view>
-    <view class="subtitle">维护今天起未来30天真正可排课的时间，教务排课会直接读取这里的数据。</view>
+    <view class="subtitle">设置未来30天可排课的时段。</view>
   </view>
   <view class="form-card">
     <view class="field-label">日期</view><picker mode="date" value="{{date}}" start="{{from}}" end="{{to}}" bindchange="changeDate"><view class="picker">{{date}}</view></picker>

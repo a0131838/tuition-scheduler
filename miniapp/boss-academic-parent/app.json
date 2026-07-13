@@ -29,14 +29,14 @@
   ],
   "window": {
     "navigationBarTitleText": "博思学业管家",
-    "navigationBarBackgroundColor": "#123524",
+    "navigationBarBackgroundColor": "#EC5E0A",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f6f7f3",
+    "backgroundColor": "#f5f6f7",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#718072",
-    "selectedColor": "#123524",
+    "color": "#6b6f76",
+    "selectedColor": "#EC5E0A",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [

@@ -1,6 +1,6 @@
 .page {
   padding: 28rpx;
-  background: #f7f9f4;
+  background: #f5f6f7;
   min-height: 100vh;
 }
 
@@ -16,8 +16,8 @@
 
 .title {
   font-size: 36rpx;
-  font-weight: 800;
-  color: #123d2b;
+  font-weight: 700;
+  color: #202124;
   margin-top: 8rpx;
 }
 
@@ -28,7 +28,7 @@
 
 .card {
   background: #fff;
-  border: 1rpx solid #dce5d8;
+  border: 1rpx solid #e3e5e8;
   border-radius: 8rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -36,7 +36,7 @@
 
 .section-title {
   font-weight: 800;
-  color: #123d2b;
+  color: #ec5e0a;
   margin-bottom: 18rpx;
 }
 
@@ -45,7 +45,7 @@
 }
 
 .attendance-row {
-  border-top: 1rpx solid #e5eadf;
+  border-top: 1rpx solid #e3e5e8;
   padding: 18rpx 0;
 }
 
@@ -65,15 +65,15 @@
   min-width: 120rpx;
   text-align: center;
   border-radius: 999rpx;
-  background: #edf2ea;
-  color: #123d2b;
+  background: #f0f1f3;
+  color: #ec5e0a;
   font-weight: 800;
   padding: 10rpx 18rpx;
 }
 
 .label {
   font-weight: 700;
-  color: #20352b;
+  color: #202124;
   margin-bottom: 8rpx;
 }
 
@@ -82,15 +82,15 @@ textarea,
 .picker {
   width: 100%;
   box-sizing: border-box;
-  border: 1rpx solid #d6ded2;
+  border: 1rpx solid #d9dce0;
   border-radius: 8rpx;
   padding: 18rpx;
-  background: #fbfcfa;
+  background: #fafafa;
 }
 
 .picker {
   min-height: 44rpx;
-  color: #20352b;
+  color: #202124;
 }
 
 .coordination-summary {
@@ -98,7 +98,7 @@ textarea,
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
-  background: #edf2ea;
+  background: #f0f1f3;
   border-radius: 8rpx;
   padding: 18rpx;
   margin-bottom: 20rpx;
@@ -114,19 +114,19 @@ textarea,
 .mode-button {
   min-height: 72rpx;
   border-radius: 8rpx;
-  background: #edf2ea;
-  color: #20352b;
+  background: #f0f1f3;
+  color: #202124;
   font-weight: 700;
   font-size: 26rpx;
 }
 
 .mode-button.active {
-  background: #0b3d2a;
+  background: #ec5e0a;
   color: #fff;
 }
 
 .schedule-preview {
-  border-top: 1rpx solid #dce5d8;
+  border-top: 1rpx solid #e3e5e8;
   margin-top: 24rpx;
   padding-top: 20rpx;
 }
@@ -141,7 +141,7 @@ textarea,
 }
 
 .coordination-close {
-  border-top: 1rpx solid #dce5d8;
+  border-top: 1rpx solid #e3e5e8;
   margin-top: 16rpx;
   padding-top: 20rpx;
 }
@@ -152,12 +152,12 @@ textarea,
   align-items: start;
   gap: 14rpx;
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #e5eadf;
+  border-bottom: 1rpx solid #e3e5e8;
   overflow-wrap: anywhere;
 }
 
 .history {
-  border-top: 1rpx solid #e5eadf;
+  border-top: 1rpx solid #e3e5e8;
   margin-top: 24rpx;
   padding-top: 20rpx;
 }
@@ -183,7 +183,7 @@ textarea {
 }
 
 .primary {
-  background: #0b3d2a;
+  background: #ec5e0a;
   color: #fff;
   border-radius: 8rpx;
   font-weight: 800;
@@ -191,8 +191,8 @@ textarea {
 }
 
 .secondary-action {
-  background: #edf2ea;
-  color: #123d2b;
+  background: #f0f1f3;
+  color: #ec5e0a;
   border-radius: 8rpx;
   font-weight: 800;
   margin-top: 16rpx;
@@ -217,7 +217,7 @@ textarea {
 }
 
 .request-existing {
-  background: #edf2ea;
+  background: #f0f1f3;
   border-left: 6rpx solid #2f6b4f;
   margin-bottom: 18rpx;
   padding: 16rpx;

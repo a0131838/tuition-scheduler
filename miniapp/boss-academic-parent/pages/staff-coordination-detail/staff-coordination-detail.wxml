@@ -28,8 +28,8 @@
   </view>
 
   <view class="schedule-tool" wx:if="{{canCreateNewSession}}">
-    <view class="section-title">从工单直接新排课</view>
-    <view class="hint tool-hint">适用于学生还没有历史课程的情况。确认前会检查课包、老师 availability、学生/老师/教室冲突。</view>
+    <view class="section-title">新排课</view>
+    <view class="hint tool-hint">提交前会检查课包、老师可用时间和课程冲突。</view>
     <view class="empty-options" wx:if="{{!hasNewScheduleOptions}}">当前学生没有可用于排课的有效课程科目，或系统还没有配置校区。</view>
     <block wx:else>
       <view class="schedule-grid">

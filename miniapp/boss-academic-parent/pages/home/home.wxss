@@ -3,8 +3,8 @@
 }
 
 .notification-band {
-  border-top: 1rpx solid #dce5d8;
-  border-bottom: 1rpx solid #dce5d8;
+  border-top: 1rpx solid #e3e5e8;
+  border-bottom: 1rpx solid #e3e5e8;
   margin: 22rpx 0;
   padding: 22rpx 0;
 }
@@ -22,7 +22,7 @@
 
 .coverage-list {
   margin-top: 16rpx;
-  border-top: 1rpx solid #e1e7dc;
+  border-top: 1rpx solid #e3e5e8;
 }
 
 .coverage-row {
@@ -31,7 +31,7 @@
   justify-content: space-between;
   gap: 16rpx;
   padding: 14rpx 0;
-  border-bottom: 1rpx solid #e1e7dc;
+  border-bottom: 1rpx solid #e3e5e8;
   font-size: 25rpx;
 }
 
@@ -51,9 +51,9 @@
 }
 
 .reminder-button {
-  background: #edf2ea;
+  background: #f0f1f3;
   border-radius: 8rpx;
-  color: #123d2b;
+  color: #ec5e0a;
   font-size: 25rpx;
   font-weight: 700;
   min-height: 72rpx;

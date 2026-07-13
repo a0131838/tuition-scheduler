@@ -8,8 +8,8 @@
   align-items: center;
   margin: 8rpx 0 22rpx;
   padding: 20rpx 0;
-  border-top: 1rpx solid #dce5d8;
-  border-bottom: 1rpx solid #dce5d8;
+  border-top: 1rpx solid #e3e5e8;
+  border-bottom: 1rpx solid #e3e5e8;
 }
 
 .reminder-action {
@@ -18,7 +18,7 @@
   min-height: 72rpx;
   padding: 0 18rpx;
   border-radius: 8rpx;
-  background: #123524;
+  background: #ec5e0a;
   color: #fff;
   font-size: 24rpx;
   font-weight: 700;

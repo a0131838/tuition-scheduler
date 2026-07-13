@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">老师移动工作台</view>
+    <view class="eyebrow">教学事务</view>
     <view class="title">请假与调课申请</view>
-    <view class="subtitle">选择未来课程后填写原因和建议时间，系统会交给 Jasmine/Eva 协调，不会直接修改课表。</view>
+    <view class="subtitle">选择课程并提交请假或调课申请。</view>
   </view>
   <view class="summary"><view class="summary-item"><view class="summary-number">{{upcomingCount}}</view><view class="label">未来30天课程</view></view></view>
   <view class="section-title">选择课程</view>

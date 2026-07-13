@@ -2,7 +2,7 @@
   <view class="top">
     <view class="eyebrow">{{studentName}}</view>
     <view class="title">课程安排</view>
-    <view class="subtitle">显示近期课程与出勤状态。</view>
+    <view class="subtitle">近期课程与出勤状态</view>
   </view>
 
   <view class="reminder-band" wx:if="{{courseReminder}}">

@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="top"><view class="eyebrow">老师移动工作台</view><view class="title">教学记录</view><view class="subtitle">按月份查看已经完成的课程、教学时长、考勤和反馈情况，不显示工资金额。</view></view>
+  <view class="top"><view class="eyebrow">教学事务</view><view class="title">教学记录</view><view class="subtitle">按月查看课程、教学时长、考勤和反馈。</view></view>
   <picker mode="date" fields="month" value="{{month}}" bindchange="changeMonth"><view class="picker">{{month}}</view></picker>
   <view class="summary">
     <view class="summary-item"><view class="summary-number">{{summary.sessions}}</view><view class="label">完成课程</view></view>

@@ -35,7 +35,7 @@
   </view>
 
   <view class="card">
-    <view class="label">完成前给家长看的处理结果</view>
+    <view class="label">处理结果（家长可见）</view>
     <textarea class="textarea" value="{{completionResult}}" placeholder="例如：已和老师确认，本周课程取消并保留补课安排，后续由 Eva 跟进具体时间。" bindinput="onCompletionResultInput" />
   </view>
 

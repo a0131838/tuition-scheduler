@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">家长微信提醒补授权</view>
+    <view class="eyebrow">微信提醒</view>
     <view class="title">{{total}} 条待跟进</view>
-    <view class="subtitle">这些消息已到发送时间，但家长没有对应模板的剩余微信授权额度。</view>
+    <view class="subtitle">以下消息因家长尚未授权而无法发送。</view>
   </view>
 
   <view class="reminder-card" wx:for="{{reminders}}" wx:key="id">

@@ -2,8 +2,8 @@
   <view class="top">
     <view class="eyebrow">{{roleText}}</view>
     <view class="title">{{staffNameText}}</view>
-    <view class="subtitle" wx:if="{{isTeacher}}">查看自己的课程，提交考勤、反馈和日常申请。</view>
-    <view class="subtitle" wx:else>查看当天课程，处理家长请求和排课协调。</view>
+    <view class="subtitle" wx:if="{{isTeacher}}">我的课程与教学事务</view>
+    <view class="subtitle" wx:else>课程、家长请求与排课事务</view>
   </view>
 
   <view class="card work-card" bindtap="goSchedule">
@@ -55,7 +55,7 @@
   </view>
 
   <block wx:if="{{isTeacher}}">
-    <view class="teacher-section-title">老师移动工作台</view>
+    <view class="teacher-section-title">教学事务</view>
     <view class="card work-card" bindtap="goTeacherAvailability">
       <view><view class="label">我的可用时间</view><view class="value">未来30天 {{teacherAvailabilityCount}} 个时段</view></view>
       <view class="arrow">›</view>

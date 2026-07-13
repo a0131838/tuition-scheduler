@@ -2,7 +2,7 @@
   <view class="top">
     <view class="eyebrow">{{studentName}}</view>
     <view class="title">课后反馈</view>
-    <view class="subtitle">老师发布后会直接展示给家长。</view>
+    <view class="subtitle">查看老师发布的课后记录。</view>
   </view>
 
   <block wx:if="{{feedbacks.length}}">

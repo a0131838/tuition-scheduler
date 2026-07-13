@@ -1,8 +1,8 @@
 <view class="page">
   <view class="top">
-    <view class="eyebrow">教务工作台</view>
+    <view class="eyebrow">教务排课</view>
     <view class="title">学生排课</view>
-    <view class="subtitle">全部学生都可以进入排课流程；系统另外标记需要教务关注的学生。</view>
+    <view class="subtitle">搜索学生后新排课或继续加课。</view>
   </view>
 
   <view class="summary-band">
@@ -25,10 +25,13 @@
       <view class="picker">{{scopes[scopeIndex].label}}</view>
     </picker>
     <view class="search-row">
-      <input value="{{query}}" bindinput="inputQuery" bindconfirm="search" confirm-type="search" placeholder="搜索学生或学校" />
-      <button class="icon-command" bindtap="search">搜索</button>
-      <button class="clear-command" wx:if="{{query}}" bindtap="clearSearch">清除</button>
+      <view class="search-input-wrap">
+        <input class="search-input" value="{{query}}" bindinput="inputQuery" bindconfirm="search" confirm-type="search" placeholder="学生姓名或学校" />
+        <view class="search-clear" wx:if="{{query}}" catchtap="clearSearch">×</view>
+      </view>
+      <view class="search-submit" bindtap="search">查询</view>
     </view>
+    <view class="search-status" wx:if="{{loading}}">正在查询…</view>
   </view>
 
   <block wx:if="{{visibleCandidates.length}}">

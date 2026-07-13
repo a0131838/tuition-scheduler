@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="top"><view class="eyebrow">老师移动工作台</view><view class="title">我的报销</view><view class="subtitle">提交收据或发票并查看审批、付款和驳回状态；审批仍由原系统负责人处理。</view></view>
+  <view class="top"><view class="eyebrow">教学事务</view><view class="title">我的报销</view><view class="subtitle">提交报销并查看处理状态。</view></view>
   <view class="summary">
     <view class="summary-item"><view class="summary-number">{{summary.submitted}}</view><view class="label">等待审批</view></view>
     <view class="summary-item"><view class="summary-number">{{summary.approved}}</view><view class="label">已批未付</view></view>

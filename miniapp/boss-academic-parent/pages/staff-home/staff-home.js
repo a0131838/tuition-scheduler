@@ -1,11 +1,19 @@
 const api = require("../../utils/api");
 
+const roleLabels = {
+  ADMIN: "管理",
+  TEACHER: "老师",
+  CS: "家长服务",
+  FINANCE: "财务",
+  SALES: "课程顾问"
+};
+
 Page({
   data: {
     staffName: "",
     staffNameText: "员工工作台",
     role: "",
-    roleText: "STAFF",
+    roleText: "员工",
     isTeacher: false,
     pendingCount: 0,
     todaySessionCount: 0,
@@ -38,7 +46,7 @@ Page({
     this.setData({
       loading: true,
       staffNameText: this.data.staffNameText || "员工工作台",
-      roleText: this.data.roleText || "STAFF"
+      roleText: this.data.roleText || "员工"
     });
 
     const meTask = api.requestStaff("/api/miniapp/staff/me", { timeout: 12000 })
@@ -48,7 +56,7 @@ Page({
           staffName: staff.name || "",
           staffNameText: staff.name || "员工工作台",
           role: staff.role || "",
-          roleText: staff.role || "STAFF",
+          roleText: roleLabels[staff.role] || "员工",
           isTeacher: staff.role === "TEACHER"
         });
       })

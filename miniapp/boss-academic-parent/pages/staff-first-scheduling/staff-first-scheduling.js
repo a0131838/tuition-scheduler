@@ -9,6 +9,9 @@ const scopes = [
   { label: "待处理前置条件", value: "blocked" }
 ];
 
+let searchTimer = null;
+let requestSeq = 0;
+
 Page({
   data: {
     scopes,
@@ -35,13 +38,20 @@ Page({
     this.load().finally(() => wx.stopPullDownRefresh());
   },
 
+  onUnload() {
+    if (searchTimer) clearTimeout(searchTimer);
+    requestSeq += 1;
+  },
+
   load() {
+    const seq = ++requestSeq;
     const query = this.data.query.trim();
     const scope = scopes[this.data.scopeIndex].value;
     const path = "/api/miniapp/staff/first-scheduling?limit=150&scope=" + encodeURIComponent(scope) + (query ? "&q=" + encodeURIComponent(query) : "");
     this.setData({ loading: true });
     return api.requestStaff(path, { timeout: 20000 })
       .then((data) => {
+        if (seq !== requestSeq) return;
         const summary = data.summary || {};
         this.setData({
           candidates: data.candidates || [],
@@ -55,8 +65,12 @@ Page({
         });
         this.applyScope();
       })
-      .catch((err) => api.toast(err.message))
-      .finally(() => this.setData({ loading: false }));
+      .catch((err) => {
+        if (seq === requestSeq) api.toast(err.message);
+      })
+      .finally(() => {
+        if (seq === requestSeq) this.setData({ loading: false });
+      });
   },
 
   applyScope() {
@@ -70,13 +84,17 @@ Page({
 
   inputQuery(e) {
     this.setData({ query: e.detail.value || "" });
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => this.load(), 350);
   },
 
   search() {
+    if (searchTimer) clearTimeout(searchTimer);
     this.load();
   },
 
   clearSearch() {
+    if (searchTimer) clearTimeout(searchTimer);
     this.setData({ query: "" });
     this.load();
   },

@@ -2,7 +2,7 @@
   margin-top: 16rpx;
   padding: 22rpx;
   background: #fff;
-  border: 1rpx solid #dce5d8;
+  border: 1rpx solid #e3e5e8;
   border-radius: 8rpx;
 }
 
@@ -14,7 +14,7 @@
 .parent,
 .teacher {
   margin-top: 6rpx;
-  color: #68766b;
+  color: #6b6f76;
   font-size: 24rpx;
 }
 
@@ -27,7 +27,7 @@
 .instruction {
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #e4eadf;
+  border-top: 1rpx solid #e3e5e8;
   color: #8a3a28;
   font-size: 25rpx;
   line-height: 1.55;
@@ -39,7 +39,7 @@
   margin: 0;
   padding: 0 22rpx;
   border-radius: 8rpx;
-  background: #22324a;
+  background: #202124;
   color: #fff;
   font-size: 24rpx;
 }

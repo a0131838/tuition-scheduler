@@ -6,6 +6,7 @@ const priorities = ["普通", "1小时紧急", "6小时紧急", "24小时紧急"
 const owners = ["自动分配", "Jasmine", "Eva", "Emily"];
 
 let searchTimer = null;
+let studentSearchSeq = 0;
 
 Page({
   data: {
@@ -33,6 +34,7 @@ Page({
 
   onUnload() {
     if (searchTimer) clearTimeout(searchTimer);
+    studentSearchSeq += 1;
   },
 
   onTypeChange(e) {
@@ -62,29 +64,52 @@ Page({
     searchTimer = setTimeout(() => this.searchStudents(), 450);
   },
 
-  searchStudents() {
+  searchStudents(event) {
+    if (searchTimer) clearTimeout(searchTimer);
+    const seq = ++studentSearchSeq;
     const query = this.data.studentQuery.trim();
     if (query.length < 2) {
       this.setData({ studentResults: [], searching: false });
+      if (event) api.toast("请输入至少两个字");
       return;
     }
     this.setData({ searching: true });
     api.requestStaff("/api/miniapp/staff/students?q=" + encodeURIComponent(query), { timeout: 12000 })
       .then((data) => {
+        if (seq !== studentSearchSeq) return;
         this.setData({ studentResults: data.students || [] });
       })
-      .catch((err) => api.toast(err.message))
-      .finally(() => this.setData({ searching: false }));
+      .catch((err) => {
+        if (seq === studentSearchSeq) api.toast(err.message);
+      })
+      .finally(() => {
+        if (seq === studentSearchSeq) this.setData({ searching: false });
+      });
+  },
+
+  clearStudentSearch() {
+    if (searchTimer) clearTimeout(searchTimer);
+    studentSearchSeq += 1;
+    this.setData({
+      studentQuery: "",
+      studentResults: [],
+      selectedStudentId: "",
+      selectedStudentLabel: "",
+      searching: false
+    });
   },
 
   selectStudent(e) {
     const id = e.currentTarget.dataset.id;
     const label = e.currentTarget.dataset.label;
+    studentSearchSeq += 1;
+    if (searchTimer) clearTimeout(searchTimer);
     this.setData({
       selectedStudentId: id,
       selectedStudentLabel: label,
       studentQuery: label,
-      studentResults: []
+      studentResults: [],
+      searching: false
     });
   },
 

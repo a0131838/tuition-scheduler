@@ -1,7 +1,7 @@
 page {
   min-height: 100%;
-  background: #f6f7f3;
-  color: #17251d;
+  background: #f5f6f7;
+  color: #202124;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   font-size: 28rpx;
 }
@@ -9,40 +9,48 @@ page {
 .page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 28rpx;
+  padding: 28rpx 28rpx 52rpx;
 }
 
 .top {
-  padding: 24rpx 0 20rpx;
+  padding: 28rpx 0 24rpx;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 30rpx;
 }
 
 .eyebrow {
-  color: #6e7d70;
-  font-size: 24rpx;
-  font-weight: 600;
+  color: #ec5e0a;
+  font-size: 23rpx;
+  font-weight: 700;
 }
 
 .title {
-  margin-top: 10rpx;
-  font-size: 44rpx;
-  font-weight: 800;
-  line-height: 1.18;
+  margin-top: 8rpx;
+  color: #202124;
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.25;
   letter-spacing: 0;
 }
 
 .subtitle {
-  margin-top: 12rpx;
-  color: #617064;
+  margin-top: 10rpx;
+  color: #61656d;
   font-size: 26rpx;
   line-height: 1.55;
 }
 
 .card {
-  margin-top: 20rpx;
+  margin-top: 16rpx;
   padding: 24rpx;
   background: #ffffff;
-  border: 1rpx solid #e1e7dc;
-  border-radius: 8rpx;
+  border: 1rpx solid #e3e5e8;
+  border-radius: 6rpx;
   box-sizing: border-box;
 }
 
@@ -54,7 +62,7 @@ page {
 }
 
 .label {
-  color: #708072;
+  color: #6b6f76;
   font-size: 24rpx;
 }
 
@@ -66,26 +74,33 @@ page {
 }
 
 .muted {
-  color: #748174;
+  color: #7b7f86;
 }
 
 .btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
   min-height: 88rpx;
   padding: 0 28rpx;
-  border-radius: 8rpx;
-  background: #123524;
+  border-radius: 6rpx;
+  background: #ec5e0a;
   color: #ffffff;
   font-size: 28rpx;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1;
 }
 
+.btn.small {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 .btn.secondary {
-  background: #edf2ea;
-  color: #123524;
+  background: #f0f1f3;
+  color: #202124;
 }
 
 .btn.warn {
@@ -93,12 +108,26 @@ page {
 }
 
 .btn.staff {
-  background: #22324a;
+  background: #202124;
   color: #ffffff;
 }
 
 .btn + .btn {
   margin-top: 16rpx;
+}
+
+button::after {
+  border: 0;
+}
+
+button[disabled] {
+  opacity: 0.52;
+}
+
+.btn:active,
+.search-submit:active {
+  opacity: 0.84;
+  transform: scale(0.99);
 }
 
 .input,
@@ -108,10 +137,10 @@ page {
   box-sizing: border-box;
   min-height: 86rpx;
   padding: 20rpx;
-  border: 1rpx solid #dbe3d7;
-  border-radius: 8rpx;
+  border: 1rpx solid #d9dce0;
+  border-radius: 6rpx;
   background: #ffffff;
-  color: #17251d;
+  color: #202124;
   font-size: 28rpx;
 }
 
@@ -130,8 +159,8 @@ page {
   min-height: 44rpx;
   padding: 0 16rpx;
   border-radius: 999rpx;
-  background: #edf2ea;
-  color: #244a35;
+  background: #fff0e7;
+  color: #9b3e08;
   font-size: 22rpx;
   font-weight: 700;
 }
@@ -143,7 +172,7 @@ page {
 .empty {
   padding: 72rpx 24rpx;
   text-align: center;
-  color: #788579;
+  color: #7b7f86;
 }
 
 .grid-2 {
@@ -155,7 +184,67 @@ page {
   flex: 1;
   min-width: 0;
   padding: 20rpx;
-  border-radius: 8rpx;
-  background: #f8faf6;
-  border: 1rpx solid #e4eadf;
+  border-radius: 6rpx;
+  background: #f0f1f3;
+  border: 0;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128rpx;
+  gap: 10rpx;
+  align-items: stretch;
+}
+
+.search-input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.search-input {
+  width: 100%;
+  min-height: 78rpx;
+  box-sizing: border-box;
+  padding: 0 72rpx 0 22rpx;
+  border: 1rpx solid #d9dce0;
+  border-radius: 6rpx;
+  background: #ffffff;
+  color: #202124;
+  font-size: 27rpx;
+}
+
+.search-clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 72rpx;
+  height: 78rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777b82;
+  font-size: 36rpx;
+}
+
+.search-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 78rpx;
+  height: 78rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 6rpx;
+  background: #ec5e0a;
+  color: #ffffff;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.search-status {
+  min-height: 34rpx;
+  margin-top: 8rpx;
+  color: #777b82;
+  font-size: 22rpx;
 }

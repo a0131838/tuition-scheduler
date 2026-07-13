@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r237`. `2026-07-13-r238` full-care core workspace is ready for controlled deployment.
+- Current production release: `2026-07-13-r237`. `2026-07-13-r238` full-care core workspace and `2026-07-13-r239` miniapp UI/search refresh are ready; neither is marked live yet.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -152,6 +152,30 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-13-r239 Ready
+
+- Scope: align the native miniapp with the official Boss/GTIA brand and make every staff search interaction consistent and resilient.
+- Search behavior:
+  - student scheduling, scheduling coordination, and assisted-ticket student lookup now share explicit query and clear controls
+  - typing is debounced, keyboard search remains available, and a late response cannot overwrite a newer query
+  - clearing a query immediately resets the correct result set; the student picker also clears any stale selected student
+- Visual language:
+  - official logo appears on parent and staff login pages
+  - primary actions, navigation, and selected tabs use logo orange `#EC5E0A`
+  - charcoal, white, and cool gray form the base palette; green/red remain limited to business status
+  - staff-home rows use a cleaner divider layout instead of a stack of identical cards
+- Copy: remove rollout and implementation wording such as travel, mobile-workbench, first-version, and availability labels from visible screens; replace it with direct operational labels.
+- Safety: no API, permission, schedule, attendance, package, finance, notification, migration, or server-business change.
+- Validation:
+  - all miniapp JavaScript and JSON checks
+  - `npm run miniapp:audit-release` with 26 pages and zero errors
+  - 11 focused scheduling/teacher tests
+  - `npx tsc --noEmit`
+  - `npm run build` with 192 pages
+  - WeChat DevTools compilation with 0 errors and 0 warnings
+  - task doc: `docs/tasks/TASK-20260713-miniapp-ui-search-brand-refresh.md`
+- Remaining before WeChat upload: run the three real-data searches and clear actions in an experience build on a physical phone; the DevTools remote employee request timed out during one final data-loading pass.
 
 ## 2026-07-13-r238 Ready
 

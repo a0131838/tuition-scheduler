@@ -1,7 +1,7 @@
 <view class="page">
   <view class="top">
     <view class="eyebrow">{{student.name || "博思学业管家"}}</view>
-    <view class="title">学习状态和服务进展</view>
+    <view class="title">学习与服务</view>
     <view class="subtitle">{{student.school || "学校未填写"}} · {{student.grade || "年级未填写"}}</view>
   </view>
 

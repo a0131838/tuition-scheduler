@@ -2,7 +2,7 @@
   <view class="top">
     <view class="eyebrow">{{studentName}}</view>
     <view class="title">提交请求</view>
-    <view class="subtitle">我们已收到你的请求，工作人员会尽快跟进。</view>
+    <view class="subtitle">请填写需要处理的事项。</view>
   </view>
 
   <view class="card">

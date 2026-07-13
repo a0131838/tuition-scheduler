@@ -11,6 +11,9 @@ const scopes = [
 ];
 const owners = ["全部负责人", "Jasmine", "Eva", "Emily"];
 
+let searchTimer = null;
+let requestSeq = 0;
+
 Page({
   data: {
     scopes,
@@ -33,7 +36,13 @@ Page({
     this.load().finally(() => wx.stopPullDownRefresh());
   },
 
+  onUnload() {
+    if (searchTimer) clearTimeout(searchTimer);
+    requestSeq += 1;
+  },
+
   load() {
+    const seq = ++requestSeq;
     const scope = scopes[this.data.scopeIndex];
     const owner = this.data.ownerIndex > 0 ? owners[this.data.ownerIndex] : "";
     const query = [];
@@ -45,6 +54,7 @@ Page({
     this.setData({ loading: true });
     return api.requestStaff("/api/miniapp/staff/scheduling-coordination?" + query.join("&"), { timeout: 20000 })
       .then((data) => {
+        if (seq !== requestSeq) return;
         const summary = data.summary || {};
         this.setData({
           tickets: data.tickets || [],
@@ -53,8 +63,12 @@ Page({
           overdueText: String(summary.overdue || 0)
         });
       })
-      .catch((err) => api.toast(err.message))
-      .finally(() => this.setData({ loading: false }));
+      .catch((err) => {
+        if (seq === requestSeq) api.toast(err.message);
+      })
+      .finally(() => {
+        if (seq === requestSeq) this.setData({ loading: false });
+      });
   },
 
   changeScope(e) {
@@ -68,14 +82,18 @@ Page({
   },
 
   inputQuery(e) {
-    this.setData({ query: e.detail.value });
+    this.setData({ query: e.detail.value || "" });
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => this.load(), 350);
   },
 
   search() {
+    if (searchTimer) clearTimeout(searchTimer);
     this.load();
   },
 
   clearSearch() {
+    if (searchTimer) clearTimeout(searchTimer);
     this.setData({ query: "" });
     this.load();
   },

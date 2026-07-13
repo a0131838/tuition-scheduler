@@ -2,17 +2,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 0;
+  padding: 26rpx 4rpx;
+  border-width: 0 0 1rpx;
+  border-color: #e3e5e8;
+  border-radius: 0;
+  background: transparent;
+}
+
+.work-card:active {
+  background: #f0f1f3;
 }
 
 .arrow {
-  color: #22324a;
-  font-size: 52rpx;
+  color: #ec5e0a;
+  font-size: 42rpx;
   line-height: 1;
 }
 
 .teacher-section-title {
   margin: 32rpx 0 4rpx;
-  color: #123524;
+  color: #202124;
   font-size: 26rpx;
   font-weight: 800;
 }
