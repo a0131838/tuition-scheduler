@@ -31,3 +31,10 @@ The first full-care workspace was live and intentionally contained no pilot enga
 ## Risk
 
 Low and isolated. The runtime diff only changes the Server Action helper boundary. Existing care business rules remain unchanged, and the full-care module still has no write path into teaching or finance records.
+
+## Deployment
+
+- Production commit: `caa9cbda565bfe607e2c8b6b4e82b3c4a15e5340`.
+- Backup: `/home/ubuntu/backups/tuition-scheduler/tuition-scheduler_2026-07-13_181341.dump`.
+- Result: 102 migrations current, 192-page build passed, PM2 online with zero restarts, login health `200`, and unauthenticated care access redirected to login.
+- Data safety: pre/post students, packages, sessions, attendance, partner settlements, package transactions, and protected finance-setting hashes matched exactly; all full-care business tables remained empty.
