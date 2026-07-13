@@ -24,7 +24,7 @@ test("login keeps parent and staff as separate portal flows", () => {
   assert.match(staffScript, /staff-bind\/staff-bind/);
 });
 
-test("portal choice persists and expired sessions return to the correct login", () => {
+test("portal choice persists without exposing employee entry inside the parent portal", () => {
   const appSource = read("app.js");
   const parentStudents = read("pages/students/students.js");
   const parentStudentsMarkup = read("pages/students/students.wxml");
@@ -36,8 +36,8 @@ test("portal choice persists and expired sessions return to the correct login", 
   assert.match(appSource, /setCurrentPortal\("parent"\)/);
   assert.match(appSource, /setCurrentPortal\("staff"\)/);
   assert.match(parentStudents, /setSession\(""\)/);
-  assert.match(parentStudents, /setCurrentPortal\("staff"\)/);
-  assert.match(parentStudentsMarkup, /进入博思员工端/);
+  assert.doesNotMatch(parentStudents, /goStaffPortal|staff-login/);
+  assert.doesNotMatch(parentStudentsMarkup, /员工端|goStaffPortal/);
   assert.match(staffHome, /setStaffSession\("", null\)/);
   assert.match(staffHome, /setCurrentPortal\("parent"\)/);
   assert.match(staffHomeMarkup, /切换到家长端/);

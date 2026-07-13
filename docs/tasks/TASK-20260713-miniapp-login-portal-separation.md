@@ -12,8 +12,14 @@ Make the first screen comfortable for parents while keeping employee access easy
 - Preserved automatic routing to the correct binding form when WeChat login reports an unbound identity.
 - Persisted the last-used parent/staff portal and resumed it when a valid session exists.
 - Cleared expired local sessions before returning to the matching login page to prevent redirect loops.
-- Added low-priority portal switches to the authenticated student list and staff home so dual-role WeChat users are never trapped in one portal.
-- Added release-audit and regression-test coverage for entry hierarchy, automatic binding, remembered portal, expired sessions, and authenticated switching.
+- Kept the employee-side return to the parent portal for staff who also need to check a parent identity.
+- Added release-audit and regression-test coverage for entry hierarchy, automatic binding, remembered portal, expired sessions, and portal separation.
+
+## Follow-up Correction (`2026-07-13-r244`)
+
+- Removed the employee-portal entry from the authenticated parent student page after Zhao confirmed it was still confusing inside the parent experience.
+- The employee entry now exists only on the unauthenticated login screen; authenticated parent pages remain parent-only.
+- The employee workbench still retains its return-to-parent action because it is inside the employee context and does not expose internal language to ordinary parents.
 
 ## Safety Boundaries
 

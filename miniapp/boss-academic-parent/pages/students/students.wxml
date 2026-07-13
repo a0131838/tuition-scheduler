@@ -20,5 +20,4 @@
   <view wx:else class="empty">还没有绑定学生</view>
 
   <button class="btn secondary" bindtap="goBind">绑定新学生</button>
-  <button class="portal-foot-link" bindtap="goStaffPortal">进入博思员工端</button>
 </view>

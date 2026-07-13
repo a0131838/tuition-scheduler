@@ -45,10 +45,5 @@ Page({
 
   goBind() {
     wx.navigateTo({ url: "/pages/bind/bind" });
-  },
-
-  goStaffPortal() {
-    getApp().setCurrentPortal("staff");
-    wx.reLaunch({ url: "/pages/staff-login/staff-login" });
   }
 });

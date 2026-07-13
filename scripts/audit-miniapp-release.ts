@@ -98,7 +98,8 @@ assert(!staffLoginMarkup.includes("员工绑定码") && !staffLoginMarkup.includ
 assert(parentLoginScript.includes('currentPortal === "parent"') && parentLoginScript.includes('currentPortal === "staff"'), "login must resume the last authenticated portal");
 assert(staffLoginScript.includes("data.needsBind") && staffLoginScript.includes("/pages/staff-bind/staff-bind"), "unbound staff must continue automatically to staff binding");
 assert(appScript.includes("current_portal") && appScript.includes("setCurrentPortal"), "app must persist the last-used portal");
-assert(read("pages/students/students.wxml").includes("进入博思员工端"), "authenticated parents must retain a low-priority staff switch");
+assert(!read("pages/students/students.wxml").includes("员工端"), "authenticated parent pages must not expose the employee portal");
+assert(!read("pages/students/students.js").includes("staff-login"), "authenticated parent pages must not navigate to employee login");
 assert(read("pages/staff-home/staff-home.wxml").includes("切换到家长端"), "authenticated staff must retain a low-priority parent switch");
 
 json("sitemap.json");

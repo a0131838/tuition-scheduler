@@ -15,11 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r244
+
+- Release ID: `2026-07-13-r244`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: remove the employee-portal switch from the authenticated parent student page so the parent experience stays entirely parent-facing after login.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/students/students.js`
+  - `miniapp/boss-academic-parent/pages/students/students.wxml`
+  - `scripts/audit-miniapp-release.ts`
+  - `tests/miniapp-login-entry.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-authenticated-parent-purity.md`
+- Risk impact (if any): Low and client-side only. Employee login remains available from the unauthenticated login screen, and the employee workbench still allows returning to the parent portal. Authentication APIs, tokens, bindings, permissions, and business data are unchanged.
+- Verification: all native-miniapp JavaScript syntax checks, 17 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. The release audit now fails if authenticated parent pages contain employee-entry wording or employee-login navigation; WeChat DevTools recompiled the package and confirmed the employee-to-parent journey still opens correctly.
+- Rollback point: `2026-07-13-r243` (`a350bf5`).
+
+---
+
 ## 2026-07-13-r243
 
 - Release ID: `2026-07-13-r243`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `LIVE`
+- Deployment status: `READY`
 - Scope: separate parent and employee login journeys, remove invitation binding from the first-screen hierarchy, remember the last-used portal, and retain low-priority switching for dual-role WeChat users.
 - Key files:
   - `miniapp/boss-academic-parent/app.js`
