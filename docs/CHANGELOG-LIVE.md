@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r235`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add a complete staff-miniapp scheduling center for students who have usable active packages but no future lessons, distinguish first scheduling from renewal scheduling, repair the `排课要求` ticket-category gap, and allow an ADMIN to create one or 1-12 weekly lessons through the existing preview/confirmation engine.
 - Key files:
   - `lib/miniapp-first-scheduling.ts`
@@ -32,7 +32,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-first-scheduling.test.ts`
   - `docs/tasks/TASK-20260713-miniapp-first-scheduling-center.md`
 - Risk impact (if any): High but constrained. This release creates real Classes, Enrollments, Sessions, Ticket completion records, and AuditLogs only after ADMIN preview and second confirmation. CS can find students and create/reuse a scheduling ticket but cannot write lessons. Existing package finance gates, balance checks, teacher qualification/availability, student/teacher/room conflict checks, duplicate protection, serializable transactions, request notifications, and course reminder cron remain authoritative.
-- Verification: 27 focused scheduling/auth/notification regression tests, TypeScript, miniapp JavaScript syntax, release audit with 22 complete pages, exact planning-document sync, diff checks, and the full 187-page production build pass. Read-only production-data evaluation finds 25 students with usable active packages and no future lessons: 5 true first-scheduling students, 20 renewal-scheduling students, 24 ready and 1 blocked by a visible prerequisite. Deployed authenticated read-only API verification remains before LIVE.
+- Verification: 27 focused scheduling/auth/notification regression tests, TypeScript, miniapp JavaScript syntax, release audit with 22 complete pages, exact planning-document sync, diff checks, and local/production 187-page builds pass. Production deployed at `ea1dcb8` with 101 migrations current, PM2 online, health 200, and exactly one reminder cron. Authenticated ADMIN GET returns 200 with total 25, first 5, renewal 20, ready 24, blocked 1, one returned row for `limit=1`, and `canSchedule=true`; the same endpoint without a staff token returns 401. No production Ticket or Session was created during verification.
 - Rollback point: `2026-07-12-r234`.
 
 ---

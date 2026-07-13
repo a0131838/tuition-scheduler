@@ -51,6 +51,6 @@ Read-only evaluation on 2026-07-13 found:
 - [x] Miniapp release audit: 22 pages, zero errors.
 - [x] Read-only real-data candidate reconciliation.
 - [x] Full production build: 187 pages.
-- [ ] Release-doc gate.
-- [ ] Production deploy and authenticated read-only API verification.
+- [x] Release-doc gate.
+- [x] Production deploy and authenticated read-only API verification.
 - [ ] WeChat DevTools re-open, compile, and phone regression.
