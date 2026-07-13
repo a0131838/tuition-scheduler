@@ -147,6 +147,7 @@ export async function getStaffMiniappScheduleCalendar(input: {
 
   const [rawSessions, teachers, campuses, courses, availabilityRows, teacherBusySessions, tickets] = await Promise.all([
     prisma.session.findMany({
+      relationLoadStrategy: "join",
       where: {
         startAt: { gte: start, lte: end },
         ...(teacherId ? { OR: [{ teacherId }, { teacherId: null, class: { teacherId } }] } : {}),

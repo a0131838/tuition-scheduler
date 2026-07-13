@@ -24,13 +24,14 @@ This file is the single source of truth for what changed in production.
 - Key files:
   - `app/api/miniapp/staff/schedule/calendar/route.ts`
   - `lib/miniapp-staff-schedule-calendar.ts`
+  - `prisma/schema.prisma`
   - `miniapp/boss-academic-parent/pages/staff-schedule/*`
   - `miniapp/boss-academic-parent/pages/staff-first-scheduling/staff-first-scheduling.js`
   - `miniapp/boss-academic-parent/pages/staff-coordination-detail/staff-coordination-detail.js`
   - `tests/miniapp-staff-schedule-calendar.test.ts`
   - `docs/tasks/TASK-20260713-miniapp-visual-scheduling-calendar.md`
-- Risk impact (if any): Medium read-side and navigation change. The calendar adds a range query and operational overlap indicators but does not add a scheduling write path. Formal scheduling remains ADMIN-only and continues through the existing signed preview and second confirmation. CS can coordinate but not write Sessions; teachers remain constrained to their own schedule.
-- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 245 lessons across 49 teachers and produced 124 free slots for a selected teacher. Physical-phone visual confirmation remains for the next experience version.
+- Risk impact (if any): Medium read-side and navigation change. The calendar adds a range query and operational overlap indicators but does not add a scheduling write path. Prisma `relationJoins` is enabled so this query can load nested relations in one database query; other Prisma calls keep their existing strategy. Formal scheduling remains ADMIN-only and continues through the existing signed preview and second confirmation. CS can coordinate but not write Sessions; teachers remain constrained to their own schedule.
+- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 244 visible lessons across 49 teachers after hiding one fully cancelled lesson, and produced 124 free slots for a selected teacher. Single-query relation loading reduced the local 42-day read from about 16 seconds to 2.4 seconds. Physical-phone visual confirmation remains for the next experience version.
 - Rollback point: `2026-07-13-r245` (`4276638`).
 
 ---
