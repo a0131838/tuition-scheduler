@@ -46,6 +46,16 @@ function jsonList(value: unknown, field: string) {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : [];
 }
 
+async function runCareAction(engagementId: string, label: string, operation: Promise<unknown>) {
+  try {
+    await operation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `${label} failed`;
+    redirect(`/admin/care/${encodeURIComponent(engagementId)}?err=${encodeURIComponent(message)}`);
+  }
+  redirect(`/admin/care/${encodeURIComponent(engagementId)}?msg=${encodeURIComponent(label)}`);
+}
+
 export default async function CareDetailPage({
   params,
   searchParams,
@@ -61,20 +71,10 @@ export default async function CareDetailPage({
   const msg = first(sp?.msg).trim();
   const err = first(sp?.err).trim();
 
-  async function runAction(label: string, operation: () => Promise<unknown>) {
-    try {
-      await operation();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : `${label} failed`;
-      redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent(message)}`);
-    }
-    redirect(`/admin/care/${encodeURIComponent(id)}?msg=${encodeURIComponent(label)}`);
-  }
-
   async function statusAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    await runAction("Status updated", () =>
+    await runCareAction(id, "Status updated",
       changeCareEngagementStatus({
         actor: current,
         engagementId: id,
@@ -87,7 +87,7 @@ export default async function CareDetailPage({
   async function planAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    await runAction("Plan added", () =>
+    await runCareAction(id, "Plan added",
       addCarePlan({
         actor: current,
         engagementId: id,
@@ -107,7 +107,7 @@ export default async function CareDetailPage({
     const current = await requireCareEngagementAccess(id);
     const canManage = current.role === "ADMIN" || (await isManagerUser(current));
     if (!canManage) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can change care scope and owners")}`);
-    await runAction("Configuration updated", () =>
+    await runCareAction(id, "Configuration updated",
       updateCareEngagementConfig({
         actor: current,
         engagementId: id,
@@ -123,7 +123,7 @@ export default async function CareDetailPage({
   async function activityAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    await runAction("Update added", () =>
+    await runCareAction(id, "Update added",
       addCareActivity({
         actor: current,
         engagementId: id,
@@ -149,7 +149,7 @@ export default async function CareDetailPage({
   async function taskAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    await runAction("Task added", () =>
+    await runCareAction(id, "Task added",
       addCareTask({
         actor: current,
         engagementId: id,
@@ -165,7 +165,7 @@ export default async function CareDetailPage({
   async function taskUpdateAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
-    await runAction("Task updated", () =>
+    await runCareAction(id, "Task updated",
       updateCareTask({
         actor: current,
         taskId: String(formData.get("taskId") ?? ""),

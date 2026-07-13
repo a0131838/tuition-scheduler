@@ -14,13 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r237`. `2026-07-13-r238` full-care core workspace and `2026-07-13-r239` miniapp UI/search refresh are ready; neither is marked live yet.
+- Current production release: `2026-07-13-r238` at `f6b5519`. `2026-07-13-r239` native-miniapp UI/search source is committed but not uploaded to WeChat. `2026-07-13-r240` full-care Server Action repair and SOP are ready for server deploy.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
-- Full-care-core risk: `2026-07-13-r238` adds five isolated care tables and an internal `/admin/care` workspace. Deploy must apply the additive migration before runtime restart, preserve all pre-deploy teaching/finance baselines, and create no pilot engagement automatically. Parent publishing remains disabled in this release.
+- Full-care-action risk: SOP QA found that the r238 detail page captured a component-local helper in its Server Actions. `2026-07-13-r240` moves that helper to module scope and has passed real production-mode submissions for status, config, plan, update, auto-task, and task completion. No pilot engagement exists yet, and parent publishing remains disabled.
+- Full-care-core monitoring: `2026-07-13-r238` is live with five isolated care tables and `/admin/care`; all five care tables remain empty until management explicitly creates pilot drafts. Teaching and finance baselines were preserved after deploy.
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
 - Miniapp review-readiness risk: the code is hardened, but privacy contact/retention details and WeChat backend screenshots still require Zhao input before submitting 1.0.0. Do not submit with invented retention promises or a reviewer path that exposes real student data.
 - Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.

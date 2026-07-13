@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r240
+
+- Release ID: `2026-07-13-r240`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: repair the full-care detail-page Server Action boundary discovered while producing the operator SOP, add a focused regression guard, and publish the complete 20-page full-care training SOP with real annotated system screenshots.
+- Key files:
+  - `app/admin/care/[id]/page.tsx`
+  - `tests/care-server-action-safety.test.ts`
+  - `package.json`
+  - `docs/SOP-教务-全托管工作台完整操作流程-培训版-20260713.html`
+  - `docs/assets/sop-教务-全托管工作台完整操作-20260713/annotated/*`
+  - `docs/全托管业务系统总体规划-20260713.md`
+  - `docs/tasks/TASK-20260713-full-care-action-safety-and-sop.md`
+- Risk impact (if any): Low and isolated. The runtime change only moves the care action redirect/error helper outside the page component so Next.js can serialize each Server Action. It does not change schemas, permissions, service validation, page layout, scheduling, attendance, packages, partner settlement, payroll, invoices, receipts, or existing finance data.
+- Verification: TypeScript, 46 backend tests, and the full 192-page production build pass. A production-mode Playwright flow used a temporary student and care project to submit status activation, configuration save, stage plan, HIGH-risk parent-summary update, automatic linked task creation, and DONE completion evidence; persisted values matched expectations. Cleanup was verified at zero temporary students, sessions, engagements, plans, activities, and tasks. The SOP renders as 20 A4 landscape pages (2.33 MB); visual contact-sheet review and key-text extraction pass.
+- Rollback point: web production commit `f6b5519`; immediate Git parent `327f8aa` contains only the already-prepared native-miniapp source refresh on top of r238.
+
+---
+
 ## 2026-07-13-r239
 
 - Release ID: `2026-07-13-r239`
@@ -40,7 +60,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r238`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add the isolated internal full-care workspace for selectable students, service scope, responsibility team, stage plans, evidence-based updates, risk controls, and tasks without changing teaching or finance workflows.
 - Key files:
   - `app/admin/care/*`
