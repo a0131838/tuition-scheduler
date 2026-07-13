@@ -1,0 +1,175 @@
+.page {
+  padding: 28rpx;
+  min-height: 100vh;
+  background: #f7f9f4;
+}
+
+.top {
+  margin-bottom: 22rpx;
+}
+
+.eyebrow,
+.hint,
+.subtitle {
+  color: #68756c;
+  font-size: 24rpx;
+}
+
+.title {
+  color: #123d2b;
+  font-size: 38rpx;
+  font-weight: 800;
+  margin-top: 8rpx;
+}
+
+.summary-band {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  border-top: 1rpx solid #dce5d8;
+  border-bottom: 1rpx solid #dce5d8;
+  padding: 22rpx 0;
+  margin-bottom: 20rpx;
+}
+
+.metric {
+  color: #123d2b;
+  font-size: 40rpx;
+  font-weight: 800;
+}
+
+.ready-number {
+  color: #17663a;
+}
+
+.blocked-number {
+  color: #9b3d31;
+}
+
+.controls {
+  display: grid;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.picker,
+input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 76rpx;
+  border: 1rpx solid #d6ded2;
+  border-radius: 8rpx;
+  background: #fff;
+  padding: 18rpx;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10rpx;
+}
+
+.icon-command,
+.clear-command {
+  min-height: 76rpx;
+  margin: 0;
+  border-radius: 8rpx;
+  font-size: 25rpx;
+  padding: 0 20rpx;
+}
+
+.icon-command {
+  background: #123d2b;
+  color: #fff;
+}
+
+.clear-command {
+  background: #edf2ea;
+  color: #123d2b;
+}
+
+.student-card {
+  background: #fff;
+  border: 1rpx solid #dce5d8;
+  border-radius: 8rpx;
+  padding: 22rpx;
+  margin-bottom: 16rpx;
+}
+
+.student-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.student-name {
+  color: #20352b;
+  font-size: 31rpx;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.state {
+  flex: 0 0 auto;
+  border-radius: 999rpx;
+  padding: 8rpx 14rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.state.ready {
+  background: #e8f4ea;
+  color: #17663a;
+}
+
+.state.blocked {
+  background: #f8ebe8;
+  color: #9b3d31;
+}
+
+.course-row {
+  border-top: 1rpx solid #edf0eb;
+  padding: 14rpx 0;
+}
+
+.course-name {
+  color: #263d31;
+  font-weight: 700;
+}
+
+.warning,
+.ticket-note {
+  border-radius: 6rpx;
+  padding: 14rpx;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.warning {
+  background: #fff4e5;
+  color: #854d0e;
+}
+
+.ticket-note {
+  background: #eef2f6;
+  color: #344054;
+}
+
+.start-button {
+  min-height: 82rpx;
+  margin: 18rpx 0 0;
+  border-radius: 8rpx;
+  background: #123d2b;
+  color: #fff;
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.empty {
+  color: #6b7280;
+  text-align: center;
+  padding: 80rpx 20rpx;
+}

@@ -13,12 +13,19 @@ export const COORDINATION_COMMUNICATION_TARGETS = ["家长", "老师", "家长�
 
 export const MOBILE_SCHEDULING_TICKET_TYPES = [
   "排课协调",
+  "排课要求",
   "改课程时间",
   "新排课",
   "补课加课",
   "临时取消&请假课程",
   "改上课老师",
 ] as const;
+
+export const NEW_SESSION_TICKET_TYPES = ["排课要求", "排课协调", "新排课", "补课加课"] as const;
+
+export function canCreateSessionFromTicketType(type: string) {
+  return NEW_SESSION_TICKET_TYPES.includes(type as (typeof NEW_SESSION_TICKET_TYPES)[number]);
+}
 
 export const coordinationBoardTicketInclude = Prisma.validator<Prisma.TicketInclude>()({
   parentAvailabilityRequest: true,

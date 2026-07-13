@@ -1,6 +1,6 @@
 const api = require("../../utils/api");
 
-const types = ["投诉", "普通反馈", "给老师的话", "排课要求", "请假/取消", "财务问题", "学校事务", "其他"];
+const types = ["投诉", "普通反馈", "给老师的话", "排课要求", "新排课", "补课加课", "请假/取消", "财务问题", "学校事务", "其他"];
 const communicationSources = ["微信群", "电话", "线下", "老师转达", "内部发现", "家长小程序", "其他"];
 const priorities = ["普通", "1小时紧急", "6小时紧急", "24小时紧急"];
 const owners = ["自动分配", "Jasmine", "Eva", "Emily"];

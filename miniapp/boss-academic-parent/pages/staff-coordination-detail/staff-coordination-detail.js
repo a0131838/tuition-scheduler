@@ -66,6 +66,7 @@ Page({
     newScheduleDate: newScheduleDefaults().date,
     newScheduleTime: newScheduleDefaults().time,
     newScheduleDuration: "60",
+    newScheduleWeeks: "1",
     newSchedulePreview: null,
     newSchedulePreviewToken: "",
     hasNewSchedulePreview: false,
@@ -223,6 +224,10 @@ Page({
     this.invalidateNewSchedulePreview({ newScheduleDuration: e.detail.value });
   },
 
+  inputNewScheduleWeeks(e) {
+    this.invalidateNewSchedulePreview({ newScheduleWeeks: e.detail.value });
+  },
+
   newSchedulePayload(mode) {
     const subject = this.data.newScheduleSubjects[this.data.newScheduleSubjectIndex];
     const level = this.data.newScheduleLevels[this.data.newScheduleLevelIndex];
@@ -238,6 +243,7 @@ Page({
       roomId: room ? room.id : "",
       startAt: this.data.newScheduleDate + "T" + this.data.newScheduleTime + ":00+08:00",
       durationMin: Number(this.data.newScheduleDuration),
+      weeks: Number(this.data.newScheduleWeeks),
       previewToken: this.data.newSchedulePreviewToken
     };
   },
@@ -254,6 +260,10 @@ Page({
     }
     if (!Number.isFinite(payload.durationMin) || payload.durationMin < 15 || payload.durationMin > 360) {
       api.toast("时长需为 15-360 分钟");
+      return;
+    }
+    if (!Number.isInteger(payload.weeks) || payload.weeks < 1 || payload.weeks > 12) {
+      api.toast("连续周数需为 1-12 周");
       return;
     }
     const path = "/api/miniapp/staff/scheduling-coordination/" + encodeURIComponent(this.data.id) + "/new-session";

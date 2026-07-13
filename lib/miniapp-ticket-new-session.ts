@@ -7,6 +7,7 @@ import { pickStudentSessionConflict, pickTeacherSessionConflict } from "@/lib/se
 import { isSessionDuplicateError } from "@/lib/session-unique";
 import { checkTeacherSchedulingAvailability } from "@/lib/teacher-scheduling-availability";
 import { prisma } from "@/lib/prisma";
+import { NEW_SESSION_TICKET_TYPES } from "@/lib/miniapp-scheduling-coordination-board";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -19,6 +20,7 @@ export type TicketNewSessionInput = {
   roomId: string | null;
   startAt: Date;
   durationMin: number;
+  weeks?: number;
 };
 
 type Actor = { userId: string; email: string; name: string | null; role: string };
@@ -33,6 +35,7 @@ type TokenPayload = {
   roomId: string | null;
   startAt: string;
   durationMin: number;
+  weeks: number;
   expiresAt: number;
 };
 
@@ -61,6 +64,22 @@ function conflictSelect() {
   } as const;
 }
 
+export function buildTicketNewSessionStartTimes(startAt: Date, requestedWeeks = 1) {
+  const weeks = requestedWeeks;
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > 12) {
+    throw new TicketNewSessionError("连续排课周数必须在 1 到 12 周之间。", 409, "INVALID_WEEKS");
+  }
+  return Array.from({ length: weeks }, (_, index) => new Date(startAt.getTime() + index * 7 * 24 * 60 * 60 * 1000));
+}
+
+function schedulingRows(input: TicketNewSessionInput) {
+  return buildTicketNewSessionStartTimes(input.startAt, input.weeks ?? 1).map((startAt) => ({
+    ...input,
+    weeks: 1,
+    startAt,
+  }));
+}
+
 async function validate(db: DbClient, input: TicketNewSessionInput) {
   if (!Number.isFinite(input.durationMin) || input.durationMin < 15 || input.durationMin > 360) {
     throw new TicketNewSessionError("课程时长必须在 15 到 360 分钟之间。", 409, "INVALID_DURATION");
@@ -72,7 +91,7 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
   const ticket = await db.ticket.findFirst({
     where: {
       id: input.ticketId,
-      type: { in: ["新排课", "补课加课", "排课协调"] },
+      type: { in: [...NEW_SESSION_TICKET_TYPES] },
       isArchived: false,
       status: { notIn: ["Completed", "Cancelled"] },
     },
@@ -184,6 +203,7 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
     teacher,
     campus,
     room,
+    startAt: input.startAt,
     endAt,
     preview: {
       studentName: student.name,
@@ -199,7 +219,7 @@ async function validate(db: DbClient, input: TicketNewSessionInput) {
 
 export async function getTicketNewSessionOptions(ticketId: string) {
   const ticket = await prisma.ticket.findFirst({
-    where: { id: ticketId, type: { in: ["新排课", "补课加课", "排课协调"] }, isArchived: false },
+    where: { id: ticketId, type: { in: [...NEW_SESSION_TICKET_TYPES] }, isArchived: false },
     select: { studentId: true, studentName: true },
   });
   if (!ticket) return null;
@@ -214,7 +234,6 @@ export async function getTicketNewSessionOptions(ticketId: string) {
     where: {
       studentId,
       status: "ACTIVE",
-      validFrom: { lte: now },
       OR: [{ validTo: null }, { validTo: { gte: now } }],
     },
     select: {
@@ -245,13 +264,30 @@ export async function getTicketNewSessionOptions(ticketId: string) {
 }
 
 export async function previewTicketNewSession(input: TicketNewSessionInput) {
-  return validate(prisma, input);
+  const checkedRows = [];
+  for (const row of schedulingRows(input)) checkedRows.push(await validate(prisma, row));
+  const first = checkedRows[0];
+  const last = checkedRows[checkedRows.length - 1];
+  return {
+    ...first,
+    checkedRows,
+    preview: {
+      ...first.preview,
+      weeks: checkedRows.length,
+      scheduleText: checkedRows.length === 1
+        ? first.preview.scheduleText
+        : `连续 ${checkedRows.length} 周：${first.preview.scheduleText} 至 ${last.preview.scheduleText}`,
+      rows: checkedRows.map((row, index) => ({ index: index + 1, scheduleText: row.preview.scheduleText })),
+    },
+  };
 }
 
 export async function applyTicketNewSession(input: TicketNewSessionInput, actor: Actor) {
   try {
     return await prisma.$transaction(async (tx) => {
-      const checked = await validate(tx, input);
+      const checkedRows = [];
+      for (const row of schedulingRows(input)) checkedRows.push(await validate(tx, row));
+      const checked = checkedRows[0];
       let group = await tx.oneOnOneGroup.findFirst({
         where: {
           teacherId: checked.teacher.id,
@@ -297,20 +333,26 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
         update: {},
         create: { classId: cls.id, studentId: checked.student.id },
       });
-      const session = await tx.session.create({
-        data: {
-          classId: cls.id,
-          startAt: input.startAt,
-          endAt: checked.endAt,
-          studentId: checked.student.id,
-        },
-      });
+      const sessions = [];
+      for (const row of checkedRows) {
+        sessions.push(await tx.session.create({
+          data: {
+            classId: cls.id,
+            startAt: row.startAt,
+            endAt: row.endAt,
+            studentId: checked.student.id,
+          },
+        }));
+      }
       const now = new Date();
-      const completionResult = `已完成排课：${checked.preview.scheduleText}；课程：${checked.preview.courseLabel}；老师：${checked.preview.teacherName}；地点：${checked.preview.locationText}。`;
+      const scheduleText = checkedRows.length === 1
+        ? checked.preview.scheduleText
+        : `连续 ${checkedRows.length} 周：${checkedRows[0].preview.scheduleText} 至 ${checkedRows[checkedRows.length - 1].preview.scheduleText}`;
+      const completionResult = `已完成排课：${scheduleText}；课程：${checked.preview.courseLabel}；老师：${checked.preview.teacherName}；地点：${checked.preview.locationText}。`;
       const actorName = actor.name?.trim() || actor.email;
       const log = `[${formatBusinessDateTime(now)}] ${actorName} · 移动端新排课\n${completionResult}`;
       const previousNotes = String(checked.ticket.risksNotes ?? "").trim();
-      await tx.ticket.update({
+      const completedTicket = await tx.ticket.update({
         where: { id: checked.ticket.id },
         data: {
           studentId: checked.student.id,
@@ -329,19 +371,27 @@ export async function applyTicketNewSession(input: TicketNewSessionInput, actor:
       await tx.parentAvailabilityRequest.updateMany({ where: { ticketId: checked.ticket.id }, data: { isActive: false } });
       await tx.auditLog.createMany({
         data: [
-          {
+          ...sessions.map((session, index) => ({
             actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
-            module: "SCHEDULING", action: "MINIAPP_TICKET_NEW_SESSION_CREATE", entityType: "Session", entityId: session.id,
-            meta: { ticketId: checked.ticket.id, startAt: input.startAt.toISOString(), endAt: checked.endAt.toISOString() },
-          },
+            module: "SCHEDULING", action: sessions.length > 1 ? "MINIAPP_TICKET_NEW_SESSION_SERIES_CREATE" : "MINIAPP_TICKET_NEW_SESSION_CREATE",
+            entityType: "Session", entityId: session.id,
+            meta: { ticketId: checked.ticket.id, weeks: sessions.length, index: index + 1, startAt: session.startAt.toISOString(), endAt: session.endAt.toISOString() },
+          })),
           {
             actorEmail: actor.email.trim().toLowerCase(), actorName: actor.name?.trim() || null, actorRole: actor.role,
             module: "TICKETS", action: "MINIAPP_COORDINATION_COMPLETE_AFTER_NEW_SESSION", entityType: "Ticket", entityId: checked.ticket.id,
-            meta: { sessionId: session.id },
+            meta: { sessionIds: sessions.map((session) => session.id), weeks: sessions.length },
           },
         ],
       });
-      return { ...checked, sessionId: session.id };
+      return {
+        ...checked,
+        ticket: completedTicket,
+        preview: { ...checked.preview, scheduleText, weeks: sessions.length },
+        sessionId: sessions[0].id,
+        sessionIds: sessions.map((session) => session.id),
+        weeks: sessions.length,
+      };
     }, { maxWait: 5000, timeout: 20000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
     if (isSessionDuplicateError(error)) throw new TicketNewSessionError("同一课程在该时间已经存在。", 409, "DUPLICATE");

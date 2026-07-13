@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r235
+
+- Release ID: `2026-07-13-r235`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: add a complete staff-miniapp scheduling center for students who have usable active packages but no future lessons, distinguish first scheduling from renewal scheduling, repair the `排课要求` ticket-category gap, and allow an ADMIN to create one or 1-12 weekly lessons through the existing preview/confirmation engine.
+- Key files:
+  - `lib/miniapp-first-scheduling.ts`
+  - `lib/miniapp-ticket-new-session.ts`
+  - `lib/miniapp-scheduling-coordination-board.ts`
+  - `app/api/miniapp/staff/first-scheduling/route.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/new-session/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `tests/miniapp-first-scheduling.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-first-scheduling-center.md`
+- Risk impact (if any): High but constrained. This release creates real Classes, Enrollments, Sessions, Ticket completion records, and AuditLogs only after ADMIN preview and second confirmation. CS can find students and create/reuse a scheduling ticket but cannot write lessons. Existing package finance gates, balance checks, teacher qualification/availability, student/teacher/room conflict checks, duplicate protection, serializable transactions, request notifications, and course reminder cron remain authoritative.
+- Verification: 27 focused scheduling/auth/notification regression tests, TypeScript, miniapp JavaScript syntax, release audit with 22 complete pages, exact planning-document sync, diff checks, and the full 187-page production build pass. Read-only production-data evaluation finds 25 students with usable active packages and no future lessons: 5 true first-scheduling students, 20 renewal-scheduling students, 24 ready and 1 blocked by a visible prerequisite. Deployed authenticated read-only API verification remains before LIVE.
+- Rollback point: `2026-07-12-r234`.
+
+---
+
 ## 2026-07-12-r234
 
 - Release ID: `2026-07-12-r234`

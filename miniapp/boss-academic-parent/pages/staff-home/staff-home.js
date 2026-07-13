@@ -11,6 +11,10 @@ Page({
     coordinationCount: 0,
     coordinationOverdueCount: 0,
     canManageCoordination: false,
+    firstSchedulingCount: 0,
+    firstSchedulingReadyCount: 0,
+    firstSchedulingFirstCount: 0,
+    canManageFirstScheduling: false,
     reminderAttentionCount: 0,
     canViewReminderAttention: false,
     loading: false
@@ -69,7 +73,16 @@ Page({
       .then((data) => this.setData({ canViewReminderAttention: true, reminderAttentionCount: data.total || 0 }))
       .catch(() => this.setData({ canViewReminderAttention: false, reminderAttentionCount: 0 }));
 
-    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask, reminderTask])
+    const firstSchedulingTask = api.requestStaff("/api/miniapp/staff/first-scheduling?limit=1", { timeout: 12000 })
+      .then((data) => this.setData({
+        canManageFirstScheduling: true,
+        firstSchedulingCount: data.summary ? data.summary.total : 0,
+        firstSchedulingReadyCount: data.summary ? data.summary.ready : 0,
+        firstSchedulingFirstCount: data.summary ? data.summary.first : 0
+      }))
+      .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0 }));
+
+    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask, reminderTask, firstSchedulingTask])
       .finally(() => this.setData({ loading: false }));
   },
 
@@ -87,6 +100,10 @@ Page({
 
   goCoordination() {
     wx.navigateTo({ url: "/pages/staff-coordination/staff-coordination" });
+  },
+
+  goFirstScheduling() {
+    wx.navigateTo({ url: "/pages/staff-first-scheduling/staff-first-scheduling" });
   },
 
   goReminderAttention() {

@@ -12,9 +12,15 @@ export const MINIAPP_PARENT_REQUEST_TYPES = [
   "其他",
 ] as const;
 
+export const MINIAPP_STAFF_REQUEST_TYPES = [
+  ...MINIAPP_PARENT_REQUEST_TYPES,
+  "新排课",
+  "补课加课",
+] as const;
+
 type MiniappParentRequestType = (typeof MINIAPP_PARENT_REQUEST_TYPES)[number];
 
-const TYPE_CONFIG: Record<MiniappParentRequestType, { owner: "Jasmine" | "Eva"; closer: "Jasmine" | "Eva"; priority: string }> = {
+const TYPE_CONFIG: Record<string, { owner: "Jasmine" | "Eva"; closer: "Jasmine" | "Eva"; priority: string }> = {
   投诉: { owner: "Jasmine", closer: "Jasmine", priority: "24小时紧急" },
   普通反馈: { owner: "Eva", closer: "Eva", priority: "普通" },
   给老师的话: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
@@ -23,6 +29,8 @@ const TYPE_CONFIG: Record<MiniappParentRequestType, { owner: "Jasmine" | "Eva"; 
   财务问题: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
   学校事务: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
   其他: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
+  新排课: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
+  补课加课: { owner: "Jasmine", closer: "Jasmine", priority: "普通" },
 };
 
 export function normalizeMiniappRequestType(input: unknown): MiniappParentRequestType {
@@ -30,8 +38,13 @@ export function normalizeMiniappRequestType(input: unknown): MiniappParentReques
   return MINIAPP_PARENT_REQUEST_TYPES.includes(raw as MiniappParentRequestType) ? (raw as MiniappParentRequestType) : "其他";
 }
 
+export function normalizeMiniappStaffRequestType(input: unknown) {
+  const raw = String(input ?? "").trim();
+  return MINIAPP_STAFF_REQUEST_TYPES.includes(raw as (typeof MINIAPP_STAFF_REQUEST_TYPES)[number]) ? raw : "其他";
+}
+
 export function miniappRequestConfig(type: string) {
-  return TYPE_CONFIG[normalizeMiniappRequestType(type)];
+  return TYPE_CONFIG[type] ?? TYPE_CONFIG[normalizeMiniappRequestType(type)];
 }
 
 export function miniappRequestStatusLabel(status: string) {

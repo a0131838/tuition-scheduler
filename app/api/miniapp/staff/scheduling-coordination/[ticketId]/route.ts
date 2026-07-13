@@ -9,6 +9,7 @@ import {
   coordinationBoardTicketInclude,
   defaultCoordinationNextAction,
   MOBILE_SCHEDULING_TICKET_TYPES,
+  canCreateSessionFromTicketType,
 } from "@/lib/miniapp-scheduling-coordination-board";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
@@ -113,7 +114,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ ticketId: strin
     upcomingSessions,
     capabilities: {
       canCreateNewSession:
-        access.auth.user.role === "ADMIN" && ["新排课", "补课加课", "排课协调"].includes(access.ticket.type),
+        access.auth.user.role === "ADMIN" && canCreateSessionFromTicketType(access.ticket.type),
     },
   });
 }

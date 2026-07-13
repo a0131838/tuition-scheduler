@@ -30,6 +30,7 @@ function parseInput(body: any, ticketId: string) {
     roomId: clean(body?.roomId, 80) || null,
     startAt,
     durationMin: Number(body?.durationMin),
+    weeks: Number(body?.weeks || 1),
   };
 }
 
@@ -79,6 +80,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
           roomId: input.roomId,
           startAt: input.startAt.toISOString(),
           durationMin: input.durationMin,
+          weeks: input.weeks ?? 1,
         },
         signingSecret
       );
@@ -96,7 +98,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ ticketId: stri
       payload.campusId !== input.campusId ||
       payload.roomId !== input.roomId ||
       payload.startAt !== input.startAt.toISOString() ||
-      payload.durationMin !== input.durationMin
+      payload.durationMin !== input.durationMin ||
+      payload.weeks !== (input.weeks ?? 1)
     ) {
       return bad("新排课预检已失效，请重新检查。", 409, { code: "PREVIEW_REQUIRED" });
     }

@@ -1,6 +1,6 @@
 import { bad, ok } from "@/app/api/miniapp/_lib";
 import { requireMiniappStaff } from "@/app/api/miniapp/staff/_lib";
-import { miniappRequestConfig, miniappRequestDto, normalizeMiniappRequestType } from "@/lib/miniapp-parent-requests";
+import { miniappRequestConfig, miniappRequestDto, normalizeMiniappStaffRequestType } from "@/lib/miniapp-parent-requests";
 import { prisma } from "@/lib/prisma";
 import { allocateTicketNo, composeTicketSituation, normalizeTicketString, parseDateLike } from "@/lib/tickets";
 
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object") return bad("Invalid JSON");
 
   const studentId = cleanString((body as any).studentId, 80);
-  const type = normalizeMiniappRequestType((body as any).type);
+  const type = normalizeMiniappStaffRequestType((body as any).type);
   const communicationSource = cleanString((body as any).communicationSource, 80) || "微信群";
   const sourceDetail = cleanString((body as any).sourceDetail, 160);
   const originalContent = cleanString((body as any).originalContent, 2000);

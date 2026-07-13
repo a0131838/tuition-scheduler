@@ -81,6 +81,10 @@
           <view class="label">时长（分钟）</view>
           <input class="picker" type="number" value="{{newScheduleDuration}}" bindinput="inputNewScheduleDuration" />
         </view>
+        <view class="field wide">
+          <view class="label">连续周数（1 表示只排一节）</view>
+          <input class="picker" type="number" value="{{newScheduleWeeks}}" bindinput="inputNewScheduleWeeks" />
+        </view>
       </view>
       <button class="secondary" loading="{{newScheduleChecking}}" disabled="{{newScheduleChecking}}" bindtap="previewNewSchedule">检查冲突</button>
       <view class="schedule-preview" wx:if="{{hasNewSchedulePreview}}">

@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-12-r233`. Release `2026-07-12-r234` is ready to prepare the native miniapp `1.0.0` review build.
+- Current production release: `2026-07-12-r233`. Release `2026-07-13-r235` is ready to add the new/renewal student scheduling center before the native miniapp `1.0.0` review build is uploaded.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -161,6 +161,16 @@
 - Operations: document upload, experience-version regression, audit submission, publishing, monitoring, Emily binding, and cleanup.
 - Remaining external work: privacy contact/address/retention decisions plus WeChat backend basic-info, certification/filing, domain, and privacy-guide confirmation.
 - Privacy intake update: contact and registered address are complete. Indefinite retention with optional super-admin deletion is recorded only as an initial preference; code inspection shows ticket files, finance history, and audit logs do not currently share a universal hard-delete path, so final retention wording still requires minimum-necessary periods and accounting classification.
+
+## 2026-07-13-r235 Ready
+
+- Scope: give Jasmine/Eva/ADMIN a dedicated mobile list for students with usable active packages but no future lessons.
+- Classification: distinguish true first scheduling from students who have historical lessons but need renewal scheduling.
+- Workflow: reuse an open `排课要求 / 排课协调 / 新排课 / 补课加课` ticket or create one internal `新排课` ticket, then choose subject, level, teacher, campus, room, date, time, duration, and 1-12 weekly lessons.
+- Permissions: CS/Emily can view the list and create/reuse a coordination ticket; only ADMIN can preview and confirm real Session writes.
+- Safety: preserve package finance gates, balances, teacher qualifications, availability, all conflict checks, duplicate guards, signed ten-minute previews, second confirmation, serializable writes, ticket completion, audit logs, and parent notification behavior.
+- Data evidence: read-only production evaluation reports 25 pending students: 5 first scheduling, 20 renewal scheduling, 24 ready, and 1 blocked.
+- Validation: 27 related regressions, TypeScript, miniapp syntax, 22-page release audit, document sync, diff checks, and the 187-page production build pass. Remaining: deploy, authenticated production GET checks, PM2/health/cron verification, and WeChat DevTools re-open/compile.
 
 ## 2026-07-12-r233 Live
 

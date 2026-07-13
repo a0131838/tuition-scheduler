@@ -29,6 +29,14 @@
     <view class="arrow">›</view>
   </view>
 
+  <view class="card work-card" wx:if="{{canManageFirstScheduling}}" bindtap="goFirstScheduling">
+    <view>
+      <view class="label">待排课学生</view>
+      <view class="value">{{firstSchedulingCount}} 名待排 · {{firstSchedulingFirstCount}} 名首次排课</view>
+    </view>
+    <view class="arrow">›</view>
+  </view>
+
   <view class="card work-card" wx:if="{{canViewReminderAttention}}" bindtap="goReminderAttention">
     <view>
       <view class="label">待补微信提醒</view>
