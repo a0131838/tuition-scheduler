@@ -42,5 +42,5 @@ Give linked TEACHER users a practical native-miniapp workbench for their highest
 - [x] Miniapp JavaScript syntax and 26-page release audit.
 - [x] Read-only real-data reconciliation.
 - [x] Full 191-page production build.
-- [ ] Deploy and production permission-boundary checks.
+- [x] Deploy and production permission-boundary checks.
 - [ ] Bind one test teacher and complete real-phone read/write regression.

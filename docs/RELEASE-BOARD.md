@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r236`. The scheduling page includes all 88 students while preserving 25 students as an attention signal rather than an eligibility restriction.
+- Current production release: `2026-07-13-r237`. The teacher mobile workbench is live; first-teacher binding and real-phone regression remain before broad rollout.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -4628,11 +4628,11 @@
   - verify renewal draft creation succeeds from the same package workspace
   - task doc: `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`
 
-## 2026-07-13-r237 Ready
+## 2026-07-13-r237 Live
 
 - Scope: add the complete first teacher-mobile workbench for own availability, leave/reschedule requests, personal expenses, and monthly teaching history.
 - Permission: every new endpoint requires a TEACHER role and linked teacher profile; management users and unauthenticated callers cannot enter the teacher-only APIs.
 - Reuse: availability, Ticket, ExpenseClaim, upload storage, audit, approval/payment, Session, attendance, and feedback data all remain in their existing system of record.
 - Safety: leave/reschedule creates or updates a coordination Ticket only; expense submission never grants approval/payment rights; teaching history excludes payroll amounts.
 - Data evidence: 46 linked teacher accounts are eligible, with 179 future-30-day sessions, 107 current-month completed sessions, 664 future availability slots, and existing teacher expense records available. Active teacher miniapp bindings remain 0 until rollout.
-- Validation: 28 focused tests, TypeScript, miniapp syntax, 26-page audit, exact document sync, diff checks, read-only reconciliation, and the full 191-page production build pass. Deploy remains.
+- Validation: 28 focused tests, TypeScript, miniapp syntax, 26-page audit, exact document sync, diff checks, read-only reconciliation, and local/production 191-page builds pass. Production `fc0ee9f` has 101 migrations, PM2 online, health 200, and one cron; all four teacher endpoints return ADMIN 403 and anonymous 401, while ADMIN schedule remains 200. First bound-teacher phone regression remains.

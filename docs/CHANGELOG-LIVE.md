@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r237`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: add a role-specific teacher mobile workbench to the native miniapp with future availability maintenance, leave/reschedule entry, personal expense submission/status, and monthly teaching history, while preserving the existing own-schedule, attendance, and feedback workflow.
 - Key files:
   - `app/api/miniapp/staff/teacher/*`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-teacher-workbench.test.ts`
   - `docs/tasks/TASK-20260713-miniapp-teacher-mobile-workbench.md`
 - Risk impact (if any): Medium and constrained. Teacher endpoints require a TEACHER staff session with a linked teacher profile. Availability writes are limited to the teacher's own next 30 days; leave/reschedule remains a Ticket and never changes a Session directly; expenses remain the teacher's own claims and preserve existing file, duplicate, audit, approval, and payment rules; history is read-only and excludes payroll amounts.
-- Verification: 28 focused teacher/scheduling/conflict/auth/notification tests, TypeScript, all miniapp JavaScript syntax, the 26-page release audit, exact planning-document sync, diff checks, read-only real-data reconciliation, and the full 191-page production build pass. Deploy and authenticated production boundary checks remain before LIVE.
+- Verification: 28 focused teacher/scheduling/conflict/auth/notification tests, TypeScript, all miniapp JavaScript syntax, the 26-page release audit, exact planning-document sync, diff checks, read-only real-data reconciliation, and local/production 191-page builds pass. Production deployed at `fc0ee9f` with 101 migrations current, PM2 online, health 200, and one reminder cron. ADMIN gets 403 and unauthenticated callers get 401 from all four teacher-only read endpoints, while the existing ADMIN staff-schedule endpoint remains 200. No teacher session or business write was created because active teacher miniapp bindings remain 0.
 - Rollback point: `2026-07-13-r236`.
 
 ---
