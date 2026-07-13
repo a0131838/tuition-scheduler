@@ -100,6 +100,9 @@ assert(staffLoginScript.includes("data.needsBind") && staffLoginScript.includes(
 assert(appScript.includes("current_portal") && appScript.includes("setCurrentPortal"), "app must persist the last-used portal");
 assert(!read("pages/students/students.wxml").includes("员工端"), "authenticated parent pages must not expose the employee portal");
 assert(!read("pages/students/students.js").includes("staff-login"), "authenticated parent pages must not navigate to employee login");
+assert(read("pages/students/students.wxml").includes("退出家长登录"), "authenticated parents must have a visible logout action");
+assert(read("pages/students/students.js").includes("/api/miniapp/auth/logout"), "parent logout must invalidate the server session");
+assert(read("pages/students/students.js").includes("setCurrentStudent(null)"), "parent logout must clear the selected student");
 assert(read("pages/staff-home/staff-home.wxml").includes("切换到家长端"), "authenticated staff must retain a low-priority parent switch");
 
 json("sitemap.json");

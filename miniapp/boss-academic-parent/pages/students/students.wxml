@@ -20,4 +20,5 @@
   <view wx:else class="empty">还没有绑定学生</view>
 
   <button class="btn secondary" bindtap="goBind">绑定新学生</button>
+  <button class="portal-foot-link" loading="{{loggingOut}}" disabled="{{loggingOut}}" bindtap="logout">退出家长登录</button>
 </view>

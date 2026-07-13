@@ -15,6 +15,24 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r245
+
+- Release ID: `2026-07-13-r245`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: add a complete parent logout flow to the authenticated miniapp student page, including confirmation, server-session invalidation, local student/session cleanup, and return to the parent login page.
+- Key files:
+  - `miniapp/boss-academic-parent/pages/students/students.js`
+  - `miniapp/boss-academic-parent/pages/students/students.wxml`
+  - `scripts/audit-miniapp-release.ts`
+  - `tests/miniapp-login-entry.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-parent-logout.md`
+- Risk impact (if any): Low and client-side integration only. The existing parent logout endpoint is reused without backend changes. Parent logout clears only the parent session and selected student; an employee session on the same WeChat account is not deleted.
+- Verification: all native-miniapp JavaScript syntax checks, 18 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. The logout-flow test executes the confirmation path and verifies server logout, parent-session cleanup, selected-student cleanup, parent-portal retention, and login-page relaunch in order. Physical-phone confirmation remains for the next experience version.
+- Rollback point: `2026-07-13-r244` (`62d6afc`).
+
+---
+
 ## 2026-07-13-r244
 
 - Release ID: `2026-07-13-r244`
