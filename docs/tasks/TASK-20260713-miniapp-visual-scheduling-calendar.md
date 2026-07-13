@@ -42,4 +42,7 @@ Give Eva, Jasmine, and linked teachers a practical visual scheduling calendar in
 - [x] TypeScript and native-miniapp JavaScript syntax checks.
 - [x] 26-page miniapp release audit.
 - [x] Full 193-page production build.
+- [x] Production runtime `a8a261f`: 102 migrations current, PM2 online with 0 restarts, health 200, and exactly one reminder cron.
+- [x] Authenticated production calendar: 7 days returned 68 lessons in 8.64 seconds; 42 days returned 244 visible lessons in 9.98 seconds, reduced from 62.64 seconds before the relation-loading patch.
+- [x] Anonymous production calendar request returns 401; authenticated ADMIN returns `canSchedule: true`.
 - [ ] Physical-phone visual and touch confirmation after uploading the next experience version.

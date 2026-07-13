@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r246`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `a8a261f`
 - Scope: add the native-miniapp visual scheduling calendar with month/week/day views, teacher/campus/course/student filters, daily coordination and overlap indicators, teacher free slots, and date/time handoff into the existing all-student scheduling workflow.
 - Key files:
   - `app/api/miniapp/staff/schedule/calendar/route.ts`
@@ -31,7 +31,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-staff-schedule-calendar.test.ts`
   - `docs/tasks/TASK-20260713-miniapp-visual-scheduling-calendar.md`
 - Risk impact (if any): Medium read-side and navigation change. The calendar adds a range query and operational overlap indicators but does not add a scheduling write path. Prisma `relationJoins` is enabled so this query can load nested relations in one database query; other Prisma calls keep their existing strategy. Formal scheduling remains ADMIN-only and continues through the existing signed preview and second confirmation. CS can coordinate but not write Sessions; teachers remain constrained to their own schedule.
-- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 244 visible lessons across 49 teachers after hiding one fully cancelled lesson, and produced 124 free slots for a selected teacher. Single-query relation loading reduced the local 42-day read from about 16 seconds to 2.4 seconds. Physical-phone visual confirmation remains for the next experience version.
+- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 244 visible lessons across 49 teachers after hiding one fully cancelled lesson, and produced 124 free slots for a selected teacher. Single-query relation loading reduced the local 42-day read from about 16 seconds to 2.4 seconds. Production improved from 62.64 seconds to 9.98 seconds for 42 days and returned 7 days in 8.64 seconds; PM2 is online with zero restarts, 102 migrations are current, health is 200, and one reminder cron remains. Physical-phone visual confirmation remains for the next experience version.
 - Rollback point: `2026-07-13-r245` (`4276638`).
 
 ---
