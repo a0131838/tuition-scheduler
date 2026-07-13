@@ -1,3 +1,47 @@
-.card {
-  margin-top: 48rpx;
+.staff-login-page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.staff-login-main {
+  width: 100%;
+}
+
+.staff-login-top {
+  padding-top: 44rpx;
+}
+
+.staff-login-primary {
+  margin-top: 34rpx;
+}
+
+.parent-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 96rpx;
+  padding-top: 26rpx;
+  border-top: 1rpx solid #dfe1e4;
+}
+
+.parent-switch-label {
+  color: #777b82;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.parent-link {
+  width: auto;
+  flex: 0 0 auto;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 4rpx;
+  background: transparent;
+  color: #202124;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 64rpx;
 }

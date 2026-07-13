@@ -1,14 +1,20 @@
-<view class="page">
-  <view class="top">
-    <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
-    <view class="eyebrow">博思学业管家</view>
-    <view class="title">家校服务</view>
-    <view class="subtitle">课表、课后反馈、课包财务与服务请求。</view>
+<view class="page login-page">
+  <view class="login-main">
+    <view class="top login-top">
+      <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
+      <view class="eyebrow">家长入口</view>
+      <view class="title">家长登录</view>
+      <view class="subtitle">使用已绑定的微信继续。</view>
+    </view>
+
+    <button class="btn login-primary" loading="{{loading}}" bindtap="handleLogin">家长微信登录</button>
   </view>
 
-  <view class="card">
-    <button class="btn" loading="{{loading}}" bindtap="handleLogin">微信登录</button>
-    <button class="btn secondary" bindtap="goBind">我有邀请码</button>
-    <button class="btn staff" bindtap="goStaff">员工登录</button>
+  <view class="portal-switch">
+    <view>
+      <view class="portal-switch-title">博思员工</view>
+      <view class="portal-switch-note">教务、老师与管理人员</view>
+    </view>
+    <button class="portal-link" bindtap="goStaff">进入员工端</button>
   </view>
 </view>

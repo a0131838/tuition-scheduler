@@ -1,13 +1,17 @@
-<view class="page">
-  <view class="top">
-    <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
-    <view class="eyebrow">博思学业管家</view>
-    <view class="title">员工登录</view>
-    <view class="subtitle">使用已绑定的微信登录。</view>
+<view class="page staff-login-page">
+  <view class="staff-login-main">
+    <view class="top staff-login-top">
+      <image class="brand-logo" src="/assets/boss-logo.png" mode="widthFix" />
+      <view class="eyebrow">员工入口</view>
+      <view class="title">员工登录</view>
+      <view class="subtitle">使用已绑定的微信继续。</view>
+    </view>
+
+    <button class="btn staff staff-login-primary" loading="{{loading}}" bindtap="handleLogin">员工微信登录</button>
   </view>
 
-  <view class="card">
-    <button class="btn staff" loading="{{loading}}" bindtap="handleLogin">员工微信登录</button>
-    <button class="btn secondary" bindtap="goBind">我有员工绑定码</button>
+  <view class="parent-switch">
+    <view class="parent-switch-label">家长查看孩子的课程与服务</view>
+    <button class="parent-link" bindtap="goParent">返回家长端</button>
   </view>
 </view>

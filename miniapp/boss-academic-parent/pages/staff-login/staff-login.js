@@ -6,6 +6,7 @@ Page({
   },
 
   onShow() {
+    getApp().setCurrentPortal("staff");
     const token = getApp().globalData.staffToken || wx.getStorageSync("staff_token") || "";
     if (token) wx.redirectTo({ url: "/pages/staff-home/staff-home" });
   },
@@ -24,7 +25,8 @@ Page({
       .finally(() => this.setData({ loading: false }));
   },
 
-  goBind() {
-    wx.navigateTo({ url: "/pages/staff-bind/staff-bind" });
+  goParent() {
+    getApp().setCurrentPortal("parent");
+    wx.redirectTo({ url: "/pages/login/login" });
   }
 });

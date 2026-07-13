@@ -27,6 +27,7 @@ Page({
       })
       .catch((err) => {
         if (String(err.message).includes("Unauthorized")) {
+          getApp().setSession("");
           wx.redirectTo({ url: "/pages/login/login" });
           return;
         }
@@ -44,5 +45,10 @@ Page({
 
   goBind() {
     wx.navigateTo({ url: "/pages/bind/bind" });
+  },
+
+  goStaffPortal() {
+    getApp().setCurrentPortal("staff");
+    wx.reLaunch({ url: "/pages/staff-login/staff-login" });
   }
 });

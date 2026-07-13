@@ -116,6 +116,18 @@ page {
   margin-top: 16rpx;
 }
 
+.portal-foot-link {
+  width: auto;
+  min-height: 64rpx;
+  margin: 18rpx auto 0;
+  padding: 0 12rpx;
+  background: transparent;
+  color: #61656d;
+  font-size: 24rpx;
+  font-weight: 650;
+  line-height: 64rpx;
+}
+
 button::after {
   border: 0;
 }

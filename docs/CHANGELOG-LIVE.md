@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r243
+
+- Release ID: `2026-07-13-r243`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: separate parent and employee login journeys, remove invitation binding from the first-screen hierarchy, remember the last-used portal, and retain low-priority switching for dual-role WeChat users.
+- Key files:
+  - `miniapp/boss-academic-parent/app.js`
+  - `miniapp/boss-academic-parent/app.wxss`
+  - `miniapp/boss-academic-parent/pages/login/*`
+  - `miniapp/boss-academic-parent/pages/staff-login/*`
+  - `miniapp/boss-academic-parent/pages/students/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `scripts/audit-miniapp-release.ts`
+  - `tests/miniapp-login-entry.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-login-portal-separation.md`
+- Risk impact (if any): Low and client-side only. Authentication endpoints, permissions, tokens, invitations, and bindings are unchanged. The main remaining risk is stored-session behavior on a physical WeChat device; dual-role users retain explicit portal switches after login.
+- Verification: all miniapp JavaScript syntax checks, 17 focused tests, the 26-page release audit, TypeScript, and the full 192-page production build pass. WeChat DevTools on an iPhone 12/13 simulator confirms the parent-first hierarchy, separate employee page, and two-way portal navigation render without overlap.
+- Rollback point: `2026-07-13-r242` (`d15016a`).
+
+---
+
 ## 2026-07-13-r242
 
 - Release ID: `2026-07-13-r242`

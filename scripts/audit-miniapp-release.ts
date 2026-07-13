@@ -86,6 +86,20 @@ assert(fs.existsSync(path.join(ROOT, "assets", "boss-logo.png")), "assets/boss-l
 for (const loginPage of ["pages/login/login.wxml", "pages/staff-login/staff-login.wxml"]) {
   assert(read(loginPage).includes('/assets/boss-logo.png'), `${loginPage}: brand logo is required`);
 }
+const parentLoginMarkup = read("pages/login/login.wxml");
+const parentLoginScript = read("pages/login/login.js");
+const staffLoginMarkup = read("pages/staff-login/staff-login.wxml");
+const staffLoginScript = read("pages/staff-login/staff-login.js");
+const appScript = read("app.js");
+assert(parentLoginMarkup.includes("家长微信登录") && parentLoginMarkup.includes("进入员工端"), "parent login must keep one primary action and a separate staff switch");
+assert(!parentLoginMarkup.includes("我有邀请码") && !parentLoginMarkup.includes('bindtap="goBind"'), "parent invite binding must follow login instead of competing on the entry page");
+assert(staffLoginMarkup.includes("员工微信登录") && staffLoginMarkup.includes("返回家长端"), "staff login must be a separate portal with a parent return path");
+assert(!staffLoginMarkup.includes("员工绑定码") && !staffLoginMarkup.includes('bindtap="goBind"'), "staff binding must follow the employee login check");
+assert(parentLoginScript.includes('currentPortal === "parent"') && parentLoginScript.includes('currentPortal === "staff"'), "login must resume the last authenticated portal");
+assert(staffLoginScript.includes("data.needsBind") && staffLoginScript.includes("/pages/staff-bind/staff-bind"), "unbound staff must continue automatically to staff binding");
+assert(appScript.includes("current_portal") && appScript.includes("setCurrentPortal"), "app must persist the last-used portal");
+assert(read("pages/students/students.wxml").includes("进入博思员工端"), "authenticated parents must retain a low-priority staff switch");
+assert(read("pages/staff-home/staff-home.wxml").includes("切换到家长端"), "authenticated staff must retain a low-priority parent switch");
 
 json("sitemap.json");
 

@@ -62,6 +62,7 @@ Page({
       })
       .catch((err) => {
         if (String(err.message || "").toLowerCase().includes("unauthorized")) {
+          getApp().setStaffSession("", null);
           wx.redirectTo({ url: "/pages/staff-login/staff-login" });
           return;
         }
@@ -158,5 +159,10 @@ Page({
   logout() {
     getApp().setStaffSession("", null);
     wx.redirectTo({ url: "/pages/staff-login/staff-login" });
+  },
+
+  goParentPortal() {
+    getApp().setCurrentPortal("parent");
+    wx.reLaunch({ url: "/pages/login/login" });
   }
 });
