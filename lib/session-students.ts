@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 type StudentLike = {
   id?: string | null;
   name?: string | null;
@@ -29,6 +31,41 @@ export type SessionStudent = {
   id: string;
   name: string | null;
 };
+
+type StudentIdFilter = string | { in: string[] };
+
+function sessionStudentScope(studentId: StudentIdFilter): Prisma.SessionWhereInput {
+  return {
+    OR: [
+      { class: { capacity: 1 }, studentId },
+      {
+        studentId: null,
+        AND: [
+          { class: { capacity: 1 } },
+          { class: { oneOnOneStudentId: studentId } },
+        ],
+      },
+      {
+        class: { capacity: 1 },
+        studentId: null,
+        AND: [
+          { class: { oneOnOneStudentId: null } },
+          { class: { enrollments: { some: { studentId } } } },
+        ],
+      },
+      { class: { capacity: { not: 1 }, enrollments: { some: { studentId } } } },
+    ],
+  };
+}
+
+export function sessionBelongsToStudentWhere(studentId: string): Prisma.SessionWhereInput {
+  return sessionStudentScope(studentId);
+}
+
+export function sessionBelongsToStudentsWhere(studentIds: string[]): Prisma.SessionWhereInput {
+  if (!studentIds.length) return { id: { in: [] } };
+  return sessionStudentScope({ in: studentIds });
+}
 
 export function getCancelledSessionStudentIds(session: SessionLike) {
   return new Set(
@@ -71,6 +108,10 @@ export function getSessionStudents(session: SessionLike): SessionStudent[] {
     if (!dedup.has(row.id)) dedup.set(row.id, row);
   }
   return Array.from(dedup.values());
+}
+
+export function getSessionStudentIds(session: SessionLike) {
+  return getSessionStudents(session).map((row) => row.id);
 }
 
 export function getVisibleSessionStudents(session: SessionLike): SessionStudent[] {

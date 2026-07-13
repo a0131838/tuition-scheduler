@@ -3,6 +3,7 @@ import { formatBusinessDateOnly } from "@/lib/date-only";
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { listParentBillingForPackage } from "@/lib/student-parent-billing";
 import { prisma } from "@/lib/prisma";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import { bad, ok, requireMiniappStudentAccess, sessionDto } from "../../../_lib";
 
 function summarizeFeedback(content: string) {
@@ -10,16 +11,6 @@ function summarizeFeedback(content: string) {
   const preferred = sections.classPerformance || sections.lessonFocus || content;
   const text = String(preferred ?? "").replace(/\s+/g, " ").trim();
   return text.length > 80 ? `${text.slice(0, 80)}...` : text;
-}
-
-function sessionStudentWhere(studentId: string) {
-  return {
-    OR: [
-      { studentId },
-      { class: { oneOnOneStudentId: studentId } },
-      { class: { enrollments: { some: { studentId } } } },
-    ],
-  };
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
@@ -47,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     prisma.session.findFirst({
       where: {
         startAt: { gte: now },
-        ...sessionStudentWhere(studentId),
+        ...sessionBelongsToStudentWhere(studentId),
       },
       include: {
         teacher: true,
@@ -60,7 +51,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       where: {
         startAt: { lte: now },
         feedbacks: { some: { content: { not: "" } } },
-        ...sessionStudentWhere(studentId),
+        ...sessionBelongsToStudentWhere(studentId),
       },
       include: {
         feedbacks: {

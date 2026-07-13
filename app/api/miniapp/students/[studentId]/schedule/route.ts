@@ -1,15 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import { ok, parseDateRange, requireMiniappStudentAccess, sessionDto } from "../../../_lib";
-
-function sessionStudentWhere(studentId: string) {
-  return {
-    OR: [
-      { studentId },
-      { class: { oneOnOneStudentId: studentId } },
-      { class: { enrollments: { some: { studentId } } } },
-    ],
-  };
-}
 
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
@@ -21,7 +12,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   const sessions = await prisma.session.findMany({
     where: {
       startAt: { gte: from, lte: to },
-      ...sessionStudentWhere(studentId),
+      ...sessionBelongsToStudentWhere(studentId),
     },
     include: {
       teacher: true,

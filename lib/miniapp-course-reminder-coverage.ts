@@ -1,5 +1,6 @@
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
+import { getSessionStudentIds, sessionBelongsToStudentsWhere } from "@/lib/session-students";
 import { courseReminderQuota } from "@/lib/wechat-miniapp-subscription";
 
 export async function getParentCourseReminderCoverage(parentId: string, selectedStudentId?: string | null) {
@@ -18,16 +19,13 @@ export async function getParentCourseReminderCoverage(parentId: string, selected
       ? prisma.session.findMany({
           where: {
             startAt: { gte: now, lte: horizon },
-            OR: [
-              { studentId: { in: studentIds } },
-              { class: { oneOnOneStudentId: { in: studentIds } } },
-              { class: { enrollments: { some: { studentId: { in: studentIds } } } } },
-            ],
+            ...sessionBelongsToStudentsWhere(studentIds),
           },
           select: {
             id: true, studentId: true, startAt: true,
             class: {
               select: {
+                capacity: true,
                 oneOnOneStudentId: true,
                 course: { select: { name: true } },
                 subject: { select: { name: true } },
@@ -50,11 +48,8 @@ export async function getParentCourseReminderCoverage(parentId: string, selected
   ]);
   const sentKeys = new Set(sentRows.map((row) => `${row.studentId || ""}:${row.targetId || ""}`));
   const occurrences = sessions.flatMap((session) => {
-    const ids = new Set<string>();
-    if (session.studentId && linkedStudentIds.has(session.studentId)) ids.add(session.studentId);
-    if (session.class.oneOnOneStudentId && linkedStudentIds.has(session.class.oneOnOneStudentId)) ids.add(session.class.oneOnOneStudentId);
-    session.class.enrollments.forEach((row) => ids.add(row.studentId));
-    return Array.from(ids).map((studentId) => ({
+    const ids = getSessionStudentIds(session).filter((studentId) => linkedStudentIds.has(studentId));
+    return ids.map((studentId) => ({
       sessionId: session.id,
       studentId,
       studentName: studentNames.get(studentId) || "学员",

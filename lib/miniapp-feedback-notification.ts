@@ -1,16 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { MINIAPP_TEMPLATE_KEYS, queueMiniappNotificationsForStudent } from "@/lib/miniapp-notifications";
+import { getSessionStudentIds } from "@/lib/session-students";
 
 export function feedbackNotificationStudentIds(input: {
+  classCapacity: number;
   sessionStudentId?: string | null;
   oneOnOneStudentId?: string | null;
   enrollmentStudentIds?: string[];
 }) {
-  return Array.from(new Set([
-    input.sessionStudentId,
-    input.oneOnOneStudentId,
-    ...(input.enrollmentStudentIds ?? []),
-  ].filter((value): value is string => Boolean(value))));
+  return getSessionStudentIds({
+    studentId: input.sessionStudentId,
+    class: {
+      capacity: input.classCapacity,
+      oneOnOneStudentId: input.oneOnOneStudentId,
+      enrollments: (input.enrollmentStudentIds ?? []).map((studentId) => ({ studentId })),
+    },
+  });
 }
 
 export async function queueFirstPublishedFeedback(input: {
@@ -35,6 +40,7 @@ export async function queueFirstPublishedFeedback(input: {
   if (!session) return [];
 
   const studentIds = feedbackNotificationStudentIds({
+    classCapacity: session.class.capacity,
     sessionStudentId: session.studentId,
     oneOnOneStudentId: session.class.oneOnOneStudentId,
     enrollmentStudentIds: session.class.enrollments.map((row) => row.studentId),

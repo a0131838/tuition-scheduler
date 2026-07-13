@@ -2,6 +2,7 @@ import { PackageFinanceGateStatus, PackageType, Prisma } from "@prisma/client";
 import { formatBusinessDateOnly } from "@/lib/date-only";
 import { NEW_SESSION_TICKET_TYPES } from "@/lib/miniapp-scheduling-coordination-board";
 import { prisma } from "@/lib/prisma";
+import { getSessionStudentIds, sessionBelongsToStudentWhere, sessionBelongsToStudentsWhere } from "@/lib/session-students";
 import { allocateTicketNo, composeTicketSituation } from "@/lib/tickets";
 
 type FirstSchedulingActor = { id: string; email: string; name: string | null; role: string };
@@ -11,16 +12,20 @@ const OPEN_FINANCE_GATES = new Set<PackageFinanceGateStatus>([
   PackageFinanceGateStatus.SCHEDULABLE,
 ]);
 
-type CandidatePackage = {
-  id: string;
-  type: PackageType;
-  remainingMinutes: number | null;
-  validFrom: Date;
-  validTo: Date | null;
-  financeGateStatus: PackageFinanceGateStatus;
-  financeGateReason: string | null;
-  course: { id: string; name: string; _count: { subjects: number } };
-};
+const candidatePackageSelect = Prisma.validator<Prisma.CoursePackageSelect>()({
+  id: true,
+  type: true,
+  remainingMinutes: true,
+  validFrom: true,
+  validTo: true,
+  financeGateStatus: true,
+  financeGateReason: true,
+  student: { select: { id: true, name: true } },
+  sharedStudents: { select: { student: { select: { id: true, name: true } } } },
+  course: { select: { id: true, name: true, _count: { select: { subjects: true } } } },
+});
+
+export type CandidatePackage = Prisma.CoursePackageGetPayload<{ select: typeof candidatePackageSelect }>;
 
 export function firstSchedulingPackageState(packages: CandidatePackage[]) {
   if (!packages.length) {
@@ -42,17 +47,27 @@ function remainingText(pkg: CandidatePackage) {
   return rest ? `${hours}小时${rest}分钟` : `${hours}小时`;
 }
 
+export function mergeCandidatePackages(owned: CandidatePackage[], shared: CandidatePackage[]) {
+  const packages = new Map<string, CandidatePackage>();
+  for (const pkg of [...owned, ...shared]) packages.set(pkg.id, pkg);
+  return Array.from(packages.values());
+}
+
+export function candidatePackageSharingText(pkg: CandidatePackage, studentId: string) {
+  if (!pkg.sharedStudents.length) return "";
+  if (pkg.student.id !== studentId) return `共享课包主学生：${pkg.student.name}`;
+  const names = pkg.sharedStudents.map((row) => row.student.name).filter(Boolean);
+  return names.length ? `与 ${names.join("、")} 共用` : "共享课包";
+}
+
 function collectSessionStudentIds(rows: Array<{
   studentId: string | null;
-  class: { oneOnOneStudentId: string | null; enrollments: Array<{ studentId: string }> };
+  class: { capacity: number; oneOnOneStudentId: string | null; enrollments: Array<{ studentId: string }> };
   attendances: Array<{ studentId: string }>;
 }>) {
   const ids = new Set<string>();
   for (const row of rows) {
-    if (row.studentId) ids.add(row.studentId);
-    if (row.class.oneOnOneStudentId) ids.add(row.class.oneOnOneStudentId);
-    row.class.enrollments.forEach((item) => ids.add(item.studentId));
-    row.attendances.forEach((item) => ids.add(item.studentId));
+    getSessionStudentIds(row).forEach((studentId) => ids.add(studentId));
   }
   return ids;
 }
@@ -70,6 +85,13 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
   const scope: SchedulingScope = ["attention", "first", "renewal", "scheduled", "blocked"].includes(String(input?.scope))
     ? input?.scope as SchedulingScope
     : "all";
+  const activePackageWhere = {
+    status: "ACTIVE" as const,
+    AND: [
+      { OR: [{ validTo: null }, { validTo: { gte: now } }] },
+      { OR: [{ type: "MONTHLY" as const }, { remainingMinutes: { gt: 0 } }] },
+    ],
+  } satisfies Prisma.CoursePackageWhereInput;
   const students = await prisma.student.findMany({
     where: {
       ...(query
@@ -91,24 +113,14 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
       servicePlanType: true,
       createdAt: true,
       packages: {
-        where: {
-          status: "ACTIVE",
-          AND: [
-            { OR: [{ validTo: null }, { validTo: { gte: now } }] },
-            { OR: [{ type: "MONTHLY" }, { remainingMinutes: { gt: 0 } }] },
-          ],
-        },
-        select: {
-          id: true,
-          type: true,
-          remainingMinutes: true,
-          validFrom: true,
-          validTo: true,
-          financeGateStatus: true,
-          financeGateReason: true,
-          course: { select: { id: true, name: true, _count: { select: { subjects: true } } } },
-        },
+        where: activePackageWhere,
+        select: candidatePackageSelect,
         orderBy: { updatedAt: "desc" },
+      },
+      sharedPackageLinks: {
+        where: { package: activePackageWhere },
+        select: { package: { select: candidatePackageSelect } },
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: [{ createdAt: "desc" }, { name: "asc" }],
@@ -118,34 +130,27 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
     return { candidates: [], summary: { total: 0, attention: 0, ready: 0, blocked: 0, withOpenTicket: 0, first: 0, renewal: 0, scheduled: 0 } };
   }
 
-  const [futureSessions, studentsWithAnySession, tickets] = await Promise.all([
+  const [futureSessions, historicalSessions, tickets] = await Promise.all([
     prisma.session.findMany({
       where: {
         startAt: { gte: now },
-        OR: [
-          { studentId: { in: studentIds } },
-          { class: { oneOnOneStudentId: { in: studentIds } } },
-          { class: { enrollments: { some: { studentId: { in: studentIds } } } } },
-          { attendances: { some: { studentId: { in: studentIds } } } },
-        ],
+        ...sessionBelongsToStudentsWhere(studentIds),
       },
       select: {
         studentId: true,
-        class: { select: { oneOnOneStudentId: true, enrollments: { select: { studentId: true } } } },
+        class: { select: { capacity: true, oneOnOneStudentId: true, enrollments: { select: { studentId: true } } } },
         attendances: { select: { studentId: true } },
       },
     }),
-    prisma.student.findMany({
+    prisma.session.findMany({
       where: {
-        id: { in: studentIds },
-        OR: [
-          { sessions: { some: {} } },
-          { oneOnOneClasses: { some: { sessions: { some: {} } } } },
-          { enrollments: { some: { class: { sessions: { some: {} } } } } },
-          { attendances: { some: {} } },
-        ],
+        ...sessionBelongsToStudentsWhere(studentIds),
       },
-      select: { id: true },
+      select: {
+        studentId: true,
+        class: { select: { capacity: true, oneOnOneStudentId: true, enrollments: { select: { studentId: true } } } },
+        attendances: { select: { studentId: true } },
+      },
     }),
     prisma.ticket.findMany({
       where: {
@@ -159,13 +164,17 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
     }),
   ]);
   const scheduledIds = collectSessionStudentIds(futureSessions);
-  const historicalIds = new Set(studentsWithAnySession.map((row) => row.id));
+  const historicalIds = collectSessionStudentIds(historicalSessions);
   const ticketByStudent = new Map<string, (typeof tickets)[number]>();
   for (const ticket of tickets) if (ticket.studentId && !ticketByStudent.has(ticket.studentId)) ticketByStudent.set(ticket.studentId, ticket);
 
   const allCandidates = students
     .map((student) => {
-      const row = { student, packages: student.packages as CandidatePackage[] };
+      const packages = mergeCandidatePackages(
+        student.packages,
+        student.sharedPackageLinks.map((row) => row.package),
+      );
+      const row = { student, packages };
       const state = firstSchedulingPackageState(row.packages);
       const openTicket = ticketByStudent.get(row.student.id) ?? null;
       const hasFutureSession = scheduledIds.has(row.student.id);
@@ -191,7 +200,10 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
         courses: Array.from(courseMap.values()).map((course) => ({
           id: course.id,
           name: course.name,
-          packageText: course.packages.map(remainingText).join(" / "),
+          packageText: course.packages.map((pkg) => {
+            const sharing = candidatePackageSharingText(pkg, row.student.id);
+            return [remainingText(pkg), sharing].filter(Boolean).join(" · ");
+          }).join(" / "),
           financeReady: course.packages.some((pkg) => OPEN_FINANCE_GATES.has(pkg.financeGateStatus)),
         })),
         openTicket,
@@ -231,12 +243,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
     const futureSession = await tx.session.findFirst({
       where: {
         startAt: { gte: now },
-        OR: [
-          { studentId },
-          { class: { oneOnOneStudentId: studentId } },
-          { class: { enrollments: { some: { studentId } } } },
-          { attendances: { some: { studentId } } },
-        ],
+        ...sessionBelongsToStudentWhere(studentId),
       },
       select: { id: true },
     });

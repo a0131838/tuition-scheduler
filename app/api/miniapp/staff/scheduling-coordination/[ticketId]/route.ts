@@ -13,6 +13,7 @@ import {
 } from "@/lib/miniapp-scheduling-coordination-board";
 import { formatBusinessDateTime } from "@/lib/date-only";
 import { prisma } from "@/lib/prisma";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import { canTransitionTicketStatus, TICKET_OWNER_OPTIONS } from "@/lib/tickets";
 
 function clean(value: unknown, maxLen: number) {
@@ -58,12 +59,7 @@ async function upcomingStudentSessions(studentId: string | null, studentName: st
   const sessions = await prisma.session.findMany({
     where: {
       startAt: { gte: new Date() },
-      OR: [
-        { studentId: resolvedStudentId },
-        { class: { oneOnOneStudentId: resolvedStudentId } },
-        { class: { enrollments: { some: { studentId: resolvedStudentId } } } },
-        { attendances: { some: { studentId: resolvedStudentId } } },
-      ],
+      ...sessionBelongsToStudentWhere(resolvedStudentId),
     },
     include: {
       teacher: { select: { name: true } },

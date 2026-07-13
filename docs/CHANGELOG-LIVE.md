@@ -15,6 +15,29 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r241
+
+- Release ID: `2026-07-13-r241`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: make shared packages available to every linked student while isolating one-to-one lessons, feedback, and reminders by the session's actual student.
+- Key files:
+  - `lib/session-students.ts`
+  - `lib/miniapp-first-scheduling.ts`
+  - `lib/miniapp-course-reminder-coverage.ts`
+  - `lib/miniapp-feedback-notification.ts`
+  - `app/api/miniapp/students/[studentId]/*`
+  - `app/api/miniapp/feedbacks/[feedbackId]/route.ts`
+  - `app/api/miniapp/staff/scheduling-coordination/[ticketId]/route.ts`
+  - `tests/miniapp-first-scheduling.test.ts`
+  - `tests/miniapp-feedback-notification.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-shared-package-student-scope-fix.md`
+- Risk impact (if any): Medium and corrective. The release narrows parent-visible lesson, feedback, and reminder reads for capacity-one classes to the actual session student, while broadening internal scheduling-package eligibility to include explicitly shared packages. It does not rewrite data or change package balances, ledger deductions, finance gates, attendance, payroll, invoices, receipts, or financial-document access.
+- Verification: TypeScript, 22 focused tests, the 26-page miniapp release audit, and the full 192-page production build pass. Read-only real-data checks show Daisy ready with the shared package, no prerequisite blocker, 24 correctly attributed future lessons, and zero foreign explicit students; Louis is ready for renewal with zero future lessons instead of inheriting Daisy's schedule.
+- Rollback point: `2026-07-13-r240` documentation-aligned head `efff27a` (production runtime `caa9cbd`).
+
+---
+
 ## 2026-07-13-r240
 
 - Release ID: `2026-07-13-r240`

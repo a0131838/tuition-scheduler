@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PackageFinanceGateStatus, PackageType } from "@prisma/client";
-import { firstSchedulingPackageState, studentSchedulingTicketType } from "@/lib/miniapp-first-scheduling";
+import {
+  candidatePackageSharingText,
+  firstSchedulingPackageState,
+  mergeCandidatePackages,
+  studentSchedulingTicketType,
+} from "@/lib/miniapp-first-scheduling";
 import { normalizeMiniappRequestType, normalizeMiniappStaffRequestType } from "@/lib/miniapp-parent-requests";
 import { canCreateSessionFromTicketType, MOBILE_SCHEDULING_TICKET_TYPES } from "@/lib/miniapp-scheduling-coordination-board";
 import { buildTicketNewSessionStartTimes, createTicketNewSessionToken, verifyTicketNewSessionToken } from "@/lib/miniapp-ticket-new-session";
 
-function pkg(input?: { subjects?: number; gate?: PackageFinanceGateStatus }) {
+function pkg(input?: { subjects?: number; gate?: PackageFinanceGateStatus; sharedStudent?: { id: string; name: string } }) {
   return {
     id: "package-1",
     type: PackageType.HOURS,
@@ -15,6 +20,8 @@ function pkg(input?: { subjects?: number; gate?: PackageFinanceGateStatus }) {
     validTo: null,
     financeGateStatus: input?.gate ?? PackageFinanceGateStatus.SCHEDULABLE,
     financeGateReason: null,
+    student: { id: "owner-1", name: "课包主学生" },
+    sharedStudents: input?.sharedStudent ? [{ student: input.sharedStudent }] : [],
     course: { id: "course-1", name: "Mathematics", _count: { subjects: input?.subjects ?? 1 } },
   };
 }
@@ -44,6 +51,15 @@ test("first scheduling explains missing subjects and finance gate blockers", () 
 test("student scheduling creates the correct operational ticket type", () => {
   assert.equal(studentSchedulingTicketType(false), "新排课");
   assert.equal(studentSchedulingTicketType(true), "补课加课");
+});
+
+test("shared packages are available to both students and explain who owns the balance", () => {
+  const sharedStudent = { id: "shared-1", name: "共享学生" };
+  const sharedPackage = pkg({ sharedStudent });
+  assert.deepEqual(mergeCandidatePackages([], [sharedPackage]), [sharedPackage]);
+  assert.equal(firstSchedulingPackageState(mergeCandidatePackages([], [sharedPackage])).ready, true);
+  assert.equal(candidatePackageSharingText(sharedPackage, "owner-1"), "与 共享学生 共用");
+  assert.equal(candidatePackageSharingText(sharedPackage, "shared-1"), "共享课包主学生：课包主学生");
 });
 
 test("parent scheduling requests and staff new-session tickets enter the coordination flow", () => {

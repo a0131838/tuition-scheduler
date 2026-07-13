@@ -1,14 +1,7 @@
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
+import { getSessionStudentIds } from "@/lib/session-students";
 import { bad, courseLabel, ok, requireMiniappParent } from "../../_lib";
-
-function sessionStudentIds(session: any) {
-  return [
-    session.studentId,
-    session.class?.oneOnOneStudentId,
-    ...(session.class?.enrollments ?? []).map((enrollment: any) => enrollment.studentId),
-  ].filter(Boolean) as string[];
-}
 
 export async function GET(req: Request, { params }: { params: Promise<{ feedbackId: string }> }) {
   const auth = await requireMiniappParent(req);
@@ -35,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ feedback
   });
   if (!feedback) return bad("Feedback not found", 404);
 
-  const studentIds = sessionStudentIds(feedback.session);
+  const studentIds = getSessionStudentIds(feedback.session);
   const link = await prisma.parentStudentLink.findFirst({
     where: {
       parentId: auth.parent.id,

@@ -1,16 +1,7 @@
 import { parseParentFeedbackSections } from "@/lib/parent-feedback-format";
 import { prisma } from "@/lib/prisma";
+import { sessionBelongsToStudentWhere } from "@/lib/session-students";
 import { courseLabel, ok, parseDateRange, requireMiniappStudentAccess } from "../../../_lib";
-
-function sessionStudentWhere(studentId: string) {
-  return {
-    OR: [
-      { studentId },
-      { class: { oneOnOneStudentId: studentId } },
-      { class: { enrollments: { some: { studentId } } } },
-    ],
-  };
-}
 
 function compact(value: string, max = 100) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
@@ -31,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     where: {
       startAt: { gte: from, lte: to },
       feedbacks: { some: { content: { not: "" } } },
-      ...sessionStudentWhere(studentId),
+      ...sessionBelongsToStudentWhere(studentId),
     },
     include: {
       class: { include: { course: true, subject: true, level: true } },
