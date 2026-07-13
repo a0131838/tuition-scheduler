@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r242
+
+- Release ID: `2026-07-13-r242`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: make the shared admin workspace title and hint follow the current client-side route so leaving Full Care no longer leaves `Full Care / 全托管` stuck above unrelated pages.
+- Key files:
+  - `app/admin/layout.tsx`
+  - `app/admin/_components/AdminWorkspaceContextClient.tsx`
+  - `app/admin/_components/adminWorkspaceContext.ts`
+  - `tests/admin-workspace-context.test.ts`
+  - `package.json`
+  - `docs/tasks/TASK-20260713-admin-workspace-context-navigation.md`
+  - `docs/全托管业务系统总体规划-20260713.md`
+- Risk impact (if any): Low and display-only. The change moves existing title/hint selection into a client route-aware component. It does not change permissions, navigation destinations, schemas, student data, care records, scheduling, attendance, packages, partner settlement, payroll, invoices, receipts, or finance settings.
+- Verification: TypeScript passes; all 49 backend tests pass; the full 192-page production build passes. A production-mode Playwright flow with one temporary admin session verifies `Full Care -> Student Sources -> Full Care` without page refresh: the top title changes to `Admin Workspace / 管理工作台` on Student Sources, contains no Full Care label there, and restores Full Care on return. Temporary QA sessions were cleaned to zero.
+- Rollback point: `2026-07-13-r241` documentation-aligned head `16afda6` (production runtime `1a553e1`).
+
+---
+
 ## 2026-07-13-r241
 
 - Release ID: `2026-07-13-r241`

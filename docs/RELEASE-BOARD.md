@@ -14,15 +14,16 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r241` at `1a553e1`, correcting shared-package eligibility plus one-to-one student isolation. `2026-07-13-r239` native-miniapp UI/search source is included in the Git lineage but has not been uploaded to WeChat.
+- Current production release: `2026-07-13-r241` at `1a553e1`, correcting shared-package eligibility plus one-to-one student isolation. `2026-07-13-r242` admin workspace-context navigation repair is ready for server deploy. `2026-07-13-r239` native-miniapp UI/search source is included in the Git lineage but has not been uploaded to WeChat.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Admin-workspace-context risk: the shared server layout previously retained the route used when it first mounted, so client-side navigation away from Full Care could leave the Full Care title and hint above another page. `2026-07-13-r242` delegates only the route-sensitive text to `usePathname`; browser regression covers Full Care to Student Sources and back.
 - Shared-package student-scope monitoring: `2026-07-13-r241` is live and its authenticated Daisy/Louis production API check passes. The explicit Session student is authoritative for capacity-one parent schedule, feedback, and reminder reads; package finance documents remain owner-scoped and were intentionally not broadened.
 - Full-care-action monitoring: `2026-07-13-r240` is live. The module-level Server Action helper passed real production-mode submissions before deploy; post-deploy health checks and protected-data baselines pass. No pilot engagement exists yet, and parent publishing remains disabled.
-- Full-care-core monitoring: `2026-07-13-r238` is live with five isolated care tables and `/admin/care`; all five care tables remain empty until management explicitly creates pilot drafts. Teaching and finance baselines were preserved after deploy.
+- Full-care-core monitoring: `2026-07-13-r238` is live with five isolated care tables and `/admin/care`. The latest read-only snapshot shows 1 manually created engagement and 1 activity, with 0 plans and 0 tasks; teaching and finance baselines remain separate and preserved.
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
 - Miniapp review-readiness risk: the code is hardened, but privacy contact/retention details and WeChat backend screenshots still require Zhao input before submitting 1.0.0. Do not submit with invented retention promises or a reviewer path that exposes real student data.
 - Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.
