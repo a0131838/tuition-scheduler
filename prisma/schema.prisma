@@ -20,6 +20,87 @@ enum UserRole {
 enum StaffWorkspace {
   SALES
   CS
+  CARE
+}
+
+enum CareProgramType {
+  PRE_U_ACADEMIC_CARE
+  PRE_U_FULL_COORDINATION
+  UNIVERSITY_GROWTH
+  CAREER_LAUNCH
+}
+
+enum CareEngagementStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CareMemberRole {
+  EXECUTIVE_OWNER
+  CASE_OWNER
+  ACADEMIC_OWNER
+  SCHOOL_OWNER
+  LIFE_OWNER
+  REVIEWER
+  COORDINATOR
+}
+
+enum CarePlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CareActivityCategory {
+  ACADEMIC
+  SCHOOL
+  LIFE
+  PARENT
+  RISK
+  APPLICATION
+  CAREER
+  GENERAL
+}
+
+enum CareAudience {
+  INTERNAL_ONLY
+  PARENT
+  STUDENT
+  PARENT_AND_STUDENT
+}
+
+enum CarePublicationStatus {
+  DRAFT
+  READY
+  PUBLISHED
+  REVOKED
+}
+
+enum CareTaskStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_EXTERNAL
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum CareTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CareRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum UserLanguage {
@@ -832,6 +913,9 @@ model Student {
   parentBindInvites          ParentBindInvite[]
   parentPortalAudits         ParentPortalAudit[]
   miniappNotifications       MiniappNotificationOutbox[]
+  careEngagements            CareEngagement[]
+  careActivities             CareActivity[]
+  careTasks                  CareTask[]
 
   @@index([sourceChannelId])
   @@index([studentTypeId])
@@ -966,6 +1050,176 @@ model User {
   staffMiniappSessions        StaffMiniappSession[]
   staffMiniappBindInvites     StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteUser")
   staffMiniappInvitesCreated  StaffMiniappBindInvite[]   @relation("StaffMiniappBindInviteCreator")
+  careEngagementsOwned        CareEngagement[]           @relation("CareEngagementCaseOwner")
+  careEngagementsCreated      CareEngagement[]           @relation("CareEngagementCreatedBy")
+  careMemberships             CareEngagementMember[]     @relation("CareMemberUser")
+  careMembershipsAssigned     CareEngagementMember[]     @relation("CareMemberAssignedBy")
+  carePlansCreated            CarePlan[]                 @relation("CarePlanCreatedBy")
+  carePlansApproved           CarePlan[]                 @relation("CarePlanApprovedBy")
+  careActivitiesCreated       CareActivity[]             @relation("CareActivityCreatedBy")
+  careActivitiesUpdated       CareActivity[]             @relation("CareActivityUpdatedBy")
+  careActivitiesOwned         CareActivity[]             @relation("CareActivityOwner")
+  careTasksAssigned           CareTask[]                 @relation("CareTaskAssignedTo")
+  careTasksCreated            CareTask[]                 @relation("CareTaskCreatedBy")
+  careTasksCompleted          CareTask[]                 @relation("CareTaskCompletedBy")
+}
+
+model CareEngagement {
+  id                  String               @id @default(uuid())
+  studentId           String
+  programType         CareProgramType
+  status              CareEngagementStatus @default(DRAFT)
+  startDate           DateTime?
+  endDate             DateTime?
+  caseOwnerUserId     String?
+  scopeJson           Json
+  exclusionsJson      Json?
+  cadenceJson         Json?
+  baselineJson        Json?
+  currentGoalsJson    Json?
+  successCriteriaJson Json?
+  lastActivityAt      DateTime?
+  nextReportDueAt     DateTime?
+  createdByUserId     String
+  version             Int                  @default(1)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  student    Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  caseOwner  User?                  @relation("CareEngagementCaseOwner", fields: [caseOwnerUserId], references: [id], onDelete: SetNull)
+  createdBy  User                   @relation("CareEngagementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members    CareEngagementMember[]
+  plans      CarePlan[]
+  activities CareActivity[]
+  tasks      CareTask[]
+
+  @@index([status, caseOwnerUserId, nextReportDueAt])
+  @@index([studentId, status])
+  @@index([createdAt])
+}
+
+model CareEngagementMember {
+  id               String         @id @default(uuid())
+  engagementId     String
+  userId           String
+  role             CareMemberRole
+  isActive         Boolean        @default(true)
+  assignedAt       DateTime       @default(now())
+  endedAt          DateTime?
+  assignedByUserId String
+  note             String?
+
+  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  user       User           @relation("CareMemberUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedBy User           @relation("CareMemberAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([engagementId, userId, role])
+  @@index([userId, isActive])
+}
+
+model CarePlan {
+  id                  String         @id @default(uuid())
+  engagementId        String
+  periodLabel         String
+  periodStart         DateTime
+  periodEnd           DateTime
+  baselineJson        Json?
+  goalsJson           Json
+  successCriteriaJson Json?
+  actionPlanJson      Json?
+  status              CarePlanStatus @default(DRAFT)
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  createdByUserId     String
+  version             Int            @default(1)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  createdBy  User           @relation("CarePlanCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy User?          @relation("CarePlanApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([engagementId, periodStart, periodEnd])
+  @@index([status, periodEnd])
+}
+
+model CareActivity {
+  id                   String                @id @default(uuid())
+  studentId            String
+  engagementId         String
+  category             CareActivityCategory
+  subtype              String?
+  occurredAt           DateTime
+  title                String
+  sourceType           String?
+  sourceId             String?
+  sourceLabel          String?
+  factEvidence         String
+  professionalJudgment String?
+  actionTaken          String?
+  outcomeVerification  String?
+  nextAction           String?
+  nextActionDue        DateTime?
+  riskLevel            CareRiskLevel         @default(LOW)
+  ownerUserId          String?
+  internalNote         String?
+  publicSummary        String?
+  audience             CareAudience          @default(INTERNAL_ONLY)
+  publicationStatus    CarePublicationStatus @default(DRAFT)
+  publishedAt          DateTime?
+  revokedAt            DateTime?
+  createdByUserId      String
+  updatedByUserId      String
+  version              Int                   @default(1)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  student    Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  owner      User?          @relation("CareActivityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdBy  User           @relation("CareActivityCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy  User           @relation("CareActivityUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  tasks      CareTask[]
+
+  @@index([engagementId, occurredAt])
+  @@index([studentId, publicationStatus, occurredAt])
+  @@index([riskLevel, nextActionDue])
+}
+
+model CareTask {
+  id                   String           @id @default(uuid())
+  studentId            String
+  engagementId         String
+  activityId           String?
+  title                String
+  description          String?
+  assignedToUserId     String
+  status               CareTaskStatus   @default(OPEN)
+  priority             CareTaskPriority @default(NORMAL)
+  dueAt                DateTime
+  nextFollowUpAt       DateTime?
+  waitingOn            String?
+  blockedReason        String?
+  completionEvidence   String?
+  completedAt          DateTime?
+  completedByUserId    String?
+  parentActionRequired Boolean          @default(false)
+  parentVisibleSummary String?
+  createdByUserId      String
+  version              Int              @default(1)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  engagement  CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  activity    CareActivity?  @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  assignedTo  User           @relation("CareTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  createdBy   User           @relation("CareTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  completedBy User?          @relation("CareTaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([assignedToUserId, status, dueAt])
+  @@index([engagementId, status, dueAt])
+  @@index([studentId, status])
 }
 
 model UserWorkspaceAccess {

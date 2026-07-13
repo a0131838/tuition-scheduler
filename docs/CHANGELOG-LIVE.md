@@ -15,6 +15,30 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r238
+
+- Release ID: `2026-07-13-r238`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: add the isolated internal full-care workspace for selectable students, service scope, responsibility team, stage plans, evidence-based updates, risk controls, and tasks without changing teaching or finance workflows.
+- Key files:
+  - `app/admin/care/*`
+  - `lib/care-access.ts`
+  - `lib/care-management.ts`
+  - `lib/care-validation.ts`
+  - `prisma/migrations/20260713160000_add_care_management_core/migration.sql`
+  - `tests/care-validation.test.ts`
+  - `tests/care-migration-safety.test.ts`
+  - `docs/tasks/TASK-20260713-full-care-core-workspace.md`
+  - `docs/全托管业务系统总体规划-20260713.md`
+  - `docs/CHANGELOG-LIVE.md`
+  - `docs/RELEASE-BOARD.md`
+- Risk impact (if any): Medium and isolated. The migration adds only CARE enums, workspace access, five new care tables, foreign keys, and indexes. The care service never writes packages, package transactions, sessions, attendance, partner settlement, payroll, invoices, receipts, or Business Accounts. Parent publication and automatic pilot-student activation are not included.
+- Verification: Prisma validate, TypeScript, 45 backend regressions, migration non-intrusion assertions, diff checks, exact planning-document sync, and two full 192-page production builds pass. Read-only production baseline records 88 students, 78 packages, 1895 sessions, 1704 attendances, 34 partner settlements, package/ledger minute and amount totals, plus hashes of protected billing, receipt, payroll-publish, and Business Accounts settings. The new migration is confirmed pending before deploy.
+- Rollback point: production commit `7ebbbc68eda4237d5be045d3e3bdc645b5bd64c6` before `2026-07-13-r238`.
+
+---
+
 ## 2026-07-13-r237
 
 - Release ID: `2026-07-13-r237`

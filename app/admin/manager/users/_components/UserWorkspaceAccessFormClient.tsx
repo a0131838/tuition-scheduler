@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Workspace = "SALES" | "CS";
+type Workspace = "SALES" | "CS" | "CARE";
 
 function preserveRefresh(router: ReturnType<typeof useRouter>) {
   const y = window.scrollY;
@@ -21,6 +21,7 @@ export default function UserWorkspaceAccessFormClient({
   labels: {
     sales: string;
     cs: string;
+    care: string;
     save: string;
     errorPrefix: string;
   };
@@ -28,6 +29,7 @@ export default function UserWorkspaceAccessFormClient({
   const router = useRouter();
   const [sales, setSales] = useState(current.includes("SALES"));
   const [cs, setCs] = useState(current.includes("CS"));
+  const [care, setCare] = useState(current.includes("CARE"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -42,6 +44,10 @@ export default function UserWorkspaceAccessFormClient({
         <input type="checkbox" checked={cs} disabled={busy} onChange={(e) => setCs(e.target.checked)} />
         {labels.cs}
       </label>
+      <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontWeight: 700 }}>
+        <input type="checkbox" checked={care} disabled={busy} onChange={(e) => setCare(e.target.checked)} />
+        {labels.care}
+      </label>
       <button
         type="button"
         disabled={busy}
@@ -53,6 +59,7 @@ export default function UserWorkspaceAccessFormClient({
             const workspaces: Workspace[] = [];
             if (sales) workspaces.push("SALES");
             if (cs) workspaces.push("CS");
+            if (care) workspaces.push("CARE");
             const res = await fetch(`/api/admin/manager/users/${encodeURIComponent(userId)}/workspaces`, {
               method: "PATCH",
               headers: { "content-type": "application/json" },

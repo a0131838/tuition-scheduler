@@ -364,6 +364,7 @@ export default async function ManagerUsersPage({
                         labels={{
                           sales: t(lang, "Sales", "销售"),
                           cs: t(lang, "CS", "客服"),
+                          care: t(lang, "Full Care", "全托管"),
                           save: t(lang, "Save", "保存"),
                           errorPrefix: t(lang, "Error", "错误"),
                         }}

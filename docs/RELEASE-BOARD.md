@@ -14,12 +14,13 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r237`. The teacher mobile workbench is live; first-teacher binding and real-phone regression remain before broad rollout.
+- Current production release: `2026-07-13-r237`. `2026-07-13-r238` full-care core workspace is ready for controlled deployment.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Full-care-core risk: `2026-07-13-r238` adds five isolated care tables and an internal `/admin/care` workspace. Deploy must apply the additive migration before runtime restart, preserve all pre-deploy teaching/finance baselines, and create no pilot engagement automatically. Parent publishing remains disabled in this release.
 - Working tree hygiene risk: local repo currently contains unrelated untracked files and generated artifacts; avoid mixing them into deploy commits.
 - Miniapp review-readiness risk: the code is hardened, but privacy contact/retention details and WeChat backend screenshots still require Zhao input before submitting 1.0.0. Do not submit with invented retention promises or a reviewer path that exposes real student data.
 - Feedback-notification rollout risk: `2026-07-12-r233` queues only the first teacher feedback publication. Invoice and feedback share the same official ID but keep separate authorization intent; verify the first real feedback and confirm edits do not enqueue duplicates.
@@ -151,6 +152,35 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-13-r238 Ready
+
+- Scope: add an isolated internal full-care workspace for selectable students, configurable service scope and owners, stage plans, evidence-based updates, risks, and tasks.
+- Business impact:
+  - ADMIN/manager users can create and configure care projects; assigned CARE staff can access only their project records.
+  - Confirmed medical accompaniment, important transport, host-family support, holiday care, and visa/pass administration are selectable service scope and life-activity types.
+  - Daily status confirmation and after-hours onsite support remain conditional and are not enabled by default.
+  - Existing students, schedules, packages, attendance, partner settlement, payroll, invoices, receipts, Business Accounts, and parent miniapp behavior remain unchanged.
+- Files:
+  - `app/admin/care/*`
+  - `lib/care-access.ts`
+  - `lib/care-management.ts`
+  - `lib/care-validation.ts`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260713160000_add_care_management_core/migration.sql`
+  - `tests/care-validation.test.ts`
+  - `tests/care-migration-safety.test.ts`
+- Verification before deploy:
+  - `npx prisma validate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend` with 45/45 passing
+  - `npm run build` with 192 pages
+  - read-only production baseline and protected-setting hashes saved
+- Post-deploy verification:
+  - confirm 102 migrations current, PM2 online, and `/admin/login` returns 200
+  - compare the same teaching, package, settlement, billing, receipt, payroll-publish, and Business Accounts baseline
+  - verify `/admin/care` renders for an authenticated ADMIN and no care project exists until manually created
+  - verify existing student, package, partner settlement, and finance pages return successfully
 
 ## 2026-07-12-r234 Ready
 

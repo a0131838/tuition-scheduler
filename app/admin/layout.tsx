@@ -55,6 +55,7 @@ function workspaceTitle(pathname: string, lang: "BILINGUAL" | "ZH" | "EN") {
   if (matchesPath(pathname, "/admin/schedule")) return t(lang, "Schedule Operations", "排课操作区");
   if (matchesPath(pathname, "/admin/leads")) return t(lang, "Resource Follow-up", "资源跟进");
   if (matchesPath(pathname, "/admin/school-applications")) return t(lang, "School Applications", "学校申请服务");
+  if (matchesPath(pathname, "/admin/care")) return t(lang, "Full Care", "全托管");
   if (matchesPath(pathname, "/admin/reports/teacher-payroll")) return t(lang, "Payroll Review", "工资处理");
   if (matchesPath(pathname, "/admin/reports/partner-settlement")) return t(lang, "Partner Settlement", "合作方结算");
   if (matchesPath(pathname, "/admin/approvals")) return t(lang, "Approval Inbox", "审批提醒中心");
@@ -151,6 +152,13 @@ function workspaceHint(pathname: string, lang: "BILINGUAL" | "ZH" | "EN", isFina
       "保持现有运营稳定，同时把当前课程映射成 EduTrust 所需的课程文件和证据。"
     );
   }
+  if (matchesPath(pathname, "/admin/care")) {
+    return t(
+      lang,
+      "Manage service scope, evidence, actions and ownership without changing lessons or billing.",
+      "管理服务范围、跟进证据、下一步和负责人，不改变课时与财务。"
+    );
+  }
   return t(
     lang,
     "Use the sidebar as a task map: today first, then active workflows, then setup and reports.",
@@ -173,6 +181,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdminAreaUser();
   const lang = await getLang();
   const showManagerConsole = await isManagerUser(user);
+  const canSeeCare = user.role === "ADMIN" || showManagerConsole || user.workspaces.includes("CARE");
   const canSeeSharedDocs = showManagerConsole && user.role === "ADMIN";
   const isFinance = user.role === "FINANCE";
   const isResourceOnly = isResourceOnlyRole(user.role);
@@ -221,7 +230,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     pathname === "/admin/leads/new" ||
     pathname === "/admin/leads/dashboard" ||
     pathname === "/admin/leads/export" ||
-    (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners"));
+    (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/owners")) ||
+    (user.role === "CS" && user.workspaces.includes("CARE") && pathname.startsWith("/admin/care"));
 
   if (isResourceOnly && !resourceAllowedPath) {
     redirect("/admin/leads");
@@ -321,6 +331,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       summary: t(lang, "Main student and teaching workflows.", "学生和教学的主流程入口。"),
       items: [
         { href: "/admin/students", label: t(lang, "Students", "学生"), tone: "accent" as const },
+        ...(canSeeCare ? [{ href: "/admin/care", label: t(lang, "Full Care", "全托管"), tone: "success" as const }] : []),
         { href: "/admin/leads", label: t(lang, "Resource Follow-up", "资源跟进"), tone: "accent" as const },
         { href: "/admin/school-applications", label: t(lang, "School Applications", "学校申请服务"), tone: "accent" as const },
         { href: "/admin/enrollments", label: t(lang, "Enrollments", "报名"), tone: "success" as const },
@@ -514,6 +525,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           description: t(lang, "Review pipeline health and completion rates.", "查看资源管道和完成情况。"),
           tone: "neutral" as const,
         },
+        ...(user.role === "CS" && user.workspaces.includes("CARE")
+          ? [
+              {
+                href: "/admin/care",
+                label: t(lang, "Full Care", "全托管"),
+                description: t(lang, "Open assigned care students and tasks.", "查看已分配的托管学生和任务。"),
+                tone: "success" as const,
+              },
+            ]
+          : []),
       ],
     },
   ];
