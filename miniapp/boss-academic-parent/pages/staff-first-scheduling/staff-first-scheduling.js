@@ -27,7 +27,16 @@ Page({
     scheduledText: "0",
     canSchedule: false,
     loading: false,
-    openingStudentId: ""
+    openingStudentId: "",
+    preferredDate: "",
+    preferredTime: ""
+  },
+
+  onLoad(options) {
+    this.setData({
+      preferredDate: /^\d{4}-\d{2}-\d{2}$/.test(options.date || "") ? options.date : "",
+      preferredTime: /^\d{2}:\d{2}$/.test(options.time || "") ? options.time : ""
+    });
   },
 
   onShow() {
@@ -99,12 +108,19 @@ Page({
     this.load();
   },
 
+  coordinationUrl(ticketId) {
+    let url = "/pages/staff-coordination-detail/staff-coordination-detail?id=" + encodeURIComponent(ticketId);
+    if (this.data.preferredDate) url += "&date=" + encodeURIComponent(this.data.preferredDate);
+    if (this.data.preferredTime) url += "&time=" + encodeURIComponent(this.data.preferredTime);
+    return url;
+  },
+
   openCandidate(e) {
     const studentId = e.currentTarget.dataset.id;
     const ticketId = e.currentTarget.dataset.ticketId;
     if (!studentId || this.data.openingStudentId) return;
     if (ticketId) {
-      wx.navigateTo({ url: "/pages/staff-coordination-detail/staff-coordination-detail?id=" + encodeURIComponent(ticketId) });
+      wx.navigateTo({ url: this.coordinationUrl(ticketId) });
       return;
     }
     this.setData({ openingStudentId: studentId });
@@ -115,7 +131,7 @@ Page({
     })
       .then((data) => {
         if (!data.ticketId) throw new Error("首次排课工单创建失败");
-        wx.navigateTo({ url: "/pages/staff-coordination-detail/staff-coordination-detail?id=" + encodeURIComponent(data.ticketId) });
+        wx.navigateTo({ url: this.coordinationUrl(data.ticketId) });
       })
       .catch((err) => wx.showModal({ title: "无法开始首次排课", content: err.message || "请稍后重试", showCancel: false }))
       .finally(() => this.setData({ openingStudentId: "" }));

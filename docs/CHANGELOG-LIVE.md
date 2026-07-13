@@ -15,6 +15,26 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r246
+
+- Release ID: `2026-07-13-r246`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: add the native-miniapp visual scheduling calendar with month/week/day views, teacher/campus/course/student filters, daily coordination and overlap indicators, teacher free slots, and date/time handoff into the existing all-student scheduling workflow.
+- Key files:
+  - `app/api/miniapp/staff/schedule/calendar/route.ts`
+  - `lib/miniapp-staff-schedule-calendar.ts`
+  - `miniapp/boss-academic-parent/pages/staff-schedule/*`
+  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/staff-first-scheduling.js`
+  - `miniapp/boss-academic-parent/pages/staff-coordination-detail/staff-coordination-detail.js`
+  - `tests/miniapp-staff-schedule-calendar.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-visual-scheduling-calendar.md`
+- Risk impact (if any): Medium read-side and navigation change. The calendar adds a range query and operational overlap indicators but does not add a scheduling write path. Formal scheduling remains ADMIN-only and continues through the existing signed preview and second confirmation. CS can coordinate but not write Sessions; teachers remain constrained to their own schedule.
+- Verification: 49 existing backend tests and 4 new calendar tests pass; TypeScript, JavaScript syntax, the 26-page release audit, a 42-day real-data read, and the full 193-page production build pass. Real data returned 245 lessons across 49 teachers and produced 124 free slots for a selected teacher. Physical-phone visual confirmation remains for the next experience version.
+- Rollback point: `2026-07-13-r245` (`4276638`).
+
+---
+
 ## 2026-07-13-r245
 
 - Release ID: `2026-07-13-r245`

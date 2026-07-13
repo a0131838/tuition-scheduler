@@ -105,6 +105,16 @@ assert(read("pages/students/students.js").includes("/api/miniapp/auth/logout"), 
 assert(read("pages/students/students.js").includes("setCurrentStudent(null)"), "parent logout must clear the selected student");
 assert(read("pages/staff-home/staff-home.wxml").includes("切换到家长端"), "authenticated staff must retain a low-priority parent switch");
 
+const staffScheduleMarkup = read("pages/staff-schedule/staff-schedule.wxml");
+const staffScheduleScript = read("pages/staff-schedule/staff-schedule.js");
+assert(staffScheduleMarkup.includes("排课日历") && staffScheduleMarkup.includes("老师空档"), "staff schedule must expose calendar overview and teacher free slots");
+assert(staffScheduleMarkup.includes("mode === 'month'") && staffScheduleMarkup.includes("mode === 'week'"), "staff schedule must retain month and week views");
+assert(staffScheduleMarkup.includes("全部老师") || staffScheduleScript.includes("全部老师"), "staff schedule must support teacher filtering");
+assert(staffScheduleScript.includes("requestSeq") && staffScheduleScript.includes("searchTimer"), "staff schedule search must keep debounce and stale-request protection");
+assert(staffScheduleScript.includes("staff-first-scheduling") && staffScheduleScript.includes("preferredDate") === false, "calendar scheduling must enter the existing first-scheduling flow");
+assert(read("pages/staff-first-scheduling/staff-first-scheduling.js").includes("preferredDate"), "first scheduling must preserve the calendar date");
+assert(read("pages/staff-coordination-detail/staff-coordination-detail.js").includes("newScheduleDate = options.date"), "new-session form must receive the calendar date");
+
 json("sitemap.json");
 
 const result = {

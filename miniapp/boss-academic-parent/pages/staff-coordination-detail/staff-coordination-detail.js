@@ -77,7 +77,10 @@ Page({
   },
 
   onLoad(options) {
-    this.setData({ id: options.id || "" });
+    const values = { id: options.id || "" };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(options.date || "")) values.newScheduleDate = options.date;
+    if (/^\d{2}:\d{2}$/.test(options.time || "")) values.newScheduleTime = options.time;
+    this.setData(values);
     this.load();
   },
 

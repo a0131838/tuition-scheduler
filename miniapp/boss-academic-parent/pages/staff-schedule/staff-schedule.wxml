@@ -1,56 +1,112 @@
 <view class="page">
-  <view class="top">
-    <view class="eyebrow">课程安排</view>
-    <view class="title">当天课程</view>
-    <view class="subtitle">选择日期查看课程安排。</view>
-  </view>
-
-  <view class="toolbar">
-    <button class="btn secondary small" bindtap="setToday">今天</button>
-    <button class="btn secondary small" bindtap="setTomorrow">明天</button>
-    <picker mode="date" value="{{date}}" bindchange="changeDate">
-      <view class="picker date-picker">{{date}}</view>
-    </picker>
-  </view>
-
-  <view class="toolbar" wx:if="{{!teacherOnly}}">
-    <picker mode="selector" range="{{scopes}}" range-key="label" value="{{scopeIndex}}" bindchange="changeScope">
-      <view class="picker">{{scopes[scopeIndex].label}}</view>
-    </picker>
-  </view>
-
-  <view class="summary">
-    <view class="metric">
-      <view class="label">课程</view>
-      <view class="value">{{summaryVisibleSessions}}</view>
+  <view class="schedule-header">
+    <view>
+      <view class="eyebrow">课程安排</view>
+      <view class="title">排课日历</view>
     </view>
-    <view class="metric">
-      <view class="label">学生</view>
-      <view class="value">{{summaryVisibleStudentCount}}</view>
-    </view>
+    <button class="today-button" bindtap="goToday">今天</button>
   </view>
 
-  <block wx:if="{{sessions.length}}">
-    <view wx:for="{{sessions}}" wx:key="id" class="card" bindtap="openSession" data-id="{{item.id}}">
-      <view class="row">
-        <view class="pill">{{item.campusLabel}}</view>
-        <view class="pill">{{item.feedbackLabel}}</view>
-      </view>
-      <view class="value">{{item.courseLabel}}</view>
-      <view class="subtitle">{{item.startText}} - {{item.endText}}</view>
-      <view class="field">
-        <view class="label">老师</view>
-        <view class="subtitle">{{item.teacherNameText}}</view>
-      </view>
-      <view class="field">
-        <view class="label">学生</view>
-        <view class="subtitle">{{item.studentTextValue}}</view>
-      </view>
-      <view class="field">
-        <view class="label">地点</view>
-        <view class="subtitle">{{item.locationTextValue}}</view>
+  <view class="mode-switch">
+    <view wx:for="{{modes}}" wx:key="value" class="mode-option {{modeIndex === index ? 'active' : ''}}" data-index="{{index}}" bindtap="changeMode">{{item.label}}</view>
+  </view>
+
+  <view class="range-bar">
+    <view class="nav-button" bindtap="previousRange">‹</view>
+    <view class="range-title">{{rangeTitle}}</view>
+    <view class="nav-button" bindtap="nextRange">›</view>
+  </view>
+
+  <view class="filter-toggle" bindtap="toggleFilters">
+    <view>筛选{{activeFilterCount ? ' · ' + activeFilterCount : ''}}</view>
+    <view class="filter-arrow">{{filtersExpanded ? '收起' : '展开'}}</view>
+  </view>
+  <view class="filters" wx:if="{{filtersExpanded}}">
+    <picker wx:if="{{!teacherOnly}}" mode="selector" range="{{teachers}}" range-key="name" value="{{teacherIndex}}" bindchange="changeTeacher">
+      <view class="filter-field">{{teachers[teacherIndex].name}}</view>
+    </picker>
+    <picker mode="selector" range="{{campuses}}" range-key="name" value="{{campusIndex}}" bindchange="changeCampus">
+      <view class="filter-field">{{campuses[campusIndex].name}}</view>
+    </picker>
+    <picker mode="selector" range="{{courses}}" range-key="name" value="{{courseIndex}}" bindchange="changeCourse">
+      <view class="filter-field">{{courses[courseIndex].name}}</view>
+    </picker>
+    <view class="search-row">
+      <input class="search-input" value="{{query}}" bindinput="inputQuery" placeholder="搜索学生" />
+      <view class="search-clear" wx:if="{{query}}" bindtap="clearQuery">×</view>
+    </view>
+    <view class="reset-filter" wx:if="{{activeFilterCount}}" bindtap="resetFilters">清除筛选</view>
+  </view>
+
+  <block wx:if="{{mode === 'month'}}">
+    <view class="weekday-row">
+      <view wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view>
+    </view>
+    <view class="calendar-grid">
+      <view wx:for="{{days}}" wx:key="date" class="{{item.cellClass}}" data-date="{{item.date}}" bindtap="selectDate">
+        <view class="day-number">{{item.dayNumber}}</view>
+        <view class="day-count" wx:if="{{item.sessionCount}}">{{item.sessionCount}} 节</view>
+        <view class="day-flags">
+          <view class="conflict-dot" wx:if="{{item.conflictCount}}"></view>
+          <view class="coord-dot" wx:if="{{item.coordinationCount}}"></view>
+        </view>
       </view>
     </view>
   </block>
-  <view wx:else class="empty">当天暂无课程</view>
+
+  <view class="week-strip" wx:if="{{mode === 'week'}}">
+    <view wx:for="{{weekDays}}" wx:key="date" class="{{item.weekClass}}" data-date="{{item.date}}" bindtap="selectDate">
+      <view class="week-label">{{item.weekday}}</view>
+      <view class="week-number">{{item.dayNumber}}</view>
+      <view class="week-count">{{item.sessionCount || '·'}}</view>
+    </view>
+  </view>
+
+  <view class="day-summary">
+    <view>
+      <view class="selected-title">{{selectedDayTitle}}</view>
+      <view class="selected-meta">{{selectedDay.sessionCount || 0}} 节课程 · {{selectedDay.studentCount || 0}} 名学生 · {{selectedDay.teacherCount || 0}} 位老师</view>
+    </view>
+    <button wx:if="{{canCoordinate}}" class="schedule-button" bindtap="openScheduling">{{canSchedule ? '新排课' : '建工单'}}</button>
+  </view>
+
+  <view class="alert-line" wx:if="{{selectedDay.conflictCount || selectedDay.coordinationCount}}">
+    <text wx:if="{{selectedDay.conflictCount}}">{{selectedDay.conflictCount}} 节时间重叠</text>
+    <text wx:if="{{selectedDay.conflictCount && selectedDay.coordinationCount}}"> · </text>
+    <text wx:if="{{selectedDay.coordinationCount}}">{{selectedDay.coordinationCount}} 个待协调事项</text>
+  </view>
+
+  <view class="free-time" wx:if="{{selectedAvailability.length}}">
+    <view class="section-title">老师空档</view>
+    <scroll-view scroll-x class="free-time-scroll">
+      <view class="free-time-row">
+        <view wx:for="{{selectedAvailability}}" wx:key="startMin" class="free-time-slot" data-time="{{item.startTime}}" bindtap="openScheduling">{{item.timeText}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="session-list" wx:if="{{selectedSessions.length}}">
+    <view wx:for="{{selectedSessions}}" wx:key="id" class="session-row" data-id="{{item.id}}" bindtap="openSession">
+      <view class="time-column">
+        <view class="start-time">{{item.startTime}}</view>
+        <view class="end-time">{{item.endTime}}</view>
+      </view>
+      <view class="session-accent {{item.conflictCount ? 'conflict' : ''}}"></view>
+      <view class="session-body">
+        <view class="session-topline">
+          <view class="course-name">{{item.courseLabel}}</view>
+          <view class="conflict-label" wx:if="{{item.conflictCount}}">重叠</view>
+        </view>
+        <view class="student-name">{{item.studentText}}</view>
+        <view class="session-meta">{{item.teacherName}} · {{item.locationText}}</view>
+      </view>
+      <view class="chevron">›</view>
+    </view>
+  </view>
+  <view wx:else class="empty-day">
+    <view class="empty-title">当天暂无课程</view>
+    <view class="empty-hint" wx:if="{{canCoordinate}}">可从上方开始新排课或建立协调工单。</view>
+  </view>
+
+  <view class="loading-mask" wx:if="{{loading}}">正在更新课程安排…</view>
 </view>
