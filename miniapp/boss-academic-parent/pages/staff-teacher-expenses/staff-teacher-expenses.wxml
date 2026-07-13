@@ -1,0 +1,28 @@
+<view class="page">
+  <view class="top"><view class="eyebrow">老师移动工作台</view><view class="title">我的报销</view><view class="subtitle">提交收据或发票并查看审批、付款和驳回状态；审批仍由原系统负责人处理。</view></view>
+  <view class="summary">
+    <view class="summary-item"><view class="summary-number">{{summary.submitted}}</view><view class="label">等待审批</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.approved}}</view><view class="label">已批未付</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.rejected}}</view><view class="label">需补充</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.paid}}</view><view class="label">已付款</view></view>
+  </view>
+  <view class="section-title">提交新报销</view>
+  <view class="form-card">
+    <view class="field-label">消费日期</view><picker mode="date" value="{{expenseDate}}" bindchange="changeDate"><view class="picker">{{expenseDate}}</view></picker>
+    <view class="field-label">费用类型</view><picker mode="selector" range="{{types}}" range-key="label" value="{{typeIndex}}" bindchange="changeType"><view class="picker">{{types[typeIndex] ? types[typeIndex].label : '请选择'}}</view></picker>
+    <view class="field-label">币种</view><picker mode="selector" range="{{currencies}}" value="{{currencyIndex}}" bindchange="changeCurrency"><view class="picker">{{currencies[currencyIndex]}}</view></picker>
+    <view class="field-label">金额</view><input class="input" type="digit" value="{{amount}}" bindinput="inputAmount" placeholder="例如 25.50" />
+    <view class="field-label">GST（可不填）</view><input class="input" type="digit" value="{{gstAmount}}" bindinput="inputGst" placeholder="例如 2.25" />
+    <view class="field-label">费用说明</view><textarea class="textarea" value="{{description}}" bindinput="inputDescription" placeholder="说明购买或支出的内容" />
+    <view class="field-label">相关学生（可不填）</view><input class="input" value="{{studentName}}" bindinput="inputStudent" />
+    <view class="field-label">地点（交通报销必填）</view><input class="input" value="{{location}}" bindinput="inputLocation" />
+    <view class="field-label">备注（可不填）</view><textarea class="textarea" value="{{remarks}}" bindinput="inputRemarks" />
+    <button class="secondary" bindtap="chooseReceiptPhoto">拍照或从相册选择</button>
+    <button class="secondary" bindtap="chooseReceiptFile">从微信文件选择</button>
+    <view class="file-name" wx:if="{{receiptName}}">{{receiptName}}</view>
+    <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="submit">提交报销</button>
+  </view>
+  <view class="section-title">我的报销记录</view>
+  <block wx:if="{{claims.length}}"><view class="list-card" wx:for="{{claims}}" wx:key="id"><view class="item-title">{{item.description}}</view><view class="item-meta">{{item.claimRefNo}} · {{item.expenseDate}} · {{item.amountText}}</view><view class="status">{{item.statusText}}</view><view class="reject" wx:if="{{item.rejectReason}}">驳回原因：{{item.rejectReason}}</view></view></block>
+  <view class="empty" wx:else>还没有报销记录</view>
+</view>

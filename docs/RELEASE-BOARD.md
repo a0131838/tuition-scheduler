@@ -4627,3 +4627,12 @@
   - verify `赵测试 2`-style packages with only a signed current-package first-purchase contract now show the renewal CTA
   - verify renewal draft creation succeeds from the same package workspace
   - task doc: `docs/tasks/TASK-20260424-renewal-parent-info-current-package-fix.md`
+
+## 2026-07-13-r237 Ready
+
+- Scope: add the complete first teacher-mobile workbench for own availability, leave/reschedule requests, personal expenses, and monthly teaching history.
+- Permission: every new endpoint requires a TEACHER role and linked teacher profile; management users and unauthenticated callers cannot enter the teacher-only APIs.
+- Reuse: availability, Ticket, ExpenseClaim, upload storage, audit, approval/payment, Session, attendance, and feedback data all remain in their existing system of record.
+- Safety: leave/reschedule creates or updates a coordination Ticket only; expense submission never grants approval/payment rights; teaching history excludes payroll amounts.
+- Data evidence: 46 linked teacher accounts are eligible, with 179 future-30-day sessions, 107 current-month completed sessions, 664 future availability slots, and existing teacher expense records available. Active teacher miniapp bindings remain 0 until rollout.
+- Validation: 28 focused tests, TypeScript, miniapp syntax, 26-page audit, exact document sync, diff checks, read-only reconciliation, and the full 191-page production build pass. Deploy remains.

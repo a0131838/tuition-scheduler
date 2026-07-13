@@ -1,0 +1,3 @@
+@import "../../styles/teacher-tools.wxss";
+.file-name { margin-top: 10rpx; color: #17663a; font-size: 24rpx; overflow-wrap: anywhere; }
+.reject { margin-top: 10rpx; padding: 12rpx; border-radius: 6rpx; background: #f8ebe8; color: #9b3d31; font-size: 24rpx; }

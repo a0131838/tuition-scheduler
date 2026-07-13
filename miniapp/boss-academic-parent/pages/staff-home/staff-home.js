@@ -6,6 +6,7 @@ Page({
     staffNameText: "员工工作台",
     role: "",
     roleText: "STAFF",
+    isTeacher: false,
     pendingCount: 0,
     todaySessionCount: 0,
     coordinationCount: 0,
@@ -18,6 +19,10 @@ Page({
     canManageFirstScheduling: false,
     reminderAttentionCount: 0,
     canViewReminderAttention: false,
+    teacherAvailabilityCount: 0,
+    teacherUpcomingCount: 0,
+    teacherCompletedCount: 0,
+    teacherExpenseCount: 0,
     loading: false
   },
 
@@ -43,7 +48,8 @@ Page({
           staffName: staff.name || "",
           staffNameText: staff.name || "员工工作台",
           role: staff.role || "",
-          roleText: staff.role || "STAFF"
+          roleText: staff.role || "STAFF",
+          isTeacher: staff.role === "TEACHER"
         });
       })
       .catch((err) => {
@@ -54,13 +60,26 @@ Page({
         api.toast("员工信息加载失败");
       });
 
-    const requestsTask = api.requestStaff("/api/miniapp/staff/parent-requests?limit=200", { timeout: 12000 })
+    return meTask.then(() => {
+      const scheduleTask = api.requestStaff("/api/miniapp/staff/schedule", { timeout: 12000 })
+        .then((schedule) => this.setData({ todaySessionCount: schedule.summary ? schedule.summary.visibleSessions : 0 }))
+        .catch(() => this.setData({ todaySessionCount: 0 }));
+
+      if (this.data.isTeacher) {
+        const teacherTask = api.requestStaff("/api/miniapp/staff/teacher/dashboard", { timeout: 12000 })
+          .then((data) => this.setData({
+            teacherAvailabilityCount: data.availabilityCount || 0,
+            teacherUpcomingCount: data.upcomingCount || 0,
+            teacherCompletedCount: data.completedThisMonth || 0,
+            teacherExpenseCount: (data.expenseNeedsAction || 0) + (data.expenseInProgress || 0)
+          }))
+          .catch(() => this.setData({ teacherAvailabilityCount: 0, teacherUpcomingCount: 0, teacherCompletedCount: 0, teacherExpenseCount: 0 }));
+        return Promise.allSettled([scheduleTask, teacherTask]);
+      }
+
+      const requestsTask = api.requestStaff("/api/miniapp/staff/parent-requests?limit=200", { timeout: 12000 })
       .then((requests) => this.setData({ pendingCount: requests.total || 0 }))
       .catch(() => this.setData({ pendingCount: 0 }));
-
-    const scheduleTask = api.requestStaff("/api/miniapp/staff/schedule", { timeout: 12000 })
-      .then((schedule) => this.setData({ todaySessionCount: schedule.summary ? schedule.summary.visibleSessions : 0 }))
-      .catch(() => this.setData({ todaySessionCount: 0 }));
 
     const coordinationTask = api.requestStaff("/api/miniapp/staff/scheduling-coordination?limit=1", { timeout: 12000 })
       .then((data) => this.setData({
@@ -84,8 +103,8 @@ Page({
       }))
       .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0, firstSchedulingAttentionCount: 0 }));
 
-    return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask, reminderTask, firstSchedulingTask])
-      .finally(() => this.setData({ loading: false }));
+      return Promise.allSettled([requestsTask, scheduleTask, coordinationTask, reminderTask, firstSchedulingTask]);
+    }).finally(() => this.setData({ loading: false }));
   },
 
   goRequests() {
@@ -110,6 +129,22 @@ Page({
 
   goReminderAttention() {
     wx.navigateTo({ url: "/pages/staff-reminder-attention/staff-reminder-attention" });
+  },
+
+  goTeacherLeave() {
+    wx.navigateTo({ url: "/pages/staff-teacher-leave/staff-teacher-leave" });
+  },
+
+  goTeacherAvailability() {
+    wx.navigateTo({ url: "/pages/staff-teacher-availability/staff-teacher-availability" });
+  },
+
+  goTeacherExpenses() {
+    wx.navigateTo({ url: "/pages/staff-teacher-expenses/staff-teacher-expenses" });
+  },
+
+  goTeacherHistory() {
+    wx.navigateTo({ url: "/pages/staff-teacher-history/staff-teacher-history" });
   },
 
   logout() {

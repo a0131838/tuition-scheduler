@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="top"><view class="eyebrow">老师移动工作台</view><view class="title">教学记录</view><view class="subtitle">按月份查看已经完成的课程、教学时长、考勤和反馈情况，不显示工资金额。</view></view>
+  <picker mode="date" fields="month" value="{{month}}" bindchange="changeMonth"><view class="picker">{{month}}</view></picker>
+  <view class="summary">
+    <view class="summary-item"><view class="summary-number">{{summary.sessions}}</view><view class="label">完成课程</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.durationText}}</view><view class="label">教学时长</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.feedbackCompleted}}</view><view class="label">已反馈</view></view>
+    <view class="summary-item"><view class="summary-number">{{summary.feedbackPending}}</view><view class="label">待反馈</view></view>
+  </view>
+  <view class="section-title">课程明细</view>
+  <block wx:if="{{sessions.length}}"><view class="list-card" wx:for="{{sessions}}" wx:key="id" data-id="{{item.id}}" bindtap="openSession"><view class="item-title">{{item.courseLabel}}</view><view class="item-meta">{{item.timeText}} · {{item.durationText}}</view><view class="item-meta">{{item.studentText}} · {{item.locationText}}</view><view class="status">{{item.attendanceText}} · {{item.feedbackText}}</view></view></block>
+  <view class="empty" wx:else>这个月还没有已完成课程</view>
+</view>

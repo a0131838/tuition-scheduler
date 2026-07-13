@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r237
+
+- Release ID: `2026-07-13-r237`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: add a role-specific teacher mobile workbench to the native miniapp with future availability maintenance, leave/reschedule entry, personal expense submission/status, and monthly teaching history, while preserving the existing own-schedule, attendance, and feedback workflow.
+- Key files:
+  - `app/api/miniapp/staff/teacher/*`
+  - `lib/miniapp-teacher-workbench.ts`
+  - `miniapp/boss-academic-parent/pages/staff-teacher-*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `tests/miniapp-teacher-workbench.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-teacher-mobile-workbench.md`
+- Risk impact (if any): Medium and constrained. Teacher endpoints require a TEACHER staff session with a linked teacher profile. Availability writes are limited to the teacher's own next 30 days; leave/reschedule remains a Ticket and never changes a Session directly; expenses remain the teacher's own claims and preserve existing file, duplicate, audit, approval, and payment rules; history is read-only and excludes payroll amounts.
+- Verification: 28 focused teacher/scheduling/conflict/auth/notification tests, TypeScript, all miniapp JavaScript syntax, the 26-page release audit, exact planning-document sync, diff checks, read-only real-data reconciliation, and the full 191-page production build pass. Deploy and authenticated production boundary checks remain before LIVE.
+- Rollback point: `2026-07-13-r236`.
+
+---
+
 ## 2026-07-13-r236
 
 - Release ID: `2026-07-13-r236`

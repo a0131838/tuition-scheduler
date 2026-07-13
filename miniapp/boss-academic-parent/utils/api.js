@@ -201,6 +201,34 @@ function uploadFiles(path, filePaths, options) {
   return chain;
 }
 
+function uploadStaffForm(path, filePath, name, formData) {
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: config.apiBaseUrl + path,
+      filePath,
+      name: name || "file",
+      formData: formData || {},
+      header: staffToken() ? { Authorization: "Bearer " + staffToken() } : {},
+      success(res) {
+        let data = {};
+        try {
+          data = JSON.parse(res.data || "{}");
+        } catch (err) {
+          data = {};
+        }
+        if (res.statusCode >= 200 && res.statusCode < 300 && data.ok !== false) {
+          resolve(data);
+          return;
+        }
+        reject(new Error(data.message || "文件提交失败"));
+      },
+      fail(err) {
+        reject(new Error(err.errMsg || "文件提交失败"));
+      }
+    });
+  });
+}
+
 module.exports = {
   request,
   requestStaff,
@@ -211,5 +239,6 @@ module.exports = {
   requireStudentPage,
   toast,
   downloadPdf,
-  uploadFiles
+  uploadFiles,
+  uploadStaffForm
 };

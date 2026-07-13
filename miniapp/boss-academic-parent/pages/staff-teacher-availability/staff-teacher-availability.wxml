@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="top">
+    <view class="eyebrow">老师移动工作台</view>
+    <view class="title">我的可用时间</view>
+    <view class="subtitle">维护今天起未来30天真正可排课的时间，教务排课会直接读取这里的数据。</view>
+  </view>
+  <view class="form-card">
+    <view class="field-label">日期</view><picker mode="date" value="{{date}}" start="{{from}}" end="{{to}}" bindchange="changeDate"><view class="picker">{{date}}</view></picker>
+    <view class="field-label">开始时间</view><picker mode="time" value="{{start}}" start="08:00" end="22:50" bindchange="changeStart"><view class="picker">{{start}}</view></picker>
+    <view class="field-label">结束时间</view><picker mode="time" value="{{end}}" start="08:00" end="22:50" bindchange="changeEnd"><view class="picker">{{end}}</view></picker>
+    <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="addSlot">保存可用时段</button>
+  </view>
+  <view class="section-title">已保存时段</view>
+  <block wx:if="{{slots.length}}">
+    <view class="list-card" wx:for="{{slots}}" wx:key="id"><view class="slot-head"><view><view class="item-title">{{item.date}}</view><view class="item-meta">{{item.timeText}}</view></view><button class="delete-button" data-id="{{item.id}}" loading="{{deletingId === item.id}}" bindtap="removeSlot">删除</button></view></view>
+  </block>
+  <view class="empty" wx:else>未来30天还没有保存可用时段</view>
+</view>

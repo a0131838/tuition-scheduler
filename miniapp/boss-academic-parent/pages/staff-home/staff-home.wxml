@@ -2,7 +2,8 @@
   <view class="top">
     <view class="eyebrow">{{roleText}}</view>
     <view class="title">{{staffNameText}}</view>
-    <view class="subtitle">查看当天课程，处理家长请求和排课协调。</view>
+    <view class="subtitle" wx:if="{{isTeacher}}">查看自己的课程，提交考勤、反馈和日常申请。</view>
+    <view class="subtitle" wx:else>查看当天课程，处理家长请求和排课协调。</view>
   </view>
 
   <view class="card work-card" bindtap="goSchedule">
@@ -13,7 +14,7 @@
     <view class="arrow">›</view>
   </view>
 
-  <view class="card work-card" bindtap="goRequests">
+  <view class="card work-card" wx:if="{{!isTeacher}}" bindtap="goRequests">
     <view>
       <view class="label">家长请求</view>
       <view class="value">{{pendingCount}} 条待查看</view>
@@ -45,13 +46,33 @@
     <view class="arrow">›</view>
   </view>
 
-  <view class="card work-card" bindtap="goNewRequest">
+  <view class="card work-card" wx:if="{{!isTeacher}}" bindtap="goNewRequest">
     <view>
       <view class="label">代录工单</view>
       <view class="value">微信群消息整理成请求</view>
     </view>
     <view class="arrow">›</view>
   </view>
+
+  <block wx:if="{{isTeacher}}">
+    <view class="teacher-section-title">老师移动工作台</view>
+    <view class="card work-card" bindtap="goTeacherAvailability">
+      <view><view class="label">我的可用时间</view><view class="value">未来30天 {{teacherAvailabilityCount}} 个时段</view></view>
+      <view class="arrow">›</view>
+    </view>
+    <view class="card work-card" bindtap="goTeacherLeave">
+      <view><view class="label">请假与调课申请</view><view class="value">未来30天 {{teacherUpcomingCount}} 节课程</view></view>
+      <view class="arrow">›</view>
+    </view>
+    <view class="card work-card" bindtap="goTeacherExpenses">
+      <view><view class="label">我的报销</view><view class="value">{{teacherExpenseCount}} 笔处理中或需补充</view></view>
+      <view class="arrow">›</view>
+    </view>
+    <view class="card work-card" bindtap="goTeacherHistory">
+      <view><view class="label">教学记录</view><view class="value">本月已完成 {{teacherCompletedCount}} 节</view></view>
+      <view class="arrow">›</view>
+    </view>
+  </block>
 
   <button class="btn secondary" bindtap="logout">退出员工登录</button>
 </view>

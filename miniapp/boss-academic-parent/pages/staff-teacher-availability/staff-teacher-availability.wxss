@@ -1,0 +1,3 @@
+@import "../../styles/teacher-tools.wxss";
+.slot-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+.delete-button { flex: 0 0 auto; min-height: 64rpx; margin: 0; padding: 0 18rpx; border-radius: 8rpx; background: #f8ebe8; color: #9b3d31; font-size: 24rpx; }
