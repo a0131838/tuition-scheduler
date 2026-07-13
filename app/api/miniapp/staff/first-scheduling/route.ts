@@ -13,8 +13,9 @@ export async function GET(req: Request) {
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Scheduling coordination permission required", 403);
   const url = new URL(req.url);
   const query = clean(url.searchParams.get("q"), 80);
+  const scope = clean(url.searchParams.get("scope"), 30);
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit")) || 100));
-  const result = await listMiniappFirstSchedulingCandidates({ query, limit });
+  const result = await listMiniappFirstSchedulingCandidates({ query, limit, scope });
   return ok({ ...result, capabilities: { canSchedule: canManageMiniappSchedulingWrites(auth.user) } });
 }
 
@@ -36,8 +37,6 @@ export async function POST(req: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "STUDENT_NOT_FOUND") return bad("Student not found", 404);
-    if (code === "ALREADY_SCHEDULED") return bad("该学生已经有未来课程，请从课程详情继续排课或改课。", 409);
-    if (code === "NO_ACTIVE_PACKAGE") return bad("该学生没有可用于排课的有效课包。", 409);
     throw error;
   }
 }

@@ -23,6 +23,9 @@ type CandidatePackage = {
 };
 
 export function firstSchedulingPackageState(packages: CandidatePackage[]) {
+  if (!packages.length) {
+    return { ready: false, readyCount: 0, reasons: ["没有可用于排课的有效课包"] };
+  }
   const withSubjects = packages.filter((row) => row.course._count.subjects > 0);
   const ready = withSubjects.filter((row) => OPEN_FINANCE_GATES.has(row.financeGateStatus));
   const reasons: string[] = [];
@@ -54,62 +57,65 @@ function collectSessionStudentIds(rows: Array<{
   return ids;
 }
 
-export async function listMiniappFirstSchedulingCandidates(input?: { query?: string; limit?: number }) {
+type SchedulingScope = "all" | "attention" | "first" | "renewal" | "scheduled" | "blocked";
+
+export function studentSchedulingTicketType(hasFutureSession: boolean) {
+  return hasFutureSession ? "补课加课" : "新排课";
+}
+
+export async function listMiniappFirstSchedulingCandidates(input?: { query?: string; limit?: number; scope?: string }) {
   const now = new Date();
   const query = String(input?.query ?? "").trim().slice(0, 80);
   const limit = Math.min(200, Math.max(1, input?.limit ?? 100));
-  const packages = await prisma.coursePackage.findMany({
+  const scope: SchedulingScope = ["attention", "first", "renewal", "scheduled", "blocked"].includes(String(input?.scope))
+    ? input?.scope as SchedulingScope
+    : "all";
+  const students = await prisma.student.findMany({
     where: {
-      status: "ACTIVE",
-      AND: [
-        { OR: [{ validTo: null }, { validTo: { gte: now } }] },
-        { OR: [{ type: "MONTHLY" }, { remainingMinutes: { gt: 0 } }] },
-      ],
       ...(query
         ? {
-            student: {
-              OR: [
-                { name: { contains: query, mode: "insensitive" as const } },
-                { school: { contains: query, mode: "insensitive" as const } },
-                { targetSchool: { contains: query, mode: "insensitive" as const } },
-              ],
-            },
+            OR: [
+              { name: { contains: query, mode: "insensitive" as const } },
+              { school: { contains: query, mode: "insensitive" as const } },
+              { targetSchool: { contains: query, mode: "insensitive" as const } },
+            ],
           }
         : {}),
     },
     select: {
       id: true,
-      type: true,
-      remainingMinutes: true,
-      validFrom: true,
-      validTo: true,
-      financeGateStatus: true,
-      financeGateReason: true,
-      course: { select: { id: true, name: true, _count: { select: { subjects: true } } } },
-      student: {
+      name: true,
+      grade: true,
+      school: true,
+      targetSchool: true,
+      servicePlanType: true,
+      createdAt: true,
+      packages: {
+        where: {
+          status: "ACTIVE",
+          AND: [
+            { OR: [{ validTo: null }, { validTo: { gte: now } }] },
+            { OR: [{ type: "MONTHLY" }, { remainingMinutes: { gt: 0 } }] },
+          ],
+        },
         select: {
           id: true,
-          name: true,
-          grade: true,
-          school: true,
-          targetSchool: true,
-          servicePlanType: true,
-          createdAt: true,
+          type: true,
+          remainingMinutes: true,
+          validFrom: true,
+          validTo: true,
+          financeGateStatus: true,
+          financeGateReason: true,
+          course: { select: { id: true, name: true, _count: { select: { subjects: true } } } },
         },
+        orderBy: { updatedAt: "desc" },
       },
     },
-    orderBy: [{ student: { createdAt: "desc" } }, { updatedAt: "desc" }],
-    take: Math.max(limit * 8, 400),
+    orderBy: [{ createdAt: "desc" }, { name: "asc" }],
   });
-  const byStudent = new Map<string, { student: (typeof packages)[number]["student"]; packages: CandidatePackage[] }>();
-  for (const pkg of packages) {
-    const group = byStudent.get(pkg.student.id) ?? { student: pkg.student, packages: [] };
-    group.packages.push(pkg);
-    byStudent.set(pkg.student.id, group);
-  }
-  const studentIds = Array.from(byStudent.keys());
+  const studentIds = students.map((row) => row.id);
   if (!studentIds.length) {
-    return { candidates: [], summary: { total: 0, ready: 0, blocked: 0, withOpenTicket: 0, first: 0, renewal: 0 } };
+    return { candidates: [], summary: { total: 0, attention: 0, ready: 0, blocked: 0, withOpenTicket: 0, first: 0, renewal: 0, scheduled: 0 } };
   }
 
   const [futureSessions, studentsWithAnySession, tickets] = await Promise.all([
@@ -157,11 +163,13 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
   const ticketByStudent = new Map<string, (typeof tickets)[number]>();
   for (const ticket of tickets) if (ticket.studentId && !ticketByStudent.has(ticket.studentId)) ticketByStudent.set(ticket.studentId, ticket);
 
-  const allCandidates = Array.from(byStudent.values())
-    .filter((row) => !scheduledIds.has(row.student.id))
-    .map((row) => {
+  const allCandidates = students
+    .map((student) => {
+      const row = { student, packages: student.packages as CandidatePackage[] };
       const state = firstSchedulingPackageState(row.packages);
       const openTicket = ticketByStudent.get(row.student.id) ?? null;
+      const hasFutureSession = scheduledIds.has(row.student.id);
+      const scheduleStage = hasFutureSession ? "scheduled" : historicalIds.has(row.student.id) ? "renewal" : "first";
       const courseMap = new Map<string, { id: string; name: string; packages: CandidatePackage[] }>();
       for (const pkg of row.packages) {
         const course = courseMap.get(pkg.course.id) ?? { id: pkg.course.id, name: pkg.course.name, packages: [] };
@@ -175,8 +183,9 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
         school: row.student.school ?? row.student.targetSchool,
         servicePlanType: row.student.servicePlanType,
         createdAtText: formatBusinessDateOnly(row.student.createdAt),
-        scheduleStage: historicalIds.has(row.student.id) ? "renewal" : "first",
-        scheduleStageText: historicalIds.has(row.student.id) ? "待续排" : "首次排课",
+        scheduleStage,
+        scheduleStageText: scheduleStage === "scheduled" ? "已有未来课程" : scheduleStage === "renewal" ? "待续排" : "首次排课",
+        needsAttention: !hasFutureSession && row.packages.length > 0,
         ready: state.ready,
         blockerText: state.reasons.join("；"),
         courses: Array.from(courseMap.values()).map((course) => ({
@@ -188,17 +197,25 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
         openTicket,
       };
     })
-    .sort((a, b) => Number(b.ready) - Number(a.ready) || a.name.localeCompare(b.name, "zh-CN"));
-  const candidates = allCandidates.slice(0, limit);
+    .sort((a, b) => Number(b.needsAttention) - Number(a.needsAttention) || Number(b.ready) - Number(a.ready) || a.name.localeCompare(b.name, "zh-CN"));
+  const scopedCandidates = allCandidates.filter((row) => {
+    if (scope === "attention") return row.needsAttention;
+    if (scope === "first" || scope === "renewal" || scope === "scheduled") return row.scheduleStage === scope;
+    if (scope === "blocked") return !row.ready;
+    return true;
+  });
+  const candidates = scopedCandidates.slice(0, limit);
   return {
     candidates,
     summary: {
       total: allCandidates.length,
+      attention: allCandidates.filter((row) => row.needsAttention).length,
       ready: allCandidates.filter((row) => row.ready).length,
       blocked: allCandidates.filter((row) => !row.ready).length,
       withOpenTicket: allCandidates.filter((row) => Boolean(row.openTicket)).length,
       first: allCandidates.filter((row) => row.scheduleStage === "first").length,
       renewal: allCandidates.filter((row) => row.scheduleStage === "renewal").length,
+      scheduled: allCandidates.filter((row) => row.scheduleStage === "scheduled").length,
     },
   };
 }
@@ -223,19 +240,6 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
       },
       select: { id: true },
     });
-    if (futureSession) throw new Error("ALREADY_SCHEDULED");
-    const activePackage = await tx.coursePackage.findFirst({
-      where: {
-        studentId,
-        status: "ACTIVE",
-        AND: [
-          { OR: [{ validTo: null }, { validTo: { gte: now } }] },
-          { OR: [{ type: "MONTHLY" }, { remainingMinutes: { gt: 0 } }] },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!activePackage) throw new Error("NO_ACTIVE_PACKAGE");
     const existing = await tx.ticket.findFirst({
       where: {
         studentId,
@@ -247,18 +251,19 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
     });
     if (existing) return { ticket: existing, created: false };
 
+    const ticketType = studentSchedulingTicketType(Boolean(futureSession));
     const ticketNo = await allocateTicketNo(tx);
     const summary = composeTicketSituation({
-      currentIssue: "新学生已有有效课包，尚未安排未来课程。",
-      requiredAction: "请教务确认科目、老师、地点和时间，完成首次排课。",
-      latestDeadlineText: "尽快完成首次排课",
+      currentIssue: futureSession ? "学生已有未来课程，需要继续安排新的课程。" : "学生目前没有未来课程，需要安排课程。",
+      requiredAction: "请教务确认课包、科目、老师、地点和时间，完成正式排课。",
+      latestDeadlineText: "尽快完成排课",
     });
     const ticket = await tx.ticket.create({
       data: {
         ticketNo,
         studentId,
         source: "员工小程序",
-        type: "新排课",
+        type: ticketType,
         priority: "普通",
         studentName: student.name,
         grade: student.grade,
@@ -269,9 +274,9 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
         systemUpdated: "N",
         summary,
         parentVisible: false,
-        nextAction: "确认学生和老师可上课时间，完成首次排课。",
+        nextAction: "确认课包、学生和老师可上课时间，完成排课。",
         nextActionDue: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
-        risksNotes: `由 ${actor.name || actor.email} 从员工小程序首次排课看板创建。`,
+        risksNotes: `由 ${actor.name || actor.email} 从员工小程序学生排课页面创建。`,
         createdByName: `员工小程序：${actor.name || actor.email}`,
         lastUpdateAt: now,
       },
@@ -282,10 +287,10 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
         actorName: actor.name?.trim() || null,
         actorRole: actor.role,
         module: "SCHEDULING",
-        action: "MINIAPP_FIRST_SCHEDULING_TICKET_CREATE",
+        action: "MINIAPP_STUDENT_SCHEDULING_TICKET_CREATE",
         entityType: "Ticket",
         entityId: ticket.id,
-        meta: { studentId },
+        meta: { studentId, ticketType, hadFutureSession: Boolean(futureSession) },
       },
     });
     return { ticket, created: true };

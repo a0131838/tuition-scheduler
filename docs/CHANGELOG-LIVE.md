@@ -15,6 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-13-r236
+
+- Release ID: `2026-07-13-r236`
+- Date/Time (Asia/Shanghai): `2026-07-13`
+- Deployment status: `READY`
+- Scope: change the staff-miniapp scheduling center from a restricted 25-student attention list into an all-student scheduling entry, while retaining the 25 students as an operational attention filter rather than an eligibility rule.
+- Key files:
+  - `lib/miniapp-first-scheduling.ts`
+  - `app/api/miniapp/staff/first-scheduling/route.ts`
+  - `miniapp/boss-academic-parent/pages/staff-first-scheduling/*`
+  - `miniapp/boss-academic-parent/pages/staff-home/*`
+  - `tests/miniapp-first-scheduling.test.ts`
+  - `docs/tasks/TASK-20260713-miniapp-all-student-scheduling.md`
+- Risk impact (if any): Medium and constrained. All students become visible and can enter coordination, including students with existing future lessons or missing packages. Final Session writes still require ADMIN permission and the unchanged package, finance gate, qualification, availability, conflict, duplicate, preview-token, second-confirmation, and transaction checks. Creating a coordination Ticket does not bypass scheduling prerequisites.
+- Verification: 28 focused scheduling/conflict/auth/notification tests, TypeScript, miniapp JavaScript syntax, the 22-page release audit, exact planning-document sync, diff checks, and the full 187-page production build pass. Read-only production-data evaluation reports 88 total students, 25 attention students, 39 with future lessons, 46 package-ready, 42 requiring prerequisites, and 4 with an existing reusable scheduling Ticket. Deploy and authenticated production checks remain before LIVE.
+- Rollback point: `2026-07-13-r235`.
+
+---
+
 ## 2026-07-13-r235
 
 - Release ID: `2026-07-13-r235`

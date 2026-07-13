@@ -14,7 +14,7 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-13-r235`. The new/renewal student scheduling backend is live; the native miniapp source still needs WeChat DevTools re-open/compile and phone regression before the `1.0.0` review upload.
+- Current production release: `2026-07-13-r235`. Release `2026-07-13-r236` is ready to make the scheduling page include all students while preserving the 25-person attention signal.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
@@ -171,6 +171,17 @@
 - Safety: preserve package finance gates, balances, teacher qualifications, availability, all conflict checks, duplicate guards, signed ten-minute previews, second confirmation, serializable writes, ticket completion, audit logs, and parent notification behavior.
 - Data evidence: read-only production evaluation reports 25 pending students: 5 first scheduling, 20 renewal scheduling, 24 ready, and 1 blocked.
 - Validation: 27 related regressions, TypeScript, miniapp syntax, 22-page release audit, document sync, diff checks, and local/production 187-page builds pass. Production `ea1dcb8` has 101 migrations current, PM2 online, health 200, and one cron. Authenticated ADMIN GET reports 25/5/20/24/1 and write capability true; unauthenticated GET returns 401. Remaining external validation: WeChat DevTools re-open/compile and phone regression.
+
+## 2026-07-13-r236 Ready
+
+- Decision: all students must be searchable and able to enter scheduling; the 25 students are an attention queue, not an eligibility list.
+- Page: rename the entry to `学生排课` and add all, attention, first, renewal, already scheduled, and prerequisite-blocked filters.
+- Existing schedules: students with future lessons stay visible and can create/reuse a `补课加课` Ticket.
+- Missing prerequisites: students without a usable package can still enter coordination and receive a Ticket, but real Session creation remains blocked until package and finance rules pass.
+- Validation: 28 focused regressions, TypeScript, miniapp syntax, the 22-page release audit, exact document sync, diff checks, read-only reconciliation across all 88 students, and the full 187-page production build pass. Deploy and authenticated production checks remain.
+- Permissions: CS can coordinate only; ADMIN remains the only scheduling writer.
+- Data evidence: read-only evaluation reports 88 total, 25 attention, 39 already scheduled, 46 ready, 42 requiring prerequisites, and 4 with reusable scheduling Tickets.
+- Validation remaining: focused regressions, TypeScript, miniapp audit, full build, deploy, authenticated API, PM2/health/cron, and DevTools regression.
 
 ## 2026-07-12-r233 Live
 

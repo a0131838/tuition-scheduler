@@ -2,9 +2,10 @@ const api = require("../../utils/api");
 
 const scopes = [
   { label: "全部学生", value: "all" },
+  { label: "待排课关注", value: "attention" },
   { label: "首次排课", value: "first" },
   { label: "待续排", value: "renewal" },
-  { label: "可直接排课", value: "ready" },
+  { label: "已有未来课程", value: "scheduled" },
   { label: "待处理前置条件", value: "blocked" }
 ];
 
@@ -19,6 +20,8 @@ Page({
     totalText: "0",
     readyText: "0",
     blockedText: "0",
+    attentionText: "0",
+    scheduledText: "0",
     canSchedule: false,
     loading: false,
     openingStudentId: ""
@@ -34,7 +37,8 @@ Page({
 
   load() {
     const query = this.data.query.trim();
-    const path = "/api/miniapp/staff/first-scheduling?limit=150" + (query ? "&q=" + encodeURIComponent(query) : "");
+    const scope = scopes[this.data.scopeIndex].value;
+    const path = "/api/miniapp/staff/first-scheduling?limit=150&scope=" + encodeURIComponent(scope) + (query ? "&q=" + encodeURIComponent(query) : "");
     this.setData({ loading: true });
     return api.requestStaff(path, { timeout: 20000 })
       .then((data) => {
@@ -45,6 +49,8 @@ Page({
           totalText: String(summary.total || 0),
           readyText: String(summary.ready || 0),
           blockedText: String(summary.blocked || 0),
+          attentionText: String(summary.attention || 0),
+          scheduledText: String(summary.scheduled || 0),
           canSchedule: Boolean(data.capabilities && data.capabilities.canSchedule)
         });
         this.applyScope();
@@ -54,19 +60,12 @@ Page({
   },
 
   applyScope() {
-    const scope = scopes[this.data.scopeIndex].value;
-    const visible = (this.data.candidates || []).filter((item) => {
-      if (scope === "ready") return item.ready;
-      if (scope === "blocked") return !item.ready;
-      if (scope === "first" || scope === "renewal") return item.scheduleStage === scope;
-      return true;
-    });
-    this.setData({ visibleCandidates: visible });
+    this.setData({ visibleCandidates: this.data.candidates || [] });
   },
 
   changeScope(e) {
     this.setData({ scopeIndex: Number(e.detail.value || 0) });
-    this.applyScope();
+    this.load();
   },
 
   inputQuery(e) {

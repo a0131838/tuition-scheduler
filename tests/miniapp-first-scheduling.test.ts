@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PackageFinanceGateStatus, PackageType } from "@prisma/client";
-import { firstSchedulingPackageState } from "@/lib/miniapp-first-scheduling";
+import { firstSchedulingPackageState, studentSchedulingTicketType } from "@/lib/miniapp-first-scheduling";
 import { normalizeMiniappRequestType, normalizeMiniappStaffRequestType } from "@/lib/miniapp-parent-requests";
 import { canCreateSessionFromTicketType, MOBILE_SCHEDULING_TICKET_TYPES } from "@/lib/miniapp-scheduling-coordination-board";
 import { buildTicketNewSessionStartTimes, createTicketNewSessionToken, verifyTicketNewSessionToken } from "@/lib/miniapp-ticket-new-session";
@@ -24,6 +24,11 @@ test("first scheduling marks a configured and finance-ready package as ready", (
 });
 
 test("first scheduling explains missing subjects and finance gate blockers", () => {
+  assert.deepEqual(firstSchedulingPackageState([]), {
+    ready: false,
+    readyCount: 0,
+    reasons: ["没有可用于排课的有效课包"],
+  });
   assert.deepEqual(firstSchedulingPackageState([pkg({ subjects: 0 })]), {
     ready: false,
     readyCount: 0,
@@ -34,6 +39,11 @@ test("first scheduling explains missing subjects and finance gate blockers", () 
     readyCount: 0,
     reasons: ["课包财务门禁尚未放行"],
   });
+});
+
+test("student scheduling creates the correct operational ticket type", () => {
+  assert.equal(studentSchedulingTicketType(false), "新排课");
+  assert.equal(studentSchedulingTicketType(true), "补课加课");
 });
 
 test("parent scheduling requests and staff new-session tickets enter the coordination flow", () => {

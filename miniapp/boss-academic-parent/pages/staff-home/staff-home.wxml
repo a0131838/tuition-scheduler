@@ -31,8 +31,8 @@
 
   <view class="card work-card" wx:if="{{canManageFirstScheduling}}" bindtap="goFirstScheduling">
     <view>
-      <view class="label">待排课学生</view>
-      <view class="value">{{firstSchedulingCount}} 名待排 · {{firstSchedulingFirstCount}} 名首次排课</view>
+      <view class="label">学生排课</view>
+      <view class="value">全部学生可安排 · {{firstSchedulingAttentionCount}} 名需关注</view>
     </view>
     <view class="arrow">›</view>
   </view>

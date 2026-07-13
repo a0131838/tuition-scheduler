@@ -1,22 +1,22 @@
 <view class="page">
   <view class="top">
     <view class="eyebrow">教务工作台</view>
-    <view class="title">待排课学生</view>
-    <view class="subtitle">已有有效课包、但还没有未来课程的学生。</view>
+    <view class="title">学生排课</view>
+    <view class="subtitle">全部学生都可以进入排课流程；系统另外标记需要教务关注的学生。</view>
   </view>
 
   <view class="summary-band">
     <view>
       <view class="metric">{{totalText}}</view>
-      <view class="hint">全部待排</view>
+      <view class="hint">全部学生</view>
     </view>
     <view>
-      <view class="metric ready-number">{{readyText}}</view>
-      <view class="hint">可直接排课</view>
+      <view class="metric ready-number">{{attentionText}}</view>
+      <view class="hint">待排课关注</view>
     </view>
     <view>
-      <view class="metric blocked-number">{{blockedText}}</view>
-      <view class="hint">待处理</view>
+      <view class="metric blocked-number">{{scheduledText}}</view>
+      <view class="hint">已有未来课程</view>
     </view>
   </view>
 
@@ -38,8 +38,8 @@
           <view class="student-name">{{item.name}}</view>
           <view class="hint">{{item.scheduleStageText}} · {{item.grade || '未填年级'}} · {{item.school || '未填学校'}} · {{item.servicePlanType || '未设置服务类型'}}</view>
         </view>
-        <view class="state ready" wx:if="{{item.ready}}">可排课</view>
-        <view class="state blocked" wx:else>待处理</view>
+        <view class="state ready" wx:if="{{item.ready}}">课包就绪</view>
+        <view class="state blocked" wx:else>需补前置条件</view>
       </view>
 
       <view class="course-row" wx:for="{{item.courses}}" wx:key="id" wx:for-item="course">
@@ -56,8 +56,8 @@
         loading="{{openingStudentId === item.id}}"
         disabled="{{openingStudentId !== ''}}"
         bindtap="openCandidate"
-      >{{item.openTicket ? '继续处理' : (canSchedule ? '开始首次排课' : '建立排课工单')}}</button>
+      >{{item.openTicket ? '继续处理' : (canSchedule ? (item.scheduleStage === 'scheduled' ? '继续加课' : '开始排课') : '建立排课工单')}}</button>
     </view>
   </block>
-  <view wx:else class="empty">当前没有匹配的待首次排课学生</view>
+  <view wx:else class="empty">当前没有匹配的学生</view>
 </view>

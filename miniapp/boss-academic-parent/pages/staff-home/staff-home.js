@@ -14,6 +14,7 @@ Page({
     firstSchedulingCount: 0,
     firstSchedulingReadyCount: 0,
     firstSchedulingFirstCount: 0,
+    firstSchedulingAttentionCount: 0,
     canManageFirstScheduling: false,
     reminderAttentionCount: 0,
     canViewReminderAttention: false,
@@ -78,9 +79,10 @@ Page({
         canManageFirstScheduling: true,
         firstSchedulingCount: data.summary ? data.summary.total : 0,
         firstSchedulingReadyCount: data.summary ? data.summary.ready : 0,
-        firstSchedulingFirstCount: data.summary ? data.summary.first : 0
+        firstSchedulingFirstCount: data.summary ? data.summary.first : 0,
+        firstSchedulingAttentionCount: data.summary ? data.summary.attention : 0
       }))
-      .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0 }));
+      .catch(() => this.setData({ canManageFirstScheduling: false, firstSchedulingCount: 0, firstSchedulingReadyCount: 0, firstSchedulingFirstCount: 0, firstSchedulingAttentionCount: 0 }));
 
     return Promise.allSettled([meTask, requestsTask, scheduleTask, coordinationTask, reminderTask, firstSchedulingTask])
       .finally(() => this.setData({ loading: false }));
