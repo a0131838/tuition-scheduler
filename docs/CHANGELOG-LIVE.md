@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r241`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: make shared packages available to every linked student while isolating one-to-one lessons, feedback, and reminders by the session's actual student.
 - Key files:
   - `lib/session-students.ts`
@@ -35,6 +35,8 @@ This file is the single source of truth for what changed in production.
 - Risk impact (if any): Medium and corrective. The release narrows parent-visible lesson, feedback, and reminder reads for capacity-one classes to the actual session student, while broadening internal scheduling-package eligibility to include explicitly shared packages. It does not rewrite data or change package balances, ledger deductions, finance gates, attendance, payroll, invoices, receipts, or financial-document access.
 - Verification: TypeScript, 22 focused tests, the 26-page miniapp release audit, and the full 192-page production build pass. Read-only real-data checks show Daisy ready with the shared package, no prerequisite blocker, 24 correctly attributed future lessons, and zero foreign explicit students; Louis is ready for renewal with zero future lessons instead of inheriting Daisy's schedule.
 - Rollback point: `2026-07-13-r240` documentation-aligned head `efff27a` (production runtime `caa9cbd`).
+- Production commit: `1a553e11d5f4d69528bc759dad49f37f7df408d5`.
+- Deployment result: release-doc gate and the 192-page server build passed; 102 migrations remain current with none applied; PM2 is online with zero restarts; `/admin/login` returns `200`. Authenticated production miniapp API checks return Daisy as ready with `101小时15分钟 · 共享课包主学生：王嘉毅（Louis）` and Louis as ready for renewal with `101小时15分钟 · 与 王钰澄（Daisy） 共用`; neither has a prerequisite blocker.
 
 ---
 

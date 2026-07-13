@@ -33,4 +33,4 @@ Keep a shared package available to every linked student without mixing their one
 - [x] Full 192-page production build.
 - [x] Read-only real-data check: Daisy is ready, has no prerequisite blocker, sees the shared package owner label, and has 24 future sessions with zero foreign explicit students.
 - [x] Read-only real-data check: Louis is ready for renewal, sees the linked shared-student label, and has zero future sessions instead of inheriting Daisy's 24 lessons.
-- [ ] Production API smoke check after deployment.
+- [x] Production API smoke check after deployment.
