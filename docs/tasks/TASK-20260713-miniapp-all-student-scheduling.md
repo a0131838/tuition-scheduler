@@ -47,5 +47,5 @@ Make every student available from the staff-miniapp scheduling page. Keep the no
 - [x] Miniapp JavaScript syntax and 22-page audit.
 - [x] Read-only real-data reconciliation.
 - [x] Full 187-page production build.
-- [ ] Deploy and authenticated production checks.
+- [x] Deploy and authenticated production checks.
 - [ ] WeChat DevTools re-open/compile and phone regression.

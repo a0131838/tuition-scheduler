@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-13-r236`
 - Date/Time (Asia/Shanghai): `2026-07-13`
-- Deployment status: `READY`
+- Deployment status: `LIVE`
 - Scope: change the staff-miniapp scheduling center from a restricted 25-student attention list into an all-student scheduling entry, while retaining the 25 students as an operational attention filter rather than an eligibility rule.
 - Key files:
   - `lib/miniapp-first-scheduling.ts`
@@ -29,7 +29,7 @@ This file is the single source of truth for what changed in production.
   - `tests/miniapp-first-scheduling.test.ts`
   - `docs/tasks/TASK-20260713-miniapp-all-student-scheduling.md`
 - Risk impact (if any): Medium and constrained. All students become visible and can enter coordination, including students with existing future lessons or missing packages. Final Session writes still require ADMIN permission and the unchanged package, finance gate, qualification, availability, conflict, duplicate, preview-token, second-confirmation, and transaction checks. Creating a coordination Ticket does not bypass scheduling prerequisites.
-- Verification: 28 focused scheduling/conflict/auth/notification tests, TypeScript, miniapp JavaScript syntax, the 22-page release audit, exact planning-document sync, diff checks, and the full 187-page production build pass. Read-only production-data evaluation reports 88 total students, 25 attention students, 39 with future lessons, 46 package-ready, 42 requiring prerequisites, and 4 with an existing reusable scheduling Ticket. Deploy and authenticated production checks remain before LIVE.
+- Verification: 28 focused scheduling/conflict/auth/notification tests, TypeScript, miniapp JavaScript syntax, the 22-page release audit, exact planning-document sync, diff checks, and local/production 187-page builds pass. Production deployed at `0ba261c` with 101 migrations current, PM2 online, health 200, and exactly one reminder cron. Authenticated ADMIN GET reports 88 total, 25 attention, 15 first, 34 renewal, 39 scheduled, 46 ready, 42 requiring prerequisites, 4 reusable Tickets, and `canSchedule=true`; the scheduled scope returns an existing future-course student and unauthenticated GET returns 401. No production Ticket or Session was created during verification.
 - Rollback point: `2026-07-13-r235`.
 
 ---
