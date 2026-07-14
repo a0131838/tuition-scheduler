@@ -48,6 +48,8 @@ All five were changed to `Cancelled`, kept for traceability and received one aud
 
 ## Remaining Acceptance
 
+- Server API release is live at runtime commit `d705793`; PM2 and the public health check pass.
+- Post-deploy read-only verification confirms all five legacy Tickets remain cancelled with five audit rows, and there are zero open employee-miniapp scheduling Tickets.
 - Upload the next WeChat experience version.
 - On ADMIN phone: open a student and return, confirm Ticket count does not change; then test preview and one controlled direct scheduling action.
 - On CS phone: confirm direct scheduling controls are hidden and explicit coordination requires course and reason.

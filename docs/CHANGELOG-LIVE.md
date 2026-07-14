@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-14-r252`
 - Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `PREPARED`
+- Deployment status: `LIVE` at runtime commit `d705793`
 - Scope: align employee-miniapp student scheduling with the web workflow: opening a student is read-only, ADMIN direct scheduling creates Sessions without a Ticket, and a coordination Ticket requires an explicit course and coordination reason.
 - Key files:
   - `app/api/miniapp/staff/first-scheduling/route.ts`
@@ -31,8 +31,8 @@ This file is the single source of truth for what changed in production.
   - `scripts/cancel-legacy-miniapp-auto-scheduling-tickets.ts`
 - Risk impact (if any): Medium and isolated to employee-miniapp scheduling. Existing web scheduling, lesson changes, package deduction, attendance, finance and parent visibility are unchanged. Direct scheduling keeps the existing package, finance-gate, qualification, availability, conflict, signed-preview and transaction checks. Coordination creation is serialized and deduplicated by student and course.
 - Data correction: five legacy auto-created `Need Info` Tickets (`20260714-001`, `20260713-008`, `20260713-007`, `20260713-003`, `20260713-002`) were marked `Cancelled`, kept unarchived for traceability, and each received an audit row. No Session result or completion timestamp existed on any of them.
-- Verification: TypeScript, 66 backend tests, 10 focused miniapp scheduling tests, all miniapp JavaScript syntax, the 28-page miniapp release audit and the full 193-page production build pass. A real read-only Daisy workspace check returned one course, 19 qualified teachers, four campuses and 12 upcoming sessions while the open employee-miniapp scheduling Ticket count remained `0 -> 0`.
-- Rollback point: current production runtime `a24d06d` (`2026-07-14-r251`).
+- Verification: TypeScript, 66 backend tests, 10 focused miniapp scheduling tests, all miniapp JavaScript syntax, the 28-page miniapp release audit and the full 193-page production build pass. A real read-only Daisy workspace check returned one course, 19 qualified teachers, four campuses and 12 upcoming sessions while the open employee-miniapp scheduling Ticket count remained `0 -> 0`. Production is running `d705793`, PM2 is online with zero restarts, `/admin/login` returns `200`, all five cancelled Tickets retain five audit rows, and the open employee-miniapp scheduling Ticket count remains `0` after deployment.
+- Rollback point: `a24d06d` (`2026-07-14-r251`).
 
 ---
 
