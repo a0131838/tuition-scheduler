@@ -38,3 +38,13 @@ University academic, postgraduate and career care were selectable programme name
 ## Risk
 
 Medium but isolated to CARE configuration. The migration is additive, existing university scopes are retained visibly, pre-university defaults are locked by tests, and parent-report eligibility has an explicit adult-student consent guard.
+
+## First Real-Project Alignment
+
+On 2026-07-14, management explicitly reviewed the two existing real care projects after `r249` went live.
+
+- Wang Jiayi (Louis) remains `PRE_U_FULL_COORDINATION` and `ACTIVE`; academic management was added to complete the eight-scope standard, and the student service plan is now `FULL_CARE` with Jasmine as advisor.
+- Li Chenghao remains `UNIVERSITY_GROWTH` and `DRAFT`; the earlier shared-template scopes were replaced by the five university-academic defaults, cadence changed to milestone review plus monthly reporting, and Jasmine now holds case/academic ownership while zhao hongwei remains reviewer/executive owner.
+- Li Chenghao's university profile records only verified facts: NUS and first year. Degree/programme, current term, expected graduation, GPA and student consent remain unset rather than inferred.
+- Five audit rows record the two project alignments, two student service-plan alignments and the university-profile creation.
+- No plans, activities, tasks or attachments were deleted. Louis's existing activity remains present.
