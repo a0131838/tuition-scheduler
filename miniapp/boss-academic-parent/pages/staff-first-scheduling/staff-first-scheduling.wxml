@@ -55,11 +55,8 @@
       <button
         class="start-button"
         data-id="{{item.id}}"
-        data-ticket-id="{{item.openTicket ? item.openTicket.id : ''}}"
-        loading="{{openingStudentId === item.id}}"
-        disabled="{{openingStudentId !== ''}}"
         bindtap="openCandidate"
-      >{{item.openTicket ? '继续处理' : (canSchedule ? (item.scheduleStage === 'scheduled' ? '继续加课' : '开始排课') : '建立排课工单')}}</button>
+      >进入排课</button>
     </view>
   </block>
   <view wx:else class="empty">当前没有匹配的学生</view>

@@ -1,0 +1,110 @@
+<view class="page" wx:if="{{student}}">
+  <view class="top">
+    <view class="eyebrow">学生排课</view>
+    <view class="title">{{student.name}}</view>
+    <view class="subtitle">{{student.grade || '未填年级'}} · {{student.school || student.targetSchool || '未填学校'}} · {{student.servicePlanType || '未设置服务类型'}}</view>
+  </view>
+
+  <view class="section" wx:if="{{hasUpcomingSessions}}">
+    <view class="section-title">未来课程</view>
+    <view class="list-row" wx:for="{{upcomingSessions}}" wx:key="id" bindtap="openSession" data-id="{{item.id}}">
+      <view>
+        <view class="label">{{item.startText}}</view>
+        <view>{{item.courseLabel}}</view>
+        <view class="hint">{{item.teacherName}} · {{item.locationText}}</view>
+      </view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{hasOpenTickets}}">
+    <view class="section-title">已有排课协调</view>
+    <view class="list-row" wx:for="{{openTickets}}" wx:key="id" bindtap="openTicket" data-id="{{item.id}}">
+      <view>
+        <view class="label">{{item.ticketNo}} · {{item.type}}</view>
+        <view>{{item.course || '未指定课程'}}</view>
+        <view class="hint">{{item.status}} · {{item.owner || '未分配'}}</view>
+      </view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{canSchedule}}">
+    <view class="section-title">直接排课</view>
+    <view class="hint section-hint">确认后直接写入课表，不创建工单。</view>
+    <view class="empty" wx:if="{{!hasScheduleOptions}}">该学生目前没有可用于排课的课程科目，或系统尚未配置校区。</view>
+    <block wx:else>
+      <view class="grid">
+        <view class="field wide">
+          <view class="label">课程科目</view>
+          <picker mode="selector" range="{{subjects}}" range-key="label" value="{{subjectIndex}}" bindchange="changeSubject">
+            <view class="picker">{{subjectName}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <view class="label">级别</view>
+          <picker mode="selector" range="{{levels}}" range-key="name" value="{{levelIndex}}" bindchange="changeLevel"><view class="picker">{{levelName}}</view></picker>
+        </view>
+        <view class="field">
+          <view class="label">老师</view>
+          <picker wx:if="{{hasTeachers}}" mode="selector" range="{{teachers}}" range-key="name" value="{{teacherIndex}}" bindchange="changeTeacher"><view class="picker">{{teacherName}}</view></picker>
+          <view class="picker muted" wx:else>没有具备该科目资质的老师</view>
+        </view>
+        <view class="field">
+          <view class="label">校区</view>
+          <picker mode="selector" range="{{campuses}}" range-key="name" value="{{campusIndex}}" bindchange="changeCampus"><view class="picker">{{campusName}}</view></picker>
+        </view>
+        <view class="field">
+          <view class="label">教室</view>
+          <picker wx:if="{{hasRooms}}" mode="selector" range="{{rooms}}" range-key="name" value="{{roomIndex}}" bindchange="changeRoom"><view class="picker">{{roomName}}</view></picker>
+          <view class="picker muted" wx:else>该校区没有可选教室</view>
+        </view>
+        <view class="field">
+          <view class="label">日期</view>
+          <picker mode="date" value="{{scheduleDate}}" bindchange="changeDate"><view class="picker">{{scheduleDate}}</view></picker>
+        </view>
+        <view class="field">
+          <view class="label">时间</view>
+          <picker mode="time" value="{{scheduleTime}}" bindchange="changeTime"><view class="picker">{{scheduleTime}}</view></picker>
+        </view>
+        <view class="field">
+          <view class="label">时长（分钟）</view>
+          <input class="picker" type="number" value="{{duration}}" bindinput="inputDuration" />
+        </view>
+        <view class="field">
+          <view class="label">连续周数</view>
+          <input class="picker" type="number" value="{{weeks}}" bindinput="inputWeeks" />
+        </view>
+      </view>
+      <button class="secondary" loading="{{checking}}" disabled="{{checking}}" bindtap="previewSchedule">检查排课</button>
+      <view class="preview" wx:if="{{hasPreview}}">
+        <view class="preview-title">检查通过</view>
+        <view>{{preview.scheduleText}}</view>
+        <view>{{preview.courseLabel}}</view>
+        <view>{{preview.teacherName}} · {{preview.locationText}}</view>
+        <button class="primary" loading="{{saving}}" disabled="{{saving}}" bindtap="applySchedule">确认排课</button>
+      </view>
+    </block>
+  </view>
+
+  <view class="section coordination">
+    <view class="section-title">需要协调</view>
+    <view class="hint section-hint">只有明确提交后才会创建工单。</view>
+    <view class="empty" wx:if="{{!courses.length}}">该学生没有可选择的有效课包课程。</view>
+    <block wx:else>
+      <view class="field">
+        <view class="label">课程</view>
+        <picker mode="selector" range="{{courses}}" range-key="name" value="{{coordinationCourseIndex}}" bindchange="changeCoordinationCourse">
+          <view class="picker">{{courses[coordinationCourseIndex].name}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <view class="label">需要协调的事项</view>
+        <textarea value="{{coordinationSummary}}" bindinput="inputCoordinationSummary" maxlength="500" placeholder="例如：家长只能周三晚间，需确认老师和教室" />
+      </view>
+      <button class="outline" loading="{{creatingCoordination}}" disabled="{{creatingCoordination}}" bindtap="createCoordination">创建排课协调工单</button>
+    </block>
+  </view>
+</view>
+
+<view class="page loading" wx:else>{{loading ? '正在加载…' : '未找到学生'}}</view>

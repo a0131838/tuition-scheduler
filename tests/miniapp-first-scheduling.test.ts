@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { PackageFinanceGateStatus, PackageType } from "@prisma/client";
 import {
@@ -92,6 +94,7 @@ test("first scheduling preview token binds the continuous week count", () => {
   const token = createTicketNewSessionToken({
     userId: "user-1",
     ticketId: "ticket-1",
+    studentId: null,
     subjectId: "subject-1",
     levelId: null,
     teacherId: "teacher-1",
@@ -103,4 +106,36 @@ test("first scheduling preview token binds the continuous week count", () => {
   }, secret);
   assert.equal(verifyTicketNewSessionToken(token, secret)?.weeks, 6);
   assert.equal(verifyTicketNewSessionToken(token, "wrong-secret"), null);
+});
+
+test("student list selection is read-only and direct scheduling has its own page", () => {
+  const root = path.join(process.cwd(), "miniapp", "boss-academic-parent");
+  const listScript = fs.readFileSync(path.join(root, "pages/staff-first-scheduling/staff-first-scheduling.js"), "utf8");
+  const workspaceScript = fs.readFileSync(path.join(root, "pages/staff-student-scheduling/staff-student-scheduling.js"), "utf8");
+  const openCandidate = listScript.slice(listScript.indexOf("openCandidate(e)"));
+  assert.match(listScript, /staff-student-scheduling/);
+  assert.doesNotMatch(openCandidate, /requestStaff\(/);
+  assert.match(workspaceScript, /本次直接排课不会创建工单/);
+  assert.match(workspaceScript, /intent: "coordination"/);
+  assert.match(workspaceScript, /coordinationSummary: summary/);
+});
+
+test("direct scheduling preview tokens bind the student and contain no ticket", () => {
+  const secret = "test-secret";
+  const token = createTicketNewSessionToken({
+    userId: "user-1",
+    ticketId: null,
+    studentId: "student-1",
+    subjectId: "subject-1",
+    levelId: null,
+    teacherId: "teacher-1",
+    campusId: "campus-1",
+    roomId: null,
+    startAt: "2026-07-20T02:00:00.000Z",
+    durationMin: 60,
+    weeks: 1,
+  }, secret);
+  const payload = verifyTicketNewSessionToken(token, secret);
+  assert.equal(payload?.studentId, "student-1");
+  assert.equal(payload?.ticketId, null);
 });

@@ -232,14 +232,40 @@ export async function listMiniappFirstSchedulingCandidates(input?: { query?: str
   };
 }
 
-export async function ensureMiniappFirstSchedulingTicket(studentId: string, actor: FirstSchedulingActor) {
+export type FirstSchedulingCoordinationInput = {
+  courseId: string;
+  coordinationSummary: string;
+};
+
+export async function ensureMiniappFirstSchedulingTicket(
+  studentId: string,
+  actor: FirstSchedulingActor,
+  input: FirstSchedulingCoordinationInput,
+) {
   const now = new Date();
   return prisma.$transaction(async (tx) => {
+    const lockKey = `miniapp-scheduling:${studentId}:${input.courseId}`;
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
     const student = await tx.student.findUnique({
       where: { id: studentId },
       select: { id: true, name: true, grade: true },
     });
     if (!student) throw new Error("STUDENT_NOT_FOUND");
+    const availablePackage = await tx.coursePackage.findFirst({
+      where: {
+        OR: [{ studentId }, { sharedStudents: { some: { studentId } } }],
+        status: "ACTIVE",
+        AND: [
+          { OR: [{ validTo: null }, { validTo: { gte: now } }] },
+          { OR: [{ type: "MONTHLY" }, { remainingMinutes: { gt: 0 } }] },
+          { OR: [{ courseId: input.courseId }, { sharedCourses: { some: { courseId: input.courseId } } }] },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!availablePackage) throw new Error("COURSE_NOT_AVAILABLE");
+    const course = await tx.course.findUnique({ where: { id: input.courseId }, select: { id: true, name: true } });
+    if (!course) throw new Error("COURSE_NOT_AVAILABLE");
     const futureSession = await tx.session.findFirst({
       where: {
         startAt: { gte: now },
@@ -251,6 +277,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
       where: {
         studentId,
         type: { in: [...NEW_SESSION_TICKET_TYPES] },
+        course: course.name,
         isArchived: false,
         status: { notIn: ["Completed", "Cancelled"] },
       },
@@ -261,7 +288,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
     const ticketType = studentSchedulingTicketType(Boolean(futureSession));
     const ticketNo = await allocateTicketNo(tx);
     const summary = composeTicketSituation({
-      currentIssue: futureSession ? "学生已有未来课程，需要继续安排新的课程。" : "学生目前没有未来课程，需要安排课程。",
+      currentIssue: input.coordinationSummary,
       requiredAction: "请教务确认课包、科目、老师、地点和时间，完成正式排课。",
       latestDeadlineText: "尽快完成排课",
     });
@@ -274,6 +301,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
         priority: "普通",
         studentName: student.name,
         grade: student.grade,
+        course: course.name,
         poc: actor.name || actor.email,
         status: "Need Info",
         owner: "Jasmine",
@@ -283,7 +311,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
         parentVisible: false,
         nextAction: "确认课包、学生和老师可上课时间，完成排课。",
         nextActionDue: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
-        risksNotes: `由 ${actor.name || actor.email} 从员工小程序学生排课页面创建。`,
+        risksNotes: `由 ${actor.name || actor.email} 在员工小程序明确提交排课协调：${input.coordinationSummary}`,
         createdByName: `员工小程序：${actor.name || actor.email}`,
         lastUpdateAt: now,
       },
@@ -297,7 +325,7 @@ export async function ensureMiniappFirstSchedulingTicket(studentId: string, acto
         action: "MINIAPP_STUDENT_SCHEDULING_TICKET_CREATE",
         entityType: "Ticket",
         entityId: ticket.id,
-        meta: { studentId, ticketType, hadFutureSession: Boolean(futureSession) },
+        meta: { studentId, courseId: course.id, courseName: course.name, ticketType, hadFutureSession: Boolean(futureSession), coordinationSummary: input.coordinationSummary },
       },
     });
     return { ticket, created: true };

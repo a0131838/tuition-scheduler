@@ -15,13 +15,14 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-14-r251` at runtime commit `a24d06d`. The isolated partner Credit Note ledger, Finance workflow and PDF are live; long PDF header numbers now fit one line. Production has 105 migrations and no real Credit Note records yet. University-care `r249` and earlier releases remain on the same runtime lineage.
-- Prepared release: none.
+- Prepared release: `2026-07-14-r252` aligns employee-miniapp student scheduling with the web workflow. Student selection is read-only; ADMIN direct scheduling creates Sessions without Tickets; explicit coordination requires a course and reason. Five legacy auto-created Tickets were cancelled with retained audit history.
 - Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- Miniapp direct-scheduling rollout risk: `2026-07-14-r252` is prepared. Server-side validation and read-only data checks pass, but the new 28th miniapp page still needs one WeChat Developer Tools and physical-phone pass after the experience version is uploaded. Verify ADMIN direct scheduling preview/apply and CS explicit coordination creation; merely opening and returning must leave Ticket counts unchanged.
 - Partner-credit-note monitoring: `2026-07-14-r251` is live. Drafts remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt. The first real issue remains pending. A long-number production PDF passed without header overlap, and all SOP demo records were cleaned to zero.
 - University-care monitoring: `2026-07-14-r249` is live. Management reviewed the existing Li Chenghao NUS draft on 2026-07-14 and explicitly aligned it to the five current university-academic scopes, milestone/monthly cadence and Jasmine ownership; its earlier pre-university life-care scopes are no longer active. It remains a draft and must not be activated until degree/programme, current term and expected graduation are completed. Adult-student consent remains not recorded, so parent-report eligibility is still blocked. Louis remains an active pre-university full-care project and is now aligned to the complete eight-scope standard.
 - Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
@@ -163,6 +164,25 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-14-r252 Ready
+
+- Scope: remove implicit Ticket creation from employee-miniapp student selection and add a dedicated student scheduling workspace.
+- Business impact:
+  - selecting a student now only reads packages, courses, teachers, campuses, upcoming Sessions and existing coordination Tickets
+  - ADMIN can schedule directly with the same safety checks as the existing mobile/web scheduling path, without manufacturing a Ticket
+  - ADMIN/CS only create a coordination Ticket after selecting a course, entering a reason and confirming
+  - concurrent duplicate coordination submissions for the same student and course are serialized and reuse the open Ticket
+  - five known legacy auto-created Tickets were cancelled with five audit rows and no hard deletion
+- Validation:
+  - `npx tsc --noEmit --pretty false`
+  - `npm run test:backend` (66/66)
+  - `npx tsx --test tests/miniapp-first-scheduling.test.ts` (10/10)
+  - `npm run miniapp:audit-release` (28 pages)
+  - all miniapp JavaScript passed `node --check`
+  - `npm run build` (193 pages)
+  - real read-only workspace check kept open employee-miniapp scheduling Tickets at `0 -> 0`
+  - task doc: `docs/tasks/TASK-20260714-miniapp-scheduling-read-only-entry.md`
 
 ## 2026-07-14-r250 Live
 

@@ -25,9 +25,15 @@ export async function POST(req: Request) {
   if (!canManageMiniappSchedulingCoordination(auth.user)) return bad("Scheduling coordination permission required", 403);
   const body = await req.json().catch(() => null);
   const studentId = clean((body as any)?.studentId, 80);
+  const intent = clean((body as any)?.intent, 30);
+  const courseId = clean((body as any)?.courseId, 80);
+  const coordinationSummary = clean((body as any)?.coordinationSummary, 500);
   if (!studentId) return bad("Student is required", 409);
+  if (intent !== "coordination" || !courseId || !coordinationSummary) {
+    return bad("请选择课程并填写需要协调的事项，确认后再创建工单。", 409, { code: "EXPLICIT_COORDINATION_REQUIRED" });
+  }
   try {
-    const result = await ensureMiniappFirstSchedulingTicket(studentId, auth.user);
+    const result = await ensureMiniappFirstSchedulingTicket(studentId, auth.user, { courseId, coordinationSummary });
     return ok({
       message: result.created ? "首次排课工单已创建。" : "已打开现有排课工单。",
       ticketId: result.ticket.id,
@@ -37,6 +43,7 @@ export async function POST(req: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "STUDENT_NOT_FOUND") return bad("Student not found", 404);
+    if (code === "COURSE_NOT_AVAILABLE") return bad("该学生没有可用于此课程的有效课包。", 409);
     throw error;
   }
 }
