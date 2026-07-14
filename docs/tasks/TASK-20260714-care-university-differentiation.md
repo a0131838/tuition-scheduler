@@ -27,7 +27,13 @@ University academic, postgraduate and career care were selectable programme name
 - `npx tsc --noEmit`
 - `npm run test:backend` with 60 passing tests
 - `npm run build` with 193 generated pages
-- Post-deploy authenticated production verification and complete QA cleanup
+- Production deployment at runtime commit `60d00d8`
+- 104 completed migrations, PM2 online with zero restarts and `/admin/login` returning `200`
+- Authenticated switching across all five programme types
+- Existing NUS draft retained-scope display with stored scope unchanged
+- University profile save, consent guard and authorized parent-eligibility path
+- Desktop and 390px mobile layout checks without horizontal overflow
+- Complete QA cleanup with protected baselines restored
 
 ## Risk
 

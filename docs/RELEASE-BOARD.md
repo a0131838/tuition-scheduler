@@ -14,14 +14,14 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-14-r248` at runtime commit `7bf4b04`. Private full-care evidence attachments and school-communication sources are live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
-- Next ready release: `2026-07-14-r249` differentiates university academic, postgraduate and career care, adds university academic-position and adult-student-consent records, and preserves earlier university project scopes until manager review.
+- Current production release: `2026-07-14-r249` at runtime commit `60d00d8`. University academic, postgraduate and career care now use separate service scopes, roles and follow-up categories; university academic-position and adult-student-consent records are live. Private full-care evidence attachments from `r248` remain live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
+- Next planned release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
-- University-care rollout risk: `2026-07-14-r249` adds a new programme enum value and isolated profile table. One existing NUS university draft was created under the earlier shared template; its selected scopes must remain unchanged and appear as retained until management reviews them. Parent-report eligibility must remain blocked without recorded adult-student consent.
+- University-care monitoring: `2026-07-14-r249` is live. One existing NUS university draft was created under the earlier shared template; production verification confirms its selected scopes remain unchanged and appear as retained until management reviews them. The parent-report consent guard and authorized path both passed production browser checks. Monitor the first real university profile and do not activate the NUS draft until management reviews its retained life-care scopes.
 - Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
 - Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
@@ -162,7 +162,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-14-r249 Ready
+## 2026-07-14-r249 Live
 
 - Scope: first implementation phase of the differentiated university-care plan.
 - Business impact:
@@ -178,11 +178,14 @@
   - `npm run test:backend` (60/60)
   - `npm run build` (193 pages)
 - Post-deploy verification:
-  - migration, PM2 and health status
-  - authenticated create-form switching across all five programme types
-  - existing NUS draft retained-scope display
-  - temporary university profile save, consent guard and complete cleanup
-  - protected student/package/session/attendance/settlement and pre-university project baseline comparison
+  - 104 migrations completed; the university-profile table and postgraduate enum value exist
+  - PM2 online with zero restarts; `/admin/login` => `200`
+  - authenticated create-form switching passed across all five programme types
+  - the existing NUS draft displays its earlier scopes as retained and its stored scope JSON is unchanged
+  - temporary university profile save, limited-consent selection, pre-consent blocking and post-consent parent eligibility passed
+  - desktop and 390px mobile layouts passed without horizontal overflow
+  - the temporary student, project, profile, activity, session and three audit rows were cleaned to zero
+  - protected baseline returned to 89 students, 78 packages, 1,899 sessions, 1,711 attendance rows, 34 partner settlements and 2/0/1/0/0 care engagements/plans/activities/tasks/attachments
 
 ## 2026-07-14-r248 Live
 

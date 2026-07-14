@@ -19,7 +19,7 @@ This file is the single source of truth for what changed in production.
 
 - Release ID: `2026-07-14-r249`
 - Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY`
+- Deployment status: `LIVE` at runtime commit `60d00d8`
 - Scope: differentiate university-stage care into university academic management, postgraduate preparation and internship/employment support, with programme-specific scopes and owner roles, a university profile, academic position, adult-student consent and granular parent-report eligibility.
 - Key files:
   - `prisma/schema.prisma`
@@ -32,8 +32,8 @@ This file is the single source of truth for what changed in production.
   - `tests/care-university-config.test.ts`
   - `docs/tasks/TASK-20260714-care-university-differentiation.md`
 - Risk impact (if any): Medium and isolated to CARE configuration. The migration adds one enum value, one consent enum and one university-profile table; no existing project or protected teaching/finance table is updated. Both pre-university programme defaults remain byte-for-byte equivalent in tests. Existing university projects retain earlier selected scopes and show them as retained until a manager reviews them. University parent-report eligibility is blocked until adult-student consent and at least one authorized section are recorded.
-- Verification: Prisma validation and generation, TypeScript, all 60 backend tests and the full 193-page production build pass. Tests cover unchanged pre-university defaults, distinct academic/postgraduate/career scopes and owner roles, retained legacy scopes, university activity categories, activation profile requirements, student-consent rules and additive migration safety.
-- Rollback point: current production runtime `7bf4b04` (`2026-07-14-r248`); current aligned source/doc head before this release is `50ed997`.
+- Verification: Prisma validation and generation, TypeScript, all 60 backend tests and the full 193-page production build pass. Production has 104 completed migrations, including the new university-profile table and postgraduate enum value. PM2 is online with zero restarts and `/admin/login` returns `200`. Authenticated production browser checks passed programme switching for all five care programmes, retained-scope display on the existing NUS draft, university-profile save, consent blocking before authorization, parent-report eligibility after limited authorization, and desktop/mobile layout without horizontal overflow. The temporary student, project, profile, activity, session and three associated audit rows were removed with zero residue. Protected baselines returned to 89 students, 78 packages, 1,899 sessions, 1,711 attendance rows, 34 partner settlements and 2/0/1/0/0 care engagements/plans/activities/tasks/attachments; the two real projects and their selected scopes remained unchanged.
+- Rollback point: previous production runtime `7bf4b04` (`2026-07-14-r248`); deployed runtime commit is `60d00d8`.
 
 ---
 
