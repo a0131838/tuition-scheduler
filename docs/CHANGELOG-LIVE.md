@@ -15,11 +15,25 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-14-r251
+
+- Release ID: `2026-07-14-r251`
+- Date/Time (Asia/Shanghai): `2026-07-14`
+- Deployment status: `READY`
+- Scope: keep long Credit Note numbers on one fitted line in the PDF header so they cannot overlap the original-invoice row.
+- Key files:
+  - `app/api/exports/partner-credit-note/[id]/route.ts`
+- Risk impact (if any): Low and isolated to the new Credit Note PDF header. No database, workflow, amount, permission, invoice, receipt or settlement behavior changes.
+- Verification: TypeScript, backend regression, production build and a rendered long-number PDF preview are required before marking live.
+- Rollback point: `ba72d02` (`2026-07-14-r250`).
+
+---
+
 ## 2026-07-14-r250
 
 - Release ID: `2026-07-14-r250`
 - Date/Time (Asia/Shanghai): `2026-07-14`
-- Deployment status: `READY` (local only; not deployed and migration not applied)
+- Deployment status: `LIVE` at runtime commit `ba72d02`
 - Scope: add an isolated Credit Note ledger for partner invoices, including partial line credits, independent tracking numbers, draft/issue/void controls, adjusted-net display and a printable PDF linked to the original invoice.
 - Key files:
   - `prisma/schema.prisma`
@@ -32,8 +46,8 @@ This file is the single source of truth for what changed in production.
   - `tests/partner-credit-note-migration-safety.test.ts`
   - `docs/tasks/TASK-20260714-partner-credit-notes.md`
 - Risk impact (if any): Medium and isolated to partner billing. The migration creates only `CreditNote` and `CreditNoteLine`; it does not alter existing invoice JSON, receipts, settlements, students, packages, lessons, attendance or payroll. Drafts do not change adjusted totals. Only issued, non-void notes reduce the displayed net. Existing invoices with any Credit Note history cannot be deleted, and existing receipts remain unchanged for finance review.
-- Verification: Prisma validation and generation, TypeScript, all 66 backend tests, migration-safety assertions, the full 193-page production build and `git diff --check` pass. The New Oriental case is covered as an SGD 270 partial credit against `RGT-202606-0019`. No production migration or write was executed.
-- Rollback point: current production runtime `60d00d8` (`2026-07-14-r249`); `r250` remains local and uncommitted.
+- Verification: Prisma validation and generation, TypeScript, all 66 backend tests, migration-safety assertions, the full 193-page production build and `git diff --check` pass. The New Oriental case is covered as an SGD 270 partial credit against `RGT-202606-0019`. Production has 105 completed migrations, PM2 is online with zero restarts, `/admin/login` returns `200`, and post-deploy protected counts and billing JSON hashes match the pre-deploy baseline. SOP capture drafts were cleaned back to zero Credit Notes and zero lines.
+- Rollback point: previous production runtime `60d00d8` (`2026-07-14-r249`); deployed feature commit is `ba72d02`.
 
 ---
 

@@ -38,3 +38,7 @@ The first confirmed case is New Oriental invoice `RGT-202606-0019`: the original
 ## Risk
 
 Medium but isolated to partner billing. The migration is additive. Draft and void notes do not affect adjusted totals. Existing receipts remain visible and unchanged so Finance can decide the accounting follow-up explicitly. Production has not been modified.
+
+## PDF Header Follow-up
+
+During Finance SOP capture, a deliberately long demo Credit Note number exposed that the PDF header value could wrap into the original-invoice row. Release `2026-07-14-r251` fits header values to a single line with a bounded minimum font size. This changes only the new Credit Note PDF header and does not change numbers, amounts, status, permissions, invoices, receipts or settlements.

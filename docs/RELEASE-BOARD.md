@@ -14,15 +14,15 @@
 - Local HEAD: current production branch head for `feat/strict-superadmin-availability-bypass`.
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
-- Current production release: `2026-07-14-r249` at runtime commit `60d00d8`. University academic, postgraduate and career care now use separate service scopes, roles and follow-up categories; university academic-position and adult-student-consent records are live. Private full-care evidence attachments from `r248` remain live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
-- Prepared release: `2026-07-14-r250` adds an isolated partner Credit Note ledger and PDF. It is local only; no migration or production write has been executed.
+- Current production release: `2026-07-14-r250` at runtime commit `ba72d02`. The isolated partner Credit Note ledger, Finance workflow and PDF are live; production has 105 migrations and no real Credit Note records yet. University-care `r249` and earlier releases remain on the same runtime lineage.
+- Prepared release: `2026-07-14-r251` keeps long Credit Note numbers on one fitted PDF header line after the SOP draft preview exposed a potential overlap.
 - Next planned care release: university semester, course and assessment milestones with GPA, credit, deadline and academic-risk tracking. Postgraduate and career pipelines remain subsequent isolated phases.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
-- Partner-credit-note pre-deploy risk: `2026-07-14-r250` is READY but not live. Deploy must apply only the additive two-table migration, then verify the first draft/issue/PDF flow with a controlled invoice. Drafts must remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt.
+- Partner-credit-note monitoring: `2026-07-14-r250` is live. Drafts remain excluded from adjusted totals; issued non-void notes are the only credits counted. Existing receipts are intentionally not rewritten and must be reviewed by Finance if the credited invoice already has a receipt. The first real issue remains pending. `r251` is a low-risk PDF header fit fix identified during SOP capture.
 - University-care monitoring: `2026-07-14-r249` is live. Management reviewed the existing Li Chenghao NUS draft on 2026-07-14 and explicitly aligned it to the five current university-academic scopes, milestone/monthly cadence and Jasmine ownership; its earlier pre-university life-care scopes are no longer active. It remains a draft and must not be activated until degree/programme, current term and expected graduation are completed. Adult-student consent remains not recorded, so parent-report eligibility is still blocked. Louis remains an active pre-university full-care project and is now aligned to the complete eight-scope standard.
 - Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
@@ -164,7 +164,7 @@
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
 
-## 2026-07-14-r250 Ready
+## 2026-07-14-r250 Live
 
 - Scope: add formal Credit Notes for partner invoices without changing the existing invoice, receipt or settlement stores.
 - Business impact:

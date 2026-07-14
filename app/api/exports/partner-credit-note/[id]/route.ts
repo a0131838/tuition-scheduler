@@ -29,6 +29,25 @@ function text(
   doc.fillColor(color).fontSize(size).text(value, x, y, { width, align });
 }
 
+function fittedSingleLineText(
+  doc: PDFDoc,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  baseSize = 9,
+  minSize = 6,
+) {
+  setPdfFont(doc);
+  let size = baseSize;
+  doc.fontSize(size);
+  while (size > minSize && doc.widthOfString(value) > width) {
+    size -= 0.25;
+    doc.fontSize(size);
+  }
+  doc.fillColor("#111827").text(value, x, y, { width, align: "right", lineBreak: false, ellipsis: true });
+}
+
 function money(value: unknown) {
   return `SGD ${Number(value ?? 0).toFixed(2)}`;
 }
@@ -108,8 +127,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ];
     rightRows.forEach(([label, value], index) => {
       const yy = companyY + index * 20;
-      text(doc, label, 350, yy, 9, true, "#111827", 102, "right");
-      text(doc, value, 458, yy, 9, false, "#111827", 102, "right");
+      text(doc, label, 330, yy, 9, true, "#111827", 105, "right");
+      fittedSingleLineText(doc, value, 440, yy, 120);
     });
 
     const customerY = 204;
