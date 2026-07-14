@@ -1,6 +1,10 @@
 import { createCareEngagement } from "@/lib/care-management";
 import { requireCareStaff } from "@/lib/care-access";
-import { CARE_PROGRAM_OPTIONS, CARE_SCOPE_OPTIONS } from "@/lib/care-validation";
+import {
+  CARE_PROGRAM_DEFAULT_SCOPE_IDS,
+  CARE_PROGRAM_OPTIONS,
+  careScopeOptionsForProgram,
+} from "@/lib/care-validation";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
 import { getLang, t } from "@/lib/i18n";
 import { isManagerUser } from "@/lib/auth";
@@ -8,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "./care.module.css";
+import CareProgramSetupFields from "./_components/CareProgramSetupFields";
 
 function first(value?: string | string[]) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -15,6 +20,11 @@ function first(value?: string | string[]) {
 
 function statusTone(status: string) {
   return status === "ACTIVE" ? "active" : status === "CANCELLED" ? "risk" : "neutral";
+}
+
+function programLabel(value: string, english: boolean) {
+  const option = CARE_PROGRAM_OPTIONS.find((item) => item.value === value);
+  return option ? (english ? option.en : option.zh) : value;
 }
 
 export default async function CarePage({
@@ -162,12 +172,21 @@ export default async function CarePage({
               <strong>{selectedStudent.name}</strong>
               <span className={styles.muted}> · {selectedStudent.school ?? "-"} · {selectedStudent.grade ?? "-"} · ID {selectedStudent.id.slice(-8)}</span>
             </div>
-            <label className={styles.label}>
-              {t(lang, "Program", "服务类型")}
-              <select className={styles.select} name="programType" defaultValue="PRE_U_FULL_COORDINATION">
-                {CARE_PROGRAM_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}
-              </select>
-            </label>
+            <CareProgramSetupFields
+              english={lang === "EN"}
+              programs={CARE_PROGRAM_OPTIONS.map((program) => {
+                const defaults = new Set(CARE_PROGRAM_DEFAULT_SCOPE_IDS[program.value]);
+                return {
+                  value: program.value,
+                  label: lang === "EN" ? program.en : program.zh,
+                  scopes: careScopeOptionsForProgram(program.value).map((scope) => ({
+                    id: scope.id,
+                    label: lang === "EN" ? scope.en : scope.zh,
+                    defaultOn: defaults.has(scope.id),
+                  })),
+                };
+              })}
+            />
             <label className={styles.label}>
               {t(lang, "Start date", "开始日期")}
               <input className={styles.field} name="startDate" type="date" defaultValue={formatBusinessDateOnly(new Date())} required />
@@ -186,17 +205,6 @@ export default async function CarePage({
                 {staff.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email} · {user.role}</option>)}
               </select>
             </label>
-            <fieldset className={`${styles.full} ${styles.section}`} style={{ borderLeft: 0, borderRight: 0, borderTop: 0, margin: 0 }}>
-              <legend style={{ fontWeight: 800 }}>{t(lang, "Service scope", "服务范围")}</legend>
-              <div className={styles.scopeGrid}>
-                {CARE_SCOPE_OPTIONS.map((item) => (
-                  <label className={styles.check} key={item.id}>
-                    <input name="scopeIds" value={item.id} type="checkbox" defaultChecked={item.defaultOn} />
-                    <span>{lang === "EN" ? item.en : item.zh}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
             <div className={`${styles.full} ${styles.toolbar}`}>
               <button className={styles.button} type="submit">{t(lang, "Create draft", "建立待启用项目")}</button>
               <Link className={styles.buttonSecondary} href="/admin/care">{t(lang, "Cancel", "取消")}</Link>
@@ -216,7 +224,7 @@ export default async function CarePage({
               </div>
               <div>
                 <span className={styles.badge} data-tone={statusTone(engagement.status)}>{engagement.status}</span>
-                <div className={styles.muted}>{engagement.programType}</div>
+                <div className={styles.muted}>{programLabel(engagement.programType, lang === "EN")}</div>
               </div>
               <div>
                 <div>{engagement.caseOwner?.name ?? "-"}</div>

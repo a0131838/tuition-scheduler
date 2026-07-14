@@ -3,12 +3,14 @@ import {
   CareEngagementStatus,
   CareMemberRole,
   CarePlanStatus,
+  CareProgramType,
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   assertCareActivation,
   assertCareActivity,
+  assertCareActivityProgramType,
   assertCareStatusTransition,
   assertCareTaskUpdate,
   careActivityCategory,
@@ -16,17 +18,46 @@ import {
   careAttachmentCategory,
   careAudience,
   careProgramType,
+  careParentVisibilityIds,
   careRiskLevel,
   careScopeIds,
+  careStudentConsentStatus,
   careTaskPriority,
   careTaskStatus,
   careText,
+  assertCareUniversityConsent,
+  assertCareUniversityProfileReady,
+  isUniversityCareProgram,
+  parentVisibilityIdsFromJson,
   parseCareDateTime,
   requiredCareText,
   scopeIdsFromJson,
 } from "@/lib/care-validation";
 
 type CareActor = { id: string; email: string; name: string; role: string };
+
+const CARE_OWNER_ROLES: CareMemberRole[] = ["CASE_OWNER", "ACADEMIC_OWNER", "SCHOOL_OWNER", "LIFE_OWNER", "COORDINATOR"];
+
+export function careOwnerRolesForProgram(programType: CareProgramType): CareMemberRole[] {
+  if (programType === "UNIVERSITY_GROWTH") return ["CASE_OWNER", "ACADEMIC_OWNER"];
+  if (programType === "POSTGRAD_PREPARATION") return ["CASE_OWNER", "ACADEMIC_OWNER", "COORDINATOR"];
+  if (programType === "CAREER_LAUNCH") return ["CASE_OWNER", "COORDINATOR"];
+  return ["CASE_OWNER", "ACADEMIC_OWNER", "SCHOOL_OWNER", "LIFE_OWNER"];
+}
+
+function assertUniversityParentEligibility(
+  programType: CareProgramType,
+  audience: CareAudience,
+  universityProfile: { studentConsentStatus: string; parentVisibilityJson: Prisma.JsonValue | null } | null,
+) {
+  if (!isUniversityCareProgram(programType) || (audience !== "PARENT" && audience !== "PARENT_AND_STUDENT")) return;
+  if (!universityProfile || !["GRANTED", "LIMITED"].includes(universityProfile.studentConsentStatus)) {
+    throw new Error("Student consent is required before marking university records for parent reporting");
+  }
+  if (parentVisibilityIdsFromJson(universityProfile.parentVisibilityJson).length === 0) {
+    throw new Error("Select at least one parent-visible section in the university profile");
+  }
+}
 
 function auditData(actor: CareActor, action: string, entityType: string, entityId: string, meta?: Prisma.InputJsonValue) {
   return {
@@ -89,17 +120,15 @@ export async function createCareEngagement(input: {
             "unlimited_onsite_support",
           ],
         },
-        cadenceJson: { weeklyCheck: true, monthlyReport: true },
+        cadenceJson: isUniversityCareProgram(programType)
+          ? { milestoneReview: true, monthlyReport: true }
+          : { weeklyCheck: true, monthlyReport: true },
         createdByUserId: input.actor.id,
       },
     });
 
-    const memberships: Array<{ userId: string; role: CareMemberRole }> = [
-      { userId: caseOwnerUserId, role: "CASE_OWNER" },
-      { userId: caseOwnerUserId, role: "ACADEMIC_OWNER" },
-      { userId: caseOwnerUserId, role: "SCHOOL_OWNER" },
-      { userId: caseOwnerUserId, role: "LIFE_OWNER" },
-    ];
+    const memberships: Array<{ userId: string; role: CareMemberRole }> = careOwnerRolesForProgram(programType)
+      .map((role) => ({ userId: caseOwnerUserId, role }));
     if (reviewerUserId) {
       memberships.push({ userId: reviewerUserId, role: "REVIEWER" });
       memberships.push({ userId: reviewerUserId, role: "EXECUTIVE_OWNER" });
@@ -134,7 +163,12 @@ export async function changeCareEngagementStatus(input: {
   return prisma.$transaction(async (tx) => {
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
-      include: { members: { where: { isActive: true }, select: { userId: true, role: true } } },
+      include: {
+        members: { where: { isActive: true }, select: { userId: true, role: true } },
+        universityProfile: {
+          select: { institution: true, degreeProgram: true, currentTerm: true, expectedGraduationDate: true },
+        },
+      },
     });
     if (!engagement) throw new Error("Care project not found");
     assertCareStatusTransition(engagement.status, input.nextStatus);
@@ -147,6 +181,14 @@ export async function changeCareEngagementStatus(input: {
           (item) => item.role === "CASE_OWNER" && item.userId === engagement.caseOwnerUserId,
         ),
       });
+      if (isUniversityCareProgram(engagement.programType)) {
+        assertCareUniversityProfileReady({
+          institution: engagement.universityProfile?.institution ?? null,
+          degreeProgram: engagement.universityProfile?.degreeProgram ?? null,
+          currentTerm: engagement.universityProfile?.currentTerm ?? null,
+          expectedGraduationDate: engagement.universityProfile?.expectedGraduationDate ?? null,
+        });
+      }
     }
     const updated = await tx.careEngagement.updateMany({
       where: { id: input.engagementId, version: input.version },
@@ -186,7 +228,7 @@ export async function updateCareEngagementConfig(input: {
     const [engagement, owner, reviewer] = await Promise.all([
       tx.careEngagement.findUnique({
         where: { id: input.engagementId },
-        select: { id: true, status: true, version: true, startDate: true, caseOwnerUserId: true, scopeJson: true },
+        select: { id: true, status: true, version: true, programType: true, startDate: true, caseOwnerUserId: true, scopeJson: true },
       }),
       tx.user.findUnique({ where: { id: caseOwnerUserId }, select: { id: true } }),
       reviewerUserId ? tx.user.findUnique({ where: { id: reviewerUserId }, select: { id: true } }) : null,
@@ -207,9 +249,9 @@ export async function updateCareEngagementConfig(input: {
     });
     if (updated.count !== 1) throw new Error("This project was updated by another user. Refresh and try again");
 
-    const ownerRoles: CareMemberRole[] = ["CASE_OWNER", "ACADEMIC_OWNER", "SCHOOL_OWNER", "LIFE_OWNER"];
+    const ownerRoles = careOwnerRolesForProgram(engagement.programType);
     await tx.careEngagementMember.updateMany({
-      where: { engagementId: engagement.id, role: { in: ownerRoles }, userId: { not: caseOwnerUserId }, isActive: true },
+      where: { engagementId: engagement.id, role: { in: CARE_OWNER_ROLES }, isActive: true },
       data: { isActive: false, endedAt: new Date() },
     });
     for (const role of ownerRoles) {
@@ -257,6 +299,104 @@ export async function updateCareEngagementConfig(input: {
           scopeIds: scopeIdsFromJson(engagement.scopeJson),
         },
         after: { startDate: startDate.toISOString(), caseOwnerUserId, reviewerUserId: reviewerUserId || null, scopeIds },
+      }),
+    });
+  });
+}
+
+export async function upsertCareUniversityProfile(input: {
+  actor: CareActor;
+  engagementId: string;
+  version: number;
+  institution: unknown;
+  degreeProgram: unknown;
+  currentAcademicYear: unknown;
+  currentTerm: unknown;
+  expectedGraduationDate: unknown;
+  currentGpaLabel: unknown;
+  targetGpaLabel: unknown;
+  studentConsentStatus: unknown;
+  parentVisibilityIds: unknown;
+  consentNote: unknown;
+}) {
+  const institution = careText(input.institution, 240);
+  const degreeProgram = careText(input.degreeProgram, 240);
+  const currentAcademicYear = careText(input.currentAcademicYear, 80);
+  const currentTerm = careText(input.currentTerm, 120);
+  const expectedGraduationDate = parseCareDateTime(input.expectedGraduationDate);
+  const currentGpaLabel = careText(input.currentGpaLabel, 40);
+  const targetGpaLabel = careText(input.targetGpaLabel, 40);
+  const studentConsentStatus = careStudentConsentStatus(input.studentConsentStatus);
+  const selectedParentVisibilityIds = careParentVisibilityIds(input.parentVisibilityIds);
+  const parentVisibilityIds = studentConsentStatus === "NOT_RECORDED" || studentConsentStatus === "WITHDRAWN"
+    ? []
+    : selectedParentVisibilityIds;
+  const consentNote = careText(input.consentNote, 2000);
+  assertCareUniversityConsent({ status: studentConsentStatus, parentVisibilityIds, consentNote });
+
+  return prisma.$transaction(async (tx) => {
+    const engagement = await tx.careEngagement.findUnique({
+      where: { id: input.engagementId },
+      select: {
+        id: true,
+        programType: true,
+        status: true,
+        universityProfile: {
+          select: {
+            id: true,
+            version: true,
+            studentConsentStatus: true,
+            parentVisibilityJson: true,
+          },
+        },
+      },
+    });
+    if (!engagement) throw new Error("Care project not found");
+    if (!isUniversityCareProgram(engagement.programType)) throw new Error("University profile is available only for university-stage projects");
+    if (engagement.status === "COMPLETED" || engagement.status === "CANCELLED") {
+      throw new Error("Closed care projects cannot change university profile settings");
+    }
+
+    const data = {
+      institution: institution || null,
+      degreeProgram: degreeProgram || null,
+      currentAcademicYear: currentAcademicYear || null,
+      currentTerm: currentTerm || null,
+      expectedGraduationDate,
+      currentGpaLabel: currentGpaLabel || null,
+      targetGpaLabel: targetGpaLabel || null,
+      studentConsentStatus,
+      parentVisibilityJson: { sectionIds: parentVisibilityIds },
+      consentNote: consentNote || null,
+      consentRecordedAt: studentConsentStatus === "NOT_RECORDED" ? null : new Date(),
+      consentRecordedByUserId: studentConsentStatus === "NOT_RECORDED" ? null : input.actor.id,
+    };
+
+    let profileId: string;
+    if (engagement.universityProfile) {
+      const updated = await tx.careUniversityProfile.updateMany({
+        where: { id: engagement.universityProfile.id, version: input.version },
+        data: { ...data, version: { increment: 1 } },
+      });
+      if (updated.count !== 1) throw new Error("This university profile was updated by another user. Refresh and try again");
+      profileId = engagement.universityProfile.id;
+    } else {
+      if (input.version !== 0) throw new Error("University profile version is invalid. Refresh and try again");
+      const created = await tx.careUniversityProfile.create({
+        data: { engagementId: engagement.id, ...data },
+        select: { id: true },
+      });
+      profileId = created.id;
+    }
+
+    await tx.auditLog.create({
+      data: auditData(input.actor, engagement.universityProfile ? "UPDATE_UNIVERSITY_PROFILE" : "CREATE_UNIVERSITY_PROFILE", "CareUniversityProfile", profileId, {
+        engagementId: engagement.id,
+        programType: engagement.programType,
+        consentBefore: engagement.universityProfile?.studentConsentStatus ?? null,
+        consentAfter: studentConsentStatus,
+        visibilityBefore: parentVisibilityIdsFromJson(engagement.universityProfile?.parentVisibilityJson),
+        visibilityAfter: parentVisibilityIds,
       }),
     });
   });
@@ -347,10 +487,18 @@ export async function addCareActivity(input: {
   return prisma.$transaction(async (tx) => {
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
-      select: { id: true, studentId: true, status: true },
+      select: {
+        id: true,
+        studentId: true,
+        status: true,
+        programType: true,
+        universityProfile: { select: { studentConsentStatus: true, parentVisibilityJson: true } },
+      },
     });
     if (!engagement) throw new Error("Care project not found");
     if (engagement.status === "COMPLETED" || engagement.status === "CANCELLED") throw new Error("Closed care projects cannot receive new records");
+    assertCareActivityProgramType(engagement.programType, category);
+    assertUniversityParentEligibility(engagement.programType, audience, engagement.universityProfile);
     if (ownerUserId) {
       const owner = await tx.careEngagementMember.findFirst({
         where: { engagementId: engagement.id, userId: ownerUserId, isActive: true },
@@ -445,12 +593,19 @@ export async function createCareAttachment(input: {
   return prisma.$transaction(async (tx) => {
     const engagement = await tx.careEngagement.findUnique({
       where: { id: input.engagementId },
-      select: { id: true, studentId: true, status: true },
+      select: {
+        id: true,
+        studentId: true,
+        status: true,
+        programType: true,
+        universityProfile: { select: { studentConsentStatus: true, parentVisibilityJson: true } },
+      },
     });
     if (!engagement) throw new Error("Care project not found");
     if (engagement.status === "COMPLETED" || engagement.status === "CANCELLED") {
       throw new Error("Closed care projects cannot receive new evidence");
     }
+    assertUniversityParentEligibility(engagement.programType, audience, engagement.universityProfile);
 
     const [activity, task] = await Promise.all([
       activityId

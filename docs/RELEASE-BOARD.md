@@ -15,12 +15,13 @@
 - Previous server fix remains in place: upload static paths under `/uploads/*` are reachable.
 - `bash ops/server/scripts/new_chat_startup_check.sh` confirmed local/origin/server are aligned and `/admin/login` => `200`.
 - Current production release: `2026-07-14-r248` at runtime commit `7bf4b04`. Private full-care evidence attachments and school-communication sources are live. The same server lineage includes the validated `r247` parent service-progress API and native source; native-miniapp changes remain invisible until a WeChat experience-version upload.
-- Next ready release: none. The next planned full-care feature is the reviewed monthly-report workflow after the first real school-email evidence upload is checked.
+- Next ready release: `2026-07-14-r249` differentiates university academic, postgraduate and career care, adds university academic-position and adult-student-consent records, and preserves earlier university project scopes until manager review.
 - `2026-03-26-r1`, `2026-03-26-r2`, and `2026-03-26-r3` are now live on the current server commit lineage.
 - Release-doc gate requires `CHANGELOG-LIVE`, `RELEASE-BOARD`, and a matching `TASK-*` file in the same deploy commit.
 
 ## Open Risks
 
+- University-care rollout risk: `2026-07-14-r249` adds a new programme enum value and isolated profile table. One existing NUS university draft was created under the earlier shared template; its selected scopes must remain unchanged and appear as retained until management reviews them. Parent-report eligibility must remain blocked without recorded adult-student consent.
 - Full-care-evidence monitoring: `2026-07-14-r248` is live. Parent delivery is intentionally disabled; a file marked `PARENT` is only eligible for a later reviewed report. Monitor the first real school-email upload and confirm the intended care team can open it while unrelated staff cannot.
 - Parent-service-progress rollout risk: all 88 students currently have a null service type, so the parent app temporarily uses ordinary-course wording without changing the database. Management must classify students before academic-management/full-care-specific communication is relied upon. Full-care records remain invisible until explicitly published to parents. Complete a physical-phone pass after the next experience-version upload.
 - Visual-scheduling-calendar rollout risk: `2026-07-13-r246` is live and adds a 42-day miniapp range query, operational overlap indicators, and teacher free-slot display. Single-query relation loading reduced the production 42-day request from 62.64 seconds to 9.98 seconds, but the Hong Kong application server to Singapore database path still leaves an 8-10 second baseline and should be addressed as a separate infrastructure project. It does not add a write path. Complete one physical-phone pass for month/week/day switching, filters, lesson opening, and date/time handoff before relying on it for daily scheduling.
@@ -160,6 +161,28 @@
 1. Keep `CHANGELOG-LIVE`, `RELEASE-BOARD`, `TASK-*` updated for each deploy commit.
 2. Add post-deploy quick check for a known `/uploads/payment-proofs/*` URL.
 3. Keep ops docs aligned with Neon-as-production-db policy.
+
+## 2026-07-14-r249 Ready
+
+- Scope: first implementation phase of the differentiated university-care plan.
+- Business impact:
+  - new projects can be university academic management, postgraduate preparation or internship/employment support
+  - programme selection changes the available and default service scope instead of reusing university-preparation life-care defaults
+  - owner roles and follow-up categories follow the selected university track
+  - university projects store institution, degree, year/term, expected graduation, current/target GPA labels and adult-student consent
+  - parent-report eligibility for university records requires recorded consent and at least one authorized section
+  - existing university scope selections are preserved and marked for review; pre-university defaults and all teaching/finance workflows remain unchanged
+- Verification before deploy:
+  - `npx prisma validate`
+  - `npx tsc --noEmit`
+  - `npm run test:backend` (60/60)
+  - `npm run build` (193 pages)
+- Post-deploy verification:
+  - migration, PM2 and health status
+  - authenticated create-form switching across all five programme types
+  - existing NUS draft retained-scope display
+  - temporary university profile save, consent guard and complete cleanup
+  - protected student/package/session/attendance/settlement and pre-university project baseline comparison
 
 ## 2026-07-14-r248 Live
 

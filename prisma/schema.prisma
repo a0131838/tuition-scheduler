@@ -28,7 +28,15 @@ enum CareProgramType {
   PRE_U_ACADEMIC_CARE
   PRE_U_FULL_COORDINATION
   UNIVERSITY_GROWTH
+  POSTGRAD_PREPARATION
   CAREER_LAUNCH
+}
+
+enum CareStudentConsentStatus {
+  NOT_RECORDED
+  GRANTED
+  LIMITED
+  WITHDRAWN
 }
 
 enum CareEngagementStatus {
@@ -1078,6 +1086,7 @@ model User {
   careTasksCompleted          CareTask[]                 @relation("CareTaskCompletedBy")
   careAttachmentsUploaded     CareAttachment[]           @relation("CareAttachmentUploadedBy")
   careAttachmentsArchived     CareAttachment[]           @relation("CareAttachmentArchivedBy")
+  careUniversityConsents      CareUniversityProfile[]    @relation("CareUniversityConsentRecordedBy")
 }
 
 model CareEngagement {
@@ -1101,18 +1110,44 @@ model CareEngagement {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  student     Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  caseOwner   User?                  @relation("CareEngagementCaseOwner", fields: [caseOwnerUserId], references: [id], onDelete: SetNull)
-  createdBy   User                   @relation("CareEngagementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  members     CareEngagementMember[]
-  plans       CarePlan[]
-  activities  CareActivity[]
-  tasks       CareTask[]
-  attachments CareAttachment[]
+  student           Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  caseOwner         User?                  @relation("CareEngagementCaseOwner", fields: [caseOwnerUserId], references: [id], onDelete: SetNull)
+  createdBy         User                   @relation("CareEngagementCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members           CareEngagementMember[]
+  plans             CarePlan[]
+  activities        CareActivity[]
+  tasks             CareTask[]
+  attachments       CareAttachment[]
+  universityProfile CareUniversityProfile?
 
   @@index([status, caseOwnerUserId, nextReportDueAt])
   @@index([studentId, status])
   @@index([createdAt])
+}
+
+model CareUniversityProfile {
+  id                      String                   @id @default(uuid())
+  engagementId            String                   @unique
+  institution             String?
+  degreeProgram           String?
+  currentAcademicYear     String?
+  currentTerm             String?
+  expectedGraduationDate  DateTime?
+  currentGpaLabel         String?
+  targetGpaLabel          String?
+  studentConsentStatus    CareStudentConsentStatus @default(NOT_RECORDED)
+  parentVisibilityJson    Json?
+  consentNote             String?
+  consentRecordedAt       DateTime?
+  consentRecordedByUserId String?
+  version                 Int                      @default(1)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  engagement        CareEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  consentRecordedBy User?          @relation("CareUniversityConsentRecordedBy", fields: [consentRecordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([studentConsentStatus, expectedGraduationDate])
 }
 
 model CareEngagementMember {

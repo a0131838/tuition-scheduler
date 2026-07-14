@@ -15,6 +15,28 @@ This file is the single source of truth for what changed in production.
 
 ---
 
+## 2026-07-14-r249
+
+- Release ID: `2026-07-14-r249`
+- Date/Time (Asia/Shanghai): `2026-07-14`
+- Deployment status: `READY`
+- Scope: differentiate university-stage care into university academic management, postgraduate preparation and internship/employment support, with programme-specific scopes and owner roles, a university profile, academic position, adult-student consent and granular parent-report eligibility.
+- Key files:
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260714113000_add_care_university_profiles/migration.sql`
+  - `lib/care-validation.ts`
+  - `lib/care-management.ts`
+  - `app/admin/care/page.tsx`
+  - `app/admin/care/[id]/page.tsx`
+  - `app/admin/care/_components/CareProgramSetupFields.tsx`
+  - `tests/care-university-config.test.ts`
+  - `docs/tasks/TASK-20260714-care-university-differentiation.md`
+- Risk impact (if any): Medium and isolated to CARE configuration. The migration adds one enum value, one consent enum and one university-profile table; no existing project or protected teaching/finance table is updated. Both pre-university programme defaults remain byte-for-byte equivalent in tests. Existing university projects retain earlier selected scopes and show them as retained until a manager reviews them. University parent-report eligibility is blocked until adult-student consent and at least one authorized section are recorded.
+- Verification: Prisma validation and generation, TypeScript, all 60 backend tests and the full 193-page production build pass. Tests cover unchanged pre-university defaults, distinct academic/postgraduate/career scopes and owner roles, retained legacy scopes, university activity categories, activation profile requirements, student-consent rules and additive migration safety.
+- Rollback point: current production runtime `7bf4b04` (`2026-07-14-r248`); current aligned source/doc head before this release is `50ed997`.
+
+---
+
 ## 2026-07-14-r248
 
 - Release ID: `2026-07-14-r248`

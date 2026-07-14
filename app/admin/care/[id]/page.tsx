@@ -7,20 +7,27 @@ import {
   changeCareEngagementStatus,
   jsonSummary,
   setCareAttachmentArchived,
+  upsertCareUniversityProfile,
   updateCareTask,
   updateCareEngagementConfig,
 } from "@/lib/care-management";
 import {
-  CARE_ACTIVITY_OPTIONS,
   CARE_ACTIVITY_SOURCE_OPTIONS,
   CARE_ATTACHMENT_OPTIONS,
   CARE_AUDIENCE_OPTIONS,
   CARE_LIFE_SUBTYPES,
+  CARE_PARENT_VISIBILITY_OPTIONS,
+  CARE_PROGRAM_SCOPE_IDS,
   CARE_PROGRAM_OPTIONS,
   CARE_RISK_OPTIONS,
   CARE_SCOPE_OPTIONS,
+  CARE_STUDENT_CONSENT_OPTIONS,
   CARE_TASK_PRIORITY_OPTIONS,
   CARE_TASK_STATUS_OPTIONS,
+  careActivityOptionsForProgram,
+  careScopeOptionsForProgram,
+  isUniversityCareProgram,
+  parentVisibilityIdsFromJson,
   scopeIdsFromJson,
 } from "@/lib/care-validation";
 import { formatBusinessDateOnly, formatBusinessDateTime } from "@/lib/date-only";
@@ -158,6 +165,30 @@ export default async function CareDetailPage({
     );
   }
 
+  async function universityProfileAction(formData: FormData) {
+    "use server";
+    const current = await requireCareEngagementAccess(id);
+    const canManage = current.role === "ADMIN" || (await isManagerUser(current));
+    if (!canManage) redirect(`/admin/care/${encodeURIComponent(id)}?err=${encodeURIComponent("Only managers can change university profile settings")}`);
+    await runCareAction(id, "University profile updated",
+      upsertCareUniversityProfile({
+        actor: current,
+        engagementId: id,
+        version: Number(formData.get("version")),
+        institution: formData.get("institution"),
+        degreeProgram: formData.get("degreeProgram"),
+        currentAcademicYear: formData.get("currentAcademicYear"),
+        currentTerm: formData.get("currentTerm"),
+        expectedGraduationDate: formData.get("expectedGraduationDate"),
+        currentGpaLabel: formData.get("currentGpaLabel"),
+        targetGpaLabel: formData.get("targetGpaLabel"),
+        studentConsentStatus: formData.get("studentConsentStatus"),
+        parentVisibilityIds: formData.getAll("parentVisibilityIds"),
+        consentNote: formData.get("consentNote"),
+      }),
+    );
+  }
+
   async function attachmentStatusAction(formData: FormData) {
     "use server";
     const current = await requireCareEngagementAccess(id);
@@ -233,6 +264,9 @@ export default async function CareDetailPage({
           orderBy: [{ createdAt: "desc" }],
           take: 100,
         },
+        universityProfile: {
+          include: { consentRecordedBy: { select: { name: true } } },
+        },
       },
     }), canManageConfig ? prisma.user.findMany({
       where: { role: { in: ["ADMIN", "CS", "TEACHER"] } },
@@ -249,6 +283,12 @@ export default async function CareDetailPage({
   const program = CARE_PROGRAM_OPTIONS.find((item) => item.value === engagement.programType);
   const scopeIds = scopeIdsFromJson(engagement.scopeJson);
   const scopeLabels = CARE_SCOPE_OPTIONS.filter((item) => scopeIds.includes(item.id)).map((item) => lang === "EN" ? item.en : item.zh);
+  const scopeOptions = careScopeOptionsForProgram(engagement.programType, scopeIds);
+  const standardScopeIds = new Set(CARE_PROGRAM_SCOPE_IDS[engagement.programType]);
+  const retainedLegacyScopeIds = scopeIds.filter((scopeId) => !standardScopeIds.has(scopeId));
+  const universityProject = isUniversityCareProgram(engagement.programType);
+  const activityOptions = careActivityOptionsForProgram(engagement.programType);
+  const parentVisibilityIds = parentVisibilityIdsFromJson(engagement.universityProfile?.parentVisibilityJson);
   const exclusions = jsonList(engagement.exclusionsJson, "items");
   const openTasks = engagement.tasks.filter((task) => task.status !== "DONE" && task.status !== "CANCELLED");
   const activeAttachments = engagement.attachments.filter((attachment) => !attachment.archivedAt);
@@ -293,6 +333,7 @@ export default async function CareDetailPage({
           <div>
             <h2>{t(lang, "Service scope", "服务范围")}</h2>
             <div style={{ marginTop: 8 }}>{scopeLabels.join(" · ") || "-"}</div>
+            {retainedLegacyScopeIds.length ? <div className={styles.noticeError} style={{ marginTop: 8 }}>{t(lang, "Retained scope from the earlier programme template. Review before activation.", "包含原项目模板保留范围，请在启用前审核。")}</div> : null}
             <div className={styles.muted} style={{ marginTop: 5 }}>
               {t(lang, "Third-party costs are excluded unless the contract states otherwise.", "第三方实际费用不包含，除非合同另有明确约定。")}
               {exclusions.length ? ` (${exclusions.length})` : ""}
@@ -317,13 +358,73 @@ export default async function CareDetailPage({
               <label className={styles.label}>{t(lang, "Reviewer", "月报审核人")}<select className={styles.select} name="reviewerUserId" defaultValue={reviewerUserId}><option value="">{t(lang, "Assign later", "稍后指定")}</option>{configurableStaff.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email} · {user.role}</option>)}</select></label>
               <fieldset className={`${styles.full} ${styles.section}`} style={{ borderLeft: 0, borderRight: 0, borderTop: 0, margin: 0 }}>
                 <legend style={{ fontWeight: 800 }}>{t(lang, "Service scope", "服务范围")}</legend>
-                <div className={styles.scopeGrid}>{CARE_SCOPE_OPTIONS.map((item) => <label className={styles.check} key={item.id}><input name="scopeIds" value={item.id} type="checkbox" defaultChecked={scopeIds.includes(item.id)} /><span>{lang === "EN" ? item.en : item.zh}</span></label>)}</div>
+                <div className={styles.scopeGrid}>{scopeOptions.map((item) => <label className={styles.check} key={item.id}><input name="scopeIds" value={item.id} type="checkbox" defaultChecked={scopeIds.includes(item.id)} /><span>{lang === "EN" ? item.en : item.zh}{!standardScopeIds.has(item.id) ? t(lang, " (retained)", "（原项目保留）") : ""}</span></label>)}</div>
               </fieldset>
               <button className={styles.button} type="submit">{t(lang, "Save configuration", "保存配置")}</button>
             </form>
           </details>
         ) : null}
       </section>
+
+      {universityProject ? (
+        <section className={styles.section}>
+          <div className={styles.timelineHead}>
+            <div>
+              <h2>{t(lang, "University profile and student consent", "大学档案与学生授权")}</h2>
+              <div className={styles.muted} style={{ marginTop: 5 }}>
+                {engagement.universityProfile?.institution ?? engagement.student.school ?? "-"}
+                {engagement.universityProfile?.degreeProgram ? ` · ${engagement.universityProfile.degreeProgram}` : ""}
+                {engagement.universityProfile?.currentAcademicYear ? ` · ${engagement.universityProfile.currentAcademicYear}` : ""}
+                {engagement.universityProfile?.currentTerm ? ` · ${engagement.universityProfile.currentTerm}` : ""}
+              </div>
+            </div>
+            <span className={styles.badge} data-tone={engagement.universityProfile?.studentConsentStatus === "WITHDRAWN" ? "risk" : engagement.universityProfile?.studentConsentStatus === "GRANTED" || engagement.universityProfile?.studentConsentStatus === "LIMITED" ? "active" : "neutral"}>
+              {CARE_STUDENT_CONSENT_OPTIONS.find((item) => item.value === (engagement.universityProfile?.studentConsentStatus ?? "NOT_RECORDED"))?.[lang === "EN" ? "en" : "zh"]}
+            </span>
+          </div>
+          <div className={styles.layout}>
+            <div>
+              <strong>{t(lang, "Academic position", "学业位置")}</strong>
+              <div className={styles.muted} style={{ marginTop: 5 }}>
+                {t(lang, "Graduation", "预计毕业")}: {engagement.universityProfile?.expectedGraduationDate ? formatBusinessDateOnly(engagement.universityProfile.expectedGraduationDate) : "-"}
+                {engagement.universityProfile?.currentGpaLabel ? ` · ${t(lang, "Current GPA", "当前 GPA")}: ${engagement.universityProfile.currentGpaLabel}` : ""}
+                {engagement.universityProfile?.targetGpaLabel ? ` · ${t(lang, "Target GPA", "目标 GPA")}: ${engagement.universityProfile.targetGpaLabel}` : ""}
+              </div>
+            </div>
+            <div>
+              <strong>{t(lang, "Parent-visible sections", "家长可见栏目")}</strong>
+              <div className={styles.muted} style={{ marginTop: 5 }}>
+                {CARE_PARENT_VISIBILITY_OPTIONS.filter((item) => parentVisibilityIds.includes(item.id)).map((item) => lang === "EN" ? item.en : item.zh).join(" · ") || "-"}
+              </div>
+              {engagement.universityProfile?.consentRecordedAt ? (
+                <div className={styles.muted}>{formatBusinessDateTime(engagement.universityProfile.consentRecordedAt)} · {engagement.universityProfile.consentRecordedBy?.name ?? "-"}</div>
+              ) : null}
+            </div>
+          </div>
+          {canManageConfig ? (
+            <details className={styles.details}>
+              <summary>{t(lang, "Edit university profile", "修改大学档案")}</summary>
+              <form action={universityProfileAction} className={styles.formGrid}>
+                <input type="hidden" name="version" value={engagement.universityProfile?.version ?? 0} />
+                <label className={styles.label}>{t(lang, "University", "大学")}<input className={styles.field} name="institution" maxLength={240} defaultValue={engagement.universityProfile?.institution ?? engagement.student.school ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Degree and programme", "学位与专业")}<input className={styles.field} name="degreeProgram" maxLength={240} defaultValue={engagement.universityProfile?.degreeProgram ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Academic year", "当前年级")}<input className={styles.field} name="currentAcademicYear" maxLength={80} defaultValue={engagement.universityProfile?.currentAcademicYear ?? engagement.student.grade ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Current term", "当前学期")}<input className={styles.field} name="currentTerm" maxLength={120} defaultValue={engagement.universityProfile?.currentTerm ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Expected graduation", "预计毕业日期")}<input className={styles.field} name="expectedGraduationDate" type="date" defaultValue={engagement.universityProfile?.expectedGraduationDate ? formatBusinessDateOnly(engagement.universityProfile.expectedGraduationDate) : ""} /></label>
+                <label className={styles.label}>{t(lang, "Current GPA and scale", "当前 GPA 与满分")}<input className={styles.field} name="currentGpaLabel" maxLength={40} placeholder="3.4 / 4.0" defaultValue={engagement.universityProfile?.currentGpaLabel ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Target GPA and scale", "目标 GPA 与满分")}<input className={styles.field} name="targetGpaLabel" maxLength={40} placeholder="3.7 / 4.0" defaultValue={engagement.universityProfile?.targetGpaLabel ?? ""} /></label>
+                <label className={styles.label}>{t(lang, "Student consent", "学生授权")}<select className={styles.select} name="studentConsentStatus" defaultValue={engagement.universityProfile?.studentConsentStatus ?? "NOT_RECORDED"}>{CARE_STUDENT_CONSENT_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
+                <fieldset className={`${styles.full} ${styles.section}`} style={{ borderLeft: 0, borderRight: 0, borderTop: 0, margin: 0 }}>
+                  <legend style={{ fontWeight: 800 }}>{t(lang, "Authorized parent-visible sections", "授权家长可见栏目")}</legend>
+                  <div className={styles.scopeGrid}>{CARE_PARENT_VISIBILITY_OPTIONS.map((item) => <label className={styles.check} key={item.id}><input name="parentVisibilityIds" value={item.id} type="checkbox" defaultChecked={parentVisibilityIds.includes(item.id)} /><span>{lang === "EN" ? item.en : item.zh}</span></label>)}</div>
+                </fieldset>
+                <label className={`${styles.label} ${styles.full}`}>{t(lang, "Consent record or note", "授权记录或说明")}<textarea className={styles.textarea} name="consentNote" maxLength={2000} defaultValue={engagement.universityProfile?.consentNote ?? ""} /></label>
+                <button className={styles.button} type="submit">{t(lang, "Save university profile", "保存大学档案")}</button>
+              </form>
+            </details>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className={styles.layout}>
         <div className={styles.stack}>
@@ -332,8 +433,8 @@ export default async function CareDetailPage({
             <details className={styles.details}>
               <summary>{t(lang, "Add update", "新增跟进")}</summary>
               <form action={activityAction} className={styles.formGrid}>
-                <label className={styles.label}>{t(lang, "Type", "类型")}<select className={styles.select} name="category" defaultValue="ACADEMIC">{CARE_ACTIVITY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
-                <label className={styles.label}>{t(lang, "Life subtype", "生活事项")}<select className={styles.select} name="subtype" defaultValue=""><option value="">-</option>{CARE_LIFE_SUBTYPES.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
+                <label className={styles.label}>{t(lang, "Type", "类型")}<select className={styles.select} name="category" defaultValue={activityOptions[0]?.value ?? "GENERAL"}>{activityOptions.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
+                {!universityProject ? <label className={styles.label}>{t(lang, "Life subtype", "生活事项")}<select className={styles.select} name="subtype" defaultValue=""><option value="">-</option>{CARE_LIFE_SUBTYPES.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label> : null}
                 <label className={styles.label}>{t(lang, "Time", "发生时间")}<input className={styles.field} name="occurredAt" type="datetime-local" defaultValue={nowInput} /></label>
                 <label className={styles.label}>{t(lang, "Risk", "风险")}<select className={styles.select} name="riskLevel" defaultValue="LOW">{CARE_RISK_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                 <label className={styles.label}>{t(lang, "Source channel", "沟通来源")}<select className={styles.select} name="sourceType" defaultValue=""><option value="">-</option>{CARE_ACTIVITY_SOURCE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{lang === "EN" ? item.en : item.zh}</option>)}</select></label>
